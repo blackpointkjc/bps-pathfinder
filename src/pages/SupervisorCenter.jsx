@@ -3,7 +3,6 @@ import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorDailyCode from './SupervisorDailyCode';
-import SupervisorCallOuts from './SupervisorCallOuts';
 import SupervisorInspections from './SupervisorInspections';
 import SupervisorPerformanceReview from './SupervisorPerformanceReview';
 import SupervisorWriteUps from './SupervisorWriteUps';
@@ -22,7 +21,6 @@ const TOOLS = {
   today: [
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
-    { id: 'callouts', label: 'Call-Outs', component: SupervisorCallOuts },
   ],
   oversight: [
     { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
