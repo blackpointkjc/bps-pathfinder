@@ -29,9 +29,11 @@ const UNIT_STATUS_COLORS = {
     'On Scene':       { dot: 'bg-blue-400',   text: 'text-blue-300',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
     Busy:             { dot: 'bg-orange-400', text: 'text-orange-300', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
     'Out of Service': { dot: 'bg-gray-500',   text: 'text-gray-400',   badge: 'bg-gray-900/40 text-gray-400 border-gray-600/50' },
+    Dispatch:         { dot: 'bg-cyan-400',    text: 'text-cyan-300',    badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
 };
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
+const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
 
 function getCallPriority(call) {
     if (call.priority_override && call.priority) return call.priority;
@@ -202,7 +204,9 @@ function CommandDashboardInner() {
     });
 
     const cadOfficerUnits = users.filter(isOperationalOfficer);
-    const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status));
+    // Dispatchers who mark themselves "Dispatch" are running the board, not working
+    // the street — pull them off the unit status board so only field units appear.
+    const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
     const activeUnits    = statusUnits.filter(u => u.status !== 'Out of Service');
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
@@ -214,6 +218,10 @@ function CommandDashboardInner() {
 
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
+    const isDispatchUser     = currentUser?.role === 'dispatch'
+        || (currentUser?.additional_roles || []).some(r => String(r).toLowerCase() === 'dispatch')
+        || !!currentUser?.dispatch_role;
+    const myStatuses = isDispatchUser ? DISPATCH_STATUSES : MY_STATUSES;
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -319,7 +327,7 @@ function CommandDashboardInner() {
                             : currentUser.full_name?.toUpperCase()} STATUS:
                     </span>
                     <div className="flex items-center gap-1 flex-wrap">
-                        {MY_STATUSES.map(s => {
+                        {myStatuses.map(s => {
                             const cfg = UNIT_STATUS_COLORS[s];
                             const isActive = currentUser.status === s;
                             return (

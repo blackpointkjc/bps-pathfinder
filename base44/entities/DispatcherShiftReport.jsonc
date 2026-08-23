@@ -1,0 +1,157 @@
+{
+  "name": "DispatcherShiftReport",
+  "type": "object",
+  "properties": {
+    "dispatcher_email": {
+      "type": "string",
+      "description": "Email of the dispatcher who authored the log"
+    },
+    "dispatcher_name": {
+      "type": "string",
+      "description": "Display name of the dispatcher"
+    },
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the dispatch shift"
+    },
+    "shift_start": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "shift_end": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Overall shift narrative and notable events"
+    },
+    "dispatch_log": {
+      "type": "array",
+      "description": "Calls dispatched during the shift with assignments and notes",
+      "items": {
+        "type": "object",
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "description": "Linked DispatchCall record ID"
+          },
+          "call_number": {
+            "type": "string",
+            "description": "CAD or BPS call number"
+          },
+          "incident_type": {
+            "type": "string",
+            "description": "Incident type"
+          },
+          "location": {
+            "type": "string",
+            "description": "Call location"
+          },
+          "time_received": {
+            "type": "string",
+            "description": "When the call was received"
+          },
+          "call_status": {
+            "type": "string",
+            "description": "Call status at attach time"
+          },
+          "assigned_units": {
+            "type": "array",
+            "description": "Units assigned or dispatched to the call",
+            "items": {
+              "type": "object",
+              "properties": {
+                "unit_id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "assigned_at": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "notes": {
+            "type": "string",
+            "description": "Dispatcher notes for this call"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "rejected",
+        "approved"
+      ],
+      "default": "draft",
+      "description": "Report status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this log was previously rejected"
+    }
+  },
+  "required": [
+    "shift_date"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.dispatcher_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

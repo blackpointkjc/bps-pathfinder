@@ -12,6 +12,7 @@ import RecordsAssistant from './RecordsAssistant';
 import Personnel from './Personnel';
 import PathfinderReports from './Reports';
 import AdminPortal from './AdminPortal';
+import DispatcherShiftReports from './DispatcherShiftReports';
 
 const BASE_SECTIONS = [
   { id: 'live', label: 'Live Operations', description: 'Command board, dispatch queue and live map', icon: Activity },
@@ -24,6 +25,7 @@ const TOOLS = {
     { id: 'command', label: 'Command Board', component: CommandDashboard },
     { id: 'dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'map', label: 'Live Map', component: Navigation },
+    { id: 'dispatchlog', label: 'Dispatcher Log', component: DispatcherShiftReports },
   ],
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
