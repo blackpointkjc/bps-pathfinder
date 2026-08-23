@@ -380,7 +380,7 @@ export function calculateJobDutyCompliance({
 } = {}) {
   const officerEmail = emailKey(officer?.email);
   const evaluatedShifts = timeEntries.filter(entry => {
-    if (!entry?.clock_in) return false;
+    if (!entry?.clock_in || entry?.archived === true) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
     const d = easternDateKey(entry.clock_in);
     return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
@@ -425,7 +425,11 @@ export function calculateJobDutyCompliance({
       qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
     };
 
-    const requiresDar = !isActiveShift && ruleIsEffective && rule.daily_activity_report_required === true;
+    // A Daily Activity Report is a company shift-close requirement for every
+    // completed worked shift. Do not make DAR scoring depend on a separate
+    // property rule/effective date; that was why the Missing Reports panel could
+    // show a real missing DAR while My Performance/Company Analytics ignored it.
+    const requiresDar = !isActiveShift;
     if (requiresDar) {
       darRequired++;
       detail.daily_activity.required = true;
