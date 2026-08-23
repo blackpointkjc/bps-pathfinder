@@ -374,6 +374,10 @@ export default function DailyActivityReports() {
       alert('Please add at least one hourly activity entry before submitting.');
       return;
     }
+    if (formData.starting_mileage !== '' && formData.ending_mileage !== '' && Number(formData.ending_mileage) < Number(formData.starting_mileage)) {
+      toast.error('Ending mileage cannot be less than starting mileage.');
+      return;
+    }
 
     setSaving(true);
     const entriesFormatted = formData.hourly_entries_array.map(e => `${e.time}\n${e.text}`).join('\n\n');
@@ -463,6 +467,9 @@ export default function DailyActivityReports() {
             { label: 'Patrols', value: report.patrol_count },
             { label: 'Visitors Logged', value: report.visitors_logged },
             { label: 'Doors Checked', value: report.doors_checked },
+            { label: 'Starting Mileage', value: report.starting_mileage != null ? `${Number(report.starting_mileage).toLocaleString()} mi` : '' },
+            { label: 'Ending Mileage', value: report.ending_mileage != null ? `${Number(report.ending_mileage).toLocaleString()} mi` : '' },
+            { label: 'Miles Driven', value: report.starting_mileage != null && report.ending_mileage != null && Number(report.ending_mileage) >= Number(report.starting_mileage) ? `${Number(report.ending_mileage) - Number(report.starting_mileage)} mi` : '' },
             { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
           ],
         },
