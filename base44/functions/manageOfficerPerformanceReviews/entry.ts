@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
-    await base44.asServiceRole.entities.PerformanceReview.update(review.id, {
+    const updatedReview = await base44.asServiceRole.entities.PerformanceReview.update(review.id, {
       ...submittedRatings,
       officer_acknowledged: true,
       officer_comments: String(body.officer_comments || '').trim(),
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       new Promise(resolve => setTimeout(resolve, 3000)),
     ]);
 
-    return Response.json({ success: true, workflow_stage: 'hr_approval_pending' });
+    return Response.json({ success: true, workflow_stage: 'hr_approval_pending', review: updatedReview || { ...review, ...submittedRatings, officer_acknowledged: true, officer_comments: String(body.officer_comments || '').trim(), officer_signature_url: signatureUrl, officer_signed_at: now, officer_acknowledged_at: now, officer_acknowledged_by_id: me.id, officer_signature_obtained: true, workflow_stage: 'hr_approval_pending' } });
   } catch (error) {
     console.error('manageOfficerPerformanceReviews failed', error);
     return Response.json({ error: error?.message || 'Unable to manage officer performance reviews' }, { status: 500 });
