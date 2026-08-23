@@ -157,7 +157,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Communications & Requests', items: [
         ['Announcements', 'AdminAnnouncements', Bell],
-        ['Notifications', 'AdminNotifications', Bell],
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
         ['Documents', 'AdminDocuments', FileText],
       ]},
@@ -292,7 +291,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminScheduling: ['admin','schedule','scheduling'], FleetVehicleAssignments: ['admin','schedule','fleet'], AdminOfficerManagement: ['admin','schedule','availability'], AdminPlannedShifts: ['admin','schedule','planned'], AdminShiftBids: ['admin','schedule','bids'],
   AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','people','locations'], AdminEquipment: ['admin','people','equipment'], AdminPostOrders: ['admin','people','postorders'],
   AdminReports: ['admin','reports','allreports'], AdminClientReports: ['admin','reports','clientreports'], AdminSupervisorReports: ['admin','reports','supervisorreports'], AdminConfidentialReports: ['admin','reports','confidential'], AdminComplaints: ['admin','reports','complaints'], AdminCommendations: ['admin','reports','commendations'], AdminClientFeedback: ['admin','reports','feedback'],
-  AdminAnnouncements: ['admin','communications','announcements'], AdminNotifications: ['admin','communications','notifications'], AdminSpecialRequests: ['admin','communications','requests'], AdminDocuments: ['admin','communications','documents'],
+  AdminAnnouncements: ['admin','communications','announcements'], AdminSpecialRequests: ['admin','communications','requests'], AdminDocuments: ['admin','communications','documents'],
   AdminQRCheckpoints: ['admin','system','qrcheckpoints'], AdminQRPrintManager: ['admin','system','qrprint'], AdminQRReports: ['admin','system','qrreports'], AdminPortalSettings: ['admin','system','settings'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','employees','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','leave','reviews'], ManageClients: ['hr','clients','clients'],
   SupervisorTasks: ['supervisor','today','tasks'], SupervisorDailyCode: ['supervisor','today','code'], SupervisorCallOuts: ['supervisor','today','callouts'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
