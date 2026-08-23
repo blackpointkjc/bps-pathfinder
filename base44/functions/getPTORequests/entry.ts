@@ -60,6 +60,35 @@ Deno.serve(async (req) => {
 
     if (!hasHR) return Response.json({ error: 'HR access required' }, { status: 403 });
 
+    if (action === 'cancel_pending') {
+      const { request_id, admin_notes = '' } = body;
+      if (!request_id) return Response.json({ error: 'PTO request is required' }, { status: 400 });
+      const all = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const request = (all || []).find((entry: any) => entry.id === request_id);
+      if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
+      if (String(request.status || '').toLowerCase() !== 'pending') return Response.json({ error: 'Only pending PTO requests can be cancelled here' }, { status: 400 });
+      await base44.asServiceRole.entities.TimeOffRequest.update(request_id, {
+        status: 'cancelled',
+        cancelled_by: user.email,
+        cancelled_date: new Date().toISOString(),
+        hours_restored: 0,
+        admin_notes: admin_notes || 'Pending PTO request cancelled by HR.',
+      });
+      const officerEmail = request.requested_by_email || request.created_by;
+      if (officerEmail) {
+        await base44.asServiceRole.entities.Notification.create({
+          recipient_email: String(officerEmail).toLowerCase(),
+          type: 'schedule_changed',
+          title: 'Time Off Request Cancelled',
+          message: `Your pending time off request for ${request.start_date} through ${request.end_date} was cancelled by HR. No PTO hours were deducted.`,
+          related_id: request.id,
+          priority: 'normal',
+          source_name: 'Human Resources',
+        });
+      }
+      return Response.json({ success: true, cancelled: true, restored_hours: 0 });
+    }
+
     if (action === 'review') {
       const { request_id, status, admin_notes = '' } = body;
       if (!request_id || !['approved', 'denied'].includes(status)) {
