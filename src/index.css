@@ -1280,4 +1280,36 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   .command-dashboard-system-meta time {
     font-size: .72rem;
   }
+
+  /* CAD/Command mobile workstation: never let fixed desktop panel widths push
+     the page outside the viewport. Toolbars become touch-friendly horizontal
+     rails instead of wrapping into tall, uneven button stacks. */
+  .cad-command-workstation,
+  .command-dashboard {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .cad-command-workstation button,
+  .command-dashboard button {
+    min-height: 36px;
+  }
+
+  .cad-command-workstation select,
+  .cad-command-workstation input,
+  .command-dashboard select,
+  .command-dashboard input {
+    font-size: 16px;
+  }
+
+  .cad-command-workstation [class*="md:w-["],
+  .command-dashboard [class*="lg:grid-cols-["] {
+    max-width: 100% !important;
+  }
+
+  .cad-command-workstation .leaflet-container,
+  .command-dashboard .leaflet-container {
+    max-width: 100vw;
+  }
 }
