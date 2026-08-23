@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       const visibleRequests = (requests || []).filter((entry: any) => {
         if (entry.reason === 'PTO workflow verification record') return false;
         // Balance adjustments are not leave requests and must never appear in PTO request history.
-        if (/^PTO Bonus\b|^Admin PTO Grant\b|^Manual PTO\b|^Manual sick time\b/i.test(String(entry.admin_notes || ''))) return false;
+        if (/^PTO Bonus\b|^Admin PTO Grant\b|^Manual PTO\b|^Manual sick time\b|^Legacy duplicate grant\b|^Legacy balance entry\b/i.test(String(entry.admin_notes || ''))) return false;
         if (/^Annual administrative PTO grant$/i.test(String(entry.reason || ''))) return false;
         return true;
       });
