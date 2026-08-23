@@ -74,21 +74,31 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
 
     if (!call) {
         return (
-            <div className="text-xs text-slate-500 text-center p-2">Select a call to assign units</div>
+            <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center">
+                <div className="text-[10px] font-black tracking-[.16em] text-slate-500">UNIT ASSIGNMENT</div>
+                <div className="mt-2 text-xs text-slate-400">Select an active call to view assigned and available field units.</div>
+            </div>
         );
     }
 
+    const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'REFERENCE PENDING';
+
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
+            <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#0b1522] p-3">
+                <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
+                <div className="mt-2 text-sm font-black text-white">{call.incident || 'Call for Service'}</div>
+                <div className="mt-1 text-[10px] leading-relaxed text-slate-400">{call.location || 'Location unavailable'}</div>
+            </div>
             {/* Assigned Units */}
             <div>
-                <p className="text-xs text-slate-400 mb-1">Assigned ({assignedUnits.length})</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Units ({assignedUnits.length})</p>
                 {assignedUnits.length > 0 ? (
                     <div className="space-y-1">
                         {assignedUnits.map(unit => {
                             const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
                             return (
-                                <div key={unit.id} className="bg-slate-800 p-2 rounded flex items-center justify-between">
+                                <div key={unit.id} className="flex items-center justify-between rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white text-xs font-semibold truncate">{unitName}</p>
                                     </div>
@@ -111,14 +121,14 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
 
             {/* Available Units */}
             <div>
-                <p className="text-xs text-slate-400 mb-1">Available ({availableUnits.length})</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Available for Dispatch ({availableUnits.length})</p>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <Input
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search..."
-                        className="pl-7 h-7 bg-slate-800 border-slate-700 text-white text-xs"
+                        className="h-9 rounded-lg border-slate-700 bg-[#0b1522] pl-8 text-sm text-white"
                     />
                 </div>
                 
@@ -137,7 +147,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
                                 : null;
                             
                             return (
-                                <div key={unit.id} className="bg-slate-800 p-2 rounded flex items-center justify-between hover:bg-slate-700">
+                                <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#101b29] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#142236]">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white text-xs font-semibold truncate">{unitName}</p>
                                         {distance && (
@@ -147,7 +157,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
                                     <Button
                                         size="sm"
                                         onClick={() => handleAssignUnit(unit)}
-                                        className="bg-blue-600 hover:bg-blue-700 h-6 px-2"
+                                        className="h-9 w-9 rounded-lg bg-blue-600 p-0 hover:bg-blue-500"
                                     >
                                         <Plus className="w-3 h-3" />
                                     </Button>
