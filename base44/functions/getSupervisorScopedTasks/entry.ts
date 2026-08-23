@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     ]);
     const users = (allUsers || []).filter(operational);
     let assigned:any[] = [];
-    if (me.role === 'admin') {
+    if (me.role === 'admin' || roles.has('full_access')) {
       assigned = users.filter((u:any) => u.id !== me.id);
     } else {
       const myPlatoon = normalized(me.platoon || me.subdivision);
@@ -69,6 +69,13 @@ Deno.serve(async (req) => {
           seen.add(person.id);
           assigned.push(person);
           queue.push(...(children.get(person.id) || []));
+        }
+        // Some older command accounts were never given supervisor_id/platoon data.
+        // Do not leave their oversight tools with an empty officer dropdown: when
+        // the reporting chain is absent, use the established rank hierarchy and
+        // show only active operational personnel below the reviewer.
+        if (!assigned.length && rankLevel(me) >= 0) {
+          assigned = users.filter((u:any) => u.id !== me.id && reviewerOutranks(me, u));
         }
       }
     }
