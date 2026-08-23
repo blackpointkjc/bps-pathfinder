@@ -28,7 +28,7 @@ export default function AccountingProfit() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchProfit } = useQuery({
+  const { data: accountingData = {}, refetch: refetchProfit } = useQuery({
     queryKey: ['accountingData', 'profit'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getAccountingData', {});
