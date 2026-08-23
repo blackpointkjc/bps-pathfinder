@@ -22,7 +22,7 @@ import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
 
 
