@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -45,16 +45,6 @@ export default function AdminManualPTO() {
   });
 
   const activeUsers = directoryUsers.filter(hasOfficerAdditionalRole);
-
-  useEffect(() => {
-    if (!user || !(user.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access'))) return;
-    base44.functions.invoke('getPTORequests', { action: 'ensure_admin_grants' })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['directoryUsers', 'manualPTO'] });
-        queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      })
-      .catch(error => console.warn('[PTO] admin grant check failed:', error?.message));
-  }, [user, queryClient]);
 
   const addPTOMutation = useMutation({
     mutationFn: async (data) => {
