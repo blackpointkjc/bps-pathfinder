@@ -1,3 +1,5 @@
+import { BLACK_POINT_SHIELD_LOGO } from '@/lib/brandAssets';
+
 const DEFAULT_TIME_ZONE = 'America/New_York';
 
 export function escapePrintHtml(value) {
@@ -157,7 +159,8 @@ export function openBlackPointReport({
     .page-shell > tbody > tr > td { padding: 0 .28in .18in; vertical-align: top; }
     .brand-header { overflow: hidden; border: 1.5px solid #132a41; border-radius: 8px; }
     .brand-strip { height: 5px; background: linear-gradient(90deg, #56d8ee 0 28%, #d51f2b 28% 42%, #0b1725 42%); }
-    .brand-main { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 10px 13px 9px; color: #fff; background: #0b1725; }
+    .brand-main { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding: 9px 13px 8px; color: #fff; background: #0b1725; }
+    .brand-logo { width: 52px; height: 58px; object-fit: contain; display:block; background:transparent; }
     .brand-name { color: #63e6f4; font-size: 7pt; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
     h1 { margin: 2px 0 0; font-size: 15pt; line-height: 1; letter-spacing: .04em; text-transform: uppercase; }
     .subtitle { margin-top: 4px; color: #c5d5e5; font-size: 7.5pt; }
@@ -205,6 +208,7 @@ export function openBlackPointReport({
           <div class="brand-header">
             <div class="brand-strip"></div>
             <div class="brand-main">
+              <img class="brand-logo" src="${BLACK_POINT_SHIELD_LOGO}" alt="Black Point" />
               <div>
                 <div class="brand-name">Black Point Protection · Pathfinder</div>
                 <h1>${escapePrintHtml(title || 'Report')}</h1>
