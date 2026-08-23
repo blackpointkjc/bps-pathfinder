@@ -95,13 +95,20 @@ export default function RecordsAssistant() {
               <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />MOTOR VEHICLES</button>
             </div>
             {searchType === 'person' && (
-              <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950/40 p-3">
-                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">Person / Virginia Court Search Criteria</div>
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Defendant / Person Name</label><Input value={personName} onChange={e => setPersonName(e.target.value)} placeholder="First Middle Last" /></div>
-                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Court Level</label><select value={courtLevel} onChange={e => setCourtLevel(e.target.value)} className="h-10 w-full rounded-md border border-slate-600 bg-[#0b1522] px-3 text-sm text-white"><option>All Court Levels</option><option>General District Court</option><option>J&DR Court</option><option>Circuit Court</option></select></div>
-                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Court / Locality</label><Input value={courtName} onChange={e => setCourtName(e.target.value)} placeholder="Optional court/locality" /></div>
-                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Case Number</label><Input value={caseNumber} onChange={e => setCaseNumber(e.target.value)} placeholder="Optional case number" /></div>
+              <div className="mb-4 grid gap-3 lg:grid-cols-[1.3fr_.7fr]">
+                <div className="rounded-xl border border-cyan-900/60 bg-cyan-950/10 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.14em] text-cyan-300">Pathfinder Person Search</div>
+                  <label className="mt-2 block text-[10px] font-bold uppercase text-slate-500">Name / DOB / ID / Driver License</label>
+                  <Input value={personName} onChange={e => setPersonName(e.target.value)} placeholder="Example: Keys or 01/15/1990" className="mt-1 h-11 border-slate-600 bg-[#0b1522] text-white" />
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">Searches Pathfinder reports, CAD history, BOLO parties, complaints, trespass records, summonses and other internal records.</p>
+                </div>
+                <div className="rounded-xl border border-slate-700 bg-[#0b1522] p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.14em] text-slate-300">Virginia Court Verification</div>
+                  <div className="mt-2 grid gap-2">
+                    <select value={courtLevel} onChange={e => setCourtLevel(e.target.value)} className="h-9 w-full rounded-lg border border-slate-700 bg-[#07101a] px-2 text-xs text-white"><option>All Court Levels</option><option>General District Court</option><option>J&DR Court</option><option>Circuit Court</option></select>
+                    <Input value={courtName} onChange={e => setCourtName(e.target.value)} placeholder="Court / locality (optional)" className="h-9 border-slate-700 bg-[#07101a] text-xs text-white" />
+                    <Input value={caseNumber} onChange={e => setCaseNumber(e.target.value)} placeholder="Case number (optional)" className="h-9 border-slate-700 bg-[#07101a] text-xs text-white" />
+                  </div>
                 </div>
               </div>
             )}
@@ -111,7 +118,7 @@ export default function RecordsAssistant() {
                 <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'person' ? 'Name, DOB, ID or driver license…' : searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
               </div>
               <Button type="submit" disabled={searching || (searchType === 'person' ? (personName.trim() || query.trim()).length < 2 : query.trim().length < 2)} className="h-12 bg-blue-700 hover:bg-blue-600">
-                {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}SEARCH ALL RECORDS
+                {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}{searchType === 'person' ? 'SEARCH PATHFINDER PERSON RECORDS' : searchType === 'vehicle' ? 'SEARCH VEHICLE RECORDS' : 'SEARCH COMPANY RECORDS'}
               </Button>
             </form>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
@@ -121,16 +128,24 @@ export default function RecordsAssistant() {
         </Card>
 
         {searchType === 'person' && (
-          <Card className="border-cyan-900/70 bg-cyan-950/10">
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-black text-cyan-200"><ShieldAlert className="h-4 w-4" />Official Virginia Court Record Verification</div>
-                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Pathfinder searches its own company records using the person name above. The official OCIS fields shown here mirror the information you may use for the Virginia court lookup, but the court's Terms prohibit automated scripting/data mining, so Pathfinder cannot silently scrape OCIS results. Open the official system to accept its Terms and complete that lookup.</p>
-                {(courtLevel !== 'All Court Levels' || courtName || caseNumber) && <p className="mt-2 text-[11px] font-semibold text-cyan-300">Prepared criteria: {courtLevel}{courtName ? ` • ${courtName}` : ''}{caseNumber ? ` • Case ${caseNumber}` : ''}</p>}
+          <Card className="overflow-hidden border-cyan-900/70 bg-[#0c1724]">
+            <CardContent className="p-0">
+              <div className="flex flex-col gap-3 border-b border-slate-800 bg-cyan-950/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-black text-cyan-200"><ShieldAlert className="h-4 w-4" />Virginia Court Verification</div>
+                  <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Virginia OCIS requires the individual user to accept its terms before searching and prohibits automated scripting/data mining. Pathfinder therefore keeps court verification as a clearly separate official-site step instead of pretending the internal search is querying Virginia courts.</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button type="button" variant="outline" onClick={async () => { const criteria = [personName || query, courtLevel !== 'All Court Levels' ? courtLevel : '', courtName, caseNumber ? `Case ${caseNumber}` : ''].filter(Boolean).join(' · '); await navigator.clipboard?.writeText(criteria); toast.success('Court search criteria copied'); }} className="border-slate-600 text-slate-300">COPY CRITERIA</Button>
+                  <Button type="button" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="bg-cyan-700 text-white hover:bg-cyan-600">OPEN OFFICIAL OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" /></Button>
+                </div>
               </div>
-              <Button type="button" variant="outline" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="shrink-0 border-cyan-600/60 text-cyan-200 hover:bg-cyan-950">
-                OPEN VIRGINIA OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" />
-              </Button>
+              <div className="grid gap-2 p-4 text-xs text-slate-400 sm:grid-cols-2 lg:grid-cols-4">
+                <div><span className="block text-[9px] font-black uppercase text-slate-600">Person</span><span className="text-slate-200">{personName || query || 'Not entered'}</span></div>
+                <div><span className="block text-[9px] font-black uppercase text-slate-600">Court Level</span><span className="text-slate-200">{courtLevel}</span></div>
+                <div><span className="block text-[9px] font-black uppercase text-slate-600">Court / Locality</span><span className="text-slate-200">{courtName || 'Any / not specified'}</span></div>
+                <div><span className="block text-[9px] font-black uppercase text-slate-600">Case Number</span><span className="text-slate-200">{caseNumber || 'Not specified'}</span></div>
+              </div>
             </CardContent>
           </Card>
         )}
