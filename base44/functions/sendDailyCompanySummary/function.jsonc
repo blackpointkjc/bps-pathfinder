@@ -4,7 +4,7 @@
   "automations": [
     {
       "name": "Send daily company summary",
-      "description": "Sends each active internal company member a personalized Black Point Daily Brief at 8:00 AM Eastern using Base44 managed email delivery instead of an administrator's Microsoft mailbox.",
+      "description": "Sends each active internal company member a personalized Black Point Daily Brief at 8:00 AM Eastern from management@blackpointkjc.com through the app-wide Outlook shared connection.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
