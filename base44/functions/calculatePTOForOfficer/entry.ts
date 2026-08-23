@@ -33,13 +33,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
 
-    // Get all approved PTO requests to identify PTO weeks
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const normalizedRank = String(officer.rank || '').trim().toLowerCase();
+    const annualEntitlement = normalizedRank === 'colonel' || normalizedRank === 'lt colonel' || normalizedRank === 'lieutenant colonel' ? 180 : 40;
+
+    // PTO is a calendar-year accrual. Only approved paid requests from this year
+    // affect the current year's used/accrued figures.
     const allRequests = await base44.asServiceRole.entities.TimeOffRequest.list();
-    const approvedPaidRequests = allRequests.filter(r => 
-      r.created_by === officer_email && 
-      r.status === 'approved' && 
-      r.request_type === 'paid'
-    );
+    const approvedPaidRequests = allRequests.filter(r => {
+      const requestOwner = String(r.created_by || r.requested_by_email || '').trim().toLowerCase();
+      const requestDate = new Date(r.start_date || r.created_date || 0);
+      return requestOwner === String(officer_email).trim().toLowerCase() &&
+        r.status === 'approved' &&
+        r.request_type === 'paid' &&
+        requestDate.getFullYear() === currentYear;
+    });
 
     // Build list of date ranges where officer was on PTO
     const ptoDateRanges = approvedPaidRequests.map(req => ({
@@ -47,12 +56,14 @@ Deno.serve(async (req) => {
       end: new Date(req.end_date)
     }));
 
-    // Get all completed time entries
+    // Get completed time entries from this calendar year only.
     const allEntries = await base44.asServiceRole.entities.TimeEntry.list();
-    const officerEntries = allEntries.filter(e => 
-      e.officer_email === officer_email && 
-      e.clock_out
-    );
+    const officerEntries = allEntries.filter(e => {
+      const clockIn = new Date(e.clock_in || 0);
+      return String(e.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() &&
+        Boolean(e.clock_out) &&
+        clockIn.getFullYear() === currentYear;
+    });
 
     // Calculate total hours worked, excluding hours during PTO weeks
     let totalHoursWorked = 0;
@@ -73,36 +84,31 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Calculate PTO accrued from work hours
-    // Rate: 40 hours PTO for 2040 hours worked (40 hrs/week * 51 weeks)
-    const accrualRate = 40 / 2040; // 0.0196 hours PTO per hour worked
-    let ptoAccruedFromWork = totalHoursWorked * accrualRate;
+    // Accrual is proportional to hours worked against a 2,040-hour work year.
+    // Colonel/Lt Colonel accrue up to 180 hours/year; every other rank accrues
+    // up to 40 hours/year.
+    const accrualRate = annualEntitlement / 2040;
+    const ptoAccruedFromWork = Math.min(annualEntitlement, totalHoursWorked * accrualRate);
 
-    // Add one-time sick leave conversion on 1/3/25 (separate from the 40 hours)
+    // Historical sick-leave conversion is preserved as a legacy credit, but the
+    // calendar-year PTO total may never exceed the rank entitlement.
     let sickLeaveBonus = 0;
     const conversionDate = new Date('2025-01-03');
-    const today = new Date();
-    
-    if (today >= conversionDate && !officer.sick_leave_converted) {
+    if (now >= conversionDate && !officer.sick_leave_converted) {
       sickLeaveBonus = 15;
-      await base44.asServiceRole.entities.User.update(officer.id, {
-        sick_leave_converted: true
-      });
+      await base44.asServiceRole.entities.User.update(officer.id, { sick_leave_converted: true });
     } else if (officer.sick_leave_converted) {
       sickLeaveBonus = 15;
     }
 
-    // Total accrued = work PTO + sick leave bonus
-    const totalPtoAccrued = ptoAccruedFromWork + sickLeaveBonus;
+    const totalPtoAccrued = Math.min(annualEntitlement, ptoAccruedFromWork + sickLeaveBonus);
 
     // Calculate used PTO
     const ptoUsed = approvedPaidRequests.reduce((sum, req) => sum + (req.hours_requested || 0), 0);
 
-    // Calculate balance with 40-hour carryover cap
+    // Current-year available balance follows the same rank entitlement cap.
     let ptoBalance = Math.max(0, totalPtoAccrued - ptoUsed);
-    
-    // Cap balance at 40 hours maximum (use it or lose it)
-    ptoBalance = Math.min(ptoBalance, 40);
+    ptoBalance = Math.min(ptoBalance, annualEntitlement);
 
     // Update officer PTO fields
     await base44.asServiceRole.entities.User.update(officer.id, {
@@ -116,6 +122,8 @@ Deno.serve(async (req) => {
       officer_email,
       total_hours_worked: totalHoursWorked,
       accrual_rate: accrualRate,
+      annual_entitlement: annualEntitlement,
+      current_year: currentYear,
       pto_from_work: ptoAccruedFromWork,
       sick_leave_bonus: sickLeaveBonus,
       total_pto_accrued: totalPtoAccrued,
