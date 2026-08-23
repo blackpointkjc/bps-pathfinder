@@ -108,7 +108,6 @@ const CENTER_CONFIG = {
       { label: 'Today', items: [
         ['Action Items', 'SupervisorTasks', ClipboardList],
         ['Daily Code', 'SupervisorDailyCode', ShieldCheck],
-        ['Call-Outs', 'SupervisorCallOuts', UserCheck],
       ]},
       { label: 'Officer Oversight', items: [
         ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],
@@ -295,7 +294,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminAnnouncements: ['admin','communications','announcements'], AdminSpecialRequests: ['admin','communications','requests'], AdminDocuments: ['admin','communications','documents'],
   AdminQRCheckpoints: ['admin','system','qrcheckpoints'], AdminQRPrintManager: ['admin','system','qrprint'], AdminQRReports: ['admin','system','qrreports'], AdminPortalSettings: ['admin','system','settings'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','employees','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','leave','reviews'], ManageClients: ['hr','clients','clients'],
-  SupervisorTasks: ['supervisor','today','tasks'], SupervisorDailyCode: ['supervisor','today','code'], SupervisorCallOuts: ['supervisor','today','callouts'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
+  SupervisorTasks: ['supervisor','today','tasks'], SupervisorDailyCode: ['supervisor','today','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
   ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','requests','payroll'], ClientFeedback: ['client','requests','feedback'],
   AccountingPayroll: ['accounting','payroll','payroll'], PayrollDates: ['accounting','payroll','dates'], AccountingInvoices: ['accounting','billing','invoices'], AccountingExpenses: ['accounting','billing','expenses'], AccountingProfit: ['accounting','overview','profit'], AccountingTaxLiability: ['accounting','overview','tax'],
 };
