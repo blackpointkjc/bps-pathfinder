@@ -26,7 +26,14 @@ const displayName = (unit) => {
 function isDispatchOrAdmin(user) {
   if (!user) return false;
   if (user.role === 'admin' || user.role === 'dispatch') return true;
-  return (user.additional_roles || []).some(r => ['full_access', 'dispatch', 'supervisor'].includes(String(r).toLowerCase()));
+  // dispatch_role / is_supervisor are the actual fields Dispatch Center and
+  // Command Dashboard use to grant CAD/dispatch access (see hasDispatchAccess
+  // in DispatchCenter.jsx and isDispatchOrAdmin in CommandDashboard.jsx). This
+  // check previously omitted them, so a dispatcher granted access only via
+  // dispatch_role could open Dispatch Center but never saw the distress
+  // controls here.
+  if (user.dispatch_role === true || user.is_supervisor === true) return true;
+  return (user.additional_roles || []).some(r => ['full_access', 'dispatch', 'supervisor', 'cad_access'].includes(String(r).toLowerCase()));
 }
 
 export default function CADUnitStatusBoard({ units = [], compact = false, currentUser = null }) {
