@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
 import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { beginOutlookConnection } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 
 export default function OfficerChat() {
@@ -225,7 +226,12 @@ export default function OfficerChat() {
           </CardHeader>
 
           <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Officer Chat ↔ General Chat</div>
-          {liveTeamsError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {liveTeamsError.message}</div>}
+          {liveTeamsError && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
+              <span>{/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') ? 'Connect Microsoft 365 to load and sync General Chat.' : 'Teams General Chat could not refresh.'}</span>
+              {/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
+            </div>
+          )}
 
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-4">
