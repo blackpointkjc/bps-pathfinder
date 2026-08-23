@@ -672,7 +672,7 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
     return startWall != null && nowWall != null && startWall <= nowWall;
   });
   const applicable = callOuts.filter(item => {
-    if (item.call_out_type !== 'called_out') return false;
+    if (item.call_out_type !== 'called_out' || item.voided === true || item.active === false) return false;
     const date = item.call_out_date || easternDateKey(item.created_date);
     return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
   });
