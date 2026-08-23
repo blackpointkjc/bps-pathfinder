@@ -113,37 +113,36 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Establish exactly one live session record while the officer is signed in.
+  // Establish the live session through the same backend upsert used by GPS/heartbeat.
+  // Do not directly create/delete ActiveOfficer rows here: that raced with logLocation
+  // and produced duplicate live rows for the same officer, allowing status boards to
+  // briefly resolve the wrong/stale record.
   useEffect(() => {
-    if (!shouldPublish) return;
+    if (!shouldPublish || !user?.email) return;
 
-    const getActiveOfficerRecord = async () => {
+    const establishSession = async () => {
       try {
-        const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
-        const sessionData = {
+        const response = await base44.functions.invoke('logLocation', {
+          heartbeat_only: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+          unit_number: user.unit_number || '',
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
-          last_update: new Date().toISOString(),
-          status: user?.status || 'Signed In',
           user_role: user?.role || 'user',
           session_active: true,
-        };
-        // Never revive a previous session's coordinates by refreshing its heartbeat.
-        // Start every login/clock-context session with a clean row; the first accepted
-        // device GPS fix will populate coordinates through logLocation.
-        await Promise.all(records.map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
-        const created = await base44.entities.ActiveOfficer.create(sessionData);
-        activeOfficerRecordRef.current = created.id;
+        });
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
         console.error('Error establishing live user location record:', error);
       }
     };
 
-    getActiveOfficerRecord();
-  }, [shouldPublish, user?.email, activeEntry?.id]);
+    establishSession();
+  }, [shouldPublish, user?.email, activeEntry?.id, activeEntry?.location]);
 
   useEffect(() => {
     if (!shouldTrack) {
