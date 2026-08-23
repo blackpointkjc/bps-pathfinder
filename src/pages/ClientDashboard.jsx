@@ -25,6 +25,21 @@ export default function ClientDashboard() {
     enabled: clientLocations.length > 0,
   });
 
+  const { data: liveBilling = {} } = useQuery({
+    queryKey: ['clientDashboardLiveCoverage', user?.id || user?.email, getClientPreviewId()],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getClientBillingData', getClientPreviewId() ? { client_id: getClientPreviewId() } : {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    enabled: !!user && clientLocations.length > 0,
+    initialData: {},
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
   const { data: reports } = useQuery({
     queryKey: ['clientDashboardReports', clientLocations.join('|')],
     queryFn: async () => {
@@ -53,6 +68,9 @@ export default function ClientDashboard() {
       };
     },
     enabled: clientLocations.length > 0,
+    staleTime: 0,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   if (clientLocations.length === 0) {
@@ -66,6 +84,8 @@ export default function ClientDashboard() {
   }
 
   const totalReports = Object.values(reports || {}).reduce((sum, arr) => sum + arr.length, 0);
+  const liveEntries = (liveBilling.time_entries || []).filter(entry => entry?.clock_in && !entry?.clock_out);
+  const liveOfficers = liveBilling.officers || [];
 
   return (
     <div className="p-4 md:p-8 min-h-screen">
@@ -76,6 +96,20 @@ export default function ClientDashboard() {
           <p className="mt-2 text-sm text-slate-400">A unified view of security operations across all properties assigned to your account.</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {assignedLocations.map(location => <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-800/70 p-3"><div className="flex items-center gap-2 font-bold text-white"><MapPin className="h-4 w-4 text-cyan-400" />{location.site_name}</div><p className="mt-1 text-xs text-slate-400">{location.address || 'Address not listed'}</p></div>)}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-cyan-900/50 bg-[#0b1725] p-4 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Live Coverage</p><p className="mt-1 text-sm text-slate-400">Current clocked-in coverage at your properties · refreshes every 5 seconds</p></div>
+            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm font-black text-emerald-300">{liveEntries.length} ACTIVE</div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {liveEntries.length ? liveEntries.map(entry => {
+              const officer = liveOfficers.find(row => String(row.email || '').toLowerCase() === String(entry.officer_email || '').toLowerCase());
+              const display = [officer?.rank, officer?.last_name].filter(Boolean).join(' ') || `Unit ${officer?.unit_number || 'Assigned'}`;
+              return <div key={entry.id} className="rounded-xl border border-slate-700 bg-slate-900/70 p-3"><div className="flex items-center justify-between gap-2"><span className="font-bold text-white">{display}</span><span className="h-2 w-2 rounded-full bg-emerald-400"/></div><div className="mt-1 text-xs text-cyan-300">{entry.location || 'Assigned property'}</div><div className="mt-1 text-xs text-slate-500">On duty since {entry.clock_in ? new Date(entry.clock_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}</div></div>;
+            }) : <div className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-500 sm:col-span-2 lg:col-span-3">No officers are currently clocked in at your assigned properties.</div>}
           </div>
         </div>
 
