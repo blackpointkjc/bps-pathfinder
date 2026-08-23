@@ -122,8 +122,13 @@ Deno.serve(async (req) => {
     ]);
     const period = body.period_id
       ? (periods || []).find((item: any) => item.id === body.period_id)
-      : (periods || []).find((item: any) => item.end_date === endedDate);
-    if (!period) return Response.json({ success: true, skipped: true, reason: `No payroll period ended on ${endedDate}` });
+      : [...(periods || [])]
+          .filter((item: any) => item.end_date <= endedDate)
+          .sort((a: any, b: any) => String(a.end_date).localeCompare(String(b.end_date)))
+          .find((item: any) => !(existingPayroll || []).some((payroll: any) =>
+            payroll.pay_period_start === item.start_date && payroll.pay_period_end === item.end_date
+          ));
+    if (!period) return Response.json({ success: true, skipped: true, reason: `No unprocessed payroll period ended on or before ${endedDate}` });
 
     const config = configs?.[0] || {};
     const threshold = Number(config.overtime_threshold_hours || 40);
