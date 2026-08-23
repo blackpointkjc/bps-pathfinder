@@ -355,17 +355,17 @@ export default function MyPerformanceAnalytics() {
           </Card>
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
           {categoryRatings.map(category => (
-            <Card key={category.label} className="min-w-0 border border-slate-200 bg-white shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-700">{category.label}</p>
-                  <Badge className={category.score == null ? 'bg-slate-500 text-white' : category.score >= 90 ? 'bg-green-600 text-white' : category.score >= 75 ? 'bg-amber-600 text-white' : 'bg-red-600 text-white'}>
+            <Card key={category.label} className="min-w-0 overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <CardContent className="flex min-h-[132px] min-w-0 flex-col p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <p className="min-w-0 flex-1 break-words text-[11px] font-black uppercase leading-snug tracking-[.04em] text-slate-700">{category.label}</p>
+                  <Badge className={`shrink-0 ${category.score == null ? 'bg-slate-500 text-white' : category.score >= 90 ? 'bg-green-600 text-white' : category.score >= 75 ? 'bg-amber-600 text-white' : 'bg-red-600 text-white'}`}>
                     {category.score == null ? '—' : `${category.score}%`}
                   </Badge>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">{category.detail}</p>
+                <p className="mt-4 break-words text-sm leading-6 text-slate-600">{category.detail}</p>
               </CardContent>
             </Card>
           ))}
