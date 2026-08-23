@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 export default function AdminManualPTO() {
   const [showDialog, setShowDialog] = useState(false);
   const [entryMode, setEntryMode] = useState('bonus');
-  const [formData, setFormData] = useState({ officer_email: '', hours: '', reason: '' });
+  const [formData, setFormData] = useState({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false });
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -48,6 +48,9 @@ export default function AdminManualPTO() {
         officer_email: officer.email,
         hours,
         reason: formData.reason.trim(),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        remove_shifts: entryMode === 'manual' && formData.remove_shifts,
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
@@ -64,7 +67,7 @@ export default function AdminManualPTO() {
       window.dispatchEvent(new CustomEvent('bps-directory-user-updated', { detail: { reason: 'pto-adjustment' } }));
       toast.success(`${Number(payload.hours_added || formData.hours).toFixed(1)} PTO hours added to ${officer?.rank || 'Officer'} ${officer?.last_name || ''}`.trim());
       setShowDialog(false);
-      setFormData({ officer_email: '', hours: '', reason: '' });
+      setFormData({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false });
     },
     onError: error => toast.error(error?.message || 'Unable to add PTO hours'),
   });
@@ -120,6 +123,13 @@ export default function AdminManualPTO() {
               </div>}
 
               <div className="space-y-2"><Label>{entryMode === 'bonus' ? 'Bonus Hours' : 'PTO Hours'} *</Label><Input type="number" min="0.5" step="0.5" value={formData.hours} onChange={e => setFormData(current => ({ ...current, hours: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder="8" required/></div>
+              {entryMode === 'manual' && <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
+                <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.remove_shifts} onChange={e => setFormData(current => ({ ...current, remove_shifts: e.target.checked }))} className="h-4 w-4"/>Remove scheduled shifts and place them in Open Shifts</label>
+                {formData.remove_shifts && <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2"><Label>Start Date *</Label><Input type="date" value={formData.start_date} onChange={e => setFormData(current => ({ ...current, start_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
+                  <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={formData.end_date} onChange={e => setFormData(current => ({ ...current, end_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
+                </div>}
+              </div>}
               <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : 'Balance correction or approved adjustment'}/></div>
               <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
             </form>
