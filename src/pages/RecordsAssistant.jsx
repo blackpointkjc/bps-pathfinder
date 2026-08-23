@@ -102,6 +102,20 @@ export default function RecordsAssistant() {
           </CardContent>
         </Card>
 
+        {searchType === 'person' && (
+          <Card className="border-cyan-900/70 bg-cyan-950/10">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-black text-cyan-200"><ShieldAlert className="h-4 w-4" />Official Virginia Court Record Verification</div>
+                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Pathfinder searches its own company records here. For an official Virginia public court case search, open OCIS 2.0 and complete the court system's required Terms acceptance and search manually. Pathfinder does not label an OCIS result as a warrant unless that information is actually present in an authorized Pathfinder record.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="shrink-0 border-cyan-600/60 text-cyan-200 hover:bg-cyan-950">
+                OPEN VIRGINIA OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {(results.length > 0 || totalMatches > 0 || warrantStatusText) && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-blue-500/15 text-blue-300">{totalMatches} MATCHES</Badge>
