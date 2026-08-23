@@ -55,6 +55,9 @@ export default function AdminReports() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
+  const reportReviewRoles = new Set((user?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
+  const canReviewReports = user?.role === 'admin' || reportReviewRoles.has('full_access') || reportReviewRoles.has('report_review');
+
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
@@ -107,7 +110,9 @@ export default function AdminReports() {
 
       const shiftData = filterData(allShift, 'shift_date', ['submitted'], ['approved']);
       const darData = filterData(allDAR, 'report_date', ['submitted'], ['approved']);
-      const incidentData = filterData(allIncident, 'incident_date', ['submitted'], ['approved']);
+      // Older records may still carry the legacy "pending" review state. Treat it
+      // exactly like submitted so a report can never disappear from the review queue.
+      const incidentData = filterData(allIncident, 'incident_date', ['submitted', 'pending'], ['approved']);
       const trespassData = filterData(allTrespass, 'notice_date', ['active'], ['approved']);
       const parkingData = filterData(allParking, 'violation_date', ['issued'], ['approved']);
       const criminalData = filterData(allCriminal, 'offense_date', ['submitted'], ['approved']);
@@ -134,91 +139,20 @@ export default function AdminReports() {
         dispatcher_logArchive: dispatcherData.archive,
       };
     },
-    enabled: user?.role === 'admin',
+    enabled: !!user && canReviewReports,
   });
 
   const approveReportMutation = useMutation({
-    mutationFn: async ({ type, id, report }) => {
-      const entityMap = {
-        shift: base44.entities.ShiftReport,
-        daily_activity: base44.entities.DailyActivityReport,
-        incident: base44.entities.IncidentReport,
-        trespass: base44.entities.TrespassingNotice,
-        parking: base44.entities.ParkingViolation,
-        criminal: base44.entities.CriminalComplaint,
-        summons: base44.entities.Summons,
-        dispatcher_log: base44.entities.DispatcherShiftReport,
-      };
-
-      const updateData = {};
-      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking', 'criminal', 'dispatcher_log'].includes(type)) {
-        updateData.status = 'approved';
-      } else if (type === 'summons') {
-        updateData.status = 'appeared';
-      }
-
-      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking', 'dispatcher_log'].includes(type)) {
-        updateData.admin_notes = null;
-      }
-      
-      const updated = await entityMap[type].update(id, updateData);
-
-      const location = locations?.find(loc => loc.site_name === report.location);
-
-      if (location?.assigned_client_email) {
-        // Create announcement for client users at this location
-        const clientUsers = allUsers?.filter(u => 
-          u.additional_roles?.includes('client') && 
-          (u.assigned_locations?.includes(location.site_name) || u.assigned_location === location.site_name)
-        ) || [];
-
-        if (clientUsers.length > 0) {
-          const clientEmails = clientUsers.map(c => c.email);
-          
-          let announcementTitle = '';
-          let announcementMessage = '';
-          
-          if (type === 'shift') {
-            const shiftDate = report.shift_date ? format(new Date(report.shift_date), 'MMM d, yyyy') : '';
-            announcementTitle = `New Shift Report Available - ${location.site_name}`;
-            announcementMessage = `A shift report has been approved for ${location.site_name} on ${shiftDate}. Login to your Client Portal to view the full report.`;
-          } else if (type === 'daily_activity') {
-            const reportDate = report.report_date ? format(new Date(report.report_date), 'MMM d, yyyy') : '';
-            announcementTitle = `New Daily Activity Report Available - ${location.site_name}`;
-            announcementMessage = `A daily activity report has been approved for ${location.site_name} on ${reportDate}. Login to your Client Portal to view the full report.`;
-          } else if (type === 'incident') {
-            announcementTitle = `New Incident Report - ${location.site_name}`;
-            announcementMessage = `An incident report (${report.incident_type.replace(/_/g, ' ')}) has been approved for ${location.site_name}. Login to your Client Portal to view details.`;
-          } else if (type === 'trespass') {
-            announcementTitle = `New Trespass Notice - ${location.site_name}`;
-            announcementMessage = `A trespass notice for ${report.subject_name} has been approved for ${location.site_name}. Login to your Client Portal to view details.`;
-          } else if (type === 'parking') {
-            announcementTitle = `New Parking Violation - ${location.site_name}`;
-            announcementMessage = `A parking violation (${report.license_plate}) has been approved for ${location.site_name}. Login to your Client Portal to view details.`;
-          } else if (type === 'criminal') {
-            announcementTitle = `New Criminal Complaint - ${location.site_name}`;
-            announcementMessage = `A criminal complaint has been approved for ${location.site_name}. Login to your Client Portal to view details.`;
-          } else if (type === 'summons') {
-            announcementTitle = `New Summons - ${location.site_name}`;
-            announcementMessage = `A VA summons has been issued for ${location.site_name}. Login to your Client Portal to view details.`;
-          }
-          
-          if (announcementTitle && announcementMessage) {
-            try {
-              await base44.entities.Announcement.create({
-                title: announcementTitle,
-                message: announcementMessage,
-                priority: type === 'incident' ? 'important' : 'normal',
-                pinged_users: clientEmails
-              });
-            } catch (error) {
-              console.error('Error creating announcement:', error);
-            }
-          }
-        }
-      }
-
-      return updated;
+    mutationFn: async ({ type, id }) => {
+      const response = await base44.functions.invoke('manage-report-review', {
+        action: 'approve',
+        type,
+        reportId: id,
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!payload.report) throw new Error('The report was not approved.');
+      return payload.report;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allReportsForReview'] });
@@ -231,44 +165,16 @@ export default function AdminReports() {
 
   const rejectReportMutation = useMutation({
     mutationFn: async ({ type, id, reason }) => {
-      const entityMap = {
-        shift: base44.entities.ShiftReport,
-        daily_activity: base44.entities.DailyActivityReport,
-        incident: base44.entities.IncidentReport,
-        trespass: base44.entities.TrespassingNotice,
-        parking: base44.entities.ParkingViolation,
-        criminal: base44.entities.CriminalComplaint,
-        summons: base44.entities.Summons,
-        dispatcher_log: base44.entities.DispatcherShiftReport,
-      };
-
-      const report = await entityMap[type].update(id, {
-        status: 'rejected',
-        admin_notes: reason,
-        was_rejected: true
+      const response = await base44.functions.invoke('manage-report-review', {
+        action: 'reject',
+        type,
+        reportId: id,
+        reason,
       });
-
-      // Create a todo for the officer (skip only if the author can't be resolved)
-      const officerEmail = getOfficerEmail(report.created_by_id || report.created_by);
-      if (officerEmail) {
-        await base44.entities.ReportTodo.create({
-          officer_email: officerEmail,
-          officer_name: getOfficerName(report.created_by_id || report.created_by),
-          report_type: type === 'shift' ? 'shift_report' : 
-                       type === 'daily_activity' ? 'daily_activity_report' :
-                       type === 'incident' ? 'incident_report' :
-                       type === 'trespass' ? 'trespass_notice' : 
-                       type === 'parking' ? 'parking_violation' :
-                       type === 'criminal' ? 'criminal_complaint' :
-                       type === 'dispatcher_log' ? 'dispatcher_shift_log' : 'summons',
-          report_id: id,
-          admin_feedback: reason,
-          created_by_admin: user.email,
-          completed: false
-        });
-      }
-
-      return report;
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!payload.report) throw new Error('The report was not sent back for revision.');
+      return payload.report;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allReportsForReview'] });
@@ -1095,7 +1001,7 @@ export default function AdminReports() {
     printWindow.focus();
   };
 
-  if (user?.role !== 'admin') {
+  if (!canReviewReports) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
