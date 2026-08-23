@@ -96,6 +96,16 @@ export default function AdminPayroll() {
     }
   };
 
+  const { data: ptoUsage = [] } = useQuery({
+    queryKey: ['payrollPtoUsage', selectedOfficer, startDate, endDate],
+    queryFn: async () => {
+      const rows = await base44.entities.PTOUsage.list('-usage_date', 5000);
+      return rows.filter(row => row.status === 'active' && row.usage_date >= startDate && row.usage_date <= endDate && (selectedOfficer === 'all' || row.officer_email === selectedOfficer));
+    },
+    enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
+    refetchInterval: 10000,
+  });
+
   const { data: timeEntries } = useQuery({
     queryKey: ['payrollTimeEntries', selectedOfficer, startDate, endDate, selectedLocation, reportMode],
     queryFn: async () => {
@@ -202,6 +212,16 @@ export default function AdminPayroll() {
       grouped[entry.officer_email].locationBreakdown[locationName] += hours;
     });
 
+    // PTO is paid time, not worked time. Create payroll groups for PTO-only
+    // employees without adding these hours to weekly worked-hour overtime totals.
+    (ptoUsage || []).forEach(usage => {
+      const email = String(usage.officer_email || '').toLowerCase();
+      if (!email) return;
+      if (!grouped[email]) grouped[email] = { entries: [], locationBreakdown: {} };
+      if (!grouped[email].ptoEntries) grouped[email].ptoEntries = [];
+      grouped[email].ptoEntries.push(usage);
+    });
+
     // Helper function: Determine which payroll week a clock-in time belongs to
     // Payroll week runs Sunday 12:00 AM through Saturday 11:59:59 PM
     const getPayrollWeekStart = (clockInTime) => {
@@ -251,7 +271,11 @@ export default function AdminPayroll() {
         }
       });
       
-      const totalHours = totalRegularHours + totalOvertimeHours;
+      const workedHours = totalRegularHours + totalOvertimeHours;
+      const ptoHours = (grouped[officer].ptoEntries || []).reduce((sum, usage) => sum + Number(usage.hours || 0), 0);
+      const totalHours = workedHours + ptoHours;
+      grouped[officer].workedHours = workedHours;
+      grouped[officer].ptoHours = ptoHours;
       grouped[officer].totalHours = totalHours;
       grouped[officer].regularHours = totalRegularHours;
       grouped[officer].overtimeHours = totalOvertimeHours;
@@ -305,7 +329,8 @@ export default function AdminPayroll() {
       const regularPay = totalRegularHours * hourlyRate;
       const overtimePay = totalOvertimeHours * overtimeRate;
       const holidayPay = holidayHours * holidayRate; // Holiday pay is 1.25x rate
-      const totalPay = regularPay + overtimePay + holidayPay;
+      const ptoPay = ptoHours * hourlyRate; // PTO is always straight-time pay.
+      const totalPay = regularPay + overtimePay + holidayPay + ptoPay;
       
       grouped[officer].hourlyRate = hourlyRate;
       grouped[officer].overtimeRate = overtimeRate;
@@ -313,6 +338,7 @@ export default function AdminPayroll() {
       grouped[officer].regularPay = regularPay;
       grouped[officer].overtimePay = overtimePay;
       grouped[officer].holidayPay = holidayPay;
+      grouped[officer].ptoPay = ptoPay;
       grouped[officer].totalPay = totalPay;
 
       // Add approved expenses for this officer
@@ -332,7 +358,8 @@ export default function AdminPayroll() {
     const grandTotalRegular = Object.values(reportData).reduce((sum, d) => sum + d.regularHours, 0);
     const grandTotalOvertime = Object.values(reportData).reduce((sum, d) => sum + d.overtimeHours, 0);
     const grandTotalHoliday = Object.values(reportData).reduce((sum, d) => sum + (d.holidayHours || 0), 0);
-    const grandTotal = grandTotalRegular + grandTotalOvertime;
+    const grandTotalPTO = Object.values(reportData).reduce((sum, d) => sum + (d.ptoHours || 0), 0);
+    const grandTotal = grandTotalRegular + grandTotalOvertime + grandTotalPTO;
     const grandTotalExpenses = Object.values(reportData).reduce((sum, d) => sum + (d.totalExpenses || 0), 0);
     const grandTotalPay = Object.values(reportData).reduce((sum, d) => sum + (d.totalPay || 0), 0);
 
