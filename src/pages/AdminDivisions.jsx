@@ -202,8 +202,8 @@ export default function AdminDivisions() {
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Manage Divisions</h1>
-              <p className="text-slate-600">Organize company by divisions and subdivisions</p>
+              <h1 className="text-3xl font-bold text-slate-900">Company Areas & Divisions</h1>
+              <p className="text-slate-600">Use two clear levels: Division = state/region; Operating Area = city/market inside that division.</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -224,7 +224,7 @@ export default function AdminDivisions() {
               className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Subdivision
+              Add Operating Area
             </Button>
             <Button
               onClick={() => {
@@ -235,7 +235,7 @@ export default function AdminDivisions() {
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Division
+              Add Division / Region
             </Button>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function AdminDivisions() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-blue-600" />
-              All Divisions & Subdivisions
+              Company Structure
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -387,10 +387,10 @@ export default function AdminDivisions() {
           </CardContent>
         </Card>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-900">
-            <strong>Note:</strong> Divisions organize your company structure. Subdivisions are nested under main divisions. For example: Virginia → Richmond, NOVA, Tidewater.
-          </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Level 1 — Division / Region</p><p className="mt-1 text-sm text-blue-950">The broad operating region, normally a state or major company region. Example: Virginia.</p></div>
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-purple-700">Level 2 — Operating Area</p><p className="mt-1 text-sm text-purple-950">The city/market inside a Division. Example: Richmond, NOVA, Tidewater.</p></div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-700">Used By</p><p className="mt-1 text-sm text-slate-800">Officer profiles, locations, scheduling, analytics, training assignments, and filters should use the same Division → Operating Area structure.</p></div>
         </div>
       </div>
 
@@ -411,13 +411,13 @@ export default function AdminDivisions() {
                 className="w-4 h-4"
               />
               <Label htmlFor="is_subdivision" className="text-sm font-medium text-purple-900 cursor-pointer">
-                This is a Subdivision
+                This is an Operating Area (inside a Division)
               </Label>
             </div>
 
             {formData.is_subdivision && (
               <div className="space-y-2">
-                <Label htmlFor="parent_division">Parent Division *</Label>
+                <Label htmlFor="parent_division">Division / Region *</Label>
                 <select
                   id="parent_division"
                   value={formData.parent_division || ''}
@@ -425,7 +425,7 @@ export default function AdminDivisions() {
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                   required
                 >
-                  <option value="">Select parent division...</option>
+                  <option value="">Select the Division this area belongs to...</option>
                   {mainDivisions?.filter(div => div.active !== false).map((div) => (
                     <option key={div.id} value={div.division_name}>{div.division_name}</option>
                   ))}
@@ -434,7 +434,7 @@ export default function AdminDivisions() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="division_name">{formData.is_subdivision ? 'Subdivision Name' : 'Division Name'} *</Label>
+              <Label htmlFor="division_name">{formData.is_subdivision ? 'Operating Area Name' : 'Division / Region Name'} *</Label>
               <Input
                 id="division_name"
                 placeholder={formData.is_subdivision ? "e.g., Richmond, NOVA, Tidewater" : "e.g., Virginia, Maryland"}
