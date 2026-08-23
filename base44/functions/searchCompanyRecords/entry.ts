@@ -28,6 +28,12 @@ const SOURCES = [
 
 const text = (value: unknown) => String(value ?? '').trim();
 const lower = (value: unknown) => text(value).toLowerCase();
+const normalizeSearchText = (value: unknown) => lower(value)
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
 const compact = (values: unknown[]) => values.map(text).filter(Boolean).join(' ');
 
 const labelFor = (record: any) =>
@@ -118,7 +124,7 @@ Deno.serve(async (req) => {
       return Response.json({ record, source: source[1], page: source[2] });
     }
 
-    const query = lower(body?.query);
+    const query = normalizeSearchText(body?.query);
     const searchType = ['all', 'person', 'vehicle'].includes(String(body?.search_type || 'all')) ? String(body?.search_type || 'all') : 'all';
     if (query.length < 2) return Response.json({ results: [], searched_sources: 0, total_matches: 0, search_type: searchType, warrant_matches: 0 });
     const terms = query.split(/\s+/).filter(Boolean);
@@ -128,8 +134,8 @@ Deno.serve(async (req) => {
       if (!entity?.list) return [];
       const rows = await entity.list('-created_date', 1000);
       return (rows || []).filter((record: any) => {
-        const allText = JSON.stringify(record).toLowerCase();
-        const scoped = searchType === 'person' ? personText(record) : searchType === 'vehicle' ? vehicleText(record) : allText;
+        const allText = normalizeSearchText(JSON.stringify(record));
+        const scoped = normalizeSearchText(searchType === 'person' ? personText(record) : searchType === 'vehicle' ? vehicleText(record) : allText);
         return scoped && matchesTerms(scoped, terms);
       }).slice(0, 100).map((record: any) => {
         const vehicle = vehicleDisplay(record);
@@ -178,7 +184,7 @@ Deno.serve(async (req) => {
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
       results: results.slice(0, 250),
-      searched_sources: SOURCES.length,
+      searched_sources: settled.filter(result => result.status === 'fulfilled').length,
       total_matches: results.length,
       search_type: searchType,
       warrant_matches: warrantMatches,
