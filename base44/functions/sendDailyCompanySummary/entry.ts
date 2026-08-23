@@ -313,7 +313,7 @@ async function sendPersonalizedManagementEmails(base44: any, deliveries: { to: s
     const batch = deliveries.slice(index, index + CONCURRENCY);
     await Promise.all(batch.map(async delivery => {
       try {
-        const response = await fetch(`${MICROSOFT_GRAPH_ROOT}/me/sendMail`, {
+        const response = await fetch(`${MICROSOFT_GRAPH_ROOT}/users/${encodeURIComponent(MANAGEMENT_MAILBOX)}/sendMail`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
