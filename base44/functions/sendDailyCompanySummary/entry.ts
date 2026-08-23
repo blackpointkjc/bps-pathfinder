@@ -233,24 +233,48 @@ function personalMissingMessage(items: string[]) {
 }
 
 function personalSummaryEmail(dateLabel: string, user: any, items: string[], company: { overall: number | null; onTime: number | null; activeOperational: number; totalMissing: number }) {
-  const subject = `Black Point Daily Company Summary — ${dateLabel}`;
+  const subject = `Black Point Daily Brief — ${dateLabel}`;
   const hasItems = items.length > 0;
-  const content = `
-    <h2>Black Point Daily Company Summary</h2>
-    <p>Hi ${escapeHtml(rankedName(user))},</p>
-    <div style="margin:16px 0;padding:16px;border:1px solid #243449;border-radius:12px;background:#0f1b2b;">
-      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;">Company Snapshot</div>
-      <div style="margin-top:10px;font-size:15px;color:#e2e8f0;"><strong>Company Overall Performance:</strong> ${company.overall == null ? 'Not enough scoreable data yet' : `${company.overall}%`}</div>
-      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Company On-Time Rate:</strong> ${company.onTime == null ? 'Not enough elapsed shifts yet' : `${company.onTime}%`}</div>
-      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Active Operational Team Members:</strong> ${company.activeOperational}</div>
-      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Total Company Missing Requirements:</strong> ${company.totalMissing}</div>
-    </div>
-    <h3 style="margin-top:20px;">Your Missing Items</h3>
-    ${hasItems
-      ? `<p>You have <strong>${items.length}</strong> outstanding item${items.length === 1 ? '' : 's'} that need your attention. The full list is below:</p><ul>${items.map(item => `<li style="margin:7px 0;">${escapeHtml(item)}</li>`).join('')}</ul>`
-      : '<p>You have no outstanding items today. Thank you for staying current.</p>'}
-    <p style="color:#64748b;font-size:12px;">Company information above is aggregate only. Your required-items section contains only your own records. No other employee’s missing items, individual score, or personnel details are included.</p>
-  `;
+  const statCell = (label: string, value: string, tone = '#eab308') => `
+    <td width="25%" valign="top" style="padding:6px;">
+      <div style="min-height:82px;border:1px solid #263449;border-radius:12px;background:#0b1522;padding:14px 12px;box-sizing:border-box;">
+        <div style="font-size:11px;line-height:1.3;letter-spacing:.06em;text-transform:uppercase;color:#8290a5;">${label}</div>
+        <div style="margin-top:7px;font-size:24px;line-height:1;font-weight:800;color:${tone};">${value}</div>
+      </div>
+    </td>`;
+  const content = `<!-- BLACK_POINT_STANDARD_EMAIL -->
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#e5e7eb;">
+      <div style="margin:0 0 18px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#d4af37;">Daily Operations Brief</div>
+        <div style="margin-top:6px;font-size:20px;font-weight:800;color:#ffffff;">${escapeHtml(rankedName(user))}</div>
+        <div style="margin-top:4px;font-size:13px;color:#94a3b8;">${escapeHtml(dateLabel)} · Black Point Pathfinder</div>
+      </div>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;margin:0 -6px 22px;">
+        <tr>
+          ${statCell('Overall', company.overall == null ? '—' : `${company.overall}%`, '#67e8f9')}
+          ${statCell('On-Time', company.onTime == null ? '—' : `${company.onTime}%`, '#86efac')}
+          ${statCell('Active Team', String(company.activeOperational), '#93c5fd')}
+          ${statCell('Company Missing', String(company.totalMissing), company.totalMissing > 0 ? '#fca5a5' : '#86efac')}
+        </tr>
+      </table>
+
+      <div style="border:1px solid ${hasItems ? '#7f1d1d' : '#14532d'};border-radius:14px;background:${hasItems ? '#1c1014' : '#0f1c16'};overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid ${hasItems ? '#4c1d24' : '#1f3d2c'};">
+          <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${hasItems ? '#fca5a5' : '#86efac'};">Your Missing Items</div>
+          <div style="margin-top:4px;font-size:13px;color:#aab4c3;">${hasItems ? `${items.length} item${items.length === 1 ? '' : 's'} require your attention` : 'You are current on all tracked requirements'}</div>
+        </div>
+        <div style="padding:14px 16px 16px;">
+          ${hasItems
+            ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${items.map((item, index) => `<tr><td valign="top" style="width:28px;padding:7px 8px 7px 0;color:#fca5a5;font-size:12px;font-weight:800;">${index + 1}.</td><td style="padding:7px 0;border-bottom:1px solid #2b2025;color:#e5e7eb;font-size:14px;line-height:1.45;">${escapeHtml(item)}</td></tr>`).join('')}</table>`
+            : '<div style="color:#d1fae5;font-size:14px;line-height:1.5;">No outstanding DARs, report corrections, training assignments, modules, or certification items were found for you.</div>'}
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#0b1220;color:#7f8da3;font-size:11px;line-height:1.5;">
+        Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
+      </div>
+    </div>`;
   const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company on-time: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
   return { subject, content, message };
 }
