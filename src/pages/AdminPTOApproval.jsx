@@ -97,7 +97,6 @@ export default function AdminPTOApproval() {
 
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status, notes }) => {
-      const request = pendingRequests.find(r => r.id === id);
       const response = await base44.functions.invoke('getPTORequests', {
         action: 'review',
         request_id: id,
@@ -107,23 +106,6 @@ export default function AdminPTOApproval() {
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
 
-      if (request) {
-        // Send email notification
-        await base44.integrations.Core.SendEmail({
-          from_name: "Black Point Protection HR",
-          to: request.requested_by_email || request.created_by,
-          subject: `Time Off Request ${status === 'approved' ? 'Approved ✅' : 'Denied ❌'}`,
-          body: `
-            <p>Hello ${getOfficerName(request)},</p>
-            <p>Your time off request has been <strong>${status}</strong>.</p>
-            <p><strong>Dates:</strong> ${format(new Date(request.start_date), 'MMM d, yyyy')} - ${format(new Date(request.end_date), 'MMM d, yyyy')}<br>
-            <strong>Reason:</strong> ${request.reason}<br>
-            <strong>Status:</strong> ${status.toUpperCase()}
-            ${notes ? `<br><strong>Admin Notes:</strong> ${notes}` : ''}</p>
-            ${status === 'approved' ? '<p>Your time off has been approved.</p>' : '<p>Your request was not approved at this time. Please contact your supervisor if you have questions.</p>'}
-          `
-        });
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
