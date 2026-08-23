@@ -37,7 +37,7 @@ export default function SupervisorChat() {
     initialData: [],
   });
 
-  const { data: liveTeamsMessages = [], error: liveTeamsError } = useQuery({
+  const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled && (user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
@@ -49,6 +49,15 @@ export default function SupervisorChat() {
   });
 
   const needsMicrosoftConnection = /connection required|authorization expired|reconnect/i.test(String(teamsSyncError || liveTeamsError?.message || ''));
+
+  useEffect(() => {
+    const onMicrosoftConnected = () => {
+      setTeamsSyncError('');
+      refetchTeamsHistory();
+    };
+    window.addEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+    return () => window.removeEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+  }, [refetchTeamsHistory]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
