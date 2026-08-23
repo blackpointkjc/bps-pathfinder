@@ -15,6 +15,7 @@ import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
+import { beginOutlookConnection } from '@/lib/outlookGraph';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 const isPunctualityLeaderboardOfficer = (officer) => {
@@ -52,6 +53,8 @@ export default function AdminAnalytics() {
       setSummaryResult(payload);
       if (payload.email_sent) {
         toast.success(`Company summary sent to ${payload.recipient_count || 0} active company member${payload.recipient_count === 1 ? '' : 's'}.`);
+      } else if (payload.requires_microsoft_reconnect) {
+        toast.warning('In-app summaries were delivered. Reconnect Microsoft 365 to send the email copy.');
       } else {
         toast.warning('In-app summaries were created, but Microsoft email delivery needs attention.');
       }
@@ -765,15 +768,16 @@ export default function AdminAnalytics() {
                   <div className={`rounded-xl border p-4 ${summaryResult.email_sent ? 'border-emerald-600/40 bg-emerald-950/25' : 'border-amber-600/40 bg-amber-950/25'}`}>
                     <div className="flex items-center gap-2 font-black text-white">
                       {summaryResult.email_sent ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <AlertTriangle className="h-5 w-5 text-amber-400" />}
-                      {summaryResult.email_sent ? 'Company summary delivered' : 'Partial delivery'}
+                      {summaryResult.email_sent ? 'Company summary delivered' : summaryResult.in_app_delivered ? 'In-app summary delivered' : 'Delivery needs attention'}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
                       <div className="rounded-lg bg-black/20 p-3"><div className="text-slate-500">Active recipients</div><div className="mt-1 text-lg font-black text-white">{summaryResult.recipient_count || 0}</div></div>
                       <div className="rounded-lg bg-black/20 p-3"><div className="text-slate-500">Missing items listed</div><div className="mt-1 text-lg font-black text-white">{summaryResult.missing_item_count || 0}</div></div>
                     </div>
                     {summaryResult.email_error && <p className="mt-3 text-xs leading-relaxed text-amber-200">{summaryResult.email_error}</p>}
+                    {summaryResult.requires_microsoft_reconnect && user?.id && <button type="button" onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-500">RECONNECT MICROSOFT 365</button>}
                     {summaryResult.error && <p className="mt-3 text-xs leading-relaxed text-red-200">{summaryResult.error}</p>}
-                    <p className="mt-3 text-[11px] text-slate-400">Integration credits used: {summaryResult.integration_credits_used || 0}</p>
+                    <p className="mt-3 text-[11px] text-slate-500">Pathfinder in-app delivery uses 0 integration credits.</p>
                   </div>
                   <button type="button" onClick={() => setShowSummaryDialog(false)} className="ml-auto flex min-h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-bold text-white hover:bg-slate-800">Done</button>
                 </>
