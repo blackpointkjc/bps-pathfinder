@@ -98,6 +98,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    // A TimeEntry can remain open after the person logs out. Keep those records
+    // separate from live signed-in sessions so Admin Location Tracker can flag
+    // "clocked in but logged out" instead of incorrectly reporting No Location = 0.
+    const freshSessionEmails = new Set(units.map((row: any) => String(row.officer_email || '').toLowerCase()).filter(Boolean));
+    const clockedInWithoutSession = [...openByEmail.entries()]
+      .filter(([email]) => !freshSessionEmails.has(email))
+      .map(([email, entry]) => {
+        const user = userByEmail.get(email) || {};
+        return {
+          officer_email: entry.officer_email || user.email || email,
+          officer_name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || entry.officer_email || email,
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          rank: user.rank || '',
+          unit_number: user.unit_number || '',
+          current_location: entry.location || user.assigned_location || '',
+          clock_in_time: entry.clock_in || '',
+          time_entry_id: entry.id || '',
+          reason: 'Clocked in, but no fresh signed-in Pathfinder session heartbeat is active.',
+        };
+      });
+
     // Canonical Unit Status Board feed: a field officer may only appear Available,
     // Enroute, On Scene, Busy, or Distress while a fresh signed-in ActiveOfficer
     // session exists. A stale User/Unit status can never keep someone Available
@@ -133,7 +155,15 @@ Deno.serve(async (req) => {
         };
       });
 
-    return Response.json({ success: true, units, users: onDutyUsers, open_count: openByEmail.size, signed_in_count: units.length });
+    return Response.json({
+      success: true,
+      units,
+      users: onDutyUsers,
+      open_count: openByEmail.size,
+      signed_in_count: units.length,
+      clocked_in_without_session: clockedInWithoutSession,
+      clocked_in_without_session_count: clockedInWithoutSession.length,
+    });
   } catch (error) {
     console.error('getOnDutyUnits failed', error);
     return Response.json({ error: error?.message || 'Unable to load on-duty units', units: [], users: [] }, { status: 500 });
