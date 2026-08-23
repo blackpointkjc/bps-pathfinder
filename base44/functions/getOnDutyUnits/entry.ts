@@ -160,6 +160,8 @@ Deno.serve(async (req) => {
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
           current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
+          current_location: signedInFresh ? (active?.current_location || openByEmail.get(String(user.email).toLowerCase())?.location || user.assigned_location || '') : (user.assigned_location || ''),
+          assigned_location: user.assigned_location || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
           session_active: signedInFresh,
         };
