@@ -38,10 +38,12 @@ Deno.serve(async (req) => {
     const normalizedRank = String(officer.rank || '').trim().toLowerCase();
     const annualEntitlement = normalizedRank === 'colonel' || normalizedRank === 'lt colonel' || normalizedRank === 'lieutenant colonel' ? 180 : 40;
 
-    // PTO is a calendar-year accrual. Only approved paid requests from this year
-    // affect the current year's used/accrued figures.
+    // PTO is a calendar-year accrual. Bonus/grant records are tracked separately
+    // from leave usage so an HR award adds to available PTO instead of being counted
+    // as PTO that the officer used.
     const allRequests = await base44.asServiceRole.entities.TimeOffRequest.list();
-    const approvedPaidRequests = allRequests.filter(r => {
+    const isBonusRecord = (r: any) => /^PTO Bonus\b|^Admin PTO Grant\b/i.test(String(r.admin_notes || ''));
+    const ownedCurrentYear = allRequests.filter(r => {
       const requestOwner = String(r.created_by || r.requested_by_email || '').trim().toLowerCase();
       const requestDate = new Date(r.start_date || r.created_date || 0);
       return requestOwner === String(officer_email).trim().toLowerCase() &&
@@ -49,8 +51,11 @@ Deno.serve(async (req) => {
         r.request_type === 'paid' &&
         requestDate.getFullYear() === currentYear;
     });
+    const approvedPaidRequests = ownedCurrentYear.filter(r => !isBonusRecord(r));
+    const bonusRecords = ownedCurrentYear.filter(isBonusRecord);
+    const bonusHours = bonusRecords.reduce((sum, req) => sum + Number(req.hours_requested || 0), 0);
 
-    // Build list of date ranges where officer was on PTO
+    // Build list of date ranges where officer was actually on paid leave.
     const ptoDateRanges = approvedPaidRequests.map(req => ({
       start: new Date(req.start_date),
       end: new Date(req.end_date)
@@ -106,9 +111,10 @@ Deno.serve(async (req) => {
     // Calculate used PTO
     const ptoUsed = approvedPaidRequests.reduce((sum, req) => sum + (req.hours_requested || 0), 0);
 
-    // Current-year available balance follows the same rank entitlement cap.
-    let ptoBalance = Math.max(0, totalPtoAccrued - ptoUsed);
-    ptoBalance = Math.min(ptoBalance, annualEntitlement);
+    // Earned PTO is capped by rank entitlement; approved HR bonus/grant hours sit
+    // on top of that entitlement and persist through future recalculations.
+    const earnedAvailable = Math.max(0, Math.min(totalPtoAccrued, annualEntitlement));
+    const ptoBalance = Math.max(0, earnedAvailable + bonusHours - ptoUsed);
 
     // Update officer PTO fields
     await base44.asServiceRole.entities.User.update(officer.id, {
@@ -124,6 +130,7 @@ Deno.serve(async (req) => {
       accrual_rate: accrualRate,
       annual_entitlement: annualEntitlement,
       current_year: currentYear,
+      bonus_hours: bonusHours,
       pto_from_work: ptoAccruedFromWork,
       sick_leave_bonus: sickLeaveBonus,
       total_pto_accrued: totalPtoAccrued,
