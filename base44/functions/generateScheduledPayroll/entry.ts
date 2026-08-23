@@ -106,12 +106,13 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: true, reason: 'Outside 8 AM Eastern payroll window' });
     }
 
-    const [periods, entries, users, existingPayroll, configs] = await Promise.all([
+    const [periods, entries, users, existingPayroll, configs, ptoUsage] = await Promise.all([
       base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
       base44.asServiceRole.entities.User.list(),
       base44.asServiceRole.entities.PayrollEntry.list('-created_date', 5000),
       base44.asServiceRole.entities.PayrollConfig.list(undefined, 20),
+      base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
     ]);
     const period = body.period_id
       ? (periods || []).find((item: any) => item.id === body.period_id)
@@ -148,6 +149,15 @@ Deno.serve(async (req) => {
     let created = 0;
     let duplicates = 0;
     const skippedNoRate: string[] = [];
+    // Ensure officers who only have PTO in the period still receive a payroll row.
+    for (const usage of ptoUsage || []) {
+      if (usage.status !== 'active' || usage.usage_date < period.start_date || usage.usage_date > period.end_date) continue;
+      const email = String(usage.officer_email || '').toLowerCase();
+      const officer = usersByEmail.get(email) as any;
+      if (!officer || Number(officer.hourly_rate || 0) <= 0) continue;
+      if (!grouped.has(email)) grouped.set(email, { officer, weekly: {}, holidays: [] });
+    }
+
     for (const [email, data] of grouped.entries()) {
       const key = `${email}|${period.start_date}|${period.end_date}`;
       if (existingKeys.has(key)) { duplicates += 1; continue; }
@@ -162,10 +172,19 @@ Deno.serve(async (req) => {
         overtimeHours += Math.max(0, Number(hours) - threshold);
       });
       const holidayHours = data.holidays.reduce((sum: number, item: any) => sum + item.hours, 0);
+      const officerPto = (ptoUsage || []).filter((usage: any) =>
+        usage.status === 'active' &&
+        String(usage.officer_email || '').toLowerCase() === email &&
+        usage.usage_date >= period.start_date && usage.usage_date <= period.end_date
+      );
+      const ptoHours = officerPto.reduce((sum: number, usage: any) => sum + Number(usage.hours || 0), 0);
       const regularPay = regularHours * baseRate;
       const overtimePay = overtimeHours * overtimeRate;
       const holidayPay = holidayHours * holidayRate;
-      const gross = regularPay + overtimePay + holidayPay;
+      // PTO is always paid at straight-time base rate and never contributes toward
+      // the weekly overtime threshold. Only hours actually worked create overtime.
+      const ptoPay = ptoHours * baseRate;
+      const gross = regularPay + overtimePay + holidayPay + ptoPay;
       // Gross payroll only. Taxes, deductions, and net pay are handled externally.
       const net = gross;
 
@@ -177,13 +196,16 @@ Deno.serve(async (req) => {
         regular_hours: round(regularHours, 4),
         overtime_hours: round(overtimeHours, 4),
         holiday_hours: round(holidayHours, 4),
+        pto_hours: round(ptoHours, 4),
         hours_worked: round(regularHours + overtimeHours + holidayHours, 4),
+        total_paid_hours: round(regularHours + overtimeHours + holidayHours + ptoHours, 4),
         hourly_rate: baseRate,
         overtime_rate: overtimeRate,
         holiday_rate: holidayRate,
         regular_pay: round(regularPay),
         overtime_pay: round(overtimePay),
         holiday_pay: round(holidayPay),
+        pto_pay: round(ptoPay),
         gross_pay: round(gross),
         federal_tax: 0,
         state_tax: 0,
@@ -195,6 +217,7 @@ Deno.serve(async (req) => {
         qualified_tips: 0,
         tip_occupation_code: '000',
         holidays_worked: JSON.stringify(data.holidays),
+        pto_detail: JSON.stringify(officerPto.map((usage: any) => ({ date: usage.usage_date, hours: Number(usage.hours || 0), reason: usage.reason || '', source_type: usage.source_type || '' }))),
         status: 'ready',
         payment_method: officer.payment_method || 'direct_deposit',
         notes: `Automatically generated at 8 AM Eastern after ${period.period_name || 'payroll period'} ended.`,

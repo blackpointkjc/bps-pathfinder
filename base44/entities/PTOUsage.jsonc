@@ -1,0 +1,83 @@
+{
+  "name": "PTOUsage",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string"
+    },
+    "usage_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "hours": {
+      "type": "number"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "time_off_request",
+        "call_out",
+        "manual"
+      ],
+      "default": "manual"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "recorded_by": {
+      "type": "string"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "reversed"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "officer_email",
+    "usage_date",
+    "hours",
+    "source_type",
+    "recorded_by",
+    "recorded_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.officer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
