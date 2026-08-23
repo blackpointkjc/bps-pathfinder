@@ -512,30 +512,30 @@ export default function AdminUsers() {
     setPhotoToCrop(file);
   };
 
-  const saveCroppedAdminPhoto = async ({ file, dataUrl }) => {
-    if (!editingUser) return;
+  const saveCroppedAdminPhoto = async ({ dataUrl }) => {
+    if (!editingUser || !dataUrl) return;
     setUploadingPhoto(true);
     setPhotoPreview(dataUrl);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      if (!file_url) throw new Error('The uploaded image did not return a file URL.');
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,
-        updates: { profile_photo_url: file_url },
+        updates: { profile_photo_url: dataUrl },
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
-      setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
+      setEditFormData(prev => ({ ...prev, profile_photo_url: dataUrl }));
+      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: dataUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();
       await queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('training');
       }});
-      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: file_url } }));
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: dataUrl } }));
+      alert('Officer photo updated successfully.');
     } catch (error) {
-      console.error('Profile photo upload failed:', error);
-      alert('Unable to save the cropped profile photo.');
+      console.error('Profile photo save failed:', error);
+      alert(`Unable to save the cropped profile photo: ${error?.message || 'Unknown error'}`);
     } finally {
       setPhotoPreview(null);
       setUploadingPhoto(false);
