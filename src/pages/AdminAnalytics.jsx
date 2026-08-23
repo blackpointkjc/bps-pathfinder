@@ -15,7 +15,6 @@ import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
-import { beginOutlookConnection } from '@/lib/outlookGraph';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 const isPunctualityLeaderboardOfficer = (officer) => {
@@ -52,11 +51,9 @@ export default function AdminAnalytics() {
       if (payload.error) throw new Error(payload.error);
       setSummaryResult(payload);
       if (payload.email_sent) {
-        toast.success(`Company summary sent to ${payload.recipient_count || 0} active company member${payload.recipient_count === 1 ? '' : 's'}.`);
-      } else if (payload.requires_microsoft_reconnect) {
-        toast.warning('In-app summaries were delivered. Reconnect Microsoft 365 to send the email copy.');
+        toast.success(`Company summary sent from the Base44 system sender to ${payload.recipient_count || 0} active company member${payload.recipient_count === 1 ? '' : 's'}.`);
       } else {
-        toast.warning('In-app summaries were created, but Microsoft email delivery needs attention.');
+        toast.warning('In-app summaries were created, but Base44 email delivery needs attention.');
       }
     } catch (error) {
       toast.error(error?.message || 'Company summary could not be sent.');
@@ -753,7 +750,7 @@ export default function AdminAnalytics() {
                       <li>• Active operational team count as a company total</li>
                       <li>• The recipient’s complete personal list of missing DARs, report corrections, training, modules, and certification items</li>
                       <li>• No other officer’s name, individual score, ranking position, or missing items are shown</li>
-                      <li>• Microsoft 365 delivery with zero Base44 integration credits</li>
+                      <li>• Email is sent by the Base44 managed no-reply/system sender, not an administrator’s personal mailbox</li>
                     </ul>
                   </div>
                   <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -775,9 +772,8 @@ export default function AdminAnalytics() {
                       <div className="rounded-lg bg-black/20 p-3"><div className="text-slate-500">Missing items listed</div><div className="mt-1 text-lg font-black text-white">{summaryResult.missing_item_count || 0}</div></div>
                     </div>
                     {summaryResult.email_error && <p className="mt-3 text-xs leading-relaxed text-amber-200">{summaryResult.email_error}</p>}
-                    {summaryResult.requires_microsoft_reconnect && user?.id && <button type="button" onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-500">RECONNECT MICROSOFT 365</button>}
                     {summaryResult.error && <p className="mt-3 text-xs leading-relaxed text-red-200">{summaryResult.error}</p>}
-                    <p className="mt-3 text-[11px] text-slate-500">Pathfinder in-app delivery uses 0 integration credits.</p>
+                    <p className="mt-3 text-[11px] text-slate-500">Email sender: {summaryResult.email_sender || 'Base44 managed no-reply'} • In-app delivery remains separate from email.</p>
                   </div>
                   <button type="button" onClick={() => setShowSummaryDialog(false)} className="ml-auto flex min-h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-bold text-white hover:bg-slate-800">Done</button>
                 </>
