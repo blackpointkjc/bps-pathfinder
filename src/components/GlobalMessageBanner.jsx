@@ -13,6 +13,12 @@ const SOURCES = [
   // cache cannot produce a second banner/unread count for the same Teams message.
   { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
   { entity: 'ChatMention', label: 'You Were Mentioned', page: 'OfficerChat', kind: 'mention', mention: true },
+  // CAD unit assignment/unassignment. manageCadUnitAssignment writes one of
+  // these Notification rows to the assigned officer -- previously nothing
+  // told them dispatch had put them on a call. Filtered to the current user
+  // the same way ChatMention is (see the `assignment` check in showBanner).
+  { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
+  { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -85,6 +91,12 @@ function bannerText(source, record) {
       message: [record.callIncident || 'New call for service', location, record.description].filter(Boolean).join(' — '),
     };
   }
+  if (source.kind === 'assignment') {
+    return {
+      sender: record.source_name || 'Dispatch',
+      message: record.message || record.title || 'A call assignment changed.',
+    };
+  }
   return {
     sender: record.sender_name || record.created_by || 'Black Point User',
     message: record.message || record.body || record.content || record.description || 'You received a new message.',
@@ -150,7 +162,7 @@ function propertyCallSummary(alert, call = {}) {
 }
 
 function BannerIcon({ kind }) {
-  if (kind === 'property' || kind === 'bolo') return <Siren className="h-5 w-5 text-red-200" />;
+  if (kind === 'property' || kind === 'bolo' || kind === 'assignment') return <Siren className="h-5 w-5 text-red-200" />;
   if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
   if (kind === 'mention') return <Bell className="h-5 w-5 animate-pulse text-fuchsia-200" />;
   return <MessageCircle className="h-5 w-5 text-blue-200" />;
@@ -189,6 +201,7 @@ export default function GlobalMessageBanner({ user }) {
       if (isOwnRecord) return;
       if (source.direct && !visibleDirectMessage(record)) return;
       if (source.mention && normalized(record.recipient_email) !== normalized(user.email)) return;
+      if (source.assignment && (record.type !== source.assignment || normalized(record.recipient_email) !== normalized(user.email))) return;
       if (source.kind === 'announcement' && record.audience === 'supervisors' && user.role !== 'admin' && !roles.has('supervisor')) return;
 
       const key = `${source.entity}:${record.id}`;
@@ -209,6 +222,11 @@ export default function GlobalMessageBanner({ user }) {
         if (source.kind === 'message' && source.direct) {
           // Use concise CAD radio wording and the shared dispatch voice.
           speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
+        } else if (source.kind === 'assignment') {
+          // Same announced-alert treatment as a property-monitoring call: this
+          // is spoken aloud, not just a silent toast/notification row.
+          playNotificationChime(true);
+          speakNotification(`Dispatch. ${record.message || record.title || 'Your call assignment changed.'}`, { rate: 0.82, pitch: 0.68, dedupeMs: 4000 });
         } else {
           playNotificationChime(source.kind === 'property');
         }
@@ -505,10 +523,10 @@ export default function GlobalMessageBanner({ user }) {
               dismiss(banner.id);
               window.location.href = createPageUrl(banner.page);
             }}
-            className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
+            className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >
             <div className="flex items-start gap-3 p-4">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ${banner.kind === 'property' || banner.kind === 'bolo' ? 'bg-red-600/30 ring-red-300/40' : banner.kind === 'announcement' ? 'bg-amber-500/25 ring-amber-200/30' : 'bg-blue-600/30 ring-blue-300/30'}`}>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' ? 'bg-red-600/30 ring-red-300/40' : banner.kind === 'announcement' ? 'bg-amber-500/25 ring-amber-200/30' : 'bg-blue-600/30 ring-blue-300/30'}`}>
                 {banner.photo ? <img src={banner.photo} alt="" className="h-full w-full object-cover" /> : <BannerIcon kind={banner.kind} />}
               </div>
               <div className="min-w-0 flex-1">
@@ -521,7 +539,7 @@ export default function GlobalMessageBanner({ user }) {
               </div>
               {!banner.persistent && <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>}
             </div>
-            <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' || banner.kind === 'bolo' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
+            <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
           </motion.button>
         ))}
       </AnimatePresence>
