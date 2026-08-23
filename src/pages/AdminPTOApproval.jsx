@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function AdminPTOApproval() {
   const [selectedRequest, setSelectedRequest] = useState(null);

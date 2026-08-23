@@ -20,7 +20,7 @@ import {
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function ClientTrespass() {
   const [selectedNotice, setSelectedNotice] = useState(null);

@@ -20,7 +20,7 @@ import { createPageUrl } from "@/utils";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function AdminPayroll() {
   const [reportMode, setReportMode] = useState("payroll"); // "payroll" or "client"

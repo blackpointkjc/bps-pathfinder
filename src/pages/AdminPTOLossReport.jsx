@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function AdminPTOLossReport() {
   const [searchTerm, setSearchTerm] = useState("");

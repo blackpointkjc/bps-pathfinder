@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity } from "lucide-react";
 import { format } from "date-fns";
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function ActiveTracker() {
   const { data: user } = useQuery({

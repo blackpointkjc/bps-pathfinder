@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
-const INVOICE_LOGO_URL = "/black-point-shield.png";
+const INVOICE_LOGO_URL = "/black-point-shield.webp";
 
 export default function ClientPayrollReport() {
   const defaultPeriod = getDefaultBillingPeriod();

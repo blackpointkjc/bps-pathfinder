@@ -45,7 +45,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 const containerVariants = {
   hidden: { opacity: 0 },

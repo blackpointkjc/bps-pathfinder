@@ -13,7 +13,7 @@ import { format } from "date-fns";
 
 
 
-const LOGO_URL = "/black-point-shield.png";
+const LOGO_URL = "/black-point-shield.webp";
 
 export default function ClientLocation() {
   const [selectedLocation, setSelectedLocation] = useState("");

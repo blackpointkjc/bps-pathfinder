@@ -234,7 +234,7 @@ export default function OfficerTraining() {
       </style></head><body>
       <button class="back-button no-print" onclick="window.close()">← Back to App</button>
       <div class="certificate">
-        <div class="header"><div class="logo"><img src="/black-point-shield.png" style="width:100%;height:100%;object-fit:contain"/></div>
+        <div class="header"><div class="logo"><img src="/black-point-shield.webp" style="width:100%;height:100%;object-fit:contain"/></div>
         <div class="title">CERTIFICATE</div><div class="subtitle">of Training Completion</div></div>
         <div class="content"><div class="recipient">This certifies that</div>
         <div class="name">${user.first_name} ${user.last_name}</div>
