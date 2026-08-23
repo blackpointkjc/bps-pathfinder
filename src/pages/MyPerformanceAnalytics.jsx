@@ -13,7 +13,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 
 function breakMinutes(entry) {
   return (entry?.break_periods || []).reduce((total, period) => {
@@ -140,17 +140,32 @@ export default function MyPerformanceAnalytics() {
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
   const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd), [myCallOuts, schedules, currentMonthStart, currentMonthEnd]);
+  const jobDuty = useMemo(() => calculateJobDutyCompliance({
+    officer: user,
+    timeEntries,
+    dailyReports: performanceData.dailyActivityReports || [],
+    incidentReports: performanceData.incidents || [],
+    dispatchCalls: performanceData.dispatchCalls || [],
+    callOuts: myCallOuts,
+    qrScans: performanceData.sharedQrScanEvents || performanceData.qrScanEvents || [],
+    allTimeEntries: performanceData.partnerTimeEntries || timeEntries,
+    qrCheckpoints: performanceData.checkpoints || [],
+    dutyRules: performanceData.jobDutyRules || [],
+    locations: performanceData.locations || [],
+    monthStart: currentMonthStart,
+    monthEnd: currentMonthEnd,
+  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, currentMonthStart, currentMonthEnd]);
 
   const overallPerformance = useMemo(() => buildOverallPerformance({
     punctuality: onTimeStats,
     trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
-    jobDuty: null,
+    jobDuty,
     callOutAttendance,
     bidStanding: bidStats,
     clientFeedback: clientFeedbackStats,
     supervisorRating: supervisorRatingStats,
     recognition: recognitionStats,
-  }), [onTimeStats, trainingStats, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
+  }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const performanceFactors = useMemo(() => {
     const factors = [];
@@ -178,6 +193,21 @@ export default function MyPerformanceAnalytics() {
         value: '100%',
         severity: 'positive',
         reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period. Early clock-ins and late clock-outs do not reduce On-Time Arrival.`
+      });
+    }
+
+    if (jobDuty.dailyActivity.required > 0) {
+      const missingDarDetails = jobDuty.shifts
+        .filter(shift => shift.daily_activity?.required && !shift.daily_activity?.completed)
+        .map(shift => `${shift.shift_date}: missing DAR at ${shift.property || 'assigned post'}.`);
+      factors.push({
+        metric: 'Daily Activity Reports',
+        value: `${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required}`,
+        severity: jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
+        reason: jobDuty.dailyActivity.missed > 0
+          ? `${jobDuty.dailyActivity.missed} required DAR${jobDuty.dailyActivity.missed === 1 ? ' is' : 's are'} missing and this now lowers the Job Duty portion of your performance score.`
+          : `All ${jobDuty.dailyActivity.required} required DAR${jobDuty.dailyActivity.required === 1 ? '' : 's'} are complete.`,
+        details: missingDarDetails,
       });
     }
 
@@ -243,7 +273,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
+  }, [onTimeStats, jobDuty, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
 
   const calculateShiftHours = (start, end) => {
     const [sh = 0, sm = 0] = String(start || '00:00').split(':').map(Number);
@@ -287,7 +317,7 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Performance uses actual attendance and documented evaluation records. DAR, incident-report, and QR requirements are not used as performance deductions. Metrics with no real record are omitted instead of being shown as a false score.</p>
+            <p className="text-xs text-blue-100">Performance uses actual attendance, required job duties, and documented evaluation records. Missing required DARs, incident reports, and QR duties lower the Job Duty portion of the score. Metrics with no real record are omitted instead of being shown as a false score.</p>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-sm text-slate-600">
