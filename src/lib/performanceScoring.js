@@ -650,7 +650,6 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
     { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
-    { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
     { label: 'Bid Standing', score: boundedMetricScore(bidStanding?.score), baseWeight: 3 },
@@ -661,7 +660,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
 
   // Require at least one core operational metric before producing an overall grade.
   // Optional 3% categories alone can never manufacture a company/officer ranking.
-  const coreScoreable = configured.slice(0, 3).filter(item => item.score != null);
+  const coreScoreable = configured.slice(0, 2).filter(item => item.score != null);
   if (!coreScoreable.length) {
     return { score: null, categories: [], omitted: configured.filter(item => item.score == null).map(item => item.label) };
   }
