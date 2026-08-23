@@ -38,9 +38,12 @@ export default function DispatcherShiftReports({ embedded = false }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const isAdmin = user?.role === 'admin';
+  const dispatchRoles = new Set((user?.additional_roles || []).map((r) => String(r).trim().toLowerCase()));
   const isDispatcher =
-    user?.role === 'dispatch' ||
-    (user?.additional_roles || []).some((r) => String(r).toLowerCase() === 'dispatch') ||
+    String(user?.role || '').trim().toLowerCase() === 'dispatch' ||
+    dispatchRoles.has('dispatch') ||
+    dispatchRoles.has('cad_access') ||
+    dispatchRoles.has('full_access') ||
     !!user?.dispatch_role ||
     isAdmin;
 
@@ -127,22 +130,15 @@ export default function DispatcherShiftReports({ embedded = false }) {
 
   const saveMutation = useMutation({
     mutationFn: async ({ data, isDraft }) => {
-      const payload = {
-        dispatcher_email: user?.email || '',
-        dispatcher_name: user?.full_name || user?.email || '',
-        shift_date: data.shift_date,
-        shift_start: data.shift_start,
-        shift_end: data.shift_end,
-        summary: data.summary,
-        dispatch_log: data.dispatch_log,
-        status: isDraft ? 'draft' : 'submitted',
-        was_rejected: false,
-        admin_notes: null,
-      };
-      if (editing) {
-        return base44.entities.DispatcherShiftReport.update(editing.id, { ...payload, status: isDraft ? 'draft' : 'submitted' });
-      }
-      return base44.entities.DispatcherShiftReport.create(payload);
+      const response = await base44.functions.invoke('manage-dispatcher-shift-report', {
+        reportId: editing?.id || null,
+        data,
+        isDraft,
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!payload.report) throw new Error('Dispatcher shift log was not saved.');
+      return payload.report;
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['dispatcherShiftReports'] });
