@@ -25,6 +25,7 @@ const PRIORITY_CONFIG = {
 
 const UNIT_STATUS_COLORS = {
     Available:        { dot: 'bg-green-400',  text: 'text-green-300',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
+    'On Patrol':      { dot: 'bg-indigo-400', text: 'text-indigo-300', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-600/50' },
     Enroute:          { dot: 'bg-yellow-400', text: 'text-yellow-300', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
     'On Scene':       { dot: 'bg-blue-400',   text: 'text-blue-300',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
     Busy:             { dot: 'bg-orange-400', text: 'text-orange-300', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
@@ -32,7 +33,7 @@ const UNIT_STATUS_COLORS = {
     Dispatch:         { dot: 'bg-cyan-400',    text: 'text-cyan-300',    badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
 };
 
-const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
+const MY_STATUSES = ['Available', 'On Patrol', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
 
 function getCallPriority(call) {
