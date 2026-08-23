@@ -412,6 +412,8 @@ export function calculateJobDutyCompliance({
     const shiftStartMs = new Date(entry.clock_in).getTime();
     const isActiveShift = !entry.clock_out;
     const shiftEndMs = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
+    const ruleEffectiveDate = String(rule?.effective_date || '').slice(0, 10);
+    const ruleIsEffective = Boolean(rule && ruleEffectiveDate && shiftDate >= ruleEffectiveDate);
     const detail = {
       shift_id: entry.id,
       shift_date: shiftDate,
@@ -422,7 +424,7 @@ export function calculateJobDutyCompliance({
       qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
     };
 
-    const requiresDar = !isActiveShift && (rule ? rule.daily_activity_report_required !== false : true);
+    const requiresDar = !isActiveShift && ruleIsEffective && rule.daily_activity_report_required === true;
     if (requiresDar) {
       darRequired++;
       detail.daily_activity.required = true;
@@ -445,7 +447,7 @@ export function calculateJobDutyCompliance({
       return callMatchesProperty(call, site, locations);
     });
     const allowedTypes = Array.isArray(rule?.incident_required_call_types) ? rule.incident_required_call_types.map(v => String(v).toLowerCase()) : [];
-    const requireIncident = rule ? rule.incident_report_required_for_property_calls !== false : true;
+    const requireIncident = ruleIsEffective && rule.incident_report_required_for_property_calls === true;
 
     if (requireIncident) {
       calls.forEach(call => {
@@ -485,7 +487,7 @@ export function calculateJobDutyCompliance({
     }
 
     const ruleCreatedMs = rule?.created_date ? new Date(rule.created_date).getTime() : NaN;
-    const effectiveQrRule = rule && (!Number.isFinite(ruleCreatedMs) || ruleCreatedMs <= shiftEndMs) ? rule : null;
+    const effectiveQrRule = ruleIsEffective ? rule : null;
     const propertyCheckpoints = qrCheckpoints.filter(cp => {
       if (cp.is_active === false || siteKey(cp.property_site) !== site) return false;
       const created = cp.created_date ? new Date(cp.created_date).getTime() : NaN;
