@@ -366,6 +366,10 @@ export default function ShiftReports() {
       alert('Please select a location before submitting the report.');
       return;
     }
+    if (formData.starting_mileage !== '' && formData.ending_mileage !== '' && Number(formData.ending_mileage) < Number(formData.starting_mileage)) {
+      toast.error('Ending mileage cannot be less than starting mileage.');
+      return;
+    }
     
     saveReportMutation.mutate({ data: formData, isDraft: false });
   };
@@ -448,6 +452,9 @@ export default function ShiftReports() {
             { label: 'Patrol Count', value: report.patrol_count },
             { label: 'Visitors Logged', value: report.visitors_logged },
             { label: 'Doors Checked', value: report.doors_checked },
+            { label: 'Starting Mileage', value: report.starting_mileage != null ? `${Number(report.starting_mileage).toLocaleString()} mi` : '' },
+            { label: 'Ending Mileage', value: report.ending_mileage != null ? `${Number(report.ending_mileage).toLocaleString()} mi` : '' },
+            { label: 'Miles Driven', value: report.starting_mileage != null && report.ending_mileage != null && Number(report.ending_mileage) >= Number(report.starting_mileage) ? `${Number(report.ending_mileage) - Number(report.starting_mileage)} mi` : '' },
             { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
           ],
         },
