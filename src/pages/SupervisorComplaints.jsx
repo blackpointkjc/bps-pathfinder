@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCurrentDirectoryUser, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -101,7 +101,7 @@ This is a formal notification and will be part of your personnel file pending in
     },
   });
 
-  const activeOfficers = allUsers.filter(hasOfficerAdditionalRole);
+  const activeOfficers = allUsers.filter(isOperationalOfficer);
 
   if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
     return (
