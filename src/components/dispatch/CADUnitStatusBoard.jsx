@@ -116,7 +116,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
         <span className="ml-auto rounded border border-slate-600 bg-slate-800 px-2 py-0.5 text-[9px] font-bold text-slate-300">{statusUnits.length}</span>
       </div>
 
-      <div className="grid grid-cols-6 border-b border-[#1e2d4a] bg-[#080d18]">
+      <div className="grid grid-cols-7 border-b border-[#1e2d4a] bg-[#080d18]">
         {STATUS_ORDER.slice(1).map(status => {
           const meta = STATUS_META[status];
           return (
