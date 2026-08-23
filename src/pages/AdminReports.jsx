@@ -43,6 +43,7 @@ export default function AdminReports() {
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [selectedArchiveType, setSelectedArchiveType] = useState("shift");
+  const [selectedReviewType, setSelectedReviewType] = useState("all");
   const [viewingReport, setViewingReport] = useState(null);
   const [viewReportType, setViewReportType] = useState(null);
   const [rejectingReport, setRejectingReport] = useState(null);
@@ -1057,14 +1058,14 @@ export default function AdminReports() {
   };
 
   const ReportCard = ({ report, type, icon: Icon, title }) => {
-    const hasActions = ['submitted', 'active', 'issued'].includes(report.status);
+    const hasActions = ['submitted', 'pending', 'active', 'issued'].includes(report.status);
     const isApproved = ['approved', 'appeared', 'paid'].includes(report.status);
     const location = locations?.find(loc => loc.site_name === report.location);
 
     return (
-      <Card className={`border-l-4 ${isApproved ? 'border-l-green-600' : 'border-l-amber-600'}`}>
-        <CardHeader>
-          <CardTitle className="flex flex-col gap-3">
+      <Card className={`overflow-hidden border border-slate-700/70 bg-[#0d1724] text-slate-100 shadow-lg ${isApproved ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-amber-400'}`}>
+        <CardHeader className="border-b border-slate-800 bg-[#111d2b] p-4">
+          <CardTitle className="flex flex-col gap-3 text-slate-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Icon className="w-5 h-5" />
@@ -1129,20 +1130,12 @@ export default function AdminReports() {
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 mb-2">
-            <strong>Officer:</strong> {getOfficerName(report.created_by_id || report.created_by)}
-          </p>
-          <p className="text-sm text-slate-600 mb-2">
-            <strong>Location:</strong> {report.location || '—'}
-          </p>
-          {report.shift_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.shift_date), 'MMM d, yyyy')}</p>}
-          {report.report_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.report_date), 'MMM d, yyyy')}</p>}
-          {report.incident_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.incident_date), 'MMM d, yyyy')}</p>}
-          {report.notice_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.notice_date), 'MMM d, yyyy')}</p>}
-          {report.violation_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.violation_date), 'MMM d, yyyy')}</p>}
-          {report.complaint_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.complaint_date), 'MMM d, yyyy')}</p>}
-          {report.offense_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.offense_date), 'MMM d, yyyy')}</p>}
+        <CardContent className="p-4">
+          <div className="grid gap-3 text-sm sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Officer</div><div className="mt-1 font-semibold text-white">{getOfficerName(report.created_by_id || report.created_by)}</div></div>
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Property / Location</div><div className="mt-1 font-semibold text-white">{report.location || 'Not recorded'}</div></div>
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Report Date</div><div className="mt-1 font-semibold text-white">{formatReportDate(report.shift_date || report.report_date || report.incident_date || report.notice_date || report.violation_date || report.complaint_date || report.offense_date || report.created_date, 'America/New_York')}</div></div>
+          </div>
         </CardContent>
       </Card>
     );
