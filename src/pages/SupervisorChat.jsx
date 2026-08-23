@@ -11,6 +11,8 @@ import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessa
 import { beginOutlookConnection } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 
+const SUPERVISOR_CHAT_VISIBLE_SINCE = new Date('2026-08-23T00:00:00-04:00').getTime();
+
 export default function SupervisorChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
@@ -236,6 +238,8 @@ export default function SupervisorChat() {
       // in their proper audit/announcement channels but are hidden from chat.
       if (sender === 'pathfinder cad system' || sender === 'pathfinder system' || sender === 'system') return false;
       if (body.startsWith('auto status alert:') || body.startsWith('announcement:')) return false;
+      const timestamp = new Date(msg?.created_date || msg?.teams_created_at || 0).getTime();
+      if (Number.isFinite(timestamp) && timestamp > 0 && timestamp < SUPERVISOR_CHAT_VISIBLE_SINCE) return false;
       return Boolean(String(msg?.message || '').trim());
     };
     (localMessages || []).slice().reverse().filter(isHumanChat).forEach(add);
@@ -271,8 +275,8 @@ export default function SupervisorChat() {
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-500" />
-                <span className="text-sm font-normal text-slate-600">
-                  {displayedMessages?.length || 0} messages
+                <span className="text-sm font-bold text-slate-300">
+                  {displayedMessages?.length || 0} current messages
                 </span>
               </div>
             </div>
