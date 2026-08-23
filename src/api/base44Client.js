@@ -16,6 +16,29 @@ export const base44 = createClient({
 // Pathfinder while avoiding Base44 email integration credits. The dynamic import
 // avoids a static circular dependency because outlookGraph uses this Base44 client
 // for mailbox-link persistence.
+if (base44.integrations?.Core?.InvokeLLM) {
+  base44.integrations.Core.InvokeLLM = async payload => {
+    const response = await base44.functions.invoke('internalAssistant', payload || {});
+    const data = response?.data || response || {};
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+}
+
+if (base44.integrations?.Core?.UploadFile) {
+  base44.integrations.Core.UploadFile = async ({ file } = {}) => {
+    if (!file) throw new Error('A file is required.');
+    if (Number(file.size || 0) > 8 * 1024 * 1024) throw new Error('Files larger than 8 MB must be reduced before upload.');
+    const file_url = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Unable to read this file.'));
+      reader.readAsDataURL(file);
+    });
+    return { file_url, url: file_url, credit_free: true };
+  };
+}
+
 if (base44.integrations?.Core?.SendEmail) {
   base44.integrations.Core.SendEmail = async payload => {
     const actor = await base44.auth.me();
