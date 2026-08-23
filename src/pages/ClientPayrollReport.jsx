@@ -46,7 +46,7 @@ export default function ClientPayrollReport() {
     },
     enabled: !!user,
     initialData: {},
-    refetchInterval: 60000,
+    refetchInterval: 5000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -242,7 +242,7 @@ export default function ClientPayrollReport() {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: Arial, sans-serif; font-size: 9.5pt; line-height: 1.4; color:#111827; }
           .invoice-header { background:#080b10; color:white; padding:24px 28px; display:flex; justify-content:space-between; align-items:center; border-bottom:6px solid #d4a72c; margin-bottom:22px; }
-          .brand { display:flex; align-items:center; gap:16px; } .brand img { width:72px; height:72px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; }
+          .brand { display:flex; align-items:center; gap:16px; } .brand img { width:66px; height:76px; object-fit:contain; background:transparent; padding:0; }
           .brand-name { font-size:19pt; font-weight:800; letter-spacing:.4px; } .brand-sub { color:#d4a72c; font-size:8pt; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-top:4px; }
           .invoice-title { text-align:right; } .title { font-size:23pt; font-weight:800; letter-spacing:1px; } .invoice-number { color:#d4a72c; font-weight:700; margin-top:4px; }
           .info-section { display:grid; grid-template-columns:1.2fr .8fr; gap:18px; margin-bottom:20px; }
