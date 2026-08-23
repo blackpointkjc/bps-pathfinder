@@ -250,7 +250,9 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
   }, [bolo, mode, draftKey]);
   const [formData, setFormData] = useState(initial || {});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const isEditing = mode === 'create' || mode === 'edit';
+  const isServerDraft = formData?.status === 'draft' || bolo?.status === 'draft';
 
   useEffect(() => {
     if (!isEditing) return;
@@ -262,28 +264,49 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
     return () => window.clearTimeout(timer);
   }, [formData, draftKey, isEditing]);
 
-  const handleSave = async () => {
-    if (!formData.title || !formData.alert_type) return;
+  const normalizedData = () => ({
+    ...formData,
+    title: titleCase(formData.title),
+    jurisdiction: titleCase(formData.jurisdiction),
+    last_known_location: titleCase(formData.last_known_location),
+    last_known_direction: titleCase(formData.last_known_direction),
+    case_number: upper(formData.case_number),
+    description: sentenceCase(formData.description),
+    notes: sentenceCase(formData.notes),
+    parties: (formData.parties || []).map(p => ({ ...p, role: titleCase(p.role), name: titleCase(p.name), race: titleCase(p.race), sex: titleCase(p.sex), description: sentenceCase(p.description) })),
+    vehicles: (formData.vehicles || []).map(v => ({ ...v, role: titleCase(v.role), color: titleCase(v.color), make: titleCase(v.make), model: titleCase(v.model), plate: upper(v.plate), state: upper(v.state), description: sentenceCase(v.description) })),
+  });
+
+  const saveToServer = async (action) => {
+    setSaveError('');
+    if (!formData.alert_type) {
+      setSaveError('Select an alert type before saving.');
+      return;
+    }
+    if ((action === 'create' || action === 'release') && !String(formData.title || '').trim()) {
+      setSaveError('Enter a BOLO title before release.');
+      return;
+    }
     setSaving(true);
     try {
-      const normalized = {
-        ...formData,
-        title: titleCase(formData.title),
-        jurisdiction: titleCase(formData.jurisdiction),
-        last_known_location: titleCase(formData.last_known_location),
-        last_known_direction: titleCase(formData.last_known_direction),
-        case_number: upper(formData.case_number),
-        description: sentenceCase(formData.description),
-        notes: sentenceCase(formData.notes),
-        parties: (formData.parties || []).map(p => ({ ...p, role: titleCase(p.role), name: titleCase(p.name), race: titleCase(p.race), sex: titleCase(p.sex), description: sentenceCase(p.description) })),
-        vehicles: (formData.vehicles || []).map(v => ({ ...v, role: titleCase(v.role), color: titleCase(v.color), make: titleCase(v.make), model: titleCase(v.model), plate: upper(v.plate), state: upper(v.state), description: sentenceCase(v.description) })),
-      };
-      if (formData.id) await base44.functions.invoke('manageBolo', { action: 'edit', id: formData.id, data: normalized });
-      else await base44.functions.invoke('manageBolo', { action: 'create', data: normalized });
+      const response = await base44.functions.invoke('manageBolo', {
+        action,
+        id: formData.id || bolo?.id || undefined,
+        data: normalizedData(),
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
       localStorage.removeItem(draftKey);
-      onSaved();
-    } finally { setSaving(false); }
+      onSaved(payload);
+    } catch (error) {
+      setSaveError(error?.response?.data?.error || error?.message || 'Unable to save BOLO.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'ISSUE NEW BOLO' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 flex flex-col gap-2 border-t border-slate-800 pt-3 sm:flex-row sm:items-center sm:justify-between"><div className="text-[10px] font-mono text-emerald-400">DRAFT AUTO-SAVED ON THIS DEVICE</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CLOSE</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div></div>}</DialogContent></Dialog>;
+  const handleSave = () => saveToServer(isServerDraft ? 'release' : (formData.id ? 'edit' : 'create'));
+  const handleSaveDraft = () => saveToServer('save_draft');
+
+  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'NEW BOLO' : mode === 'edit' && isServerDraft ? 'CONTINUE BOLO DRAFT' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 border-t border-slate-800 pt-3">{saveError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/40 px-3 py-2 text-xs font-bold text-red-200">{saveError}</div>}<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="text-[10px] font-mono text-emerald-400">CHANGES AUTO-SAVE LOCALLY · USE SAVE DRAFT TO KEEP IT IN PATHFINDER FOR LATER RELEASE</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CLOSE</button><button onClick={handleSaveDraft} disabled={saving} className="w-full rounded border border-amber-500 bg-amber-950/50 px-5 py-2 text-sm font-mono font-bold text-amber-200 hover:bg-amber-900/60 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : 'SAVE DRAFT'}</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : isServerDraft ? 'RELEASE BOLO' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div></div></div>}</DialogContent></Dialog>;
 }
