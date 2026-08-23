@@ -113,6 +113,9 @@ export default function TimeRequests() {
     return rank === 'colonel' || rank === 'lt colonel' || rank === 'lieutenant colonel' ? 180 : 40;
   }, [user?.rank]);
   const usedYtd = Number(user?.pto_year_to_date_used || 0);
+  const bonusHours = useMemo(() => requests
+    .filter(request => String(request.status || '').toLowerCase() === 'approved' && /^PTO Bonus\b|^Admin PTO Grant\b/i.test(String(request.admin_notes || '')))
+    .reduce((sum, request) => sum + Number(request.hours_requested || 0), 0), [requests]);
   const accruedPercent = annualEntitlement > 0 ? Math.min(100, Math.round((ptoYearToDate / annualEntitlement) * 100)) : 0;
 
   return (
@@ -128,11 +131,11 @@ export default function TimeRequests() {
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="border border-emerald-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CheckCircle2 className="h-5 w-5 text-emerald-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Available PTO</div><div className="mt-1 text-3xl font-black text-emerald-300">{ptoBalance.toFixed(1)}h</div></CardContent></Card>
-          <Card className="border border-blue-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><Clock3 className="h-5 w-5 text-blue-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Accrued YTD</div><div className="mt-1 text-3xl font-black text-blue-300">{ptoYearToDate.toFixed(1)}h</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${accruedPercent}%` }} /></div></CardContent></Card>
-          <Card className="border border-amber-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><History className="h-5 w-5 text-amber-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Used YTD</div><div className="mt-1 text-3xl font-black text-amber-300">{usedYtd.toFixed(1)}h</div></CardContent></Card>
-          <Card className="border border-violet-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CalendarClock className="h-5 w-5 text-violet-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Annual PTO</div><div className="mt-1 text-3xl font-black text-violet-300">{annualEntitlement}h</div></CardContent></Card>
+        <div className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
+          <Card className="min-w-0 border border-emerald-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CheckCircle2 className="h-5 w-5 text-emerald-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Available PTO</div><div className="mt-1 text-3xl font-black text-emerald-300">{ptoBalance.toFixed(1)}h</div><div className="mt-2 text-[11px] leading-5 text-slate-400">{ptoYearToDate.toFixed(1)} earned + {bonusHours.toFixed(1)} bonus/grant − {usedYtd.toFixed(1)} used</div></CardContent></Card>
+          <Card className="min-w-0 border border-blue-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><Clock3 className="h-5 w-5 text-blue-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Earned YTD</div><div className="mt-1 text-3xl font-black text-blue-300">{ptoYearToDate.toFixed(1)}h</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${accruedPercent}%` }} /></div><div className="mt-2 text-[10px] text-slate-500">Annual earned-PTO target: {annualEntitlement}h</div></CardContent></Card>
+          <Card className="min-w-0 border border-violet-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CalendarClock className="h-5 w-5 text-violet-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Bonus / Grants</div><div className="mt-1 text-3xl font-black text-violet-300">{bonusHours.toFixed(1)}h</div><div className="mt-2 text-[10px] leading-5 text-slate-500">Added on top of normal earned PTO and included in Available PTO.</div></CardContent></Card>
+          <Card className="min-w-0 border border-amber-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><History className="h-5 w-5 text-amber-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Used YTD</div><div className="mt-1 text-3xl font-black text-amber-300">{usedYtd.toFixed(1)}h</div><div className="mt-2 text-[10px] text-slate-500">Approved paid leave deducted from available balance.</div></CardContent></Card>
         </div>
 
         {showForm && (
