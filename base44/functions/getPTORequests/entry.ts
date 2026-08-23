@@ -79,17 +79,41 @@ Deno.serve(async (req) => {
       const users = await base44.asServiceRole.entities.User.list();
       const creatorOfficer = (users || []).find((entry: any) => String(entry.id || '') === String(request.created_by_id || ''));
       const officerEmail = request.requested_by_email || request.created_by || creatorOfficer?.email;
-      if (status === 'approved' && request.request_type === 'paid' && officerEmail) {
+      let openedShifts = 0;
+      if (status === 'approved' && officerEmail) {
         const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officerEmail).toLowerCase());
-        if (officer?.id) {
+        if (officer?.id && request.request_type === 'paid') {
           const hours = Number(request.hours_requested || 0);
           await base44.asServiceRole.entities.User.update(officer.id, {
             pto_balance_hours: Math.max(0, Number(officer.pto_balance_hours || 0) - hours),
             pto_year_to_date_used: Number(officer.pto_year_to_date_used || 0) + hours,
           });
         }
+        const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
+        const affected = (schedules || []).filter((shift: any) =>
+          String(shift.officer_email || '').toLowerCase() === String(officerEmail).toLowerCase() &&
+          shift.shift_date >= request.start_date && shift.shift_date <= request.end_date &&
+          !shift.archived && !shift.is_open
+        );
+        for (const shift of affected) {
+          await base44.asServiceRole.entities.Schedule.update(shift.id, { officer_email: 'OPEN', is_open: true });
+          openedShifts += 1;
+        }
       }
-      return Response.json({ success: true });
+      if (officerEmail) {
+        await base44.asServiceRole.entities.Notification.create({
+          recipient_email: String(officerEmail).toLowerCase(),
+          type: 'schedule_changed',
+          title: `Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}`,
+          message: status === 'approved'
+            ? `Your time off request for ${request.start_date} through ${request.end_date} was approved.${openedShifts ? ` ${openedShifts} scheduled shift${openedShifts === 1 ? '' : 's'} moved to Open Shifts.` : ''}`
+            : `Your time off request for ${request.start_date} through ${request.end_date} was denied.${admin_notes ? ` HR note: ${admin_notes}` : ''}`,
+          related_id: request.id,
+          priority: 'normal',
+          source_name: 'Human Resources',
+        });
+      }
+      return Response.json({ success: true, opened_shifts: openedShifts });
     }
 
     if (action === 'cancel_approved') {
@@ -152,9 +176,12 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'manual') {
-      const { officer_email, hours, reason = '' } = body;
+      const { officer_email, hours, reason = '', start_date = '', end_date = '', remove_shifts = false } = body;
       if (!officer_email || !hours || Number(hours) <= 0) {
         return Response.json({ error: 'Officer and positive PTO hours are required' }, { status: 400 });
+      }
+      if (remove_shifts && (!start_date || !end_date)) {
+        return Response.json({ error: 'Start and end dates are required when removing scheduled shifts' }, { status: 400 });
       }
       const users = await base44.asServiceRole.entities.User.list();
       const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officer_email).toLowerCase());
