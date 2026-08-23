@@ -21,8 +21,9 @@ Deno.serve(async (req) => {
 
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
     const isOfficer = roles.has('officer');
-    const isManager = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('supervisor') || roles.has('dispatch');
-    if (!isOfficer && !isManager) return Response.json({ error: 'Officer or command access required' }, { status: 403 });
+    const hasCadAccess = roles.has('cad_access') || user.dispatch_role === true;
+    const isManager = user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || roles.has('full_access') || roles.has('supervisor') || roles.has('dispatch');
+    if (!isOfficer && !isManager && !hasCadAccess) return Response.json({ error: 'Officer or CAD/command access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || 'create');
