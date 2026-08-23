@@ -215,59 +215,36 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
   return missing;
 }
 
-function summaryContent(dateLabel: string, companyOverall: number | null, recipients: any[], rankings: any[], missing: Map<string, Set<string>>) {
-  const missingRows = recipients
-    .map(user => ({ user, items: [...(missing.get(String(user.id)) || [])] }))
-    .filter(row => row.items.length > 0);
-  const totalMissing = missingRows.reduce((sum, row) => sum + row.items.length, 0);
+// SECURITY/PRIVACY: this function used to build ONE shared HTML email and ONE
+// shared plain-text notification message containing every employee's name,
+// their individually-listed missing items (training gaps, expired certs,
+// report-correction feedback), and a full named company ranking table -- and
+// then delivered that identical content to every recipient (BCC'd) and wrote
+// it into every recipient's in-app Notification. That means every employee
+// received every other employee's compliance/HR detail and could see exactly
+// where they ranked against everyone else. This has been replaced with a
+// strictly per-recipient summary: each person's email/notification contains
+// only their own outstanding items. No other team member's name or data, no
+// company ranking, and no performance percentage (individual or aggregate)
+// is included in any recipient-facing content.
+function personalMissingMessage(items: string[]) {
+  if (!items.length) return 'You have no outstanding items today. Thank you for staying current.';
+  return `You have ${items.length} outstanding item${items.length === 1 ? '' : 's'} that need your attention:\n${items.map(item => `• ${item}`).join('\n')}`;
+}
 
-  const rankingRows = rankings.length
-    ? rankings.map((row, index) => `<tr><td>${index + 1}</td><td><strong>${escapeHtml(rankedName(row.user))}</strong></td></tr>`).join('')
-    : '<tr><td colspan="2">No scoreable company ranking is available yet.</td></tr>';
-
-  const missingHtml = missingRows.length
-    ? missingRows.map(({ user, items }) =>
-      `<h3>${escapeHtml(rankedName(user))}</h3><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
-    ).join('')
-    : '<p><strong>No missing company items were found.</strong></p>';
-
-  const aggregate = companyOverall == null ? 'Not yet scoreable' : `${companyOverall}%`;
-  const subject = `Black Point Daily Company Summary — ${dateLabel}`;
+function personalSummaryEmail(dateLabel: string, user: any, items: string[]) {
+  const subject = `Your Daily Summary — ${dateLabel}`;
+  const hasItems = items.length > 0;
   const content = `
-    <h2>Company Overall</h2>
-    <table>
-      <tr><th>Company Overall Performance</th><td><strong>${escapeHtml(aggregate)}</strong></td></tr>
-      <tr><th>Active Company Members</th><td>${recipients.length}</td></tr>
-      <tr><th>Missing Requirements</th><td>${totalMissing}</td></tr>
-    </table>
-    <p>This company summary reports one aggregate performance result. Individual performance percentages are intentionally not included.</p>
-    <h2>Company Rankings</h2>
-    <table><tr><th>Position</th><th>Team Member</th></tr>${rankingRows}</table>
-    <h2>Missing Items by Team Member</h2>
-    ${missingHtml}
+    <h2>Your Daily Summary</h2>
+    <p>Hi ${escapeHtml(rankedName(user))},</p>
+    ${hasItems
+      ? `<p>You have <strong>${items.length}</strong> outstanding item${items.length === 1 ? '' : 's'} that need your attention:</p><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+      : '<p>You have no outstanding items today. Thank you for staying current.</p>'}
+    <p style="color:#64748b;font-size:12px;">This is your individual summary only. It does not include other team members' information, company rankings, or performance percentages.</p>
   `;
-
-  const plainRankings = rankings.length
-    ? rankings.map((row, index) => `${index + 1}. ${rankedName(row.user)}`).join('\n')
-    : 'No scoreable company ranking is available yet.';
-  const plainMissing = missingRows.length
-    ? missingRows.map(({ user, items }) => `${rankedName(user)}:\n${items.map(item => `• ${item}`).join('\n')}`).join('\n\n')
-    : 'No missing company items were found.';
-  const message = [
-    `Company overall performance: ${aggregate}`,
-    `Active company members: ${recipients.length}`,
-    `Missing requirements: ${totalMissing}`,
-    '',
-    'Company rankings:',
-    plainRankings,
-    '',
-    'Missing items by team member:',
-    plainMissing,
-    '',
-    'Individual performance percentages are not included.',
-  ].join('\n');
-
-  return { subject, content, message, totalMissing, missingRows };
+  const message = personalMissingMessage(items);
+  return { subject, content, message };
 }
 
 async function refreshMicrosoftToken(base44: any, credential: any) {
@@ -307,48 +284,72 @@ async function refreshMicrosoftToken(base44: any, credential: any) {
   return payload.access_token;
 }
 
-async function sendGraphEmail(base44: any, credentials: any[], recipients: string[], subject: string, html: string) {
+// Sends one INDIVIDUAL Graph email per recipient (no bcc, no shared body) so
+// no recipient's message can ever contain another recipient's content.
+async function sendPersonalizedGraphEmails(base44: any, credentials: any[], deliveries: { to: string; subject: string; html: string }[]) {
   const usable = (credentials || []).filter(row =>
     row?.active !== false && row?.refresh_token && String(row?.scope || '').toLowerCase().includes('mail.send')
   );
   if (!usable.length) throw new Error('No active Microsoft mailbox with Mail.Send is available.');
 
+  let accessToken: string | null = null;
+  let credential: any = null;
   let lastError: any = null;
-  for (const credential of usable) {
+  for (const candidate of usable) {
     try {
-      const accessToken = await refreshMicrosoftToken(base44, credential);
-      const chunks: string[][] = [];
-      for (let index = 0; index < recipients.length; index += 400) chunks.push(recipients.slice(index, index + 400));
-      for (const chunk of chunks) {
-        const [primary, ...blindCopies] = chunk;
-        const message: any = {
-          subject,
-          body: { contentType: 'HTML', content: html },
-          toRecipients: [{ emailAddress: { address: primary } }],
-        };
-        if (blindCopies.length) {
-          message.bccRecipients = blindCopies.map(address => ({ emailAddress: { address } }));
-        }
+      accessToken = await refreshMicrosoftToken(base44, candidate);
+      credential = candidate;
+      break;
+    } catch (error) {
+      lastError = error;
+      console.warn('Daily summary mailbox failed:', candidate?.microsoft_email || candidate?.pathfinder_email, error?.message || error);
+    }
+  }
+  if (!accessToken) throw lastError || new Error('Microsoft email delivery failed.');
+
+  let sentCount = 0;
+  let failedCount = 0;
+  const CONCURRENCY = 8;
+  for (let index = 0; index < deliveries.length; index += CONCURRENCY) {
+    const batch = deliveries.slice(index, index + CONCURRENCY);
+    await Promise.all(batch.map(async delivery => {
+      try {
         const response = await fetch(GRAPH_SEND, {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ message, saveToSentItems: true }),
+          body: JSON.stringify({
+            message: {
+              subject: delivery.subject,
+              body: { contentType: 'HTML', content: delivery.html },
+              toRecipients: [{ emailAddress: { address: delivery.to } }],
+            },
+            saveToSentItems: false,
+          }),
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload?.error?.message || `Microsoft Graph send failed (${response.status}).`);
         }
+        sentCount += 1;
+      } catch (error) {
+        failedCount += 1;
+        console.warn('Daily summary personal email failed:', delivery.to, (error as any)?.message || error);
       }
-      return { sent: true, sender: emailKey(credential.microsoft_email || credential.pathfinder_email), batches: chunks.length };
-    } catch (error) {
-      lastError = error;
-      console.warn('Daily summary mailbox failed:', credential?.microsoft_email || credential?.pathfinder_email, error?.message || error);
-    }
+    }));
   }
-  throw lastError || new Error('Microsoft email delivery failed.');
+  return {
+    sent: sentCount > 0,
+    sender: emailKey(credential?.microsoft_email || credential?.pathfinder_email),
+    total: deliveries.length,
+    sentCount,
+    failedCount,
+  };
 }
 
-async function createNotifications(base44: any, recipients: any[], relatedId: string, subject: string, message: string) {
+// Creates one Notification per recipient using a PER-USER title/message
+// callback so no recipient's notification can contain another recipient's
+// data (see the personal-summary note above personalMissingMessage).
+async function createNotifications(base44: any, recipients: any[], relatedId: string, subjectFor: (user: any) => string, messageFor: (user: any) => string) {
   const existing = await base44.asServiceRole.entities.Notification.filter({ related_id: relatedId }, '-created_date', 5000).catch(() => []);
   const delivered = new Set((existing || []).map((row: any) => emailKey(row.recipient_email)));
   let created = 0;
@@ -358,12 +359,12 @@ async function createNotifications(base44: any, recipients: any[], relatedId: st
     await base44.asServiceRole.entities.Notification.create({
       recipient_email: recipient,
       type: 'training_reminder',
-      title: subject,
-      message,
+      title: subjectFor(user),
+      message: messageFor(user),
       is_read: false,
       related_id: relatedId,
       priority: 'normal',
-      source_name: 'Company Analytics',
+      source_name: 'Daily Summary',
     });
     delivered.add(recipient);
     created += 1;
