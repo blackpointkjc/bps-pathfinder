@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 export default function OfficerChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
-  const scrollRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const [teamsConfig, setTeamsConfig] = useState(null);
   const queryClient = useQueryClient();
 
@@ -197,9 +197,9 @@ export default function OfficerChat() {
   const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [];
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // ScrollArea's ref points to the Radix root, not the scrolling viewport.
+    // An end anchor reliably keeps Teams chat on the newest message after sync.
+    window.requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' }));
   }, [displayedMessages]);
 
   const handleRefresh = async () => {
@@ -227,7 +227,7 @@ export default function OfficerChat() {
           <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Officer Chat ↔ General Chat</div>
           {liveTeamsError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {liveTeamsError.message}</div>}
 
-          <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+          <ScrollArea className="flex-1 p-6">
             <div className="space-y-4">
               {displayedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
@@ -293,6 +293,7 @@ export default function OfficerChat() {
                   <p className="text-slate-400 text-sm">Start the conversation with your team!</p>
                 </div>
               )}
+              <div ref={messagesEndRef} aria-hidden="true" />
             </div>
           </ScrollArea>
 
