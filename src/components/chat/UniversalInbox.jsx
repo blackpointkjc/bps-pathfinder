@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MessageCircle, Plus, Search, Send, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTeamsDirectChatMessages, listTeamsDirectChats, sendTeamsDirectMessage } from '@/lib/teamsGraph';
+import { beginOutlookConnection } from '@/lib/outlookGraph';
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
 
@@ -26,6 +27,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [microsoftMe, setMicrosoftMe] = useState(null);
+  const needsMicrosoftConnection = /connection required|authorization expired|reconnect/i.test(syncError);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
   const messagesEndRef = useRef(null);
 
@@ -250,7 +252,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Teams conversations" className="w-full bg-transparent text-sm outline-none" /></div>
         </div>
-        {syncError && <div className="border-b border-red-800 bg-red-950/50 p-3 text-xs font-bold text-red-200">Microsoft Teams sync error: {syncError}</div>}
+        {syncError && (
+          <div className="border-b border-slate-800 bg-[#101725] p-3">
+            <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Connect Microsoft 365 to load your Teams conversations.' : `Teams could not refresh: ${syncError}`}</div>
+            {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {loadingChats && <div className="flex items-center justify-center gap-2 p-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams conversations…</div>}
           {!loadingChats && visibleChats.map(chat => {
@@ -261,7 +268,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
               {unread && <span className="rounded-full bg-red-500 px-2 py-1 text-[9px] font-black text-white">NEW</span>}
             </button>;
           })}
-          {!loadingChats && !visibleChats.length && <div className="p-8 text-center text-sm text-slate-500">No Microsoft Teams conversations were returned for this account.</div>}
+          {!loadingChats && !visibleChats.length && !needsMicrosoftConnection && <div className="p-8 text-center text-sm text-slate-500">No Teams conversations found for this connected Microsoft account.</div>}
         </div>
       </aside>
 
