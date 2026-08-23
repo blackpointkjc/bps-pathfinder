@@ -224,15 +224,15 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
 // received every other employee's compliance/HR detail and could see exactly
 // where they ranked against everyone else. This has been replaced with a
 // strictly per-recipient summary: each person's email/notification contains
-// only their own outstanding items. No other team member's name or data, no
-// company ranking, and no performance percentage (individual or aggregate)
-// is included in any recipient-facing content.
+// only their own outstanding items. Company-wide aggregate numbers may be
+// included, but no other team member's name, ranking position, individual score,
+// or missing-item details may appear in recipient-facing content.
 function personalMissingMessage(items: string[]) {
   if (!items.length) return 'You have no outstanding items today. Thank you for staying current.';
   return `You have ${items.length} outstanding item${items.length === 1 ? '' : 's'} that need your attention:\n${items.map(item => `• ${item}`).join('\n')}`;
 }
 
-function personalSummaryEmail(dateLabel: string, user: any, items: string[], company: { overall: number | null; activeOperational: number }) {
+function personalSummaryEmail(dateLabel: string, user: any, items: string[], company: { overall: number | null; onTime: number | null; activeOperational: number; totalMissing: number }) {
   const subject = `Black Point Daily Company Summary — ${dateLabel}`;
   const hasItems = items.length > 0;
   const content = `
@@ -241,15 +241,17 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
     <div style="margin:16px 0;padding:16px;border:1px solid #243449;border-radius:12px;background:#0f1b2b;">
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;">Company Snapshot</div>
       <div style="margin-top:10px;font-size:15px;color:#e2e8f0;"><strong>Company Overall Performance:</strong> ${company.overall == null ? 'Not enough scoreable data yet' : `${company.overall}%`}</div>
+      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Company On-Time Rate:</strong> ${company.onTime == null ? 'Not enough elapsed shifts yet' : `${company.onTime}%`}</div>
       <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Active Operational Team Members:</strong> ${company.activeOperational}</div>
+      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Total Company Missing Requirements:</strong> ${company.totalMissing}</div>
     </div>
-    <h3 style="margin-top:20px;">Your Required Items</h3>
+    <h3 style="margin-top:20px;">Your Missing Items</h3>
     ${hasItems
       ? `<p>You have <strong>${items.length}</strong> outstanding item${items.length === 1 ? '' : 's'} that need your attention. The full list is below:</p><ul>${items.map(item => `<li style="margin:7px 0;">${escapeHtml(item)}</li>`).join('')}</ul>`
       : '<p>You have no outstanding items today. Thank you for staying current.</p>'}
     <p style="color:#64748b;font-size:12px;">Company information above is aggregate only. Your required-items section contains only your own records. No other employee’s missing items, individual score, or personnel details are included.</p>
   `;
-  const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Active operational team members: ${company.activeOperational}\n\n${personalMissingMessage(items)}`;
+  const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company on-time: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
   return { subject, content, message };
 }
 
@@ -438,10 +440,10 @@ Deno.serve(async (req) => {
     const metricResults = await Promise.all(rankingCandidates.map(async user => {
       try {
         const metrics = await buildPerformanceMetrics(base44, user, now.monthStart, now.monthEnd, metricData);
-        return { user, score: metrics.performance_score != null && Number.isFinite(Number(metrics.performance_score)) ? Number(metrics.performance_score) : null };
+        return { user, metrics, score: metrics.performance_score != null && Number.isFinite(Number(metrics.performance_score)) ? Number(metrics.performance_score) : null };
       } catch (error) {
         console.warn('Daily ranking skipped for', user?.email, error?.message || error);
-        return { user, score: null };
+        return { user, metrics: null, score: null };
       }
     }));
     const rankings = metricResults.sort((a, b) =>
@@ -451,6 +453,10 @@ Deno.serve(async (req) => {
     const companyOverall = scored.length
       ? Math.round(scored.reduce((sum, row) => sum + Number(row.score), 0) / scored.length)
       : null;
+    const punctualityRows = metricResults.filter(row => row.metrics?.punctuality?.total > 0);
+    const companyPunctualityTotal = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.total || 0), 0);
+    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.on_time || 0), 0);
+    const companyOnTime = companyPunctualityTotal > 0 ? Math.round((companyPunctualityOnTime / companyPunctualityTotal) * 100) : null;
 
     const dateLabel = new Intl.DateTimeFormat('en-US', {
       timeZone: TIME_ZONE, month: 'long', day: 'numeric', year: 'numeric',
@@ -478,13 +484,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const companySnapshot = { overall: companyOverall, activeOperational: rankingCandidates.length };
+    const companySnapshot = { overall: companyOverall, onTime: companyOnTime, activeOperational: rankingCandidates.length, totalMissing };
     const notificationsCreated = await createNotifications(
       base44, recipients, deliveryId,
       () => `Black Point Daily Company Summary — ${dateLabel}`,
       user => {
         const items = [...(missing.get(String(user.id)) || [])];
-        return `Company overall: ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Active operational team members: ${companySnapshot.activeOperational}\n\n${personalMissingMessage(items)}`;
+        return `Company overall: ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company on-time: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}`;
       },
     );
 
