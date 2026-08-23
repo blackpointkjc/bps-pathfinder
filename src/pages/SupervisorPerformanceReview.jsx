@@ -510,19 +510,19 @@ export default function SupervisorPerformanceReview() {
         )}
 
         {!selectedReview && awaitingOfficerReviews.length > 0 && (
-          <Card className="border border-amber-300 bg-amber-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-amber-950">Awaiting Officer Response ({awaitingOfficerReviews.length})</CardTitle>
+          <Card className="overflow-hidden border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-800 bg-[#101b29]">
+              <CardTitle className="text-white">Awaiting Officer Response ({awaitingOfficerReviews.length})</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 p-4">
               {awaitingOfficerReviews.map(review => (
-                <div key={review.id} className="rounded-lg border border-amber-200 bg-white p-4">
+                <div key={review.id} className="rounded-xl border border-slate-700 bg-[#101b29] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-bold text-slate-900">{review.officer_name}</p>
-                      <p className="text-sm text-slate-600">{format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}</p>
+                      <p className="font-black text-white">{review.officer_name}</p>
+                      <p className="text-sm text-slate-400">{format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}</p>
                     </div>
-                    <div className="rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white">Awaiting self-rating & signature</div>
+                    <div className="rounded-full border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">Officer response required</div>
                   </div>
                 </div>
               ))}
