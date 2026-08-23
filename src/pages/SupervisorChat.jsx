@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export default function SupervisorChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
-  const scrollRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
   const queryClient = useQueryClient();
@@ -26,6 +26,15 @@ export default function SupervisorChat() {
   const senderName = user?.first_name && user?.last_name 
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'Unknown';
+
+  const { data: localMessages = [] } = useQuery({
+    queryKey: ['supervisorChatMessages'],
+    queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 500),
+    enabled: !!user?.id,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    initialData: [],
+  });
 
   const { data: liveTeamsMessages = [], error: liveTeamsError } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
@@ -77,22 +86,14 @@ export default function SupervisorChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
-      if (!target?.enabled) throw new Error('Microsoft Teams Supervisors Chat is not configured.');
-      const teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'supervisor_chat');
-      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm delivery.');
+      // Pathfinder is the source of availability for this private chat. Microsoft
+      // Teams is an optional mirror and must never prevent supervisors from talking.
       const created = await base44.entities.SupervisorChatMessage.create({
         ...data,
-        message_source: 'teams',
-        teams_message_id: teamsMessage.id,
-        teams_team_id: target.team_id,
-        teams_channel_id: target.channel_id,
-        teams_sender_id: teamsMessage?.from?.user?.id || '',
-        teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
-        teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
-        teams_synced_at: new Date().toISOString(),
-      }).catch(() => null);
-      if (created?.id) {
+        message_source: 'pathfinder',
+      });
+
+      if (created?.id && mentions.length) {
         await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
           message_id: created.id,
           chat_type: 'supervisor',
@@ -104,9 +105,33 @@ export default function SupervisorChat() {
           read: false,
         }).catch(() => null)));
       }
-      return teamsMessage;
+
+      let teamsMessage = null;
+      let teamsError = '';
+      try {
+        const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
+        if (target?.enabled) {
+          teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'supervisor_chat');
+          if (teamsMessage?.id && created?.id) {
+            await base44.entities.SupervisorChatMessage.update(created.id, {
+              message_source: 'pathfinder_teams',
+              teams_message_id: teamsMessage.id,
+              teams_team_id: target.team_id,
+              teams_channel_id: target.channel_id,
+              teams_sender_id: teamsMessage?.from?.user?.id || '',
+              teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
+              teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+              teams_synced_at: new Date().toISOString(),
+            }).catch(() => null);
+          }
+        }
+      } catch (error) {
+        teamsError = error?.message || 'Microsoft Teams sync unavailable.';
+      }
+      return { created, teamsMessage, teamsError };
     },
-    onSuccess: async (teamsMessage) => {
+    onSuccess: async ({ teamsMessage, teamsError }) => {
+      queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
       const row = normalizeTeamsChannelMessage(teamsMessage);
       if (row) {
         queryClient.setQueryData(
@@ -116,11 +141,11 @@ export default function SupervisorChat() {
       }
       setMessage("");
       setMentionedUsers([]);
-      setTeamsSyncError('');
+      setTeamsSyncError(teamsError || '');
+      if (teamsError) toast.success('Message sent in Pathfinder. Microsoft Teams sync is currently unavailable.');
     },
     onError: (error) => {
-      setTeamsSyncError(error?.message || 'Microsoft Teams delivery failed.');
-      toast.error(`Supervisor Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
+      toast.error(`Supervisor message failed: ${error?.message || 'Unable to save message'}`, { duration: 12000 });
     },
   });
 
@@ -193,13 +218,22 @@ export default function SupervisorChat() {
     return () => window.removeEventListener('bps:teams-channel-data', onTeamsData);
   }, [queryClient, teamsConfig?.team_id, teamsConfig?.channel_id, user?.id]);
 
-  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [];
+  const displayedMessages = (() => {
+    const merged = new Map();
+    const add = (msg) => {
+      const teamsId = String(msg?.teams_message_id || '').trim();
+      const fallback = `${String(msg?.sender_name || msg?.sender_email || '').toLowerCase()}|${String(msg?.message || '').trim()}|${String(msg?.created_date || msg?.teams_created_at || '')}`;
+      const key = teamsId ? `teams:${teamsId}` : `local:${msg?.id || fallback}`;
+      if (!merged.has(key)) merged.set(key, msg);
+    };
+    (localMessages || []).slice().reverse().forEach(add);
+    (liveTeamsMessages || []).forEach(add);
+    return [...merged.values()].sort((a, b) => new Date(a.created_date || a.teams_created_at || 0) - new Date(b.created_date || b.teams_created_at || 0));
+  })();
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [displayedMessages]);
+    window.requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' }));
+  }, [displayedMessages.length]);
 
   if (user?.role !== 'supervisor' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
     return (
@@ -234,8 +268,12 @@ export default function SupervisorChat() {
             </div>
           </CardHeader>
 
-          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Supervisor Chat ↔ (Supervisors Chat)</div>
-          {(teamsSyncError || liveTeamsError) && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError || liveTeamsError?.message}</div>}
+          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Pathfinder Private Supervisor Chat {teamsConfig?.enabled ? '· Microsoft Teams mirror: (Supervisors Chat)' : ''}</div>
+          {(teamsSyncError || liveTeamsError) && (
+            <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900">
+              Pathfinder chat is active. Microsoft Teams sync is unavailable on this session: {teamsSyncError || liveTeamsError?.message}
+            </div>
+          )}
 
           {!!supervisorUpdates.length && (
             <div className="border-b border-amber-200 bg-amber-50 p-3">
@@ -251,7 +289,7 @@ export default function SupervisorChat() {
             </div>
           )}
 
-          <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+          <ScrollArea className="flex-1 p-6">
             <div className="space-y-4">
               {displayedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
@@ -300,6 +338,7 @@ export default function SupervisorChat() {
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} aria-hidden="true" />
               {!displayedMessages?.length && (
                 <div className="text-center py-12">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 text-green-300" />
