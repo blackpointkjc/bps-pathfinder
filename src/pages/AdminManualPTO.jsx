@@ -46,21 +46,21 @@ export default function AdminManualPTO() {
 
   const activeUsers = directoryUsers.filter(hasOfficerAdditionalRole);
 
-  const addPTOMutation = useMutation({
-    mutationFn: async (data) => {
-      const officer = activeUsers.find(u => u.email === data.officer_email);
-      if (!officer) throw new Error('Officer not found');
-      const response = await base44.functions.invoke('getPTORequests', { action: data.entry_mode === 'bonus' ? 'bonus' : 'manual', ...data });
-    queryKey: ['schedules'],
-    queryFn: () => base44.entities.Schedule.list(),
-    initialData: [],
-  });
+  useEffect(() => {
+    if (!user || !(user.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access'))) return;
+    base44.functions.invoke('getPTORequests', { action: 'ensure_admin_grants' })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['directoryUsers', 'manualPTO'] });
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      })
+      .catch(error => console.warn('[PTO] admin grant check failed:', error?.message));
+  }, [user, queryClient]);
 
   const addPTOMutation = useMutation({
     mutationFn: async (data) => {
       const officer = activeUsers.find(u => u.email === data.officer_email);
       if (!officer) throw new Error('Officer not found');
-      const response = await base44.functions.invoke('getPTORequests', { action: 'manual', ...data });
+      const response = await base44.functions.invoke('getPTORequests', { action: data.entry_mode === 'bonus' ? 'bonus' : 'manual', ...data });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
 
