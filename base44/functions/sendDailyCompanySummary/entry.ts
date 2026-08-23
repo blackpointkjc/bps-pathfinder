@@ -286,46 +286,20 @@ async function managementGraphAccess(base44: any) {
     active: true,
   }, '-updated_date', 10).catch(() => []);
   const mailbox = mailboxRows?.[0];
-  if (!mailbox?.user_id) throw new Error(`${MANAGEMENT_MAILBOX} is not linked as an active Outlook shared mailbox.`);
+  if (!mailbox) throw new Error(`${MANAGEMENT_MAILBOX} is not configured as an active Outlook shared mailbox.`);
 
-  const credentials = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
-    user_id: mailbox.user_id,
-    active: true,
-  }, '-updated_date', 5).catch(() => []);
-  const credential = credentials?.[0];
-  if (!credential?.refresh_token) throw new Error(`The Microsoft connection for ${MANAGEMENT_MAILBOX} needs to be reconnected.`);
-
-  const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared offline_access');
-  if (!/Mail\.Send\.Shared/i.test(scope)) throw new Error(`The Microsoft connection does not have Mail.Send.Shared permission for ${MANAGEMENT_MAILBOX}.`);
-
-  const tokenBody = new URLSearchParams({
-    client_id: MICROSOFT_CLIENT_ID,
-    grant_type: 'refresh_token',
-    refresh_token: String(credential.refresh_token),
-    scope,
-  });
-  const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: tokenBody,
-  });
-  const tokenPayload = await tokenResponse.json().catch(() => ({}));
-  if (!tokenResponse.ok || !tokenPayload?.access_token) {
-    const detail = tokenPayload?.error_description || tokenPayload?.error || 'Microsoft authorization could not be refreshed.';
-    await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-      last_error: String(detail),
-      last_refreshed_at: new Date().toISOString(),
-    }).catch(() => null);
-    throw new Error(`Microsoft sign-in for ${MANAGEMENT_MAILBOX} expired or needs attention: ${detail}`);
+  // Use Base44's app-wide Outlook connector so scheduled backend jobs receive a
+  // server-refreshable token. Do not use the old per-browser SPA refresh-token
+  // vault here; those tokens cannot reliably be redeemed by a scheduled worker.
+  let connection: any;
+  try {
+    connection = await base44.asServiceRole.connectors.getConnection('outlook');
+  } catch (error) {
+    throw new Error(`The shared Outlook connection for ${MANAGEMENT_MAILBOX} is not connected. Connect Outlook in the app integration settings, then retry.`);
   }
-
-  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-    ...(tokenPayload.refresh_token ? { refresh_token: String(tokenPayload.refresh_token) } : {}),
-    last_error: '',
-    last_refreshed_at: new Date().toISOString(),
-  }).catch(() => null);
-
-  return { accessToken: String(tokenPayload.access_token), mailbox };
+  const accessToken = String(connection?.accessToken || '');
+  if (!accessToken) throw new Error(`The shared Outlook connection for ${MANAGEMENT_MAILBOX} did not return an access token.`);
+  return { accessToken, mailbox };
 }
 
 // Sends one INDIVIDUAL email per recipient through Microsoft Graph while
