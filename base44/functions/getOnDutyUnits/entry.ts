@@ -136,8 +136,17 @@ Deno.serve(async (req) => {
       .map((user: any) => {
         const active = newestActiveByEmail.get(String(user.email).toLowerCase());
         const activeTs = new Date(active?.last_update || active?.updated_date || active?.created_date || 0).getTime();
+        const userStatusTs = new Date(user.last_updated || user.status_since || user.updated_date || 0).getTime();
         const signedInFresh = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= freshCutoff);
-        const resolvedStatus = signedInFresh ? (active.status || user.status || 'Available') : 'Out of Service';
+        // A dedicated status change writes User and ActiveOfficer together. If a
+        // duplicate/racing ActiveOfficer row is momentarily older than User, honor
+        // the newer User status instead of showing OOS/stale status on the board.
+        // Signed-out users still resolve OOS because logout writes OOS and closes the
+        // live session.
+        const newestLiveStatus = Number.isFinite(userStatusTs) && userStatusTs > activeTs
+          ? (user.status || active?.status || 'Available')
+          : (active?.status || user.status || 'Available');
+        const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
         return {
           id: user.id,
           user_id: user.id,
