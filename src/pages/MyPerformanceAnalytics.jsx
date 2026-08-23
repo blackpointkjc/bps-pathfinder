@@ -13,7 +13,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -65,14 +65,6 @@ export default function MyPerformanceAnalytics() {
   const myCommendations = performanceData.commendations || [];
   const myClientFeedback = performanceData.clientFeedback || [];
   const myPerformanceReviews = performanceData.performanceReviews || [];
-  const myDailyActivityReports = performanceData.dailyActivityReports || [];
-  const dispatchCalls = performanceData.dispatchCalls || [];
-  const jobDutyRules = performanceData.jobDutyRules || [];
-  const performanceLocations = performanceData.locations || [];
-  const qrScanEvents = performanceData.qrScanEvents || [];
-  const sharedQrScanEvents = performanceData.sharedQrScanEvents || qrScanEvents;
-  const partnerTimeEntries = performanceData.partnerTimeEntries || timeEntries;
-  const allCheckpoints = performanceData.checkpoints || [];
 
   const thisWeekSchedule = React.useMemo(() => {
     if (!schedules) return [];
@@ -149,21 +141,6 @@ export default function MyPerformanceAnalytics() {
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
-  const jobDutyStats = useMemo(() => calculateJobDutyCompliance({
-    officer: user,
-    timeEntries,
-    dailyReports: myDailyActivityReports,
-    incidentReports: performanceData.incidents || [],
-    dispatchCalls,
-    callOuts: myCallOuts,
-    qrScans: sharedQrScanEvents,
-    allTimeEntries: partnerTimeEntries,
-    qrCheckpoints: allCheckpoints,
-    dutyRules: jobDutyRules,
-    locations: performanceLocations,
-    monthStart: currentMonthStart,
-    monthEnd: currentMonthEnd,
-  }), [user, timeEntries, myDailyActivityReports, performanceData.incidents, dispatchCalls, myCallOuts, sharedQrScanEvents, partnerTimeEntries, allCheckpoints, jobDutyRules, performanceLocations, currentMonthStart, currentMonthEnd]);
   const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd), [myCallOuts, schedules, currentMonthStart, currentMonthEnd]);
 
   const overallPerformance = useMemo(() => buildOverallPerformance({
@@ -175,7 +152,7 @@ export default function MyPerformanceAnalytics() {
     clientFeedback: clientFeedbackStats,
     supervisorRating: supervisorRatingStats,
     recognition: recognitionStats,
-  }), [onTimeStats, trainingStats, jobDutyStats, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
+  }), [onTimeStats, trainingStats, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const performanceFactors = useMemo(() => {
     const factors = [];
@@ -268,17 +245,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, trainingStats, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, jobDutyStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'shift_posted': return <Calendar className="w-4 h-4 text-blue-600" />;
-      case 'bid_accepted': return <Star className="w-4 h-4 text-green-600" />;
-      case 'bid_rejected': return <AlertTriangle className="w-4 h-4 text-red-600" />;
-      case 'training_reminder': return <GraduationCap className="w-4 h-4 text-purple-600" />;
-      default: return <Bell className="w-4 h-4 text-slate-600" />;
-    }
-  };
+  }, [onTimeStats, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
 
   const calculateShiftHours = (start, end) => {
     const [sh = 0, sm = 0] = String(start || '00:00').split(':').map(Number);
@@ -416,33 +383,6 @@ export default function MyPerformanceAnalytics() {
           )}
         </div>
 
-        <Card className="overflow-hidden border border-cyan-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-cyan-700 to-blue-700 text-white">
-            <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-              <span>Job Duty / Performance</span>
-              <span className="text-3xl font-black">{jobDutyStats.score != null ? `${jobDutyStats.score}%` : '—'}</span>
-            </CardTitle>
-            <p className="text-xs text-cyan-100">Required reports and QR duties are evaluated against the exact worked shift and property. Reassignment exceptions are excluded automatically.</p>
-          </CardHeader>
-          <CardContent className="grid gap-3 p-4 md:grid-cols-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold uppercase text-slate-500">Daily Activity Reports</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.dailyActivity.required > 0 ? `${jobDutyStats.dailyActivity.completed}/${jobDutyStats.dailyActivity.required}` : '—'}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.dailyActivity.required > 0 ? `${jobDutyStats.dailyActivity.missed} missed • ${jobDutyStats.dailyActivity.score}%` : 'No completed worked shifts requiring a DAR yet'}</p>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold uppercase text-slate-500">Incident Reports</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.incidentReports.required > 0 ? `${jobDutyStats.incidentReports.completed}/${jobDutyStats.incidentReports.required}` : '—'}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.incidentReports.required > 0 ? `${jobDutyStats.incidentReports.missed} missed • ${jobDutyStats.incidentReports.excluded} excluded by call-out/reassignment` : 'No monitored property calls occurred during this officer’s evaluated shifts'}</p>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold uppercase text-slate-500">QR Compliance</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.qrCompliance.required > 0 ? `${jobDutyStats.qrCompliance.completed}/${jobDutyStats.qrCompliance.required}` : '—'}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.qrCompliance.required > 0 ? `${jobDutyStats.qrCompliance.missed} missed • ${jobDutyStats.qrCompliance.excludedInvalid || 0} invalid/excluded • ${jobDutyStats.qrCompliance.score}%` : `${jobDutyStats.qrCompliance.excludedInvalid || 0} invalid/excluded scan${jobDutyStats.qrCompliance.excludedInvalid === 1 ? '' : 's'} • no QR obligation window has been scored yet`}</p>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card className="overflow-hidden border border-slate-200 shadow-lg">
           <CardHeader className="bg-slate-900 text-white">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2">
@@ -474,52 +414,7 @@ export default function MyPerformanceAnalytics() {
           </CardContent>
         </Card>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Notification Feed */}
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-red-50 to-pink-50">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-red-600" />
-                  Recent Alerts
-                  <Badge className="ml-2 bg-slate-600 text-white">Informational only</Badge>
-                </div>
-                {recentNotifications.length > 0 && (
-                  <Badge className="bg-red-600 text-white">{recentNotifications.length}</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-56 sm:h-60">
-                {recentNotifications.length > 0 ? (
-                  <div className="p-4 space-y-3">
-                    {recentNotifications.map(n => (
-                      <div key={n.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          {getNotificationIcon(n.type)}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{n.title}</p>
-                            <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <p className="text-xs text-slate-400">{format(parseISO(n.created_date), 'MMM d, h:mm a')}</p>
-                              <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">No performance impact</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-slate-500">
-                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p>No new alerts</p>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          {/* Weekly Schedule View */}
+        <div>
           <Card className="border-none shadow-lg">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardTitle className="flex items-center justify-between">
