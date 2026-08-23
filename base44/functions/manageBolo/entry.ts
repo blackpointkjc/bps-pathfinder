@@ -29,18 +29,21 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const actorName = [user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email;
 
-    if (action === 'create') {
+    if (action === 'create' || action === 'save_draft') {
       const data = cleanPayload(body.data || {});
-      if (!data.title || !data.alert_type) return Response.json({ error: 'Title and alert type are required' }, { status: 400 });
+      const isDraft = action === 'save_draft';
+      if (!data.alert_type) return Response.json({ error: 'Alert type is required' }, { status: 400 });
+      if (!isDraft && !String(data.title || '').trim()) return Response.json({ error: 'Title is required before release' }, { status: 400 });
       const record = await base44.asServiceRole.entities.BOLOAlert.create({
         ...data,
+        title: String(data.title || '').trim() || 'Untitled BOLO Draft',
         priority: data.priority || 'medium',
-        status: 'active',
-        bolo_number: `BOLO-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Date.now().toString().slice(-5)}`,
+        status: isDraft ? 'draft' : 'active',
+        bolo_number: isDraft ? '' : `BOLO-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Date.now().toString().slice(-5)}`,
         issued_by: actorName,
         issued_by_id: user.id,
       });
-      return Response.json({ success: true, record });
+      return Response.json({ success: true, record, status: isDraft ? 'draft' : 'active' });
     }
 
     const id = String(body?.id || '');
@@ -49,12 +52,30 @@ Deno.serve(async (req) => {
     if (!record) return Response.json({ error: 'BOLO not found' }, { status: 404 });
     const ownsRecord = record.issued_by_id === user.id || record.created_by_id === user.id;
 
-    if (action === 'edit') {
+    if (action === 'edit' || action === 'save_draft') {
       if (!isManager && !ownsRecord) return Response.json({ error: 'You can only edit BOLOs you issued' }, { status: 403 });
-      if (record.status !== 'active' && !isManager) return Response.json({ error: 'Only command staff can edit a closed BOLO' }, { status: 403 });
+      if (!['active', 'draft'].includes(String(record.status || '')) && !isManager) return Response.json({ error: 'Only command staff can edit a closed BOLO' }, { status: 403 });
       const updates = cleanPayload(body.data || {});
+      if (action === 'save_draft') updates.status = 'draft';
       await base44.asServiceRole.entities.BOLOAlert.update(id, updates);
-      return Response.json({ success: true });
+      return Response.json({ success: true, status: action === 'save_draft' ? 'draft' : record.status });
+    }
+
+    if (action === 'release') {
+      if (!isManager && !ownsRecord) return Response.json({ error: 'You can only release BOLOs you issued' }, { status: 403 });
+      if (record.status !== 'draft') return Response.json({ error: 'Only saved drafts can be released' }, { status: 409 });
+      const updates = cleanPayload(body.data || {});
+      const releaseTitle = String(updates.title || record.title || '').trim();
+      if (!releaseTitle || releaseTitle === 'Untitled BOLO Draft') return Response.json({ error: 'Enter a BOLO title before release' }, { status: 400 });
+      await base44.asServiceRole.entities.BOLOAlert.update(id, {
+        ...updates,
+        title: releaseTitle,
+        status: 'active',
+        bolo_number: record.bolo_number || `BOLO-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Date.now().toString().slice(-5)}`,
+        issued_by: actorName,
+        issued_by_id: user.id,
+      });
+      return Response.json({ success: true, status: 'active' });
     }
 
     if (action === 'resolve') {
