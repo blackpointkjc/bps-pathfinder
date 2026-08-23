@@ -142,6 +142,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   }, [currentUser?.id]);
 
   useEffect(() => {
+    const onMicrosoftConnected = () => loadChats({ keepSelection: false });
+    window.addEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+    return () => window.removeEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+  }, [currentUser?.id]);
+
+  useEffect(() => {
     const onDirectChats = event => {
       const nextChats = Array.isArray(event.detail?.chats) ? event.detail.chats : [];
       if (!nextChats.length) return;
