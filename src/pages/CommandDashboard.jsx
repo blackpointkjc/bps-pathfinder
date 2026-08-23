@@ -234,10 +234,16 @@ function CommandDashboardInner() {
 
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
-    const isDispatchUser     = currentUser?.role === 'dispatch'
-        || (currentUser?.additional_roles || []).some(r => String(r).toLowerCase() === 'dispatch')
-        || !!currentUser?.dispatch_role;
-    const myStatuses = isDispatchUser ? DISPATCH_STATUSES : MY_STATUSES;
+    const currentRoles = new Set((currentUser?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
+    const operationalRank = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(String(currentUser?.rank || '').trim().toLowerCase());
+    const hasFieldStatusAccess = currentRoles.has('officer') || currentRoles.has('cad_access') || operationalRank;
+    const hasDispatchAccess = currentUser?.role === 'dispatch' || currentRoles.has('dispatch') || !!currentUser?.dispatch_role;
+    // Only a pure dispatcher gets the reduced Dispatch/Available/OOS set. Command
+    // staff and field officers keep the full officer status set even when they also
+    // have dispatch access (for example Colonel/full-access users).
+    const myStatuses = hasFieldStatusAccess
+        ? [...MY_STATUSES, ...(hasDispatchAccess ? ['Dispatch'] : [])]
+        : DISPATCH_STATUSES;
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -293,10 +299,6 @@ function CommandDashboardInner() {
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
                     }} className="command-dashboard-action h-9 flex min-w-0 items-center justify-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors">
                         <FileWarning className="w-3 h-3" />NEW BOLO
-                    </button>
-                    <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
-                        className="command-dashboard-action h-9 flex min-w-0 items-center justify-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors">
-                        <Zap className="w-3 h-3" />DISPATCH CTR
                     </button>
                     <OfficerDistressButton currentUser={currentUser} className="command-dashboard-distress" />
                 </div>
