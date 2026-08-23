@@ -481,7 +481,7 @@ function CommandDashboardInner() {
                 <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
 
                     <div className="flex flex-col" style={{ maxHeight: '50%' }}>
-                        <CADUnitStatusBoard units={statusUnits} compact />
+                        <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
                     </div>
 
                     <div className="border-t border-slate-800">

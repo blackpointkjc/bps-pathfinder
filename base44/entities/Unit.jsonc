@@ -18,6 +18,7 @@
         "Enroute",
         "On Scene",
         "Busy",
+        "Distress",
         "Out of Service"
       ],
       "default": "Available",

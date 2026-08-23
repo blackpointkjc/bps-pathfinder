@@ -702,7 +702,7 @@ export default function DispatchCenter() {
 
                         {/* Shared CAD Unit Status Board */}
                         <div className={`${mobileView === 'assignment' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col md:flex`}>
-                            <CADUnitStatusBoard units={statusUnits} compact />
+                            <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
                         </div>
                     </div>
                 </div>

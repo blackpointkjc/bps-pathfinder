@@ -118,30 +118,16 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
         if (!liveFix) {
             try { liveFix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 5000 }); } catch (_) {}
         }
-        const coords = liveFix ? { lat: liveFix.latitude, lon: liveFix.longitude } : null;
-
-        const distressData = {
-            officer_id: currentUser.id,
-            officer_name: currentUser.full_name || 'Unknown Officer',
-            unit_number: currentUser.unit_number || '???',
-            rank: currentUser.rank || '',
-            last_name: currentUser.last_name || currentUser.full_name?.split(' ').pop() || '',
-            latitude: coords?.lat || null,
-            longitude: coords?.lon || null,
-            current_latitude: coords?.lat || null,
-            current_longitude: coords?.lon || null,
-            location_description: coords ? `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}` : 'Location unavailable',
-            status: 'active',
-            activated_at: new Date().toISOString(),
-        };
+        const location = liveFix ? { lat: liveFix.latitude, lon: liveFix.longitude } : null;
 
         try {
-            const created = await base44.entities.OfficerDistress.create(distressData);
-            activeAlertIdRef.current = created.id;
+            const res = await base44.functions.invoke('manageOfficerDistress', { action: 'activate', location });
+            const payload = res?.data || res || {};
+            if (payload.error) throw new Error(payload.error);
+            activeAlertIdRef.current = payload.distress_id || null;
             setActivated(true);
             toast.error('🚨 OFFICER DISTRESS ACTIVATED — Help is being notified', { duration: 10000 });
-            window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: distressData }));
-
+            window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: { officer_id: currentUser.id, location } }));
             // Ongoing distress coordinates are fed by the one app-wide live-location
             // service; this component never starts a second GPS watcher.
         } catch (err) {
@@ -153,16 +139,9 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     const cancelDistress = async () => {
         if (!currentUser?.id) return;
         try {
-            const alerts = await base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' });
-            for (const alert of alerts) {
-                await base44.entities.OfficerDistress.update(alert.id, {
-                    status: 'cleared',
-                    cleared_at: new Date().toISOString(),
-                    cleared_by: currentUser.id,
-                    cleared_by_name: currentUser.full_name,
-                    notes: 'Officer self-cancelled'
-                });
-            }
+            const res = await base44.functions.invoke('manageOfficerDistress', { action: 'clear' });
+            const payload = res?.data || res || {};
+            if (payload.error) throw new Error(payload.error);
             activeAlertIdRef.current = null;
             setActivated(false);
             toast.success('Distress alert cancelled');

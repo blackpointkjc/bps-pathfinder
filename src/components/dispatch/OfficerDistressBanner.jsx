@@ -184,12 +184,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
     const handleClear = async (alert) => {
         if (!currentUser || !isDispatchOrAdmin) return;
         try {
-            await base44.entities.OfficerDistress.update(alert.id, {
-                status: 'cleared',
-                cleared_at: new Date().toISOString(),
-                cleared_by: currentUser.id,
-                cleared_by_name: currentUser.full_name,
-            });
+            await base44.functions.invoke('manageOfficerDistress', { action: 'clear', officer_id: alert.officer_id });
             fetchAlerts();
         } catch (e) {}
     };
