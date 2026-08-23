@@ -669,10 +669,19 @@ export default function DispatchCenter() {
                             </div>
                         </div>
 
-                        {/* Shared CAD Unit Status Board */}
-                        <div className={`${mobileView === 'assignment' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col md:flex`}>
-                            <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
-                        </div>
+                        {/* Once a call is selected, this rail becomes assignment-only. Dispatchers
+                            should not have to visually parse the full status board while assigning a call. */}
+                        {!selectedCall && (
+                            <div className={`${mobileView === 'assignment' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col md:flex`}>
+                                <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
+                            </div>
+                        )}
+                        {selectedCall && mobileView !== 'assignment' && (
+                            <div className="flex min-h-0 flex-1 flex-col border-t border-[#1e2d4a] bg-[#07101c] md:hidden">
+                                <div className="px-3 py-2 text-[9px] font-black tracking-[.14em] text-blue-300">CALL SELECTED · UNIT ASSIGNMENT MODE</div>
+                                <div className="min-h-0 flex-1 overflow-y-auto p-2"><UnitAssignmentPanel call={selectedCall} units={units} onUpdate={handleUpdate} /></div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
