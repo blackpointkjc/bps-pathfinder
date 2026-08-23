@@ -288,18 +288,49 @@ async function managementGraphAccess(base44: any) {
   const mailbox = mailboxRows?.[0];
   if (!mailbox) throw new Error(`${MANAGEMENT_MAILBOX} is not configured as an active Outlook shared mailbox.`);
 
-  // Use Base44's app-wide Outlook connector so scheduled backend jobs receive a
-  // server-refreshable token. Do not use the old per-browser SPA refresh-token
-  // vault here; those tokens cannot reliably be redeemed by a scheduled worker.
-  let connection: any;
-  try {
-    connection = await base44.asServiceRole.connectors.getConnection('outlook');
-  } catch (error) {
-    throw new Error(`The shared Outlook connection for ${MANAGEMENT_MAILBOX} is not connected. Connect Outlook in the app integration settings, then retry.`);
+  // Reuse the Microsoft 365 authorization already used by Pathfinder OutlookMail.
+  // The shared-mailbox record points to the Pathfinder user whose Microsoft token
+  // owns Send As / Send on Behalf access to management@blackpointkjc.com.
+  const credentialRows = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
+    user_id: mailbox.user_id,
+    active: true,
+  }, '-last_refreshed_at', 10).catch(() => []);
+  const credential = credentialRows?.[0];
+  const refreshToken = String(credential?.refresh_token || '');
+  if (!credential || !refreshToken) {
+    throw new Error(`The Outlook connection used by Pathfinder for ${mailbox.pathfinder_email || mailbox.user_id} is not available.`);
   }
-  const accessToken = String(connection?.accessToken || '');
-  if (!accessToken) throw new Error(`The shared Outlook connection for ${MANAGEMENT_MAILBOX} did not return an access token.`);
-  return { accessToken, mailbox };
+
+  const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared User.Read offline_access');
+  const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: PATHFINDER_MICROSOFT_CLIENT_ID,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      scope,
+    }),
+  });
+  const tokenPayload = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenPayload?.access_token) {
+    const message = tokenPayload?.error_description || tokenPayload?.error || `Microsoft token refresh failed (${tokenResponse.status}).`;
+    await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+      last_error: String(message),
+      last_refreshed_at: new Date().toISOString(),
+    }).catch(() => null);
+    throw new Error(message);
+  }
+
+  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+    refresh_token: String(tokenPayload.refresh_token || refreshToken),
+    scope: String(tokenPayload.scope || scope),
+    active: true,
+    last_error: '',
+    last_refreshed_at: new Date().toISOString(),
+  }).catch(() => null);
+
+  return { accessToken: String(tokenPayload.access_token), mailbox, credential };
 }
 
 // Sends one INDIVIDUAL email per recipient through Microsoft Graph while
