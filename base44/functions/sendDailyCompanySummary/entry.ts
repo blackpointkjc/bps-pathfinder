@@ -4,6 +4,11 @@ import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } fr
 
 const TIME_ZONE = 'America/New_York';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
+const MANAGEMENT_MAILBOX = 'management@blackpointkjc.com';
+const MICROSOFT_CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
+const MICROSOFT_TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
+const MICROSOFT_TOKEN_URL = `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
+const MICROSOFT_GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -275,36 +280,104 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
   return { subject, content, message };
 }
 
-// Sends one INDIVIDUAL Base44-managed email per recipient (no bcc, no shared
-// body). The actual mailbox is Base44's managed no-reply/system sender; the
-// signed-in administrator's Microsoft/Outlook identity is never used here.
-async function sendPersonalizedBase44Emails(base44: any, deliveries: { to: string; subject: string; html: string }[]) {
+async function managementGraphAccess(base44: any) {
+  const mailboxRows = await base44.asServiceRole.entities.OutlookSharedMailbox.filter({
+    mailbox_email: MANAGEMENT_MAILBOX,
+    active: true,
+  }, '-updated_date', 10).catch(() => []);
+  const mailbox = mailboxRows?.[0];
+  if (!mailbox?.user_id) throw new Error(`${MANAGEMENT_MAILBOX} is not linked as an active Outlook shared mailbox.`);
+
+  const credentials = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
+    user_id: mailbox.user_id,
+    active: true,
+  }, '-updated_date', 5).catch(() => []);
+  const credential = credentials?.[0];
+  if (!credential?.refresh_token) throw new Error(`The Microsoft connection for ${MANAGEMENT_MAILBOX} needs to be reconnected.`);
+
+  const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared offline_access');
+  if (!/Mail\.Send\.Shared/i.test(scope)) throw new Error(`The Microsoft connection does not have Mail.Send.Shared permission for ${MANAGEMENT_MAILBOX}.`);
+
+  const tokenBody = new URLSearchParams({
+    client_id: MICROSOFT_CLIENT_ID,
+    grant_type: 'refresh_token',
+    refresh_token: String(credential.refresh_token),
+    scope,
+  });
+  const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: tokenBody,
+  });
+  const tokenPayload = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenPayload?.access_token) {
+    const detail = tokenPayload?.error_description || tokenPayload?.error || 'Microsoft authorization could not be refreshed.';
+    await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+      last_error: String(detail),
+      last_refreshed_at: new Date().toISOString(),
+    }).catch(() => null);
+    throw new Error(`Microsoft sign-in for ${MANAGEMENT_MAILBOX} expired or needs attention: ${detail}`);
+  }
+
+  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+    ...(tokenPayload.refresh_token ? { refresh_token: String(tokenPayload.refresh_token) } : {}),
+    last_error: '',
+    last_refreshed_at: new Date().toISOString(),
+  }).catch(() => null);
+
+  return { accessToken: String(tokenPayload.access_token), mailbox };
+}
+
+// Sends one INDIVIDUAL email per recipient through Microsoft Graph while
+// explicitly setting management@blackpointkjc.com as the shared From mailbox.
+// It never falls back to the connected user's personal khiers@ mailbox.
+async function sendPersonalizedManagementEmails(base44: any, deliveries: { to: string; subject: string; html: string }[]) {
+  if (!deliveries.length) return { sent: false, sender: MANAGEMENT_MAILBOX, total: 0, sentCount: 0, failedCount: 0 };
+  const { accessToken } = await managementGraphAccess(base44);
   let sentCount = 0;
   let failedCount = 0;
-  const CONCURRENCY = 6;
+  const failures: string[] = [];
+  const CONCURRENCY = 4;
   for (let index = 0; index < deliveries.length; index += CONCURRENCY) {
     const batch = deliveries.slice(index, index + CONCURRENCY);
     await Promise.all(batch.map(async delivery => {
       try {
-        await base44.integrations.Core.SendEmail({
-          to: delivery.to,
-          subject: delivery.subject,
-          body: delivery.html,
-          from_name: 'Black Point Protection',
+        const response = await fetch(`${MICROSOFT_GRAPH_ROOT}/me/sendMail`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: {
+              subject: delivery.subject,
+              body: { contentType: 'HTML', content: delivery.html },
+              from: { emailAddress: { address: MANAGEMENT_MAILBOX, name: 'Black Point Management' } },
+              toRecipients: [{ emailAddress: { address: delivery.to } }],
+            },
+            saveToSentItems: true,
+          }),
         });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error?.message || `Microsoft Graph returned ${response.status}`);
+        }
         sentCount += 1;
       } catch (error) {
         failedCount += 1;
-        console.warn('Daily summary Base44 email failed:', delivery.to, (error as any)?.message || error);
+        const message = (error as any)?.message || String(error);
+        failures.push(`${delivery.to}: ${message}`);
+        console.warn('Daily summary management mailbox email failed:', delivery.to, message);
       }
     }));
   }
   return {
     sent: sentCount > 0,
-    sender: 'Base44 managed no-reply',
+    sender: MANAGEMENT_MAILBOX,
     total: deliveries.length,
     sentCount,
     failedCount,
+    error: failures.join(' | '),
   };
 }
 
@@ -457,7 +530,7 @@ Deno.serve(async (req) => {
     let emailResult: any = { sent: false, sentCount: 0, failedCount: 0, total: deliveries.length };
     let emailError = '';
     try {
-      emailResult = await sendPersonalizedBase44Emails(base44, deliveries);
+      emailResult = await sendPersonalizedManagementEmails(base44, deliveries);
     } catch (error) {
       emailError = error?.message || String(error);
       console.error('Daily company Base44 email failed:', emailError);
@@ -481,7 +554,7 @@ Deno.serve(async (req) => {
         email_sent: Boolean(emailResult.sent),
         email_sender: emailResult.sender || '',
         email_error: emailError,
-        email_transport: 'base44_managed',
+        email_transport: 'microsoft_graph_shared_mailbox',
         // Internal record only -- never included in any recipient-facing
         // email or notification.
         company_overall_internal: companyOverall,
@@ -507,7 +580,7 @@ Deno.serve(async (req) => {
       email_sent: Boolean(emailResult.sent),
       email_sender: emailResult.sender || '',
       email_error: emailError,
-      email_transport: 'base44_managed',
+      email_transport: 'microsoft_graph_shared_mailbox',
       in_app_delivered: notificationsCreated > 0,
     }, emailResult.sent ? 200 : 207);
   } catch (error) {
