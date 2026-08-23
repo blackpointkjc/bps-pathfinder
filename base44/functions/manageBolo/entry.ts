@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const actorName = [user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email;
 
-    if (action === 'create' || action === 'save_draft') {
+    if (action === 'create' || (action === 'save_draft' && !body?.id)) {
       const data = cleanPayload(body.data || {});
       const isDraft = action === 'save_draft';
       if (!data.alert_type) return Response.json({ error: 'Alert type is required' }, { status: 400 });
