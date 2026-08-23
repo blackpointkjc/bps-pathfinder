@@ -84,7 +84,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'REFERENCE PENDING';
 
     return (
-        <div className="space-y-3">
+        <div className="flex h-full min-h-0 flex-col gap-3">
             <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#0b1522] p-3">
                 <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
                 <div className="mt-2 text-sm font-black text-white">{call.incident || 'Call for Service'}</div>
@@ -120,7 +120,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
             </div>
 
             {/* Available Units */}
-            <div>
+            <div className="flex min-h-0 flex-1 flex-col">
                 <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Available for Dispatch ({availableUnits.length})</p>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
@@ -132,7 +132,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
                     />
                 </div>
                 
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
                     {units.length === 0 ? (
                         <div className="text-xs text-amber-500 text-center p-2">⚠️ Loading units...</div>
                     ) : availableUnits.length === 0 ? (
