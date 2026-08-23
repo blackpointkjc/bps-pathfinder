@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, AlertCircle, Plus, Gift } from "lucide-react";
 import { format } from "date-fns";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { toast } from 'sonner';
 
@@ -64,7 +64,11 @@ export default function AdminManualPTO() {
       });
       return payload;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      invalidateAppDirectory();
+      await queryClient.invalidateQueries({ queryKey: ['directoryUsers', 'manualPTO'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      queryClient.invalidateQueries({ queryKey: ['timeOffRequests'] });
       queryClient.invalidateQueries({ queryKey: ['hrUsers'] });
       queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
