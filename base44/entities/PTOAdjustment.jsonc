@@ -1,0 +1,80 @@
+{
+  "name": "PTOAdjustment",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string"
+    },
+    "officer_id": {
+      "type": "string"
+    },
+    "hours": {
+      "type": "number"
+    },
+    "adjustment_type": {
+      "type": "string",
+      "enum": [
+        "bonus",
+        "administrative_grant",
+        "manual_correction"
+      ],
+      "default": "bonus"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "granted_by": {
+      "type": "string"
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "year": {
+      "type": "number"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "source_key": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "officer_email",
+    "hours",
+    "adjustment_type",
+    "granted_by",
+    "granted_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.officer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
