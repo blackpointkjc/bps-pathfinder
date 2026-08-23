@@ -20,8 +20,6 @@ import { createPageUrl } from "@/utils";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
-const LOGO_URL = "/black-point-shield.webp";
-
 export default function AdminPayroll() {
   const [reportMode, setReportMode] = useState("payroll"); // "payroll" or "client"
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -360,12 +358,10 @@ export default function AdminPayroll() {
 
   const printPayrollReport = () => {
     const reportData = getPayrollData();
-    const entriesToPrint = timeEntries || [];
     const grandTotalRegular = Object.values(reportData).reduce((sum, d) => sum + d.regularHours, 0);
     const grandTotalOvertime = Object.values(reportData).reduce((sum, d) => sum + d.overtimeHours, 0);
     const grandTotalHoliday = Object.values(reportData).reduce((sum, d) => sum + (d.holidayHours || 0), 0);
     const grandTotalPTO = Object.values(reportData).reduce((sum, d) => sum + (d.ptoHours || 0), 0);
-    const grandTotal = grandTotalRegular + grandTotalOvertime + grandTotalPTO;
     const grandTotalExpenses = Object.values(reportData).reduce((sum, d) => sum + (d.totalExpenses || 0), 0);
     const grandTotalPay = Object.values(reportData).reduce((sum, d) => sum + (d.totalPay || 0), 0);
 
