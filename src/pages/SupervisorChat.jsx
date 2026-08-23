@@ -167,7 +167,7 @@ export default function SupervisorChat() {
   const getUserRecord = (email) => allUsers.find(u => String(u.email).toLowerCase() === String(email || '').toLowerCase());
 
   const getMessageEmail = (msg) => msg.sender_email || msg.created_by || '';
-  const getUserPhoto = (msg) => msg.sender_photo_url || getUserRecord(getMessageEmail(msg))?.profile_photo_url;
+  const getUserPhoto = (msg) => getUserRecord(getMessageEmail(msg))?.profile_photo_url || msg.sender_photo_url || '';
 
   const getSenderName = (msg) => {
     const senderEmail = getMessageEmail(msg);
