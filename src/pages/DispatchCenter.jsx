@@ -652,34 +652,32 @@ export default function DispatchCenter() {
                         )}
                     </div>
 
-                    {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-[300px] md:flex-none xl:w-[330px]`}> 
-                        {/* Unit Assignment */}
-                        <div className={`${mobileView === 'units' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`}>
-                            <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                <span className="text-[10px] font-bold text-blue-400 tracking-widest">UNIT ASSIGNMENT</span>
+                    {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
+                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:w-[320px] md:flex-none xl:w-[360px]`}>
+                        {selectedCall ? (
+                            <div className="flex min-h-0 flex-1 flex-col">
+                                <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">UNIT ASSIGNMENT</span>
+                                    <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">CALL SELECTED</span>
+                                </div>
+                                <div className="min-h-0 flex-1 p-3">
+                                    <UnitAssignmentPanel call={selectedCall} units={units} onUpdate={handleUpdate} />
+                                </div>
                             </div>
-                            <div className="p-2 max-h-48 overflow-y-auto">
-                                <UnitAssignmentPanel
-                                    call={selectedCall}
-                                    units={units}
-                                    onUpdate={handleUpdate}
-                                />
+                        ) : mobileView === 'assignment' ? (
+                            <div className="flex min-h-0 flex-1 flex-col">
+                                <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">UNIT ASSIGNMENT</span>
+                                </div>
+                                <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+                                    <div className="max-w-[260px] rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center text-xs text-slate-400">Select an active call, then return to Assignment to dispatch a unit.</div>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Once a call is selected, this rail becomes assignment-only. Dispatchers
-                            should not have to visually parse the full status board while assigning a call. */}
-                        {!selectedCall && (
-                            <div className={`${mobileView === 'assignment' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col md:flex`}>
+                        ) : (
+                            <div className="flex min-h-0 flex-1 flex-col">
                                 <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
-                            </div>
-                        )}
-                        {selectedCall && mobileView !== 'assignment' && (
-                            <div className="flex min-h-0 flex-1 flex-col border-t border-[#1e2d4a] bg-[#07101c] md:hidden">
-                                <div className="px-3 py-2 text-[9px] font-black tracking-[.14em] text-blue-300">CALL SELECTED · UNIT ASSIGNMENT MODE</div>
-                                <div className="min-h-0 flex-1 overflow-y-auto p-2"><UnitAssignmentPanel call={selectedCall} units={units} onUpdate={handleUpdate} /></div>
                             </div>
                         )}
                     </div>
