@@ -5,9 +5,6 @@ import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } fr
 const TIME_ZONE = 'America/New_York';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
 const MANAGEMENT_MAILBOX = 'management@blackpointkjc.com';
-const MICROSOFT_CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
-const MICROSOFT_TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
-const MICROSOFT_TOKEN_URL = `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
 const MICROSOFT_GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
