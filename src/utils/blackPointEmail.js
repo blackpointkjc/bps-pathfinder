@@ -1,4 +1,4 @@
-const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.svg';
+const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.png';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
 const TEMPLATE_MARKER = 'BLACK_POINT_STANDARD_EMAIL';
 

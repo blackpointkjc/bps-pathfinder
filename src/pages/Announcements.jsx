@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from "@/lib/announcementReadState";
 
-const LOGO_URL = "/black-point-shield.svg";
+const LOGO_URL = "/black-point-shield.png";
 
 export default function Announcements() {
   const queryClient = useQueryClient();

@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
 
-const LOGO_URL = "/black-point-shield.svg";
+const LOGO_URL = "/black-point-shield.png";
 
 const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
 

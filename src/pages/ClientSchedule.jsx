@@ -6,7 +6,7 @@ import { Shield, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
 
-const LOGO_URL = "/black-point-shield.svg";
+const LOGO_URL = "/black-point-shield.png";
 
 export default function ClientSchedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);

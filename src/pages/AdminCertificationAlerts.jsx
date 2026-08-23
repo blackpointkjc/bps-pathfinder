@@ -175,7 +175,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
   };
 
   const handlePrintAlerts = () => {
-    const PRINT_LOGO_URL = "/black-point-shield.svg";
+    const PRINT_LOGO_URL = "/black-point-shield.png";
 
     const printWindow = window.open('', '_blank');
 

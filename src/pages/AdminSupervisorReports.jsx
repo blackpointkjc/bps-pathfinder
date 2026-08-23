@@ -291,7 +291,7 @@ export default function AdminSupervisorReports() {
   const handlePrintOfficerReport = () => {
     if (!officerPerformance) return;
 
-    const LOGO_URL = "/black-point-shield.svg";
+    const LOGO_URL = "/black-point-shield.png";
 
     const printWindow = window.open('', '_blank');
     const { officer, dateRange } = officerPerformance;

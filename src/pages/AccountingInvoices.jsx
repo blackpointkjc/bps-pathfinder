@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
-const INVOICE_LOGO_URL = "/black-point-shield.svg";
+const INVOICE_LOGO_URL = "/black-point-shield.png";
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
 export default function AccountingInvoices() {
