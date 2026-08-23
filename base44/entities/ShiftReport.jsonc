@@ -51,6 +51,14 @@
       "type": "number",
       "description": "Number of doors checked"
     },
+    "starting_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the start of the shift"
+    },
+    "ending_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the end of the shift"
+    },
     "activities": {
       "type": "string",
       "description": "Activities and observations during shift"
