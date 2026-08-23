@@ -40,27 +40,24 @@ Deno.serve(async (req) => {
 
     // Leave requests and balance adjustments are separate ledgers. Only actual
     // approved paid leave counts as PTO used. Bonuses/grants never count as earned accrual.
-    const [allRequests, allAdjustments] = await Promise.all([
-      base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+    const [allUsage, allAdjustments] = await Promise.all([
+      base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
       base44.asServiceRole.entities.PTOAdjustment.list('-granted_at', 5000),
     ]);
-    const ownedCurrentYear = (allRequests || []).filter((r: any) => {
-      const requestOwner = String(r.requested_by_email || '').trim().toLowerCase();
-      const requestDate = new Date(r.start_date || r.created_date || 0);
-      return requestOwner === String(officer_email).trim().toLowerCase() &&
-        r.status === 'approved' &&
-        r.request_type === 'paid' &&
+    const approvedPaidUsage = (allUsage || []).filter((usage: any) => {
+      const requestDate = new Date(usage.usage_date || usage.recorded_at || 0);
+      return String(usage.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() &&
+        usage.status === 'active' &&
         requestDate.getFullYear() === currentYear;
     });
-    const approvedPaidRequests = ownedCurrentYear;
     const bonusHours = (allAdjustments || [])
       .filter((entry: any) => String(entry.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() && entry.active !== false)
       .reduce((sum: number, entry: any) => sum + Number(entry.hours || 0), 0);
 
     // Build list of date ranges where officer was actually on paid leave.
-    const ptoDateRanges = approvedPaidRequests.map(req => ({
-      start: new Date(req.start_date),
-      end: new Date(req.end_date)
+    const ptoDateRanges = approvedPaidUsage.map(usage => ({
+      start: new Date(`${usage.usage_date}T00:00:00`),
+      end: new Date(`${usage.usage_date}T23:59:59`)
     }));
 
     // Get completed time entries from this calendar year only.
@@ -102,7 +99,7 @@ Deno.serve(async (req) => {
     const totalPtoAccrued = Math.min(annualEntitlement, ptoAccruedFromWork);
 
     // Calculate used PTO
-    const ptoUsed = approvedPaidRequests.reduce((sum, req) => sum + (req.hours_requested || 0), 0);
+    const ptoUsed = approvedPaidUsage.reduce((sum, usage) => sum + Number(usage.hours || 0), 0);
 
     // Earned PTO is capped by rank entitlement; approved HR bonus/grant hours sit
     // on top of that entitlement and persist through future recalculations.
