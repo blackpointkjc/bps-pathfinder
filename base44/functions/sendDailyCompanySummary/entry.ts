@@ -528,11 +528,16 @@ Deno.serve(async (req) => {
 
     let emailResult: any = { sent: false, sentCount: 0, failedCount: 0, total: deliveries.length };
     let emailError = '';
+    let requiresMicrosoftReconnect = false;
     try {
       emailResult = await sendPersonalizedGraphEmails(base44, credentials, deliveries);
     } catch (error) {
-      emailError = error?.message || String(error);
-      console.error('Daily company email failed:', emailError);
+      const rawEmailError = error?.message || String(error);
+      requiresMicrosoftReconnect = /AADSTS700084|fixed, limited lifetime|new sign in request|authorization expired|refresh token.*expired/i.test(rawEmailError);
+      emailError = requiresMicrosoftReconnect
+        ? 'Microsoft 365 sign-in expired. Reconnect the Black Point Microsoft account, then send the company email again.'
+        : rawEmailError;
+      console.error('Daily company email failed:', rawEmailError);
     }
 
     const status = emailResult.sent && !emailResult.failedCount ? 'completed' : 'partial';
@@ -553,6 +558,7 @@ Deno.serve(async (req) => {
         email_sent: Boolean(emailResult.sent),
         email_sender: emailResult.sender || '',
         email_error: emailError,
+        requires_microsoft_reconnect: requiresMicrosoftReconnect,
         // Internal record only -- never included in any recipient-facing
         // email or notification.
         company_overall_internal: companyOverall,
@@ -579,6 +585,8 @@ Deno.serve(async (req) => {
       email_sent: Boolean(emailResult.sent),
       email_sender: emailResult.sender || '',
       email_error: emailError,
+      requires_microsoft_reconnect: requiresMicrosoftReconnect,
+      in_app_delivered: notificationsCreated > 0,
       integration_credits_used: 0,
     }, emailResult.sent ? 200 : 207);
   } catch (error) {
