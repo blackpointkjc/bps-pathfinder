@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, AlertCircle, Plus } from "lucide-react";
+import { Calendar, AlertCircle, Plus, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { toast } from 'sonner';
 
 export default function AdminManualPTO() {
   const [showDialog, setShowDialog] = useState(false);
+  const [entryMode, setEntryMode] = useState('leave');
   const [formData, setFormData] = useState({
     officer_email: "",
     start_date: "",
@@ -44,7 +46,11 @@ export default function AdminManualPTO() {
 
   const activeUsers = directoryUsers.filter(hasOfficerAdditionalRole);
 
-  const { data: schedules } = useQuery({
+  const addPTOMutation = useMutation({
+    mutationFn: async (data) => {
+      const officer = activeUsers.find(u => u.email === data.officer_email);
+      if (!officer) throw new Error('Officer not found');
+      const response = await base44.functions.invoke('getPTORequests', { action: data.entry_mode === 'bonus' ? 'bonus' : 'manual', ...data });
     queryKey: ['schedules'],
     queryFn: () => base44.entities.Schedule.list(),
     initialData: [],
@@ -58,20 +64,13 @@ export default function AdminManualPTO() {
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
 
-      // Send notification email
       await base44.integrations.Core.SendEmail({
         from_name: "Black Point Protection HR",
         to: data.officer_email,
-        subject: `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
-        body: `
-          <p>Hello ${officer?.first_name || 'Officer'},</p>
-          <p>${data.pto_type === 'pto' ? 'PTO time' : 'Sick time'} has been added to your account from an outside source.</p>
-          <p><strong>Type:</strong> ${data.pto_type === 'pto' ? 'Paid Time Off' : 'Sick Time'}<br>
-          <strong>Hours Added:</strong> ${data.hours}h<br>
-          <strong>Dates:</strong> ${format(new Date(data.start_date), 'MMM d, yyyy')} - ${format(new Date(data.end_date), 'MMM d, yyyy')}
-          ${data.reason ? `<br><strong>Reason:</strong> ${data.reason}` : ''}</p>
-          <p>You can view your updated balance in the Black Point Portal.</p>
-        `
+        subject: data.entry_mode === 'bonus' ? 'PTO Bonus Added to Your Account' : `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
+        body: data.entry_mode === 'bonus'
+          ? `<p>Hello ${officer?.first_name || 'Officer'},</p><p>HR added <strong>${data.hours} hours</strong> of bonus PTO to your available balance.${data.reason ? ` Reason: ${data.reason}` : ''}</p><p>Your updated balance is available in Pathfinder.</p>`
+          : `<p>Hello ${officer?.first_name || 'Officer'},</p><p>${data.pto_type === 'pto' ? 'PTO time' : 'Sick time'} has been added to your account.</p><p><strong>Hours Added:</strong> ${data.hours}h<br><strong>Dates:</strong> ${format(new Date(data.start_date), 'MMM d, yyyy')} - ${format(new Date(data.end_date), 'MMM d, yyyy')}${data.reason ? `<br><strong>Reason:</strong> ${data.reason}` : ''}</p>`
       });
       return payload;
     },
@@ -89,23 +88,23 @@ export default function AdminManualPTO() {
         reason: "",
         remove_shifts: true
       });
-      alert('✅ PTO added successfully and shifts have been reassigned to open bids!');
+      toast.success(entryMode === 'bonus' ? 'Bonus PTO added to officer balance' : 'PTO entry added successfully');
     },
     onError: (error) => {
-      alert('❌ Error adding PTO: ' + error.message);
+      toast.error(`Unable to add PTO: ${error.message}`);
     }
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.officer_email || !formData.start_date || !formData.end_date || !formData.hours) {
-      alert('Please fill in all required fields');
+    if (!formData.officer_email || !formData.hours || (entryMode !== 'bonus' && (!formData.start_date || !formData.end_date))) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await addPTOMutation.mutateAsync(formData);
+      await addPTOMutation.mutateAsync({ ...formData, entry_mode: entryMode });
     } finally {
       setIsSubmitting(false);
     }
@@ -136,36 +135,20 @@ export default function AdminManualPTO() {
               <p className="text-slate-600">Add PTO or sick time from outside sources for officers</p>
             </div>
           </div>
-          <Button
-            onClick={() => setShowDialog(true)}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add PTO/Sick Time
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => { setEntryMode('bonus'); setShowDialog(true); }} className="bg-violet-600 hover:bg-violet-500">
+              <Gift className="mr-2 h-4 w-4" />Add PTO Bonus
+            </Button>
+            <Button onClick={() => { setEntryMode('leave'); setShowDialog(true); }} className="bg-blue-600 hover:bg-blue-500">
+              <Plus className="mr-2 h-4 w-4" />Add PTO/Sick Time
+            </Button>
+          </div>
         </div>
-
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">How it works:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Enter officer details and the PTO/sick time being added</li>
-                  <li>Officer will be prompted to choose if they want to use this time immediately</li>
-                  <li>If they accept, all shifts during the period will be removed and placed in open bid</li>
-                  <li>Admins cannot schedule this officer during approved PTO periods</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add PTO or Sick Time</DialogTitle>
+              <DialogTitle>{entryMode === 'bonus' ? 'Add PTO Bonus' : 'Add PTO or Sick Time'}</DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -214,7 +197,7 @@ export default function AdminManualPTO() {
                 </Card>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              {entryMode !== 'bonus' && <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="pto_type">Type *</Label>
                   <Select
@@ -245,9 +228,9 @@ export default function AdminManualPTO() {
                     required
                   />
                 </div>
-              </div>
+              </div>}
 
-              <div className="grid grid-cols-2 gap-4">
+              {entryMode !== 'bonus' && <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start_date">Start Date *</Label>
                   <Input
@@ -269,7 +252,14 @@ export default function AdminManualPTO() {
                     required
                   />
                 </div>
-              </div>
+              </div>}
+
+              {entryMode === 'bonus' && (
+                <div>
+                  <Label htmlFor="bonus_hours">Bonus Hours *</Label>
+                  <Input id="bonus_hours" type="number" min="0.5" step="0.5" value={formData.hours} onChange={(e) => setFormData({...formData, hours: e.target.value})} placeholder="e.g., 8" required />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="reason">Reason (Optional)</Label>
@@ -281,7 +271,7 @@ export default function AdminManualPTO() {
                 />
               </div>
 
-              <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+              {entryMode !== 'bonus' && <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                 <Label className="flex items-center gap-2 cursor-pointer font-semibold text-amber-900">
                   <input
                     type="checkbox"
@@ -294,7 +284,7 @@ export default function AdminManualPTO() {
                 <p className="text-sm text-amber-800 mt-2">
                   If checked, all shifts scheduled during this period will be removed from the officer and placed as open shifts for other officers to bid on.
                 </p>
-              </div>
+              </div>}
 
               <div className="flex gap-3 justify-end pt-4">
                 <Button
@@ -309,7 +299,7 @@ export default function AdminManualPTO() {
                   disabled={isSubmitting || addPTOMutation.isPending}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting || addPTOMutation.isPending ? 'Processing...' : 'Add PTO/Sick Time'}
+                  {isSubmitting || addPTOMutation.isPending ? 'Processing...' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO/Sick Time'}
                 </Button>
               </div>
             </form>
