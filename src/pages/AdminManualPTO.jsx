@@ -7,26 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, AlertCircle, Plus, Gift } from "lucide-react";
-import { format } from "date-fns";
+import { AlertCircle, Gift, Plus, WalletCards } from "lucide-react";
 import { invalidateAppDirectory, listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { toast } from 'sonner';
 
 export default function AdminManualPTO() {
   const [showDialog, setShowDialog] = useState(false);
-  const [entryMode, setEntryMode] = useState('leave');
-  const [formData, setFormData] = useState({
-    officer_email: "",
-    start_date: "",
-    end_date: "",
-    pto_type: "pto", // pto or sick
-    hours: "",
-    reason: "",
-    remove_shifts: true
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [entryMode, setEntryMode] = useState('bonus');
+  const [formData, setFormData] = useState({ officer_email: '', hours: '', reason: '' });
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -34,10 +23,12 @@ export default function AdminManualPTO() {
     queryFn: () => base44.auth.me(),
   });
 
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
+
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'manualPTO'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources',
+    enabled: hasHRAccess,
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
@@ -45,257 +36,92 @@ export default function AdminManualPTO() {
   });
 
   const activeUsers = directoryUsers.filter(hasOfficerAdditionalRole);
+  const officer = activeUsers.find(u => String(u.email || '').toLowerCase() === String(formData.officer_email || '').toLowerCase());
 
   const addPTOMutation = useMutation({
-    mutationFn: async (data) => {
-      const officer = activeUsers.find(u => u.email === data.officer_email);
-      if (!officer) throw new Error('Officer not found');
-      const response = await base44.functions.invoke('getPTORequests', { action: data.entry_mode === 'bonus' ? 'bonus' : 'manual', ...data });
+    mutationFn: async () => {
+      const hours = Number(formData.hours || 0);
+      if (!officer?.email) throw new Error('Select an officer');
+      if (!Number.isFinite(hours) || hours <= 0) throw new Error('Enter positive PTO hours');
+      const response = await base44.functions.invoke('getPTORequests', {
+        action: entryMode === 'bonus' ? 'bonus' : 'manual',
+        officer_email: officer.email,
+        hours,
+        reason: formData.reason.trim(),
+      });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-
-      await base44.integrations.Core.SendEmail({
-        from_name: "Black Point Protection HR",
-        to: data.officer_email,
-        subject: data.entry_mode === 'bonus' ? 'PTO Bonus Added to Your Account' : `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
-        body: data.entry_mode === 'bonus'
-          ? `<p>Hello ${officer?.first_name || 'Officer'},</p><p>HR added <strong>${data.hours} hours</strong> of bonus PTO to your available balance.${data.reason ? ` Reason: ${data.reason}` : ''}</p><p>Your updated balance is available in Pathfinder.</p>`
-          : `<p>Hello ${officer?.first_name || 'Officer'},</p><p>${data.pto_type === 'pto' ? 'PTO time' : 'Sick time'} has been added to your account.</p><p><strong>Hours Added:</strong> ${data.hours}h<br><strong>Dates:</strong> ${format(new Date(data.start_date), 'MMM d, yyyy')} - ${format(new Date(data.end_date), 'MMM d, yyyy')}${data.reason ? `<br><strong>Reason:</strong> ${data.reason}` : ''}</p>`
-      });
       return payload;
     },
-    onSuccess: async () => {
+    onSuccess: async (payload) => {
       invalidateAppDirectory();
-      await queryClient.invalidateQueries({ queryKey: ['directoryUsers', 'manualPTO'] });
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      queryClient.invalidateQueries({ queryKey: ['timeOffRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['hrUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['directoryUsers', 'manualPTO'] }),
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
+        queryClient.invalidateQueries({ queryKey: ['ptoAdjustments'] }),
+        queryClient.invalidateQueries({ queryKey: ['hrUsers'] }),
+      ]);
+      window.dispatchEvent(new CustomEvent('bps-directory-user-updated', { detail: { reason: 'pto-adjustment' } }));
+      toast.success(`${Number(payload.hours_added || formData.hours).toFixed(1)} PTO hours added to ${officer?.rank || 'Officer'} ${officer?.last_name || ''}`.trim());
       setShowDialog(false);
-      setFormData({
-        officer_email: "",
-        start_date: "",
-        end_date: "",
-        pto_type: "pto",
-        hours: "",
-        reason: "",
-        remove_shifts: true
-      });
-      toast.success(entryMode === 'bonus' ? 'Bonus PTO added to officer balance' : 'PTO entry added successfully');
+      setFormData({ officer_email: '', hours: '', reason: '' });
     },
-    onError: (error) => {
-      toast.error(`Unable to add PTO: ${error.message}`);
-    }
+    onError: error => toast.error(error?.message || 'Unable to add PTO hours'),
   });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.officer_email || !formData.hours || (entryMode !== 'bonus' && (!formData.start_date || !formData.end_date))) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await addPTOMutation.mutateAsync({ ...formData, entry_mode: entryMode });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const officer = activeUsers.find(u => u.email === formData.officer_email);
-
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('hr') && !user?.additional_roles?.includes('full_access') && String(user?.rank || '').toLowerCase() !== 'human resources') {
-    return (
-      <div className="p-8 text-center">
-        <AlertCircle className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-600">Only HR administrators can access this page.</p>
-      </div>
-    );
+  if (!hasHRAccess) {
+    return <div className="p-8 text-center"><AlertCircle className="mx-auto mb-4 h-14 w-14 text-slate-500"/><h2 className="text-2xl font-black">HR Access Required</h2></div>;
   }
 
+  const openAdjustment = mode => {
+    setEntryMode(mode);
+    setFormData({ officer_email: '', hours: '', reason: '' });
+    setShowDialog(true);
+  };
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#07101a] p-4 text-slate-100 md:p-6">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-[#0d1725] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Manual PTO/Sick Time Entry</h1>
-              <p className="text-slate-600">Add PTO or sick time from outside sources for officers</p>
-            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><WalletCards className="h-5 w-5 text-blue-300"/></div>
+            <div><div className="text-[10px] font-black uppercase tracking-[.18em] text-blue-300">Human Resources</div><h1 className="text-2xl font-black text-white">PTO Adjustments</h1></div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => { setEntryMode('bonus'); setShowDialog(true); }} className="bg-violet-600 hover:bg-violet-500">
-              <Gift className="mr-2 h-4 w-4" />Add PTO Bonus
-            </Button>
-            <Button onClick={() => { setEntryMode('leave'); setShowDialog(true); }} className="bg-blue-600 hover:bg-blue-500">
-              <Plus className="mr-2 h-4 w-4" />Add PTO/Sick Time
-            </Button>
+            <Button onClick={() => openAdjustment('bonus')} className="bg-violet-600 hover:bg-violet-500"><Gift className="mr-2 h-4 w-4"/>Add PTO Bonus</Button>
+            <Button onClick={() => openAdjustment('manual')} className="bg-blue-600 hover:bg-blue-500"><Plus className="mr-2 h-4 w-4"/>Add PTO Hours</Button>
           </div>
         </div>
 
-        <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{entryMode === 'bonus' ? 'Add PTO Bonus' : 'Add PTO or Sick Time'}</DialogTitle>
-            </DialogHeader>
+        <Card className="border-slate-800 bg-[#0d1725] text-slate-100">
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Officers</div><div className="mt-2 text-3xl font-black text-white">{activeUsers.length}</div></div>
+            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Colonel / Lt Colonel</div><div className="mt-2 text-3xl font-black text-violet-300">180h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
+            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Other Ranks</div><div className="mt-2 text-3xl font-black text-blue-300">40h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
+          </CardContent>
+        </Card>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="officer_email">Select Officer *</Label>
-                <Select
-                  value={formData.officer_email}
-                  onValueChange={(value) => setFormData({...formData, officer_email: value})}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an officer..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeUsers.map((u) => (
-                      <SelectItem key={u.email} value={u.email}>
-                        {u.first_name} {u.last_name} - {u.rank || 'Officer'} ({u.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent className="max-w-xl border-slate-700 bg-[#0d1725] text-slate-100">
+            <DialogHeader><DialogTitle>{entryMode === 'bonus' ? 'Add PTO Bonus' : 'Add PTO Hours'}</DialogTitle></DialogHeader>
+            <form onSubmit={e => { e.preventDefault(); addPTOMutation.mutate(); }} className="space-y-5">
+              <div className="space-y-2">
+                <Label>Select Officer *</Label>
+                <Select value={formData.officer_email} onValueChange={value => setFormData(current => ({ ...current, officer_email: value }))}>
+                  <SelectTrigger className="border-slate-700 bg-[#08111d]"><SelectValue placeholder="Select an officer..."/></SelectTrigger>
+                  <SelectContent>{activeUsers.map(u => <SelectItem key={u.email} value={u.email}>{u.rank || 'Officer'} {u.last_name || ''} · {u.first_name || ''} {u.last_name || ''}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
 
-              {officer && (
-                <Card className="bg-slate-50">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-600">Current PTO Balance</p>
-                        <p className="text-lg font-bold text-green-600">{(officer.pto_balance_hours || 0).toFixed(1)}h</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-600">PTO Used YTD</p>
-                        <p className="text-lg font-bold text-slate-900">{(officer.pto_year_to_date_used || 0).toFixed(1)}h</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-600">Current Sick Time Balance</p>
-                        <p className="text-lg font-bold text-blue-600">{(officer.sick_time_balance_hours || 0).toFixed(1)}h</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-600">Sick Time Used YTD</p>
-                        <p className="text-lg font-bold text-slate-900">{(officer.sick_time_year_to_date_used || 0).toFixed(1)}h</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {entryMode !== 'bonus' && <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pto_type">Type *</Label>
-                  <Select
-                    value={formData.pto_type}
-                    onValueChange={(value) => setFormData({...formData, pto_type: value})}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pto">PTO (Paid Time Off)</SelectItem>
-                      <SelectItem value="sick">Sick Time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="hours">Hours *</Label>
-                  <Input
-                    id="hours"
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={formData.hours}
-                    onChange={(e) => setFormData({...formData, hours: e.target.value})}
-                    placeholder="e.g., 8"
-                    required
-                  />
-                </div>
+              {officer && <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-700 bg-[#101b29] p-3"><div className="text-[10px] font-black uppercase text-slate-500">Available PTO</div><div className="mt-1 text-2xl font-black text-emerald-300">{Number(officer.pto_balance_hours || 0).toFixed(1)}h</div></div>
+                <div className="rounded-xl border border-slate-700 bg-[#101b29] p-3"><div className="text-[10px] font-black uppercase text-slate-500">Earned YTD</div><div className="mt-1 text-2xl font-black text-blue-300">{Number(officer.pto_year_to_date_accrued || 0).toFixed(1)}h</div></div>
+                <div className="rounded-xl border border-slate-700 bg-[#101b29] p-3"><div className="text-[10px] font-black uppercase text-slate-500">Used YTD</div><div className="mt-1 text-2xl font-black text-amber-300">{Number(officer.pto_year_to_date_used || 0).toFixed(1)}h</div></div>
               </div>}
 
-              {entryMode !== 'bonus' && <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start_date">Start Date *</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="end_date">End Date *</Label>
-                  <Input
-                    id="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>}
-
-              {entryMode === 'bonus' && (
-                <div>
-                  <Label htmlFor="bonus_hours">Bonus Hours *</Label>
-                  <Input id="bonus_hours" type="number" min="0.5" step="0.5" value={formData.hours} onChange={(e) => setFormData({...formData, hours: e.target.value})} placeholder="e.g., 8" required />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="reason">Reason (Optional)</Label>
-                <Input
-                  id="reason"
-                  value={formData.reason}
-                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
-                  placeholder="e.g., Court ordered, Education, etc."
-                />
-              </div>
-
-              {entryMode !== 'bonus' && <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                <Label className="flex items-center gap-2 cursor-pointer font-semibold text-amber-900">
-                  <input
-                    type="checkbox"
-                    checked={formData.remove_shifts}
-                    onChange={(e) => setFormData({...formData, remove_shifts: e.target.checked})}
-                    className="w-4 h-4 rounded"
-                  />
-                  Remove Scheduled Shifts & Place in Open Bid
-                </Label>
-                <p className="text-sm text-amber-800 mt-2">
-                  If checked, all shifts scheduled during this period will be removed from the officer and placed as open shifts for other officers to bid on.
-                </p>
-              </div>}
-
-              <div className="flex gap-3 justify-end pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || addPTOMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSubmitting || addPTOMutation.isPending ? 'Processing...' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO/Sick Time'}
-                </Button>
-              </div>
+              <div className="space-y-2"><Label>{entryMode === 'bonus' ? 'Bonus Hours' : 'PTO Hours'} *</Label><Input type="number" min="0.5" step="0.5" value={formData.hours} onChange={e => setFormData(current => ({ ...current, hours: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder="8" required/></div>
+              <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : 'Balance correction or approved adjustment'}/></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
             </form>
           </DialogContent>
         </Dialog>
