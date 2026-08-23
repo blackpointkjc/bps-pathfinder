@@ -96,26 +96,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    // The Unit Status Board is status-driven, NOT time-entry-driven. An officer
-    // appears on the board when they have actively set a duty status; signing out
-    // clears that status (logout sets it to "Out of Service"), which drops them
-    // from the available roster. Open time entries no longer gate board visibility.
+    // Canonical Unit Status Board feed: a field officer may only appear Available,
+    // Enroute, On Scene, Busy, or Distress while a fresh signed-in ActiveOfficer
+    // session exists. A stale User/Unit status can never keep someone Available
+    // after logout or loss of heartbeat. Signed-out officers resolve to OOS.
+    const operational = (user:any) => {
+      const roles = roleSet(user);
+      const rank = lower(user?.rank);
+      if (!user?.email || user?.termination_date) return false;
+      if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+      return roles.has('officer') || roles.has('cad_access') || ['officer','corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(rank);
+    };
     const onDutyUsers = (users || [])
-      .filter((u: any) => u?.email && u?.status)
+      .filter(operational)
       .map((user: any) => {
-        const unit = newestActiveByEmail.get(String(user.email).toLowerCase());
+        const active = newestActiveByEmail.get(String(user.email).toLowerCase());
+        const activeTs = new Date(active?.last_update || active?.updated_date || active?.created_date || 0).getTime();
+        const signedInFresh = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= freshCutoff);
+        const resolvedStatus = signedInFresh ? (active.status || user.status || 'Available') : 'Out of Service';
         return {
           id: user.id,
+          user_id: user.id,
           email: user.email,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
           full_name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
           rank: user.rank || '',
-          unit_number: user.unit_number || unit?.unit_number || '',
-          status: unit?.status || user.status || '',
+          unit_number: active?.unit_number || user.unit_number || '',
+          status: resolvedStatus,
           additional_roles: user.additional_roles || [],
-          current_call_info: unit?.current_call_info || user.current_call_info || '',
-          last_updated: unit?.last_update || user.last_updated || user.updated_date || '',
+          current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
+          last_updated: active?.last_update || user.last_updated || user.updated_date || '',
+          session_active: signedInFresh,
         };
       });
 
