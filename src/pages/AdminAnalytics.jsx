@@ -128,7 +128,11 @@ export default function AdminAnalytics() {
     }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
     const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
-    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, byOfficer };
+    const leaderboard = byOfficer.filter(item => {
+      const officer = filteredUsers.find(user => emailKey(user.email) === emailKey(item.email));
+      return officer && isPunctualityLeaderboardOfficer(officer);
+    }).slice(0, 3);
+    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, byOfficer, leaderboard };
   }, [timeEntries, schedules, incidentReports, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
