@@ -111,7 +111,10 @@ export default function AdminAnalytics() {
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
   const companyOnTimeStats = useMemo(() => {
-    const byOfficer = filteredUsers.filter(isPunctualityLeaderboardOfficer).map(officer => {
+    // Company-wide On-Time Rate must include every operational officer in the
+    // selected company/division. The separate leaderboard can exclude supervisors,
+    // but that exclusion must never zero-out the company KPI.
+    const byOfficer = filteredUsers.map(officer => {
       const key = emailKey(officer.email);
       const stats = calculatePunctuality(
         timeEntries.filter(entry => emailKey(entry.officer_email) === key),
@@ -125,7 +128,7 @@ export default function AdminAnalytics() {
     }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
     const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
-    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : 0, byOfficer };
+    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, byOfficer };
   }, [timeEntries, schedules, incidentReports, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
