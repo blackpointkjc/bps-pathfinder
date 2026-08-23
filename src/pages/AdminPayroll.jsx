@@ -590,7 +590,8 @@ export default function AdminPayroll() {
   const reportData = getPayrollData();
   const grandTotalRegular = Object.values(reportData).reduce((sum, d) => sum + d.regularHours, 0);
   const grandTotalOvertime = Object.values(reportData).reduce((sum, d) => sum + d.overtimeHours, 0);
-  const grandTotal = grandTotalRegular + grandTotalOvertime;
+  const grandTotalPTO = Object.values(reportData).reduce((sum, d) => sum + (d.ptoHours || 0), 0);
+  const grandTotal = grandTotalRegular + grandTotalOvertime + grandTotalPTO;
   const grandTotalExpenses = Object.values(reportData).reduce((sum, d) => sum + (d.totalExpenses || 0), 0);
   const grandTotalPay = Object.values(reportData).reduce((sum, d) => sum + (d.totalPay || 0), 0);
 
@@ -827,7 +828,7 @@ export default function AdminPayroll() {
             </div>
 
             <div className="mb-6 bg-blue-50 p-4 rounded-lg">
-              <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-4 text-center md:grid-cols-5">
                 <div>
                   <p className="text-sm text-blue-700 font-medium">Total Regular Hours</p>
                   <p className="text-2xl font-bold text-blue-900">{grandTotalRegular.toFixed(2)}</p>
@@ -836,6 +837,11 @@ export default function AdminPayroll() {
                   <p className="text-sm text-amber-700 font-medium">Total Overtime Hours</p>
                   <p className="text-2xl font-bold text-amber-900">{grandTotalOvertime.toFixed(2)}</p>
                   <p className="text-xs text-amber-600">Over 40h per week</p>
+                </div>
+                <div>
+                  <p className="text-sm text-violet-700 font-medium">Total PTO Hours</p>
+                  <p className="text-2xl font-bold text-violet-900">{grandTotalPTO.toFixed(2)}</p>
+                  <p className="text-xs text-violet-600">Straight time only</p>
                 </div>
                 <div>
                   <p className="text-sm text-purple-700 font-medium">Total Expenses</p>
@@ -901,6 +907,12 @@ export default function AdminPayroll() {
                                 <span className="font-semibold text-green-700">{data.holidayHours.toFixed(2)}h = ${(data.holidayPay || 0).toFixed(2)}</span>
                               </div>
                             )}
+                            {data.ptoHours > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span className="text-violet-600">PTO (straight time):</span>
+                                <span className="font-semibold text-violet-700">{data.ptoHours.toFixed(2)}h = ${(data.ptoPay || 0).toFixed(2)}</span>
+                              </div>
+                            )}
                             {data.totalExpenses > 0 && (
                               <div className="flex justify-between gap-4">
                                 <span className="text-purple-600">Expenses:</span>
@@ -913,6 +925,12 @@ export default function AdminPayroll() {
                     </div>
 
                     <div className="p-4 border border-slate-200 rounded-lg">
+                      {data.ptoHours > 0 && (
+                        <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50 p-3">
+                          <h4 className="font-semibold text-violet-800">PTO Pay — {data.ptoHours.toFixed(2)} hours @ ${(data.hourlyRate || 0).toFixed(2)}/hr = ${(data.ptoPay || 0).toFixed(2)}</h4>
+                          <p className="mt-1 text-xs text-violet-700">PTO is paid at the base rate and is excluded from the 40-hour worked-time overtime calculation.</p>
+                        </div>
+                      )}
                       {data.holidayDetails && data.holidayDetails.length > 0 && (
                         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                           <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-2">
