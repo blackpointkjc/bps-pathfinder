@@ -50,7 +50,6 @@ export default function AccountingProfit() {
   const expenseReports = accountingData.expenseReports || [];
   const companyExpenses = accountingData.companyExpenses || [];
   const allUsers = accountingData.users || [];
-  const timeOffRequests = accountingData.timeOffRequests || [];
   const ptoUsage = accountingData.ptoUsage || [];
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
