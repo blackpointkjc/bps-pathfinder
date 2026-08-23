@@ -152,41 +152,30 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'manual') {
-      const { officer_email, start_date, end_date, hours, reason = '', remove_shifts = true } = body;
-      if (!officer_email || !start_date || !end_date || !hours) {
-        return Response.json({ error: 'Officer, dates, and hours are required' }, { status: 400 });
+      const { officer_email, hours, reason = '' } = body;
+      if (!officer_email || !hours || Number(hours) <= 0) {
+        return Response.json({ error: 'Officer and positive PTO hours are required' }, { status: 400 });
       }
       const users = await base44.asServiceRole.entities.User.list();
       const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officer_email).toLowerCase());
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
       const amount = Number(hours);
-      await base44.asServiceRole.entities.User.update(officer.id, {
-        pto_balance_hours: Number(officer.pto_balance_hours || 0) + amount,
+      const now = new Date();
+      const record = await base44.asServiceRole.entities.PTOAdjustment.create({
+        officer_email: String(officer.email || officer_email).toLowerCase(),
+        officer_id: String(officer.id),
+        hours: amount,
+        adjustment_type: 'manual_correction',
+        reason: reason || 'PTO balance adjustment by HR',
+        granted_by: user.email,
+        granted_at: now.toISOString(),
+        year: now.getFullYear(),
+        active: true,
+        source_key: `manual:${officer.id}:${crypto.randomUUID()}`,
       });
-
-      if (remove_shifts) {
-        const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
-        const affected = (schedules || []).filter((shift: any) => shift.officer_email === officer_email && shift.shift_date >= start_date && shift.shift_date <= end_date && !shift.is_open);
-        for (const shift of affected) {
-          await base44.asServiceRole.entities.Schedule.update(shift.id, { officer_email: 'OPEN', is_open: true });
-        }
-      }
-
-      const record = await base44.asServiceRole.entities.TimeOffRequest.create({
-        start_date,
-        end_date,
-        reason: reason || 'Manual PTO entry by HR',
-        request_type: 'paid',
-        hours_requested: amount,
-        pto_balance_at_request: Number(officer.pto_balance_hours || 0),
-        status: 'approved',
-        requested_by_email: officer_email,
-        requested_by_name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer_email,
-        reviewed_by: user.email,
-        reviewed_date: new Date().toISOString(),
-        admin_notes: 'Manual PTO entry',
-      });
-      return Response.json({ success: true, request: record });
+      const newBalance = Number(officer.pto_balance_hours || 0) + amount;
+      await base44.asServiceRole.entities.User.update(officer.id, { pto_balance_hours: newBalance });
+      return Response.json({ success: true, adjustment: record, hours_added: amount, balance: newBalance });
     }
 
     return Response.json({ error: 'Unsupported PTO action' }, { status: 400 });
