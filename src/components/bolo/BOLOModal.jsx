@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/lib/boloConfig';
-import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon, FileWarning } from 'lucide-react';
+import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon, FileWarning, Printer, Mail } from 'lucide-react';
 
 const titleCase = (value = '') => String(value).toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
 const upper = (value = '') => String(value).toUpperCase();
@@ -193,6 +193,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
   const [formData, setFormData] = useState(initial || {});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [emailing, setEmailing] = useState(false);
   const isEditing = mode === 'create' || mode === 'edit';
   const isServerDraft = formData?.status === 'draft' || bolo?.status === 'draft';
 
@@ -249,6 +250,13 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
 
   const handleSave = () => saveToServer(isServerDraft ? 'release' : (formData.id ? 'edit' : 'create'));
   const handleSaveDraft = () => saveToServer('save_draft');
+  const printBolo = () => window.print();
+  const emailBolo = async () => {
+    setSaveError(''); setEmailing(true);
+    try { const response = await base44.functions.invoke('sendBoloEmail', { bolo }); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); setSaveError(`BOLO HTML emailed to ${payload.sent} active users from ${payload.sender}.`); }
+    catch(error){ setSaveError(error?.message||'Unable to email BOLO.'); }
+    finally { setEmailing(false); }
+  };
 
-  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'NEW BOLO' : mode === 'edit' && isServerDraft ? 'CONTINUE BOLO DRAFT' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 border-t border-slate-800 pt-3">{saveError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/40 px-3 py-2 text-xs font-bold text-red-200">{saveError}</div>}<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="text-[10px] font-mono text-emerald-400">CHANGES AUTO-SAVE LOCALLY · USE SAVE DRAFT TO KEEP IT IN PATHFINDER FOR LATER RELEASE</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CLOSE</button><button onClick={handleSaveDraft} disabled={saving} className="w-full rounded border border-amber-500 bg-amber-950/50 px-5 py-2 text-sm font-mono font-bold text-amber-200 hover:bg-amber-900/60 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : 'SAVE DRAFT'}</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : isServerDraft ? 'RELEASE BOLO' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div></div></div>}</DialogContent></Dialog>;
+  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'NEW BOLO' : mode === 'edit' && isServerDraft ? 'CONTINUE BOLO DRAFT' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{!isEditing && <div className="flex flex-wrap justify-end gap-2 border-t border-slate-800 pt-3 print:hidden"><button onClick={printBolo} className="rounded border border-slate-600 px-4 py-2 text-xs font-bold text-white"><Printer className="mr-2 inline h-4 w-4"/>PRINT HTML BOLO</button><button onClick={emailBolo} disabled={emailing} className="rounded border border-red-600 bg-red-950/40 px-4 py-2 text-xs font-bold text-red-200 disabled:opacity-50"><Mail className="mr-2 inline h-4 w-4"/>{emailing?'SENDING...':'EMAIL HTML TO ALL USERS'}</button>{saveError&&<div className="w-full text-right text-xs text-amber-300">{saveError}</div>}</div>}{isEditing && <div className="mt-2 border-t border-slate-800 pt-3">{saveError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/40 px-3 py-2 text-xs font-bold text-red-200">{saveError}</div>}<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="text-[10px] font-mono text-emerald-400">CHANGES AUTO-SAVE LOCALLY · USE SAVE DRAFT TO KEEP IT IN PATHFINDER FOR LATER RELEASE</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CLOSE</button><button onClick={handleSaveDraft} disabled={saving} className="w-full rounded border border-amber-500 bg-amber-950/50 px-5 py-2 text-sm font-mono font-bold text-amber-200 hover:bg-amber-900/60 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : 'SAVE DRAFT'}</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : isServerDraft ? 'RELEASE BOLO' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div></div></div>}</DialogContent></Dialog>;
 }
