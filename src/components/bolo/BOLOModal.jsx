@@ -38,68 +38,9 @@ const legacyVehicle = (bolo) => bolo?.vehicle_plate || bolo?.vehicle_make ? [{
 }] : [];
 
 function DetailView({ bolo }) {
-  const cfg = TYPE_CONFIG[bolo.alert_type] || TYPE_CONFIG.watch_notice;
-  const Icon = cfg.icon;
-  const parties = bolo.parties?.length ? bolo.parties : legacyParty(bolo);
-  const vehicles = bolo.vehicles?.length ? bolo.vehicles : legacyVehicle(bolo);
-  const photos = bolo.photo_urls || [];
-  return (
-    <div className="space-y-4 font-mono">
-      <div className="rounded border border-slate-700 bg-[#090f19] p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded border px-3 py-1 text-xs font-bold ${cfg.badge}`}><Icon className="h-3.5 w-3.5" />{cfg.label}</span>
-          <span className={`rounded border px-3 py-1 text-xs font-bold ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{upper(bolo.priority || 'medium')} PRIORITY</span>
-          <span className={`text-xs font-bold ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' || bolo.status === 'located' ? 'text-blue-400' : 'text-slate-500'}`}>● {upper(bolo.status)}</span>
-          {bolo.bolo_number && <span className="ml-auto text-xs text-slate-500">{bolo.bolo_number}</span>}
-        </div>
-        <h2 className="mt-3 text-xl font-black tracking-wide text-white">{titleCase(bolo.title)}</h2>
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-slate-500">
-          {bolo.case_number && <span>CASE: <b className="text-slate-300">{upper(bolo.case_number)}</b></span>}
-          {bolo.jurisdiction && <span>JURISDICTION: <b className="text-slate-300">{titleCase(bolo.jurisdiction)}</b></span>}
-          {bolo.issued_by && <span>ISSUED BY: <b className="text-slate-300">{titleCase(bolo.issued_by)}</b></span>}
-        </div>
-      </div>
-
-      {photos.length > 0 && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">{photos.map((url,i) => <a key={url+i} href={url} target="_blank" rel="noreferrer" className="flex min-h-56 items-center justify-center overflow-hidden rounded border border-slate-700 bg-black/70 p-2"><img src={url} alt={`BOLO attachment ${i+1}`} className="max-h-[32rem] w-full object-contain" /></a>)}</div>}
-
-      <div className="rounded-xl border-2 border-red-700/70 bg-red-950/20 p-4 shadow-lg shadow-red-950/10">
-        <div className="mb-3 flex items-center gap-2 text-sm font-black tracking-[0.16em] text-red-300"><FileWarning className="h-4 w-4" />BE ON THE LOOKOUT</div>
-        <div className="grid gap-3 text-xs md:grid-cols-2">
-          <div><div className="text-[9px] font-black tracking-widest text-red-400">PERSON / SUBJECT</div><div className="mt-1 font-bold text-white">{parties.length ? parties.map(p => titleCase(p.name)).filter(Boolean).join(' · ') || 'SEE PERSON DETAILS' : 'NO PERSON IDENTIFIED'}</div></div>
-          <div><div className="text-[9px] font-black tracking-widest text-red-400">VEHICLE</div><div className="mt-1 font-bold text-white">{vehicles.length ? vehicles.map(v => [v.year, titleCase(v.color), titleCase(v.make), titleCase(v.model), v.plate ? `PLATE ${upper(v.plate)}${v.state ? `/${upper(v.state)}` : ''}` : ''].filter(Boolean).join(' · ')).join(' | ') : 'NO VEHICLE INFORMATION'}</div></div>
-          <div><div className="text-[9px] font-black tracking-widest text-red-400">LAST KNOWN / LAST SEEN</div><div className="mt-1 font-bold text-white">{titleCase(bolo.last_known_location || 'UNKNOWN')}</div></div>
-          <div><div className="text-[9px] font-black tracking-widest text-red-400">TRAVEL / DIRECTION</div><div className="mt-1 font-bold text-white">{titleCase(bolo.last_known_direction || 'UNKNOWN')}</div></div>
-        </div>
-        {(parties.some(p => p.description) || bolo.description || vehicles.some(v => v.description)) && <div className="mt-3 border-t border-red-800/50 pt-3 text-xs leading-relaxed text-red-100"><span className="font-black text-red-300">DESCRIPTION: </span>{[...parties.map(p => p.description), ...vehicles.map(v => v.description), bolo.description].filter(Boolean).map(sentenceCase).join(' ')}</div>}
-      </div>
-
-      {bolo.description && <div className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-1 text-[9px] font-black tracking-widest text-slate-500">BOLO NARRATIVE</div><p className="text-sm leading-relaxed text-slate-200">{sentenceCase(bolo.description)}</p></div>}
-
-      {parties.length > 0 && <div className="space-y-2"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-300"><User className="h-3 w-3" />PARTIES / PERSONS</div>{parties.map((p,i) => <div key={i} className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
-        <div className="flex items-center justify-between"><span className="text-[9px] font-black tracking-widest text-blue-400">{upper(p.role || `Party ${i+1}`)}</span><span className="text-sm font-black text-white">{titleCase(p.name)}</span></div>
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400 md:grid-cols-5">
-          {p.dob && <span>DOB: <b className="text-white">{p.dob}</b></span>}{p.race && <span>RACE: <b className="text-white">{titleCase(p.race)}</b></span>}{p.sex && <span>SEX: <b className="text-white">{titleCase(p.sex)}</b></span>}{p.height && <span>HT: <b className="text-white">{p.height}</b></span>}{p.weight && <span>WT: <b className="text-white">{p.weight}</b></span>}
-        </div>{p.description && <p className="mt-2 text-xs text-slate-300">{sentenceCase(p.description)}</p>}
-      </div>)}</div>}
-
-      {vehicles.length > 0 && <div className="space-y-2"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-yellow-300"><Car className="h-3 w-3" />VEHICLES</div>{vehicles.map((v,i) => <div key={i} className="rounded border border-yellow-900/70 bg-yellow-950/10 p-3">
-        <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black tracking-widest text-yellow-500">{upper(v.role || `Vehicle ${i+1}`)}</span>{v.plate && <span className="rounded border border-yellow-500 bg-yellow-950 px-2 py-1 text-xs font-black text-yellow-200">{upper(v.plate)}{v.state ? ` · ${upper(v.state)}` : ''}</span>}</div>
-        <p className="mt-2 text-sm font-bold text-white">{[v.year, titleCase(v.color), titleCase(v.make), titleCase(v.model)].filter(Boolean).join(' ')}</p>{v.description && <p className="mt-1 text-xs text-slate-300">{sentenceCase(v.description)}</p>}
-      </div>)}</div>}
-
-      <div className="grid gap-2 text-xs md:grid-cols-2">
-        {bolo.last_known_location && <div className="rounded border border-slate-800 p-2"><span className="text-slate-500">LAST KNOWN / SEEN: </span><b className="text-slate-200">{titleCase(bolo.last_known_location)}</b></div>}
-        {bolo.contact_info && <div className="rounded border border-slate-800 p-2"><span className="text-slate-500">CONTACT: </span><b className="text-slate-200">{titleCase(bolo.contact_info)}</b></div>}
-        {bolo.linked_call_number && <div className="rounded border border-cyan-900/60 bg-cyan-950/10 p-2"><span className="text-cyan-500">LINKED CAD CALL: </span><b className="text-cyan-200">{bolo.linked_call_number}</b></div>}
-        {bolo.linked_incident_report_number && <div className="rounded border border-purple-900/60 bg-purple-950/10 p-2"><span className="text-purple-500">LINKED INCIDENT REPORT: </span><b className="text-purple-200">{bolo.linked_incident_report_number}</b></div>}
-      </div>
-
-      {bolo.notes && <div className="rounded border border-slate-700 p-3"><div className="mb-1 text-[9px] font-black tracking-widest text-slate-500">NOTES</div><p className="text-sm text-slate-300">{sentenceCase(bolo.notes)}</p></div>}
-      {bolo.status !== 'active' && (bolo.resolution_notes || bolo.resolved_at) && <div className="rounded border border-blue-700/50 bg-blue-950/20 p-3"><p className="mb-1 text-[10px] font-black tracking-widest text-blue-400">DISPOSITION / RESOLUTION</p>{bolo.resolution_notes && <p className="text-sm text-slate-200">{sentenceCase(bolo.resolution_notes)}</p>}<div className="mt-2 text-[10px] text-slate-500">{bolo.resolved_by && <span>Resolved by {titleCase(bolo.resolved_by)}</span>}{bolo.resolved_at && <span> · {new Date(bolo.resolved_at).toLocaleString()}</span>}</div></div>}
-    </div>
-  );
+ const parties=bolo.parties?.length?bolo.parties:legacyParty(bolo), vehicles=bolo.vehicles?.length?bolo.vehicles:legacyVehicle(bolo), photos=bolo.photo_urls||[]; const description=[...parties.map(p=>p.description),...vehicles.map(v=>v.description),bolo.description].filter(Boolean).map(sentenceCase).filter((v,i,a)=>a.indexOf(v)===i).join(' ');
+ return <div id="bolo-print-sheet" className="font-mono"><div className="rounded-xl border-2 border-red-700/70 bg-red-950/20 p-5 print:border-red-700 print:bg-white print:text-black"><div className="mb-4 flex items-center gap-2 text-lg font-black tracking-[.16em] text-red-300 print:text-red-700"><FileWarning className="h-5 w-5"/>BE ON THE LOOKOUT</div><div className="mb-4 grid gap-3 border-b border-red-800/50 pb-4 text-xs md:grid-cols-3 print:grid-cols-3"><div><b className="text-red-400">BOLO / CASE</b><div className="text-white print:text-black">{bolo.bolo_number||'BOLO'}{bolo.case_number?` · ${upper(bolo.case_number)}`:''}</div></div><div><b className="text-red-400">JURISDICTION</b><div className="text-white print:text-black">{titleCase(bolo.jurisdiction||'Not listed')}</div></div><div><b className="text-red-400">ISSUED BY</b><div className="text-white print:text-black">{titleCase(bolo.issued_by||'Black Point Protection')}</div></div></div><h2 className="mb-4 text-2xl font-black text-white print:text-black">{titleCase(bolo.title||'BOLO')}</h2><div className="grid gap-4 text-xs md:grid-cols-2 print:grid-cols-2"><div><b className="text-red-400">PERSON / SUBJECT</b><div className="text-white print:text-black">{parties.length?parties.map(p=>titleCase(p.name)).filter(Boolean).join(' · ')||'SEE PERSON DETAILS':'NO PERSON IDENTIFIED'}</div></div><div><b className="text-red-400">VEHICLE</b><div className="text-white print:text-black">{vehicles.length?vehicles.map(v=>[v.year,titleCase(v.color),titleCase(v.make),titleCase(v.model),v.plate?`PLATE ${upper(v.plate)}${v.state?`/${upper(v.state)}`:''}`:''].filter(Boolean).join(' · ')).join(' | '):'NO VEHICLE INFORMATION'}</div></div><div><b className="text-red-400">LAST KNOWN / LAST SEEN</b><div className="text-white print:text-black">{titleCase(bolo.last_known_location||'UNKNOWN')}</div></div><div><b className="text-red-400">TRAVEL / DIRECTION</b><div className="text-white print:text-black">{titleCase(bolo.last_known_direction||'UNKNOWN')}</div></div></div>{description&&<div className="mt-4 border-t border-red-800/50 pt-4 text-sm leading-relaxed text-red-100 print:text-black"><b className="text-red-300 print:text-red-700">DESCRIPTION / NARRATIVE: </b>{description}</div>}{parties.some(p=>p.dob||p.race||p.sex||p.height||p.weight)&&<div className="mt-4 border-t border-red-800/50 pt-4">{parties.map((p,i)=><div key={i} className="mb-2 text-xs text-red-100 print:text-black"><b className="text-red-300 print:text-red-700">{upper(p.role||`PARTY ${i+1}`)}: </b>{titleCase(p.name)} {[p.dob&&`DOB ${p.dob}`,p.race&&`RACE ${titleCase(p.race)}`,p.sex&&`SEX ${titleCase(p.sex)}`,p.height&&`HT ${p.height}`,p.weight&&`WT ${p.weight}`].filter(Boolean).join(' · ')}</div>)}</div>}{(bolo.contact_info||bolo.linked_call_number||bolo.linked_incident_report_number)&&<div className="mt-4 border-t border-red-800/50 pt-4 text-xs text-red-100 print:text-black">{bolo.contact_info&&<div><b>CONTACT: </b>{titleCase(bolo.contact_info)}</div>}{bolo.linked_call_number&&<div><b>CAD: </b>{bolo.linked_call_number}</div>}{bolo.linked_incident_report_number&&<div><b>INCIDENT REPORT: </b>{bolo.linked_incident_report_number}</div>}</div>}{photos.length>0&&<div className="mt-5 border-t border-red-800/50 pt-4"><b className="text-xs text-red-400">PHOTOS / IDENTIFIERS</b><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 print:grid-cols-2">{photos.map((url,i)=><div key={url+i} className="flex min-h-56 items-center justify-center rounded border border-red-900/60 bg-black/50 p-2 print:bg-white"><img src={url} alt={`BOLO attachment ${i+1}`} className="max-h-[32rem] w-full object-contain print:max-h-[4.25in]"/></div>)}</div></div>}</div></div>;
 }
-
 function FormView({ data, onChange }) {
   const [calls, setCalls] = useState([]);
   const [reports, setReports] = useState([]);
