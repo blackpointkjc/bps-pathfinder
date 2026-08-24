@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "bolo_id": {
+      "type": "string"
+    },
+    "sent": {
+      "type": "number"
+    },
+    "failed": {
+      "type": "number"
+    },
+    "sender": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "name": "BoloEmailAudit2"
+}
