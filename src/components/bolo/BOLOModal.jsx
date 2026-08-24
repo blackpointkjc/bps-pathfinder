@@ -239,6 +239,20 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
+      // Issuing/releasing a BOLO automatically sends the same HTML bulletin to
+      // every active internal user. Drafts and ordinary edits do not create a
+      // second blast; the view screen keeps a manual RESEND option when needed.
+      if (action === 'create' || action === 'release') {
+        let releasedBolo = payload.record || null;
+        const releasedId = releasedBolo?.id || formData.id || bolo?.id;
+        if (!releasedBolo && releasedId) releasedBolo = await base44.entities.BOLOAlert.get(releasedId).catch(() => null);
+        if (releasedBolo?.id) {
+          const mailResponse = await base44.functions.invoke('sendBoloEmail', { bolo: releasedBolo });
+          const mailPayload = mailResponse?.data || mailResponse || {};
+          payload.email_delivery = mailPayload;
+          if (mailPayload.error) console.error('Automatic BOLO email failed:', mailPayload.error);
+        }
+      }
       localStorage.removeItem(draftKey);
       onSaved(payload);
     } catch (error) {
@@ -250,7 +264,25 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
 
   const handleSave = () => saveToServer(isServerDraft ? 'release' : (formData.id ? 'edit' : 'create'));
   const handleSaveDraft = () => saveToServer('save_draft');
-  const printBolo = () => window.print();
+  const printBolo = () => {
+    const sheet = document.getElementById('bolo-print-sheet');
+    if (!sheet) return;
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      setSaveError('Allow pop-ups for Pathfinder to print the BOLO.');
+      return;
+    }
+    const styles = Array.from(document.querySelectorAll('style,link[rel="stylesheet"]')).map(node => node.outerHTML).join('\n');
+    printWindow.document.write(`<!doctype html><html><head><title>${String(bolo?.bolo_number || 'BOLO')} - Print</title>${styles}<style>
+      @page{size:Letter portrait;margin:.18in}html,body{margin:0!important;padding:0!important;background:#fff!important;width:8.14in!important}body{overflow:visible!important}#print-page{width:8.14in;box-sizing:border-box;transform-origin:top left}.print-hide{display:none!important}#print-page>div{margin:0!important;box-shadow:none!important;padding:.16in!important;border-width:2px!important}#print-page h2{font-size:17px!important;margin:.08in 0!important}#print-page .text-lg{font-size:15px!important}#print-page .text-sm{font-size:10px!important;line-height:1.25!important}#print-page .text-xs{font-size:8.5px!important;line-height:1.2!important}#print-page .mt-5,#print-page .mt-4{margin-top:.09in!important}#print-page .pt-4{padding-top:.07in!important}#print-page .gap-4,#print-page .gap-3{gap:.08in!important}#print-page .min-h-56{min-height:0!important}#print-page img{max-height:2.55in!important;object-fit:contain!important}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@media print{html,body{height:auto!important}#print-page{page-break-inside:avoid!important;break-inside:avoid-page!important}}
+    </style></head><body><div id="print-page">${sheet.innerHTML}</div><script>
+      const root=document.getElementById('print-page');
+      const imgs=[...document.images];
+      const ready=Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=r;img.onerror=r})));
+      ready.then(()=>{requestAnimationFrame(()=>{const maxH=10.55*96,maxW=8.14*96;const naturalH=root.scrollHeight,naturalW=root.scrollWidth;const scale=Math.min(1,maxH/naturalH,maxW/naturalW);root.style.zoom=String(Math.max(.58,scale));setTimeout(()=>window.print(),180);});});
+    <\/script></body></html>`);
+    printWindow.document.close();
+  };
   const emailBolo = async () => {
     setSaveError(''); setEmailing(true);
     try { const response = await base44.functions.invoke('sendBoloEmail', { bolo }); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); setSaveError(`BOLO HTML emailed to ${payload.sent} active users from ${payload.sender}.`); }
