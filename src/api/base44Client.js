@@ -30,10 +30,19 @@ if (base44.integrations?.Core?.SendEmail) {
     const actor = await base44.auth.me();
     if (!actor?.id) throw new Error('A signed-in Pathfinder user is required to send Outlook email.');
     const { sendOutlookMail } = await import('@/lib/outlookGraph');
-    const to = Array.isArray(payload?.to) ? payload.to : String(payload?.to || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
-    const cc = Array.isArray(payload?.cc) ? payload.cc : String(payload?.cc || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
-    const bcc = Array.isArray(payload?.bcc) ? payload.bcc : String(payload?.bcc || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
-    if (!to.length) throw new Error('An email recipient is required.');
+    const rawTo = Array.isArray(payload?.to) ? payload.to : String(payload?.to || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
+    const rawCc = Array.isArray(payload?.cc) ? payload.cc : String(payload?.cc || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
+    const rawBcc = Array.isArray(payload?.bcc) ? payload.bcc : String(payload?.bcc || '').split(/[;,]/).map(value => value.trim()).filter(Boolean);
+    if (!rawTo.length) throw new Error('An email recipient is required.');
+    // Notifications are stored against the Pathfinder login identity, but outbound
+    // email must go to the employee's connected Microsoft/work mailbox when one exists.
+    const allRaw = [...rawTo, ...rawCc, ...rawBcc];
+    const resolvedResponse = await base44.functions.invoke('resolveNotificationEmails', { emails: allRaw }).catch(() => null);
+    const resolved = resolvedResponse?.data?.emails || resolvedResponse?.emails || allRaw;
+    let cursor = 0;
+    const to = resolved.slice(cursor, cursor += rawTo.length);
+    const cc = resolved.slice(cursor, cursor += rawCc.length);
+    const bcc = resolved.slice(cursor, cursor += rawBcc.length);
     await sendOutlookMail(actor.id, {
       to,
       cc,
@@ -43,6 +52,6 @@ if (base44.integrations?.Core?.SendEmail) {
       attachments: Array.isArray(payload?.attachments) ? payload.attachments : [],
       mailboxEmail: String(payload?.mailboxEmail || payload?.from_mailbox || '').trim(),
     });
-    return { success: true, delivered: 'microsoft_outlook', to };
+    return { success: true, delivered: 'microsoft_outlook', to, resolved_work_addresses: true };
   };
 }
