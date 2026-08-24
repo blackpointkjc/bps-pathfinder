@@ -60,7 +60,7 @@ function DetailView({ bolo }) {
         </div>
       </div>
 
-      {photos.length > 0 && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">{photos.map((url,i) => <a key={url+i} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded border border-slate-700 bg-black"><img src={url} alt={`BOLO attachment ${i+1}`} className="h-40 w-full object-cover" /></a>)}</div>}
+      {photos.length > 0 && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">{photos.map((url,i) => <a key={url+i} href={url} target="_blank" rel="noreferrer" className="flex min-h-56 items-center justify-center overflow-hidden rounded border border-slate-700 bg-black/70 p-2"><img src={url} alt={`BOLO attachment ${i+1}`} className="max-h-[32rem] w-full object-contain" /></a>)}</div>}
 
       <div className="rounded-xl border-2 border-red-700/70 bg-red-950/20 p-4 shadow-lg shadow-red-950/10">
         <div className="mb-3 flex items-center gap-2 text-sm font-black tracking-[0.16em] text-red-300"><FileWarning className="h-4 w-4" />BE ON THE LOOKOUT</div>
@@ -213,7 +213,7 @@ function FormView({ data, onChange }) {
         </div>
       </div>
       {uploadError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/30 px-3 py-2 text-[10px] font-bold text-red-300">{uploadError}</div>}
-      {(data.photo_urls || []).length === 0 ? <div className="text-[10px] text-slate-600">No images attached. Add up to 8 JPG, PNG, WEBP, HEIC, or HEIF images.</div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">{data.photo_urls.map((url,i) => <div key={url+i} className="relative overflow-hidden rounded border border-slate-700"><img src={url} alt={`BOLO photo ${i + 1}`} className="h-24 w-full object-cover" /><button type="button" onClick={() => set('photo_urls', data.photo_urls.filter((_,x) => x !== i))} className="absolute right-1 top-1 rounded bg-black/80 p-1 text-red-300"><Trash2 className="h-3 w-3" /></button></div>)}</div>}
+      {(data.photo_urls || []).length === 0 ? <div className="text-[10px] text-slate-600">No images attached. Add up to 8 JPG, PNG, WEBP, HEIC, or HEIF images.</div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">{data.photo_urls.map((url,i) => <div key={url+i} className="relative flex min-h-28 items-center justify-center overflow-hidden rounded border border-slate-700 bg-black/70 p-1"><img src={url} alt={`BOLO photo ${i + 1}`} className="max-h-40 w-full object-contain" /><button type="button" onClick={() => set('photo_urls', data.photo_urls.filter((_,x) => x !== i))} className="absolute right-1 top-1 rounded bg-black/80 p-1 text-red-300"><Trash2 className="h-3 w-3" /></button></div>)}</div>}
     </div>
 
     <div className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
