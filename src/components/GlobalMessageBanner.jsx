@@ -264,12 +264,19 @@ export default function GlobalMessageBanner({ user }) {
     const showBolo = record => {
       if (!record?.id || record.status !== 'active') return;
       const key = `BOLOAlert:${record.id}`;
+      const persistentKey = `bps-bolo-announced:${normalized(user.email || user.id)}:${record.id}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
+      // BOLO speech is one-time per user/device. Refreshing, reopening Pathfinder,
+      // or logging back in must never replay an already announced BOLO.
+      try {
+        if (localStorage.getItem(persistentKey) === '1') return;
+        localStorage.setItem(persistentKey, '1');
+      } catch {}
 
       const summary = boloSummary(record);
       playNotificationChime(true);
-      speakNotification(`All units. Be on the lookout. ${summary}`, { rate: 0.8, pitch: 0.66, dedupeMs: 10000 });
+      speakNotification(`Attention all units. New BOLO. ${summary}`, { dedupeMs: 10000 });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -420,13 +427,13 @@ export default function GlobalMessageBanner({ user }) {
       });
       if (typeof boloUnsubscribe === 'function') unsubscribers.push(boloUnsubscribe);
 
-      // Catch a newly issued BOLO if realtime delivery was missed while the page
-      // was loading or the browser briefly lost its connection.
-      const cutoff = Date.now() - 2 * 60 * 1000;
-      base44.entities.BOLOAlert.list('-created_date', 20).then(records => {
-        (records || []).slice().reverse().forEach(record => {
-          const created = new Date(record.created_date || 0).getTime();
-          if (record.status === 'active' && created >= cutoff) showBolo(record);
+      // Seed existing BOLOs as already known. Only a BOLO created after this
+      // listener is active is announced. This prevents refresh/login replay.
+      base44.entities.BOLOAlert.list('-created_date', 100).then(records => {
+        (records || []).forEach(record => {
+          if (!record?.id) return;
+          knownIds.current.add(`BOLOAlert:${record.id}`);
+          try { localStorage.setItem(`bps-bolo-announced:${normalized(user.email || user.id)}:${record.id}`, '1'); } catch {}
         });
       }).catch(() => null);
     } catch (error) {
