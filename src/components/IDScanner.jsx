@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, Scan, Upload, Video, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 const clean = (value) => (value || "").replace(/\u0000/g, "").trim();
 

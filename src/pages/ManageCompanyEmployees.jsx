@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -18,7 +19,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isInternalMember } from '@/lib/directoryUtils';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 

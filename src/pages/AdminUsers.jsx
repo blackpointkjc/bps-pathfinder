@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -22,7 +23,6 @@ import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function AdminUsers() {
   const navigate = useNavigate();

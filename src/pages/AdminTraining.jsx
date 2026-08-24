@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +18,6 @@ import { format } from "date-fns";
 import { Navigate } from 'react-router-dom';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { listDirectoryDivisions } from '@/lib/appDirectory';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 const DCJS_ITEMS = [
   "01I — Introduction to Security",

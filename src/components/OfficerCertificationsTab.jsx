@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, X, Edit, CheckCircle, AlertTriangle, Upload, FileText, Image, ExternalLink, AlertCircle, Paperclip } from "lucide-react";
 import { format, isPast, addMonths } from "date-fns";
 import { base44 } from "@/api/base44Client";
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 // Full DCJS training list
 const DCJS_COURSES = [

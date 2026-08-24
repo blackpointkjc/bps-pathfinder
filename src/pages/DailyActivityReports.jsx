@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -24,7 +25,6 @@ import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService'
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
-import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,

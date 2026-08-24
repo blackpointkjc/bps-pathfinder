@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { completeReportTodo } from '@/lib/reportTodoApi';
@@ -20,7 +21,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function MDTrespassNotices() {
   const [showForm, setShowForm] = useState(false);

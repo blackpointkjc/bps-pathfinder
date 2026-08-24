@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -22,7 +23,6 @@ import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listD
 import { listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
-import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,

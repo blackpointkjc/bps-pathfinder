@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Scan, CheckCircle2, Upload, FileText, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function ZebraScanner({ onDataScanned, recordType = "person", user }) {
   const [scanBuffer, setScanBuffer] = useState("");

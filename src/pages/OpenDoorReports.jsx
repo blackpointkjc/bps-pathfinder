@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -14,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 
 export default function OpenDoorReports() {

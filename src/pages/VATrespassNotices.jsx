@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 // Copy of TrespassingNotices.js renamed to VA Trespass Notices
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -29,7 +30,6 @@ import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespa
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title

@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { completeReportTodo } from '@/lib/reportTodoApi';
@@ -20,7 +21,6 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
-import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,

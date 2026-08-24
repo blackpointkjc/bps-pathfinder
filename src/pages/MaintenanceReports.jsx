@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +16,6 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
-import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportDateTime,
   openBlackPointReport,
   resolveReportTimeZone,

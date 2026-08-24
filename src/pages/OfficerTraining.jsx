@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +21,6 @@ import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
 import { listDirectoryUsers } from '@/lib/appDirectory';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 const STATUS_CONFIG = {
   assigned: { label: "Assigned", color: "bg-blue-100 text-blue-800", icon: Clock },

@@ -1,3 +1,4 @@
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -13,7 +14,6 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listDirectoryLocations } from '@/lib/appDirectory';
-import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function AdminDocuments() {
   const [showForm, setShowForm] = useState(false);
