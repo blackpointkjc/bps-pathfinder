@@ -1,6 +1,5 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
-import { uploadInternalFile } from '@/lib/internalUpload';
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
 //Create a client with authentication required
@@ -25,26 +24,6 @@ if (base44.integrations?.Core?.InvokeLLM) {
     return data;
   };
 }
-
-// Force every browser upload in Pathfinder through the credit-free internal file route.
-// Do this unconditionally so no page can fall back to Base44 Core.UploadFile when the
-// SDK integration object is missing, lazy-loaded, or plan-limited.
-base44.integrations = base44.integrations || {};
-base44.integrations.Core = base44.integrations.Core || {};
-base44.integrations.Core.UploadFile = async ({ file } = {}) => {
-  if (!file) throw new Error('A file is required.');
-  if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Files larger than 5 MB must be reduced before upload.');
-  const data_url = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Unable to read this file.'));
-    reader.readAsDataURL(file);
-  });
-  const response = await base44.functions.invoke('storeInternalFile', { data_url, name: file.name || 'attachment' });
-  const data = response?.data || response || {};
-  if (data?.error) throw new Error(data.error);
-  return data;
-};
 
 if (base44.integrations?.Core?.SendEmail) {
   base44.integrations.Core.SendEmail = async payload => {
