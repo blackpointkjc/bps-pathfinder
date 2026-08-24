@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, X, Edit, CheckCircle, AlertTriangle, Upload, FileText, Image, ExternalLink, AlertCircle, Paperclip } from "lucide-react";
 import { format, isPast, addMonths } from "date-fns";
 import { base44 } from "@/api/base44Client";
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 // Full DCJS training list
 const DCJS_COURSES = [
@@ -98,7 +99,7 @@ function CertFileUploader({ certFileUrl, onChange }) {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await uploadInternalFile(file);
     onChange(file_url);
     setUploading(false);
   };
@@ -238,7 +239,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   // Upload a file directly to an existing cert card (not in edit mode)
   const handleInlineUpload = async (realIdx, file) => {
     setUploadingIdx(realIdx);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await uploadInternalFile(file);
     const updated = certs.map((c, i) => i === realIdx ? { ...c, cert_file_url: file_url } : c);
     setEditFormData({ ...editFormData, officer_certifications: updated });
     setUploadingIdx(null);
@@ -251,7 +252,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
 
   const handleDialogFileUpload = async (file) => {
     setDialogUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await uploadInternalFile(file);
     const updated = certs.map((c, i) => i === viewingCertIdx ? { ...c, cert_file_url: file_url } : c);
     setEditFormData({ ...editFormData, officer_certifications: updated });
     setViewingCert({ ...viewingCert, cert_file_url: file_url });

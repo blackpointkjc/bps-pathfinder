@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isInternalMember } from '@/lib/directoryUtils';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
@@ -340,7 +341,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       let photoUrl = dataUrl;
       if (file) {
         try {
-          const uploaded = await base44.integrations.Core.UploadFile({ file });
+          const uploaded = await uploadInternalFile(file);
           if (uploaded?.file_url) photoUrl = uploaded.file_url;
         } catch (uploadError) {
           console.warn('Profile photo file upload failed; using compressed image fallback:', uploadError?.message || uploadError);

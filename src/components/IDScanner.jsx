@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, Scan, Upload, Video, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 const clean = (value) => (value || "").replace(/\u0000/g, "").trim();
 
@@ -199,7 +200,7 @@ export default function IDScanner({ onDataExtracted, onClose }) {
     if (!file) return;
     setBusy(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setImageUrl(file_url);
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: `Read this US driver's license or identification card. Extract the exact legal name, address, date of birth, license/ID number, expiration date, sex, height, weight, eye color, hair color, and race when visible. Dates must be YYYY-MM-DD. Return null for unreadable fields.`,

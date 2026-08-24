@@ -15,6 +15,7 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
+import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportDateTime,
   openBlackPointReport,
   resolveReportTimeZone,
@@ -196,7 +197,7 @@ export default function MaintenanceReports() {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: file_url });
     } catch (error) {
       console.error("Error uploading file:", error);

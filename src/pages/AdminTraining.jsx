@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { Navigate } from 'react-router-dom';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { listDirectoryDivisions } from '@/lib/appDirectory';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 const DCJS_ITEMS = [
   "01I — Introduction to Security",
@@ -308,7 +309,7 @@ function AdminTrainingContent({ embedded = false }) {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData(prev => ({ ...prev, [type]: file_url }));
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -326,7 +327,7 @@ function AdminTrainingContent({ embedded = false }) {
     try {
       const uploadedUrls = [];
       for (const file of files) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await uploadInternalFile(file);
         uploadedUrls.push(file_url);
       }
       setFormData(prev => ({ ...prev, slideshow_urls: [...prev.slideshow_urls, ...uploadedUrls] }));
@@ -788,7 +789,7 @@ function AdminTrainingContent({ embedded = false }) {
                                <Input type="file" accept="video/*" onChange={async (e) => {
                                  const file = e.target.files[0]; if (!file) return;
                                  setUploading(true);
-                                 try { const { file_url } = await base44.integrations.Core.UploadFile({ file }); setFormData(prev => ({...prev, video_urls: [...prev.video_urls, file_url]})); }
+                                 try { const { file_url } = await uploadInternalFile(file); setFormData(prev => ({...prev, video_urls: [...prev.video_urls, file_url]})); }
                                  catch { alert("Failed to upload video"); } finally { setUploading(false); }
                                }} disabled={uploading} className="hidden" id="video-file-upload" />
                                <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById('video-file-upload').click()} disabled={uploading}>

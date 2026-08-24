@@ -1,5 +1,6 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
+import { uploadInternalFile } from '@/lib/internalUpload';
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
 //Create a client with authentication required

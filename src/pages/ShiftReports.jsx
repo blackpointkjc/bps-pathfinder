@@ -20,6 +20,7 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
+import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,
@@ -349,7 +350,7 @@ export default function ShiftReports() {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData((prevData) => ({ ...prevData, photo_url: file_url }));
     } catch (error) {
       console.error("Error uploading file:", error);

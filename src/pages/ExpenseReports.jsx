@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function ExpenseReports() {
   const [showDialog, setShowDialog] = useState(false);
@@ -89,7 +90,7 @@ export default function ExpenseReports() {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData(prev => ({ ...prev, [field]: file_url }));
     } catch (error) {
       alert(`Failed to upload ${label}`);

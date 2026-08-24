@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function TrespassingNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -315,7 +316,7 @@ export default function TrespassingNotices() {
 
     setUploading(true);
     try {
-      const result = await base44.integrations.Core.UploadFile({ file });
+      const result = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: result.file_url });
     } catch (error) {
       console.error("Error uploading file:", error);

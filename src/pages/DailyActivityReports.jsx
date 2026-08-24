@@ -24,6 +24,7 @@ import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService'
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
+import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,
@@ -1087,7 +1088,7 @@ export default function DailyActivityReports() {
                         try {
                           const newUrls = [];
                           for (const file of files) {
-                            const result = await base44.integrations.Core.UploadFile({ file });
+                            const result = await uploadInternalFile(file);
                             if (result && result.file_url) {
                               newUrls.push(result.file_url);
                             }

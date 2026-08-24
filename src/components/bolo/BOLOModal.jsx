@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/lib/boloConfig';
 import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon, FileWarning } from 'lucide-react';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 const titleCase = (value = '') => String(value).toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
 const upper = (value = '') => String(value).toUpperCase();
@@ -167,7 +168,7 @@ function FormView({ data, onChange }) {
     try {
       const urls = [];
       for (const file of selected) {
-        const result = await base44.integrations.Core.UploadFile({ file });
+        const result = await uploadInternalFile(file);
         if (!result?.file_url) throw new Error(`Upload did not return a file URL for ${file.name}`);
         urls.push(result.file_url);
       }

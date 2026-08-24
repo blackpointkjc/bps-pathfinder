@@ -29,6 +29,7 @@ import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespa
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
@@ -388,7 +389,7 @@ export default function VATrespassNotices() {
 
     setUploading(true);
     try {
-      const result = await base44.integrations.Core.UploadFile({ file });
+      const result = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: result.file_url });
     } catch (error) {
       console.error("Error uploading file:", error);

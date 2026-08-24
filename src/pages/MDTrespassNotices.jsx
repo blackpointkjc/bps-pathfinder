@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function MDTrespassNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -289,7 +290,7 @@ export default function MDTrespassNotices() {
 
     setUploading(true);
     try {
-      const result = await base44.integrations.Core.UploadFile({ file });
+      const result = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: result.file_url });
     } catch (error) {
       console.error("Error uploading file:", error);

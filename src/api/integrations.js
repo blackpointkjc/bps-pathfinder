@@ -1,4 +1,5 @@
 import { base44 } from './base44Client';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 
 

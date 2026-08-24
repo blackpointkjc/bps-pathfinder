@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listDirectoryLocations } from '@/lib/appDirectory';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function AdminDocuments() {
   const [showForm, setShowForm] = useState(false);
@@ -61,7 +62,7 @@ export default function AdminDocuments() {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: formData.file });
+      const { file_url } = await uploadInternalFile(formData.file);
 
       await base44.entities.TrainingDocument.create({
         title: formData.title,

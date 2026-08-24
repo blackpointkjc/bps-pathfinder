@@ -22,6 +22,7 @@ import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listD
 import { listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
+import { uploadInternalFile } from '@/lib/internalUpload';
   formatReportClock,
   formatReportDate,
   formatReportDateTime,
@@ -484,7 +485,7 @@ Provide:
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: file_url });
     } catch (error) {
       console.error("Error uploading file:", error);

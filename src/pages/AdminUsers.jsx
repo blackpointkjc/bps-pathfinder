@@ -22,6 +22,7 @@ import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -520,7 +521,7 @@ export default function AdminUsers() {
       let photoUrl = dataUrl;
       if (file) {
         try {
-          const uploaded = await base44.integrations.Core.UploadFile({ file });
+          const uploaded = await uploadInternalFile(file);
           if (uploaded?.file_url) photoUrl = uploaded.file_url;
         } catch (uploadError) {
           console.warn('Profile photo file upload failed; using compressed image fallback:', uploadError?.message || uploadError);

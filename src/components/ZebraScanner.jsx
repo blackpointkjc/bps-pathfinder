@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Scan, CheckCircle2, Upload, FileText, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function ZebraScanner({ onDataScanned, recordType = "person", user }) {
   const [scanBuffer, setScanBuffer] = useState("");
@@ -202,7 +203,7 @@ export default function ZebraScanner({ onDataScanned, recordType = "person", use
 
     setUploadingFile(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setUploadedFiles(prev => [...prev, {
         type: fileType,
         url: file_url,

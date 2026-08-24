@@ -20,6 +20,7 @@ import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 const STATUS_CONFIG = {
   assigned: { label: "Assigned", color: "bg-blue-100 text-blue-800", icon: Clock },
@@ -170,7 +171,7 @@ export default function OfficerTraining() {
     if (!file) return;
     setUploading(prev => ({ ...prev, [field]: true }));
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setSubmissionForm(prev => ({ ...prev, [field]: file_url, ...(field === 'document_url' ? { document_name: file.name } : {}) }));
       toast.success("File uploaded");
     } catch { toast.error("Upload failed"); }

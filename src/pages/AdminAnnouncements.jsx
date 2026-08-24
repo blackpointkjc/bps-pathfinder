@@ -16,6 +16,7 @@ import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
 import { toast } from 'sonner';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 export default function AdminAnnouncements() {
   const [showForm, setShowForm] = useState(false);
@@ -114,7 +115,7 @@ export default function AdminAnnouncements() {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: file_url });
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -128,7 +129,7 @@ export default function AdminAnnouncements() {
 
     setUploadingAttachment(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData({ ...formData, attachment_url: file_url, attachment_name: file.name });
     } catch (error) {
       console.error("Error uploading attachment:", error);

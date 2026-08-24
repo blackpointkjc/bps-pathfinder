@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { uploadInternalFile } from '@/lib/internalUpload';
 
 
 export default function OpenDoorReports() {
@@ -192,7 +193,7 @@ export default function OpenDoorReports() {
 
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadInternalFile(file);
       setFormData({ ...formData, photo_url: file_url });
     } catch (error) {
       console.error("Error uploading file:", error);
