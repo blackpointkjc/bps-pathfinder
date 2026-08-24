@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "bolo_id": {
+      "type": "string"
+    },
+    "recipient": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "name": "BoloEmailDelivery"
+}

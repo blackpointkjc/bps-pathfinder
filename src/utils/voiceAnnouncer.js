@@ -6,15 +6,20 @@ import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 let lastText = '';
 let lastAt = 0;
+let lockedVoice = null;
 
 function getPreferredVoice() {
+  if (lockedVoice) return lockedVoice;
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices?.() || [];
-  return voices.find(v => /en-US/i.test(v.lang) && /male|david|alex|daniel|aaron|fred/i.test(v.name))
+  const preferredNames = /Microsoft (Guy|Christopher|Andrew|Brian|Ryan)|Google US English|David|Alex/i;
+  lockedVoice = voices.find(v => /en-US/i.test(v.lang) && preferredNames.test(v.name))
+    || voices.find(v => /en-US/i.test(v.lang) && v.localService)
     || voices.find(v => /en-US/i.test(v.lang))
     || voices.find(v => /^en/i.test(v.lang))
     || voices[0]
     || null;
+  return lockedVoice;
 }
 
 export function isVoiceSupported() {
@@ -41,8 +46,10 @@ export function stopVoice() {
 function buildUtterance(clean, options = {}) {
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.lang = options.lang || 'en-US';
-  utterance.rate = options.rate ?? 0.88;
-  utterance.pitch = options.pitch ?? 0.72;
+  // One consistent, natural radio voice across Pathfinder. Avoid the unnaturally
+  // low pitch/rate combination that made announcements sound synthetic.
+  utterance.rate = options.rate ?? 0.96;
+  utterance.pitch = options.pitch ?? 0.92;
   utterance.volume = options.volume ?? 1;
   const voice = getPreferredVoice();
   if (voice) utterance.voice = voice;
@@ -121,6 +128,9 @@ export function retryVoiceAnnouncement() {
 
 export function announceVoice(text, options = {}) {
   if (!text || !isVoiceSupported() || (!options.force && !isVoiceEnabled())) return false;
+  // Keep every caller on the same voice/cadence. Call-site rate/pitch overrides
+  // were the reason users heard two noticeably different announcement voices.
+  options = { ...options, rate: 0.96, pitch: 0.92 };
   const clean = String(text).replace(/\s+/g, ' ').trim();
   if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
   installVoiceUnlockListeners();
@@ -131,6 +141,7 @@ export function announceVoice(text, options = {}) {
 // be deliberately delayed until the spoken safety announcement has finished.
 export function announceVoiceAsync(text, options = {}) {
   if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
+  options = { ...options, rate: 0.96, pitch: 0.92 };
   const clean = String(text).replace(/\s+/g, ' ').trim();
   if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
   return new Promise(resolve => {
