@@ -276,16 +276,16 @@ export default function WelcomeBriefing({ user }) {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/72 p-2 backdrop-blur-md sm:p-5">
-          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-[#274764] bg-gradient-to-br from-[#0b1725] via-[#09131f] to-[#060c14] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
-            <div className="relative overflow-hidden border-b border-[#21384f] px-4 py-5 sm:px-6 sm:py-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[11000] flex items-center justify-center overflow-hidden bg-black/72 p-2 backdrop-blur-md sm:p-4">
+          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} className="flex h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-[#274764] bg-gradient-to-br from-[#0b1725] via-[#09131f] to-[#060c14] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
+            <div className="relative flex-none overflow-hidden border-b border-[#21384f] px-4 py-3 sm:px-6 sm:py-4">
               <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-amber-400/5 blur-3xl" />
               <div className="relative flex items-start gap-3 sm:gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-gradient-to-br from-blue-500/20 to-cyan-400/10 shadow-lg sm:h-14 sm:w-14"><Sparkles className="h-6 w-6 text-cyan-300" /></div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-gradient-to-br from-blue-500/20 to-cyan-400/10 shadow-lg sm:h-12 sm:w-12"><Sparkles className="h-6 w-6 text-cyan-300" /></div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[9px] font-black uppercase tracking-[.22em] text-cyan-300">Pathfinder Start-of-Session Brief</div>
-                  <h1 className="mt-1 break-words text-2xl font-black tracking-tight sm:text-3xl">Welcome, {displayName(user)}</h1>
+                  <h1 className="mt-1 break-words text-xl font-black tracking-tight sm:text-2xl">Welcome, {displayName(user)}</h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                     <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1">{offlineText}</span>
                     <span className={`rounded-full border px-2.5 py-1 font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/40 text-blue-300'}`}>STATUS: {String(status).toUpperCase()}</span>
@@ -295,7 +295,7 @@ export default function WelcomeBriefing({ user }) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
               {loading ? (
                 <div className="flex min-h-52 items-center justify-center"><div className="text-center"><div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent"/><p className="mt-3 text-xs font-bold tracking-widest text-slate-500">BUILDING YOUR BRIEFING…</p></div></div>
               ) : (
@@ -395,7 +395,7 @@ export default function WelcomeBriefing({ user }) {
               )}
             </div>
 
-            <div className="border-t border-[#21384f] bg-[#07111c]/90 px-3 py-3 sm:px-6">
+            <div className="flex-none border-t border-[#21384f] bg-[#07111c]/95 px-3 py-2.5 sm:px-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><CheckCircle2 className="h-3.5 w-3.5"/><span>Review your briefing, then acknowledge it to start your session.</span></div>
                 <div className="sm:ml-auto flex gap-2">
