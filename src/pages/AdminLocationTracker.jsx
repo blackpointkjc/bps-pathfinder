@@ -139,6 +139,7 @@ export default function AdminLocationTracker() {
   const [locationCheckError, setLocationCheckError] = useState('');
   const [liveMapUnavailable, setLiveMapUnavailable] = useState(false);
   const [historyMapUnavailable, setHistoryMapUnavailable] = useState(false);
+  const [deviceLocationState, setDeviceLocationState] = useState(null);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -178,6 +179,12 @@ export default function AdminLocationTracker() {
     });
     return unsubscribe;
   }, [hasAccess, queryClient]);
+
+  useEffect(() => {
+    const handleLocationQuality = (event) => setDeviceLocationState(event?.detail || null);
+    window.addEventListener('bps-location-quality', handleLocationQuality);
+    return () => window.removeEventListener('bps-location-quality', handleLocationQuality);
+  }, []);
 
   const newestLocationByEmail = React.useMemo(() => {
     const map = new Map();
@@ -259,9 +266,14 @@ export default function AdminLocationTracker() {
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
+      const response = await base44.functions.invoke('getOnDutyUnits', {});
+      const freshPayload = response?.data || response || {};
+      if (freshPayload.error) throw new Error(freshPayload.error);
+      const freshLocations = freshPayload.units || [];
+      const freshClockedInWithoutSession = freshPayload.clocked_in_without_session || [];
       const freshUsers = allUsers || [];
       const latestByEmail = new Map();
-      for (const row of activeOfficerLocations || []) {
+      for (const row of freshLocations) {
         const key = String(row.officer_email || '').toLowerCase();
         if (!key || latestByEmail.has(key)) continue;
         latestByEmail.set(key, row);
@@ -293,7 +305,7 @@ export default function AdminLocationTracker() {
       // A person who is still clocked in but no longer has a fresh Pathfinder
       // session is a tracking exception and must appear under No Location rather
       // than disappearing from the check entirely.
-      for (const row of clockedInWithoutSession || []) {
+      for (const row of freshClockedInWithoutSession) {
         const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(row.officer_email || '').toLowerCase());
         if (profile && !isOperationallyVisibleUser(profile)) continue;
         results.total += 1;
@@ -322,7 +334,10 @@ export default function AdminLocationTracker() {
 
   const handleCheckAllLocations = async () => {
     setLocationCheckError('');
+    setDeviceLocationState({ state: 'requesting', message: 'Requesting a fresh location from this device…' });
+    window.dispatchEvent(new CustomEvent('bps-request-location'));
     try {
+      await new Promise(resolve => window.setTimeout(resolve, 1200));
       await performLocationCheck();
     } catch (error) {
       setLocationCheckError(error?.message || 'Failed to check user locations. Please try again.');
@@ -392,6 +407,19 @@ export default function AdminLocationTracker() {
             )}
           </Button>
         </div>
+
+        {deviceLocationState && ['permission_denied', 'unavailable', 'timeout', 'low_accuracy'].includes(deviceLocationState.state) && (
+          <Alert className="border-amber-400 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-700" />
+            <AlertDescription className="text-amber-950">
+              {deviceLocationState.state === 'permission_denied'
+                ? 'Location permission is blocked on this device. Allow precise location for Pathfinder in the browser site settings, then select Check All Locations Now.'
+                : deviceLocationState.state === 'low_accuracy'
+                  ? `This device reported an imprecise location${deviceLocationState.accuracy ? ` (about ${Math.round(deviceLocationState.accuracy)} meters)` : ''}. Enable precise location or GPS and try again.`
+                  : 'This device could not provide a current GPS location. Turn on device location services and try again.'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {(officerDirectoryError || locationCheckError) && (
           <Alert className="border-red-300 bg-red-50">
