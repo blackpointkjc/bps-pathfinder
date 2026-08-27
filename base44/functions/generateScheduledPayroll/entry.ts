@@ -149,6 +149,9 @@ Deno.serve(async (req) => {
           .sort((a: any, b: any) => String(a.end_date).localeCompare(String(b.end_date)))
           .find(hasMissingEligibleOfficer);
     if (!period) return Response.json({ success: true, skipped: true, reason: `No incomplete payroll period ended on or before ${endedDate}` });
+    if (body.period_id && !hasMissingEligibleOfficer(period)) {
+      return Response.json({ success: true, skipped: true, period_id: period.id, period_name: period.period_name, reason: 'Every eligible officer already has a payroll record for this period' });
+    }
 
     const config = configs?.[0] || {};
     const threshold = Number(config.overtime_threshold_hours || 40);
