@@ -110,6 +110,27 @@ Deno.serve(async (req) => {
         if (record.status !== 'cleared') await base44.asServiceRole.entities.CallAssignment.update(record.id, { status: 'cleared', cleared_at: new Date().toISOString() });
       }
 
+      const now = new Date().toISOString();
+      const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+      await base44.asServiceRole.entities.CallStatusLog.create({
+        call_id,
+        incident_type: call.incident || '',
+        location: call.location || '',
+        old_status: call.status || '',
+        new_status: call.status || '',
+        unit_id,
+        unit_name: unit_id,
+        notes: 'Unit removed from assignment by authorized dispatcher',
+        event_key: `call:${call_id}:unassignment:${unit_id}:${now}`,
+        event_type: 'unit_reassigned',
+        announcement_text: `Unit reassigned. CAD number ${cadNumber}.`,
+        announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+        cad_number: String(cadNumber),
+        triggering_action: 'manageCadUnitAssignment.unassign',
+        audio_enabled: true,
+        sensitive: false,
+      });
+
       const officer = await resolveUnitOfficer();
       if (officer?.email) {
         const incident = call.incident || 'Call for service';
