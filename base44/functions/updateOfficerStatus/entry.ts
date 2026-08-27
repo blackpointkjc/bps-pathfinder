@@ -14,6 +14,7 @@ Deno.serve(async (req) => {
         if (!status) {
             return Response.json({ error: 'Status is required' }, { status: 400 });
         }
+        if (user.status === status) return Response.json({ success: true, status, duplicate_transition: true });
 
         const activeOverrides = await base44.asServiceRole.entities.OfficerStatusOverride.filter({
             officer_id: user.id,
@@ -95,6 +96,27 @@ Deno.serve(async (req) => {
                 user_role: user.role || 'user',
                 session_active: true,
                 current_call_info: user.current_call_info || '',
+            });
+        }
+
+        if (status === 'Available') {
+            const callId = user.current_call_id || 'unit-status';
+            const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
+            await base44.asServiceRole.entities.CallStatusLog.create({
+                call_id: callId,
+                old_status: user.status || '',
+                new_status: status,
+                unit_id: user.id,
+                unit_name: officer,
+                notes: 'Officer returned to available status',
+                event_key: `unit:${user.id}:available:${now}`,
+                event_type: 'unit_available',
+                announcement_text: `${officer} returned to available status.`,
+                announcement_priority: 'normal',
+                cad_number: '',
+                triggering_action: 'updateOfficerStatus',
+                audio_enabled: true,
+                sensitive: false,
             });
         }
 
