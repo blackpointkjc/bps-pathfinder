@@ -99,6 +99,24 @@ function markEventProcessed(eventId) {
   try { localStorage.setItem(key, '1'); } catch {}
 }
 
+// Reserve an event synchronously before it enters the speech queue. localStorage
+// writes are visible to every same-origin tab, closing the check-then-create race
+// where two realtime subscriptions received the same event in the same instant.
+// A blocked item stays retryable in the tab that owns the queued utterance, while
+// refreshes and sibling tabs cannot enqueue it again.
+function claimEventForThisBrowser(eventId) {
+  if (!eventId) return true;
+  const key = `bps-voice-claim:${String(eventId)}`;
+  try {
+    if (localStorage.getItem(key)) return false;
+    const token = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(key, token);
+    return localStorage.getItem(key) === token;
+  } catch {
+    return true;
+  }
+}
+
 function nextQueuedSpeech() {
   if (activeSpeech || !speechQueue.length || !isVoiceSupported()) return;
   speechQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
@@ -154,6 +172,7 @@ function nextQueuedSpeech() {
 
 function speakQueued(clean, options = {}, resolve = null) {
   if (!isVoiceSupported() || wasEventProcessed(options.eventId)) return false;
+  if (!claimEventForThisBrowser(options.eventId)) return false;
   const priority = PRIORITY[options.priority] ?? PRIORITY.normal;
   const duplicate = speechQueue.some(item => options.eventId && item.options.eventId === options.eventId);
   if (duplicate || (activeSpeech && options.eventId && activeSpeech.options.eventId === options.eventId)) return false;
