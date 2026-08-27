@@ -236,10 +236,10 @@ export default function GlobalMessageBanner({ user }) {
           // Use concise CAD radio wording and the shared dispatch voice.
           speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
         } else if (source.kind === 'assignment') {
-          // Same announced-alert treatment as a property-monitoring call: this
-          // is spoken aloud, not just a silent toast/notification row.
+          // The durable CallStatusLog event owns assignment speech. This targeted
+          // notification remains visual so the officer receives the assignment
+          // without creating a second competing announcement.
           playNotificationChime(true);
-          speakNotification(`Dispatch. ${record.message || record.title || 'Your call assignment changed.'}`, { rate: 0.82, pitch: 0.68, dedupeMs: 4000, eventId: `notification:${record.id}`, priority: record.priority === 'critical' ? 'critical' : 'high' });
         } else {
           playNotificationChime(source.kind === 'property');
         }
