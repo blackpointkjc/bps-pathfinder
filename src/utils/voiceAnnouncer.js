@@ -117,6 +117,23 @@ function claimEventForThisBrowser(eventId) {
   }
 }
 
+// Safe diagnostic: verifies the refresh/realtime claim gate without speaking,
+// creating a CAD event, or leaving test state behind.
+export function runVoiceDedupeSelfTest() {
+  if (typeof window === 'undefined') return { passed: false, reason: 'Browser context unavailable' };
+  const eventId = `phase1-self-test:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const claimKey = `bps-voice-claim:${eventId}`;
+  try {
+    const firstClaim = claimEventForThisBrowser(eventId);
+    const secondClaim = claimEventForThisBrowser(eventId);
+    localStorage.removeItem(claimKey);
+    return { passed: firstClaim === true && secondClaim === false };
+  } catch (error) {
+    try { localStorage.removeItem(claimKey); } catch {}
+    return { passed: false, reason: error?.message || 'Voice dedupe test failed' };
+  }
+}
+
 function nextQueuedSpeech() {
   if (activeSpeech || !speechQueue.length || !isVoiceSupported()) return;
   speechQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
