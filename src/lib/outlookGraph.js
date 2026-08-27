@@ -49,6 +49,19 @@ function tokenKey(userId) {
   return `bps:outlook-token:${String(userId || '').trim()}`;
 }
 
+const MICROSOFT_SESSION_EXPIRED_MESSAGE = 'Your Microsoft session has expired. Please sign in again with your BlackPoint email.';
+
+function microsoftInteractionRequired(payload) {
+  const detail = `${payload?.error || ''} ${payload?.error_description || ''}`;
+  return /AADSTS700084|invalid_grant|refresh token.*expired|interaction_required/i.test(detail);
+}
+
+async function clearExpiredMicrosoftSession(userId) {
+  if (userId) localStorage.removeItem(tokenKey(userId));
+  try { await base44.functions.invoke('microsoftOAuthVault', { action: 'disconnect' }); } catch {}
+  try { window.dispatchEvent(new CustomEvent('bps:microsoft-session-expired', { detail: { userId } })); } catch {}
+}
+
 function oauthStateKey(userId) {
   return `bps:outlook-oauth:${String(userId || '').trim()}`;
 }
@@ -172,7 +185,15 @@ async function restoreOutlookTokenFromServer(userId) {
     body,
   });
   const refreshed = await response.json().catch(() => ({}));
-  if (!response.ok || !refreshed?.access_token) return null;
+  if (!response.ok || !refreshed?.access_token) {
+    if (microsoftInteractionRequired(refreshed)) {
+      await clearExpiredMicrosoftSession(userId);
+      const error = new Error(MICROSOFT_SESSION_EXPIRED_MESSAGE);
+      error.code = 'MICROSOFT_SESSION_EXPIRED';
+      throw error;
+    }
+    return null;
+  }
 
   // Rotate the durable credential back into the account vault immediately.
   await persistOutlookCredential(userId, refreshed);
@@ -249,6 +270,11 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
   }
 
   if (oauthError) {
+    const errorPayload = { error: oauthError, error_description: callback.error_description || '' };
+    if (microsoftInteractionRequired(errorPayload)) {
+      await clearExpiredMicrosoftSession(userId);
+      return { handled: true, success: false, error: MICROSOFT_SESSION_EXPIRED_MESSAGE, interactionRequired: true };
+    }
     return { handled: true, success: false, error: callback.error_description || oauthError };
   }
 
@@ -276,6 +302,10 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
   const payload = await response.json().catch(() => ({}));
   localStorage.removeItem(oauthStateKey(userId));
   if (!response.ok || !payload.access_token) {
+    if (microsoftInteractionRequired(payload)) {
+      await clearExpiredMicrosoftSession(userId);
+      return { handled: true, success: false, error: MICROSOFT_SESSION_EXPIRED_MESSAGE, interactionRequired: true };
+    }
     return { handled: true, success: false, error: payload.error_description || payload.error || 'Microsoft sign-in failed.' };
   }
 
@@ -347,7 +377,7 @@ export async function getOutlookAccessToken(userId) {
 export async function graphRequest(userId, pathOrUrl, options = {}) {
   const token = await getOutlookAccessToken(userId);
   if (!token) {
-    const error = new Error('Microsoft 365 connection required.');
+    const error = new Error(MICROSOFT_SESSION_EXPIRED_MESSAGE);
     error.code = 'OUTLOOK_CONNECTION_REQUIRED';
     throw error;
   }
@@ -371,7 +401,8 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
   if (response.status === 401) {
     const refreshed = await refreshOutlookToken(userId, getStoredOutlookToken(userId));
     if (!refreshed?.access_token) {
-      const error = new Error('Microsoft 365 authorization expired. Please reconnect.');
+      await clearExpiredMicrosoftSession(userId);
+      const error = new Error(MICROSOFT_SESSION_EXPIRED_MESSAGE);
       error.code = 'OUTLOOK_CONNECTION_REQUIRED';
       throw error;
     }
@@ -529,7 +560,7 @@ export async function getOutlookAttachmentBlobUrl(userId, messageId, attachmentI
   if (!userId || !messageId || !attachmentId) throw new Error('Attachment information is incomplete.');
   let token = await getOutlookAccessToken(userId);
   if (!token) {
-    const error = new Error('Microsoft 365 connection required.');
+    const error = new Error(MICROSOFT_SESSION_EXPIRED_MESSAGE);
     error.code = 'OUTLOOK_CONNECTION_REQUIRED';
     throw error;
   }
