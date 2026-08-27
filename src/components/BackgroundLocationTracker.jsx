@@ -288,12 +288,24 @@ export default function BackgroundLocationTracker({ user }) {
       maximumAge: 0,
     };
 
+    const reportLocationError = (error) => {
+      const state = error?.code === 1
+        ? 'permission_denied'
+        : error?.code === 3
+          ? 'timeout'
+          : 'unavailable';
+      window.dispatchEvent(new CustomEvent('bps-location-quality', {
+        detail: { state, message: error?.message || 'The browser could not obtain a location.' },
+      }));
+      console.warn('Geolocation unavailable:', error?.message || error);
+    };
+
     // Keep the passive stream, but also request a genuinely fresh device fix every
     // five seconds. Some Windows/tablet browsers leave watchPosition pinned to a
     // cached Wi-Fi coordinate even while the officer is moving.
     watchIdRef.current = navigator.geolocation.watchPosition(
       saveLocation,
-      (error) => console.error('Geolocation watch error:', error),
+      reportLocationError,
       gpsOptions,
     );
     let freshRequestPending = false;
@@ -307,16 +319,18 @@ export default function BackgroundLocationTracker({ user }) {
         },
         (error) => {
           freshRequestPending = false;
-          console.warn('Fresh GPS request unavailable:', error?.message || error);
+          reportLocationError(error);
         },
         { ...gpsOptions, timeout: 4500 },
       );
     };
     requestFreshPosition();
     const freshPositionId = window.setInterval(requestFreshPosition, 5000);
+    window.addEventListener('bps-request-location', requestFreshPosition);
 
     return () => {
       window.clearInterval(freshPositionId);
+      window.removeEventListener('bps-request-location', requestFreshPosition);
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
