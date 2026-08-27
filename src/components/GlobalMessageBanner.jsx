@@ -433,6 +433,9 @@ export default function GlobalMessageBanner({ user }) {
             event_type: record.event_type || '',
           }).catch(() => null);
         }
+        // BOLOAlert realtime owns the BOLO visual card; this durable event owns
+        // its one-time speech receipt. Avoid showing two visual banners.
+        if (record.event_type === 'bolo_published') return;
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
