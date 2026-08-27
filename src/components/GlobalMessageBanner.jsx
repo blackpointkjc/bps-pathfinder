@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
-import { announceVoice } from '@/utils/voiceAnnouncer';
+import { announceVoice, retryVoiceAnnouncement } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
@@ -33,13 +33,14 @@ function audioContext() {
   return notificationAudioContext;
 }
 
-function speakNotification(text, { rate = 0.82, pitch = 0.68, dedupeMs = 1800 } = {}) {
+function speakNotification(text, options = {}) {
+  const { rate = 0.82, pitch = 0.68, dedupeMs = 1800, ...rest } = options;
   return announceVoice(text, {
+    ...rest,
     rate,
     pitch,
     dedupeMs,
     force: true,
-    interrupt: true,
   });
 }
 
@@ -170,11 +171,23 @@ function BannerIcon({ kind }) {
 
 export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
+  const [voiceWarning, setVoiceWarning] = useState(null);
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
   const callStatuses = useRef(new Map());
   const announcedPropertyCallStatuses = useRef(new Map());
+
+  useEffect(() => {
+    const onVoiceBlocked = event => setVoiceWarning(event?.detail?.reason || 'Audio playback was blocked by this browser.');
+    const onVoiceStarted = () => setVoiceWarning(null);
+    window.addEventListener('bps-voice-blocked', onVoiceBlocked);
+    window.addEventListener('bps-voice-started', onVoiceStarted);
+    return () => {
+      window.removeEventListener('bps-voice-blocked', onVoiceBlocked);
+      window.removeEventListener('bps-voice-started', onVoiceStarted);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user?.id && !user?.email) return undefined;
@@ -226,7 +239,7 @@ export default function GlobalMessageBanner({ user }) {
           // Same announced-alert treatment as a property-monitoring call: this
           // is spoken aloud, not just a silent toast/notification row.
           playNotificationChime(true);
-          speakNotification(`Dispatch. ${record.message || record.title || 'Your call assignment changed.'}`, { rate: 0.82, pitch: 0.68, dedupeMs: 4000 });
+          speakNotification(`Dispatch. ${record.message || record.title || 'Your call assignment changed.'}`, { rate: 0.82, pitch: 0.68, dedupeMs: 4000, eventId: `notification:${record.id}`, priority: record.priority === 'critical' ? 'critical' : 'high' });
         } else {
           playNotificationChime(source.kind === 'property');
         }
@@ -276,7 +289,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const summary = boloSummary(record);
       playNotificationChime(true);
-      speakNotification(`Attention all units. New BOLO. ${summary}`, { dedupeMs: 10000 });
+      speakNotification(`Attention all units. New BOLO. ${summary}`, { dedupeMs: 10000, eventId: `bolo:${record.id}`, priority: record.priority === 'critical' ? 'critical' : 'high' });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -342,7 +355,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
-      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
+      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: `property:${record.source_key || record.id}:new`, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal' });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
@@ -401,7 +414,13 @@ export default function GlobalMessageBanner({ user }) {
           : '';
         speakNotification(
           `Active call for service status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
-          { rate: 0.82, pitch: 0.66, dedupeMs: 4000 },
+          {
+            rate: 0.82,
+            pitch: 0.66,
+            dedupeMs: 4000,
+            eventId: `call:${call.id}:status:${nextRaw}:${call.updated_date || call.time_dispatched || call.time_enroute || call.time_on_scene || call.time_closed || ''}`,
+            priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+          },
         );
       });
       if (typeof callStatusUnsubscribe === 'function') unsubscribers.push(callStatusUnsubscribe);
@@ -515,6 +534,12 @@ export default function GlobalMessageBanner({ user }) {
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-1 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2 md:top-2">
+      {voiceWarning && (
+        <div role="alert" className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
+          <span>CAD audio could not play. Visual alerts remain active.</span>
+          <button type="button" onClick={() => retryVoiceAnnouncement()} className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-amber-300">RETRY AUDIO</button>
+        </div>
+      )}
       <AnimatePresence>
         {banners.map(banner => (
           <motion.button
