@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { accountingBulkCreate, accountingCreate, accountingUpdate } from '@/lib/accountingRecordsApi';
@@ -94,7 +94,7 @@ export default function AccountingPayroll() {
   const config = accountingData.config || null;
   const payrollPeriods = accountingData.payrollPeriods || [];
 
-  const latestGeneratedPayroll = React.useMemo(() => {
+  const latestGeneratedPayroll = useMemo(() => {
     return [...payrollEntries].sort((a, b) => {
       const createdDifference = String(b.created_date || '').localeCompare(String(a.created_date || ''));
       if (createdDifference !== 0) return createdDifference;
@@ -102,7 +102,7 @@ export default function AccountingPayroll() {
     })[0] || null;
   }, [payrollEntries]);
 
-  const latestGeneratedPeriod = React.useMemo(() => {
+  const latestGeneratedPeriod = useMemo(() => {
     if (!latestGeneratedPayroll) return null;
     return payrollPeriods.find(period =>
       period.start_date === latestGeneratedPayroll.pay_period_start &&
