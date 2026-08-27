@@ -29,9 +29,18 @@
       "type": "number",
       "description": "Holiday hours worked on federal holidays"
     },
+    "pto_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Approved paid time off hours included in the payroll period"
+    },
     "hours_worked": {
       "type": "number",
       "description": "Total hours (for backwards compatibility)"
+    },
+    "total_paid_hours": {
+      "type": "number",
+      "description": "Worked hours plus approved paid time off"
     },
     "hourly_rate": {
       "type": "number"
@@ -55,6 +64,11 @@
     "holiday_pay": {
       "type": "number",
       "description": "Pay from holiday hours"
+    },
+    "pto_pay": {
+      "type": "number",
+      "default": 0,
+      "description": "Straight-time pay from approved paid time off"
     },
     "gross_pay": {
       "type": "number"
@@ -93,6 +107,10 @@
     "holidays_worked": {
       "type": "string",
       "description": "JSON string of holidays worked with dates and names"
+    },
+    "pto_detail": {
+      "type": "string",
+      "description": "JSON summary of approved PTO included in the period"
     },
     "status": {
       "type": "string",
