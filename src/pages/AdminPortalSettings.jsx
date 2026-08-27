@@ -3,12 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Settings, Eye, EyeOff, Volume2 } from "lucide-react";
+import { Shield, Settings, Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { announceVoice } from "@/utils/voiceAnnouncer";
+import CadAudioSettingsCard from "@/components/admin/CadAudioSettingsCard";
 
 export default function AdminPortalSettings() {
   const queryClient = useQueryClient();
@@ -87,25 +87,7 @@ export default function AdminPortalSettings() {
           <p className="text-slate-600">Customize which portal sections appear in your navigation</p>
         </div>
 
-        <Card className="border-none shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50">
-            <CardTitle className="flex items-center gap-2"><Volume2 className="h-5 w-5 text-blue-600" />CAD Audio Test</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 p-6">
-            <p className="text-sm text-slate-600">Safely test the configured American AI voice. This does not create a CAD event, assignment, or audit record.</p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const accepted = announceVoice('CAD audio test. American voice profile is ready.', { force: true, priority: 'low', dedupeMs: 500 });
-                if (!accepted) toast.error('Audio test could not start. Check browser audio permissions.');
-              }}
-              className="min-h-11"
-            >
-              <Volume2 className="mr-2 h-4 w-4" /> Test CAD Audio
-            </Button>
-          </CardContent>
-        </Card>
+        <CadAudioSettingsCard user={user} />
 
         <Card className="border-none shadow-xl">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
