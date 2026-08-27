@@ -176,7 +176,27 @@
 }
 
 .cad-app {
+  font-family: "Segoe UI Variable", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
   font-feature-settings: "tnum" 1, "ss01" 1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keep operational labels crisp and readable. Several legacy pages use
+   font-black at 8–11px; synthetic 900-weight glyphs become distorted and clip
+   inside narrow cards/table columns on Windows. */
+.cad-app .font-black {
+  font-weight: 700 !important;
+}
+
+.cad-app main td,
+.cad-app main th,
+.cad-app main button,
+.cad-app main [role="dialog"] {
+  font-family: inherit;
+  font-synthesis: none;
 }
 
 .cad-app main {
