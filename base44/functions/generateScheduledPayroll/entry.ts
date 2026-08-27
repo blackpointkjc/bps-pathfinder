@@ -89,14 +89,17 @@ function withholding(gross: number, officer: any, payPeriods: number) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const caller = await base44.auth.me();
-    if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('accounting')) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const manualRun = body.force === true || Boolean(body.period_id) || ['run_now', 'preview'].includes(String(body.action || '').toLowerCase());
+    if (manualRun) {
+      const caller = await base44.auth.me().catch(() => null);
+      if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
+      if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('accounting')) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
     const now = new Date();
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York', hour: '2-digit', hourCycle: 'h23',
       year: 'numeric', month: '2-digit', day: '2-digit',
@@ -120,24 +123,39 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.PayrollConfig.list(undefined, 20),
       base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
     ]);
+    const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
+    const existingKeys = new Set((existingPayroll || []).map((item: any) =>
+      `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`
+    ));
+    const hasMissingEligibleOfficer = (candidate: any) => {
+      const eligibleEmails = new Set<string>();
+      for (const timeEntry of entries || []) {
+        const day = dateOnly(timeEntry.clock_in);
+        if (!timeEntry.clock_in || !timeEntry.clock_out || timeEntry.archived === true || day < candidate.start_date || day > candidate.end_date) continue;
+        const email = String(timeEntry.officer_email || '').toLowerCase();
+        const officer = usersByEmail.get(email) as any;
+        if (email && officer && Number(officer.hourly_rate || 0) > 0) eligibleEmails.add(email);
+      }
+      for (const usage of ptoUsage || []) {
+        if (usage.status !== 'active' || usage.usage_date < candidate.start_date || usage.usage_date > candidate.end_date) continue;
+        const email = String(usage.officer_email || '').toLowerCase();
+        const officer = usersByEmail.get(email) as any;
+        if (email && officer && Number(officer.hourly_rate || 0) > 0) eligibleEmails.add(email);
+      }
+      return [...eligibleEmails].some(email => !existingKeys.has(`${email}|${candidate.start_date}|${candidate.end_date}`));
+    };
     const period = body.period_id
       ? (periods || []).find((item: any) => item.id === body.period_id)
       : [...(periods || [])]
           .filter((item: any) => item.end_date <= endedDate)
           .sort((a: any, b: any) => String(a.end_date).localeCompare(String(b.end_date)))
-          .find((item: any) => !(existingPayroll || []).some((payroll: any) =>
-            payroll.pay_period_start === item.start_date && payroll.pay_period_end === item.end_date
-          ));
-    if (!period) return Response.json({ success: true, skipped: true, reason: `No unprocessed payroll period ended on or before ${endedDate}` });
+          .find(hasMissingEligibleOfficer);
+    if (!period) return Response.json({ success: true, skipped: true, reason: `No incomplete payroll period ended on or before ${endedDate}` });
 
     const config = configs?.[0] || {};
     const threshold = Number(config.overtime_threshold_hours || 40);
     const overtimeMultiplier = Number(config.overtime_multiplier || 1.5);
     const holidayMultiplier = Number(config.holiday_multiplier || 2);
-    const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
-    const existingKeys = new Set((existingPayroll || []).map((item: any) =>
-      `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`
-    ));
     const grouped = new Map<string, any>();
 
     for (const timeEntry of entries || []) {
