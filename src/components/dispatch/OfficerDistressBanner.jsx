@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { announceDistressSignalAsync } from '@/utils/voiceAnnouncer';
 
 // Police-style yelp/warble tone — repeating every 3.5s
 function useDistressSound(isActive) {
@@ -108,25 +107,12 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
             setSoundReady(false);
             return undefined;
         }
-        // Voice first. The emergency tone is intentionally held until the spoken
-        // "Distress signal 13" announcement finishes.
-        let cancelled = false;
-        setSoundReady(false);
-        const newlyAnnounced = visible.filter(alert => !announcedDistressRef.current.has(alert.id));
-        newlyAnnounced.forEach(alert => announcedDistressRef.current.add(alert.id));
-        const speak = async () => {
-            const alert = newlyAnnounced[0] || visible[0];
-            if (newlyAnnounced.length) {
-                await announceDistressSignalAsync({
-                    unit: alert.unit_number,
-                    name: alert.last_name || alert.officer_name,
-                    eventId: alert.id,
-                });
-            }
-            if (!cancelled) setSoundReady(true);
-        };
-        speak();
-        return () => { cancelled = true; };
+        // The durable CallStatusLog event owns the one-time spoken emergency
+        // announcement. This component owns the persistent emergency tone and
+        // visual alert only, preventing two voice paths for the same activation.
+        visible.forEach(alert => announcedDistressRef.current.add(alert.id));
+        setSoundReady(true);
+        return undefined;
     }, [visible.map(alert => alert.id).join('|'), isDispatchOrAdmin]);
 
     const fetchAlerts = () => {
