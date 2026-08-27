@@ -144,7 +144,39 @@
       "items": {
         "type": "string"
       },
-      "description": "BOLO image attachments"
+      "description": "Existing BOLO image attachments"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "document"
+            ]
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "description": "Additional BOLO photographs, PDFs, and supported documents"
     },
     "parties": {
       "type": "array",
