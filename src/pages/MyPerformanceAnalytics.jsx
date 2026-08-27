@@ -299,8 +299,8 @@ export default function MyPerformanceAnalytics() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden p-3 sm:p-4 md:p-5">
-      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden px-4 py-4 sm:px-5 md:px-6">
+      <div className="mx-auto w-full max-w-[1180px] min-w-0 space-y-5">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 sm:text-3xl">
             <BarChart3 className="w-8 h-8 text-blue-600" />
@@ -342,12 +342,12 @@ export default function MyPerformanceAnalytics() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_12rem] lg:items-end">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Performance Category Ratings</h2>
             <p className="text-sm text-slate-600">Every scoring category and Job Duty subcategory is shown below. A dash means there is no scoreable obligation or record for that category.</p>
           </div>
-          <Card className="border border-blue-200 bg-blue-50 shadow-sm sm:min-w-48">
+          <Card className="w-full border border-blue-200 bg-blue-50 shadow-sm">
             <CardContent className="p-3">
               <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-600" /><span className="text-xs font-semibold text-slate-700">Hours This Month</span></div>
               <p className="mt-1 text-2xl font-black text-blue-700">{hoursData.total}h</p>
@@ -355,17 +355,17 @@ export default function MyPerformanceAnalytics() {
           </Card>
         </div>
 
-        <div className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {categoryRatings.map(category => (
-            <Card key={category.label} className="min-w-0 overflow-hidden border border-slate-200 bg-white shadow-sm">
-              <CardContent className="flex min-h-[132px] min-w-0 flex-col p-4">
+            <Card key={category.label} className="h-full min-w-0 overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <CardContent className="flex min-w-0 flex-col p-4 sm:p-5">
                 <div className="flex min-w-0 items-start gap-3">
-                  <p className="min-w-0 flex-1 break-words text-[11px] font-black uppercase leading-snug tracking-[.04em] text-slate-700">{category.label}</p>
+                  <p className="min-w-0 flex-1 break-words text-xs font-bold uppercase leading-5 tracking-[.03em] text-slate-700">{category.label}</p>
                   <Badge className={`shrink-0 ${category.score == null ? 'bg-slate-500 text-white' : category.score >= 90 ? 'bg-green-600 text-white' : category.score >= 75 ? 'bg-amber-600 text-white' : 'bg-red-600 text-white'}`}>
                     {category.score == null ? '—' : `${category.score}%`}
                   </Badge>
                 </div>
-                <p className="mt-4 break-words text-sm leading-6 text-slate-600">{category.detail}</p>
+                <p className="mt-3 break-words text-sm leading-5 text-slate-600">{category.detail}</p>
               </CardContent>
             </Card>
           ))}
