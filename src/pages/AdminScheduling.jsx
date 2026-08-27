@@ -3198,9 +3198,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                                   snapshot.isDragging ? 'border-blue-400 bg-blue-900/70 shadow-lg' : 'border-blue-800/60 bg-blue-950/35 hover:border-blue-600 hover:bg-blue-950/55'
                                                 } ${schedule.is_split_shift ? 'border-purple-700/60 bg-purple-950/35 hover:bg-purple-950/55' : ''}`}
                                               >
-                                                <div className="flex min-w-0 items-center justify-between gap-1">
-                                                  <span className="truncate font-black text-white">{schedule.start_time}-{schedule.end_time}</span>
-                                                  <div className="flex shrink-0 items-center gap-0.5">
+                                                <div className="min-w-0">
+                                                  <span className="block whitespace-nowrap text-center text-[9px] font-bold tabular-nums text-white" title={`${schedule.start_time}-${schedule.end_time}`}>{schedule.start_time}-{schedule.end_time}</span>
+                                                  <div className="mt-1 flex items-center justify-end gap-1 border-t border-blue-800/40 pt-1">
                                                     <button
                                                       onClick={(e) => {
                                                         e.stopPropagation();
