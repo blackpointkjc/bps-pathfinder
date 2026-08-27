@@ -111,10 +111,8 @@ Deno.serve(async (req) => {
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const endedDate = yesterday.toISOString().slice(0, 10);
 
-    if (!body.force && easternHour !== 8) {
-      return Response.json({ success: true, skipped: true, reason: 'Outside 8 AM Eastern payroll window' });
-    }
-
+    // The automation runs hourly. The period end-date check below is the safety
+    // boundary, allowing a missed 8 AM run to catch up without waiting another day.
     const [periods, entries, users, existingPayroll, configs, ptoUsage] = await Promise.all([
       base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
@@ -249,7 +247,7 @@ Deno.serve(async (req) => {
         pto_detail: JSON.stringify(officerPto.map((usage: any) => ({ date: usage.usage_date, hours: Number(usage.hours || 0), reason: usage.reason || '', source_type: usage.source_type || '' }))),
         status: 'ready',
         payment_method: officer.payment_method || 'direct_deposit',
-        notes: `Automatically generated at 8 AM Eastern after ${period.period_name || 'payroll period'} ended.`,
+        notes: `Automatically generated after ${period.period_name || 'payroll period'} ended.`,
       });
       created += 1;
     }
