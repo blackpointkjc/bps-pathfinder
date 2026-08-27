@@ -129,13 +129,13 @@ function nextQueuedSpeech() {
   }
 }
 
-function speakQueued(clean, options = {}) {
+function speakQueued(clean, options = {}, resolve = null) {
   if (!isVoiceSupported() || wasEventProcessed(options.eventId)) return false;
   const priority = PRIORITY[options.priority] ?? PRIORITY.normal;
   const duplicate = speechQueue.some(item => options.eventId && item.options.eventId === options.eventId);
   if (duplicate || (activeSpeech && options.eventId && activeSpeech.options.eventId === options.eventId)) return false;
 
-  const item = { clean, options, priority, sequence: ++speechSequence };
+  const item = { clean, options, priority, sequence: ++speechSequence, resolve };
   speechQueue.push(item);
 
   // Emergency traffic may preempt lower-priority speech. Routine/high traffic
@@ -192,23 +192,10 @@ export function announceVoiceAsync(text, options = {}) {
   if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
   options = { ...options, rate: 0.96, pitch: 0.92 };
   const clean = String(text).replace(/\s+/g, ' ').trim();
-  if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
+  if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
+  installVoiceUnlockListeners();
   return new Promise(resolve => {
-    try {
-      const utterance = buildUtterance(clean, options);
-      let settled = false;
-      const finish = value => {
-        if (settled) return;
-        settled = true;
-        resolve(value);
-      };
-      utterance.onend = () => finish(true);
-      utterance.onerror = () => finish(false);
-      if (options.interrupt !== false) window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      resolve(false);
-    }
+    if (!speakQueued(clean, options, resolve)) resolve(false);
   });
 }
 
@@ -274,8 +261,8 @@ export function announceDistressSignal({ unit, name }) {
   announceVoice(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, force: true, priority: 'emergency' });
 }
 
-export function announceDistressSignalAsync({ unit, name }) {
-  return announceVoiceAsync(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62 });
+export function announceDistressSignalAsync({ unit, name, eventId }) {
+  return announceVoiceAsync(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, priority: 'emergency', eventId: eventId ? `distress:${eventId}` : undefined });
 }
 
 export function announceRecordSearch(results = [], metadata = {}) {
