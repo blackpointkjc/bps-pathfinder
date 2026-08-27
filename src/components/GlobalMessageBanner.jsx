@@ -381,49 +381,50 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     try {
-      // Seed current statuses before subscribing so a page refresh does not replay
-      // every active call. Only meaningful changes are spoken.
-      base44.entities.DispatchCall.list('-created_date', 500).then(calls => {
-        (calls || []).forEach(call => callStatuses.current.set(call.id, callStatusKey(call.status)));
-      }).catch(() => null);
+      // CallStatusLog is the durable source of verified transition events. A raw
+      // DispatchCall fetch/update is never enough to create speech.
+      const showCadAnnouncementEvent = record => {
+        if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
+        const key = `CallStatusLog:${record.event_key}`;
+        if (knownIds.current.has(key)) return;
+        knownIds.current.add(key);
+        const spoken = speakNotification(record.announcement_text, {
+          dedupeMs: 4000,
+          eventId: record.event_key,
+          priority: record.announcement_priority || 'normal',
+        });
+        if (!spoken) return;
+        const banner = {
+          id: key,
+          title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
+          page: 'DispatchCenter',
+          kind: record.announcement_priority === 'emergency' ? 'property' : 'assignment',
+          persistent: false,
+          recordId: record.id,
+          fingerprint: record.event_key,
+          sender: record.cad_number ? `CAD ${record.cad_number}` : 'CAD Operations',
+          photo: '',
+          message: record.announcement_text,
+        };
+        setBanners(current => [...current.slice(-4), banner]);
+        const timer = window.setTimeout(() => {
+          setBanners(current => current.filter(entry => entry.id !== key));
+          timers.current.delete(key);
+        }, 30000);
+        timers.current.set(key, timer);
+      };
 
-      const callStatusUnsubscribe = base44.entities.DispatchCall.subscribe(async event => {
-        const call = event?.data;
-        if (!call?.id) return;
-        const nextRaw = callStatusKey(call.status);
-        const previousRaw = callStatuses.current.get(call.id);
-        callStatuses.current.set(call.id, nextRaw);
-        if (event.type !== 'update' || !previousRaw || previousRaw === nextRaw) return;
-
-        const spokenStatus = announcedCallStatus(call.status);
-        if (!spokenStatus || isSilentCallStatus(call.status)) return;
-
-        // A DispatchCall update alone is never enough to speak. Require the call to
-        // have a current alert tied to a site that is still enabled in Property Monitoring.
-        const propertyAlert = await findActivePropertyAlertForCall(call.id);
-        if (!propertyAlert) return;
-
-        const callKey = String(call.id);
-        if (announcedPropertyCallStatuses.current.get(callKey) === nextRaw) return;
-        announcedPropertyCallStatuses.current.set(callKey, nextRaw);
-
-        const incident = call.incident || propertyAlert.callIncident || 'Call for service';
-        const address = call.location || propertyAlert.callLocation || 'address unavailable';
-        const returnToService = spokenStatus === 'Canceled' && call.assigned_units?.length
-          ? ' Assigned officers on this call, return 10, 8.'
-          : '';
-        speakNotification(
-          `Active call for service status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
-          {
-            rate: 0.82,
-            pitch: 0.66,
-            dedupeMs: 4000,
-            eventId: `call:${call.id}:status:${nextRaw}:${call.updated_date || call.time_dispatched || call.time_enroute || call.time_on_scene || call.time_closed || ''}`,
-            priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
-          },
-        );
+      const statusLogUnsubscribe = base44.entities.CallStatusLog.subscribe(event => {
+        if (event?.type === 'create') showCadAnnouncementEvent(event.data);
       });
-      if (typeof callStatusUnsubscribe === 'function') unsubscribers.push(callStatusUnsubscribe);
+      if (typeof statusLogUnsubscribe === 'function') unsubscribers.push(statusLogUnsubscribe);
+
+      // Seed existing rows as known. Refresh/reconnect must not replay history.
+      base44.entities.CallStatusLog.list('-created_date', 500).then(records => {
+        (records || []).forEach(record => {
+          if (record?.event_key) knownIds.current.add(`CallStatusLog:${record.event_key}`);
+        });
+      }).catch(() => null);
 
       const propertyUnsubscribe = base44.entities.PropertyAlert.subscribe(event => {
         if (event?.type !== 'create' || !event.data?.id) return;
