@@ -387,11 +387,6 @@ export default function AdminDivisions() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Level 1 — Division / Region</p><p className="mt-1 text-sm text-blue-950">The broad operating region, normally a state or major company region. Example: Virginia.</p></div>
-          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-purple-700">Level 2 — Operating Area</p><p className="mt-1 text-sm text-purple-950">The city/market inside a Division. Example: Richmond, NOVA, Tidewater.</p></div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-700">Used By</p><p className="mt-1 text-sm text-slate-800">Officer profiles, locations, scheduling, analytics, training assignments, and filters should use the same Division → Operating Area structure.</p></div>
-        </div>
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
