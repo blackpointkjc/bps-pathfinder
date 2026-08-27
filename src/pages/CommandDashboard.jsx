@@ -181,7 +181,9 @@ function CommandDashboardInner() {
         const order = ['critical', 'high', 'medium', 'low'];
         const current = getCallPriority(call);
         const next = order[(order.indexOf(current) + 1) % order.length];
-        await base44.entities.DispatchCall.update(call.id, { priority: next, priority_override: true });
+        const response = await base44.functions.invoke('updateCadCallPriority', { call_id: call.id, priority: next });
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
         manualRefresh();
     };
 
