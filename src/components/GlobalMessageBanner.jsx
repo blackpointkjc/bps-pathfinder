@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, Volume2, VolumeX, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
-import { announceVoice, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, stopVoice } from '@/utils/voiceAnnouncer';
+import { announceVoice, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
@@ -158,6 +158,7 @@ export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
   const [voiceWarning, setVoiceWarning] = useState(null);
   const [voiceEnabled, setVoiceEnabledState] = useState(() => isVoiceEnabled());
+  const audioSettings = useRef({ enabled: true, volume: 1, voice_profile: 'american_ai', enabled_event_types: [] });
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
@@ -171,6 +172,25 @@ export default function GlobalMessageBanner({ user }) {
     return () => {
       window.removeEventListener('bps-voice-blocked', onVoiceBlocked);
       window.removeEventListener('bps-voice-started', onVoiceStarted);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const applySettings = record => {
+      if (!record || !active) return;
+      audioSettings.current = { ...audioSettings.current, ...record };
+      setVoiceRuntimeConfig({ volume: audioSettings.current.volume, voiceProfile: audioSettings.current.voice_profile });
+    };
+    base44.entities.CadAudioSettings.filter({ settings_key: 'global' }, '-updated_date', 1)
+      .then(rows => applySettings(rows?.[0]))
+      .catch(() => null);
+    const unsubscribe = base44.entities.CadAudioSettings.subscribe(event => {
+      if ((event?.type === 'create' || event?.type === 'update') && event.data?.settings_key === 'global') applySettings(event.data);
+    });
+    return () => {
+      active = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, []);
 
@@ -366,17 +386,39 @@ export default function GlobalMessageBanner({ user }) {
         || roles.has('supervisor')
         || roles.has('cad_access');
 
-      const showCadAnnouncementEvent = record => {
+      const showCadAnnouncementEvent = async record => {
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
         if (record.sensitive === true && !cadAuthorized) return;
+        const settings = audioSettings.current;
+        const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
+        if (settings.enabled === false || (enabledTypes.length && !enabledTypes.includes(record.event_type))) return;
         const key = `CallStatusLog:${record.event_key}`;
         if (knownIds.current.has(key)) return;
         knownIds.current.add(key);
-        speakNotification(record.announcement_text, {
+        const email = normalized(user.email);
+        const existing = email
+          ? await base44.entities.CadAnnouncementReceipt.filter({ event_key: record.event_key, user_email: email }, '-processed_at', 1).catch(() => [])
+          : [];
+        if (existing?.length) return;
+        const accepted = speakNotification(record.announcement_text, {
           dedupeMs: 4000,
           eventId: record.event_key,
           priority: record.announcement_priority || 'normal',
+          volume: settings.volume,
+          voiceProfile: settings.voice_profile,
         });
+        if (email) {
+          base44.entities.CadAnnouncementReceipt.create({
+            event_key: record.event_key,
+            event_id: record.id,
+            user_email: email,
+            device_id: navigator.userAgent.slice(0, 250),
+            state: accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
+            processed_at: new Date().toISOString(),
+            cad_number: record.cad_number || '',
+            event_type: record.event_type || '',
+          }).catch(() => null);
+        }
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
