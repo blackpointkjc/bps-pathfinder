@@ -3,74 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Police-style yelp/warble tone — repeating every 3.5s
-function useDistressSound(isActive) {
-    const audioCtxRef = useRef(null);
-    const intervalRef = useRef(null);
-
-    const playYelp = (ctx) => {
-        try {
-            const now = ctx.currentTime;
-            const duration = 2.2;
-            const sweepsPerSec = 6;
-            const sweepCount = Math.floor(duration * sweepsPerSec);
-
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 2400;
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc.type = 'sawtooth';
-            // Rapid yelp sweeps: 600 → 1500 Hz
-            for (let i = 0; i < sweepCount; i++) {
-                const t = now + (i / sweepsPerSec);
-                const half = 1 / sweepsPerSec / 2;
-                osc.frequency.setValueAtTime(600, t);
-                osc.frequency.linearRampToValueAtTime(1500, t + half);
-                osc.frequency.linearRampToValueAtTime(600, t + half * 2);
-            }
-
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.6, now + 0.04);
-            gain.gain.setValueAtTime(0.6, now + duration - 0.1);
-            gain.gain.linearRampToValueAtTime(0, now + duration);
-
-            osc.start(now);
-            osc.stop(now + duration + 0.05);
-        } catch (e) {}
-    };
-
-    const startTone = () => {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            audioCtxRef.current = ctx;
-            playYelp(ctx);
-            intervalRef.current = setInterval(() => playYelp(ctx), 3500);
-        } catch (e) {}
-    };
-
-    const stopTone = () => {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        try { audioCtxRef.current?.close(); } catch (e) {}
-        audioCtxRef.current = null;
-    };
-
-    useEffect(() => {
-        if (isActive) {
-            startTone();
-        } else {
-            stopTone();
-        }
-        return stopTone;
-    }, [isActive]);
-}
-
 function timeStr(iso) {
     if (!iso) return '—';
     return new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
@@ -91,29 +23,14 @@ async function reverseGeocode(lat, lon) {
 export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin = false }) {
     const [alerts, setAlerts] = useState([]);
     const [dismissed, setDismissed] = useState(new Set());
-    const [soundReady, setSoundReady] = useState(false);
     const [addresses, setAddresses] = useState({});  // alertId -> address string
     const geocodedRef = useRef(new Set());
-    const announcedDistressRef = useRef(new Set());
 
     const activeAlerts = alerts.filter(a => a.status === 'active' || a.status === 'acknowledged' || a.status === 'responders_enroute');
     const visible = activeAlerts.filter(a => !dismissed.has(a.id));
-    const soundActive = soundReady && visible.length > 0 && isDispatchOrAdmin;
-
-    useDistressSound(soundActive);
-
-    useEffect(() => {
-        if (!visible.length || !isDispatchOrAdmin) {
-            setSoundReady(false);
-            return undefined;
-        }
-        // The durable CallStatusLog event owns the one-time spoken emergency
-        // announcement. This component owns the persistent emergency tone and
-        // visual alert only, preventing two voice paths for the same activation.
-        visible.forEach(alert => announcedDistressRef.current.add(alert.id));
-        setSoundReady(true);
-        return undefined;
-    }, [visible.map(alert => alert.id).join('|'), isDispatchOrAdmin]);
+    // Spoken emergency traffic is handled once by the durable CallStatusLog
+    // announcement path. The distress banner stays visual-only so it never
+    // starts a repeating siren or a second AudioContext.
 
     const fetchAlerts = () => {
         base44.entities.OfficerDistress.list('-activated_at', 20)
