@@ -350,8 +350,28 @@ export default function GlobalMessageBanner({ user }) {
       announcedPropertyCallStatuses.current.set(callKey, currentStatus);
 
       const summary = propertyCallSummary(record, call);
-      // Dispatch the incident and address verbally in a concise police-CAD cadence.
-      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: `property:${record.source_key || record.id}:new`, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal' });
+      const propertyEventKey = `property:${record.source_key || record.id}:new`;
+      const settings = audioSettings.current;
+      const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
+      const email = normalized(user.email);
+      const priorReceipts = email
+        ? await base44.entities.CadAnnouncementReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-processed_at', 1).catch(() => [])
+        : [];
+      if (settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert')) && !priorReceipts?.length) {
+        const accepted = speakNotification(`Property alert. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: propertyEventKey, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal', volume: settings.volume, voiceProfile: settings.voice_profile });
+        if (email) {
+          base44.entities.CadAnnouncementReceipt.create({
+            event_key: propertyEventKey,
+            event_id: record.id,
+            user_email: email,
+            device_id: navigator.userAgent.slice(0, 250),
+            state: accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
+            processed_at: new Date().toISOString(),
+            cad_number: call.agency_cad_number || call.bps_reference || call.call_id || '',
+            event_type: 'property_alert',
+          }).catch(() => null);
+        }
+      }
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
