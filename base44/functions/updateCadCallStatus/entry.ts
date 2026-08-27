@@ -45,12 +45,16 @@ Deno.serve(async (req) => {
       Cleared: 'call_cleared',
       Cancelled: 'call_cancelled',
     };
+    const audioSettings = await base44.asServiceRole.entities.CadAudioSettings.filter({ settings_key: 'global' }, '-updated_date', 1).catch(() => []);
+    const cancellationTerminology = String(audioSettings?.[0]?.cancelled_terminology || 'Return 10-8').trim();
+    const enabledTypes = Array.isArray(audioSettings?.[0]?.enabled_event_types) ? audioSettings[0].enabled_event_types : [];
+    const globalAudioEnabled = audioSettings?.[0]?.enabled !== false;
     const wordingByStatus: Record<string,string> = {
       Dispatched: `Unit dispatched. ${call.incident || 'Call for service'}. CAD number ${cadNumber}.`,
       Enroute: `Unit en route. CAD number ${cadNumber}.`,
       'On Scene': `Unit on scene. CAD number ${cadNumber}.`,
       Cleared: `Call cleared. CAD number ${cadNumber}. Officer returned to available status.`,
-      Cancelled: `Call cancelled. CAD number ${cadNumber}. Return 10-8.`,
+      Cancelled: `Call cancelled. CAD number ${cadNumber}. ${cancellationTerminology}.`,
     };
     await base44.asServiceRole.entities.CallStatusLog.create({
       call_id: callId,
@@ -68,7 +72,7 @@ Deno.serve(async (req) => {
       announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
       cad_number: String(cadNumber),
       triggering_action: 'updateCadCallStatus',
-      audio_enabled: Boolean(wordingByStatus[newStatus]),
+      audio_enabled: Boolean(wordingByStatus[newStatus]) && globalAudioEnabled && (!enabledTypes.length || enabledTypes.includes(eventByStatus[newStatus])),
       sensitive: false,
     });
 
