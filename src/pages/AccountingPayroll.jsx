@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { accountingBulkCreate, accountingCreate, accountingUpdate } from '@/lib/accountingRecordsApi';
@@ -32,6 +32,8 @@ export default function AccountingPayroll() {
   const [validationIssues, setValidationIssues] = useState([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [liveNow, setLiveNow] = useState(() => new Date());
+  const [payrollCatchup, setPayrollCatchup] = useState({ state: 'idle', message: '' });
+  const payrollCatchupAttempts = useRef(new Set());
 
   useEffect(() => {
     const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
@@ -108,6 +110,32 @@ export default function AccountingPayroll() {
       setSelectedPeriodId(latestEndedPayrollPeriod.id);
     }
   }, [latestEndedPayrollPeriod, selectedPeriodId]);
+
+  useEffect(() => {
+    if (!isAccountingRole || accountingLoading || !selectedPeriodId) return;
+    const period = payrollPeriods.find(item => item.id === selectedPeriodId);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (!period?.end_date || period.end_date > today || payrollCatchupAttempts.current.has(period.id)) return;
+    payrollCatchupAttempts.current.add(period.id);
+    setPayrollCatchup({ state: 'running', message: `Checking ${period.period_name} for missing payroll reports…` });
+    base44.functions.invoke('generateScheduledPayroll', { force: true, period_id: period.id, action: 'run_now' })
+      .then(result => {
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
+        setPayrollCatchup({
+          state: payload.created > 0 ? 'created' : 'current',
+          message: payload.created > 0
+            ? `${payload.created} missing payroll report${payload.created === 1 ? '' : 's'} created for ${period.period_name}.`
+            : `${period.period_name} payroll reports are current.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+        refetchPayroll();
+      })
+      .catch(error => {
+        payrollCatchupAttempts.current.delete(period.id);
+        setPayrollCatchup({ state: 'error', message: `Automatic payroll catch-up failed: ${error?.message || 'Unknown error'}` });
+      });
+  }, [isAccountingRole, accountingLoading, selectedPeriodId, payrollPeriods, queryClient, refetchPayroll]);
 
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
@@ -859,6 +887,7 @@ export default function AccountingPayroll() {
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
+      {payrollCatchup.state !== 'idle' && <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${payrollCatchup.state === 'error' ? 'border-red-300 bg-red-50 text-red-900' : payrollCatchup.state === 'created' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-blue-300 bg-blue-50 text-blue-900'}`}>{payrollCatchup.message}</div>}
       {accountingError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Payroll data could not be loaded: {accountingError.message}</div>}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
