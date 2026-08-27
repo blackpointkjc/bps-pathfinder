@@ -43,6 +43,27 @@ Deno.serve(async (req) => {
             status: 'accepted',
           }),
         ]);
+        const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+        const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
+        const isAdditional = assigned.length > 0;
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id,
+          incident_type: call.incident || '',
+          location: call.location || '',
+          old_status: call.status || '',
+          new_status: call.status === 'New' ? 'Dispatched' : call.status,
+          unit_id: user.id,
+          unit_name: officer,
+          notes: isAdditional ? 'Officer joined as additional unit' : 'Officer accepted primary assignment',
+          event_key: `call:${call_id}:self-assignment:${user.id}:${now}`,
+          event_type: isAdditional ? 'additional_unit' : 'unit_dispatched',
+          announcement_text: `${isAdditional ? 'Additional unit assigned' : 'Unit dispatched'}. ${officer}. CAD number ${cadNumber}.`,
+          announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+          cad_number: String(cadNumber),
+          triggering_action: 'updateMyCallAssignment.join',
+          audio_enabled: true,
+          sensitive: false,
+        });
       }
       return Response.json({ success: true, action, assigned_units: assignedUnits });
     }
