@@ -43,6 +43,52 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+const MAP_TILE_PROVIDERS = [
+  {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+  },
+  {
+    name: 'Esri World Street Map',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri',
+  },
+];
+
+function ResilientTileLayer({ onUnavailable }) {
+  const [providerIndex, setProviderIndex] = useState(0);
+  const failureHandled = React.useRef(false);
+  const provider = MAP_TILE_PROVIDERS[providerIndex];
+
+  useEffect(() => {
+    failureHandled.current = false;
+    onUnavailable(false);
+  }, [providerIndex, onUnavailable]);
+
+  const handleTileError = () => {
+    if (failureHandled.current) return;
+    failureHandled.current = true;
+    if (providerIndex < MAP_TILE_PROVIDERS.length - 1) {
+      setProviderIndex(current => current + 1);
+    } else {
+      onUnavailable(true);
+    }
+  };
+
+  return (
+    <TileLayer
+      key={provider.name}
+      url={provider.url}
+      attribution={provider.attribution}
+      eventHandlers={{
+        tileerror: handleTileError,
+        load: () => onUnavailable(false),
+      }}
+    />
+  );
+}
+
 function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocation }) {
   const map = useMap();
   
@@ -90,6 +136,9 @@ export default function AdminLocationTracker() {
   const [checkingLocations, setCheckingLocations] = useState(false);
   const [locationCheckResults, setLocationCheckResults] = useState(null);
   const [lastAutoCheck, setLastAutoCheck] = useState(null);
+  const [locationCheckError, setLocationCheckError] = useState('');
+  const [liveMapUnavailable, setLiveMapUnavailable] = useState(false);
+  const [historyMapUnavailable, setHistoryMapUnavailable] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -272,10 +321,11 @@ export default function AdminLocationTracker() {
   };
 
   const handleCheckAllLocations = async () => {
+    setLocationCheckError('');
     try {
       await performLocationCheck();
-    } catch {
-      alert("Failed to check user locations. Please try again.");
+    } catch (error) {
+      setLocationCheckError(error?.message || 'Failed to check user locations. Please try again.');
     }
   };
 
@@ -343,11 +393,13 @@ export default function AdminLocationTracker() {
           </Button>
         </div>
 
-        {officerDirectoryError && (
+        {(officerDirectoryError || locationCheckError) && (
           <Alert className="border-red-300 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-900">
-              Unable to load the Officer directory: {officerDirectoryError.message}. Refresh this page to retry.
+              {officerDirectoryError
+                ? `Unable to load the Officer directory: ${officerDirectoryError.message}. Refresh this page to retry.`
+                : locationCheckError}
             </AlertDescription>
           </Alert>
         )}
@@ -587,16 +639,21 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
+                  {liveMapUnavailable && (
+                    <Alert className="m-4 border-amber-400 bg-amber-50">
+                      <AlertTriangle className="h-4 w-4 text-amber-700" />
+                      <AlertDescription className="text-amber-950">
+                        The map background could not load from either map provider. Officer GPS data remains available below; check the network connection and refresh to retry.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     <MapContainer
                       center={[37.5407, -77.4360]}
                       zoom={12}
                       style={{ height: '100%', width: '100%' }}
                     >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-                      />
+                      <ResilientTileLayer onUnavailable={setLiveMapUnavailable} />
                       <MapUpdater officers={officersWithLocation} historicalPath={null} />
                       {officersWithLocation.map((officer) => (
                         <Marker 
@@ -729,16 +786,22 @@ export default function AdminLocationTracker() {
               </div>
               
               {locationHistory && locationHistory.length > 0 ? (
-                <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
+                <>
+                  {historyMapUnavailable && (
+                    <Alert className="m-4 border-amber-400 bg-amber-50">
+                      <AlertTriangle className="h-4 w-4 text-amber-700" />
+                      <AlertDescription className="text-amber-950">
+                        The historical map background could not load. Recorded GPS points and timestamps remain available.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                   <MapContainer
                     center={[37.5407, -77.4360]}
                     zoom={12}
                     style={{ height: '100%', width: '100%' }}
                   >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-                    />
+                    <ResilientTileLayer onUnavailable={setHistoryMapUnavailable} />
                     <MapUpdater 
                       officers={[]} 
                       historicalPath={locationHistory}
@@ -814,7 +877,8 @@ export default function AdminLocationTracker() {
                       </Marker>
                     )}
                   </MapContainer>
-                </div>
+                  </div>
+                </>
               ) : (
                 <div className="p-12 text-center">
                   <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
