@@ -51,6 +51,7 @@
       "enum": [
         "new_call",
         "priority_call",
+        "bolo_published",
         "unit_dispatched",
         "unit_enroute",
         "unit_on_scene",
