@@ -1286,7 +1286,7 @@ export default function Layout({ children, currentPageName }) {
       </div>}
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
