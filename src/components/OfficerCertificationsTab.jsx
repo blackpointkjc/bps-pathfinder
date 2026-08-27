@@ -9,7 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, X, Edit, CheckCircle, AlertTriangle, Upload, FileText, Image, ExternalLink, AlertCircle, Paperclip } from "lucide-react";
 import { format, isPast, addMonths } from "date-fns";
-import { base44 } from "@/api/base44Client";
 
 // Full DCJS training list
 const DCJS_COURSES = [
