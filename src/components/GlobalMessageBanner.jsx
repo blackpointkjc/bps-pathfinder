@@ -282,19 +282,13 @@ export default function GlobalMessageBanner({ user }) {
     const showBolo = record => {
       if (!record?.id || record.status !== 'active') return;
       const key = `BOLOAlert:${record.id}`;
-      const persistentKey = `bps-bolo-announced:${normalized(user.email || user.id)}:${record.id}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
-      // BOLO speech is one-time per user/device. Refreshing, reopening Pathfinder,
-      // or logging back in must never replay an already announced BOLO.
-      try {
-        if (localStorage.getItem(persistentKey) === '1') return;
-        localStorage.setItem(persistentKey, '1');
-      } catch {}
 
       const summary = boloSummary(record);
+      // manageBolo publishes the durable CallStatusLog event that owns speech.
+      // This BOLO subscription only owns the matching visual alert and chime.
       playNotificationChime(true);
-      speakNotification(`Attention all units. New BOLO. ${summary}`, { dedupeMs: 10000, eventId: `bolo:${record.id}`, priority: record.priority === 'critical' ? 'critical' : 'high' });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -498,7 +492,6 @@ export default function GlobalMessageBanner({ user }) {
         (records || []).forEach(record => {
           if (!record?.id) return;
           knownIds.current.add(`BOLOAlert:${record.id}`);
-          try { localStorage.setItem(`bps-bolo-announced:${normalized(user.email || user.id)}:${record.id}`, '1'); } catch {}
         });
       }).catch(() => null);
     } catch (error) {
