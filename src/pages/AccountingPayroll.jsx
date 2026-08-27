@@ -538,7 +538,7 @@ export default function AccountingPayroll() {
   }, 0) : 0;
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
-  const currentReportEntries = selectedPayrollEntries.filter(entry => ['draft', 'approved', 'paid'].includes(entry.status));
+  const currentReportEntries = selectedPayrollEntries.filter(entry => ['ready', 'exported', 'draft', 'approved', 'paid'].includes(entry.status));
   // Generate Gusto-compatible payroll report
   const generatePayrollReport = (entriesToReport) => {
     const reportWindow = window.open('', '_blank');
@@ -1008,7 +1008,7 @@ export default function AccountingPayroll() {
                 {entries.length === 0 ? (
                   <div className="text-center py-12">
                     <DollarSign className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                    <p className="text-slate-600">No payroll report has been generated for this period yet.</p>
+                    <p className="text-slate-600">No payroll report is available for this period yet.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
