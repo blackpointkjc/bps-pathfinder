@@ -67,6 +67,26 @@ Deno.serve(async (req) => {
         notes: isSelf ? '' : `Triggered by dispatch (${[user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email})`,
       };
       const created = await base44.asServiceRole.entities.OfficerDistress.create(distressData);
+      await base44.asServiceRole.entities.CallStatusLog.create({
+        call_id: created?.id || officer.id,
+        incident_type: 'Officer emergency',
+        location: distressData.location_description,
+        old_status: officer.status || '',
+        new_status: 'Distress',
+        unit_id: officer.id,
+        unit_name: officer.unit_number || officer.full_name || officer.email,
+        notes: distressData.notes || 'Officer emergency activated',
+        latitude: lat,
+        longitude: lon,
+        event_key: `distress:${created?.id || officer.id}:activated`,
+        event_type: 'officer_emergency',
+        announcement_text: `Emergency traffic. Officer emergency activated. Unit ${officer.unit_number || 'unknown'}. All available units respond.`,
+        announcement_priority: 'emergency',
+        cad_number: '',
+        triggering_action: 'manageOfficerDistress.activate',
+        audio_enabled: true,
+        sensitive: true,
+      });
       await syncStatus('Distress');
       return Response.json({ success: true, status: 'Distress', distress_id: created?.id || null });
     }
