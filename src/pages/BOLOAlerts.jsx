@@ -22,6 +22,7 @@ export default function BOLOAlerts() {
   const [resolving, setResolving] = useState(null);
   const [resolutionDialog, setResolutionDialog] = useState(null);
   const [resolutionText, setResolutionText] = useState('');
+  const [pageError, setPageError] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -51,6 +52,7 @@ export default function BOLOAlerts() {
     try {
       const data = await base44.entities.BOLOAlert.list('-created_date', 500);
       setBolos(data || []);
+      setPageError('');
       return data || [];
     } catch (error) {
       const isRateLimit = String(error?.message || error || '').toLowerCase().includes('rate limit');
@@ -59,6 +61,7 @@ export default function BOLOAlerts() {
         return load(attempt + 1);
       }
       setBolos([]);
+      setPageError(error?.message || 'BOLO records could not be loaded. Please retry.');
       return [];
     } finally {
       setLoading(false);
@@ -72,13 +75,14 @@ export default function BOLOAlerts() {
   const activeCount = bolos.filter(b => b.status === 'active').length;
   const draftCount = bolos.filter(b => b.status === 'draft' && (isManager || b.issued_by_id === user?.id || b.created_by_id === user?.id)).length;
   const historyCount = bolos.filter(b => !['active', 'draft'].includes(b.status)).length;
-  const criticalCount = bolos.filter(b => b.status === 'active' && b.priority === 'critical').length;
+  const criticalSafetyCount = bolos.filter(b => b.status === 'active' && (b.priority === 'critical' || b.alert_type === 'officer_safety')).length;
 
   const filtered = useMemo(() => bolos.filter(b => {
     if (view === 'active' && b.status !== 'active') return false;
     if (view === 'drafts' && (b.status !== 'draft' || (!isManager && b.issued_by_id !== user?.id && b.created_by_id !== user?.id))) return false;
     if (view === 'history' && ['active', 'draft'].includes(b.status)) return false;
-    if (typeFilter !== 'all' && b.alert_type !== typeFilter) return false;
+    if (typeFilter === 'critical_safety' && !(b.priority === 'critical' || b.alert_type === 'officer_safety')) return false;
+    if (!['all', 'critical_safety'].includes(typeFilter) && b.alert_type !== typeFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       const haystack = [b.bolo_number,b.title,b.description,b.subject_name,b.vehicle_plate,b.case_number,b.last_known_location,b.issued_by,JSON.stringify(b.parties || []),JSON.stringify(b.vehicles || [])].filter(Boolean).join(' ').toLowerCase();
@@ -105,14 +109,14 @@ export default function BOLOAlerts() {
       setResolutionText('');
       await load();
     } catch (error) {
-      window.alert(error?.response?.data?.error || error?.message || 'Unable to resolve BOLO');
+      setPageError(error?.response?.data?.error || error?.message || 'Unable to resolve BOLO. Please retry.');
     } finally {
       setResolving(null);
     }
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#050a11] font-mono text-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#050a11] font-sans text-white">
       <div className="flex-none border-b border-[#24354c] bg-[#0a1220] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
