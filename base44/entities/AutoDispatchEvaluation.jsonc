@@ -1,0 +1,118 @@
+{
+  "name": "AutoDispatchEvaluation",
+  "type": "object",
+  "properties": {
+    "event_key": {
+      "type": "string",
+      "description": "Stable property-alert evaluation identity"
+    },
+    "property_alert_id": {
+      "type": "string"
+    },
+    "call_id": {
+      "type": "string"
+    },
+    "cad_number": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "manual_review",
+        "live",
+        "disabled"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "recommended",
+        "no_eligible_unit",
+        "manual_review",
+        "disabled",
+        "assigned"
+      ]
+    },
+    "recommended_unit_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ranking": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "excluded_units": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evaluated_by": {
+      "type": "string"
+    },
+    "configuration_snapshot": {
+      "type": "object"
+    },
+    "override_reason": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "event_key",
+    "call_id",
+    "property_id",
+    "mode",
+    "decision",
+    "evaluated_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatch"
+          }
+        },
+        {
+          "data.evaluated_by": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
