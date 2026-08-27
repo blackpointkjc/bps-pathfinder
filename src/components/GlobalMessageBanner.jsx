@@ -344,7 +344,7 @@ export default function GlobalMessageBanner({ user }) {
       announcedPropertyCallStatuses.current.set(callKey, currentStatus);
 
       const summary = propertyCallSummary(record, call);
-      const propertyEventKey = `property:${record.source_key || record.id}:new`;
+      const propertyEventKey = `property:${callKey}:${currentStatus}`;
       const settings = audioSettings.current;
       const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
       const email = normalized(user.email);
