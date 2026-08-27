@@ -94,25 +94,29 @@ export default function AccountingPayroll() {
   const config = accountingData.config || null;
   const payrollPeriods = accountingData.payrollPeriods || [];
 
+  const latestGeneratedPayroll = React.useMemo(() => {
+    return [...payrollEntries].sort((a, b) => {
+      const createdDifference = String(b.created_date || '').localeCompare(String(a.created_date || ''));
+      if (createdDifference !== 0) return createdDifference;
+      return String(b.pay_period_end || '').localeCompare(String(a.pay_period_end || ''));
+    })[0] || null;
+  }, [payrollEntries]);
+
+  const latestGeneratedPeriod = React.useMemo(() => {
+    if (!latestGeneratedPayroll) return null;
+    return payrollPeriods.find(period =>
+      period.start_date === latestGeneratedPayroll.pay_period_start &&
+      period.end_date === latestGeneratedPayroll.pay_period_end
+    ) || null;
+  }, [latestGeneratedPayroll, payrollPeriods]);
+
   useEffect(() => {
-    if (selectedPeriodId || payrollPeriods.length === 0) return;
-    // Open the newest generated payroll report first so the 8 AM report is ready to print.
-    const newestPayroll = [...payrollEntries].sort((a, b) => String(b.created_date || '').localeCompare(String(a.created_date || '')))[0];
-    const generatedPeriod = newestPayroll && payrollPeriods.find(period => period.start_date === newestPayroll.pay_period_start && period.end_date === newestPayroll.pay_period_end);
-    if (generatedPeriod) {
-      setSelectedPeriodId(generatedPeriod.id);
-      return;
-    }
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const current = payrollPeriods.find(period => period.status === 'current' || (period.start_date <= today && period.end_date >= today));
-    if (current) {
-      setSelectedPeriodId(current.id);
-      return;
-    }
-    const completedDates = timeEntries.filter(entry => entry.clock_in && entry.clock_out).map(entry => String(entry.clock_in).slice(0, 10));
-    const matching = payrollPeriods.find(period => completedDates.some(date => date >= period.start_date && date <= period.end_date));
-    setSelectedPeriodId((matching || payrollPeriods[0]).id);
-  }, [payrollPeriods, payrollEntries, selectedPeriodId, timeEntries]);
+    // Keep every payroll total, report row, and print action locked to the newest
+    // persisted payroll report. Realtime creation of a newer report moves the page
+    // forward automatically; a current/future period must never replace it.
+    const authoritativePeriodId = latestGeneratedPeriod?.id || '';
+    if (selectedPeriodId !== authoritativePeriodId) setSelectedPeriodId(authoritativePeriodId);
+  }, [latestGeneratedPeriod, selectedPeriodId]);
 
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
@@ -889,13 +893,13 @@ export default function AccountingPayroll() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Select Payroll Period</Label>
+            <Label>Latest Generated Payroll Report</Label>
             <Select
               value={selectedPeriodId}
-              onValueChange={setSelectedPeriodId}
+              disabled
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a payroll period..." />
+              <SelectTrigger aria-label="Latest generated payroll report">
+                <SelectValue placeholder="No generated payroll report is available" />
               </SelectTrigger>
               <SelectContent>
                 {payrollPeriods.map(period => {
@@ -909,6 +913,7 @@ export default function AccountingPayroll() {
                 })}
               </SelectContent>
             </Select>
+            <p className="mt-2 text-xs text-slate-500">Locked to the newest saved payroll report. When the next payroll report is generated, this page advances automatically.</p>
           </div>
 
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
