@@ -120,6 +120,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                 await announceDistressSignalAsync({
                     unit: alert.unit_number,
                     name: alert.last_name || alert.officer_name,
+                    eventId: alert.id,
                 });
             }
             if (!cancelled) setSoundReady(true);
