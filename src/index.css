@@ -348,6 +348,8 @@ button:focus-visible {
 body {
   min-width: 320px;
   min-height: 100vh;
+  font-family: "Segoe UI Variable", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
   background: #f4f7fb;
   color: #0f172a;
 }
