@@ -65,48 +65,97 @@ function acceptText(clean, dedupeMs) {
 }
 
 let pendingSpeech = null;
+let activeSpeech = null;
 let speechSequence = 0;
 let unlockListenersInstalled = false;
+const speechQueue = [];
+const PRIORITY = { emergency: 100, critical: 80, high: 60, normal: 40, low: 20 };
 
-function speakQueued(clean, options = {}) {
-  if (!isVoiceSupported()) return false;
-  const token = ++speechSequence;
+function processedEventKey(eventId) {
+  return eventId ? `bps-voice-event:${String(eventId)}` : '';
+}
+
+function wasEventProcessed(eventId) {
+  const key = processedEventKey(eventId);
+  if (!key) return false;
+  try { return localStorage.getItem(key) === '1'; } catch { return false; }
+}
+
+function markEventProcessed(eventId) {
+  const key = processedEventKey(eventId);
+  if (!key) return;
+  try { localStorage.setItem(key, '1'); } catch {}
+}
+
+function nextQueuedSpeech() {
+  if (activeSpeech || !speechQueue.length || !isVoiceSupported()) return;
+  speechQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
+  const item = speechQueue.shift();
+  activeSpeech = item;
+  pendingSpeech = item;
   let started = false;
-  pendingSpeech = { clean, options };
   try {
-    const utterance = buildUtterance(clean, options);
+    const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
-      if (token === speechSequence) pendingSpeech = null;
-      window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: clean } }));
+      pendingSpeech = null;
+      window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: item.clean, eventId: item.options.eventId || null } }));
     };
-    utterance.onend = () => {
-      if (token === speechSequence) pendingSpeech = null;
+    const finish = success => {
+      if (success) markEventProcessed(item.options.eventId);
+      if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
+      if (!success && !started) pendingSpeech = item;
+      item.resolve?.(success);
+      nextQueuedSpeech();
     };
-    utterance.onerror = () => {
-      if (token === speechSequence && !started) pendingSpeech = { clean, options };
+    utterance.onend = () => finish(true);
+    utterance.onerror = event => {
+      window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: event?.error || 'playback_failed' } }));
+      finish(false);
     };
-    if (options.interrupt !== false) window.speechSynthesis.cancel();
     window.speechSynthesis.resume?.();
     window.speechSynthesis.speak(utterance);
     window.setTimeout(() => {
-      if (token === speechSequence && !started && !window.speechSynthesis.speaking) {
-        pendingSpeech = { clean, options };
-        window.dispatchEvent(new CustomEvent('bps-voice-blocked'));
+      if (activeSpeech?.sequence === item.sequence && !started && !window.speechSynthesis.speaking) {
+        pendingSpeech = item;
+        window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
       }
     }, 1200);
-    return true;
-  } catch {
-    if (token === speechSequence) pendingSpeech = { clean, options };
-    return false;
+  } catch (error) {
+    pendingSpeech = item;
+    activeSpeech = null;
+    item.resolve?.(false);
+    window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
   }
+}
+
+function speakQueued(clean, options = {}) {
+  if (!isVoiceSupported() || wasEventProcessed(options.eventId)) return false;
+  const priority = PRIORITY[options.priority] ?? PRIORITY.normal;
+  const duplicate = speechQueue.some(item => options.eventId && item.options.eventId === options.eventId);
+  if (duplicate || (activeSpeech && options.eventId && activeSpeech.options.eventId === options.eventId)) return false;
+
+  const item = { clean, options, priority, sequence: ++speechSequence };
+  speechQueue.push(item);
+
+  // Emergency traffic may preempt lower-priority speech. Routine/high traffic
+  // never interrupts an emergency; it waits in the shared queue.
+  if (priority >= PRIORITY.emergency && activeSpeech && activeSpeech.priority < PRIORITY.emergency) {
+    try { window.speechSynthesis.cancel(); } catch {}
+    activeSpeech = null;
+  }
+  nextQueuedSpeech();
+  return true;
 }
 
 function retryPendingSpeech() {
   if (!pendingSpeech || !isVoiceSupported()) return;
   const queued = pendingSpeech;
+  pendingSpeech = null;
+  if (!speechQueue.some(item => item.sequence === queued.sequence)) speechQueue.unshift(queued);
+  if (activeSpeech?.sequence === queued.sequence) activeSpeech = null;
   window.speechSynthesis.resume?.();
-  speakQueued(queued.clean, { ...queued.options, interrupt: true });
+  nextQueuedSpeech();
 }
 
 export function installVoiceUnlockListeners() {
@@ -132,7 +181,7 @@ export function announceVoice(text, options = {}) {
   // were the reason users heard two noticeably different announcement voices.
   options = { ...options, rate: 0.96, pitch: 0.92 };
   const clean = String(text).replace(/\s+/g, ' ').trim();
-  if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
+  if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
   installVoiceUnlockListeners();
   return speakQueued(clean, options);
 }
@@ -222,7 +271,7 @@ export function announcePropertyCall({
 }
 
 export function announceDistressSignal({ unit, name }) {
-  announceVoice(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, force: true });
+  announceVoice(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, force: true, priority: 'emergency' });
 }
 
 export function announceDistressSignalAsync({ unit, name }) {
