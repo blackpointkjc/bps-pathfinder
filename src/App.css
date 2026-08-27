@@ -96,16 +96,32 @@ body,
 }
 
 .cad-app .mobile-field-content {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   height: auto;
   flex: 1 1 0%;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Keep page roots and responsive grid children inside the available workspace.
+   Wide tables/charts must scroll in their own explicit overflow-x-auto wrapper. */
+.cad-app .mobile-field-content > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.cad-app .mobile-field-content .grid > *,
+.cad-app .mobile-field-content .flex > * {
+  min-width: 0;
 }
 
 /* Modern, low-profile scrollbars everywhere on web and mobile. */
