@@ -348,6 +348,10 @@ export default function GlobalMessageBanner({ user }) {
       const settings = audioSettings.current;
       const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
       const email = normalized(user.email);
+      const priorAcknowledgements = email
+        ? await base44.entities.PropertyAlertReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-dismissed_at', 1).catch(() => [])
+        : [];
+      if (priorAcknowledgements?.length) return;
       const priorReceipts = email
         ? await base44.entities.CadAnnouncementReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-processed_at', 1).catch(() => [])
         : [];
@@ -381,6 +385,12 @@ export default function GlobalMessageBanner({ user }) {
         sender: record.propertyName || 'Monitored Property',
         photo: '',
         message: summary,
+        propertyAcknowledgement: {
+          alert_id: record.id,
+          call_id: callKey,
+          property_id: record.propertyId,
+          event_key: propertyEventKey,
+        },
       };
       setBanners(current => [...current.slice(-4), banner]);
       const timer = window.setTimeout(() => {
@@ -574,7 +584,21 @@ export default function GlobalMessageBanner({ user }) {
     if (!enabled) stopVoice();
   };
 
-  const dismiss = id => {
+  const dismiss = async id => {
+    const banner = banners.find(entry => entry.id === id);
+    const receipt = banner?.propertyAcknowledgement;
+    if (receipt && user?.email) {
+      const userEmail = normalized(user.email);
+      const existing = await base44.entities.PropertyAlertReceipt.filter({ event_key: receipt.event_key, user_email: userEmail }, '-dismissed_at', 1).catch(() => []);
+      if (!existing?.length) {
+        await base44.entities.PropertyAlertReceipt.create({
+          ...receipt,
+          user_email: userEmail,
+          action: 'acknowledged',
+          dismissed_at: new Date().toISOString(),
+        }).catch(error => console.warn('Unable to save property alert acknowledgement:', error?.message));
+      }
+    }
     const timer = timers.current.get(id);
     if (timer) window.clearTimeout(timer);
     timers.current.delete(id);
