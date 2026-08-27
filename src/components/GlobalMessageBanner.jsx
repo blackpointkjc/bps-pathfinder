@@ -637,7 +637,7 @@ export default function GlobalMessageBanner({ user }) {
               if (banner.kind === 'mention' && banner.recordId) {
                 await base44.entities.ChatMention.update(banner.recordId, { read: true, read_at: new Date().toISOString() }).catch(() => null);
               }
-              dismiss(banner.id);
+              await dismiss(banner.id);
               window.location.href = createPageUrl(banner.page);
             }}
             className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
