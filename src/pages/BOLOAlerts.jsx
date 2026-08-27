@@ -132,6 +132,8 @@ export default function BOLOAlerts() {
         </div>
       </div>
 
+      {pageError && <div role="alert" className="flex flex-none items-center justify-between gap-3 border-b border-red-700 bg-red-950/60 px-4 py-3 text-sm text-red-100"><span>{pageError}</span><button type="button" onClick={() => load()} className="rounded border border-red-500 px-3 py-1.5 text-xs font-semibold hover:bg-red-900">Retry</button></div>}
+
       <div className="grid flex-none grid-cols-2 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-4">
         <button type="button" onClick={() => { setView('active'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'active' && typeFilter === 'all'}><div className="text-2xl font-bold text-green-400">{activeCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Active BOLOs</div></button>
         <button type="button" onClick={() => { setView('drafts'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'drafts'}><div className="text-2xl font-bold text-amber-300">{draftCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Saved drafts</div></button>
@@ -148,7 +150,9 @@ export default function BOLOAlerts() {
         {Object.entries(TYPE_CONFIG).map(([key,cfg]) => <button type="button" aria-pressed={typeFilter === key} key={key} onClick={() => setTypeFilter(typeFilter === key ? 'all' : key)} className={`rounded px-2 py-1 text-[11px] ${typeFilter === key ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{cfg.label}</button>)}
       </div>
 
-      <div className="hidden flex-none grid-cols-12 border-b border-[#24354c] bg-[#111a29] px-3 py-1.5 text-[10px] font-bold tracking-widest text-slate-500 md:grid">
+      <div className="flex flex-none items-center justify-between border-b border-[#24354c] bg-[#0a1220] px-3 py-2 text-xs text-slate-400"><span>Showing {filtered.length} of {bolos.length} BOLO records</span>{typeFilter !== 'all' && <button type="button" onClick={() => setTypeFilter('all')} className="rounded border border-slate-600 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">Clear type filter</button>}</div>
+
+      <div className="hidden flex-none grid-cols-12 border-b border-[#24354c] bg-[#111a29] px-3 py-1.5 text-[10px] font-bold tracking-wide text-slate-400 md:grid">
         <div className="col-span-2">BOLO / PRIORITY</div><div className="col-span-3">SUBJECT / VEHICLE</div><div className="col-span-3">ALERT / LAST KNOWN</div><div className="col-span-2">ISSUED / STATUS</div><div className="col-span-2 text-right">ACTIONS</div>
       </div>
 
