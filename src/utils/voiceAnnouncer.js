@@ -7,8 +7,18 @@ import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 let lastText = '';
 let lastAt = 0;
 let lockedVoice = null;
+let runtimeConfig = { volume: 1, voiceProfile: 'american_ai' };
 
-function getPreferredVoice() {
+export function setVoiceRuntimeConfig(config = {}) {
+  runtimeConfig = {
+    volume: Number.isFinite(Number(config.volume)) ? Math.min(1, Math.max(0, Number(config.volume))) : runtimeConfig.volume,
+    voiceProfile: config.voiceProfile || runtimeConfig.voiceProfile,
+  };
+  lockedVoice = null;
+}
+
+function getPreferredVoice(profile = runtimeConfig.voiceProfile) {
+  if (profile === 'system_default') return null;
   if (lockedVoice) return lockedVoice;
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices?.() || [];
@@ -51,8 +61,8 @@ function buildUtterance(clean, options = {}) {
   // low pitch/rate combination that made announcements sound synthetic.
   utterance.rate = options.rate ?? 0.93;
   utterance.pitch = options.pitch ?? 0.86;
-  utterance.volume = options.volume ?? 1;
-  const voice = getPreferredVoice();
+  utterance.volume = options.volume ?? runtimeConfig.volume;
+  const voice = getPreferredVoice(options.voiceProfile);
   if (voice) utterance.voice = voice;
   return utterance;
 }
