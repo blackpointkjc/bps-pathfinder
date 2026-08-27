@@ -14,6 +14,8 @@ Deno.serve(async (req) => {
     const call = await base44.asServiceRole.entities.DispatchCall.get(call_id);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
 
+    if (call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
+
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
     if (!assigned.includes(user.id) && user.role !== 'admin') {
       return Response.json({ error: 'You must be assigned to this call before changing its status' }, { status: 403 });
@@ -37,6 +39,35 @@ Deno.serve(async (req) => {
       if (status === 'Cleared') patch.cleared_at = now;
       await base44.asServiceRole.entities.CallAssignment.update(assignment.id, patch).catch(() => null);
     }
+
+    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+    const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
+    const eventType = status === 'Enroute' ? 'unit_enroute' : status === 'On Scene' ? 'unit_on_scene' : 'call_cleared';
+    const wording = status === 'Enroute'
+      ? `${officer} en route. CAD number ${cadNumber}.`
+      : status === 'On Scene'
+        ? `${officer} on scene. CAD number ${cadNumber}.`
+        : `Call cleared. CAD number ${cadNumber}. ${officer} returned to available status.`;
+    await base44.asServiceRole.entities.CallStatusLog.create({
+      call_id,
+      incident_type: call.incident || '',
+      location: call.location || '',
+      old_status: call.status || '',
+      new_status: status,
+      unit_id: user.id,
+      unit_name: officer,
+      notes: 'Verified officer field status transition',
+      latitude: call.latitude,
+      longitude: call.longitude,
+      event_key: `call:${call_id}:unit:${user.id}:status:${status}:${now}`,
+      event_type: eventType,
+      announcement_text: wording,
+      announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+      cad_number: String(cadNumber),
+      triggering_action: 'updateMyFieldCallStatus',
+      audio_enabled: true,
+      sensitive: false,
+    });
 
     return Response.json({ success: true, status });
   } catch (error) {
