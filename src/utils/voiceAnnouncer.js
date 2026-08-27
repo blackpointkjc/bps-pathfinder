@@ -76,6 +76,7 @@ function acceptText(clean, dedupeMs) {
 }
 
 let pendingSpeech = null;
+let lastBlockedSpeech = null;
 let activeSpeech = null;
 let speechSequence = 0;
 let unlockListenersInstalled = false;
@@ -110,17 +111,25 @@ function nextQueuedSpeech() {
     utterance.onstart = () => {
       started = true;
       pendingSpeech = null;
+      if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
       window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: item.clean, eventId: item.options.eventId || null } }));
     };
     const finish = success => {
-      if (success) markEventProcessed(item.options.eventId);
+      if (success) {
+        markEventProcessed(item.options.eventId);
+        if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
+      }
       if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
-      if (!success && !started) pendingSpeech = item;
+      if (!success) {
+        pendingSpeech = item;
+        lastBlockedSpeech = item;
+      }
       item.resolve?.(success);
       nextQueuedSpeech();
     };
     utterance.onend = () => finish(true);
     utterance.onerror = event => {
+      lastBlockedSpeech = item;
       window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: event?.error || 'playback_failed' } }));
       finish(false);
     };
@@ -129,11 +138,14 @@ function nextQueuedSpeech() {
     window.setTimeout(() => {
       if (activeSpeech?.sequence === item.sequence && !started && !window.speechSynthesis.speaking) {
         pendingSpeech = item;
+        lastBlockedSpeech = item;
+        activeSpeech = null;
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
       }
     }, 1200);
   } catch (error) {
     pendingSpeech = item;
+    lastBlockedSpeech = item;
     activeSpeech = null;
     item.resolve?.(false);
     window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
@@ -160,13 +172,18 @@ function speakQueued(clean, options = {}, resolve = null) {
 }
 
 function retryPendingSpeech() {
-  if (!pendingSpeech || !isVoiceSupported()) return;
-  const queued = pendingSpeech;
+  const blocked = pendingSpeech || lastBlockedSpeech;
+  if (!blocked || !isVoiceSupported()) return false;
+  const retryItem = { ...blocked, sequence: ++speechSequence, resolve: null };
   pendingSpeech = null;
-  if (!speechQueue.some(item => item.sequence === queued.sequence)) speechQueue.unshift(queued);
-  if (activeSpeech?.sequence === queued.sequence) activeSpeech = null;
+  lastBlockedSpeech = null;
+  speechQueue.splice(0, speechQueue.length, ...speechQueue.filter(item => item.sequence !== blocked.sequence));
+  if (activeSpeech?.sequence === blocked.sequence) activeSpeech = null;
+  try { window.speechSynthesis.cancel(); } catch {}
+  speechQueue.unshift(retryItem);
   window.speechSynthesis.resume?.();
   nextQueuedSpeech();
+  return true;
 }
 
 export function installVoiceUnlockListeners() {
@@ -183,7 +200,8 @@ export function installVoiceUnlockListeners() {
 }
 
 export function retryVoiceAnnouncement() {
-  retryPendingSpeech();
+  setVoiceEnabled(true);
+  return retryPendingSpeech();
 }
 
 export function announceVoice(text, options = {}) {
