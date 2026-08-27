@@ -98,12 +98,30 @@ export default function FieldCallActions({ call, onStatusChange }) {
     try {
       // Preserve the CAD emergency/audit workflow even when Microsoft is unavailable.
       // Teams is the source of truth for chat delivery, not for the CAD CallNote.
-      await base44.entities.CallNote.create({
+      const backupNote = await base44.entities.CallNote.create({
         call_id: call.id,
         author_id: user.id,
         author_name: officerLabel,
         note: `🚨 ${alertText}`,
         note_type: 'hazard',
+      });
+      await base44.entities.CallStatusLog.create({
+        call_id: call.id,
+        incident_type: call.incident || 'Active call',
+        location,
+        old_status: call.status || 'Active',
+        new_status: call.status || 'Active',
+        unit_id: user.id,
+        unit_name: officerLabel,
+        notes: alertText,
+        event_key: `backup:${call.id}:${backupNote.id}`,
+        event_type: 'backup_requested',
+        announcement_text: `Emergency traffic. Backup requested by ${officerLabel} at ${location}. CAD number ${callLabel}.`,
+        announcement_priority: 'emergency',
+        cad_number: callLabel,
+        triggering_action: 'field_backup_request',
+        audio_enabled: true,
+        sensitive: false,
       });
       const target = await getTeamsSyncConfig('officer_chat');
       if (!target?.enabled) throw new Error('Microsoft Teams General Chat is not configured. The CAD backup note was still saved.');
