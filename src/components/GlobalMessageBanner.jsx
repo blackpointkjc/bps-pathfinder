@@ -121,25 +121,10 @@ function boloSummary(record) {
   return details.join('. ') || 'Review the active BOLO for details.';
 }
 
-const SILENT_CALL_STATUSES = new Set(['cleared', 'closed', 'completed', 'resolved']);
 const HIDDEN_EXISTING_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-
-function isSilentCallStatus(value) {
-  return SILENT_CALL_STATUSES.has(normalized(value));
-}
 
 function callStatusKey(value) {
   return normalized(value).replace(/[\s_-]+/g, '');
-}
-
-function announcedCallStatus(value) {
-  const status = callStatusKey(value);
-  if (status === 'dispatched' || status === 'dispatch') return 'Dispatched';
-  if (status === 'enroute' || status === 'enroutetoscene') return 'En Route';
-  if (status === 'arrived' || status === 'arrival') return 'Arrived';
-  if (status === 'onscene' || status === 'onsite') return 'On Site';
-  if (status === 'cancelled' || status === 'canceled') return 'Canceled';
-  return null;
 }
 
 function propertyCallSummary(alert, call = {}) {
@@ -175,7 +160,6 @@ export default function GlobalMessageBanner({ user }) {
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
-  const callStatuses = useRef(new Map());
   const announcedPropertyCallStatuses = useRef(new Map());
 
   useEffect(() => {
@@ -319,15 +303,6 @@ export default function GlobalMessageBanner({ user }) {
       const location = await base44.entities.Location.get(record.propertyId).catch(() => null);
       if (!location || location.active === false || location.property_monitoring_enabled !== true) return null;
       return location;
-    };
-
-    const findActivePropertyAlertForCall = async callId => {
-      if (!callId) return null;
-      const alerts = await base44.entities.PropertyAlert.filter({ callId }, '-created_date', 20).catch(() => []);
-      for (const alert of alerts || []) {
-        if (await activeMonitoredPropertyForAlert(alert)) return alert;
-      }
-      return null;
     };
 
     const showPropertyCall = async record => {
