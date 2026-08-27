@@ -93,7 +93,7 @@ export function BoloAttachmentsEditor({ attachments = [], onChange }) {
 export function BoloAttachmentList({ attachments = [] }) {
   if (!attachments.length) return null;
   return (
-    <div className="mt-5 border-t border-red-800/50 pt-4 print:hidden">
+    <div className="mt-5 border-t border-red-800/50 pt-4 print:border-slate-400">
       <b className="text-xs text-red-400">ATTACHED FILES</b>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {attachments.map((file, index) => (
