@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
       ['Property Alerts', 'PropertyAlert'],
       ['Scheduling', 'Schedule'],
       ['Timekeeping', 'TimeEntry'],
+      ['Payroll', 'PayrollPeriod'],
+      ['Payroll', 'PayrollEntry'],
+      ['Alerts & Announcements', 'CadAnnouncementReceipt'],
       ['Daily Reports', 'DailyActivityReport'],
       ['Incident Reports', 'IncidentReport'],
       ['Maintenance Reports', 'MaintenanceReport'],
@@ -206,6 +209,27 @@ Deno.serve(async (req) => {
       count: malformedRecentAlerts.length,
     });
 
+    const announcementReceipts = datasets.CadAnnouncementReceipt || [];
+    const recentReceiptCutoff = Date.now() - (24 * 60 * 60 * 1000);
+    const receiptKeys = new Set<string>();
+    const duplicateReceiptKeys = new Set<string>();
+    announcementReceipts
+      .filter(item => new Date(item.processed_at || item.created_date || 0).getTime() >= recentReceiptCutoff)
+      .forEach(item => {
+        const key = `${String(item.user_email || '').toLowerCase()}|${String(item.event_key || '')}`;
+        if (!item.event_key || !item.user_email) return;
+        if (receiptKeys.has(key)) duplicateReceiptKeys.add(key);
+        receiptKeys.add(key);
+      });
+    if (duplicateReceiptKeys.size) add(findings, {
+      key: 'audio:duplicate-receipts',
+      area: 'Alerts & Announcements',
+      severity: 'outage',
+      title: 'Duplicate announcement receipts were recorded in the last 24 hours',
+      description: `${duplicateReceiptKeys.size} user/event key(s) were processed more than once and require announcement-flow review.`,
+      count: duplicateReceiptKeys.size,
+    });
+
     const schedules = datasets.Schedule || [];
     const badSchedules = schedules.filter(item => !value(item, 'officer_email', 'user_email', 'user_id') || !value(item, 'location', 'site_name', 'location_id') || !value(item, 'start_time', 'shift_start', 'date'));
     if (badSchedules.length) add(findings, {
@@ -243,6 +267,43 @@ Deno.serve(async (req) => {
       severity: 'outage',
       title: 'Historical officer movement is not being recorded',
       description: 'Fresh live officer locations exist, but LocationHistory has no coordinate records from the last 15 minutes.',
+    });
+
+    const payrollPeriods = datasets.PayrollPeriod || [];
+    const payrollEntries = datasets.PayrollEntry || [];
+    const easternDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const latestEndedPeriod = payrollPeriods
+      .filter(item => String(item.end_date || '') < easternDate)
+      .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0];
+    if (latestEndedPeriod) {
+      const generated = payrollEntries.filter(item =>
+        item.pay_period_start === latestEndedPeriod.start_date
+        && item.pay_period_end === latestEndedPeriod.end_date
+      );
+      if (!generated.length) add(findings, {
+        key: 'payroll:missing-latest-period',
+        area: 'Payroll',
+        severity: 'outage',
+        title: 'Latest ended payroll period has no generated report',
+        description: `${latestEndedPeriod.period_name || 'Latest period'} (${latestEndedPeriod.start_date} through ${latestEndedPeriod.end_date}) has no payroll entries.`,
+      });
+    }
+    const payrollKeys = new Set<string>();
+    const duplicatePayrollKeys = new Set<string>();
+    payrollEntries.forEach(item => {
+      const key = `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`;
+      if (payrollKeys.has(key)) duplicatePayrollKeys.add(key);
+      payrollKeys.add(key);
+    });
+    if (duplicatePayrollKeys.size) add(findings, {
+      key: 'payroll:duplicate-officer-period',
+      area: 'Payroll',
+      severity: 'outage',
+      title: 'Duplicate payroll entries detected',
+      description: `${duplicatePayrollKeys.size} officer-period key(s) occur more than once. Do not transfer payroll until reviewed.`,
+      count: duplicatePayrollKeys.size,
     });
 
     const openEntries = (datasets.TimeEntry || []).filter(item => value(item, 'clock_in', 'clock_in_time') && !value(item, 'clock_out', 'clock_out_time'));
