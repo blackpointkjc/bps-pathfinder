@@ -96,6 +96,11 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
 
     load();
     const onConnectionChanged = () => load({ force: true });
+    const onSessionExpired = () => {
+      forgetVerifiedSession(userId);
+      setStatus({ loading: false, connected: false, configured: true });
+      setError('Your Microsoft session has expired. Please sign in again with your BlackPoint email.');
+    };
     const onMicrosoftMessage = async event => {
       const sameOrigin = event.origin === window.location.origin;
       const productionOAuthOrigin = event.origin === getOutlookRedirectOrigin();
@@ -128,11 +133,13 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
       }
     };
     window.addEventListener('bps:outlook-connection-changed', onConnectionChanged);
+    window.addEventListener('bps:microsoft-session-expired', onSessionExpired);
     window.addEventListener('message', onMicrosoftMessage);
     window.addEventListener('storage', onStorage);
     return () => {
       active = false;
       window.removeEventListener('bps:outlook-connection-changed', onConnectionChanged);
+      window.removeEventListener('bps:microsoft-session-expired', onSessionExpired);
       window.removeEventListener('message', onMicrosoftMessage);
       window.removeEventListener('storage', onStorage);
     };
