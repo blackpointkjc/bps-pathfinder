@@ -1,0 +1,68 @@
+{
+  "name": "CadAudioSettings",
+  "type": "object",
+  "properties": {
+    "settings_key": {
+      "type": "string",
+      "default": "global",
+      "description": "Singleton settings key"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "volume": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 1
+    },
+    "voice_profile": {
+      "type": "string",
+      "enum": [
+        "american_ai",
+        "system_default"
+      ],
+      "default": "american_ai"
+    },
+    "cancelled_terminology": {
+      "type": "string",
+      "default": "Return 10-8"
+    },
+    "enabled_event_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Empty means every supported announcement type is enabled"
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "settings_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": null,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
