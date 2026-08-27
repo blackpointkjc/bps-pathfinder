@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, MessageCircle, Siren, X } from 'lucide-react';
+import { Bell, MessageCircle, Siren, Volume2, VolumeX, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
-import { announceVoice, retryVoiceAnnouncement } from '@/utils/voiceAnnouncer';
+import { announceVoice, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
@@ -157,6 +157,7 @@ function BannerIcon({ kind }) {
 export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
   const [voiceWarning, setVoiceWarning] = useState(null);
+  const [voiceEnabled, setVoiceEnabledState] = useState(() => isVoiceEnabled());
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
@@ -508,6 +509,13 @@ export default function GlobalMessageBanner({ user }) {
     };
   }, [user?.id, user?.email, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
+  const toggleQuietMode = () => {
+    const enabled = !voiceEnabled;
+    setVoiceEnabled(enabled);
+    setVoiceEnabledState(enabled);
+    if (!enabled) stopVoice();
+  };
+
   const dismiss = id => {
     const timer = timers.current.get(id);
     if (timer) window.clearTimeout(timer);
@@ -517,6 +525,18 @@ export default function GlobalMessageBanner({ user }) {
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-1 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2 md:top-2">
+      <div className="pointer-events-auto ml-auto">
+        <button
+          type="button"
+          onClick={toggleQuietMode}
+          aria-pressed={!voiceEnabled}
+          aria-label={voiceEnabled ? 'Enable CAD quiet mode' : 'Disable CAD quiet mode'}
+          className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-slate-950/90 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur hover:bg-slate-900"
+        >
+          {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-300" />}
+          {voiceEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}
+        </button>
+      </div>
       {voiceWarning && (
         <div role="alert" className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
           <span>CAD audio could not play. Visual alerts remain active.</span>
