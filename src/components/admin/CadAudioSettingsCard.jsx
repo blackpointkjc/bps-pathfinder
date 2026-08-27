@@ -11,6 +11,7 @@ import { announceVoice, setVoiceRuntimeConfig } from '@/utils/voiceAnnouncer';
 const EVENT_TYPES = [
   ['new_call', 'New call'],
   ['priority_call', 'New priority call'],
+  ['bolo_published', 'New BOLO'],
   ['unit_dispatched', 'Unit dispatched'],
   ['unit_enroute', 'Unit en route'],
   ['unit_on_scene', 'Unit on scene'],
