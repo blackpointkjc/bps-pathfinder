@@ -897,7 +897,7 @@ export default function AccountingPayroll() {
                   const holidays = period.holidays_in_period ? JSON.parse(period.holidays_in_period) : [];
                   return (
                     <SelectItem key={period.id} value={period.id}>
-                      {period.period_name} ({format(new Date(period.start_date), 'MMM d')} - {format(new Date(period.end_date), 'MMM d, yyyy')})
+                      {period.period_name} ({safeFormatDate(period.start_date, 'MMM d')} - {safeFormatDate(period.end_date, 'MMM d, yyyy')})
                       {holidays.length > 0 && ` - ${holidays.map(h => h.name).join(', ')}`}
                     </SelectItem>
                   );
