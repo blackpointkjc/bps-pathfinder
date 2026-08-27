@@ -1,0 +1,92 @@
+{
+  "name": "CadAnnouncementReceipt",
+  "type": "object",
+  "properties": {
+    "event_key": {
+      "type": "string",
+      "description": "Durable CAD announcement event identity"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "device_id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "played",
+        "quiet",
+        "blocked",
+        "failed",
+        "disabled"
+      ],
+      "description": "Final processing result"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error": {
+      "type": "string"
+    },
+    "cad_number": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_key",
+    "user_email",
+    "state",
+    "processed_at"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
