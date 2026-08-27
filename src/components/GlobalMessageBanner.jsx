@@ -34,13 +34,13 @@ function audioContext() {
 }
 
 function speakNotification(text, options = {}) {
-  const { rate = 0.82, pitch = 0.68, dedupeMs = 1800, ...rest } = options;
+  const { rate = 0.82, pitch = 0.68, dedupeMs = 1800, force = false, ...rest } = options;
   return announceVoice(text, {
     ...rest,
     rate,
     pitch,
     dedupeMs,
-    force: true,
+    force,
   });
 }
 
@@ -358,17 +358,24 @@ export default function GlobalMessageBanner({ user }) {
     try {
       // CallStatusLog is the durable source of verified transition events. A raw
       // DispatchCall fetch/update is never enough to create speech.
+      const cadAuthorized = user.role === 'admin'
+        || user.role === 'dispatch'
+        || Boolean(user.dispatch_role)
+        || roles.has('full_access')
+        || roles.has('supervisor')
+        || roles.has('cad_access');
+
       const showCadAnnouncementEvent = record => {
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
+        if (record.sensitive === true && !cadAuthorized) return;
         const key = `CallStatusLog:${record.event_key}`;
         if (knownIds.current.has(key)) return;
         knownIds.current.add(key);
-        const spoken = speakNotification(record.announcement_text, {
+        speakNotification(record.announcement_text, {
           dedupeMs: 4000,
           eventId: record.event_key,
           priority: record.announcement_priority || 'normal',
         });
-        if (!spoken) return;
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
