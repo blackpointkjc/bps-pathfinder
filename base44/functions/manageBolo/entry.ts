@@ -13,6 +13,35 @@ function cleanPayload(input: any) {
   return output;
 }
 
+function boloAnnouncement(record: any) {
+  const party = Array.isArray(record?.parties) ? record.parties.find((item: any) => item?.name) : null;
+  const vehicle = Array.isArray(record?.vehicles) ? record.vehicles.find((item: any) => item?.plate || item?.make || item?.model) : null;
+  const subject = party?.name || record?.subject_name || '';
+  const vehicleText = [vehicle?.year || record?.vehicle_year, vehicle?.color || record?.vehicle_color, vehicle?.make || record?.vehicle_make, vehicle?.model || record?.vehicle_model].filter(Boolean).join(' ');
+  const plate = vehicle?.plate || record?.vehicle_plate || '';
+  const safety = record?.alert_type === 'officer_safety' ? 'Officer safety alert.' : '';
+  return ['New BOLO.', String(record?.alert_type || 'watch notice').replaceAll('_', ' '), subject && `Subject ${subject}`, vehicleText && `Vehicle ${vehicleText}`, plate && `Plate ${plate}`, record?.last_known_location && `Last known location ${record.last_known_location}`, safety].filter(Boolean).join('. ') + '.';
+}
+
+async function publishAnnouncement(base44: any, record: any, now: string) {
+  await base44.asServiceRole.entities.CallStatusLog.create({
+    call_id: record.linked_call_id || `bolo:${record.id}`,
+    incident_type: 'BOLO',
+    location: record.last_known_location || '',
+    old_status: 'draft',
+    new_status: 'active',
+    notes: `BOLO ${record.bolo_number || record.id} published`,
+    event_key: `bolo:${record.id}:published`,
+    event_type: 'bolo_published',
+    announcement_text: boloAnnouncement(record),
+    announcement_priority: record.priority === 'critical' ? 'critical' : 'high',
+    cad_number: record.linked_call_number || record.bolo_number || '',
+    triggering_action: 'manageBolo.publish',
+    audio_enabled: true,
+    sensitive: false,
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -44,6 +73,7 @@ Deno.serve(async (req) => {
         issued_by: actorName,
         issued_by_id: user.id,
       });
+      if (!isDraft) await publishAnnouncement(base44, record, now);
       return Response.json({ success: true, record, status: isDraft ? 'draft' : 'active' });
     }
 
@@ -68,15 +98,18 @@ Deno.serve(async (req) => {
       const updates = cleanPayload(body.data || {});
       const releaseTitle = String(updates.title || record.title || '').trim();
       if (!releaseTitle || releaseTitle === 'Untitled BOLO Draft') return Response.json({ error: 'Enter a BOLO title before release' }, { status: 400 });
-      await base44.asServiceRole.entities.BOLOAlert.update(id, {
+      const releaseData = {
         ...updates,
         title: releaseTitle,
         status: 'active',
         bolo_number: record.bolo_number || `BOLO-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Date.now().toString().slice(-5)}`,
         issued_by: actorName,
         issued_by_id: user.id,
-      });
-      return Response.json({ success: true, status: 'active' });
+      };
+      await base44.asServiceRole.entities.BOLOAlert.update(id, releaseData);
+      const releasedRecord = { ...record, ...releaseData, id };
+      await publishAnnouncement(base44, releasedRecord, now);
+      return Response.json({ success: true, status: 'active', record: releasedRecord });
     }
 
     if (action === 'resolve') {
