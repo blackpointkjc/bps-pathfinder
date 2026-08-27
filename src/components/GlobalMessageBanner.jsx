@@ -349,7 +349,12 @@ export default function GlobalMessageBanner({ user }) {
       const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
       const email = normalized(user.email);
       const priorAcknowledgements = email
-        ? await base44.entities.PropertyAlertReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-dismissed_at', 1).catch(() => [])
+        ? await Promise.all([
+            base44.entities.PropertyAlertReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-dismissed_at', 1).catch(() => []),
+            // Backward compatibility for receipts created before the canonical
+            // call+status event key was introduced.
+            base44.entities.PropertyAlertReceipt.filter({ call_id: callKey, user_email: email }, '-dismissed_at', 1).catch(() => []),
+          ]).then(results => results.flat())
         : [];
       if (priorAcknowledgements?.length) return;
       const priorReceipts = email
@@ -589,7 +594,10 @@ export default function GlobalMessageBanner({ user }) {
     const receipt = banner?.propertyAcknowledgement;
     if (receipt && user?.email) {
       const userEmail = normalized(user.email);
-      const existing = await base44.entities.PropertyAlertReceipt.filter({ event_key: receipt.event_key, user_email: userEmail }, '-dismissed_at', 1).catch(() => []);
+      const existing = await Promise.all([
+        base44.entities.PropertyAlertReceipt.filter({ event_key: receipt.event_key, user_email: userEmail }, '-dismissed_at', 1).catch(() => []),
+        base44.entities.PropertyAlertReceipt.filter({ call_id: receipt.call_id, user_email: userEmail }, '-dismissed_at', 1).catch(() => []),
+      ]).then(results => results.flat());
       if (!existing?.length) {
         await base44.entities.PropertyAlertReceipt.create({
           ...receipt,
