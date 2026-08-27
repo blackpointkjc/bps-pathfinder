@@ -111,8 +111,15 @@ Deno.serve(async (req) => {
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const endedDate = yesterday.toISOString().slice(0, 10);
 
-    // The automation runs hourly. The period end-date check below is the safety
-    // boundary, allowing a missed 8 AM run to catch up without waiting another day.
+    // Scheduled payroll becomes eligible at 8:00 AM Eastern on the day after
+    // the configured period ends. Hourly runs after 8 AM safely catch up a
+    // missed execution; authorized manual runs are available at any time after
+    // the period end date.
+    if (!manualRun && easternHour < 8) {
+      return Response.json({ success: true, skipped: true, reason: 'Scheduled payroll begins at 8:00 AM Eastern' });
+    }
+
+    // The period end-date check below remains the authoritative safety boundary.
     const [periods, entries, users, existingPayroll, configs, ptoUsage] = await Promise.all([
       base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
