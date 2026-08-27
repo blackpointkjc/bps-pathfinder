@@ -53,7 +53,16 @@ async function graphToken(base44: any) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.access_token) {
-    throw new Error(payload?.error_description || payload?.error || 'Microsoft token refresh failed.');
+    const detail = String(payload?.error_description || payload?.error || '');
+    const expired = /AADSTS700084|refresh token.*expired|invalid_grant|interaction_required/i.test(detail);
+    if (expired) {
+      await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+        last_error: 'Microsoft session expired; interactive sign-in required.',
+        active: false,
+      }).catch(() => null);
+      throw new Error('The management Microsoft session has expired. An administrator must sign in again before BOLO email can be sent.');
+    }
+    throw new Error('Microsoft email authorization failed. An administrator should reconnect the management mailbox.');
   }
   await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
     refresh_token: String(payload.refresh_token || credential.refresh_token),
