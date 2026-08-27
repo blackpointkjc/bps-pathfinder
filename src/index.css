@@ -191,6 +191,13 @@
   font-weight: 700 !important;
 }
 
+/* Legacy command pages applied Tailwind's monospace font to entire page trees,
+   including ordinary words, controls, cards, and table columns. Keep the
+   readable application typeface throughout the live UI. */
+.cad-app main .font-mono {
+  font-family: inherit !important;
+}
+
 .cad-app main td,
 .cad-app main th,
 .cad-app main button,
