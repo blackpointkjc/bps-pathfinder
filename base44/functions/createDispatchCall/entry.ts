@@ -110,6 +110,28 @@ Deno.serve(async (req) => {
 
     await Promise.all([...assignmentWrites, ...alertWrites]);
 
+    const cadNumber = createdCall.agency_cad_number || createdCall.bps_reference || createdCall.call_id || createdCall.id;
+    const priorityEvent = priority === 'critical' || priority === 'high';
+    await base44.asServiceRole.entities.CallStatusLog.create({
+      call_id: createdCall.id,
+      incident_type: createdCall.incident || '',
+      location: createdCall.location || '',
+      old_status: '',
+      new_status: createdCall.status || 'New',
+      unit_name: user.unit_number || user.full_name || user.email || 'Dispatch',
+      notes: 'Verified new CAD call created',
+      latitude: createdCall.latitude,
+      longitude: createdCall.longitude,
+      event_key: `call:${createdCall.id}:created`,
+      event_type: priorityEvent ? 'priority_call' : 'new_call',
+      announcement_text: `${priorityEvent ? 'New priority call received' : 'New call received'}. ${createdCall.incident || 'Call for service'}. Priority ${priority}. CAD number ${cadNumber}.`,
+      announcement_priority: priority === 'critical' ? 'critical' : priority === 'high' ? 'high' : 'normal',
+      cad_number: String(cadNumber),
+      triggering_action: 'createDispatchCall',
+      audio_enabled: true,
+      sensitive: false,
+    });
+
     await base44.asServiceRole.entities.AuditLog.create({
       entity_type: 'DispatchCall',
       entity_id: createdCall.id,
