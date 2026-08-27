@@ -5,7 +5,6 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Plus, X, Search } from 'lucide-react';
-import { announceVoice } from '@/utils/voiceAnnouncer';
 
 const isOperationalUnit = isOperationalOfficer;
 const displayUnitName = (unit) => {
@@ -46,11 +45,9 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
             if (payload.error) throw new Error(payload.error);
 
             const unitName = displayUnitName(unit);
-            const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'reference pending';
-            const incident = call.incident || 'call for service';
-            const location = call.location || 'address unavailable';
             toast.success(`${unitName} assigned to call`);
-            announceVoice(`Dispatch assignment. Unit ${unit.unit_number || unitName}. ${callNumber}. ${incident}. ${location}.`, { force: true, dedupeMs: 2500, rate: 0.82, pitch: 0.68 });
+            // manageCadUnitAssignment creates the single durable CallStatusLog
+            // announcement event. Do not speak from this rendering component.
             onUpdate();
         } catch (error) {
             console.error('Error assigning unit:', error);
