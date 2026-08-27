@@ -56,6 +56,30 @@ Deno.serve(async (req) => {
           time_dispatched: call.time_dispatched || new Date().toISOString(),
         });
 
+        const now = new Date().toISOString();
+        const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+        const isBackup = (activeAssignments || []).some((a: any) => a.status !== 'cleared');
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id,
+          incident_type: call.incident || '',
+          location: call.location || '',
+          old_status: call.status || '',
+          new_status: call.status === 'New' ? 'Dispatched' : call.status,
+          unit_id,
+          unit_name: unit_id,
+          notes: isBackup ? 'Additional unit assigned' : 'Primary unit assigned',
+          latitude: call.latitude,
+          longitude: call.longitude,
+          event_key: `call:${call_id}:assignment:${unit_id}:${now}`,
+          event_type: isBackup ? 'additional_unit' : 'unit_dispatched',
+          announcement_text: `${isBackup ? 'Additional unit assigned' : 'Unit dispatched'}. ${call.incident || 'Call for service'}. CAD number ${cadNumber}.`,
+          announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+          cad_number: String(cadNumber),
+          triggering_action: 'manageCadUnitAssignment.assign',
+          audio_enabled: true,
+          sensitive: false,
+        });
+
         // Tell the assigned officer. Previously nothing informed them they had
         // been put on a call -- this Notification (read by GlobalMessageBanner,
         // which also speaks it aloud the same way property-monitoring alerts
