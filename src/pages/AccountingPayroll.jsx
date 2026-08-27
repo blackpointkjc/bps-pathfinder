@@ -137,6 +137,39 @@ export default function AccountingPayroll() {
       });
   }, [isAccountingRole, accountingLoading, selectedPeriodId, payrollPeriods, queryClient, refetchPayroll]);
 
+  const runSelectedPayrollNow = async () => {
+    const period = payrollPeriods.find(item => item.id === selectedPeriodId);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (!period) {
+      setPayrollCatchup({ state: 'error', message: 'Select a payroll period before running the report.' });
+      return;
+    }
+    if (period.end_date > today) {
+      setPayrollCatchup({ state: 'error', message: `${period.period_name} has not ended. Payroll cannot run early.` });
+      return;
+    }
+    setGenerating(true);
+    setPayrollCatchup({ state: 'running', message: `Running ${period.period_name} payroll report…` });
+    try {
+      const result = await base44.functions.invoke('generateScheduledPayroll', { force: true, period_id: period.id, action: 'run_now' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      await queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+      await refetchPayroll();
+      setPayrollCatchup({
+        state: payload.created > 0 ? 'created' : 'current',
+        message: payload.created > 0
+          ? `${payload.created} payroll report${payload.created === 1 ? '' : 's'} created for ${period.period_name}.`
+          : `${period.period_name} is current. Existing reports were preserved and no duplicates were created.`,
+      });
+      payrollCatchupAttempts.current.add(period.id);
+    } catch (error) {
+      setPayrollCatchup({ state: 'error', message: `Payroll run failed: ${error?.response?.data?.error || error?.message || 'Unknown error'}` });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
     onSuccess: () => {
@@ -934,6 +967,21 @@ export default function AccountingPayroll() {
               </SelectContent>
             </Select>
             <p className="mt-2 text-xs text-slate-500">Defaults to the most recent payroll period that has ended. You can select another period for review.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={runSelectedPayrollNow}
+              disabled={generating || !selectedPeriod || selectedPeriod.end_date > format(new Date(), 'yyyy-MM-dd')}
+              className="bg-purple-700 text-white hover:bg-purple-800"
+            >
+              <Zap className="mr-2 h-4 w-4" />
+              {generating ? 'Running Payroll…' : 'Run Selected Payroll Report Now'}
+            </Button>
+            {currentReportEntries.length > 0 && (
+              <span className="text-sm font-semibold text-emerald-800">{currentReportEntries.length} report{currentReportEntries.length === 1 ? '' : 's'} ready for this period.</span>
+            )}
           </div>
 
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
