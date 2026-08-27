@@ -4,7 +4,7 @@
   "automations": [
     {
       "name": "Generate payroll after configured period end",
-      "description": "Checks hourly at 8:00 AM Eastern and automatically processes the oldest ended payroll period that is still missing payroll records, so a missed run is caught up automatically on the next check.",
+      "description": "Checks hourly and processes the oldest ended payroll period that is missing any eligible officer payroll record. The configured PayrollPeriod dates are authoritative and duplicate officer-period records are skipped.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
