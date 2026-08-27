@@ -89,6 +89,25 @@ function ResilientTileLayer({ onUnavailable }) {
   );
 }
 
+function MapReadyHandler() {
+  const map = useMap();
+  useEffect(() => {
+    // Leaflet caches the container size at init. When the map mounts inside a
+    // flex layout that is still computing its dimensions (very common here, where
+    // the card appears after officer data loads), it measures 0×0 and renders a
+    // blank/gray map with no tile requests. Force a re-measure on the next frame
+    // and watch the container for later size changes.
+    const raf = requestAnimationFrame(() => map.invalidateSize());
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    if (map.getContainer()) ro.observe(map.getContainer());
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [map]);
+  return null;
+}
+
 function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocation }) {
   const map = useMap();
   
@@ -681,6 +700,7 @@ export default function AdminLocationTracker() {
                       zoom={12}
                       style={{ height: '100%', width: '100%' }}
                     >
+                      <MapReadyHandler />
                       <ResilientTileLayer onUnavailable={setLiveMapUnavailable} />
                       <MapUpdater officers={officersWithLocation} historicalPath={null} />
                       {officersWithLocation.map((officer) => (
@@ -829,6 +849,7 @@ export default function AdminLocationTracker() {
                     zoom={12}
                     style={{ height: '100%', width: '100%' }}
                   >
+                    <MapReadyHandler />
                     <ResilientTileLayer onUnavailable={setHistoryMapUnavailable} />
                     <MapUpdater 
                       officers={[]} 
