@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Scan, CheckCircle2, Upload, FileText, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 
 export default function ZebraScanner({ onDataScanned, recordType = "person", user }) {
   const [scanBuffer, setScanBuffer] = useState("");
