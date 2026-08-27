@@ -17,6 +17,10 @@ Deno.serve(async (req) => {
 
     const call = await base44.asServiceRole.entities.DispatchCall.get(callId);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
+    if (call.status === newStatus) {
+      return Response.json({ success: true, status: newStatus, duplicate_transition: true });
+    }
+
     const now = new Date().toISOString();
     const timeField: Record<string,string> = {
       Dispatched: 'time_dispatched',
@@ -33,6 +37,21 @@ Deno.serve(async (req) => {
     }
     await base44.asServiceRole.entities.DispatchCall.update(callId, update);
 
+    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+    const eventByStatus: Record<string,string> = {
+      Dispatched: 'unit_dispatched',
+      Enroute: 'unit_enroute',
+      'On Scene': 'unit_on_scene',
+      Cleared: 'call_cleared',
+      Cancelled: 'call_cancelled',
+    };
+    const wordingByStatus: Record<string,string> = {
+      Dispatched: `Unit dispatched. ${call.incident || 'Call for service'}. CAD number ${cadNumber}.`,
+      Enroute: `Unit en route. CAD number ${cadNumber}.`,
+      'On Scene': `Unit on scene. CAD number ${cadNumber}.`,
+      Cleared: `Call cleared. CAD number ${cadNumber}. Officer returned to available status.`,
+      Cancelled: `Call cancelled. CAD number ${cadNumber}. Return 10-8.`,
+    };
     await base44.asServiceRole.entities.CallStatusLog.create({
       call_id: callId,
       incident_type: call.incident || '',
@@ -43,7 +62,15 @@ Deno.serve(async (req) => {
       notes: `Status changed by ${user.email || 'authorized dispatcher'}`,
       latitude: call.latitude,
       longitude: call.longitude,
-    }).catch(() => null);
+      event_key: `call:${callId}:status:${newStatus}:${now}`,
+      event_type: eventByStatus[newStatus] || 'new_call',
+      announcement_text: wordingByStatus[newStatus] || '',
+      announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+      cad_number: String(cadNumber),
+      triggering_action: 'updateCadCallStatus',
+      audio_enabled: Boolean(wordingByStatus[newStatus]),
+      sensitive: false,
+    });
 
     return Response.json({ success: true, status: newStatus, updated_at: now });
   } catch (error) {
