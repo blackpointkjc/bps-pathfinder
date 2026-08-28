@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { stopDispatchAlert } from '@/utils/alertUtils';
 
 function timeStr(iso) {
     if (!iso) return '—';
@@ -36,6 +37,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
         base44.entities.OfficerDistress.list('-activated_at', 20)
             .then(all => {
                 const active = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
+                if (active.length) stopDispatchAlert();
                 setAlerts(active);
                 // Reverse geocode any alert we haven't geocoded yet
                 active.forEach(alert => {
