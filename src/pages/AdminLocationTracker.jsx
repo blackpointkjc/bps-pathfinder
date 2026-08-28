@@ -721,8 +721,7 @@ export default function AdminLocationTracker() {
               </Card>
             </div>
 
-            {officersForMap.length > 0 && (
-              <Card className="border-none shadow-xl">
+            <Card className="border-none shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
@@ -738,7 +737,7 @@ export default function AdminLocationTracker() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
+                  <div className="relative h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     <MapContainer
                       center={[37.5407, -77.4360]}
                       zoom={12}
@@ -773,10 +772,14 @@ export default function AdminLocationTracker() {
                         </Marker>
                       ))}
                     </MapContainer>
+                    {officersForMap.length === 0 && (
+                      <div className="pointer-events-none absolute left-1/2 top-4 z-[500] -translate-x-1/2 rounded-lg border border-amber-300 bg-white/95 px-4 py-2 text-center text-xs font-bold text-slate-800 shadow-lg">
+                        Street map is online. Waiting for a valid officer location fix.
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            )}
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {currentlyActiveOfficers?.map((officer) => (
