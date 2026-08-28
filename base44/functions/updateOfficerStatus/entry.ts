@@ -14,7 +14,10 @@ Deno.serve(async (req) => {
         if (!status) {
             return Response.json({ error: 'Status is required' }, { status: 400 });
         }
-        if (user.status === status) return Response.json({ success: true, status, duplicate_transition: true });
+        // Even when the User row already has this value, continue reconciling the
+        // Unit and ActiveOfficer sources. Those live-board rows can be stale after
+        // a reconnect, and returning here previously made Available appear OOS.
+        const duplicateTransition = user.status === status;
 
         const activeOverrides = await base44.asServiceRole.entities.OfficerStatusOverride.filter({
             officer_id: user.id,
@@ -99,7 +102,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        if (status === 'Available') {
+        if (status === 'Available' && !duplicateTransition) {
             const callId = user.current_call_id || 'unit-status';
             const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
             await base44.asServiceRole.entities.CallStatusLog.create({
@@ -120,7 +123,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        return Response.json({ success: true, status, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length });
+        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
