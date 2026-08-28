@@ -1,0 +1,17 @@
+{
+  "name": "monitorAutoDispatchAssignments",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Monitor automatic dispatch acknowledgements",
+      "description": "Every two minutes, checks active live property-alert assignments for acknowledgement and response deadlines, creates one deduplicated escalation event, and notifies supervisors.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "minutes",
+      "repeat_interval": 2,
+      "is_active": true,
+      "function_args": { "scheduled": true }
+    }
+  ]
+}
