@@ -291,9 +291,12 @@ Deno.serve(async (req) => {
     const movementHistory = datasets.LocationHistory || [];
     const now = Date.now();
     const freshLiveLocations = liveLocations.filter(item => {
-      const stamp = new Date(value(item, 'last_update', 'last_updated', 'updated_date', 'created_date') || 0).getTime();
+      // A heartbeat proves the app session is alive, not that the GPS fix is
+      // current. Movement-history health must compare against gps_updated_at.
+      const stamp = new Date(value(item, 'gps_updated_at') || 0).getTime();
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
-        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude))
+        && Number(item.accuracy) <= 100;
     });
     const recentMovement = movementHistory.filter(item => {
       const stamp = new Date(value(item, 'timestamp', 'created_date') || 0).getTime();
