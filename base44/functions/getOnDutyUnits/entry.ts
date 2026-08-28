@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
         speed: hasReliableGps ? active.speed : 0,
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
+        last_gps_updated_at: active.gps_updated_at || null,
         gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
         current_call_info: active.current_call_info || user.current_call_info || '',
