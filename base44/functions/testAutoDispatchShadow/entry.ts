@@ -28,15 +28,52 @@ Deno.serve(async (req) => {
     const { call_id, property_alert_id, simulation = false } = await req.json().catch(() => ({}));
     if (!call_id || !property_alert_id) return Response.json({ error: 'call_id and property_alert_id are required' }, { status: 400 });
 
-    const [beforeAssignments, beforeUnits] = await Promise.all([
+    const [beforeAssignments, beforeUnits, alert] = await Promise.all([
       base44.asServiceRole.entities.CallAssignment.filter({ call_id }, '-assigned_at', 100),
       base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
+      base44.asServiceRole.entities.PropertyAlert.get(property_alert_id),
     ]);
+    if (!alert || String(alert.callId) !== String(call_id)) {
+      return Response.json({ error: 'The property alert is not linked to the selected call' }, { status: 400 });
+    }
+    const property = await base44.asServiceRole.entities.Location.get(String(alert.propertyId));
+    const propertyLat = Number(property?.latitude);
+    const propertyLon = Number(property?.longitude);
+    if (!Number.isFinite(propertyLat) || !Number.isFinite(propertyLon)) {
+      return Response.json({ error: 'The test property requires valid coordinates' }, { status: 400 });
+    }
+    const nowIso = new Date().toISOString();
+    const staleIso = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const testUnits = [
+      {
+        id: 'simulation-nearest-qualified',
+        email: 'simulation-nearest@example.invalid',
+        unit_number: 'TEST-1',
+        status: 'Available',
+        latitude: propertyLat + 0.001,
+        longitude: propertyLon + 0.001,
+        gps_updated_at: nowIso,
+        last_update: nowIso,
+        accuracy: 8,
+      },
+      {
+        id: 'simulation-stale-excluded',
+        email: 'simulation-stale@example.invalid',
+        unit_number: 'TEST-2',
+        status: 'Out of Service',
+        latitude: propertyLat + 0.002,
+        longitude: propertyLon + 0.002,
+        gps_updated_at: staleIso,
+        last_update: staleIso,
+        accuracy: 250,
+      },
+    ];
 
-    const firstResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id, simulation });
+    const simulationInput = { call_id, property_alert_id, simulation: true, test_units: testUnits };
+    const firstResponse = await base44.functions.invoke('geofenceDispatchAssignment', simulationInput);
     const first = firstResponse?.data || firstResponse || {};
     if (first.error) throw new Error(first.error);
-    const secondResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id, simulation });
+    const secondResponse = await base44.functions.invoke('geofenceDispatchAssignment', simulationInput);
     const second = secondResponse?.data || secondResponse || {};
     if (second.error) throw new Error(second.error);
 
@@ -57,8 +94,14 @@ Deno.serve(async (req) => {
       duplicate_evaluation_prevented: first.evaluation_id && first.evaluation_id === second.evaluation_id && simulationEvaluations.length === 1,
       staffing_shortfall_recorded: Number.isFinite(Number(first.staffing_shortfall)),
       exclusion_reasons_present: Array.isArray(first.excluded_units) && first.excluded_units.every((row: any) => Array.isArray(row.reasons) && row.reasons.length > 0),
-      recommendation_has_distance_eta: Array.isArray(first.recommendations) && first.recommendations.every((row: any) =>
+      recommendation_has_distance_eta: Array.isArray(first.recommendations) && first.recommendations.length > 0 && first.recommendations.every((row: any) =>
         row.already_assigned === true || (Number.isFinite(Number(row.distance_miles)) && Number.isFinite(Number(row.eta_minutes)))
+      ),
+      nearest_qualified_unit_selected: first.recommendations?.[0]?.unit_id === 'simulation-nearest-qualified',
+      stale_unavailable_unit_excluded: first.excluded_units?.some((row: any) =>
+        row.unit_id === 'simulation-stale-excluded'
+        && Array.isArray(row.reasons)
+        && row.reasons.some((reason: string) => /stale|unreliable|out of service|not Available/i.test(reason))
       ),
     };
     const passed = Object.values(checks).every(Boolean);
