@@ -18,6 +18,7 @@ const MILEAGE_RATE = 0.80;
 
 export default function ExpenseReports() {
   const [showDialog, setShowDialog] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     expense_date: format(new Date(), 'yyyy-MM-dd'),
@@ -54,22 +55,33 @@ export default function ExpenseReports() {
 
   const submitExpenseMutation = useMutation({
     mutationFn: async (data) => {
-      return await base44.entities.ExpenseReport.create({
+      const payload = {
         ...data,
         officer_email: user.email,
         officer_name: `${user.first_name} ${user.last_name}`,
-        status: 'pending'
-      });
+        status: 'pending',
+        reviewed_by: '',
+        reviewed_date: null,
+        reviewer_notes: '',
+      };
+      if (editingExpenseId) {
+        const current = expenses.find(item => item.id === editingExpenseId);
+        if (!current || current.status !== 'rejected') throw new Error('Only rejected expenses can be edited and resubmitted.');
+        return await base44.entities.ExpenseReport.update(editingExpenseId, payload);
+      }
+      return await base44.entities.ExpenseReport.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myExpenses'] });
       setShowDialog(false);
+      setEditingExpenseId(null);
       resetForm();
-      alert('Expense report submitted successfully!');
+      alert(editingExpenseId ? 'Expense corrected and resubmitted for approval.' : 'Expense report submitted successfully!');
     },
   });
 
   const resetForm = () => {
+    setEditingExpenseId(null);
     setFormData({
       expense_date: format(new Date(), 'yyyy-MM-dd'),
     linked_call_id: "",
@@ -103,6 +115,27 @@ export default function ExpenseReports() {
   };
 
   const handleReceiptUpload = (e) => handleFileUpload(e, 'receipt_url', 'receipt');
+
+  const editRejectedExpense = (expense) => {
+    if (expense.status !== 'rejected') return;
+    setEditingExpenseId(expense.id);
+    setFormData({
+      expense_date: expense.expense_date || format(new Date(), 'yyyy-MM-dd'),
+      linked_call_id: expense.linked_call_id || '',
+      linked_call_number: expense.linked_call_number || '',
+      linked_call_type: expense.linked_call_type || '',
+      linked_call_location: expense.linked_call_location || '',
+      category: expense.category || 'travel',
+      amount: expense.amount ?? '',
+      description: expense.description || '',
+      receipt_url: expense.receipt_url || '',
+      start_mileage: expense.start_mileage ?? '',
+      end_mileage: expense.end_mileage ?? '',
+      start_mileage_photo_url: expense.start_mileage_photo_url || '',
+      end_mileage_photo_url: expense.end_mileage_photo_url || '',
+    });
+    setShowDialog(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -259,6 +292,12 @@ export default function ExpenseReports() {
                         <p className="text-sm text-slate-600">{expense.reviewer_notes}</p>
                       </div>
                     )}
+                    {expense.status === 'rejected' && (
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                        <p className="text-sm text-red-800">Correct the rejected expense and resend it to command for approval.</p>
+                        <Button type="button" size="sm" onClick={() => editRejectedExpense(expense)}>Edit & Resubmit</Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -267,10 +306,10 @@ export default function ExpenseReports() {
         </Card>
       </div>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Submit Expense Report</DialogTitle>
+            <DialogTitle>{editingExpenseId ? 'Correct & Resubmit Expense Report' : 'Submit Expense Report'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <ActiveCallLinkField formData={formData} setFormData={setFormData} />
@@ -375,7 +414,7 @@ export default function ExpenseReports() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitExpenseMutation.isPending || uploading}>
-                Submit Expense
+                {editingExpenseId ? 'Resubmit for Approval' : 'Submit Expense'}
               </Button>
             </div>
           </form>
