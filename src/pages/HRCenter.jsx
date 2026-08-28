@@ -36,7 +36,7 @@ const TOOLS = {
 
 export default function HRCenter({ embedded = false }) {
   return (
-    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="employees" queryParam={embedded ? 'hr_section' : 'section'}>
+    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="employees" queryParam={embedded ? 'hr_section' : 'section'} embedded={embedded}>
       {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'hr_tool' : 'tool'} />}
     </UnifiedCenter>
   );
