@@ -285,7 +285,9 @@ Deno.serve(async (req) => {
       });
     const activeCallIdSet = new Set(activeCalls.map(item => String(item.id)));
     const activeLivePropertyAlerts = alerts.filter(alert => {
-      if (alert.acknowledged === true || !activeCallIdSet.has(String(alert.callId))) return false;
+      if (!activeCallIdSet.has(String(alert.callId))) return false;
+      const lifecycle = String(alert.lifecycle_status || 'active').toLowerCase();
+      if (['resolved', 'false_alarm', 'test'].includes(lifecycle)) return false;
       const property = locationByIdForDispatch.get(String(alert.propertyId));
       return property?.auto_dispatch_enabled === true && property?.auto_dispatch_mode === 'live';
     });
