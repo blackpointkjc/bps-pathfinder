@@ -61,6 +61,7 @@ const CENTER_CONFIG = {
     groups: [
       { label: 'Quick Access', items: [
         ['Dashboard', 'Dashboard', Gauge],
+        ['Dispatch Queue', 'OfficerDispatchQueue', Radio],
         ['Time Clock', 'TimeClock', Clock3],
         ['My Schedule', 'Schedule', Calendar],
         ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
@@ -106,6 +107,14 @@ const CENTER_CONFIG = {
     label: 'Supervisor Center',
     icon: ClipboardCheck,
     groups: [
+      { label: 'Command Operations', items: [
+        ['Command Dashboard', 'CommandDashboard', Gauge],
+        ['Dispatch Center', 'DispatchCenter', Radio],
+        ['Live Map', 'Navigation', MapIcon],
+        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+        ['Records Intelligence', 'RecordsAssistant', Bot],
+        ['Dispatcher Shift Log', 'DispatcherShiftReports', ClipboardList],
+      ]},
       { label: 'Today', items: [
         ['Action Items', 'SupervisorTasks', ClipboardList],
         ['Daily Code', 'SupervisorDailyCode', ShieldCheck],
@@ -287,7 +296,7 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
   CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], Navigation: ['cad','live','map'],   BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatchlog'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
-  Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','field','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','field','law'], VATrespassNotices: ['officer','field','trespass'], VACriminalComplaints: ['officer','field','complaint'], Summons: ['officer','field','summons'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','messages','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankDuties: ['officer','profile','duties'],
+  Dashboard: ['officer','today','dashboard'], OfficerDispatchQueue: ['officer','field','dispatchqueue'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','field','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','field','law'], VATrespassNotices: ['officer','field','trespass'], VACriminalComplaints: ['officer','field','complaint'], Summons: ['officer','field','summons'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','messages','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'], AdminLocationTracker: ['admin','command','tracker'], AdminGeofenceAlerts: ['admin','command','geofence'],
   AdminScheduling: ['admin','schedule','scheduling'], FleetVehicleAssignments: ['admin','schedule','fleet'], AdminOfficerManagement: ['admin','schedule','availability'], AdminPlannedShifts: ['admin','schedule','planned'], AdminShiftBids: ['admin','schedule','bids'],
   AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','people','locations'], AdminEquipment: ['admin','people','equipment'], AdminPostOrders: ['admin','people','postorders'],
