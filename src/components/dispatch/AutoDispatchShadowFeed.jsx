@@ -15,7 +15,7 @@ export default function AutoDispatchShadowFeed() {
       for (const row of rows || []) {
         if (!latestByEvent.has(row.event_key)) latestByEvent.set(row.event_key, row);
       }
-      setEvaluations([...latestByEvent.values()].slice(0, 10));
+      setEvaluations([...latestByEvent.values()].slice(0, 4));
       setError('');
     } catch (err) {
       setError(err?.message || 'Unable to load automatic-dispatch evaluations');
@@ -36,7 +36,7 @@ export default function AutoDispatchShadowFeed() {
   if (!evaluations.length) return null;
 
   return (
-    <section className="mb-4 rounded-xl border border-cyan-500/30 bg-[#081522] p-4">
+    <section className="max-h-64 flex-none overflow-y-auto border-b border-cyan-500/30 bg-[#081522] p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Radar className="h-5 w-5 text-cyan-300" />
