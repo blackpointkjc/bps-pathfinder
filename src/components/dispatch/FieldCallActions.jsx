@@ -25,6 +25,7 @@ export default function FieldCallActions({ call, onStatusChange }) {
   const [noteAdded, setNoteAdded] = useState(false);
   const [status, setStatus] = useState(call?.status);
   const [backupSent, setBackupSent] = useState(false);
+  const [supervisorSent, setSupervisorSent] = useState(false);
   const [assignedToMe, setAssignedToMe] = useState(false);
 
   useEffect(() => {
@@ -151,6 +152,25 @@ export default function FieldCallActions({ call, onStatusChange }) {
     }
   };
 
+  const requestSupervisor = async () => {
+    if (!call || saving) return;
+    setSaving(true);
+    setSupervisorSent(false);
+    try {
+      const result = await base44.functions.invoke('requestSupervisorAssist', { call_id: call.id });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!payload.assigned) toast.warning(payload.reason || 'No eligible supervisor is available right now.');
+      else {
+        setSupervisorSent(true);
+        toast.success(`${payload.supervisor?.name || 'Supervisor'} assigned as closest available supervisor.`);
+        window.setTimeout(() => setSupervisorSent(false), 5000);
+      }
+    } catch (error) {
+      toast.error(error?.message || 'Unable to request supervisor');
+    } finally { setSaving(false); }
+  };
+
   const addNote = async () => {
     if (!noteText.trim() || !call) return;
     setSaving(true);
@@ -209,6 +229,12 @@ export default function FieldCallActions({ call, onStatusChange }) {
         className={`w-full py-2.5 border rounded font-mono text-[11px] font-black tracking-widest flex items-center justify-center gap-2 transition-colors disabled:opacity-70 ${backupSent ? 'bg-green-800 border-green-500 text-green-100' : 'bg-red-800 hover:bg-red-700 border-red-500 text-red-100'}`}>
         {backupSent ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
         {saving ? 'SENDING BACKUP REQUEST...' : backupSent ? 'BACKUP REQUEST SENT' : 'REQUEST BACKUP'}
+      </button>
+
+      <button onClick={requestSupervisor} disabled={saving || supervisorSent}
+        className={`w-full py-2.5 border rounded font-mono text-[11px] font-black tracking-widest flex items-center justify-center gap-2 transition-colors disabled:opacity-70 ${supervisorSent ? 'bg-green-800 border-green-500 text-green-100' : 'bg-purple-800 hover:bg-purple-700 border-purple-500 text-purple-100'}`}>
+        {supervisorSent ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+        {supervisorSent ? 'SUPERVISOR ASSIGNED' : 'REQUEST SUPERVISOR'}
       </button>
 
       <div>
