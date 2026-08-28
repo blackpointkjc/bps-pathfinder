@@ -1,0 +1,4 @@
+{
+  "name": "getSupervisorWelfareBoard",
+  "description": "Returns active CAD assignments with acknowledgement/on-scene welfare timers for supervisor and dispatch command oversight."
+}
