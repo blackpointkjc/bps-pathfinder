@@ -192,54 +192,9 @@ export async function runClientFunctionalAudit() {
     ));
   }
 
-  try {
-    const [periods, entries] = await Promise.all([
-      base44.entities.PayrollPeriod.list('-end_date', 100),
-      base44.entities.PayrollEntry.list('-created_date', 1000),
-    ]);
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(new Date());
-    const ended = (periods || []).filter(period => String(period.end_date || '') < today);
-    const latestEnded = ended.sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0];
-    if (latestEnded) {
-      const matching = (entries || []).filter(entry =>
-        entry.pay_period_start === latestEnded.start_date && entry.pay_period_end === latestEnded.end_date
-      );
-      if (!matching.length) findings.push(finding(
-        'payroll:latest-ended-missing',
-        'Payroll',
-        'outage',
-        'Latest ended payroll period has no generated report',
-        `${latestEnded.period_name || 'Latest payroll period'} (${latestEnded.start_date} through ${latestEnded.end_date}) is missing payroll entries.`,
-      ));
-    }
-    const keys = new Set();
-    const duplicates = new Set();
-    (entries || []).forEach(entry => {
-      const key = `${String(entry.officer_email || '').toLowerCase()}|${entry.pay_period_start}|${entry.pay_period_end}`;
-      if (keys.has(key)) duplicates.add(key);
-      keys.add(key);
-    });
-    if (duplicates.size) findings.push(finding(
-      'payroll:duplicate-entry',
-      'Payroll',
-      'outage',
-      'Duplicate officer payroll entries detected',
-      `${duplicates.size} officer-period key(s) occur more than once. Payroll export must be reviewed before transfer.`,
-      duplicates.size,
-    ));
-  } catch (error) {
-    findings.push(finding(
-      'payroll:audit-failed',
-      'Payroll',
-      isRateLimited(error) ? 'degraded' : 'outage',
-      isRateLimited(error) ? 'Payroll scan was throttled' : 'Payroll verification failed',
-      isRateLimited(error)
-        ? 'The diagnostic scan was rate limited. This does not mean Payroll is down; the next scan will retry.'
-        : safeMessage(error),
-    ));
-  }
+  // Payroll integrity is checked once by the server-side audit. Re-reading the
+  // same large tables in the browser doubled scan load and caused false rate-limit
+  // outages across unrelated modules.
 
   const functionalProbes = [
     {
