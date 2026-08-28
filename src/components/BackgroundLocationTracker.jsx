@@ -370,16 +370,9 @@ export default function BackgroundLocationTracker({ user }) {
           lastLivePushRef.current = Date.now();
         }
         if (fix && Date.now() - lastSaveRef.current >= 55000) {
-          await base44.entities.LocationHistory.create({
-            time_entry_id: activeEntry?.id || `login-session:${sessionStartedRef.current}`,
-            officer_email: user.email,
-            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-            location: activeEntry?.location || user?.current_location || user?.assigned_location || `Signed In · ${user?.role || 'user'}`,
-            latitude: fix.latitude,
-            longitude: fix.longitude,
-            timestamp: nowIso,
-            accuracy: fix.accuracy,
-          });
+          // logLocation now owns the durable one-minute LocationHistory write.
+          // Keep this timestamp only to refresh history consumers without
+          // creating a competing client-side row.
           lastSaveRef.current = Date.now();
           queryClient.invalidateQueries({ queryKey: ['locationHistory'] });
         }
