@@ -996,7 +996,6 @@ export default function AccountingPayroll() {
               <li>Federal Holidays: New Year's, MLK Jr. Day, Juneteenth, July 4th, Thanksgiving, Christmas</li>
               <li>Officer-specific rate overrides when configured</li>
               <li>Itemized clock-in and clock-out records for every officer</li>
-              <li>Gross earnings only; taxes and deductions are handled in your external payroll system</li>
             </ul>
           </div>
         </CardContent>
