@@ -76,15 +76,15 @@ export const evaluatePropertyMatch = (call, property, nearbyFeet = 0) => {
 export const locationToMonitoredProperty = (location) => {
   if (!location?.property_monitoring_enabled) return null;
 
-  // Property Monitoring has its own boundary/radius settings. Do not silently use
-  // the smaller officer-geofence values, or valid CAD calls can be missed.
-  const rawPolygon = Array.isArray(location.property_monitoring_polygon) && location.property_monitoring_polygon.length >= 3
+  // Property-call matching uses ONLY the custom Property Monitoring polygon saved
+  // on the Location page. Never fall back to the officer clock-in geofence or a
+  // site-center radius; outside the drawn boundary means no property alert.
+  const rawPolygon = Array.isArray(location.property_monitoring_polygon)
     ? location.property_monitoring_polygon
-    : (Array.isArray(location.geofence_polygon) ? location.geofence_polygon : []);
+    : [];
   const polygon = rawPolygon
-    .map(point => Array.isArray(point) ? point : [Number(point.lat), Number(point.lng)])
+    .map(point => Array.isArray(point) ? [Number(point[0]), Number(point[1])] : [Number(point.lat), Number(point.lng)])
     .filter(pair => pair.every(Number.isFinite));
-  const configuredBoundary = String(location.property_monitoring_boundary_type || '').toLowerCase();
 
   return {
     id: location.id,
@@ -93,9 +93,9 @@ export const locationToMonitoredProperty = (location) => {
     address: location.address,
     latitude: Number(location.latitude),
     longitude: Number(location.longitude),
-    enabled: location.active !== false && location.property_monitoring_enabled === true,
-    boundary_type: configuredBoundary === 'circle' ? 'circle' : (polygon.length >= 3 ? 'polygon' : 'circle'),
-    radiusMeters: Number(location.property_monitoring_radius_meters || location.geofence_radius_meters || 100),
+    enabled: location.active !== false && location.property_monitoring_enabled === true && polygon.length >= 3,
+    boundary_type: 'polygon',
+    radiusMeters: 0,
     polygon,
     description: location.property_monitoring_description || '',
   };
