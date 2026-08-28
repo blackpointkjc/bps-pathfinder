@@ -17,6 +17,7 @@ import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
+import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
@@ -440,6 +441,7 @@ export default function DispatchCenter() {
             </div>
 
             <PropertyAlertsBanner />
+            <AutoDispatchShadowFeed />
             <ActiveBoloBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
