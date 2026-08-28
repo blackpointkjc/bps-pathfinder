@@ -7,6 +7,7 @@ import { AlertTriangle, MapPin, CheckCircle, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import { formatEasternTime } from '@/lib/easternTime';
+import AutoDispatchRecommendation from '@/components/dispatch/AutoDispatchRecommendation';
 
 const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const normalizedStatus = value => String(value || '').trim().toLowerCase();
@@ -118,6 +119,7 @@ export default function PropertyAlertsBanner() {
                                         <span>{alert.distanceMeters}m from property</span>
                                         <span className="flex items-center gap-1"><Clock3 className="h-3 w-3" />{formatEasternTime(alert._callTime || alert.callTime || alert.time_received || alert.created_date)} ET</span>
                                     </div>
+                                    <AutoDispatchRecommendation alert={alert} />
                                 </div>
                                 <Button size="sm" variant="ghost" onClick={() => handleAcknowledge(alert)} className="text-slate-400 hover:text-white" title="Acknowledge for my account">
                                     <CheckCircle className="w-4 h-4" />
