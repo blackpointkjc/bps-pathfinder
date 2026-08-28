@@ -14,10 +14,11 @@ Deno.serve(async (req) => {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
-    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1000);
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const users = await base44.asServiceRole.entities.User.list('-updated_date', 1500);
-    const sessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1500);
+    const sessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
+    const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 500).catch(() => []);
     const callById = new Map((calls || []).map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
     const sessionByEmail = new Map<string,any>();
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
       board.push({
         assignment_id:a.id, call_id:call.id, cad_number:call.agency_cad_number || call.bps_reference || call.call_id || call.id,
         incident:call.incident || 'Call for service', location:call.location || '', priority:call.priority || 'medium',
-        unit_id:officer.id, unit_number:session?.unit_number || officer.unit_number || '', officer_name:officer.full_name || [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.email,
+        unit_id:officer.id, unit_number:session?.unit_number || officer.unit_number || '', officer_email:lower(officer.email), officer_name:[String(officer.rank || '').trim(), String(officer.last_name || '').trim() || String(officer.full_name || '').trim().split(/\s+/).pop()].filter(Boolean).join(' ') || 'Officer',
         assignment_status:a.status || 'pending', assigned_at:a.assigned_at || '', accepted_at:a.accepted_at || '', elapsed_seconds:elapsedSeconds,
         overdue,
         officer_status:session?.status || officer.status || '',
@@ -56,7 +57,18 @@ Deno.serve(async (req) => {
       });
     }
     board.sort((a,b)=>Number(b.overdue)-Number(a.overdue) || b.elapsed_seconds-a.elapsed_seconds);
-    return Response.json({ success:true, board, overdue_count:board.filter(x=>x.overdue).length });
+    const displayByEmail: Record<string,string> = {};
+    for (const officer of users || []) {
+      const email = lower(officer.email);
+      if (!email) continue;
+      const last = String(officer.last_name || '').trim() || String(officer.full_name || '').trim().split(/\s+/).pop() || '';
+      displayByEmail[email] = [String(officer.rank || '').trim(), last].filter(Boolean).join(' ') || 'Officer';
+    }
+    const activeWelfareChecks = (welfareChecks || []).filter((check:any) => {
+      const call = callById.get(String(check.call_id));
+      return call && !['cleared','cancelled','closed','completed','resolved'].includes(lower(call.status));
+    }).map((check:any) => ({ ...check, elapsed_seconds: Math.max(0, Math.floor((now - new Date(check.requested_at || 0).getTime()) / 1000)) }));
+    return Response.json({ success:true, board, welfare_checks:activeWelfareChecks, display_by_email:displayByEmail, overdue_count:board.filter(x=>x.overdue).length });
   } catch (error) {
     console.error('getSupervisorWelfareBoard failed', error);
     return Response.json({ error:error?.message || 'Unable to load welfare board' }, { status:500 });
