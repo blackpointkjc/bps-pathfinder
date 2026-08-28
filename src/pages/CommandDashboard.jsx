@@ -11,6 +11,7 @@ import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
+import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
 import { useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
@@ -269,6 +270,7 @@ function CommandDashboardInner() {
         <div className="command-dashboard min-h-full min-w-0 overflow-x-hidden bg-slate-950 flex flex-col">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
             <ActiveBoloBanner />
+            {isDispatchOrAdmin && <AutoDispatchShadowFeed />}
 
             {/* ── SYSTEM HEADER BAR ── */}
             <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
