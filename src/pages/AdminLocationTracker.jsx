@@ -188,7 +188,7 @@ export default function AdminLocationTracker() {
   const { data: activeOfficerPayload = {} } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getOnDutyUnits', {});
+      const result = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
