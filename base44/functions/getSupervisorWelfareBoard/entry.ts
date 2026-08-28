@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
       .filter((a:any) => activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status)));
     const sessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300);
     const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []);
+    const statusLogs = await base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []);
     const users = await base44.asServiceRole.entities.User.list('-updated_date', 750);
 
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
@@ -72,8 +73,31 @@ Deno.serve(async (req) => {
       displayByEmail[email] = [String(officer.rank || '').trim(), last].filter(Boolean).join(' ') || 'Officer';
     }
 
-    const activeWelfareChecks = (welfareChecks || []).filter((check:any) => activeCallIds.has(String(check.call_id)))
+    const activeWelfareChecks = (welfareChecks || []).filter((check:any) => activeCallIds.has(String(check.call_id)) && lower(check.status) === 'pending')
       .map((check:any) => ({ ...check, elapsed_seconds: Math.max(0, Math.floor((now - new Date(check.requested_at || 0).getTime()) / 1000)) }));
+
+    const supervisorUserIds = new Set((users || []).filter((u:any) => {
+      const itemRoles = new Set((u.additional_roles || []).map(lower));
+      const itemRank = lower(u.rank);
+      return u.role === 'admin' || itemRoles.has('supervisor') || itemRoles.has('full_access') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(itemRank);
+    }).map((u:any) => String(u.id)));
+    const activeSupervisorCallIds = new Set((assignments || []).filter((a:any) => supervisorUserIds.has(String(a.unit_id))).map((a:any) => String(a.call_id)));
+    const pendingSupervisorRequests = (statusLogs || [])
+      .filter((log:any) => log.triggering_action === 'requestSupervisorAssist.pending' && activeCallIds.has(String(log.call_id)) && !activeSupervisorCallIds.has(String(log.call_id)))
+      .map((log:any) => {
+        const call:any = callById.get(String(log.call_id));
+        return {
+          id:log.id,
+          call_id:log.call_id,
+          cad_number:log.cad_number || call?.agency_cad_number || call?.bps_reference || call?.call_id || log.call_id,
+          incident:call?.incident || log.incident_type || 'Call for service',
+          location:call?.location || log.location || '',
+          requested_by:log.unit_name || 'Officer',
+          requested_at:log.created_date || '',
+          elapsed_seconds:Math.max(0, Math.floor((now - new Date(log.created_date || 0).getTime()) / 1000)),
+          status:'pending',
+        };
+      });
 
     const liveUnits:any[] = [];
     for (const [email, session] of sessionByEmail.entries()) {
@@ -92,6 +116,7 @@ Deno.serve(async (req) => {
       success:true,
       board,
       welfare_checks:activeWelfareChecks,
+      supervisor_requests:pendingSupervisorRequests,
       display_by_email:displayByEmail,
       live_units:liveUnits,
       active_calls:activeCalls,
