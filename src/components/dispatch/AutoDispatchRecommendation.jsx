@@ -142,7 +142,7 @@ export default function AutoDispatchRecommendation({ alert }) {
         </Button>
         {testResult && (
           <div className={`mt-2 rounded-md border px-3 py-2 text-[10px] ${testResult.passed ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200' : 'border-red-500/40 bg-red-950/20 text-red-200'}`}>
-            <div className="font-black">{testResult.passed ? 'PASSED — NO ASSIGNMENT OR UNIT STATUS WAS CHANGED' : 'FAILED — LIVE MODE REMAINS LOCKED'}</div>
+            <div className="font-black">{testResult.passed ? 'PASSED — SIMULATION MADE NO OPERATIONAL CHANGES' : 'FAILED — AUTOMATIC DISPATCH SAFETY CHECK'}</div>
             {testResult.error && <div className="mt-1">{testResult.error}</div>}
             {testResult.checks && <div className="mt-1">{Object.entries(testResult.checks).map(([name, passed]) => `${passed ? '✓' : '✕'} ${name.replaceAll('_', ' ')}`).join(' · ')}</div>}
           </div>
