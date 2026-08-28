@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
 import { AlertOctagon, CheckCircle2, Clock3, Radar, UserX } from 'lucide-react';
@@ -7,6 +7,27 @@ import { formatEasternDateTime } from '@/lib/easternTime';
 export default function AutoDispatchShadowFeed() {
   const [evaluations, setEvaluations] = useState([]);
   const [error, setError] = useState('');
+  const safetyTestRunning = useRef(false);
+
+  const runInitialSafetyTest = async () => {
+    if (safetyTestRunning.current) return;
+    safetyTestRunning.current = true;
+    try {
+      const alerts = await base44.entities.PropertyAlert.list('-created_date', 50);
+      const candidate = (alerts || []).find(item => item?.id && item?.callId);
+      if (!candidate) return;
+      const response = await base44.functions.invoke('testAutoDispatchShadow', {
+        call_id: candidate.callId,
+        property_alert_id: candidate.id,
+        simulation: true,
+      });
+      const result = response?.data || response || {};
+      if (result.error) throw new Error(result.error);
+      if (!result.passed) throw new Error('Phase 2A safety checks did not all pass');
+    } finally {
+      safetyTestRunning.current = false;
+    }
+  };
 
   const load = async () => {
     try {
@@ -17,7 +38,16 @@ export default function AutoDispatchShadowFeed() {
       for (const row of payload.evaluations || []) {
         if (!latestByEvent.has(row.event_key)) latestByEvent.set(row.event_key, row);
       }
-      setEvaluations([...latestByEvent.values()].slice(0, 4));
+      const rows = [...latestByEvent.values()].slice(0, 4);
+      if (!rows.length) {
+        await runInitialSafetyTest();
+        const retryResponse = await base44.functions.invoke('getAutoDispatchEvaluations', {});
+        const retryPayload = retryResponse?.data || retryResponse || {};
+        if (retryPayload.error) throw new Error(retryPayload.error);
+        setEvaluations((retryPayload.evaluations || []).slice(0, 4));
+      } else {
+        setEvaluations(rows);
+      }
       setError('');
     } catch (err) {
       setError(err?.message || 'Unable to load automatic-dispatch evaluations');
