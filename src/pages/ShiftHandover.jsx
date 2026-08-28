@@ -14,7 +14,16 @@ import { toast } from "sonner";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const blank = { location:"", shift_date:format(new Date(),'yyyy-MM-dd'), shift_start:"", shift_end:"", key_updates:"", ongoing_issues:"", pending_tasks:"", equipment_status:"" };
+const normalize = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const emailKey = value => String(value || '').trim().toLowerCase();
 const shiftTime = s => new Date(`${s.shift_date}T${s.start_time || '00:00'}`).getTime();
+const shiftEndTime = (date, start, end) => {
+  const startAt = new Date(`${date}T${start || '00:00'}`);
+  const endAt = new Date(`${date}T${end || '23:59'}`);
+  if (end && start && endAt.getTime() <= startAt.getTime()) endAt.setDate(endAt.getDate() + 1);
+  return endAt.getTime();
+};
+const supervisoryRanks = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
 
 export default function ShiftHandover(){
   const [showForm,setShowForm]=useState(false); const [form,setForm]=useState(blank); const qc=useQueryClient();
@@ -23,22 +32,32 @@ export default function ShiftHandover(){
   const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>listDirectoryLocations('site_name')});
   const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>listDirectoryUsers()});
   const {data:handovers=[]}=useQuery({queryKey:['shiftHandovers'],queryFn:()=>base44.entities.ShiftHandover.list('-created_date',100),refetchInterval:10000});
+  const roles = new Set((user?.additional_roles || []).map(normalize));
+  const isSupervisor = user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || supervisoryRanks.has(normalize(user?.rank));
   const mySites=useMemo(()=>{
     const assigned=[
       ...(user?.assigned_sites||[]),
       ...(user?.assigned_locations||[]),
       user?.assigned_location,
-      ...schedules.filter(s=>s.officer_email===user?.email).map(s=>s.location||s.site_name),
+      ...schedules.filter(s=>emailKey(s.officer_email)===emailKey(user?.email)).map(s=>s.location||s.site_name),
     ].filter(Boolean);
-    const activeLocations=locations.filter(l=>l.active!==false).map(l=>l.site_name).filter(Boolean);
-    return [...new Set(assigned.length ? assigned : activeLocations)].sort();
+    const activeLocations=locations.filter(l=>l.active!==false).map(l=>l.site_name||l.location_name||l.name).filter(Boolean);
+    const all = [...assigned, ...activeLocations];
+    const byKey = new Map();
+    all.forEach(site => { const key = normalize(site); if (key && !byKey.has(key)) byKey.set(key, String(site).trim()); });
+    return [...byKey.values()].sort((a,b)=>a.localeCompare(b));
   },[schedules,locations,user?.email,user?.assigned_location,JSON.stringify(user?.assigned_sites||[]),JSON.stringify(user?.assigned_locations||[])]);
-  const visible=useMemo(()=>handovers.filter(h=>h.departing_officer_email===user?.email||h.incoming_officer_email===user?.email||mySites.includes(h.location)),[handovers,user?.email,mySites]);
+  const visible=useMemo(()=>{
+    if (isSupervisor) return handovers;
+    const siteKeys = new Set(mySites.map(normalize));
+    return handovers.filter(h=>emailKey(h.departing_officer_email)===emailKey(user?.email)||emailKey(h.incoming_officer_email)===emailKey(user?.email)||siteKeys.has(normalize(h.location)));
+  },[handovers,user?.email,mySites,isSupervisor]);
   const incoming=useMemo(()=>{
     if(!form.location||!form.shift_date) return null;
-    const end=new Date(`${form.shift_date}T${form.shift_end||'23:59'}`).getTime();
-    const next=schedules.filter(s=>s.location===form.location&&s.officer_email&&s.officer_email!=='OPEN'&&s.officer_email!==user?.email&&shiftTime(s)>=end).sort((a,b)=>shiftTime(a)-shiftTime(b))[0];
-    if(!next) return null; const person=users.find(u=>u.email===next.officer_email);
+    const end=shiftEndTime(form.shift_date, form.shift_start, form.shift_end);
+    const locationKey = normalize(form.location);
+    const next=schedules.filter(s=>normalize(s.location||s.site_name)===locationKey&&s.officer_email&&!s.is_open&&emailKey(s.officer_email)!=='open'&&emailKey(s.officer_email)!==emailKey(user?.email)&&shiftTime(s)>=end).sort((a,b)=>shiftTime(a)-shiftTime(b))[0];
+    if(!next) return null; const person=users.find(u=>emailKey(u.email)===emailKey(next.officer_email));
     return {...next,name:person?`${person.rank||'Officer'} ${person.last_name||person.first_name}`:next.officer_email};
   },[form,schedules,users,user?.email]);
   const create=useMutation({mutationFn:()=>base44.entities.ShiftHandover.create({...form,departing_officer_email:user.email,departing_officer_name:`${user.rank||'Officer'} ${user.last_name||user.first_name}`,incoming_officer_email:incoming?.officer_email||'',incoming_officer_name:incoming?.name||'Next assigned officer',acknowledged_by_incoming:false}),onSuccess:()=>{qc.invalidateQueries({queryKey:['shiftHandovers']});setForm(blank);setShowForm(false);toast.success('Shift handover sent');},onError:e=>toast.error(e.message)});
@@ -55,6 +74,6 @@ export default function ShiftHandover(){
       <div><Label>Equipment / Keys / Vehicle Status</Label><Textarea rows={2} value={form.equipment_status} onChange={e=>setForm({...form,equipment_status:e.target.value})}/></div>
       <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button type="submit" disabled={create.isPending}>Send Handover</Button></div>
     </form></CardContent></Card>}
-    <div className="space-y-3">{visible.length===0?<Card className="border-slate-700 bg-slate-900 text-slate-100"><CardContent className="p-8 text-center text-slate-300">No handovers for your assigned sites.</CardContent></Card>:visible.map(h=><Card key={h.id} className={`bg-slate-900 text-slate-100 ${h.incoming_officer_email===user?.email&&!h.acknowledged_by_incoming?'border-amber-600':'border-slate-700'}`}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4"/>{h.location}</CardTitle><p className="mt-1 text-sm text-slate-400">{h.departing_officer_name} → {h.incoming_officer_name||'Next assigned officer'} • {h.shift_date}</p></div>{h.acknowledged_by_incoming?<Badge className="bg-emerald-700">Acknowledged</Badge>:h.incoming_officer_email===user?.email?<Button size="sm" onClick={()=>acknowledge.mutate(h.id)}><CheckCircle className="mr-2 h-4 w-4"/>Acknowledge</Button>:<Badge variant="outline" className="border-slate-500 text-slate-200">Pending</Badge>}</div></CardHeader><CardContent className="space-y-3 text-sm"><div><strong>Key updates:</strong><p className="text-slate-300">{h.key_updates}</p></div>{h.ongoing_issues&&<div><strong>Ongoing issues:</strong><p className="text-slate-300">{h.ongoing_issues}</p></div>}{h.pending_tasks&&<div><strong>Pending tasks:</strong><p className="text-slate-300">{h.pending_tasks}</p></div>}{h.equipment_status&&<div><strong>Equipment status:</strong><p className="text-slate-300">{h.equipment_status}</p></div>}</CardContent></Card>)}</div>
+    <div className="space-y-3">{visible.length===0?<Card className="border-slate-700 bg-slate-900 text-slate-100"><CardContent className="p-8 text-center text-slate-300"><div className="font-semibold text-slate-200">No shift handovers have been submitted yet.</div><div className="mt-1 text-xs text-slate-500">Use New Handover to pass site conditions, pending tasks, equipment status, and other information to the next scheduled officer.</div></CardContent></Card>:visible.map(h=><Card key={h.id} className={`bg-slate-900 text-slate-100 ${h.incoming_officer_email===user?.email&&!h.acknowledged_by_incoming?'border-amber-600':'border-slate-700'}`}><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4"/>{h.location}</CardTitle><p className="mt-1 text-sm text-slate-400">{h.departing_officer_name} → {h.incoming_officer_name||'Next assigned officer'} • {h.shift_date}</p></div>{h.acknowledged_by_incoming?<Badge className="bg-emerald-700">Acknowledged</Badge>:h.incoming_officer_email===user?.email?<Button size="sm" onClick={()=>acknowledge.mutate(h.id)}><CheckCircle className="mr-2 h-4 w-4"/>Acknowledge</Button>:<Badge variant="outline" className="border-slate-500 text-slate-200">Pending</Badge>}</div></CardHeader><CardContent className="space-y-3 text-sm"><div><strong>Key updates:</strong><p className="text-slate-300">{h.key_updates}</p></div>{h.ongoing_issues&&<div><strong>Ongoing issues:</strong><p className="text-slate-300">{h.ongoing_issues}</p></div>}{h.pending_tasks&&<div><strong>Pending tasks:</strong><p className="text-slate-300">{h.pending_tasks}</p></div>}{h.equipment_status&&<div><strong>Equipment status:</strong><p className="text-slate-300">{h.equipment_status}</p></div>}</CardContent></Card>)}</div>
   </div></div>;
 }
