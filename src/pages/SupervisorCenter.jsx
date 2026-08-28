@@ -1,6 +1,35 @@
-import { ClipboardCheck, ClipboardList, MessageCircle, ShieldCheck } from 'lucide-react';
+import { CalendarClock, ClipboardCheck, ClipboardList, MessageCircle, Shield, ShieldCheck, UserRound, Wrench } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
+import Dashboard from './Dashboard';
+import TimeClock from './TimeClock';
+import Schedule from './Schedule';
+import VirginiaFieldLawAssistant from './VirginiaFieldLawAssistant';
+import PostOrders from './PostOrders';
+import QRPatrolScan from './QRPatrolScan';
+import ShiftHandover from './ShiftHandover';
+import VATrespassNotices from './VATrespassNotices';
+import VACriminalComplaints from './VACriminalComplaints';
+import Summons from './Summons';
+import DailyActivityReports from './DailyActivityReports';
+import IncidentReports from './IncidentReports';
+import MaintenanceReports from './MaintenanceReports';
+import OpenDoorReports from './OpenDoorReports';
+import ConfidentialReport from './ConfidentialReport';
+import ExpenseReports from './ExpenseReports';
+import TimeRequests from './TimeRequests';
+import OfficerAvailability from './OfficerAvailability';
+import OpenShifts from './OpenShifts';
+import OfficerPayrollDates from './OfficerPayrollDates';
+import Announcements from './Announcements';
+import OfficerProfile from './OfficerProfile';
+import MyPerformanceAnalytics from './MyPerformanceAnalytics';
+import OfficerPerformanceReviews from './OfficerPerformanceReviews';
+import OfficerTraining from './OfficerTraining';
+import RankStructure from './RankStructure';
+import RankDuties from './RankDuties';
+import OfficerDispatchQueue from './OfficerDispatchQueue';
+import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorDailyCode from './SupervisorDailyCode';
 import SupervisorInspections from './SupervisorInspections';
@@ -9,26 +38,54 @@ import SupervisorWriteUps from './SupervisorWriteUps';
 import SupervisorUseOfForce from './SupervisorUseOfForce';
 import SupervisorComplaints from './SupervisorComplaints';
 import SupervisorChat from './SupervisorChat';
-import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
-import { Button } from '@/components/ui/button';
-import { createPageUrl } from '../utils';
 
 const SECTIONS = [
-  { id: 'command', label: 'Field Leadership', description: 'Supervisor-only field oversight and shift handoff', icon: ShieldCheck },
-  { id: 'today', label: 'Today', description: 'Action items, daily code and call-outs', icon: ClipboardList },
+  { id: 'shift', label: 'My Shift', description: 'Dashboard, clock, schedule and dispatch queue', icon: CalendarClock },
+  { id: 'field', label: 'Field Tools', description: 'The same field tools available to officers', icon: Shield },
+  { id: 'reports', label: 'Reports', description: 'Daily, incident and support reports', icon: ClipboardList },
+  { id: 'schedule', label: 'Schedule & Availability', description: 'Availability, requests, open shifts and payroll dates', icon: Wrench },
+  { id: 'command', label: 'Supervisor Operations', description: 'Live field oversight, welfare, requests and handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: ClipboardCheck },
-  { id: 'people', label: 'People & Communication', description: 'Supervisor chat and chain of command', icon: MessageCircle },
+  { id: 'people', label: 'Communication & Profile', description: 'Supervisor communication and personal officer tools', icon: MessageCircle },
+  { id: 'profile', label: 'Profile & Training', description: 'Profile, performance, training and rank information', icon: UserRound },
 ];
 
 const TOOLS = {
-  command: [
-    { id: 'oversight', label: 'Officer Welfare & Field Oversight', component: SupervisorOversightLauncher },
-    { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
+  shift: [
+    { id: 'dashboard', label: 'Dashboard', component: Dashboard },
+    { id: 'clock', label: 'Time Clock', component: TimeClock },
+    { id: 'myschedule', label: 'My Schedule', component: Schedule },
+    { id: 'queue', label: 'My Dispatch Queue', component: OfficerDispatchQueue },
   ],
-  today: [
+  field: [
+    { id: 'postorders', label: 'Post Orders', component: PostOrders },
+    { id: 'qr', label: 'QR Patrol', component: QRPatrolScan },
+    { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
+    { id: 'law', label: 'Virginia Law', component: VirginiaFieldLawAssistant },
+    { id: 'trespass', label: 'VA Trespass', component: VATrespassNotices },
+    { id: 'complaint', label: 'VA Complaint', component: VACriminalComplaints },
+    { id: 'summons', label: 'VA Summons', component: Summons },
+  ],
+  reports: [
+    { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
+    { id: 'incident', label: 'Incident Report', component: IncidentReports },
+    { id: 'maintenance', label: 'Maintenance', component: MaintenanceReports },
+    { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },
+    { id: 'confidential', label: 'Confidential', component: ConfidentialReport },
+    { id: 'expense', label: 'Expense Report', component: ExpenseReports },
+  ],
+  schedule: [
+    { id: 'availability', label: 'Availability', component: OfficerAvailability },
+    { id: 'time', label: 'Time Request', component: TimeRequests },
+    { id: 'openshifts', label: 'Open Shifts', component: OpenShifts },
+    { id: 'payroll', label: 'Payroll Dates', component: OfficerPayrollDates },
+  ],
+  command: [
+    { id: 'fieldoversight', label: 'Live Field Oversight', component: SupervisorFieldOversight },
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
+    { id: 'supervisorhandover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
   ],
   oversight: [
     { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
@@ -39,17 +96,27 @@ const TOOLS = {
   ],
   people: [
     { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
+    { id: 'announcements', label: 'Announcements', component: Announcements },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
+  ],
+  profile: [
+    { id: 'profile', label: 'My Profile', component: OfficerProfile },
+    { id: 'performance', label: 'My Performance', component: MyPerformanceAnalytics },
+    { id: 'reviews', label: 'My Reviews & Feedback', component: OfficerPerformanceReviews },
+    { id: 'training', label: 'Training', component: OfficerTraining },
+    { id: 'duties', label: 'Rank Duties', component: RankDuties },
   ],
 };
 
-function SupervisorOversightLauncher() {
-  return <div className="p-5 md:p-8"><div className="mx-auto max-w-4xl rounded-2xl border border-cyan-900/60 bg-[#0b1725] p-6 md:p-8"><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-400">Supervisor Operations</div><h2 className="mt-2 text-2xl font-black text-white">Officer Welfare & Field Oversight</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Open the dedicated supervisor page to monitor active officer assignments, acknowledgement timing, welfare conditions, and GPS freshness. Dispatching, call status, unit assignment, maps, BOLOs, records intelligence, and dispatcher logs remain in CAD Center and are not duplicated here.</p><Button className="mt-5 bg-cyan-700 hover:bg-cyan-600" onClick={() => { window.location.href = createPageUrl('SupervisorFieldOversight'); }}><ShieldCheck className="mr-2 h-4 w-4" />Open Field Oversight</Button></div></div>;
-}
-
 export default function SupervisorCenter() {
   return (
-    <UnifiedCenter eyebrow="Field Leadership" title="Supervisor Center" description="Supervisor-specific leadership, officer oversight, handoff, documentation, and personnel work. CAD dispatch operations remain in CAD Center." sections={SECTIONS} defaultSection="command">
+    <UnifiedCenter
+      eyebrow="Field Leadership"
+      title="Supervisor Center"
+      description="One supervisor workspace: officer field tools, your own shift tools, live welfare and supervisor requests, plus supervisor-only oversight."
+      sections={SECTIONS}
+      defaultSection="command"
+    >
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
     </UnifiedCenter>
   );
