@@ -15,7 +15,10 @@ Deno.serve(async (req) => {
     const call = await base44.asServiceRole.entities.DispatchCall.get(call_id);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
 
-    if (status !== 'Acknowledged' && call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
+    // Never short-circuit a clear request. Even if the CAD call was already marked
+    // Cleared by another unit/dispatcher, this officer's assignment and assigned_units
+    // membership still must be closed so the call cannot return to their queue.
+    if (!['Acknowledged','Cleared'].includes(status) && call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
 
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
     if (!assigned.includes(user.id) && user.role !== 'admin') {
@@ -30,7 +33,7 @@ Deno.serve(async (req) => {
       if (status === 'Acknowledged' && !assignment.accepted_at) patch.accepted_at = now;
       if (status === 'Cleared') patch.cleared_at = now;
       if (status === 'Cleared' && disposition) patch.description = `${assignment.description || ''} Disposition: ${String(disposition).trim()}`.trim().slice(0, 1000);
-      await base44.asServiceRole.entities.CallAssignment.update(assignment.id, patch).catch(() => null);
+      await base44.asServiceRole.entities.CallAssignment.update(assignment.id, patch);
     }
 
     // Acknowledgement is assignment-level only. En route/on-scene update the call,
