@@ -344,7 +344,6 @@ export default function BackgroundLocationTracker({ user }) {
     if (!shouldTrack || !user?.email) return undefined;
 
     const heartbeat = async () => {
-      const nowIso = new Date().toISOString();
       const fix = lastPositionRef.current;
       try {
         if (Date.now() - lastLivePushRef.current >= 10000) {
