@@ -6,23 +6,42 @@ const activeAssignment = (status: unknown) => !['cleared', 'cancelled'].includes
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const scheduledRun = body.scheduled === true;
     const user = await base44.auth.me().catch(() => null);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const roles = new Set((user.additional_roles || []).map(lower));
-    const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
-      || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access');
-    if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
+    if (!scheduledRun) {
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      const roles = new Set((user.additional_roles || []).map(lower));
+      const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
+        || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access');
+      if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
+    }
 
     const now = Date.now();
-    // Escalation monitoring is operationally important and should not create a
-    // seven-read burst that competes with CAD/GPS traffic. Read sequentially.
-    const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ mode: 'live' }, '-evaluated_at', 1000);
-    const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 2000);
-    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000);
-    const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 1000);
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
-    const notifications = await base44.asServiceRole.entities.Notification.list('-created_date', 5000);
+    // Query only live evaluations that can still have operational timers. This
+    // keeps the recurring monitor from competing with CAD, audio, and GPS calls.
+    const assignedEvaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter(
+      { mode: 'live', decision: 'assigned' },
+      '-evaluated_at',
+      250,
+    );
+    const partialEvaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter(
+      { mode: 'live', decision: 'partially_assigned' },
+      '-evaluated_at',
+      250,
+    );
+    const operationalEvaluations = [...(assignedEvaluations || []), ...(partialEvaluations || [])];
+    if (!operationalEvaluations.length) {
+      return Response.json({ success: true, checked: 0, acknowledgement_escalations: 0, response_escalations: 0 });
+    }
+
+    // Remaining reads are sequential and bounded to prevent rate-limit bursts.
+    const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 500);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1000);
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
+    const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 500);
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 500);
+    const notifications = await base44.asServiceRole.entities.Notification.list('-created_date', 1000);
     const alertById = new Map((alerts || []).map((item: any) => [String(item.id), item]));
     const callById = new Map((calls || []).map((item: any) => [String(item.id), item]));
     const locationById = new Map((locations || []).map((item: any) => [String(item.id), item]));
@@ -35,9 +54,6 @@ Deno.serve(async (req) => {
 
     let acknowledgementEscalations = 0;
     let responseEscalations = 0;
-    const operationalEvaluations = (evaluations || []).filter((item: any) =>
-      ['assigned', 'partially_assigned'].includes(lower(item.decision))
-    );
     for (const evaluation of operationalEvaluations) {
       const callId = String(evaluation.call_id || '');
       if (!activeCallIds.has(callId)) continue;
@@ -100,7 +116,7 @@ Deno.serve(async (req) => {
           entity_type: 'CallAssignment',
           entity_id: affected.map((item: any) => item.id).join(',').slice(0, 500),
           action: 'status_change',
-          actor_id: user.id,
+          actor_id: user?.id || 'system',
           actor_name: 'Automatic Property Dispatch Monitor',
           before_value: JSON.stringify(affected.map((item: any) => ({ id: item.id, status: item.status }))),
           after_value: JSON.stringify({ escalation: kind, event_key: eventKey }),
