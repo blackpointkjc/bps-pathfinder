@@ -64,6 +64,37 @@ Deno.serve(async (req) => {
 
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
     const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
+
+    // Keep every operational status source synchronized. Supervisor views read the
+    // live ActiveOfficer stream, while other CAD surfaces may read User/Unit.
+    if (status !== 'Cleared') {
+      const officerStatus = status === 'Acknowledged' ? 'Dispatched' : status;
+      const callInfo = `${call.incident || 'Call for service'} · ${call.location || ''}`.slice(0, 500);
+      await base44.asServiceRole.entities.User.update(user.id, {
+        status: officerStatus,
+        current_call_id: call_id,
+        current_call_info: callInfo,
+        status_since: now,
+        last_updated: now,
+      }).catch(() => null);
+      const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
+      for (const session of sessions || []) {
+        if (session.session_active === false) continue;
+        await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
+          status: officerStatus,
+          current_call_info: callInfo,
+          last_update: now,
+        }).catch(() => null);
+      }
+      const unitRows = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 20).catch(() => []);
+      for (const unit of unitRows || []) {
+        await base44.asServiceRole.entities.Unit.update(unit.id, {
+          status: officerStatus,
+          assigned_call_ids: Array.from(new Set([...(unit.assigned_call_ids || []).map(String), String(call_id)])),
+          last_update_at: now,
+        }).catch(() => null);
+      }
+    }
     const eventType = status === 'Acknowledged' ? 'unit_acknowledged' : status === 'Enroute' ? 'unit_enroute' : status === 'On Scene' ? 'unit_on_scene' : 'call_cleared';
     const wording = status === 'Acknowledged'
       ? `${officer} acknowledged the assignment. CAD number ${cadNumber}.`
