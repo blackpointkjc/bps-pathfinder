@@ -258,7 +258,7 @@ export async function runClientFunctionalAudit() {
       area: 'Live Location Tracking',
       title: 'Live officer tracking failed its functional check',
       run: async () => {
-        const response = await base44.functions.invoke('getOnDutyUnits', {});
+        const response = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
         const payload = response?.data || response || {};
         if (payload.error) throw new Error(payload.error);
         if (!Array.isArray(payload.units)) throw new Error('The live-unit service returned an invalid response.');
