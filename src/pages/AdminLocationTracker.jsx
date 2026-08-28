@@ -393,6 +393,18 @@ export default function AdminLocationTracker() {
   }, [viewMode, hasAccess, allUsers]);  
 
   const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
+  const officersWithLastKnown = (currentlyActiveOfficers || [])
+    .filter(o => !Number.isFinite(Number(o.latitude))
+      && Number.isFinite(Number(o.last_known_latitude))
+      && Number.isFinite(Number(o.last_known_longitude)))
+    .map(o => ({
+      ...o,
+      latitude: Number(o.last_known_latitude),
+      longitude: Number(o.last_known_longitude),
+      accuracy: o.last_known_accuracy,
+      gps_stale: true,
+    }));
+  const officersForMap = [...officersWithLocation, ...officersWithLastKnown];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
     const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;
@@ -697,12 +709,12 @@ export default function AdminLocationTracker() {
               </Card>
             </div>
 
-            {officersWithLocation.length > 0 && (
+            {officersForMap.length > 0 && (
               <Card className="border-none shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
-                    Live Map - All Signed-In Users
+                    Live and Last-Known Map - Signed-In Users
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -722,11 +734,12 @@ export default function AdminLocationTracker() {
                     >
                       <MapReadyHandler />
                       <ResilientTileLayer onUnavailable={setLiveMapUnavailable} />
-                      <MapUpdater officers={officersWithLocation} historicalPath={null} />
-                      {officersWithLocation.map((officer) => (
+                      <MapUpdater officers={officersForMap} historicalPath={null} />
+                      {officersForMap.map((officer) => (
                         <Marker 
                           key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`} 
                           position={[Number(officer.latitude), Number(officer.longitude)]}
+                          opacity={officer.gps_stale ? 0.55 : 1}
                         >
                           <Popup autoPan={false}>
                             <div className="p-2">
@@ -735,9 +748,14 @@ export default function AdminLocationTracker() {
                               <p className="text-xs text-slate-500">
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
-                              <p className="text-xs text-green-600">
-                                Last update: {officer.last_update ? format(new Date(officer.last_update), 'h:mm:ss a') : 'No GPS data'}
+                              <p className={`text-xs ${officer.gps_stale ? 'font-bold text-amber-700' : 'text-green-600'}`}>
+                                {officer.gps_stale ? 'LAST KNOWN GPS' : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
+                                  ? format(new Date(officer.gps_updated_at || officer.last_gps_updated_at), 'h:mm:ss a')
+                                  : 'No GPS data'}
                               </p>
+                              {officer.gps_stale && (
+                                <p className="mt-1 text-[10px] font-bold text-red-700">Not eligible for automatic dispatch until fresh GPS returns.</p>
+                              )}
                             </div>
                           </Popup>
                         </Marker>
