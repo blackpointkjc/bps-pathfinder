@@ -39,7 +39,7 @@ export default function OfficerDispatchQueue() {
 
   useEffect(() => {
     const unsubs = [];
-    for (const entity of ['CallAssignment','CallNote','DispatchCall']) {
+    for (const entity of ['CallAssignment','CallNote','DispatchCall','OfficerWelfareCheck']) {
       try {
         const unsub = base44.entities[entity].subscribe(() => refetch());
         if (typeof unsub === 'function') unsubs.push(unsub);
@@ -105,7 +105,7 @@ export default function OfficerDispatchQueue() {
       if (!data.assigned) toast.warning(data.reason || 'No eligible supervisor available right now.');
       else toast.success(`${data.supervisor?.name || 'Supervisor'} assigned (${data.supervisor?.distance_miles ?? '?'} mi).`);
       await refetch();
-    } catch (e) { toast.error(e?.message || 'Unable to request supervisor'); }
+    } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to request supervisor'); }
     finally { setWorking(false); }
   };
 
