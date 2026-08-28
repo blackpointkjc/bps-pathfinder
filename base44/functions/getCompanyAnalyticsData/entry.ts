@@ -55,6 +55,27 @@ Deno.serve(async (req) => {
       }
     };
 
+    const recentHistoryCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const listRecentCallHistory = async () => {
+      const entity = base44.asServiceRole.entities.CallHistory;
+      await acquireReadSlot();
+      try {
+        // CallHistory is a rapidly growing archive. A sorted unfiltered list can
+        // force a collection scan and time out the shared MongoDB connection.
+        return await entity.filter({ archived_date: { $gte: recentHistoryCutoff } }, '-archived_date', 250);
+      } catch (error) {
+        try {
+          const fallbackCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          return await entity.filter({ archived_date: { $gte: fallbackCutoff } }, '-archived_date', 100);
+        } catch (retryError) {
+          errors.CallHistory = retryError?.message || error?.message || 'Recent call history is temporarily unavailable';
+          return [];
+        }
+      } finally {
+        releaseReadSlot();
+      }
+    };
+
     const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCallsLive, callHistory, propertyAlerts, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
       list('User', '-updated_date'),
       list('Division', 'division_name'),
@@ -71,7 +92,7 @@ Deno.serve(async (req) => {
       list('CallOut', '-call_out_date'),
       list('CallForService', '-call_time'),
       list('DispatchCall', '-time_received'),
-      list('CallHistory', '-archived_date', 500),
+      listRecentCallHistory(),
       list('PropertyAlert', '-created_date'),
       list('JobDutyRule', 'property_site'),
       list('Location', 'site_name'),
