@@ -37,9 +37,10 @@ export default function SystemIssuesPanel({ currentUser }) {
   const load = async () => {
     setLoading(true);
     try {
-      const [all, users] = await Promise.all([
+      const [all, users, scanRuns] = await Promise.all([
         base44.entities.SystemOutage.list('-created_date', 100).catch(() => []),
         base44.entities.User.list().catch(() => []),
+        base44.entities.SystemScanRun.list('-scanned_at', 1).catch(() => []),
       ]);
       const map = {};
       (users || []).forEach(user => {
@@ -49,6 +50,13 @@ export default function SystemIssuesPanel({ currentUser }) {
       });
       setUserMap(map);
       setIssues(all || []);
+      if (scanRuns?.[0]?.audit_json) {
+        try {
+          setAudit(JSON.parse(scanRuns[0].audit_json));
+        } catch {
+          console.warn('Latest hourly system scan result could not be parsed.');
+        }
+      }
     } catch (error) {
       toast.error(error?.message || 'Unable to load reported system issues');
     } finally {
@@ -56,7 +64,15 @@ export default function SystemIssuesPanel({ currentUser }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const onHourlyScan = event => {
+      if (event?.detail) setAudit(event.detail);
+      load();
+    };
+    window.addEventListener('bps-system-scan-complete', onHourlyScan);
+    return () => window.removeEventListener('bps-system-scan-complete', onHourlyScan);
+  }, []);
 
   const runFullAudit = async () => {
     if (scanning) return;
@@ -85,6 +101,9 @@ export default function SystemIssuesPanel({ currentUser }) {
         scanned_at: new Date().toISOString(),
       };
       setAudit(combined);
+      const publishResponse = await base44.functions.invoke('publishSystemScan', { audit: combined });
+      const published = publishResponse?.data || publishResponse || {};
+      if (published.error) throw new Error(published.error);
       if (combined.summary.issues_found) {
         toast.warning(`Full app scan found ${combined.summary.issues_found} issue(s)`);
       } else {
