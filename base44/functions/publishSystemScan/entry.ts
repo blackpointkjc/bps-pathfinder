@@ -92,38 +92,9 @@ Deno.serve(async (req) => {
       issueRowsResolved += 1;
     }
 
-    let notificationsCreated = 0;
-    if (findings.length) {
-      const admins = (await base44.asServiceRole.entities.User.list('-updated_date', 2000))
-        .filter((entry: any) => String(entry.role || '').trim().toLowerCase() === 'admin' && entry.email);
-      const relatedId = `system_scan:${hourKey}`;
-      const severity = rowData.outages > 0 ? 'critical' : 'high';
-      const title = rowData.outages > 0 ? 'Hourly system scan found an outage' : 'Hourly system scan found issues';
-      const leadingAreas = [...new Set(findings.map((item: any) => text(item.area)).filter(Boolean))].slice(0, 4);
-      const message = `${findings.length} issue(s) detected: ${rowData.outages} outage, ${rowData.degraded} degraded, ${rowData.maintenance} maintenance.${leadingAreas.length ? ` Areas: ${leadingAreas.join(', ')}.` : ''} Open Admin Center → System Issues for details.`;
-
-      for (const admin of admins) {
-        const email = text(admin.email).toLowerCase();
-        const prior = await base44.asServiceRole.entities.Notification.filter({
-          recipient_email: email,
-          related_id: relatedId,
-          type: 'system_issue',
-        }, '-created_date', 1);
-        if (prior?.length) continue;
-        await base44.asServiceRole.entities.Notification.create({
-          recipient_email: email,
-          type: 'system_issue',
-          title,
-          message,
-          is_read: false,
-          related_id: relatedId,
-          priority: severity,
-          requires_acknowledgment: false,
-          source_name: 'Pathfinder System Monitor',
-        });
-        notificationsCreated += 1;
-      }
-    }
+    // System scans are diagnostic only. They update the System Issues page but do
+    // not create banner/notification popups for administrators.
+    const notificationsCreated = 0;
 
     await base44.asServiceRole.entities.AuditLog.create({
       entity_type: 'SystemScanRun',
@@ -134,7 +105,7 @@ Deno.serve(async (req) => {
       field_changed: 'hourly_full_app_scan',
       timestamp: new Date().toISOString(),
       after_value: JSON.stringify({ hour_key: hourKey, issues_found: findings.length, notifications_created: notificationsCreated }),
-      description: 'Hourly full-application scan result stored and administrator banner alerts deduplicated by hour.',
+      description: 'Hourly full-application scan result stored without generating administrator notification popups.',
     }).catch(() => null);
 
     return Response.json({
