@@ -23,7 +23,6 @@ const shiftEndTime = (date, start, end) => {
   if (end && start && endAt.getTime() <= startAt.getTime()) endAt.setDate(endAt.getDate() + 1);
   return endAt.getTime();
 };
-const supervisoryRanks = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
 
 export default function ShiftHandover(){
   const [showForm,setShowForm]=useState(false); const [form,setForm]=useState(blank); const qc=useQueryClient();
