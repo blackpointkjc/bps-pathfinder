@@ -1170,6 +1170,79 @@ export default function AdminLocations({ embedded = false }) {
               </div>
             )}
 
+            {formData.property_monitoring_enabled && (
+              <div className="rounded-xl border border-cyan-500/40 bg-cyan-950/20 p-4 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="font-semibold text-cyan-100">Automatic Property-Alert Dispatch</Label>
+                    <p className="mt-1 text-xs text-cyan-200/70">Phase 2A runs in recommendation-only shadow mode. It records which units qualify but never assigns a call or changes a unit status.</p>
+                  </div>
+                  <Checkbox
+                    checked={formData.auto_dispatch_enabled === true}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_dispatch_enabled: checked === true, auto_dispatch_mode: checked === true ? (prev.auto_dispatch_mode || 'shadow') : 'disabled' }))}
+                  />
+                </div>
+
+                {formData.auto_dispatch_enabled && (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Operating Mode</Label>
+                        <Select value={formData.auto_dispatch_mode === 'live' ? 'shadow' : formData.auto_dispatch_mode} onValueChange={(value) => setFormData(prev => ({ ...prev, auto_dispatch_mode: value }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="shadow">Shadow Recommendation</SelectItem>
+                            <SelectItem value="manual_review">Manual Review Required</SelectItem>
+                            <SelectItem value="disabled">Disabled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-cyan-200/60">Live assignment remains locked until later end-to-end approval.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Response Radius (miles)</Label>
+                        <Input type="number" min="0.1" max="100" step="0.1" value={formData.auto_dispatch_response_radius_miles} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_response_radius_miles: Number(e.target.value) || 5 }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Required Units</Label>
+                        <Input type="number" min="1" max="10" value={formData.auto_dispatch_required_units} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_required_units: Math.max(1, Number(e.target.value) || 1) }))} />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-950/40 p-3">
+                      <div><Label>Backup Required</Label><p className="text-[11px] text-slate-400">Requires at least two qualified recommendations.</p></div>
+                      <Checkbox checked={formData.auto_dispatch_backup_required === true} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_dispatch_backup_required: checked === true }))} />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Required Qualifications</Label>
+                        <Input value={(formData.auto_dispatch_required_qualifications || []).join(', ')} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_required_qualifications: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="DCJS Armed, CPR" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Required Equipment</Label>
+                        <Input value={(formData.auto_dispatch_required_equipment || []).join(', ')} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_required_equipment: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="Patrol vehicle, AED" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Allowed Ranks</Label>
+                        <Input value={(formData.auto_dispatch_required_ranks || []).join(', ')} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_required_ranks: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="Officer, Sergeant" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2"><Label>Acknowledge Timer (seconds)</Label><Input type="number" min="30" value={formData.auto_dispatch_acknowledgement_seconds} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_acknowledgement_seconds: Math.max(30, Number(e.target.value) || 120) }))} /></div>
+                      <div className="space-y-2"><Label>Escalation Timer (seconds)</Label><Input type="number" min="60" value={formData.auto_dispatch_escalation_seconds} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_escalation_seconds: Math.max(60, Number(e.target.value) || 300) }))} /></div>
+                      <div className="space-y-2"><Label>Recheck Interval (seconds)</Label><Input type="number" min="30" value={formData.auto_dispatch_recheck_seconds} onChange={(e) => setFormData(prev => ({ ...prev, auto_dispatch_recheck_seconds: Math.max(30, Number(e.target.value) || 60) }))} /></div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2"><Label>Officer Safety Warnings</Label><Textarea value={formData.property_safety_warnings || ''} onChange={(e) => setFormData(prev => ({ ...prev, property_safety_warnings: e.target.value }))} placeholder="Only warnings authorized officers need for response" /></div>
+                      <div className="space-y-2"><Label>Property Access Instructions</Label><Textarea value={formData.property_access_instructions || ''} onChange={(e) => setFormData(prev => ({ ...prev, property_access_instructions: e.target.value }))} placeholder="Gate, key, lockbox, staging, or contact instructions" /></div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-4 mb-6">
               <Label className="text-amber-900 font-semibold block">Billing Rates for This Location</Label>
               
