@@ -38,18 +38,19 @@ const OVERSIGHT_TOOLS = [
 ];
 
 export default function SupervisorCenter({ embedded = false }) {
+  const visibleSections = embedded ? SECTIONS.filter(section => section.id !== 'officer') : SECTIONS;
   return (
     <UnifiedCenter
       eyebrow="Field Leadership"
       title="Supervisor Center"
       description="One supervisor workspace containing the complete Officer Center plus supervisor-only command, welfare, handoff, and oversight tools."
-      sections={SECTIONS}
-      defaultSection="officer"
+      sections={visibleSections}
+      defaultSection={embedded ? 'command' : 'officer'}
       queryParam={embedded ? 'supervisor_section' : 'section'}
       embedded={embedded}
     >
       {section => {
-        if (section === 'officer') return <OfficerCenter embedded />;
+        if (!embedded && section === 'officer') return <OfficerCenter embedded />;
         if (section === 'command') return <CenterToolSection key={section} tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
         return <CenterToolSection key={section} tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
       }}
