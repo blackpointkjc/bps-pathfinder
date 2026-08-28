@@ -397,8 +397,7 @@ Deno.serve(async (req) => {
       // current. Movement-history health must compare against gps_updated_at.
       const stamp = new Date(value(item, 'gps_updated_at') || 0).getTime();
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
-        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude))
-        && Number(item.accuracy) <= 100;
+        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
     });
     const recentMovement = movementHistory.filter(item => {
       const stamp = new Date(value(item, 'timestamp', 'created_date') || 0).getTime();
@@ -410,7 +409,7 @@ Deno.serve(async (req) => {
       area: 'Live Location Tracking',
       severity: 'outage',
       title: 'No fresh officer locations are reaching the live tracker',
-      description: 'ActiveOfficer records exist, but none contain fresh coordinates from the last 15 minutes.',
+      description: 'ActiveOfficer records exist, but none contain valid coordinates updated within the last 15 minutes. Coordinate accuracy is reported separately and does not make a valid officer position disappear.',
     });
     if (freshLiveLocations.length && !recentMovement.length) add(findings, {
       key: 'location:history-not-recording',
@@ -501,7 +500,13 @@ Deno.serve(async (req) => {
       count: expiredActiveBolos.length,
     });
 
-    const openOutages = (datasets.SystemOutage || []).filter(item => !item.resolved_at && item.source !== 'full_app_scan');
+    // Only genuine human/manual reports belong in this check. Older monitor-created
+    // rows from before source tagging must not be mislabeled as manual incidents.
+    const openOutages = (datasets.SystemOutage || []).filter(item =>
+      !item.resolved_at
+      && item.source !== 'full_app_scan'
+      && String(item.reported_by || '').trim().toLowerCase() !== 'pathfinder system monitor'
+    );
     if (openOutages.length) add(findings, {
       key: 'system:reported',
       area: 'System Issues',
