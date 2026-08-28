@@ -1,4 +1,4 @@
-import { Activity, Calendar, ClipboardList, MessageCircle, Settings, Users } from 'lucide-react';
+import { Activity, BarChart3, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, MessageCircle, Radio, Settings, Shield, Users } from 'lucide-react';
 import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import AdminDashboard from './AdminDashboard';
@@ -30,17 +30,31 @@ import AdminQRPrintManager from './AdminQRPrintManager';
 import AdminQRReports from './AdminQRReports';
 import AdminPortalSettings from './AdminPortalSettings';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
+import CADCenter from './CADCenter';
+import OfficerCenter from './OfficerCenter';
+import SupervisorCenter from './SupervisorCenter';
+import HRCenter from './HRCenter';
+import ClientCenter from './ClientCenter';
 
-const SECTIONS = [
+const MASTER_SECTIONS = [
+  { id: 'admin', label: 'Administration', description: 'Administration, command, scheduling, personnel, reports and system controls', icon: Settings },
+  { id: 'cad', label: 'CAD', description: 'Full computer-aided dispatch workspace', icon: Radio },
+  { id: 'officer', label: 'Officer', description: 'Officer shift, field tools, reports and profile', icon: Shield },
+  { id: 'supervisor', label: 'Supervisor', description: 'Supervisor operations, welfare, oversight and officer tools', icon: ClipboardCheck },
+  { id: 'hr', label: 'HR', description: 'Employees, time, leave, performance and assignments', icon: Briefcase },
+  { id: 'client', label: 'Client', description: 'Client-facing site, reporting, requests and billing view', icon: Building2 },
+];
+
+const ADMIN_SECTIONS = [
   { id: 'command', label: 'Command', description: 'Dashboard, analytics and live oversight', icon: Activity },
   { id: 'schedule', label: 'Scheduling & Fleet', description: 'Scheduling, bids, fleet and availability', icon: Calendar },
   { id: 'people', label: 'Personnel & Sites', description: 'Users, locations, equipment and chain', icon: Users },
   { id: 'reports', label: 'Reports & Quality', description: 'All operational review and quality tools', icon: ClipboardList },
   { id: 'communications', label: 'Communications', description: 'Announcements, requests and documents', icon: MessageCircle },
-  { id: 'system', label: 'System & Support', description: 'QR patrol, portal settings and support clock', icon: Settings },
+  { id: 'system', label: 'System & Support', description: 'QR patrol, portal settings and support clock', icon: BarChart3 },
 ];
 
-const TOOLS = {
+const ADMIN_TOOLS = {
   command: [
     { id: 'dashboard', label: 'Dashboard', component: AdminDashboard },
     { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
@@ -84,12 +98,41 @@ const TOOLS = {
   ],
 };
 
+function AdministrationWorkspace() {
+  return (
+    <UnifiedCenter
+      eyebrow="Administration"
+      title="Administration"
+      description="Command, scheduling, personnel, reports, communications, system controls, and support operations."
+      sections={ADMIN_SECTIONS}
+      defaultSection="command"
+      queryParam="admin_ops_section"
+    >
+      {section => <CenterToolSection key={section} tools={ADMIN_TOOLS[section]} queryParam="admin_ops_tool" />}
+    </UnifiedCenter>
+  );
+}
+
 export default function AdminCenter() {
   const desktop = useDesktopViewport();
   if (!desktop) return <AdminDashboard />;
   return (
-    <UnifiedCenter eyebrow="Administration" title="Admin Center" description="A single desktop workspace for command, scheduling, personnel, reports, communications, system controls, and support clock-in." sections={SECTIONS} defaultSection="command">
-      {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
+    <UnifiedCenter
+      eyebrow="Master Administration"
+      title="Admin Center"
+      description="One master workspace with soft-mirrored Administration, CAD, Officer, Supervisor, HR, and Client centers. Each embedded center uses the original live tools and workflows."
+      sections={MASTER_SECTIONS}
+      defaultSection="admin"
+      queryParam="admin_center"
+    >
+      {section => {
+        if (section === 'cad') return <CADCenter embedded />;
+        if (section === 'officer') return <OfficerCenter embedded />;
+        if (section === 'supervisor') return <SupervisorCenter embedded />;
+        if (section === 'hr') return <HRCenter embedded />;
+        if (section === 'client') return <ClientCenter embedded />;
+        return <AdministrationWorkspace />;
+      }}
     </UnifiedCenter>
   );
 }
