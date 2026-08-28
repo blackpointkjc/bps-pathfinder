@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       || roles.has('dispatch') || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
 
-    const { call_id, property_alert_id } = await req.json().catch(() => ({}));
+    const { call_id, property_alert_id, simulation = false } = await req.json().catch(() => ({}));
     if (!call_id || !property_alert_id) return Response.json({ error: 'call_id and property_alert_id are required' }, { status: 400 });
 
     const [beforeAssignments, beforeUnits] = await Promise.all([
@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
     ]);
 
-    const firstResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id });
+    const firstResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id, simulation });
     const first = firstResponse?.data || firstResponse || {};
     if (first.error) throw new Error(first.error);
-    const secondResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id });
+    const secondResponse = await base44.functions.invoke('geofenceDispatchAssignment', { call_id, property_alert_id, simulation });
     const second = secondResponse?.data || secondResponse || {};
     if (second.error) throw new Error(second.error);
 
