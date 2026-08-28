@@ -43,24 +43,21 @@ Deno.serve(async (req) => {
       ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
       : [];
     const call = activeCall || archivedCalls?.[0] || null;
-    // Keep Phase 2B reliable under Base44 request limits. These reads are part of
-    // one dispatch decision, so issue them sequentially instead of creating a
-    // seven-request burst that can falsely fail a real property alert.
-    const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 20);
-    const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 1000);
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
-    const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000);
-    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
-    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
-    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000);
+    // Keep every automatic-dispatch check lightweight. The prior implementation
+    // loaded thousands of unrelated accounting/CAD rows on every refresh, which
+    // made a healthy dispatch decision vulnerable to rate limits and generic 500s.
+    // Resolve the exact alert/property first, then load only operational datasets.
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
-
     const alert = input.property_alert_id
-      ? (alerts || []).find((item: any) => item.id === input.property_alert_id)
-      : (alerts || [])[0];
-    if (!alert) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
-    const property = (locations || []).find((item: any) => String(item.id) === String(alert.propertyId));
+      ? await base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id)).catch(() => null)
+      : (await base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1).catch(() => []))?.[0] || null;
+    if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
+    const property = await base44.asServiceRole.entities.Location.get(String(alert.propertyId)).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
+
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
+    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 500);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1200);
 
     const propertyLat = Number(property.latitude ?? call.latitude);
     const propertyLon = Number(property.longitude ?? call.longitude);
@@ -113,17 +110,6 @@ Deno.serve(async (req) => {
     const now = Date.now();
     const freshCutoff = now - 2 * 60 * 1000;
 
-    const openByEmail = new Map<string, any>();
-    for (const entry of timeEntries || []) {
-      if (!entry.officer_email || !entry.clock_in || entry.archived === true) continue;
-      const clockInAt = new Date(entry.clock_in).getTime();
-      const clockOutAt = entry.clock_out ? new Date(entry.clock_out).getTime() : Number.POSITIVE_INFINITY;
-      // Some approved/scheduled payroll entries already contain the expected end
-      // time. They are still an active work session until that end time passes.
-      if (!Number.isFinite(clockInAt) || clockInAt > now || clockOutAt <= now) continue;
-      const email = lower(entry.officer_email);
-      if (!openByEmail.has(email)) openByEmail.set(email, entry);
-    }
     const activeByEmail = new Map<string, any>();
     for (const active of activeOfficers || []) {
       const email = lower(active.officer_email);
@@ -133,13 +119,11 @@ Deno.serve(async (req) => {
         activeByEmail.set(email, active);
       }
     }
-    // Only assignments attached to a call that is still in DispatchCall may
-    // exclude a unit. Historical/orphaned CallAssignment rows must not keep an
-    // otherwise available officer permanently busy after the call is archived.
-    const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
+    // Assignment lifecycle is authoritative for unit occupancy. Clearing/archive
+    // workflows already close CallAssignment rows; avoiding a second full call-list
+    // read keeps this evaluator fast and reliable during refresh/reconnect storms.
     const busyUnitIds = new Set((assignments || [])
       .filter((item: any) => item.call_id !== callId
-        && activeCallIds.has(String(item.call_id))
         && !['cleared', 'cancelled'].includes(lower(item.status)))
       .map((item: any) => String(item.unit_id)));
 
@@ -150,15 +134,16 @@ Deno.serve(async (req) => {
       const reasons: string[] = [];
       const email = lower(officer.email);
       const session = activeByEmail.get(email);
-      const timeEntry = openByEmail.get(email);
       const status = lower(session?.status || officer.status);
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
       const lat = Number(session?.latitude);
       const lon = Number(session?.longitude);
 
-      if (!timeEntry) reasons.push('Officer is not clocked in with an active work session');
-      if (!session || session.session_active === false) reasons.push('No active signed-in GPS session');
+      // BackgroundLocationTracker only keeps session_active true while the field
+      // officer has an active operational session, so use that canonical live state
+      // instead of re-reading the entire TimeEntry ledger on every dispatch check.
+      if (!session || session.session_active === false) reasons.push('No active signed-in/clocked-in GPS session');
       if (status !== 'available') reasons.push(`Status is ${session?.status || officer.status || 'unknown'}, not Available`);
       if (!Number.isFinite(gpsAt) || gpsAt < freshCutoff) reasons.push('GPS location is stale');
       if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(accuracy) || accuracy > 100) reasons.push('GPS location is missing or unreliable');
@@ -168,7 +153,7 @@ Deno.serve(async (req) => {
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
         ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
         ...(Array.isArray(officer.assigned_sites) ? officer.assigned_sites : []),
-        officer.division, officer.subdivision, timeEntry?.location,
+        officer.division, officer.subdivision, session?.current_location,
       ].map(lower).filter(Boolean);
       const propertyValues = [property.id, property.site_name, property.address, property.division, property.subdivision].map(lower).filter(Boolean);
       const authorizedForProperty = authorizationValues.some(authorization =>
