@@ -80,6 +80,9 @@ let lastBlockedSpeech = null;
 let activeSpeech = null;
 let speechSequence = 0;
 let unlockListenersInstalled = false;
+let automaticRetryTimer = null;
+let automaticRetryAttempt = 0;
+let automaticRetrySequence = null;
 const speechQueue = [];
 const PRIORITY = { emergency: 100, critical: 80, high: 60, normal: 40, low: 20 };
 
@@ -134,6 +137,31 @@ export function runVoiceDedupeSelfTest() {
   }
 }
 
+function clearAutomaticRetry(resetAttempts = true) {
+  if (automaticRetryTimer) window.clearTimeout(automaticRetryTimer);
+  automaticRetryTimer = null;
+  if (resetAttempts) {
+    automaticRetryAttempt = 0;
+    automaticRetrySequence = null;
+  }
+}
+
+function scheduleAutomaticRetry(item) {
+  if (!item || typeof window === 'undefined') return;
+  if (automaticRetrySequence !== item.sequence) {
+    clearAutomaticRetry(true);
+    automaticRetrySequence = item.sequence;
+  }
+  if (automaticRetryTimer || automaticRetryAttempt >= 6) return;
+  const delays = [1500, 3000, 6000, 12000, 20000, 30000];
+  const delay = delays[automaticRetryAttempt] || 30000;
+  automaticRetryAttempt += 1;
+  automaticRetryTimer = window.setTimeout(() => {
+    automaticRetryTimer = null;
+    retryPendingSpeech();
+  }, delay);
+}
+
 function nextQueuedSpeech() {
   if (activeSpeech || !speechQueue.length || !isVoiceSupported()) return;
   speechQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
@@ -145,6 +173,7 @@ function nextQueuedSpeech() {
     const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
+      clearAutomaticRetry(true);
       pendingSpeech = null;
       if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
       window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: item.clean, eventId: item.options.eventId || null } }));
@@ -158,6 +187,7 @@ function nextQueuedSpeech() {
       if (!success) {
         pendingSpeech = item;
         lastBlockedSpeech = item;
+        scheduleAutomaticRetry(item);
       }
       item.resolve?.(success);
       nextQueuedSpeech();
@@ -176,6 +206,7 @@ function nextQueuedSpeech() {
         lastBlockedSpeech = item;
         activeSpeech = null;
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
+        scheduleAutomaticRetry(item);
       }
     }, 1200);
   } catch (error) {
@@ -184,6 +215,7 @@ function nextQueuedSpeech() {
     activeSpeech = null;
     item.resolve?.(false);
     window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
+    scheduleAutomaticRetry(item);
   }
 }
 
@@ -210,7 +242,7 @@ function speakQueued(clean, options = {}, resolve = null) {
 function retryPendingSpeech() {
   const blocked = pendingSpeech || lastBlockedSpeech;
   if (!blocked || !isVoiceSupported()) return false;
-  const retryItem = { ...blocked, sequence: ++speechSequence, resolve: null };
+  const retryItem = { ...blocked, resolve: null };
   pendingSpeech = null;
   lastBlockedSpeech = null;
   speechQueue.splice(0, speechQueue.length, ...speechQueue.filter(item => item.sequence !== blocked.sequence));
