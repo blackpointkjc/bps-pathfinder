@@ -6,7 +6,12 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 function combineAudits(serverAudit, clientAudit) {
-  const findings = [...(clientAudit.findings || []), ...(serverAudit.findings || [])];
+  const findingMap = new Map();
+  for (const item of [...(clientAudit.findings || []), ...(serverAudit.findings || [])]) {
+    const key = item.key || `${item.area}|${item.title}`;
+    if (!findingMap.has(key)) findingMap.set(key, item);
+  }
+  const findings = [...findingMap.values()];
   return {
     ...serverAudit,
     findings,
@@ -41,11 +46,11 @@ export default function AdminHourlySystemScan({ user }) {
         if (Number.isFinite(lastScanAt) && Date.now() - lastScanAt < ONE_HOUR_MS) return;
 
         const execute = async () => {
-          const [serverResponse, clientAudit] = await Promise.all([
-            base44.functions.invoke('runSystemAudit', {}),
-            runClientFunctionalAudit(),
-          ]);
+          // Run the server and browser audits sequentially so the hourly scan does
+          // not compete with itself for the same Base44 request allowance.
+          const serverResponse = await base44.functions.invoke('runSystemAudit', {});
           const serverAudit = serverResponse?.data || serverResponse || {};
+          const clientAudit = await runClientFunctionalAudit();
           if (serverAudit.error) throw new Error(serverAudit.error);
           const audit = combineAudits(serverAudit, clientAudit);
           const publishResponse = await base44.functions.invoke('publishSystemScan', { audit });
