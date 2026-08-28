@@ -13,11 +13,12 @@ export default function AutoDispatchShadowFeed() {
       const response = await base44.functions.invoke('getAutoDispatchEvaluations', {});
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-      const latestByEvent = new Map();
+      const latestByAlert = new Map();
       for (const row of payload.evaluations || []) {
-        if (!latestByEvent.has(row.event_key)) latestByEvent.set(row.event_key, row);
+        const key = row.property_alert_id || row.event_key;
+        if (!latestByAlert.has(key)) latestByAlert.set(key, row);
       }
-      setEvaluations([...latestByEvent.values()].slice(0, 4));
+      setEvaluations([...latestByAlert.values()].slice(0, 4));
       setError('');
     } catch (err) {
       setError(err?.message || 'Unable to load automatic-dispatch evaluations');
@@ -42,9 +43,9 @@ export default function AutoDispatchShadowFeed() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Radar className="h-5 w-5 text-cyan-300" />
-          <h3 className="text-sm font-black uppercase tracking-wider text-white">Automatic Dispatch — Shadow Results</h3>
+          <h3 className="text-sm font-black uppercase tracking-wider text-white">Shadow Dispatch — Automatic Assignment</h3>
         </div>
-        <Badge className="border border-cyan-500/40 bg-cyan-950 text-cyan-200">NO AUTOMATIC ASSIGNMENTS</Badge>
+        <Badge className="border border-emerald-500/40 bg-emerald-950 text-emerald-200">AUTO-ASSIGN ACTIVE</Badge>
       </div>
       <div className="grid gap-2 lg:grid-cols-2">
         {evaluations.map(item => {
