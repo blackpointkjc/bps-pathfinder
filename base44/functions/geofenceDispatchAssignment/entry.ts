@@ -43,15 +43,16 @@ Deno.serve(async (req) => {
       ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
       : [];
     const call = activeCall || archivedCalls?.[0] || null;
-    const [alerts, locations, users, timeEntries, activeOfficers, assignments, activeCalls] = await Promise.all([
-      base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 20),
-      base44.asServiceRole.entities.Location.list('-updated_date', 1000),
-      base44.asServiceRole.entities.User.list('-updated_date', 1000),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
-      base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
-      base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000),
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000),
-    ]);
+    // Keep Phase 2B reliable under Base44 request limits. These reads are part of
+    // one dispatch decision, so issue them sequentially instead of creating a
+    // seven-request burst that can falsely fail a real property alert.
+    const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 20);
+    const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 1000);
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
+    const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000);
+    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
+    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
 
     const alert = input.property_alert_id
