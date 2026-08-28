@@ -46,6 +46,15 @@ export default function AutoDispatchRecommendation({ alert }) {
     evaluate(false);
   }, [evaluate]);
 
+  // Automatic dispatch is an operational service, not a one-shot preview. If a
+  // transient backend throttle/network failure occurs, reconnect automatically
+  // until the evaluator answers again. Keep the last good result on screen.
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = setTimeout(() => evaluate(true), 3000);
+    return () => clearTimeout(timer);
+  }, [error, evaluate]);
+
   const runSafetyTest = async () => {
     setTesting(true);
     setTestResult(null);
@@ -98,11 +107,10 @@ export default function AutoDispatchRecommendation({ alert }) {
     return <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-950/30 px-3 py-2 text-[11px] text-blue-200"><Loader2 className="h-3.5 w-3.5 animate-spin" />Evaluating eligible units…</div>;
   }
 
-  if (error) {
+  if (error && !result) {
     return (
-      <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-950/15 p-2 text-[10px] text-amber-200">
-        Automatic dispatch status is temporarily unavailable. Manual CAD controls remain available.
-        <Button size="sm" variant="ghost" onClick={() => evaluate(true)} className="ml-2 h-6 px-2 text-[9px] text-amber-100">RECHECK</Button>
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-cyan-500/30 bg-cyan-950/20 p-2 text-[10px] text-cyan-100">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />Automatic dispatch is reconnecting…
       </div>
     );
   }
