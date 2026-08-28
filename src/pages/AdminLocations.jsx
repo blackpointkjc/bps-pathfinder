@@ -300,6 +300,19 @@ export default function AdminLocations({ embedded = false }) {
       property_monitoring_enabled: false,
       property_monitoring_boundary_type: 'circle',
       property_monitoring_description: '',
+      auto_dispatch_enabled: false,
+      auto_dispatch_mode: 'shadow',
+      auto_dispatch_response_radius_miles: 5,
+      auto_dispatch_required_units: 1,
+      auto_dispatch_backup_required: false,
+      auto_dispatch_required_qualifications: [],
+      auto_dispatch_required_equipment: [],
+      auto_dispatch_required_ranks: [],
+      auto_dispatch_acknowledgement_seconds: 120,
+      auto_dispatch_escalation_seconds: 300,
+      auto_dispatch_recheck_seconds: 60,
+      property_safety_warnings: '',
+      property_access_instructions: '',
     });
     setDrawingBoundary(false);
     setMapCenter([37.5407, -77.4360]);
