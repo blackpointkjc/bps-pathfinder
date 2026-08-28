@@ -11,6 +11,17 @@ const AUTH_CONTEXT_KEY = '__BPS_PATHFINDER_AUTH_CONTEXT__';
 const AuthContext = globalThis[AUTH_CONTEXT_KEY] || createContext(null);
 if (!globalThis[AUTH_CONTEXT_KEY]) globalThis[AUTH_CONTEXT_KEY] = AuthContext;
 
+const microsoftSessionError = error => {
+  const message = [
+    error?.message,
+    error?.data?.message,
+    error?.data?.detail,
+    error?.response?.data?.message,
+    error?.response?.data?.detail,
+  ].filter(Boolean).join(' ');
+  return /microsoft_built_in|AADSTS700084|refresh token|microsoft.*authentication failed/i.test(message);
+};
+
 const withTimeout = (promise, milliseconds, label) => {
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -85,7 +96,13 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
       setAccountLock(null);
-      if (error.status === 401 || error.status === 403) {
+      if (microsoftSessionError(error)) {
+        try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
+        setAuthError({
+          type: 'microsoft_session_expired',
+          message: 'Your Microsoft session has expired. Please sign in again with your BlackPoint email.'
+        });
+      } else if (error.status === 401 || error.status === 403) {
         setAuthError({ type: 'auth_required', message: 'Authentication required' });
       } else {
         setAuthError({
@@ -134,8 +151,14 @@ export const AuthProvider = ({ children }) => {
       } catch (appError) {
         console.error('App state check failed:', appError);
         
-        // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
+        // Handle app-level errors without exposing Microsoft/AADSTS internals.
+        if (microsoftSessionError(appError)) {
+          try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
+          setAuthError({
+            type: 'microsoft_session_expired',
+            message: 'Your Microsoft session has expired. Please sign in again with your BlackPoint email.'
+          });
+        } else if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
             setAuthError({
@@ -290,10 +313,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const navigateToMicrosoftLogin = useCallback(() => {
-    // Base44's native Microsoft provider creates the actual Pathfinder session,
-    // so existing roles/permissions remain authoritative. A private Pathfinder
-    // account must already exist with the same Black Point Microsoft email.
-    try { sessionStorage.setItem('bps:auth-provider', 'microsoft'); } catch {}
+    // Base44's native provider creates the secure session. Linked identity
+    // records preserve the existing Pathfinder user ID even when the Microsoft
+    // work email differs from the user's original login name.
+    try {
+      sessionStorage.removeItem('bps:microsoft-auth-error');
+      sessionStorage.setItem('bps:auth-provider', 'microsoft');
+    } catch {}
     base44.auth.loginWithProvider('microsoft', window.location.href);
   }, []);
 
