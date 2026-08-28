@@ -61,6 +61,7 @@ export default function CADCenter({ embedded = false }) {
       defaultSection="live"
       contentClassName="bg-[#07111f] text-slate-100 shadow-[inset_0_1px_0_rgba(51,65,85,.45)]"
       queryParam={embedded ? 'cad_section' : 'section'}
+      embedded={embedded}
     >
       {section => <CenterToolSection key={section} tools={TOOLS[section] || TOOLS.live} queryParam={embedded ? 'cad_tool' : 'tool'} />}
     </UnifiedCenter>
