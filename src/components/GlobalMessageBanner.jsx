@@ -44,6 +44,33 @@ function speakNotification(text, options = {}) {
   });
 }
 
+async function claimAnnouncementEvent(data) {
+  const claim = async () => {
+    const response = await base44.functions.invoke('claimCadAnnouncement', {
+      ...data,
+      device_id: navigator.userAgent.slice(0, 250),
+    });
+    const payload = response?.data || response || {};
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  };
+  if (navigator?.locks?.request) {
+    return navigator.locks.request(`bps-cad-audio:${data.event_key}`, claim);
+  }
+  return claim();
+}
+
+async function finalizeAnnouncementEvent(claim, eventKey, state, error = '') {
+  if (!claim?.receipt?.id) return;
+  await base44.functions.invoke('claimCadAnnouncement', {
+    action: 'finalize',
+    receipt_id: claim.receipt.id,
+    event_key: eventKey,
+    state,
+    error,
+  }).catch(() => null);
+}
+
 function playNotificationChime(urgent = false) {
   try {
     const context = audioContext();
@@ -357,22 +384,16 @@ export default function GlobalMessageBanner({ user }) {
           ]).then(results => results.flat())
         : [];
       if (priorAcknowledgements?.length) return;
-      const priorReceipts = email
-        ? await base44.entities.CadAnnouncementReceipt.filter({ event_key: propertyEventKey, user_email: email }, '-processed_at', 1).catch(() => [])
-        : [];
-      if (settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert')) && !priorReceipts?.length) {
-        const accepted = speakNotification(`Property alert. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: propertyEventKey, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal', volume: settings.volume, voiceProfile: settings.voice_profile });
-        if (email) {
-          base44.entities.CadAnnouncementReceipt.create({
-            event_key: propertyEventKey,
-            event_id: record.id,
-            user_email: email,
-            device_id: navigator.userAgent.slice(0, 250),
-            state: accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
-            processed_at: new Date().toISOString(),
-            cad_number: call.agency_cad_number || call.bps_reference || call.call_id || '',
-            event_type: 'property_alert',
-          }).catch(() => null);
+      if (settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert')) && email) {
+        const claim = await claimAnnouncementEvent({
+          event_key: propertyEventKey,
+          event_id: record.id,
+          cad_number: call.agency_cad_number || call.bps_reference || call.call_id || '',
+          event_type: 'property_alert',
+        }).catch(error => ({ claimed: false, error }));
+        if (claim?.claimed) {
+          const accepted = speakNotification(`Property alert. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: propertyEventKey, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal', volume: settings.volume, voiceProfile: settings.voice_profile });
+          await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
         }
       }
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
@@ -425,10 +446,14 @@ export default function GlobalMessageBanner({ user }) {
         if (knownIds.current.has(key)) return;
         knownIds.current.add(key);
         const email = normalized(user.email);
-        const existing = email
-          ? await base44.entities.CadAnnouncementReceipt.filter({ event_key: record.event_key, user_email: email }, '-processed_at', 1).catch(() => [])
-          : [];
-        if (existing?.length) return;
+        if (!email) return;
+        const claim = await claimAnnouncementEvent({
+          event_key: record.event_key,
+          event_id: record.id,
+          cad_number: record.cad_number || '',
+          event_type: record.event_type || '',
+        }).catch(error => ({ claimed: false, error }));
+        if (!claim?.claimed) return;
         const accepted = speakNotification(record.announcement_text, {
           dedupeMs: 4000,
           eventId: record.event_key,
@@ -436,18 +461,7 @@ export default function GlobalMessageBanner({ user }) {
           volume: settings.volume,
           voiceProfile: settings.voice_profile,
         });
-        if (email) {
-          base44.entities.CadAnnouncementReceipt.create({
-            event_key: record.event_key,
-            event_id: record.id,
-            user_email: email,
-            device_id: navigator.userAgent.slice(0, 250),
-            state: accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
-            processed_at: new Date().toISOString(),
-            cad_number: record.cad_number || '',
-            event_type: record.event_type || '',
-          }).catch(() => null);
-        }
+        await finalizeAnnouncementEvent(claim, record.event_key, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
         // BOLOAlert realtime owns the BOLO visual card; this durable event owns
         // its one-time speech receipt. Avoid showing two visual banners.
         if (record.event_type === 'bolo_published') return;
