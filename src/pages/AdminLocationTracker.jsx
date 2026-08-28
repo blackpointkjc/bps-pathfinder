@@ -17,7 +17,10 @@ import { listOfficerDirectory } from '@/lib/appDirectory';
 
 const LOGO_URL = "/black-point-shield.webp";
 
-const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
+// Use one app-wide live-location window. A signed-in officer stays visible for up to
+// 15 minutes after the latest session/GPS heartbeat, matching the system health
+// check and preventing a brief browser/GPS pause from making the unit disappear.
+const LIVE_SESSION_FRESH_MS = 15 * 60 * 1000;
 
 const isOperationallyVisibleUser = isInternalMember;
 
@@ -183,7 +186,9 @@ export default function AdminLocationTracker() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    refetchInterval: 5000,
+    // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
+    // 15-second safety poll instead of hitting the backend every five seconds.
+    refetchInterval: 15000,
     refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
@@ -703,8 +708,8 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">5 sec</div>
-                   <p className="text-xs text-slate-500 mt-1">Live map refresh · history every 60 sec</p>
+                  <div className="text-3xl font-bold text-slate-900">Live</div>
+                   <p className="text-xs text-slate-500 mt-1">Instant entity updates · 15 sec safety refresh · history every 60 sec</p>
                 </CardContent>
               </Card>
             </div>
