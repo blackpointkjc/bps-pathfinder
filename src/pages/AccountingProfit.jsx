@@ -275,7 +275,6 @@ export default function AccountingProfit() {
           .metric .value { margin-top:5px; font-size:22px; font-weight:800; }
           .positive { color:#047857; }
           .negative { color:#b91c1c; }
-          .formula { border-left:4px solid #2563eb; background:#eff6ff; padding:14px 16px; margin-bottom:24px; }
           h2 { margin:26px 0 10px; font-size:16px; }
           table { width:100%; border-collapse:collapse; }
           th { background:#0f172a; color:#fff; padding:10px; text-align:left; font-size:9px; letter-spacing:.8px; text-transform:uppercase; }
@@ -314,12 +313,11 @@ export default function AccountingProfit() {
             <div class="metric"><div class="label">PTO cost</div><div class="value">${money(ptoCost)}</div></div>
             <div class="metric"><div class="label">Net margin</div><div class="value">${profitMargin.toFixed(1)}%</div></div>
           </section>
-          <div class="formula"><strong>Profit calculation:</strong> ${money(totalRevenue)} − (${money(totalPayroll)} gross payroll + ${money(totalExpenses)} expenses + ${money(ptoCost)} PTO) = <strong>${money(netProfit)}</strong></div>
           <h2>Profitability by Site</h2>
           <table><thead><tr><th>Site / Cost Center</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Site Contribution</th><th>Margin</th></tr></thead><tbody>${siteRows || '<tr><td colspan="6">No site activity for this period.</td></tr>'}</tbody></table>
           <h2>Profitability by Employee</h2>
           <table><thead><tr><th>Employee</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Contribution</th><th>Overtime Hours</th></tr></thead><tbody>${officerRows || '<tr><td colspan="6">No employee activity for this period.</td></tr>'}</tbody></table>
-          <footer class="footer"><span>Internal financial report • Confidential</span><span>Taxes and deductions are processed in the external payroll system</span></footer>
+          <footer class="footer"><span>Internal financial report • Confidential</span></footer>
         </main>
       </body>
       </html>
