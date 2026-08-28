@@ -51,9 +51,9 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
                   className={`min-w-0 rounded-xl border p-3 text-left transition ${active ? 'border-cyan-400/60 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,.12)]' : 'border-slate-800 bg-slate-900/70 hover:border-slate-600 hover:bg-slate-900'}`}>
                   <div className="flex items-center gap-2">
                     {Icon && <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-slate-500'}`} />}
-                    <span className={`min-w-0 text-xs font-black ${active ? 'text-white' : 'text-slate-300'}`}>{label}</span>
+                    <span className={`min-w-0 whitespace-normal break-words text-[11px] font-black leading-tight sm:text-xs ${active ? 'text-white' : 'text-slate-300'}`}>{label}</span>
                   </div>
-                  {sectionDescription && <p className="mt-1 hidden text-[10px] leading-4 text-slate-500 xl:block">{sectionDescription}</p>}
+                  {sectionDescription && <p className="mt-1 hidden whitespace-normal break-words text-[10px] leading-4 text-slate-500 xl:block">{sectionDescription}</p>}
                 </button>
               );
             })}
