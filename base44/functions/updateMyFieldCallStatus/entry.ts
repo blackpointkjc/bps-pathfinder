@@ -6,7 +6,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    if (!roles.has('officer') && user.role !== 'admin') return Response.json({ error: 'Officer access required' }, { status: 403 });
+    const blocked = roles.has('client') || roles.has('student') || roles.has('pending') || ['client','student','pending'].includes(String(user.user_type || '').toLowerCase());
+    if (blocked) return Response.json({ error: 'Officer access required' }, { status: 403 });
 
     const { call_id, status, disposition = '' } = await req.json().catch(() => ({}));
     const allowedStatuses = new Set(['Acknowledged', 'Enroute', 'On Scene', 'Cleared']);
