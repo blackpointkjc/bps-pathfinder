@@ -163,14 +163,24 @@ export default function BackgroundLocationTracker({ user }) {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const accuracy = position.coords.accuracy;
+      const fixTimestamp = Number(position.timestamp) || Date.now();
       const normalizedFix = {
         latitude: lat,
         longitude: lng,
         accuracy,
         heading: position.coords.heading,
         speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
-        timestamp: position.timestamp || Date.now(),
+        timestamp: fixTimestamp,
       };
+      // A cached browser result is not a live officer location. Keep the signed-in
+      // heartbeat active, but wait for a genuinely current device fix before
+      // updating gps_updated_at or the movement trail.
+      if (Date.now() - fixTimestamp > 2 * 60 * 1000) {
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: { state: 'stale', ageMs: Date.now() - fixTimestamp },
+        }));
+        return;
+      }
       // Never present a Wi-Fi/IP estimate as an exact live officer position.
       // Field navigation requires a device fix within 100 meters; poorer readings
       // remain pending until Android/browser precise-location access produces GPS.
@@ -204,7 +214,7 @@ export default function BackgroundLocationTracker({ user }) {
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
           last_update: new Date().toISOString(),
-          gps_updated_at: new Date().toISOString(),
+          device_fix_at: new Date(fixTimestamp).toISOString(),
           latitude: lat,
           longitude: lng,
           heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
@@ -300,17 +310,18 @@ export default function BackgroundLocationTracker({ user }) {
       console.warn('Geolocation unavailable:', error?.message || error);
     };
 
-    // Keep the passive stream, but also request a genuinely fresh device fix every
-    // five seconds. Some Windows/tablet browsers leave watchPosition pinned to a
-    // cached Wi-Fi coordinate even while the officer is moving.
+    // Keep the passive stream and request a current high-accuracy fix on a
+    // realistic cadence. A 4.5-second timeout was too short for Windows, tablets,
+    // and phones waking their GPS radios, leaving active sessions with stale data.
     watchIdRef.current = navigator.geolocation.watchPosition(
       saveLocation,
       reportLocationError,
       gpsOptions,
     );
     let freshRequestPending = false;
+    let permissionStatus = null;
     const requestFreshPosition = () => {
-      if (freshRequestPending) return;
+      if (freshRequestPending || document.hidden) return;
       freshRequestPending = true;
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -321,16 +332,47 @@ export default function BackgroundLocationTracker({ user }) {
           freshRequestPending = false;
           reportLocationError(error);
         },
-        { ...gpsOptions, timeout: 4500 },
+        { ...gpsOptions, timeout: 15000 },
       );
     };
+    const requestWhenVisible = () => {
+      if (!document.hidden) requestFreshPosition();
+    };
+    const monitorPermission = async () => {
+      if (!navigator.permissions?.query) return;
+      try {
+        permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        const reportPermission = () => {
+          if (permissionStatus.state === 'denied') {
+            window.dispatchEvent(new CustomEvent('bps-location-quality', {
+              detail: { state: 'permission_denied', message: 'Location permission is blocked for this site.' },
+            }));
+          } else if (permissionStatus.state === 'granted') {
+            requestFreshPosition();
+          }
+        };
+        permissionStatus.onchange = reportPermission;
+        reportPermission();
+      } catch (_) {
+        // Safari and older embedded browsers may not expose geolocation through
+        // the Permissions API; watchPosition/getCurrentPosition remain supported.
+      }
+    };
     requestFreshPosition();
-    const freshPositionId = window.setInterval(requestFreshPosition, 5000);
+    monitorPermission();
+    const freshPositionId = window.setInterval(requestFreshPosition, 15000);
     window.addEventListener('bps-request-location', requestFreshPosition);
+    window.addEventListener('focus', requestFreshPosition);
+    window.addEventListener('online', requestFreshPosition);
+    document.addEventListener('visibilitychange', requestWhenVisible);
 
     return () => {
       window.clearInterval(freshPositionId);
       window.removeEventListener('bps-request-location', requestFreshPosition);
+      window.removeEventListener('focus', requestFreshPosition);
+      window.removeEventListener('online', requestFreshPosition);
+      document.removeEventListener('visibilitychange', requestWhenVisible);
+      if (permissionStatus) permissionStatus.onchange = null;
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -353,12 +395,13 @@ export default function BackgroundLocationTracker({ user }) {
             unit_number: user.unit_number || '',
             current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
             clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
-            ...(fix ? {
+            ...(fix && Date.now() - Number(fix.timestamp || 0) <= 2 * 60 * 1000 ? {
               latitude: fix.latitude,
               longitude: fix.longitude,
               heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
               speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
               accuracy: fix.accuracy,
+              device_fix_at: new Date(Number(fix.timestamp)).toISOString(),
             } : { heartbeat_only: true }),
             user_role: user?.role || 'user',
             session_active: true,
