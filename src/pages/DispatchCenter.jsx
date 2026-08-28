@@ -285,6 +285,23 @@ export default function DispatchCenter() {
         }
     };
 
+    const requestSupervisorForSelectedCall = async () => {
+        if (!selectedCall?.id) return;
+        try {
+            const response = await base44.functions.invoke('requestSupervisorAssist', { call_id: selectedCall.id });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
+            if (!payload.assigned) toast.warning(payload.reason || 'No eligible supervisor is available right now.');
+            else {
+                toast.success(`${payload.supervisor?.name || 'Supervisor'} assigned as closest available supervisor.`);
+                await loadCallNotes(selectedCall.id);
+                await loadActiveCalls();
+            }
+        } catch (error) {
+            toast.error(error?.message || 'Unable to request supervisor');
+        }
+    };
+
     const addCallNote = async () => {
         const text = noteText.trim();
         if (!selectedCall || !text) return;
@@ -595,6 +612,7 @@ export default function DispatchCenter() {
                                             </button>
                                         ))}
                                         <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
+                                        <button onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">REQUEST SUPERVISOR</button>
                                     </div>
                                     <div className="px-3 md:px-4 pb-3 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
                                         <div>
