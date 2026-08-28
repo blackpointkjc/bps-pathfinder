@@ -396,6 +396,15 @@
       "default": "shadow",
       "description": "Shadow recommends only; live assignment requires explicit administrator activation"
     },
+    "auto_dispatch_live_approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When an authorized administrator explicitly approved live automatic dispatch"
+    },
+    "auto_dispatch_live_approved_by": {
+      "type": "string",
+      "description": "Administrator user ID that approved live automatic dispatch"
+    },
     "auto_dispatch_response_radius_miles": {
       "type": "number",
       "default": 5,
