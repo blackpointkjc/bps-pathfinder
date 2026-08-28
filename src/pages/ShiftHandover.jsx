@@ -32,8 +32,6 @@ export default function ShiftHandover(){
   const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>listDirectoryLocations('site_name')});
   const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>listDirectoryUsers()});
   const {data:handovers=[]}=useQuery({queryKey:['shiftHandovers'],queryFn:()=>base44.entities.ShiftHandover.list('-created_date',100),refetchInterval:10000});
-  const roles = new Set((user?.additional_roles || []).map(normalize));
-  const isSupervisor = user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || supervisoryRanks.has(normalize(user?.rank));
   const mySites=useMemo(()=>{
     const today = format(new Date(), 'yyyy-MM-dd');
     const activeRows = (locations || []).filter(location => {
@@ -58,10 +56,9 @@ export default function ShiftHandover(){
     return [...new Map(source.map(site => [normalize(site), site])).values()].sort((a,b)=>a.localeCompare(b));
   },[schedules,locations,user?.email,user?.assigned_location,JSON.stringify(user?.assigned_sites||[]),JSON.stringify(user?.assigned_locations||[])]);
   const visible=useMemo(()=>{
-    if (isSupervisor) return handovers;
     const siteKeys = new Set(mySites.map(normalize));
     return handovers.filter(h=>emailKey(h.departing_officer_email)===emailKey(user?.email)||emailKey(h.incoming_officer_email)===emailKey(user?.email)||siteKeys.has(normalize(h.location)));
-  },[handovers,user?.email,mySites,isSupervisor]);
+  },[handovers,user?.email,mySites]);
   const incoming=useMemo(()=>{
     if(!form.location||!form.shift_date) return null;
     const end=shiftEndTime(form.shift_date, form.shift_start, form.shift_end);
