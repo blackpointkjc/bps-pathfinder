@@ -37,7 +37,7 @@ const OVERSIGHT_TOOLS = [
   { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
 ];
 
-export default function SupervisorCenter() {
+export default function SupervisorCenter({ embedded = false }) {
   return (
     <UnifiedCenter
       eyebrow="Field Leadership"
@@ -45,11 +45,12 @@ export default function SupervisorCenter() {
       description="One supervisor workspace containing the complete Officer Center plus supervisor-only command, welfare, handoff, and oversight tools."
       sections={SECTIONS}
       defaultSection="officer"
+      queryParam={embedded ? 'supervisor_section' : 'section'}
     >
       {section => {
         if (section === 'officer') return <OfficerCenter embedded />;
-        if (section === 'command') return <CenterToolSection key={section} tools={COMMAND_TOOLS} />;
-        return <CenterToolSection key={section} tools={OVERSIGHT_TOOLS} />;
+        if (section === 'command') return <CenterToolSection key={section} tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+        return <CenterToolSection key={section} tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
       }}
     </UnifiedCenter>
   );
