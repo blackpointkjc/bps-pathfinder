@@ -24,6 +24,13 @@ const LIVE_SESSION_FRESH_MS = 15 * 60 * 1000;
 
 const isOperationallyVisibleUser = isInternalMember;
 
+const hasCoordinateValue = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
+const hasValidCoordinates = item => hasCoordinateValue(item?.latitude)
+  && hasCoordinateValue(item?.longitude)
+  && Math.abs(Number(item.latitude)) <= 90
+  && Math.abs(Number(item.longitude)) <= 180
+  && !(Number(item.latitude) === 0 && Number(item.longitude) === 0);
+
 // Custom marker icons
 const clockInIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCAzMCA0NSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMCAwIDAgNSAwIDE1YzAgMTAgMTUgMzAgMTUgMzBzMTUtMjAgMTUtMzBjMC0xMC0xMC0xNS0xNS0xNXoiIGZpbGw9IiMyMmMzNWUiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
@@ -119,19 +126,19 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
       const bounds = [];
       
       // Add clock-in location
-      if (clockInLocation && Number.isFinite(Number(clockInLocation.latitude)) && Number.isFinite(Number(clockInLocation.longitude))) {
+      if (clockInLocation && hasValidCoordinates(clockInLocation)) {
         bounds.push([Number(clockInLocation.latitude), Number(clockInLocation.longitude)]);
       }
       
       // Add only valid path points; Leaflet will throw when a null coordinate reaches project().
       historicalPath.forEach(h => {
-        if (Number.isFinite(Number(h.latitude)) && Number.isFinite(Number(h.longitude))) {
+        if (hasValidCoordinates(h)) {
           bounds.push([Number(h.latitude), Number(h.longitude)]);
         }
       });
       
       // Add clock-out location
-      if (clockOutLocation && Number.isFinite(Number(clockOutLocation.latitude)) && Number.isFinite(Number(clockOutLocation.longitude))) {
+      if (clockOutLocation && hasValidCoordinates(clockOutLocation)) {
         bounds.push([Number(clockOutLocation.latitude), Number(clockOutLocation.longitude)]);
       }
       
@@ -139,7 +146,7 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
       }
     } else if (officers && officers.length > 0) {
-      const validOfficers = officers.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude)));
+      const validOfficers = officers.filter(hasValidCoordinates);
       if (validOfficers.length > 0) {
         const bounds = validOfficers.map(o => [Number(o.latitude), Number(o.longitude)]);
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
@@ -239,7 +246,7 @@ export default function AdminLocationTracker() {
         clock_in_time: locationData.clock_in_time,
         user_role: locationData.user_role || profile?.role || 'user',
         user_status: locationData.status || profile?.status || 'Signed In',
-        gps_pending: !(Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude))),
+        gps_pending: !hasValidCoordinates(locationData),
       };
     }).filter(Boolean);
   }, [newestLocationByEmail, allUsers]);
@@ -260,7 +267,7 @@ export default function AdminLocationTracker() {
       const end = new Date(`${selectedDate}T23:59:59.999`);
       return (allHistory || []).filter(h => {
         const timestamp = new Date(h.timestamp);
-        return timestamp >= start && timestamp <= end && Number.isFinite(Number(h.latitude)) && Number.isFinite(Number(h.longitude));
+        return timestamp >= start && timestamp <= end && hasValidCoordinates(h);
       }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     },
     enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,
@@ -308,8 +315,7 @@ export default function AdminLocationTracker() {
         const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
         const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
         const name = profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.full_name || profile.email);
-        const hasFreshGps = Number.isFinite(Number(locationData.latitude))
-          && Number.isFinite(Number(locationData.longitude))
+        const hasFreshGps = hasValidCoordinates(locationData)
           && gpsAgeMs <= LIVE_SESSION_FRESH_MS;
         const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
         const item = {
@@ -397,11 +403,12 @@ export default function AdminLocationTracker() {
     }
   }, [viewMode, hasAccess, allUsers]);  
 
-  const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
+  const officersWithLocation = currentlyActiveOfficers?.filter(hasValidCoordinates) || [];
   const officersWithLastKnown = (currentlyActiveOfficers || [])
-    .filter(o => !Number.isFinite(Number(o.latitude))
-      && Number.isFinite(Number(o.last_known_latitude))
-      && Number.isFinite(Number(o.last_known_longitude)))
+    .filter(o => !hasValidCoordinates(o)
+      && hasCoordinateValue(o.last_known_latitude)
+      && hasCoordinateValue(o.last_known_longitude)
+      && !(Number(o.last_known_latitude) === 0 && Number(o.last_known_longitude) === 0))
     .map(o => ({
       ...o,
       latitude: Number(o.last_known_latitude),
