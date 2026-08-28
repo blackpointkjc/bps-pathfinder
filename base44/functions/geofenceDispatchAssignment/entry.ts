@@ -70,7 +70,10 @@ Deno.serve(async (req) => {
     // Automatic assignment is opt-in per property. Shadow remains the default;
     // only an explicit saved live mode may change operational records.
     const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
-    const mode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
+    const liveApproved = Boolean(property.auto_dispatch_live_approved_at && property.auto_dispatch_live_approved_by);
+    const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
+    // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
+    const mode = requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
     const radius = Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5));
 
     // A completed live evaluation is the permanent idempotency receipt for this
@@ -317,6 +320,9 @@ Deno.serve(async (req) => {
       evaluated_by: user.id,
       configuration_snapshot: {
         configured_mode: configuredMode,
+        live_approved: liveApproved,
+        live_approved_at: property.auto_dispatch_live_approved_at || null,
+        live_approved_by: property.auto_dispatch_live_approved_by || null,
         response_radius_miles: radius,
         required_units: requiredUnits,
         backup_required: Boolean(property.auto_dispatch_backup_required),
