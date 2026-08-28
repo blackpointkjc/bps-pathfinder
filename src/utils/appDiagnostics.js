@@ -12,6 +12,8 @@ const safeMessage = value => {
   try { return JSON.stringify(value); } catch { return String(value || 'Unknown error'); }
 };
 
+const isRateLimited = value => /rate limit|too many requests|\b429\b/i.test(safeMessage(value));
+
 export function getRuntimeIssues() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -228,7 +230,15 @@ export async function runClientFunctionalAudit() {
       duplicates.size,
     ));
   } catch (error) {
-    findings.push(finding('payroll:audit-failed', 'Payroll', 'outage', 'Payroll verification failed', safeMessage(error)));
+    findings.push(finding(
+      'payroll:audit-failed',
+      'Payroll',
+      isRateLimited(error) ? 'degraded' : 'outage',
+      isRateLimited(error) ? 'Payroll scan was throttled' : 'Payroll verification failed',
+      isRateLimited(error)
+        ? 'The diagnostic scan was rate limited. This does not mean Payroll is down; the next scan will retry.'
+        : safeMessage(error),
+    ));
   }
 
   const functionalProbes = [
@@ -269,13 +279,26 @@ export async function runClientFunctionalAudit() {
       },
     },
   ];
-  await Promise.all(functionalProbes.map(async probe => {
+  // Run backend probes one at a time. Firing directory, live-location, analytics,
+  // and payroll calls together can exhaust the shared request allowance and make
+  // a healthy service look like an outage.
+  for (const probe of functionalProbes) {
     try {
       await probe.run();
     } catch (error) {
-      findings.push(finding(probe.key, probe.area, 'outage', probe.title, safeMessage(error)));
+      const throttled = isRateLimited(error);
+      findings.push(finding(
+        probe.key,
+        probe.area,
+        throttled ? 'degraded' : 'outage',
+        throttled ? `${probe.area} scan was throttled` : probe.title,
+        throttled
+          ? 'The diagnostic request was rate limited. The operational service was not marked down and will be checked again on the next scan.'
+          : safeMessage(error),
+      ));
     }
-  }));
+    await new Promise(resolve => window.setTimeout(resolve, 250));
+  }
 
   // A runtime failure from an older deployed bundle is historical evidence, not a
   // current outage. Scan errors captured during this loaded app session; any error
