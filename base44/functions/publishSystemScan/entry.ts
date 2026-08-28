@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
     const currentIssueKeys = new Set<string>();
     let issueRowsCreated = 0;
     let issueRowsResolved = 0;
+    const newlyDetectedIssues: any[] = [];
     for (const finding of findings) {
       const issueKey = 'scan:' + (text(finding.key) || text(finding.area)) + ':' + text(finding.title);
       currentIssueKeys.add(issueKey);
@@ -78,8 +79,9 @@ Deno.serve(async (req) => {
       if (existing) {
         await base44.asServiceRole.entities.SystemOutage.update(existing.id, issueData);
       } else {
-        await base44.asServiceRole.entities.SystemOutage.create(issueData);
+        const createdIssue = await base44.asServiceRole.entities.SystemOutage.create(issueData);
         issueRowsCreated += 1;
+        newlyDetectedIssues.push({ ...issueData, id: createdIssue?.id });
       }
     }
     for (const [issueKey, issue] of activeByKey.entries()) {
@@ -92,9 +94,33 @@ Deno.serve(async (req) => {
       issueRowsResolved += 1;
     }
 
-    // System scans are diagnostic only. They update the System Issues page but do
-    // not create banner/notification popups for administrators.
-    const notificationsCreated = 0;
+    // Notify administrators once when a new issue becomes active. Continuing
+    // hourly occurrences update the same durable SystemOutage row and do not
+    // create repeated banners. A resolved issue remains visible in history.
+    let notificationsCreated = 0;
+    if (newlyDetectedIssues.length) {
+      const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000).catch(() => []);
+      const administrators = (users || []).filter((candidate: any) =>
+        candidate?.email && (String(candidate.role || '').toLowerCase() === 'admin'
+          || (candidate.additional_roles || []).map((role: any) => String(role).toLowerCase()).includes('full_access'))
+      );
+      for (const issue of newlyDetectedIssues) {
+        for (const administrator of administrators) {
+          await base44.asServiceRole.entities.Notification.create({
+            recipient_email: String(administrator.email).trim().toLowerCase(),
+            type: 'system_issue',
+            title: `System issue · ${issue.title}`,
+            message: issue.description || `${issue.component} requires administrator review.`,
+            is_read: false,
+            related_id: issue.id || scanRun.id,
+            priority: issue.severity === 'outage' ? 'critical' : issue.severity === 'degraded' ? 'high' : 'normal',
+            requires_acknowledgment: false,
+            source_name: 'Pathfinder System Monitor',
+          }).catch(() => null);
+          notificationsCreated += 1;
+        }
+      }
+    }
 
     await base44.asServiceRole.entities.AuditLog.create({
       entity_type: 'SystemScanRun',
@@ -105,7 +131,7 @@ Deno.serve(async (req) => {
       field_changed: 'hourly_full_app_scan',
       timestamp: new Date().toISOString(),
       after_value: JSON.stringify({ hour_key: hourKey, issues_found: findings.length, notifications_created: notificationsCreated }),
-      description: 'Hourly full-application scan result stored without generating administrator notification popups.',
+      description: 'Hourly full-application scan stored; administrators were notified once for each newly detected active issue.',
     }).catch(() => null);
 
     return Response.json({
