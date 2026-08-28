@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, MapPin, CheckCircle, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
-import { stopAllAlerts } from '@/utils/alertUtils';
+import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
 import { formatEasternTime } from '@/lib/easternTime';
 import AutoDispatchRecommendation from '@/components/dispatch/AutoDispatchRecommendation';
 
@@ -30,11 +30,13 @@ export default function PropertyAlertsBanner() {
         try {
             const me = await base44.auth.me();
             const email = String(me?.email || '').trim().toLowerCase();
-            const [data, receipts, calls] = await Promise.all([
+            const [data, receipts, calls, locations] = await Promise.all([
                 base44.entities.PropertyAlert.list('-created_date', 100),
                 email ? base44.entities.PropertyAlertReceipt.filter({ user_email: email }, '-dismissed_at', 300).catch(() => []) : Promise.resolve([]),
                 base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
+                base44.entities.Location.list('site_name', 300).catch(() => []),
             ]);
+            const monitoredProperties = monitoredPropertiesFromLocations(locations || []);
 
             const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
             const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
@@ -52,9 +54,12 @@ export default function PropertyAlertsBanner() {
             const visible = [];
 
             for (const alert of data || []) {
+                if (['false_alarm','resolved','test'].includes(normalizedStatus(alert.lifecycle_status))) continue;
                 const pair = `${alert.callId}:${alert.propertyId}`;
                 const linkedCall = activeCallById.get(String(alert.callId));
                 if (!linkedCall) continue;
+                const propertyMatch = findPropertyMatch(linkedCall, monitoredProperties);
+                if (!propertyMatch || String(propertyMatch.property?.id) !== String(alert.propertyId)) continue;
                 const stableCallId = linkedCall.external_call_id || linkedCall.agency_cad_number || linkedCall.bps_reference || linkedCall.call_id || linkedCall.id || alert.callId;
                 const eventKey = `${alert.propertyId}|${stableCallId}`;
                 if (seenPairs.has(eventKey)) continue;
