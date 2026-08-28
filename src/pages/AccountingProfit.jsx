@@ -481,13 +481,6 @@ export default function AccountingProfit() {
 
       </div>
 
-      <Card className="mb-6 border-blue-200 bg-blue-50/60">
-        <CardContent className="p-4 text-sm text-slate-700">
-          <p className="font-semibold text-slate-900">How this report calculates profit</p>
-          <p className="mt-1">Earned revenue = each worked hour × that shift’s Normal, Holiday, or Rush client rate. Accrued payroll = the same worked hours × the officer’s rate, with weekly overtime after {overtimeThreshold} hours at {overtimeMultiplier}×. Net profit then subtracts gross payroll, PTO wages, and approved/paid operating expenses. Taxes and deductions are handled in the external payroll system.</p>
-        </CardContent>
-      </Card>
-
       {/* Profit by Site */}
       <Card className="mb-6">
         <CardHeader>
