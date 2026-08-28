@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 
-export default function CenterToolSection({ tools, defaultTool }) {
+export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool' }) {
   const initial = useMemo(() => {
-    const requested = new URLSearchParams(window.location.search).get('tool');
+    const requested = new URLSearchParams(window.location.search).get(queryParam);
     return tools.some(tool => tool.id === requested) ? requested : defaultTool || tools[0]?.id;
-  }, [tools, defaultTool]);
+  }, [tools, defaultTool, queryParam]);
   const [tool, setTool] = useState(initial);
 
   const select = next => {
     setTool(next);
     const url = new URL(window.location.href);
-    url.searchParams.set('tool', next);
+    url.searchParams.set(queryParam, next);
     window.history.replaceState({}, '', url);
   };
 
