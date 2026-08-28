@@ -34,10 +34,10 @@ const TOOLS = {
   support: [{ id: 'supportclock', label: 'Support Staff Clock', component: AdminSupportStaffClock }],
 };
 
-export default function HRCenter() {
+export default function HRCenter({ embedded = false }) {
   return (
-    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="employees">
-      {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
+    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="employees" queryParam={embedded ? 'hr_section' : 'section'}>
+      {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'hr_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }
