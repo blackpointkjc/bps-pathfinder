@@ -1,0 +1,4 @@
+{
+  "name": "getMyDispatchQueue",
+  "description": "Returns the signed-in officer's priority ordered active CAD assignment queue with shared dispatch and field notes."
+}
