@@ -194,6 +194,24 @@ export default function WelcomeBriefing({ user }) {
   }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {
+    if (!user?.id) return undefined;
+    let refreshTimer = null;
+    const refreshBriefing = event => {
+      const task = event?.data;
+      if (task?.assigned_to && String(task.assigned_to) !== String(user.id)) return;
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        loadRef.current?.();
+      }, 300);
+    };
+    const unsubscribeTasks = base44.entities.Task.subscribe(refreshBriefing);
+    return () => {
+      window.clearTimeout(refreshTimer);
+      unsubscribeTasks?.();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!storageKey) return;
     // Activity bookkeeping is informational only. It never reopens the briefing.
     const markActive = () => localStorage.setItem(storageKey, new Date().toISOString());
@@ -377,7 +395,7 @@ export default function WelcomeBriefing({ user }) {
                     <BriefCard icon={Siren} label="Property Calls While Away" value={brief.propertyAlerts.length} detail={brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
 
-                  {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
+                  {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-violet-200">Updates Since You Were Away</div></div>
                     <div className="mt-2 space-y-2">
                       {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
