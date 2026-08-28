@@ -15,6 +15,7 @@ import { DashboardDataProvider } from '@/lib/DashboardDataContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import DispatcherShiftReports from './pages/DispatcherShiftReports';
+import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -152,6 +153,7 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="/DispatcherShiftReports" element={<LayoutWrapper currentPageName="DispatcherShiftReports"><DispatcherShiftReports /></LayoutWrapper>} />
+      <Route path="/SupervisorFieldOversight" element={<LayoutWrapper currentPageName="SupervisorFieldOversight"><SupervisorFieldOversight /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
         </Routes>
       </motion.div>
