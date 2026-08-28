@@ -28,10 +28,11 @@ import OfficerPerformanceReviews from './OfficerPerformanceReviews';
 import OfficerTraining from './OfficerTraining';
 import RankStructure from './RankStructure';
 import RankDuties from './RankDuties';
+import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Dashboard, clock and schedule', icon: CalendarClock },
-  { id: 'field', label: 'Field Tools', description: 'Post orders, patrol, handover and enforcement forms', icon: Shield },
+  { id: 'field', label: 'Field Tools', description: 'Dispatch queue, post orders, patrol, handover and enforcement forms', icon: Shield },
   { id: 'reports', label: 'Reports', description: 'Daily, incident and support reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Availability', description: 'Availability, open shifts and payroll dates', icon: Wrench },
   { id: 'messages', label: 'Messages', description: 'Announcements and communication shortcuts', icon: MessageCircle },
@@ -45,6 +46,7 @@ const TOOLS = {
     { id: 'myschedule', label: 'My Schedule', component: Schedule },
   ],
   field: [
+    { id: 'dispatchqueue', label: 'Dispatch Queue', component: OfficerDispatchQueue },
     { id: 'postorders', label: 'Post Orders', component: PostOrders },
     { id: 'qr', label: 'QR Patrol', component: QRPatrolScan },
     { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
