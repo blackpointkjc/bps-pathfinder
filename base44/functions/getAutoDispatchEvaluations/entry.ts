@@ -14,9 +14,9 @@ Deno.serve(async (req) => {
     // Keep the oversight feed lightweight and predictable under shared request
     // limits. Read the required datasets sequentially instead of in a burst.
     let evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200);
-    const propertyAlerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000);
-    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
-    const locations = await base44.asServiceRole.entities.Location.list('site_name', 1000);
+    const propertyAlerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 500);
+    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
+    const locations = await base44.asServiceRole.entities.Location.list('site_name', 300);
     const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
     const propertyById = new Map((locations || []).map((item: any) => [String(item.id), item]));
     const latestByAlert = new Map<string, any>();
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       const lastAt = new Date(latest?.evaluated_at || latest?.updated_date || 0).getTime();
       const intervalMs = Math.max(30, Number(property.auto_dispatch_recheck_seconds || 60)) * 1000;
       return !Number.isFinite(lastAt) || now - lastAt >= intervalMs;
-    }).slice(0, 20);
+    }).slice(0, 5);
 
     if (dueAlerts.length) {
       // Re-evaluate one alert at a time. A reconnect can expose several due alerts
