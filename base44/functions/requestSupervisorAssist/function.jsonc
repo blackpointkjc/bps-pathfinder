@@ -1,0 +1,4 @@
+{
+  "name": "requestSupervisorAssist",
+  "description": "Automatically assigns the closest available supervisor with fresh GPS to an active CAD call when requested by field or dispatch."
+}
