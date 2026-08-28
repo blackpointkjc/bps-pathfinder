@@ -100,10 +100,9 @@ export default function AutoDispatchRecommendation({ alert }) {
 
   if (error) {
     return (
-      <div className="mt-3 rounded-md border border-red-500/40 bg-red-950/30 p-3 text-[11px] text-red-200">
-        <div className="font-bold">Automatic-dispatch preview failed</div>
-        <div className="mt-1">{error}</div>
-        <Button size="sm" variant="outline" onClick={() => evaluate(true)} className="mt-2 h-7 border-red-500/40 text-[10px]">TRY AGAIN</Button>
+      <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-950/15 p-2 text-[10px] text-amber-200">
+        Automatic dispatch status is temporarily unavailable. Manual CAD controls remain available.
+        <Button size="sm" variant="ghost" onClick={() => evaluate(true)} className="ml-2 h-6 px-2 text-[9px] text-amber-100">RECHECK</Button>
       </div>
     );
   }
