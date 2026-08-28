@@ -34,6 +34,7 @@
         "no_eligible_unit",
         "manual_review",
         "disabled",
+        "partially_assigned",
         "assigned"
       ]
     },
