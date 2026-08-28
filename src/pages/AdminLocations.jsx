@@ -387,7 +387,7 @@ export default function AdminLocations({ embedded = false }) {
       geofence_enabled: location.geofence_enabled || false,
       allow_clock_in_anywhere: location.allow_clock_in_anywhere || false,
       geofence_radius_meters: location.geofence_radius_meters || 100,
-      geofence_polygon: location.geofence_polygon || [],
+      geofence_polygon: location.geofence_polygon || location.property_monitoring_polygon || [],
       property_monitoring_enabled: location.property_monitoring_enabled || false,
       property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
       property_monitoring_description: location.property_monitoring_description || '',
