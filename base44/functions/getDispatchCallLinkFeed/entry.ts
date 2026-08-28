@@ -9,16 +9,23 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((me.additional_roles || []).map((r:string) => lower(r)));
-    const allowed = me.role === 'admin' || lower(me.role) === 'dispatch' || me.dispatch_role === true || roles.has('dispatch') || roles.has('cad_access') || roles.has('full_access') || roles.has('officer') || roles.has('supervisor');
-    if (!allowed) return Response.json({ error: 'Operational access required' }, { status: 403 });
+    // Report forms are available to internal users whose primary role may still be
+    // the Base44 default "user" role. Do not require a separate officer role just
+    // to populate the call-link field. Only external/client/student/pending users
+    // are excluded from the operational CAD-link feed.
+    const blocked = roles.has('client') || roles.has('student') || roles.has('pending')
+      || ['client', 'student', 'pending'].includes(lower(me.user_type))
+      || ['client', 'student'].includes(lower(me.rank));
+    if (blocked) return Response.json({ error: 'Operational access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(50, Math.min(3000, Number(body?.limit || 1500)));
-    const [live, history, alerts] = await Promise.all([
-      base44.asServiceRole.entities.DispatchCall.list('-time_received', limit).catch(() => []),
-      base44.asServiceRole.entities.CallHistory.list('-archived_date', limit).catch(() => []),
-      base44.asServiceRole.entities.PropertyAlert.list('-created_date', limit).catch(() => []),
-    ]);
+    // The live call list is required; history/property metadata are enhancements.
+    // Read sequentially so this shared report field does not create another API
+    // burst, and never silently turn a live-feed failure into an empty dropdown.
+    const live = await base44.asServiceRole.entities.DispatchCall.list('-time_received', limit);
+    const history = await base44.asServiceRole.entities.CallHistory.list('-archived_date', limit).catch(() => []);
+    const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', limit).catch(() => []);
 
     const propertyByCall = new Map<string, any>();
     for (const alert of alerts || []) {
