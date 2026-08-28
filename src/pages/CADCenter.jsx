@@ -41,7 +41,7 @@ const TOOLS = {
   ],
 };
 
-export default function CADCenter() {
+export default function CADCenter({ embedded = false }) {
   const desktop = useDesktopViewport();
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -50,7 +50,7 @@ export default function CADCenter() {
     ? [...BASE_SECTIONS, { id: 'admin', label: 'CAD Administration', description: 'Personnel, reports and control settings', icon: Settings }]
     : BASE_SECTIONS;
 
-  if (!desktop) return <CommandDashboard />;
+  if (!desktop && !embedded) return <CommandDashboard />;
 
   return (
     <UnifiedCenter
@@ -60,8 +60,9 @@ export default function CADCenter() {
       sections={sections}
       defaultSection="live"
       contentClassName="bg-[#07111f] text-slate-100 shadow-[inset_0_1px_0_rgba(51,65,85,.45)]"
+      queryParam={embedded ? 'cad_section' : 'section'}
     >
-      {section => <CenterToolSection key={section} tools={TOOLS[section] || TOOLS.live} />}
+      {section => <CenterToolSection key={section} tools={TOOLS[section] || TOOLS.live} queryParam={embedded ? 'cad_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }
