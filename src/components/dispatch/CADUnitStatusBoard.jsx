@@ -4,9 +4,10 @@ import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
 
-const STATUS_ORDER = ['All','Available','On Patrol','Enroute','On Scene','Busy','Distress','Out of Service'];
+const STATUS_ORDER = ['All','Available','Dispatched','On Patrol','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
   Available: { short: 'AVAIL', dot: 'bg-green-400', badge: 'bg-green-900/40 text-green-300 border-green-700/50' },
+  Dispatched: { short: 'DISP', dot: 'bg-cyan-400', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/50' },
   'On Patrol': { short: 'PTR', dot: 'bg-indigo-400', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/50' },
   Enroute: { short: 'ENRT', dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/50' },
   'On Scene': { short: 'SCNE', dot: 'bg-blue-400', badge: 'bg-blue-900/40 text-blue-300 border-blue-700/50' },
