@@ -481,19 +481,20 @@ function pageLabel(pageName) {
   return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
 }
 
-function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, activeCenter, centerDestinations = {}, onTabNavigate }) {
-  const isAdminCenter = activeCenter === 'admin' || (PAGE_TO_CENTERS[currentPageName] || []).includes('admin');
-  const tabs = isAdminCenter
-    ? [
-        ['CAD', centerDestinations.cad || 'CommandDashboard', Radio],
-        ['Admin', centerDestinations.admin || 'AdminDashboard', Settings],
-        ['Inbox', 'OfficerInbox', MessageCircle],
-      ]
-    : [
-        ['CAD', centerDestinations.cad || 'CommandDashboard', Radio],
-        ['Officer', centerDestinations.officer || 'Dashboard', Shield],
-        ['Inbox', 'OfficerInbox', MessageCircle],
-      ];
+function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, activeCenter, centerDestinations = {}, onTabNavigate, user }) {
+  const centers = allowedCenters(user);
+  const roleWorkspace = centers.includes('admin')
+    ? ['Admin', centerDestinations.admin || 'AdminDashboard', Settings]
+    : centers.includes('supervisor')
+      ? ['Supervisor', centerDestinations.supervisor || 'SupervisorCenter', ClipboardCheck]
+      : centers.includes('officer')
+        ? ['Officer', centerDestinations.officer || 'Dashboard', Shield]
+        : null;
+  const tabs = [
+    ['CAD', centerDestinations.cad || 'CommandDashboard', Radio],
+    ...(roleWorkspace ? [roleWorkspace] : []),
+    ['Inbox', 'OfficerInbox', MessageCircle],
+  ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur lg:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
       {tabs.map(([label, page, Icon]) => {
@@ -504,7 +505,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
           {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
         </Link>;
       })}
-      {!isAdminCenter && <button type="button" onClick={onReports} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><ClipboardList className="h-5 w-5" /><span className="text-[8px] font-black">REPORTS</span></button>}
+      {(centers.includes('officer') || centers.includes('supervisor')) && <button type="button" onClick={onReports} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><ClipboardList className="h-5 w-5" /><span className="text-[8px] font-black">REPORTS</span></button>}
       <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[8px] font-black">ALL</span></button>
     </nav>
   );
@@ -526,7 +527,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   const sourceGroups = desktopCenterPage ? [] : center.groups;
   const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
-    .filter(group => !mobileSection || (mobileSection === 'reports' && activeCenter === 'officer' && group.label === 'Reports'))
+    .filter(group => !mobileSection || (mobileSection === 'reports' && ['officer','supervisor'].includes(activeCenter) && group.label.toLowerCase().includes('reports')))
     .map(group => ({
       ...group,
       items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
@@ -1329,9 +1330,11 @@ export default function Layout({ children, currentPageName }) {
       currentPageName={currentPageName}
       unreadCounts={unreadCounts}
       activeCenter={activeCenter}
+      user={user}
       centerDestinations={{
         cad: centerLastPagesRef.current.cad || 'CommandDashboard',
         officer: centerLastPagesRef.current.officer || 'Dashboard',
+        supervisor: centerLastPagesRef.current.supervisor || 'SupervisorCenter',
         admin: centerLastPagesRef.current.admin || 'AdminDashboard',
       }}
       onTabNavigate={() => {
@@ -1341,7 +1344,7 @@ export default function Layout({ children, currentPageName }) {
           sessionStorage.setItem(`bps-mobile-scroll:${currentPageName}`, String(position));
         }
       }}
-      onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
+      onReports={() => { const centers = allowedCenters(user); setActiveCenter(centers.includes('supervisor') ? 'supervisor' : 'officer'); setMobileSection('reports'); setMobileOpen(true); }}
       onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor', 'admin'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
     />
   </div></MicrosoftMailSetupGate>;
