@@ -16,7 +16,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
-import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { getLiveLocation, requestFreshLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
@@ -412,38 +412,20 @@ export default function Navigation() {
             setIsLiveTracking(true);
             return fresh;
         } catch (liveError) {
-            // Starting GPS from Call Details or an address search must not depend on
-            // the background tracker already having emitted a fix. Ask the device
-            // directly and publish the result back into the app-wide location service.
-            if (!navigator.geolocation) return currentLocation;
+            // Use the same singleton request already shared by clock-in, distress,
+            // reports, and background tracking. Navigation must not open a second
+            // browser geolocation handle.
             try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        maximumAge: 3000,
-                        timeout: 12000,
-                    });
-                });
-                const fresh = [position.coords.latitude, position.coords.longitude];
-                const fix = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracy: position.coords.accuracy,
-                    heading: Number.isFinite(position.coords.heading) ? position.coords.heading : null,
-                    speed: Number.isFinite(position.coords.speed) ? position.coords.speed * 2.236936 : 0,
-                    timestamp: position.timestamp || Date.now(),
-                };
+                const fix = await requestFreshLiveLocation({ timeoutMs: 12000 });
+                if (!fix) return currentLocation;
+                const fresh = [fix.latitude, fix.longitude];
                 setCurrentLocation(fresh);
                 if (fix.heading !== null) setHeading(fix.heading);
                 setSpeed(Math.round(fix.speed || 0));
                 setIsLiveTracking(true);
-                // Keep future route updates working even if the background tracker
-                // was not running when the user pressed START GPS.
-                const { publishLiveLocation } = await import('@/lib/liveLocationService');
-                publishLiveLocation(fix);
                 return fresh;
             } catch (deviceError) {
-                console.warn('[NAV] direct GPS request failed:', deviceError?.message || liveError?.message);
+                console.warn('[NAV] shared GPS request failed:', deviceError?.message || liveError?.message);
                 return currentLocation;
             }
         }
