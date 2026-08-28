@@ -49,6 +49,17 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Site name is required' }, { status: 400 });
       }
       const location = await base44.asServiceRole.entities.Location.create(body.data);
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type: 'Location',
+        entity_id: location.id,
+        action: 'create',
+        actor_id: user.id,
+        actor_name: user.full_name || user.email || 'Administrator',
+        after_value: JSON.stringify(body.data),
+        field_changed: 'location_and_auto_dispatch_configuration',
+        timestamp: new Date().toISOString(),
+        description: 'Location created. Property monitoring and automatic-dispatch settings were recorded with the original configuration.',
+      }).catch(() => null);
       return Response.json({ success: true, location });
     }
 
@@ -56,8 +67,32 @@ Deno.serve(async (req) => {
       if (!body.id || !body.data) {
         return Response.json({ error: 'Location id and update data are required' }, { status: 400 });
       }
+      const before = await base44.asServiceRole.entities.Location.get(body.id);
       await base44.asServiceRole.entities.Location.update(body.id, body.data);
       const location = await base44.asServiceRole.entities.Location.get(body.id);
+      const protectedFields = [
+        'auto_dispatch_enabled', 'auto_dispatch_mode', 'auto_dispatch_response_radius_miles',
+        'auto_dispatch_required_units', 'auto_dispatch_backup_required',
+        'auto_dispatch_required_qualifications', 'auto_dispatch_required_equipment',
+        'auto_dispatch_required_ranks', 'auto_dispatch_acknowledgement_seconds',
+        'auto_dispatch_escalation_seconds', 'auto_dispatch_recheck_seconds',
+        'property_safety_warnings', 'property_access_instructions',
+      ];
+      const changedFields = Object.keys(body.data).filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(location?.[key]));
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type: 'Location',
+        entity_id: body.id,
+        action: 'update',
+        actor_id: user.id,
+        actor_name: user.full_name || user.email || 'Administrator',
+        before_value: JSON.stringify(Object.fromEntries(changedFields.map(key => [key, before?.[key]]))),
+        after_value: JSON.stringify(Object.fromEntries(changedFields.map(key => [key, location?.[key]]))),
+        field_changed: changedFields.join(',').slice(0, 500),
+        timestamp: new Date().toISOString(),
+        description: changedFields.some(key => protectedFields.includes(key))
+          ? 'Property automatic-dispatch configuration updated. Shadow mode remains non-assigning.'
+          : 'Location configuration updated.',
+      }).catch(() => null);
       return Response.json({ success: true, location });
     }
 
