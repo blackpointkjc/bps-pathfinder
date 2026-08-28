@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
         decision: 'assigned',
       }, '-evaluated_at', 1).catch(() => []);
       if (completed?.length) {
+        const selectedIds = new Set((completed[0].recommended_unit_ids || []).map(String));
         return Response.json({
           success: true,
           mode: 'live',
@@ -96,9 +97,10 @@ Deno.serve(async (req) => {
           duplicate_event: true,
           call_id: callId,
           decision: 'assigned',
-          recommendations: completed[0].ranking || [],
+          recommendations: (completed[0].ranking || []).filter((item: any) => selectedIds.has(String(item.unit_id))),
           excluded_units: completed[0].excluded_units || [],
           evaluation_id: completed[0].id,
+          staffing_shortfall: 0,
           message: 'This property alert was already assigned. No duplicate action was taken.',
         });
       }
