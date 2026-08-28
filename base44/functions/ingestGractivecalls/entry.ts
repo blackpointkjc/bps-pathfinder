@@ -721,8 +721,14 @@ Deno.serve(async (req) => {
       console.error('Phase 2A shadow safety verification failed:', error);
       return { status: 'failed', error: error?.message || String(error) };
     });
+    const phase2bMonitoring = await base44.asServiceRole.functions.invoke('monitorAutoDispatchAssignments', {})
+      .then((response: any) => response?.data || response)
+      .catch((error: any) => {
+        console.error('Phase 2B assignment monitoring failed:', error);
+        return { status: 'failed', error: error?.message || String(error) };
+      });
 
-    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
+    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, phase_2b_monitoring: phase2bMonitoring, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
     } finally {
       await releaseIngestionLease(base44, lease);
     }
