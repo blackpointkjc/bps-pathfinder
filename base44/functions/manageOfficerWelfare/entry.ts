@@ -29,9 +29,13 @@ Deno.serve(async (req) => {
       if (!call || ['cleared','cancelled','closed','resolved','completed'].includes(lower(call.status))) return Response.json({ error: 'Active CAD call not found' }, { status: 404 });
       const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 50).catch(() => []);
       const active = (assignments || []).filter((a: any) => !['cleared','cancelled'].includes(lower(a.status)));
+      const assignmentUnitIds = new Set(active.map((a:any) => String(a.unit_id)));
+      for (const unitId of (call.assigned_units || []).map(String)) {
+        if (unitId && !assignmentUnitIds.has(unitId)) active.push({ id:'', call_id:callId, unit_id:unitId, status:'assigned' });
+      }
       const requestedUnitId = String(body.unit_id || '').trim();
       const targets = requestedUnitId ? active.filter((a: any) => String(a.unit_id) === requestedUnitId) : active;
-      if (!targets.length) return Response.json({ error: 'No active assigned officer is available for a welfare check' }, { status: 400 });
+      if (!targets.length) return Response.json({ error: 'No officer is assigned to this active CAD call.' }, { status: 400 });
       const users = await base44.asServiceRole.entities.User.list('-updated_date', 1500);
       const userById = new Map((users || []).map((u: any) => [String(u.id), u]));
       const cad = String(call.agency_cad_number || call.bps_reference || call.call_id || call.id);
