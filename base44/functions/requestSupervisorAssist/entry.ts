@@ -23,11 +23,11 @@ Deno.serve(async (req) => {
     const call = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
 
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1500);
-    const active = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1500);
-    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 4000);
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 750);
+    const active = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 500);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1200);
     const now = Date.now();
-    const freshCutoff = now - 5 * 60 * 1000;
+    const freshCutoff = now - 15 * 60 * 1000;
     const activeByEmail = new Map<string,any>();
     for (const row of active || []) {
       const email = lower(row.officer_email);
@@ -40,8 +40,7 @@ Deno.serve(async (req) => {
     const originLon = Number(call.longitude ?? requesterSession?.longitude);
     if (!Number.isFinite(originLat) || !Number.isFinite(originLon)) return Response.json({ error: 'No reliable call/requester coordinates available for closest-supervisor assignment' }, { status: 409 });
 
-    const activeCallIds = new Set((await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000)).map((c:any)=>String(c.id)));
-    const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
+    const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
     const already = new Set((assignments || []).filter((a:any)=>String(a.call_id)===callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
 
     const candidates:any[] = [];
@@ -81,7 +80,9 @@ Deno.serve(async (req) => {
     }
 
     const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
-    const label = chosen.user.unit_number ? `Unit ${chosen.user.unit_number}` : (chosen.user.full_name || chosen.user.email);
+    const supervisorLast = String(chosen.user.last_name || chosen.user.full_name || '').trim().split(/\s+/).pop();
+    const supervisorRank = String(chosen.user.rank || 'Supervisor').trim();
+    const label = [supervisorRank, supervisorLast].filter(Boolean).join(' ') || 'Supervisor';
     const eventKey = `supervisor-request:${callId}:${assignment.id}`;
     const prior = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key:eventKey }, '-created_date', 1).catch(()=>[]);
     if (!prior?.length) await base44.asServiceRole.entities.CallStatusLog.create({
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.CallNote.create({ call_id:callId, author_id:me.id, author_name:me.full_name || me.email || 'Requester', note:`[SUPERVISOR REQUEST] Closest available supervisor assigned: ${label} (${chosen.distance.toFixed(2)} mi).`, note_type:'update' }).catch(()=>null);
     await base44.asServiceRole.entities.Notification.create({ recipient_email:lower(chosen.user.email), type:'call_assignment', title:`Supervisor Assist · ${cad}`, message:`You were automatically assigned as the closest available supervisor to ${call.location || 'an active call'}.`, is_read:false, related_id:callId, priority:'high', requires_acknowledgment:true, source_name:'CAD Supervisor Request' }).catch(()=>null);
 
-    return Response.json({ success:true, assigned:true, supervisor:{ id:chosen.user.id, name:chosen.user.full_name || chosen.user.email, unit_number:chosen.user.unit_number || '', distance_miles:Number(chosen.distance.toFixed(2)) }, assignment_id:assignment.id });
+    return Response.json({ success:true, assigned:true, supervisor:{ id:chosen.user.id, name:label, unit_number:chosen.user.unit_number || '', distance_miles:Number(chosen.distance.toFixed(2)) }, assignment_id:assignment.id });
   } catch (error) {
     console.error('requestSupervisorAssist failed', error);
     return Response.json({ error:error?.message || 'Unable to request supervisor' }, { status:500 });
