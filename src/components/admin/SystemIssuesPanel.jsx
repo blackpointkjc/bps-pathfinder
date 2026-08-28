@@ -147,7 +147,7 @@ export default function SystemIssuesPanel({ currentUser }) {
             </div>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
               Checks every page module for broken code, captured runtime crashes, browser functions, voice and location support,
-              plus users, CAD, assignments, properties, alerts, scheduling, timekeeping, reports, training, communications, fleet, BOLO, and data services.
+              plus users, CAD, assignments, properties, alerts, scheduling, timekeeping, reports, training, communications, fleet, BOLO, and data services. The scan runs hourly while an administrator is signed in and catches up immediately after the next administrator sign-in.
             </p>
           </div>
           <button
@@ -178,7 +178,7 @@ export default function SystemIssuesPanel({ currentUser }) {
             </div>
             <div className="mt-2 text-[10px] text-slate-500">
               Last full scan: {formatESTTime(audit.scanned_at)} · {audit.duration_ms || 0} ms
-              {audit.client_summary && ` · ${audit.client_summary.page_modules_loaded}/${audit.client_summary.page_modules_checked} page modules loaded · ${audit.client_summary.runtime_errors_24h} runtime errors captured in 24h`}
+              {audit.client_summary && ` · ${audit.client_summary.page_modules_loaded}/${audit.client_summary.page_modules_checked} page modules loaded · ${audit.client_summary.runtime_errors_24h} runtime errors captured this app session`}
             </div>
           </div>
         )}
