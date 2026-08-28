@@ -419,21 +419,21 @@ function allowedCenters(user) {
   const roles = normalizedRoles(user);
   const fullAccess = hasFullAccess(user);
   const rank = String(user?.rank || '').toLowerCase();
+  const withTrainer = centers => roles.has('trainer') ? [...new Set([...centers, 'training'])] : centers;
 
-  // Portal-only identities remain isolated.
-  if (!fullAccess && (roles.has('client') || user?.user_type === 'client')) return ['client'];
-  if (!fullAccess && roles.has('student')) return ['student'];
+  // Client and Student are intentionally isolated portal identities.
+  if (roles.has('client') || user?.user_type === 'client') return ['client'];
+  if (roles.has('student')) return ['student'];
 
-  // Primary operational workspaces are intentionally exclusive. Supervisors get
-  // all officer field tools inside Supervisor Center, so they do not need a second
-  // Officer tab. Administrators likewise do not get Officer/Supervisor tabs.
-  if (user?.role === 'admin' || roles.has('full_access')) return ['cad', 'admin'];
-  if (user?.role === 'dispatch') return ['cad'];
-  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return ['cad', 'supervisor'];
-  if (roles.has('officer')) return ['cad', 'officer'];
-  if (roles.has('hr') || rank === 'human resources') return ['hr'];
-  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return ['support'];
-  if (roles.has('accounting')) return ['accounting'];
+  // Admin is the master soft-mirror workspace. CAD/Officer/Supervisor/HR/Client
+  // live inside Admin Center rather than appearing as duplicate top-level tabs.
+  if (user?.role === 'admin' || fullAccess) return withTrainer(['admin']);
+  if (user?.role === 'dispatch') return withTrainer(['cad']);
+  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withTrainer(['cad', 'supervisor']);
+  if (roles.has('officer')) return withTrainer(['cad', 'officer']);
+  if (roles.has('hr') || rank === 'human resources') return withTrainer(['hr']);
+  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withTrainer(['support']);
+  if (roles.has('accounting')) return withTrainer(['accounting']);
   if (roles.has('trainer')) return ['training'];
 
   return roles.has('cad_access') ? ['cad'] : ['officer'];
@@ -467,6 +467,26 @@ function canAccessPage(user, pageName) {
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;
+
+  const roles = normalizedRoles(user);
+  const rank = String(user?.rank || '').toLowerCase();
+  const clientOnly = roles.has('client') || user?.user_type === 'client';
+  const studentOnly = roles.has('student');
+  if (clientOnly) return centers.includes('client');
+  if (studentOnly) return centers.includes('student');
+
+  // Embedded-center access is broader than visible top-level workspace tabs.
+  // This keeps soft-mirrored buttons/navigation functional without exposing
+  // duplicate centers in the sidebar.
+  if (hasFullAccess(user)) {
+    const adminEmbedded = new Set(['admin','cad','officer','supervisor','hr','client']);
+    if (centers.some(center => adminEmbedded.has(center))) return true;
+  }
+  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) {
+    if (centers.some(center => ['cad','supervisor','officer'].includes(center))) return true;
+  }
+  if (roles.has('trainer') && centers.includes('training')) return true;
+
   const available = allowedCenters(user);
   return centers.some(center => available.includes(center));
 }
