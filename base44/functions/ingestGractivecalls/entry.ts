@@ -327,7 +327,7 @@ async function reconcilePropertyAlerts(base44: any) {
       const key = alertFingerprint(call, location.id);
       const callPropertyKey = `${String(location.id || '')}|${String(call.id || '')}`;
       if (existingCallPropertyKeys.has(callPropertyKey) || existingKeys.has(key)) continue;
-      await base44.asServiceRole.entities.PropertyAlert.create({
+      const propertyAlert = await base44.asServiceRole.entities.PropertyAlert.create({
         callId: call.id,
         propertyId: location.id,
         propertyName: location.site_name || 'Monitored Property',
@@ -341,6 +341,19 @@ async function reconcilePropertyAlerts(base44: any) {
         description: match.relation === 'inside'
           ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
           : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
+      });
+      // Phase 2A must run when the verified alert is created, not only when a
+      // dispatcher happens to open a page. This call remains shadow-only: the
+      // evaluator cannot create assignments or change unit status.
+      await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+        call_id: call.id,
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => {
+        console.error('Shadow automatic-dispatch evaluation failed', {
+          call_id: call.id,
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        });
       });
       existingKeys.add(key);
       existingCallPropertyKeys.add(callPropertyKey);
