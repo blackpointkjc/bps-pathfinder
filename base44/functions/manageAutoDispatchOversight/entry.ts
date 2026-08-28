@@ -61,6 +61,22 @@ Deno.serve(async (req) => {
         for (const assignment of assignments || []) {
           if (!['cleared', 'cancelled'].includes(lower(assignment.status))) {
             await base44.asServiceRole.entities.CallAssignment.update(assignment.id, { status: 'cleared', cleared_at: now, description: `${assignment.description || ''} False alarm resolved: ${reason}`.trim().slice(0, 1000) });
+            const officer = await base44.asServiceRole.entities.User.get(assignment.unit_id).catch(() => null);
+            if (officer && String(officer.current_call_id || '') === String(call.id)) {
+              await base44.asServiceRole.entities.User.update(officer.id, { status: 'Available', current_call_id: '', current_call_info: '', status_since: now, last_updated: now });
+              const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: officer.email }, '-last_update', 10).catch(() => []);
+              for (const session of sessions || []) {
+                if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: 'Available', current_call_info: '', last_update: now });
+              }
+              const units = await base44.asServiceRole.entities.Unit.filter({ user_id: officer.id }, '-last_update_at', 20).catch(() => []);
+              for (const unit of units || []) {
+                await base44.asServiceRole.entities.Unit.update(unit.id, {
+                  status: 'Available',
+                  assigned_call_ids: (unit.assigned_call_ids || []).filter((id: string) => String(id) !== String(call.id)),
+                  last_update_at: now,
+                });
+              }
+            }
           }
         }
         await base44.asServiceRole.entities.DispatchCall.update(call.id, {
