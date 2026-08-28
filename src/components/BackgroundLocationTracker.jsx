@@ -160,28 +160,33 @@ export default function BackgroundLocationTracker({ user }) {
         }));
         return;
       }
-      // Never present a Wi-Fi/IP estimate as an exact live officer position.
-      // Field navigation requires a device fix within 100 meters; poorer readings
-      // remain pending until Android/browser precise-location access produces GPS.
-      if (!Number.isFinite(accuracy) || accuracy > 100) {
+      // Keep every valid browser/device coordinate in the single live-location
+      // stream. Desktop browsers and indoor phones often report Wi-Fi-assisted
+      // accuracy above 100m; rejecting those fixes made officers vanish entirely.
+      // Accuracy remains attached to the fix so precision-sensitive features such
+      // as geofencing/automatic dispatch can apply their own tighter rules.
+      if (!Number.isFinite(accuracy)) {
         window.dispatchEvent(new CustomEvent('bps-location-quality', {
-          detail: { state: 'low_accuracy', accuracy: Number.isFinite(accuracy) ? accuracy : null },
+          detail: { state: 'low_accuracy', accuracy: null },
         }));
-        console.warn(`Location accuracy too low for live map: ${Number.isFinite(accuracy) ? accuracy.toFixed(0) : 'unknown'}m`);
-        return;
+      } else if (accuracy > 100) {
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: { state: 'low_accuracy', accuracy },
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: { state: 'live', accuracy },
+        }));
       }
 
       lastPositionRef.current = fix;
-      window.dispatchEvent(new CustomEvent('bps-location-quality', {
-        detail: { state: 'live', accuracy },
-      }));
 
       if (!shouldPublish) return;
 
       try {
-        // Limit server writes to one live GPS update every 5 seconds. Browser GPS can
-        // emit multiple fixes per second, which previously contributed to API throttling.
-        if (now - lastLivePushRef.current < 5000) return;
+        // One canonical push every 15 seconds is fast enough for the live map and
+        // avoids multiplying API traffic across every signed-in device.
+        if (now - lastLivePushRef.current < 15000) return;
         lastLivePushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
@@ -303,7 +308,7 @@ export default function BackgroundLocationTracker({ user }) {
     const heartbeat = async () => {
       const fix = lastPositionRef.current;
       try {
-        if (Date.now() - lastLivePushRef.current >= 10000) {
+        if (Date.now() - lastLivePushRef.current >= 15000) {
           await persistLiveState({
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
