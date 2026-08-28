@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
           unit_name: name,
           notes: `WELFARE CHECK REQUESTED for ${name} by ${displayName(me)}.`,
           event_key: eventKey,
-          event_type: 'welfare_overdue',
+          event_type: 'welfare_requested',
           announcement_text: `Welfare check requested for ${name}. CAD ${cad}.`,
           announcement_priority: 'high',
           cad_number: cad,
