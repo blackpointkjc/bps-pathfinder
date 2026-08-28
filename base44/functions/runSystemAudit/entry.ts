@@ -436,7 +436,7 @@ Deno.serve(async (req) => {
       count: expiredActiveBolos.length,
     });
 
-    const openOutages = (datasets.SystemOutage || []).filter(item => !item.resolved_at);
+    const openOutages = (datasets.SystemOutage || []).filter(item => !item.resolved_at && item.source !== 'full_app_scan');
     if (openOutages.length) add(findings, {
       key: 'system:reported',
       area: 'System Issues',
