@@ -44,6 +44,54 @@ Deno.serve(async (req) => {
       ? await base44.asServiceRole.entities.SystemScanRun.update(existingRuns[0].id, rowData)
       : await base44.asServiceRole.entities.SystemScanRun.create(rowData);
 
+    // Keep a durable issue lifecycle instead of showing findings only in the
+    // latest scan JSON. When a later scan no longer finds an issue, close the
+    // active row but preserve it under Resolved for audit and troubleshooting.
+    const priorScanIssues = await base44.asServiceRole.entities.SystemOutage.filter(
+      { source: 'full_app_scan' },
+      '-last_seen_at',
+      1000,
+    ).catch(() => []);
+    const activeByKey = new Map<string, any>();
+    for (const issue of priorScanIssues || []) {
+      if (!issue.issue_key || issue.resolved_at || activeByKey.has(String(issue.issue_key))) continue;
+      activeByKey.set(String(issue.issue_key), issue);
+    }
+    const currentIssueKeys = new Set<string>();
+    let issueRowsCreated = 0;
+    let issueRowsResolved = 0;
+    for (const finding of findings) {
+      const issueKey = 'scan:' + (text(finding.key) || text(finding.area)) + ':' + text(finding.title);
+      currentIssueKeys.add(issueKey);
+      const existing = activeByKey.get(issueKey);
+      const issueData = {
+        issue_key: issueKey,
+        source: 'full_app_scan',
+        component: text(finding.area) || 'System Scan',
+        severity: ['outage', 'degraded', 'maintenance'].includes(text(finding.severity)) ? text(finding.severity) : 'degraded',
+        title: text(finding.title) || 'System scan issue',
+        description: text(finding.description),
+        reported_by: 'Pathfinder System Monitor',
+        last_seen_at: scannedAt,
+        occurrence_count: Math.max(1, Number(existing?.occurrence_count || 0) + 1),
+      };
+      if (existing) {
+        await base44.asServiceRole.entities.SystemOutage.update(existing.id, issueData);
+      } else {
+        await base44.asServiceRole.entities.SystemOutage.create(issueData);
+        issueRowsCreated += 1;
+      }
+    }
+    for (const [issueKey, issue] of activeByKey.entries()) {
+      if (currentIssueKeys.has(issueKey)) continue;
+      await base44.asServiceRole.entities.SystemOutage.update(issue.id, {
+        resolved_at: scannedAt,
+        resolved_by: 'Pathfinder System Monitor',
+        last_seen_at: issue.last_seen_at || issue.updated_date || issue.created_date || scannedAt,
+      });
+      issueRowsResolved += 1;
+    }
+
     let notificationsCreated = 0;
     if (findings.length) {
       const admins = (await base44.asServiceRole.entities.User.list('-updated_date', 2000))
@@ -89,7 +137,13 @@ Deno.serve(async (req) => {
       description: 'Hourly full-application scan result stored and administrator banner alerts deduplicated by hour.',
     }).catch(() => null);
 
-    return Response.json({ success: true, scan_run: scanRun, notifications_created: notificationsCreated });
+    return Response.json({
+      success: true,
+      scan_run: scanRun,
+      notifications_created: notificationsCreated,
+      issue_rows_created: issueRowsCreated,
+      issue_rows_resolved: issueRowsResolved,
+    });
   } catch (error) {
     console.error('publishSystemScan failed', error);
     return Response.json({ error: error?.message || 'Unable to publish system scan' }, { status: 500 });
