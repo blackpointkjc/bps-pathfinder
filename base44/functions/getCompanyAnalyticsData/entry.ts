@@ -13,6 +13,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Company analytics access required' }, { status: me ? 403 : 401 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    if (body.health_check === true) {
+      // The hourly system scan only needs to prove that the analytics backend and
+      // its core data services are reachable. Loading all 23 analytics datasets
+      // for a health check caused connection-pool/rate-limit cascades.
+      const users = await base44.asServiceRole.entities.User.list('-updated_date', 1);
+      const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1);
+      return Response.json({
+        success: true,
+        health_check: true,
+        users: Array.isArray(users) ? users : [],
+        timeEntries: Array.isArray(timeEntries) ? timeEntries : [],
+        service_errors: {},
+      });
+    }
+
     const errors: Record<string, string> = {};
     // The analytics page reads many independent datasets. Limit concurrent
     // entity reads so one large archival collection cannot exhaust the shared
@@ -20,7 +36,7 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      if (activeReads >= 6) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -40,7 +56,7 @@ Deno.serve(async (req) => {
         // Large archival collections can briefly exceed the database connection
         // window. Retry once with a smaller bounded operational slice rather
         // than failing the entire company analytics dashboard.
-        if (/timed out|timeout|server selection/i.test(String(error?.message || error)) && limit > 250) {
+        if (/timed out|timeout|server selection|rate limit|too many requests|\b429\b/i.test(String(error?.message || error)) && limit > 250) {
           try {
             return await entity.list(sort, 250);
           } catch (retryError) {
