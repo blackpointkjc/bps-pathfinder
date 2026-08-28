@@ -19,7 +19,7 @@ export default function AdminPortal() {
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null);
     const [showEditDialog, setShowEditDialog] = useState(false);
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [activeTab, setActiveTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'dashboard');
     const [dashboardData, setDashboardData] = useState({
         callVolume: [],
         criticalIncidents: [],
@@ -201,7 +201,13 @@ export default function AdminPortal() {
                     { key: 'maintenance', label: 'MAINTENANCE', icon: Wrench },
                     { key: 'sysissues', label: 'SYSTEM ISSUES', icon: XCircle },
                 ].map(({ key, label, icon: Icon }) => (
-                    <button key={key} onClick={() => setActiveTab(key)}
+                    <button key={key} onClick={() => {
+                        setActiveTab(key);
+                        const url = new URL(window.location.href);
+                        if (key === 'dashboard') url.searchParams.delete('tab');
+                        else url.searchParams.set('tab', key);
+                        window.history.replaceState({}, '', url);
+                    }}
                         className={`flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-mono font-bold border-r border-slate-800 border-b-2 transition-all ${
                             activeTab === key
                                 ? 'border-b-gold text-gold bg-slate-800'
