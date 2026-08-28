@@ -68,17 +68,33 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Location id and update data are required' }, { status: 400 });
       }
       const before = await base44.asServiceRole.entities.Location.get(body.id);
-      await base44.asServiceRole.entities.Location.update(body.id, body.data);
+      const updateData = { ...body.data };
+      const activatingLive = updateData.auto_dispatch_enabled === true
+        && updateData.auto_dispatch_mode === 'live'
+        && (before?.auto_dispatch_mode !== 'live' || before?.auto_dispatch_enabled !== true);
+      if (activatingLive) {
+        if (user.role !== 'admin') {
+          return Response.json({ error: 'Administrator approval is required to activate live automatic dispatch' }, { status: 403 });
+        }
+        updateData.auto_dispatch_live_approved_at = new Date().toISOString();
+        updateData.auto_dispatch_live_approved_by = user.id;
+      }
+      if (updateData.auto_dispatch_mode && updateData.auto_dispatch_mode !== 'live') {
+        updateData.auto_dispatch_live_approved_at = null;
+        updateData.auto_dispatch_live_approved_by = '';
+      }
+      await base44.asServiceRole.entities.Location.update(body.id, updateData);
       const location = await base44.asServiceRole.entities.Location.get(body.id);
       const protectedFields = [
-        'auto_dispatch_enabled', 'auto_dispatch_mode', 'auto_dispatch_response_radius_miles',
+        'auto_dispatch_enabled', 'auto_dispatch_mode', 'auto_dispatch_live_approved_at',
+        'auto_dispatch_live_approved_by', 'auto_dispatch_response_radius_miles',
         'auto_dispatch_required_units', 'auto_dispatch_backup_required',
         'auto_dispatch_required_qualifications', 'auto_dispatch_required_equipment',
         'auto_dispatch_required_ranks', 'auto_dispatch_acknowledgement_seconds',
         'auto_dispatch_escalation_seconds', 'auto_dispatch_recheck_seconds',
         'property_safety_warnings', 'property_access_instructions',
       ];
-      const changedFields = Object.keys(body.data).filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(location?.[key]));
+      const changedFields = Object.keys(updateData).filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(location?.[key]));
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'Location',
         entity_id: body.id,
@@ -90,7 +106,9 @@ Deno.serve(async (req) => {
         field_changed: changedFields.join(',').slice(0, 500),
         timestamp: new Date().toISOString(),
         description: changedFields.some(key => protectedFields.includes(key))
-          ? 'Property automatic-dispatch configuration updated. Shadow mode remains non-assigning.'
+          ? activatingLive
+            ? 'Live property automatic dispatch explicitly approved and activated by an administrator.'
+            : 'Property automatic-dispatch configuration updated.'
           : 'Location configuration updated.',
       }).catch(() => null);
       return Response.json({ success: true, location });
