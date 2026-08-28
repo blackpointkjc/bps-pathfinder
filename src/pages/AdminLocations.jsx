@@ -1176,7 +1176,7 @@ export default function AdminLocations({ embedded = false }) {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <Label className="font-semibold text-cyan-100">Automatic Property-Alert Dispatch</Label>
-                    <p className="mt-1 text-xs text-cyan-200/70">Phase 2A runs in recommendation-only shadow mode. It records which units qualify but never assigns a call or changes a unit status.</p>
+                    <p className="mt-1 text-xs text-cyan-200/70">Shadow mode previews selection. Live mode assigns only verified property alerts to eligible clocked-in units and records the decision.</p>
                   </div>
                   <Checkbox
                     checked={formData.auto_dispatch_enabled === true}
@@ -1189,15 +1189,16 @@ export default function AdminLocations({ embedded = false }) {
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Operating Mode</Label>
-                        <Select value={formData.auto_dispatch_mode === 'live' ? 'shadow' : formData.auto_dispatch_mode} onValueChange={(value) => setFormData(prev => ({ ...prev, auto_dispatch_mode: value }))}>
+                        <Select value={formData.auto_dispatch_mode} onValueChange={(value) => setFormData(prev => ({ ...prev, auto_dispatch_mode: value }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="shadow">Shadow Recommendation</SelectItem>
                             <SelectItem value="manual_review">Manual Review Required</SelectItem>
+                            <SelectItem value="live">Live Automatic Assignment</SelectItem>
                             <SelectItem value="disabled">Disabled</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-cyan-200/60">Live assignment remains locked until later end-to-end approval.</p>
+                        <p className={`text-[11px] ${formData.auto_dispatch_mode === 'live' ? 'font-bold text-amber-300' : 'text-cyan-200/60'}`}>{formData.auto_dispatch_mode === 'live' ? 'LIVE: new verified alerts may assign and notify qualified units automatically.' : 'Shadow and manual-review modes never change unit assignments.'}</p>
                       </div>
                       <div className="space-y-2">
                         <Label>Response Radius (miles)</Label>
