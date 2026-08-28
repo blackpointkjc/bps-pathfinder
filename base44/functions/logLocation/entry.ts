@@ -73,7 +73,34 @@ Deno.serve(async (req) => {
       ));
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps=${hasGps}`);
+    // Persist movement history in the authenticated backend so browser
+    // background throttling and client-side RLS cannot silently stop the trail.
+    // One row per officer per minute is sufficient for the map and prevents
+    // multiple tabs/devices from producing a duplicate history stream.
+    let historyRecorded = false;
+    if (hasGps && finiteNumber(body.accuracy, 9999) <= 100) {
+      const latestHistory = await base44.asServiceRole.entities.LocationHistory.filter(
+        { officer_email: officerEmail },
+        '-timestamp',
+        1,
+      ).catch(() => []);
+      const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
+      if (!Number.isFinite(latestAt) || Date.now() - latestAt >= 55000) {
+        await base44.asServiceRole.entities.LocationHistory.create({
+          time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
+          officer_email: officerEmail,
+          officer_name: String(liveData.officer_name),
+          location: String(liveData.current_location),
+          latitude,
+          longitude,
+          timestamp: now,
+          accuracy: finiteNumber(body.accuracy),
+        });
+        historyRecorded = true;
+      }
+    }
+
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps=${hasGps} history=${historyRecorded}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
@@ -81,6 +108,7 @@ Deno.serve(async (req) => {
       longitude: hasGps ? longitude : null,
       gps_updated_at: hasGps ? now : activeOfficer.gps_updated_at || null,
       last_updated: now,
+      history_recorded: historyRecorded,
     });
   } catch (error) {
     console.error('Error logging location:', error);
