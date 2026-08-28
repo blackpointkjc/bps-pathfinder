@@ -295,7 +295,7 @@ export default function AdminLocationTracker() {
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
-      const response = await base44.functions.invoke('getOnDutyUnits', {});
+      const response = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
       const freshPayload = response?.data || response || {};
       if (freshPayload.error) throw new Error(freshPayload.error);
       const freshLocations = freshPayload.units || [];
