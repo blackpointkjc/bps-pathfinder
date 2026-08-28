@@ -10,9 +10,11 @@ export default function AutoDispatchShadowFeed() {
 
   const load = async () => {
     try {
-      const rows = await base44.entities.AutoDispatchEvaluation.list('-evaluated_at', 50);
+      const response = await base44.functions.invoke('getAutoDispatchEvaluations', {});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
       const latestByEvent = new Map();
-      for (const row of rows || []) {
+      for (const row of payload.evaluations || []) {
         if (!latestByEvent.has(row.event_key)) latestByEvent.set(row.event_key, row);
       }
       setEvaluations([...latestByEvent.values()].slice(0, 4));
@@ -25,7 +27,7 @@ export default function AutoDispatchShadowFeed() {
   useEffect(() => {
     load();
     const unsubscribe = base44.entities.AutoDispatchEvaluation.subscribe(() => load());
-    const interval = setInterval(load, 60000);
+    const interval = setInterval(load, 15000);
     return () => {
       unsubscribe?.();
       clearInterval(interval);
