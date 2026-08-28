@@ -163,13 +163,29 @@ Deno.serve(async (req) => {
 
       const authorizationValues = [
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
+        ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
+        ...(Array.isArray(officer.assigned_sites) ? officer.assigned_sites : []),
         officer.division, officer.subdivision, timeEntry?.location,
       ].map(lower).filter(Boolean);
       const propertyValues = [property.id, property.site_name, property.address, property.division, property.subdivision].map(lower).filter(Boolean);
-      if (!authorizationValues.some(value => propertyValues.includes(value))) reasons.push('No matching property, division, or response-area authorization');
+      const authorizedForProperty = authorizationValues.some(authorization =>
+        propertyValues.some(propertyValue => authorization === propertyValue
+          || (propertyValue.length >= 4 && (authorization.includes(propertyValue) || propertyValue.includes(authorization))))
+      );
+      if (!authorizedForProperty) reasons.push('No matching property, division, or response-area authorization');
 
-      const officerQualifications = [...list(officer.certifications), ...list(officer.qualifications), ...list(officer.licenses)];
-      const officerEquipment = [...list(officer.equipment), ...list(officer.assigned_equipment), ...list(officer.vehicle_type)];
+      const officerQualifications = [
+        ...list(officer.officer_certifications),
+        ...list(officer.certifications),
+        ...list(officer.qualifications),
+        ...list(officer.licenses),
+      ];
+      const officerEquipment = [
+        ...list(officer.equipment),
+        ...list(officer.assigned_equipment),
+        ...list(officer.vehicle_type),
+        ...list(officer.assigned_vehicle),
+      ];
       const missingQualifications = requiredQualifications.filter((item: string) => !officerQualifications.includes(item));
       const missingEquipment = requiredEquipment.filter((item: string) => !officerEquipment.includes(item));
       if (missingQualifications.length) reasons.push(`Missing qualification: ${missingQualifications.join(', ')}`);
