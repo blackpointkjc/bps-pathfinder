@@ -232,14 +232,19 @@ Deno.serve(async (req) => {
     });
 
     const autoDispatchLocations = locations.filter(item => item.auto_dispatch_enabled === true);
-    const unsafeLiveLocations = autoDispatchLocations.filter(item => item.auto_dispatch_mode === 'live');
-    if (unsafeLiveLocations.length) add(findings, {
-      key: 'auto-dispatch:live-locked',
+    // Phase 2B permits live automatic dispatch only after an administrator has
+    // explicitly approved it. Live mode itself is no longer an outage.
+    const unapprovedLiveLocations = autoDispatchLocations.filter(item =>
+      item.auto_dispatch_mode === 'live'
+      && (!item.auto_dispatch_live_approved_at || !item.auto_dispatch_live_approved_by)
+    );
+    if (unapprovedLiveLocations.length) add(findings, {
+      key: 'auto-dispatch:live-unapproved',
       area: 'Automatic Dispatch',
       severity: 'outage',
-      title: 'Property configuration requests live automatic dispatch before approval',
-      description: `${unsafeLiveLocations.length} property record(s) contain live mode. Phase 2A enforces shadow behavior and live activation remains locked.`,
-      count: unsafeLiveLocations.length,
+      title: 'Live automatic dispatch is missing approval metadata',
+      description: `${unapprovedLiveLocations.length} live property record(s) do not identify when and by whom live assignment was approved.`,
+      count: unapprovedLiveLocations.length,
     });
     const invalidAutoDispatchLocations = autoDispatchLocations.filter(item =>
       !Number.isFinite(Number(item.latitude)) || !Number.isFinite(Number(item.longitude))
