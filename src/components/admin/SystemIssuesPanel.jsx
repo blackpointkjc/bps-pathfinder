@@ -38,7 +38,7 @@ export default function SystemIssuesPanel({ currentUser }) {
     setLoading(true);
     try {
       const [all, users, scanRuns] = await Promise.all([
-        base44.entities.SystemOutage.list('-created_date', 100).catch(() => []),
+        base44.entities.SystemOutage.list('-created_date', 500).catch(() => []),
         base44.entities.User.list().catch(() => []),
         base44.entities.SystemScanRun.list('-scanned_at', 1).catch(() => []),
       ]);
