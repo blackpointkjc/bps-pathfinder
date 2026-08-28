@@ -353,7 +353,7 @@ export default function BackgroundLocationTracker({ user }) {
         };
         permissionStatus.onchange = reportPermission;
         reportPermission();
-      } catch (_) {
+      } catch {
         // Safari and older embedded browsers may not expose geolocation through
         // the Permissions API; watchPosition/getCurrentPosition remain supported.
       }
