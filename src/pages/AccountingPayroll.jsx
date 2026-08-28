@@ -1111,6 +1111,12 @@ export default function AccountingPayroll() {
                             <div className="text-right">
                               <p className="text-sm text-slate-600">Total hours: {(entry.hours_worked || 0).toFixed(2)}</p>
                               <p className="text-lg font-bold text-slate-900">Gross pay: ${(entry.gross_pay || 0).toFixed(2)}</p>
+                              {Number(entry.tax_free_reimbursements || 0) > 0 && (
+                                <>
+                                  <p className="text-sm font-semibold text-emerald-700">Tax-free reimbursements: ${Number(entry.tax_free_reimbursements || 0).toFixed(2)}</p>
+                                  <p className="text-sm font-bold text-slate-900">Total payment due: ${Number(entry.total_payment_due || (Number(entry.gross_pay || 0) + Number(entry.tax_free_reimbursements || 0))).toFixed(2)}</p>
+                                </>
+                              )}
                             </div>
                             <div className="flex gap-2">
                               <Button size="sm" variant="outline" onClick={() => generateGrossPayrollReport([entry])}>
