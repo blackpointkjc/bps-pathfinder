@@ -55,19 +55,22 @@ Deno.serve(async (req) => {
 
     // ActiveOfficer is the signed-in live GPS source. TimeEntry is optional context;
     // it must never gate whether a logged-in officer appears on the live map.
-    const freshCutoff = Date.now() - 2 * 60 * 1000;
+    // One freshness window across Pathfinder. A signed-in unit remains available
+    // to live maps for 15 minutes after its most recent heartbeat/GPS update.
+    const freshCutoff = Date.now() - 15 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
       if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
       const gpsTs = new Date(active.gps_updated_at || 0).getTime();
       const accuracy = Number(active.accuracy);
+      // Do not discard valid coordinates just because a desktop/indoor browser
+      // reports coarse accuracy. Keep the accuracy value so dispatch/geofence
+      // features can decide whether a particular action needs a tighter fix.
       const hasReliableGps = Number.isFinite(gpsTs)
         && gpsTs >= freshCutoff
         && Number.isFinite(Number(active.latitude))
-        && Number.isFinite(Number(active.longitude))
-        && Number.isFinite(accuracy)
-        && accuracy <= 100;
+        && Number.isFinite(Number(active.longitude));
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
