@@ -47,6 +47,13 @@ export function isVoiceEnabled() {
 
 export function setVoiceEnabled(enabled) {
   try { localStorage.setItem('bps-voice-enabled', enabled ? 'true' : 'false'); } catch {}
+  if (!enabled) {
+    clearAutomaticRetry(true);
+    pendingSpeech = null;
+    lastBlockedSpeech = null;
+    activeSpeech = null;
+    speechQueue.length = 0;
+  }
 }
 
 export function stopVoice() {
@@ -147,7 +154,7 @@ function clearAutomaticRetry(resetAttempts = true) {
 }
 
 function scheduleAutomaticRetry(item) {
-  if (!item || typeof window === 'undefined') return;
+  if (!item || typeof window === 'undefined' || !isVoiceEnabled()) return;
   if (automaticRetrySequence !== item.sequence) {
     clearAutomaticRetry(true);
     automaticRetrySequence = item.sequence;
@@ -241,7 +248,7 @@ function speakQueued(clean, options = {}, resolve = null) {
 
 function retryPendingSpeech() {
   const blocked = pendingSpeech || lastBlockedSpeech;
-  if (!blocked || !isVoiceSupported()) return false;
+  if (!blocked || !isVoiceSupported() || !isVoiceEnabled()) return false;
   const retryItem = { ...blocked, resolve: null };
   pendingSpeech = null;
   lastBlockedSpeech = null;
