@@ -112,11 +112,8 @@ export default function SystemIssuesPanel({ currentUser }) {
       const publishResponse = await base44.functions.invoke('publishSystemScan', { audit: combined });
       const published = publishResponse?.data || publishResponse || {};
       if (published.error) throw new Error(published.error);
-      if (combined.summary.issues_found) {
-        toast.warning(`Full app scan found ${combined.summary.issues_found} issue(s)`);
-      } else {
-        toast.success('Full app functional and code scan completed — no issues found');
-      }
+      // Run silently; System Issues itself is the result view. Do not interrupt
+      // administrators with a toast just because a diagnostic scan completed.
       await load();
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.message || 'Full app scan failed');
