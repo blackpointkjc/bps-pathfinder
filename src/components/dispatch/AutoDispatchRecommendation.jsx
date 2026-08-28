@@ -9,6 +9,8 @@ export default function AutoDispatchRecommendation({ alert }) {
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
   const evaluatedRef = useRef('');
 
   const evaluate = useCallback(async (manual = false) => {
@@ -37,6 +39,25 @@ export default function AutoDispatchRecommendation({ alert }) {
   useEffect(() => {
     evaluate(false);
   }, [evaluate]);
+
+  const runSafetyTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const response = await base44.functions.invoke('testAutoDispatchShadow', {
+        call_id: alert.callId,
+        property_alert_id: alert.id,
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      setTestResult(payload);
+      if (payload.evaluation) setResult(payload.evaluation);
+    } catch (err) {
+      setTestResult({ passed: false, error: err?.response?.data?.error || err?.message || 'Safety test failed' });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   if (running && !result) {
     return <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-950/30 px-3 py-2 text-[11px] text-blue-200"><Loader2 className="h-3.5 w-3.5 animate-spin" />Evaluating eligible units in shadow mode…</div>;
@@ -113,6 +134,20 @@ export default function AutoDispatchRecommendation({ alert }) {
           ))}
         </div>
       )}
+
+      <div className="mt-3 border-t border-slate-700 pt-3">
+        <Button size="sm" variant="outline" disabled={testing || running} onClick={runSafetyTest} className="h-7 border-cyan-500/40 text-[10px] text-cyan-100">
+          {testing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldAlert className="mr-1 h-3 w-3" />}
+          RUN SHADOW SAFETY TEST
+        </Button>
+        {testResult && (
+          <div className={`mt-2 rounded-md border px-3 py-2 text-[10px] ${testResult.passed ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200' : 'border-red-500/40 bg-red-950/20 text-red-200'}`}>
+            <div className="font-black">{testResult.passed ? 'PASSED — NO ASSIGNMENT OR UNIT STATUS WAS CHANGED' : 'FAILED — LIVE MODE REMAINS LOCKED'}</div>
+            {testResult.error && <div className="mt-1">{testResult.error}</div>}
+            {testResult.checks && <div className="mt-1">{Object.entries(testResult.checks).map(([name, passed]) => `${passed ? '✓' : '✕'} ${name.replaceAll('_', ' ')}`).join(' · ')}</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
