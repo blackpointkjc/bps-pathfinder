@@ -258,39 +258,23 @@ function sameStreetBlock(callLocation: unknown, propertyAddress: unknown) {
 
 function propertyMatch(call: any, location: any) {
   if (location?.active === false || location?.property_monitoring_enabled !== true) return null;
-  // A CAD point can be the block centroid rather than the property parcel. A
-  // confirmed same-street, same-hundred-block address is therefore authoritative.
-  if (sameStreetBlock(call?.location, location?.address)) return { relation: 'inside', distanceMeters: 0 };
+
+  // Property calls are STRICTLY controlled by the custom Property Monitoring
+  // boundary saved on the Location page. Address text, street blocks, nearby
+  // distance, site-center radius, and the officer clock-in geofence must never
+  // substitute for this boundary.
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
 
-  const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
-  if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
-    if (pointInPolygon(lat, lng, polygon)) return { relation: 'inside', distanceMeters: 0 };
-    // A CAD block centroid can fall just outside a tight polygon even when the
-    // call is physically at the property — e.g. adjacent streets in the same
-    // housing complex (Newbourne St vs Purcell St at Creighton). If the call is
-    // within the configured monitoring radius of the property center, generate a
-    // "nearby" alert so dispatchers are notified instead of silently dropping it.
-    const centerLat = Number(location.latitude);
-    const centerLng = Number(location.longitude);
-    if (Number.isFinite(centerLat) && Number.isFinite(centerLng)) {
-      const radius = Number(location.property_monitoring_radius_meters || 500);
-      const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
-      if (centerDistance <= radius) return { relation: 'nearby', distanceMeters: centerDistance };
-    }
-    return null;
-  }
+  const polygon = Array.isArray(location.property_monitoring_polygon)
+    ? location.property_monitoring_polygon
+    : [];
+  if (polygon.length < 3) return null;
 
-  const centerLat = Number(location.latitude);
-  const centerLng = Number(location.longitude);
-  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return null;
-  const radius = Number(location.property_monitoring_radius_meters || 500);
-  const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
-  if (centerDistance <= radius) return { relation: 'inside', distanceMeters: centerDistance };
-  // Radius-based properties follow the same strict inside-boundary rule.
-  return null;
+  return pointInPolygon(lat, lng, polygon)
+    ? { relation: 'inside', distanceMeters: 0 }
+    : null;
 }
 
 async function reconcilePropertyAlerts(base44: any) {
