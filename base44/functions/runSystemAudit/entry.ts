@@ -371,18 +371,8 @@ Deno.serve(async (req) => {
       description: `${missingLiveEvaluations.length} active live-mode property alert(s) have no automatic-dispatch decision.`,
       count: missingLiveEvaluations.length,
     });
-    const activeStaffingShortfalls = activeLivePropertyAlerts.filter(alert => {
-      const evaluation = latestEvaluationByAlert.get(String(alert.id));
-      return evaluation && ['no_eligible_unit', 'partially_assigned'].includes(String(evaluation.decision));
-    });
-    if (activeStaffingShortfalls.length) add(findings, {
-      key: 'auto-dispatch:active-staffing-shortfall',
-      area: 'Automatic Dispatch',
-      severity: 'outage',
-      title: 'Active property alerts require qualified units',
-      description: `${activeStaffingShortfalls.length} live property alert(s) have no eligible unit or still require backup. The alerts remain active for dispatcher action and automatic recheck.`,
-      count: activeStaffingShortfalls.length,
-    });
+    // A live property call waiting for an eligible unit is an operational staffing
+    // condition, not a software outage. Do not add it to System Issues.
 
     const schedules = datasets.Schedule || [];
     const badSchedules = schedules.filter(item => !value(item, 'officer_email', 'user_email', 'user_id') || !value(item, 'location', 'site_name', 'location_id') || !value(item, 'start_time', 'shift_start', 'date'));
@@ -410,13 +400,9 @@ Deno.serve(async (req) => {
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
         && hasValidCoordinates(item.latitude, item.longitude);
     });
-    if (liveLocations.length && !freshLiveLocations.length) add(findings, {
-      key: 'location:no-fresh-live-units',
-      area: 'Live Location Tracking',
-      severity: 'outage',
-      title: 'No fresh officer locations are reaching the live tracker',
-      description: 'ActiveOfficer records exist, but none contain valid coordinates updated within the last 15 minutes. Coordinate accuracy is reported separately and does not make a valid officer position disappear.',
-    });
+    // No currently fresh officer GPS is not itself a system outage. Officers may
+    // simply be signed out, have location permission disabled, or be between fixes.
+    // The live-location functional probe separately verifies that the service works.
     if (freshLiveLocations.length && !recentMovement.length) add(findings, {
       key: 'location:history-not-recording',
       area: 'Movement History',
