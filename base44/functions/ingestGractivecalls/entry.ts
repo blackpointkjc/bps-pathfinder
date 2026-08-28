@@ -268,8 +268,18 @@ function propertyMatch(call: any, location: any) {
   const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
   if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
     if (pointInPolygon(lat, lng, polygon)) return { relation: 'inside', distanceMeters: 0 };
-    // Property monitoring is boundary-only: calls outside the configured polygon
-    // must never produce an alert, even when they are physically close to its edge.
+    // A CAD block centroid can fall just outside a tight polygon even when the
+    // call is physically at the property — e.g. adjacent streets in the same
+    // housing complex (Newbourne St vs Purcell St at Creighton). If the call is
+    // within the configured monitoring radius of the property center, generate a
+    // "nearby" alert so dispatchers are notified instead of silently dropping it.
+    const centerLat = Number(location.latitude);
+    const centerLng = Number(location.longitude);
+    if (Number.isFinite(centerLat) && Number.isFinite(centerLng)) {
+      const radius = Number(location.property_monitoring_radius_meters || 500);
+      const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
+      if (centerDistance <= radius) return { relation: 'nearby', distanceMeters: centerDistance };
+    }
     return null;
   }
 

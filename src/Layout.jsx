@@ -1027,10 +1027,9 @@ export default function Layout({ children, currentPageName }) {
           const eventKey = `${item.propertyId}|${stableCallId}`;
           const eventTime = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
           const location = locationById.get(String(item.propertyId));
-          const isInsideBoundary = String(item.description || '').toLowerCase().includes('inside');
           const inactiveProperty = !location || location.active === false || location.property_monitoring_enabled !== true;
           const inactiveCall = !linkedCall || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
-          if (!isInsideBoundary || inactiveProperty || inactiveCall || seenPairs.has(eventKey)) return false;
+          if (inactiveProperty || inactiveCall || seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
           return Number.isFinite(eventTime)
             && eventTime >= recentCutoff
