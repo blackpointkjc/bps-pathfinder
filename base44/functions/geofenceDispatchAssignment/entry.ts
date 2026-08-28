@@ -270,7 +270,11 @@ Deno.serve(async (req) => {
         nextAssignedIds.add(unitId);
         const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20).catch(() => []);
         const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
-        if (!hasActiveAssignment) {
+        // Automatic dispatch must never resurrect an officer who already cleared this call.
+        // A dispatcher can explicitly reassign later through the manual assignment workflow,
+        // but realtime/refresh reevaluation cannot recreate the cleared assignment.
+        const wasPreviouslyCleared = (existingAssignments || []).some((item: any) => lower(item.status) === 'cleared');
+        if (!hasActiveAssignment && !wasPreviouslyCleared) {
           await base44.asServiceRole.entities.CallAssignment.create({
             call_id: callId,
             unit_id: unitId,
