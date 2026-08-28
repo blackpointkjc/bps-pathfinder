@@ -45,6 +45,33 @@
       "description": "Whether alert has been acknowledged",
       "default": false
     },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "assigned",
+        "acknowledged",
+        "resolved",
+        "false_alarm",
+        "test"
+      ],
+      "default": "active"
+    },
+    "is_test": {
+      "type": "boolean",
+      "default": false
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_by": {
+      "type": "string"
+    },
+    "resolution_reason": {
+      "type": "string",
+      "maxLength": 1000
+    },
     "description": {
       "type": "string",
       "maxLength": 1000,
