@@ -189,8 +189,6 @@ export default function AdminLocationTracker() {
   });
 
   const activeOfficerLocations = activeOfficerPayload.units || [];
-  const clockedInWithoutSession = activeOfficerPayload.clocked_in_without_session || [];
-
   useEffect(() => {
     if (!hasAccess) return undefined;
     const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => {
