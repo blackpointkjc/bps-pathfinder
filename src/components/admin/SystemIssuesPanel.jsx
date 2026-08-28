@@ -84,7 +84,15 @@ export default function SystemIssuesPanel({ currentUser }) {
       ]);
       const serverAudit = serverResponse?.data || serverResponse || {};
       if (serverAudit.error) throw new Error(serverAudit.error);
-      const combinedFindings = [...(clientAudit.findings || []), ...(serverAudit.findings || [])];
+      // Client and server scans intentionally overlap in a few areas. Collapse
+      // duplicates so one underlying condition is shown once instead of creating
+      // repeated Company Analytics/Payroll/Location outage cards.
+      const findingMap = new Map();
+      for (const item of [...(clientAudit.findings || []), ...(serverAudit.findings || [])]) {
+        const key = item.key || `${item.area}|${item.title}`;
+        if (!findingMap.has(key)) findingMap.set(key, item);
+      }
+      const combinedFindings = [...findingMap.values()];
       const combined = {
         ...serverAudit,
         findings: combinedFindings,
