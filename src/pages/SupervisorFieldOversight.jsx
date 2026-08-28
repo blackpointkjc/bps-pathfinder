@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, MapPin, RefreshCw, ShieldCheck, Signal, Users } from 'lucide-react';
@@ -75,6 +75,25 @@ export default function SupervisorFieldOversight() {
   const pendingAck = useMemo(() => board.filter(row => lower(row.assignment_status) === 'pending'), [board]);
   const missingGps = useMemo(() => liveUnits.filter(row => !row.gps_updated_at || !validPosition(row)), [liveUnits]);
   const uniqueOfficers = useMemo(() => new Set(board.map(row => row.unit_id)).size, [board]);
+
+  useEffect(() => {
+    let timer;
+    const scheduleRefresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => refetchWelfare(), 600);
+    };
+    const unsubscribers = [];
+    for (const entity of ['ActiveOfficer','CallAssignment','OfficerWelfareCheck','CallStatusLog','DispatchCall']) {
+      try {
+        const unsub = base44.entities[entity].subscribe(scheduleRefresh);
+        if (typeof unsub === 'function') unsubscribers.push(unsub);
+      } catch {}
+    }
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribers.forEach(fn => fn());
+    };
+  }, [refetchWelfare]);
 
   const refreshAll = async () => refetchWelfare();
   const openCad = callOrRow => {
