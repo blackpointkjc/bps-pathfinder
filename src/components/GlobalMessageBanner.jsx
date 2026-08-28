@@ -469,9 +469,17 @@ export default function GlobalMessageBanner({ user }) {
           voiceProfile: settings.voice_profile,
         });
         await finalizeAnnouncementEvent(claim, record.event_key, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
-        // BOLOAlert realtime owns the BOLO visual card; this durable event owns
-        // its one-time speech receipt. Avoid showing two visual banners.
-        if (record.event_type === 'bolo_published') return;
+        // These events already have a dedicated targeted visual owner (Notification,
+        // PropertyAlert, or BOLO). CallStatusLog remains the single durable audio
+        // source, but must not create a second visual popup for the same event.
+        const externallyRenderedEvents = new Set([
+          'bolo_published',
+          'welfare_requested',
+          'unit_dispatched',
+          'additional_unit',
+          'property_alert',
+        ]);
+        if (externallyRenderedEvents.has(record.event_type)) return;
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
