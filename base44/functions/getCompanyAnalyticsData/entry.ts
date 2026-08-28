@@ -14,12 +14,26 @@ Deno.serve(async (req) => {
     }
 
     const errors: Record<string, string> = {};
+    // The analytics page reads many independent datasets. Limit concurrent
+    // entity reads so one large archival collection cannot exhaust the shared
+    // database connection pool and make an otherwise healthy scan time out.
+    let activeReads = 0;
+    const readWaiters: Array<() => void> = [];
+    const acquireReadSlot = async () => {
+      if (activeReads >= 6) await new Promise<void>(resolve => readWaiters.push(resolve));
+      activeReads += 1;
+    };
+    const releaseReadSlot = () => {
+      activeReads = Math.max(0, activeReads - 1);
+      readWaiters.shift()?.();
+    };
     const list = async (entityName: string, sort?: string, limit = 1000) => {
       const entity = (base44.asServiceRole.entities as any)[entityName];
       if (!entity?.list) {
         errors[entityName] = `${entityName} service is unavailable`;
         return [];
       }
+      await acquireReadSlot();
       try {
         return await entity.list(sort, limit);
       } catch (error) {
@@ -36,6 +50,8 @@ Deno.serve(async (req) => {
         }
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
+      } finally {
+        releaseReadSlot();
       }
     };
 
