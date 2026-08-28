@@ -11,13 +11,15 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
       || roles.has('dispatch') || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
-    const [evaluations, propertyAlerts] = await Promise.all([
+    const [evaluations, propertyAlerts, activeCalls] = await Promise.all([
       base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 50),
       base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000),
+      base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000),
     ]);
     const verifiedAlertIds = new Set((propertyAlerts || []).map((item: any) => String(item.id)));
+    const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
     const linked = (evaluations || []).filter((item: any) => verifiedAlertIds.has(String(item.property_alert_id)));
-    const operational = linked.filter((item: any) => item.configuration_snapshot?.simulation !== true && !String(item.event_key || '').endsWith(':simulation'));
+    const operational = linked.filter((item: any) => activeCallIds.has(String(item.call_id)) && item.configuration_snapshot?.simulation !== true && !String(item.event_key || '').endsWith(':simulation'));
     const safetyTests = linked.filter((item: any) => item.configuration_snapshot?.simulation === true || String(item.event_key || '').endsWith(':simulation'));
     return Response.json({ success: true, evaluations: operational, latest_safety_test: safetyTests[0] || null });
   } catch (error) {
