@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     for (const recipient of recipients) {
       await base44.asServiceRole.entities.Notification.create({
         recipient_email:lower(recipient.email),
-        type:'emergency',
+        type:'call_assignment',
         title:`Welfare Escalation · ${unitLabel}`,
         message:`${reason}. ${call.location || 'Active call'} · CAD ${cad}`,
         is_read:false,
