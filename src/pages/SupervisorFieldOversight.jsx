@@ -75,8 +75,6 @@ export default function SupervisorFieldOversight() {
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
   const pendingAck = useMemo(() => board.filter(row => lower(row.assignment_status) === 'pending'), [board]);
   const missingGps = useMemo(() => liveUnits.filter(row => !row.gps_updated_at || !validPosition(row)), [liveUnits]);
-  const assignedUnitIds = useMemo(() => new Set(board.map(row => String(row.unit_id))), [board]);
-  const callById = useMemo(() => new Map(activeCalls.map(call => [String(call.id), call])), [activeCalls]);
   const uniqueOfficers = useMemo(() => new Set(board.map(row => row.unit_id)).size, [board]);
 
   const refreshAll = async () => Promise.allSettled([refetchWelfare(), refetchLocations(), refetchCalls()]);
