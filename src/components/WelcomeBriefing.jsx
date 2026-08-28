@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
+import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, ClipboardList, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
@@ -57,7 +57,7 @@ export default function WelcomeBriefing({ user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
+  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const [dataErrors, setDataErrors] = useState([]);
   const loadRef = useRef(() => {});
   const userKey = normalized(user?.email || user?.id);
@@ -110,6 +110,7 @@ export default function WelcomeBriefing({ user }) {
           base44.entities.PropertyAlert.list('-created_date', 300).catch(track('Property alerts')),
           base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(track('Property alert dismissals')),
           base44.entities.Unit.filter({ user_id: user.id }).catch(track('Your unit status')),
+          base44.entities.Task.filter({ assigned_to: user.id }, '-created_date', 200).catch(track('Assigned tasks')),
         ]);
         const third = await Promise.all([
           base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(track('Your schedule')),
@@ -124,7 +125,7 @@ export default function WelcomeBriefing({ user }) {
           base44.entities.DispatchCall.list('-created_date', 500).catch(track('Dispatch calls')),
         ]);
         const [messages, mentions, announcements, receipts] = first;
-        const [notifications, propertyAlerts, propertyAlertReceipts, units] = second;
+        const [notifications, propertyAlerts, propertyAlertReceipts, units, assignedTasks] = second;
         const [schedules, vehicleAssignments, overrides, allUsers] = third;
         const [allUnits, allSchedules, timeEntries, dispatchCalls] = fourth;
         if (!active) return;
@@ -155,6 +156,7 @@ export default function WelcomeBriefing({ user }) {
         ));
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
+        const pendingTasks = (assignedTasks || []).filter(item => ['open', 'in_progress'].includes(normalized(item.status)));
         const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const callById = new Map((dispatchCalls || []).map(call => [String(call.id), call]));
         const seenPropertyPairs = new Set();
@@ -174,7 +176,7 @@ export default function WelcomeBriefing({ user }) {
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: allSchedules || [], activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
+        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: allSchedules || [], activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
         setDataErrors(failedSources);
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
@@ -206,7 +208,7 @@ export default function WelcomeBriefing({ user }) {
   }, [storageKey]);
 
   const pendingMessages = brief.mentions.length;
-  const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.propertyAlerts.length;
+  const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.tasks.length + brief.propertyAlerts.length;
   const status = brief.unit?.status || brief.liveUser?.status || user?.status || 'Out of Service';
   const partnerName = brief.unit?.partner_name || (brief.shift?.partner_officer_email ? brief.shift.partner_officer_email : '');
   const currentCall = brief.liveUser?.current_call_info || brief.unit?.current_call_info || '';
@@ -370,6 +372,7 @@ export default function WelcomeBriefing({ user }) {
                     <BriefCard icon={MessageCircle} label="Teams Messages" value={pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
                     <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail={brief.appUpdates.length ? 'Unread platform or software updates' : 'No new app updates'} tone="violet" />
+                    <BriefCard icon={ClipboardList} label="Assigned Tasks" value={brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={() => go('SupervisorTasks')} />
                     <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail={brief.updates.length ? 'Unread account, schedule, or system updates' : 'No other pending updates'} tone="blue" />
                     <BriefCard icon={Siren} label="Property Calls While Away" value={brief.propertyAlerts.length} detail={brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
@@ -379,12 +382,13 @@ export default function WelcomeBriefing({ user }) {
                     <div className="mt-2 space-y-2">
                       {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
                       {brief.announcements.slice(0, 2).map(item => <button key={`announcement-${item.id}`} type="button" onClick={() => go('Announcements')} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left"><div className="text-xs font-black text-amber-200">{item.title || 'Company Announcement'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || 'Open Announcements to review.'}</div></button>)}
+                      {brief.tasks.slice(0, 4).map(item => <button key={`task-${item.id}`} type="button" onClick={() => go('SupervisorTasks')} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left"><div className="text-xs font-black text-amber-200">{item.title || 'Assigned Task'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.description || item.notes || 'Open Action Items to review this task.'}</div></button>)}
                     </div>
                   </div>}
 
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-black/15 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-slate-300">Session Summary</div></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, system updates, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, new app updates, or monitored-property calls were found for this session.'}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, assigned tasks, system updates, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, assigned tasks, new app updates, or monitored-property calls were found for this session.'}</p>
                     {brief.propertyAlerts.slice(0, 3).map(alert => (
                       <button key={alert.id} type="button" onClick={() => go('DispatchCenter')} className="mt-2 flex w-full items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/20 p-3 text-left hover:bg-red-950/35">
                         <Siren className="mt-0.5 h-4 w-4 shrink-0 text-red-300"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{alert.propertyName || 'Monitored Property'} · {alert.callIncident || 'Call for service'}</div><div className="mt-1 break-words text-[10px] text-slate-400">{alert.callLocation || alert.description || 'Location unavailable'}</div></div><ChevronRight className="h-4 w-4 shrink-0 text-slate-600"/>
