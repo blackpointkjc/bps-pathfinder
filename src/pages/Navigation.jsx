@@ -28,6 +28,7 @@ const PRIORITY_COLORS = {
 };
 const STATUS_DOT = {
     'Available': 'bg-slate-400',
+    'Dispatched': 'bg-cyan-400',
     'On Patrol': 'bg-indigo-400',
     'Enroute': 'bg-red-500',
     'On Scene': 'bg-green-400',
