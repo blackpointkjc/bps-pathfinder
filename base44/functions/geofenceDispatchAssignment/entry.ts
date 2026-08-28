@@ -67,11 +67,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Property has no reliable coordinates' }, { status: 400 });
     }
 
-    // Phase 2 begins in recommendation-only shadow mode. A stored "live" value
-    // is deliberately treated as shadow until the separate live-assignment
-    // activation phase is tested and approved.
+    // Automatic assignment is opt-in per property. Shadow remains the default;
+    // only an explicit saved live mode may change operational records.
     const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
-    const mode = configuredMode === 'disabled' ? 'disabled' : configuredMode === 'manual_review' ? 'manual_review' : 'shadow';
+    const mode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
     const radius = Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5));
     const requiredUnits = Math.max(1, Number(property.auto_dispatch_required_units || 1), property.auto_dispatch_backup_required ? 2 : 1);
     const requiredQualifications = list(property.auto_dispatch_required_qualifications);
@@ -167,7 +166,113 @@ Deno.serve(async (req) => {
     const recommendations = ranked.slice(0, requiredUnits);
     const decision = mode === 'disabled' ? 'disabled'
       : mode === 'manual_review' ? 'manual_review'
-      : recommendations.length ? 'recommended' : 'no_eligible_unit';
+      : recommendations.length ? (mode === 'live' && !simulation ? 'assigned' : 'recommended') : 'no_eligible_unit';
+
+    let assignmentCreated = false;
+    let unitStatusChanged = false;
+    if (decision === 'assigned') {
+      const nowIso = new Date().toISOString();
+      const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+      const existingAssignedIds = new Set(Array.isArray(call.assigned_units) ? call.assigned_units.map(String) : []);
+      const nextAssignedIds = new Set(existingAssignedIds);
+
+      for (let index = 0; index < recommendations.length; index += 1) {
+        const recommendation = recommendations[index];
+        const unitId = String(recommendation.unit_id);
+        nextAssignedIds.add(unitId);
+        const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20).catch(() => []);
+        const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
+        if (!hasActiveAssignment) {
+          await base44.asServiceRole.entities.CallAssignment.create({
+            call_id: callId,
+            unit_id: unitId,
+            role: index === 0 ? 'primary' : 'backup',
+            assigned_at: nowIso,
+            status: 'pending',
+            description: `Automatically assigned from verified property alert ${alert.id}`,
+          });
+          assignmentCreated = true;
+        }
+
+        const officer = (users || []).find((item: any) => String(item.id) === unitId);
+        const session = activeByEmail.get(lower(officer?.email));
+        const statusUpdate = {
+          status: 'Dispatched',
+          current_call_id: callId,
+          current_call_info: `${cadNumber} · ${call.incident || 'Property alert'} · ${property.site_name || property.address}`,
+          last_updated: nowIso,
+          status_since: nowIso,
+        };
+        if (officer && lower(officer.status) !== 'dispatched') {
+          await base44.asServiceRole.entities.User.update(officer.id, statusUpdate);
+          unitStatusChanged = true;
+        }
+        if (session && lower(session.status) !== 'dispatched') {
+          await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
+            status: 'Dispatched',
+            current_call_info: statusUpdate.current_call_info,
+            last_update: nowIso,
+            session_active: true,
+          });
+          unitStatusChanged = true;
+        }
+        const linkedUnits = await base44.asServiceRole.entities.Unit.filter({ user_id: unitId }).catch(() => []);
+        await Promise.all((linkedUnits || []).map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+          status: 'Dispatched',
+          assigned_call_ids: Array.from(new Set([...(unit.assigned_call_ids || []).map(String), callId])),
+          last_update_at: nowIso,
+        })));
+
+        const assignmentEventKey = `autodispatch:${alert.id}:assignment:${unitId}`;
+        const existingLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: assignmentEventKey }, '-created_date', 1).catch(() => []);
+        if (!existingLogs?.length) {
+          const unitLabel = recommendation.unit_number ? `Unit ${recommendation.unit_number}` : (recommendation.officer_name || 'Assigned unit');
+          await base44.asServiceRole.entities.CallStatusLog.create({
+            call_id: callId,
+            incident_type: call.incident || '',
+            location: call.location || property.address || '',
+            old_status: call.status || '',
+            new_status: 'Dispatched',
+            unit_id: unitId,
+            unit_name: unitLabel,
+            notes: index === 0 ? 'Automatic property-alert primary assignment' : 'Automatic property-alert backup assignment',
+            latitude: propertyLat,
+            longitude: propertyLon,
+            event_key: assignmentEventKey,
+            event_type: index === 0 ? 'unit_dispatched' : 'additional_unit',
+            announcement_text: `Property alert. ${unitLabel}, respond to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. CAD number ${cadNumber}.`,
+            announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+            cad_number: String(cadNumber),
+            triggering_action: 'geofenceDispatchAssignment.live',
+            audio_enabled: true,
+            sensitive: false,
+          });
+        }
+
+        if (officer?.email) {
+          const existingNotifications = await base44.asServiceRole.entities.Notification.filter({ recipient_email: lower(officer.email), related_id: callId, type: 'call_assignment' }, '-created_date', 20).catch(() => []);
+          if (!existingNotifications?.length) {
+            await base44.asServiceRole.entities.Notification.create({
+              recipient_email: lower(officer.email),
+              type: 'call_assignment',
+              title: `Automatic Dispatch · ${cadNumber}`,
+              message: `Unit ${recommendation.unit_number || ''}, respond to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. Safety warning: ${property.property_safety_warnings || call.hazards || 'None listed'}.`,
+              is_read: false,
+              related_id: callId,
+              priority: ['critical', 'high'].includes(lower(call.priority)) ? 'critical' : 'high',
+              requires_acknowledgment: true,
+              source_name: 'Automatic Property Dispatch',
+            });
+          }
+        }
+      }
+
+      await base44.asServiceRole.entities.DispatchCall.update(callId, {
+        assigned_units: Array.from(nextAssignedIds),
+        status: call.status === 'New' ? 'Dispatched' : call.status,
+        time_dispatched: call.time_dispatched || nowIso,
+      });
+    }
     const eventKey = `autodispatch:${alert.source_key || alert.id}:${mode}${simulation ? ':simulation' : ''}`;
     const evaluationData = {
       event_key: eventKey,
@@ -195,6 +300,7 @@ Deno.serve(async (req) => {
       },
       description: simulation
         ? 'Phase 2A safety simulation; no assignment or unit status was changed.'
+        : decision === 'assigned' ? 'Verified property alert assigned to the closest eligible unit(s) in live mode.'
         : decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
     };
     const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ event_key: eventKey }, '-evaluated_at', 1).catch(() => []);
@@ -204,17 +310,18 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      shadow_mode: true,
+      shadow_mode: mode !== 'live' || simulation,
+      mode,
       simulation,
-      assignment_created: false,
-      unit_status_changed: false,
+      assignment_created: assignmentCreated,
+      unit_status_changed: unitStatusChanged,
       call_id: callId,
       property: { id: property.id, name: property.site_name, address: property.address },
       decision,
       recommendations,
       excluded_units: excluded,
       evaluation_id: evaluation?.id,
-      message: decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
+      message: decision === 'assigned' ? 'Closest eligible unit assignment created.' : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
     });
   } catch (error) {
     console.error('geofenceDispatchAssignment failed', error);
