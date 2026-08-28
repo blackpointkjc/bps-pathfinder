@@ -126,6 +126,19 @@ export default function AdminLocations({ embedded = false }) {
     property_monitoring_enabled: false,
     property_monitoring_boundary_type: 'circle',
     property_monitoring_description: '',
+    auto_dispatch_enabled: false,
+    auto_dispatch_mode: 'shadow',
+    auto_dispatch_response_radius_miles: 5,
+    auto_dispatch_required_units: 1,
+    auto_dispatch_backup_required: false,
+    auto_dispatch_required_qualifications: [],
+    auto_dispatch_required_equipment: [],
+    auto_dispatch_required_ranks: [],
+    auto_dispatch_acknowledgement_seconds: 120,
+    auto_dispatch_escalation_seconds: 300,
+    auto_dispatch_recheck_seconds: 60,
+    property_safety_warnings: '',
+    property_access_instructions: '',
   });
   const [geocoding, setGeocoding] = useState(false);
   const [drawingBoundary, setDrawingBoundary] = useState(false);
@@ -365,6 +378,19 @@ export default function AdminLocations({ embedded = false }) {
       property_monitoring_enabled: location.property_monitoring_enabled || false,
       property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
       property_monitoring_description: location.property_monitoring_description || '',
+      auto_dispatch_enabled: location.auto_dispatch_enabled === true,
+      auto_dispatch_mode: location.auto_dispatch_mode || 'shadow',
+      auto_dispatch_response_radius_miles: location.auto_dispatch_response_radius_miles || 5,
+      auto_dispatch_required_units: location.auto_dispatch_required_units || 1,
+      auto_dispatch_backup_required: location.auto_dispatch_backup_required === true,
+      auto_dispatch_required_qualifications: location.auto_dispatch_required_qualifications || [],
+      auto_dispatch_required_equipment: location.auto_dispatch_required_equipment || [],
+      auto_dispatch_required_ranks: location.auto_dispatch_required_ranks || [],
+      auto_dispatch_acknowledgement_seconds: location.auto_dispatch_acknowledgement_seconds || 120,
+      auto_dispatch_escalation_seconds: location.auto_dispatch_escalation_seconds || 300,
+      auto_dispatch_recheck_seconds: location.auto_dispatch_recheck_seconds || 60,
+      property_safety_warnings: location.property_safety_warnings || '',
+      property_access_instructions: location.property_access_instructions || '',
     });
     if (location.latitude && location.longitude) {
       setMapCenter([location.latitude, location.longitude]);
