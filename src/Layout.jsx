@@ -107,15 +107,37 @@ const CENTER_CONFIG = {
     label: 'Supervisor Center',
     icon: ClipboardCheck,
     groups: [
-      { label: 'Command Operations', items: [
-        ['Command Dashboard', 'CommandDashboard', Gauge],
-        ['Dispatch Center', 'DispatchCenter', Radio],
-        ['Live Map', 'Navigation', MapIcon],
-        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
-        ['Records Intelligence', 'RecordsAssistant', Bot],
-        ['Dispatcher Shift Log', 'DispatcherShiftReports', ClipboardList],
+      { label: 'My Shift', items: [
+        ['Dashboard', 'Dashboard', Gauge],
+        ['Time Clock', 'TimeClock', Clock3],
+        ['My Schedule', 'Schedule', Calendar],
+        ['My Dispatch Queue', 'OfficerDispatchQueue', Radio],
       ]},
-      { label: 'Today', items: [
+      { label: 'Field Tools', items: [
+        ['Post Orders', 'PostOrders', BookOpen],
+        ['QR Patrol', 'QRPatrolScan', MapPin],
+        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+        ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
+        ['VA Trespass', 'VATrespassNotices', UserX],
+        ['VA Complaint', 'VACriminalComplaints', Shield],
+        ['VA Summons', 'Summons', FileText],
+      ]},
+      { label: 'Reports & Requests', items: [
+        ['Daily Activity', 'DailyActivityReports', ClipboardList],
+        ['Incident Report', 'IncidentReports', AlertTriangle],
+        ['Maintenance', 'MaintenanceReports', Wrench],
+        ['Open Door', 'OpenDoorReports', DoorOpen],
+        ['Confidential', 'ConfidentialReport', ShieldCheck],
+        ['Expense Report', 'ExpenseReports', DollarSign],
+        ['Time Request', 'TimeRequests', CalendarClock],
+      ]},
+      { label: 'Schedule & Availability', items: [
+        ['Availability', 'OfficerAvailability', CalendarClock],
+        ['Open Shifts', 'OpenShifts', Briefcase],
+        ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
+      ]},
+      { label: 'Supervisor Operations', items: [
+        ['Live Field Oversight', 'SupervisorFieldOversight', ShieldCheck],
         ['Action Items', 'SupervisorTasks', ClipboardList],
         ['Daily Code', 'SupervisorDailyCode', ShieldCheck],
       ]},
@@ -126,9 +148,15 @@ const CENTER_CONFIG = {
         ['Use of Force', 'SupervisorUseOfForce', AlertTriangle],
         ['Complaints', 'SupervisorComplaints', AlertTriangle],
       ]},
-      { label: 'People & Communication', items: [
+      { label: 'Communication & Profile', items: [
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
+        ['Announcements', 'Announcements', Bell],
+        ['My Profile', 'OfficerProfile', UserCheck],
+        ['My Performance', 'MyPerformanceAnalytics', BarChart3],
+        ['My Reviews & Feedback', 'OfficerPerformanceReviews', ClipboardCheck],
+        ['Training', 'OfficerTraining', GraduationCap],
         ['Rank Structure', 'RankStructure', Shield],
+        ['Rank Duties', 'RankDuties', Shield],
       ]},
     ],
   },
@@ -390,25 +418,25 @@ function roleName(user) {
 function allowedCenters(user) {
   const roles = normalizedRoles(user);
   const fullAccess = hasFullAccess(user);
-  const centers = [];
+  const rank = String(user?.rank || '').toLowerCase();
 
-  // Portal-only identities are isolated unless they also have Full Access.
+  // Portal-only identities remain isolated.
   if (!fullAccess && (roles.has('client') || user?.user_type === 'client')) return ['client'];
   if (!fullAccess && roles.has('student')) return ['student'];
 
-  if (fullAccess || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
-  if (fullAccess || roles.has('officer')) centers.push('officer');
-  if (fullAccess || roles.has('supervisor')) centers.push('supervisor');
-  const rank = String(user?.rank || '').toLowerCase();
-  if (fullAccess || roles.has('hr') || rank === 'human resources') centers.push('hr');
-  if (fullAccess || roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
-  if (fullAccess) centers.push('admin');
-  if (fullAccess || roles.has('trainer')) centers.push('training');
-  if (fullAccess || roles.has('accounting')) centers.push('accounting');
-  if (fullAccess || roles.has('client') || user?.user_type === 'client') centers.push('client');
-  if (fullAccess || roles.has('student')) centers.push('student');
+  // Primary operational workspaces are intentionally exclusive. Supervisors get
+  // all officer field tools inside Supervisor Center, so they do not need a second
+  // Officer tab. Administrators likewise do not get Officer/Supervisor tabs.
+  if (user?.role === 'admin' || roles.has('full_access')) return ['cad', 'admin'];
+  if (user?.role === 'dispatch') return ['cad'];
+  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return ['cad', 'supervisor'];
+  if (roles.has('officer')) return ['cad', 'officer'];
+  if (roles.has('hr') || rank === 'human resources') return ['hr'];
+  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return ['support'];
+  if (roles.has('accounting')) return ['accounting'];
+  if (roles.has('trainer')) return ['training'];
 
-  return [...new Set(centers)];
+  return roles.has('cad_access') ? ['cad'] : ['officer'];
 }
 
 const CENTER_DEFAULT_PAGE = {
