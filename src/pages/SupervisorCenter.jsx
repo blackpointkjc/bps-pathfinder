@@ -10,7 +10,7 @@ import SupervisorUseOfForce from './SupervisorUseOfForce';
 import SupervisorComplaints from './SupervisorComplaints';
 import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
-import ShiftHandover from './ShiftHandover';
+import SupervisorShiftHandover from './SupervisorShiftHandover';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 
@@ -24,7 +24,7 @@ const SECTIONS = [
 const TOOLS = {
   command: [
     { id: 'oversight', label: 'Officer Welfare & Field Oversight', component: SupervisorOversightLauncher },
-    { id: 'handover', label: 'Shift Handoff', component: ShiftHandover },
+    { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
   ],
   today: [
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
