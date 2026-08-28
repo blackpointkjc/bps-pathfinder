@@ -87,9 +87,33 @@ Deno.serve(async (req) => {
     });
 
     if (status === 'Cleared') {
-      await base44.asServiceRole.entities.User.update(user.id, { status: 'Available', current_call_id: '', current_call_info: '', status_since: now, last_updated: now }).catch(() => null);
+      // Move the officer directly to the next active queued assignment instead of
+      // briefly marking them Available when another dispatched call is waiting.
+      const remainingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ unit_id: user.id }, '-assigned_at', 500).catch(() => []);
+      const activeRemaining = (remainingAssignments || []).filter((a: any) => String(a.call_id) !== String(call_id) && !['cleared','cancelled'].includes(String(a.status || '').toLowerCase()));
+      const priorityWeight: Record<string, number> = { critical:0, high:1, medium:2, low:3 };
+      const candidates: any[] = [];
+      for (const assignment of activeRemaining) {
+        const queuedCall = await base44.asServiceRole.entities.DispatchCall.get(assignment.call_id).catch(() => null);
+        if (!queuedCall || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(queuedCall.status || '').toLowerCase())) continue;
+        candidates.push({ assignment, call:queuedCall });
+      }
+      candidates.sort((a,b) => {
+        const p = (priorityWeight[String(a.call.priority || '').toLowerCase()] ?? 2) - (priorityWeight[String(b.call.priority || '').toLowerCase()] ?? 2);
+        if (p) return p;
+        return new Date(a.assignment.assigned_at || a.call.time_received || a.call.created_date || 0).getTime() - new Date(b.assignment.assigned_at || b.call.time_received || b.call.created_date || 0).getTime();
+      });
+      const next = candidates[0];
+      const nextCad = next ? (next.call.agency_cad_number || next.call.bps_reference || next.call.call_id || next.call.id) : '';
+      const nextStatus = next ? 'Dispatched' : 'Available';
+      const nextInfo = next ? `${next.call.incident || 'Call for service'} · ${next.call.location || ''}`.slice(0, 500) : '';
+      await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now }).catch(() => null);
       const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
-      for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: 'Available', current_call_info: '', last_update: now }).catch(() => null);
+      for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_info: nextInfo, last_update: now }).catch(() => null);
+      if (next) {
+        await base44.asServiceRole.entities.CallNote.create({ call_id:next.call.id, author_id:user.id, author_name:officer, note:`[QUEUE] Previous call cleared. This is now the officer's next active call (${nextCad}).`, note_type:'update' }).catch(()=>null);
+      }
+      return Response.json({ success:true, status, next_call_id:next?.call?.id || '', next_call_number:nextCad || '' });
     }
 
     return Response.json({ success: true, status });
