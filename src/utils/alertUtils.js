@@ -153,11 +153,12 @@ export const stopDispatchAlert = () => {
     clearInterval(alertInterval);
     alertInterval = null;
   }
-  if (masterCtx) {
-    try { masterCtx.suspend(); } catch (e) {}
-    // Close and null it so next alert gets a fresh context
-    try { masterCtx.close(); } catch (e) {}
-    masterCtx = null;
+  if (masterCtx && masterCtx.state !== 'closed') {
+    // AudioContext.suspend()/close() return promises; a synchronous try/catch
+    // cannot catch their rejected promises. Keep the one master context and
+    // suspend it safely so repeated stop calls never produce
+    // "Cannot close a closed AudioContext".
+    void masterCtx.suspend().catch(() => {});
   }
 };
 
