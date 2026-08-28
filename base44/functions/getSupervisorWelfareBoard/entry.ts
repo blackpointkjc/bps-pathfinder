@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (v: unknown) => String(v || '').trim().toLowerCase();
-const terminalCall = (call: any) => ['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call?.status)) || Boolean(call?.time_cleared) || Boolean(call?.time_closed);
+const terminalCall = (call: any) => ['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call?.status)) || call?.manual_dismissed === true;
 const validCoord = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '' && Number.isFinite(Number(v));
 
 Deno.serve(async (req) => {
