@@ -317,6 +317,22 @@ export default function DispatchCenter() {
         }
     };
 
+    const requestWelfareForSelectedCall = async () => {
+        if (!selectedCall?.id || welfareWorking) return;
+        setWelfareWorking(true);
+        try {
+            const response = await base44.functions.invoke('manageOfficerWelfare', { action:'request', call_id:selectedCall.id });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
+            toast.success(`${payload.checks?.length || 0} welfare check${payload.checks?.length === 1 ? '' : 's'} active for assigned officer(s).`);
+            await loadWelfareChecks(selectedCall.id);
+        } catch (error) {
+            toast.error(error?.response?.data?.error || error?.message || 'Unable to request welfare check');
+        } finally {
+            setWelfareWorking(false);
+        }
+    };
+
     const requestSupervisorForSelectedCall = async () => {
         if (!selectedCall?.id) return;
         try {
@@ -645,7 +661,9 @@ export default function DispatchCenter() {
                                         ))}
                                         <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
                                         <button onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">REQUEST SUPERVISOR</button>
+                                        <button onClick={requestWelfareForSelectedCall} disabled={welfareWorking} className="px-2 py-1 rounded border border-red-600 bg-red-950/40 text-[9px] font-bold text-red-200 hover:bg-red-900/50 disabled:opacity-50">{welfareWorking ? 'SENDING…' : 'WELFARE CHECK'}</button>
                                     </div>
+                                    {welfareChecks.length > 0 && <div className="px-4 pb-2"><div className="text-[9px] text-slate-500 mb-1">OFFICER WELFARE</div><div className="space-y-1">{welfareChecks.slice(0,5).map(check => <div key={check.id} className={`rounded border px-2 py-1.5 text-[9px] ${check.status === 'pending' ? 'border-red-600/50 bg-red-950/30 text-red-200' : check.status === 'ok' ? 'border-emerald-600/40 bg-emerald-950/20 text-emerald-200' : 'border-amber-600/40 bg-amber-950/20 text-amber-200'}`}><span className="font-black">{check.officer_display_name || 'Officer'}</span> · {String(check.status || '').replaceAll('_',' ').toUpperCase()}</div>)}</div></div>}
                                     <div className="px-3 md:px-4 pb-3 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
                                         <div>
                                             <div className="text-[9px] text-slate-500 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> CAD TIMELINE / NOTES</div>
