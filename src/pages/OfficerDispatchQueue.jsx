@@ -65,7 +65,7 @@ export default function OfficerDispatchQueue() {
       } else {
         toast.success(`${status} recorded.`);
       }
-    } catch (e) { toast.error(e?.message || 'Unable to update call status'); }
+    } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to update call status'); }
     finally { setWorking(false); }
   };
 
@@ -78,7 +78,7 @@ export default function OfficerDispatchQueue() {
       setNote('');
       await refetch();
       toast.success('Note shared with dispatch.');
-    } catch (e) { toast.error(e?.message || 'Unable to add note'); }
+    } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to add note'); }
     finally { setWorking(false); }
   };
 
