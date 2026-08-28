@@ -91,6 +91,7 @@ export default function OfficerCenter({ embedded = false }) {
       sections={SECTIONS}
       defaultSection="today"
       queryParam={embedded ? 'officer_section' : 'section'}
+      embedded={embedded}
     >
       {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} />}
     </UnifiedCenter>
