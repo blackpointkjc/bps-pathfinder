@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { publishLiveLocation } from '@/lib/liveLocationService';
+import { requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { isInternalMember } from '@/lib/directoryUtils';
 
 // Calculate distance between two GPS coordinates in meters
@@ -37,7 +37,6 @@ export default function BackgroundLocationTracker({ user }) {
   const lastSaveRef = useRef(0);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
-  const watchIdRef = useRef(null);
   const activeOfficerRecordRef = useRef(null);
   const lastPositionRef = useRef(null);
   const sessionStartedRef = useRef(new Date().toISOString());
@@ -145,33 +144,14 @@ export default function BackgroundLocationTracker({ user }) {
   }, [shouldPublish, user?.email, activeEntry?.id, activeEntry?.location]);
 
   useEffect(() => {
-    if (!shouldTrack) {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      return;
-    }
+    if (!shouldTrack) return undefined;
 
-    if (!('geolocation' in navigator)) {
-      console.error('Geolocation not supported');
-      return;
-    }
-
-    const saveLocation = async (position) => {
+    const saveLocation = async (fix) => {
       const now = Date.now();
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
-      const fixTimestamp = Number(position.timestamp) || Date.now();
-      const normalizedFix = {
-        latitude: lat,
-        longitude: lng,
-        accuracy,
-        heading: position.coords.heading,
-        speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
-        timestamp: fixTimestamp,
-      };
+      const lat = Number(fix.latitude);
+      const lng = Number(fix.longitude);
+      const accuracy = Number(fix.accuracy);
+      const fixTimestamp = Number(fix.timestamp) || Date.now();
       // A cached browser result is not a live officer location. Keep the signed-in
       // heartbeat active, but wait for a genuinely current device fix before
       // updating gps_updated_at or the movement trail.
@@ -192,8 +172,7 @@ export default function BackgroundLocationTracker({ user }) {
         return;
       }
 
-      lastPositionRef.current = normalizedFix;
-      publishLiveLocation(normalizedFix);
+      lastPositionRef.current = fix;
       window.dispatchEvent(new CustomEvent('bps-location-quality', {
         detail: { state: 'live', accuracy },
       }));
@@ -217,8 +196,8 @@ export default function BackgroundLocationTracker({ user }) {
           device_fix_at: new Date(fixTimestamp).toISOString(),
           latitude: lat,
           longitude: lng,
-          heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
-          speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
+          heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
+          speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
           accuracy: accuracy,
           user_role: user?.role || 'user',
           session_active: true,
@@ -292,12 +271,6 @@ export default function BackgroundLocationTracker({ user }) {
       }
     };
 
-    const gpsOptions = {
-      enableHighAccuracy: true,
-      timeout: 30000,
-      maximumAge: 0,
-    };
-
     const reportLocationError = (error) => {
       const state = error?.code === 1
         ? 'permission_denied'
@@ -310,73 +283,16 @@ export default function BackgroundLocationTracker({ user }) {
       console.warn('Geolocation unavailable:', error?.message || error);
     };
 
-    // Keep the passive stream and request a current high-accuracy fix on a
-    // realistic cadence. A 4.5-second timeout was too short for Windows, tablets,
-    // and phones waking their GPS radios, leaving active sessions with stale data.
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      saveLocation,
-      reportLocationError,
-      gpsOptions,
-    );
-    let freshRequestPending = false;
-    let permissionStatus = null;
-    const requestFreshPosition = () => {
-      if (freshRequestPending || document.hidden) return;
-      freshRequestPending = true;
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          freshRequestPending = false;
-          saveLocation(position);
-        },
-        (error) => {
-          freshRequestPending = false;
-          reportLocationError(error);
-        },
-        { ...gpsOptions, timeout: 15000 },
-      );
-    };
-    const requestWhenVisible = () => {
-      if (!document.hidden) requestFreshPosition();
-    };
-    const monitorPermission = async () => {
-      if (!navigator.permissions?.query) return;
-      try {
-        permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-        const reportPermission = () => {
-          if (permissionStatus.state === 'denied') {
-            window.dispatchEvent(new CustomEvent('bps-location-quality', {
-              detail: { state: 'permission_denied', message: 'Location permission is blocked for this site.' },
-            }));
-          } else if (permissionStatus.state === 'granted') {
-            requestFreshPosition();
-          }
-        };
-        permissionStatus.onchange = reportPermission;
-        reportPermission();
-      } catch {
-        // Safari and older embedded browsers may not expose geolocation through
-        // the Permissions API; watchPosition/getCurrentPosition remain supported.
-      }
-    };
-    requestFreshPosition();
-    monitorPermission();
-    const freshPositionId = window.setInterval(requestFreshPosition, 15000);
-    window.addEventListener('bps-request-location', requestFreshPosition);
-    window.addEventListener('focus', requestFreshPosition);
-    window.addEventListener('online', requestFreshPosition);
-    document.addEventListener('visibilitychange', requestWhenVisible);
+    // The singleton live-location service is the only owner of browser GPS.
+    // Every map, clock, report, distress control, and navigation view consumes
+    // this same stream instead of opening competing watchPosition handles.
+    const unsubscribe = subscribeLiveLocation(saveLocation);
+    const releaseTracking = startLiveLocationTracking({ onError: reportLocationError });
+    requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => null);
 
     return () => {
-      window.clearInterval(freshPositionId);
-      window.removeEventListener('bps-request-location', requestFreshPosition);
-      window.removeEventListener('focus', requestFreshPosition);
-      window.removeEventListener('online', requestFreshPosition);
-      document.removeEventListener('visibilitychange', requestWhenVisible);
-      if (permissionStatus) permissionStatus.onchange = null;
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
+      unsubscribe();
+      releaseTracking();
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
