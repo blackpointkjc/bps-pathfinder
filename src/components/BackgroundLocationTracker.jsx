@@ -38,6 +38,7 @@ export default function BackgroundLocationTracker({ user }) {
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const activeOfficerRecordRef = useRef(null);
+  const uploadChainRef = useRef(Promise.resolve());
   const lastPositionRef = useRef(null);
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
@@ -96,21 +97,22 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Persist every accepted GPS fix through one authenticated backend upsert.
-  // This avoids client RLS/duplicate-row races and makes ActiveOfficer the single
-  // authoritative source consumed by both live maps.
-  const updateActiveOfficerMutation = useMutation({
-    mutationFn: async (data) => {
-      const response = await base44.functions.invoke('logLocation', data);
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
-      return payload.active_officer;
-    },
-    onError: (error) => {
-      console.error('Live location upload failed:', error?.message || error);
-    },
-  });
+  // All session establishment, GPS updates, and heartbeats pass through this
+  // one serialized uploader. It prevents a heartbeat and GPS fix from racing each
+  // other and guarantees the backend sees location events in order.
+  const persistLiveState = (data) => {
+    const request = uploadChainRef.current
+      .catch(() => null)
+      .then(async () => {
+        const response = await base44.functions.invoke('logLocation', data);
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
+        return payload.active_officer;
+      });
+    uploadChainRef.current = request;
+    return request;
+  };
 
   // Establish the live session through the same backend upsert used by GPS/heartbeat.
   // Do not directly create/delete ActiveOfficer rows here: that raced with logLocation
@@ -121,7 +123,7 @@ export default function BackgroundLocationTracker({ user }) {
 
     const establishSession = async () => {
       try {
-        const response = await base44.functions.invoke('logLocation', {
+        await persistLiveState({
           heartbeat_only: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -131,9 +133,6 @@ export default function BackgroundLocationTracker({ user }) {
           user_role: user?.role || 'user',
           session_active: true,
         });
-        const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
-        if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
         console.error('Error establishing live user location record:', error);
@@ -186,7 +185,7 @@ export default function BackgroundLocationTracker({ user }) {
         lastLivePushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
-        await updateActiveOfficerMutation.mutateAsync({
+        await persistLiveState({
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
@@ -305,7 +304,7 @@ export default function BackgroundLocationTracker({ user }) {
       const fix = lastPositionRef.current;
       try {
         if (Date.now() - lastLivePushRef.current >= 10000) {
-          const response = await base44.functions.invoke('logLocation', {
+          await persistLiveState({
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
             unit_number: user.unit_number || '',
@@ -322,9 +321,6 @@ export default function BackgroundLocationTracker({ user }) {
             user_role: user?.role || 'user',
             session_active: true,
           });
-          const payload = response?.data || response || {};
-          if (payload.error) throw new Error(payload.error);
-          if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
           lastLivePushRef.current = Date.now();
         }
         if (fix && Date.now() - lastSaveRef.current >= 55000) {
