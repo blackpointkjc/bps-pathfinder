@@ -1,0 +1,108 @@
+{
+  "name": "OfficerWelfareCheck",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string"
+    },
+    "assignment_id": {
+      "type": "string"
+    },
+    "unit_id": {
+      "type": "string"
+    },
+    "officer_email": {
+      "type": "string"
+    },
+    "officer_display_name": {
+      "type": "string"
+    },
+    "cad_number": {
+      "type": "string"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requested_by": {
+      "type": "string"
+    },
+    "requested_by_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ok",
+        "unable_to_reach",
+        "escalated",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "response_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "response_by": {
+      "type": "string"
+    },
+    "response_note": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "escalated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "escalated_by": {
+      "type": "string"
+    },
+    "event_key": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "call_id",
+    "unit_id",
+    "officer_email",
+    "requested_at",
+    "status"
+  ],
+  "rls": {
+    "read": null,
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.officer_email": "{{user.email}}"
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
