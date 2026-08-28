@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
       ['Movement History', 'LocationHistory'],
       ['Properties', 'Location'],
       ['Property Alerts', 'PropertyAlert'],
+      ['Automatic Dispatch', 'AutoDispatchEvaluation'],
       ['Scheduling', 'Schedule'],
       ['Timekeeping', 'TimeEntry'],
       ['Payroll', 'PayrollPeriod'],
@@ -228,6 +229,46 @@ Deno.serve(async (req) => {
       title: 'Duplicate announcement receipts were recorded in the last 24 hours',
       description: `${duplicateReceiptKeys.size} user/event key(s) were processed more than once and require announcement-flow review.`,
       count: duplicateReceiptKeys.size,
+    });
+
+    const autoDispatchLocations = locations.filter(item => item.auto_dispatch_enabled === true);
+    const unsafeLiveLocations = autoDispatchLocations.filter(item => item.auto_dispatch_mode === 'live');
+    if (unsafeLiveLocations.length) add(findings, {
+      key: 'auto-dispatch:live-locked',
+      area: 'Automatic Dispatch',
+      severity: 'outage',
+      title: 'Property configuration requests live automatic dispatch before approval',
+      description: `${unsafeLiveLocations.length} property record(s) contain live mode. Phase 2A enforces shadow behavior and live activation remains locked.`,
+      count: unsafeLiveLocations.length,
+    });
+    const invalidAutoDispatchLocations = autoDispatchLocations.filter(item =>
+      !Number.isFinite(Number(item.latitude)) || !Number.isFinite(Number(item.longitude))
+      || !Number.isFinite(Number(item.auto_dispatch_response_radius_miles))
+      || Number(item.auto_dispatch_response_radius_miles) <= 0
+    );
+    if (invalidAutoDispatchLocations.length) add(findings, {
+      key: 'auto-dispatch:invalid-property-config',
+      area: 'Automatic Dispatch',
+      severity: 'outage',
+      title: 'Automatic-dispatch property configuration is incomplete',
+      description: `${invalidAutoDispatchLocations.length} enabled property record(s) lack valid coordinates or response radius.`,
+      count: invalidAutoDispatchLocations.length,
+    });
+    const evaluations = datasets.AutoDispatchEvaluation || [];
+    const evaluationKeys = new Set<string>();
+    const duplicateEvaluationKeys = new Set<string>();
+    evaluations.forEach(item => {
+      if (!item.event_key) return;
+      if (evaluationKeys.has(item.event_key)) duplicateEvaluationKeys.add(item.event_key);
+      evaluationKeys.add(item.event_key);
+    });
+    if (duplicateEvaluationKeys.size) add(findings, {
+      key: 'auto-dispatch:duplicate-evaluation',
+      area: 'Automatic Dispatch',
+      severity: 'outage',
+      title: 'Duplicate automatic-dispatch evaluations detected',
+      description: `${duplicateEvaluationKeys.size} property alert event(s) have more than one decision row.`,
+      count: duplicateEvaluationKeys.size,
     });
 
     const schedules = datasets.Schedule || [];
