@@ -6,6 +6,24 @@
       "type": "string",
       "description": "Component name affected"
     },
+    "issue_key": {
+      "type": "string",
+      "description": "Stable scan or manually reported issue identity"
+    },
+    "source": {
+      "type": "string",
+      "description": "Origin of the issue, such as full_app_scan or manual"
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent scan that still detected the issue"
+    },
+    "occurrence_count": {
+      "type": "integer",
+      "default": 1,
+      "description": "Number of scans or reports that detected this issue"
+    },
     "severity": {
       "type": "string",
       "enum": [
