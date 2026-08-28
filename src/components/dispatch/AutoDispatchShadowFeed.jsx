@@ -21,21 +21,21 @@ export default function AutoDispatchShadowFeed() {
       setEvaluations([...latestByAlert.values()].slice(0, 4));
       setError('');
     } catch (err) {
-      setError(err?.message || 'Unable to load automatic-dispatch evaluations');
+      setError(err?.response?.data?.error || err?.message || 'Unable to load automatic-dispatch evaluations');
     }
   };
 
   useEffect(() => {
     load();
     const unsubscribe = base44.entities.AutoDispatchEvaluation.subscribe(() => load());
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 30000);
     return () => {
       unsubscribe?.();
       clearInterval(interval);
     };
   }, []);
 
-  if (error) return <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-200">{error}</div>;
+  if (error) return <div className="mb-3 border-b border-amber-500/20 bg-amber-950/10 px-3 py-2 text-[10px] font-bold text-amber-200">Automatic-dispatch status is temporarily unavailable. CAD operations remain online.</div>;
   if (!evaluations.length) return null;
 
   return (
