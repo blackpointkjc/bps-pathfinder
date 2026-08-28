@@ -45,6 +45,14 @@ Deno.serve(async (req) => {
     const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && liveCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
     const already = new Set((assignments || []).filter((a:any)=>String(a.call_id)===callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
 
+    const existingSupervisor = (users || []).find((u:any) => already.has(String(u.id)) && isSupervisor(u));
+    if (existingSupervisor) {
+      const existingLast = String(existingSupervisor.last_name || existingSupervisor.full_name || '').trim().split(/\s+/).pop();
+      const existingRank = String(existingSupervisor.rank || 'Supervisor').trim();
+      const existingLabel = [existingRank, existingLast].filter(Boolean).join(' ') || 'Supervisor';
+      return Response.json({ success:true, assigned:true, already_assigned:true, supervisor:{ id:existingSupervisor.id, name:existingLabel, unit_number:existingSupervisor.unit_number || '', distance_miles:null } });
+    }
+
     const candidates:any[] = [];
     for (const u of users || []) {
       if (!isSupervisor(u) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
