@@ -194,22 +194,58 @@ Deno.serve(async (req) => {
     }
 
     ranked.sort((a, b) => a.score - b.score);
-    const recommendations = ranked.slice(0, requiredUnits);
+    const existingCallAssignments = (assignments || []).filter((item: any) =>
+      String(item.call_id) === callId && !['cleared', 'cancelled'].includes(lower(item.status))
+    );
+    const existingAssignedUnitIds = new Set(existingCallAssignments.map((item: any) => String(item.unit_id)));
+    const remainingUnitsRequired = Math.max(0, requiredUnits - existingAssignedUnitIds.size);
+    const newRecommendations = ranked
+      .filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id)))
+      .slice(0, remainingUnitsRequired);
+    const existingAssignmentSummaries = existingCallAssignments.map((assignment: any) => {
+      const officer = (users || []).find((item: any) => String(item.id) === String(assignment.unit_id));
+      const session = activeByEmail.get(lower(officer?.email));
+      const lat = Number(session?.latitude);
+      const lon = Number(session?.longitude);
+      const distance = Number.isFinite(lat) && Number.isFinite(lon)
+        ? distanceMiles(propertyLat, propertyLon, lat, lon)
+        : Number.NaN;
+      return {
+        unit_id: String(assignment.unit_id),
+        officer_email: officer?.email || '',
+        unit_number: session?.unit_number || officer?.unit_number || '',
+        officer_name: officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' '),
+        status: session?.status || officer?.status || assignment.status || '',
+        distance_miles: Number.isFinite(distance) ? Number(distance.toFixed(2)) : null,
+        eta_minutes: Number.isFinite(distance) ? Math.max(1, Math.ceil(distance * 2)) : null,
+        role: assignment.role || 'backup',
+        already_assigned: true,
+      };
+    });
+    const recommendations = [...existingAssignmentSummaries, ...newRecommendations];
+    const totalStaffedUnits = existingAssignedUnitIds.size + newRecommendations.length;
+    const staffingShortfall = Math.max(0, requiredUnits - totalStaffedUnits);
     const decision = mode === 'disabled' ? 'disabled'
       : mode === 'manual_review' ? 'manual_review'
-      : recommendations.length ? (mode === 'live' && !simulation ? 'assigned' : 'recommended') : 'no_eligible_unit';
+      : mode !== 'live' || simulation
+        ? (recommendations.length ? 'recommended' : 'no_eligible_unit')
+        : totalStaffedUnits === 0
+          ? 'no_eligible_unit'
+          : staffingShortfall > 0 ? 'partially_assigned' : 'assigned';
+    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
 
     let assignmentCreated = false;
     let unitStatusChanged = false;
-    if (decision === 'assigned') {
+    if (['assigned', 'partially_assigned'].includes(decision) && newRecommendations.length) {
       const nowIso = new Date().toISOString();
-      const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
       const existingAssignedIds = new Set(Array.isArray(call.assigned_units) ? call.assigned_units.map(String) : []);
       const nextAssignedIds = new Set(existingAssignedIds);
+      let hasPrimaryAssignment = existingCallAssignments.some((item: any) => lower(item.role) === 'primary');
 
-      for (let index = 0; index < recommendations.length; index += 1) {
-        const recommendation = recommendations[index];
+      for (const recommendation of newRecommendations) {
         const unitId = String(recommendation.unit_id);
+        const assignmentRole = hasPrimaryAssignment ? 'backup' : 'primary';
+        hasPrimaryAssignment = true;
         nextAssignedIds.add(unitId);
         const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20).catch(() => []);
         const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
@@ -217,7 +253,7 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.CallAssignment.create({
             call_id: callId,
             unit_id: unitId,
-            role: index === 0 ? 'primary' : 'backup',
+            role: assignmentRole,
             assigned_at: nowIso,
             status: 'pending',
             description: `Automatically assigned from verified property alert ${alert.id}`,
@@ -266,11 +302,11 @@ Deno.serve(async (req) => {
             new_status: 'Dispatched',
             unit_id: unitId,
             unit_name: unitLabel,
-            notes: index === 0 ? 'Automatic property-alert primary assignment' : 'Automatic property-alert backup assignment',
+            notes: assignmentRole === 'primary' ? 'Automatic property-alert primary assignment' : 'Automatic property-alert backup assignment',
             latitude: propertyLat,
             longitude: propertyLon,
             event_key: assignmentEventKey,
-            event_type: index === 0 ? 'unit_dispatched' : 'additional_unit',
+            event_type: assignmentRole === 'primary' ? 'unit_dispatched' : 'additional_unit',
             announcement_text: `Property alert. ${unitLabel}, respond to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. CAD number ${cadNumber}.`,
             announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
             cad_number: String(cadNumber),
@@ -305,10 +341,78 @@ Deno.serve(async (req) => {
           time_dispatched: call.time_dispatched || nowIso,
         }),
         base44.asServiceRole.entities.PropertyAlert.update(alert.id, {
-          lifecycle_status: 'assigned',
+          lifecycle_status: decision === 'partially_assigned' ? 'partially_assigned' : 'assigned',
           acknowledged: false,
         }),
       ]);
+    }
+
+    // A live staffing shortage is a durable operational event. Emit the visual,
+    // audio, supervisor notification, and audit record once; timed rechecks
+    // update the evaluation but cannot replay this warning.
+    if (mode === 'live' && !simulation && staffingShortfall > 0) {
+      const shortageKind = totalStaffedUnits === 0 ? 'no-eligible-unit' : 'backup-shortfall';
+      const shortageEventKey = `autodispatch:${alert.id}:staffing-shortfall:${shortageKind}`;
+      const existingShortageLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: shortageEventKey }, '-created_date', 1).catch(() => []);
+      if (!existingShortageLogs?.length) {
+        const shortageMessage = totalStaffedUnits === 0
+          ? `Property alert. No eligible unit available. CAD number ${cadNumber}.`
+          : `Property alert. Additional qualified unit required. ${staffingShortfall} unit${staffingShortfall === 1 ? '' : 's'} still needed. CAD number ${cadNumber}.`;
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id: callId,
+          incident_type: call.incident || 'Property alert',
+          location: call.location || property.address || '',
+          old_status: call.status || '',
+          new_status: call.status || 'New',
+          notes: shortageMessage,
+          event_key: shortageEventKey,
+          event_type: totalStaffedUnits === 0 ? 'property_alert' : 'backup_requested',
+          announcement_text: shortageMessage,
+          announcement_priority: ['critical', 'high'].includes(lower(call.priority)) ? lower(call.priority) : 'high',
+          cad_number: String(cadNumber),
+          triggering_action: 'geofenceDispatchAssignment.staffing_shortfall',
+          audio_enabled: true,
+          sensitive: false,
+        });
+        const operationalRecipients = (users || []).filter((recipient: any) => {
+          const recipientRoles = new Set((recipient.additional_roles || []).map(lower));
+          return recipient.email && (recipient.role === 'admin' || recipient.role === 'dispatch' || Boolean(recipient.dispatch_role)
+            || recipientRoles.has('supervisor') || recipientRoles.has('full_access') || recipientRoles.has('cad_access'));
+        });
+        for (const recipient of operationalRecipients) {
+          const notificationTitle = totalStaffedUnits === 0
+            ? `No eligible unit available · ${cadNumber}`
+            : `Automatic dispatch needs backup · ${cadNumber}`;
+          const prior = await base44.asServiceRole.entities.Notification.filter({
+            recipient_email: lower(recipient.email),
+            related_id: callId,
+            title: notificationTitle,
+          }, '-created_date', 1).catch(() => []);
+          if (!prior?.length) await base44.asServiceRole.entities.Notification.create({
+            recipient_email: lower(recipient.email),
+            type: 'system_issue',
+            title: notificationTitle,
+            message: shortageMessage,
+            is_read: false,
+            related_id: callId,
+            priority: 'critical',
+            requires_acknowledgment: true,
+            source_name: 'Automatic Property Dispatch',
+          });
+        }
+        await base44.asServiceRole.entities.AuditLog.create({
+          entity_type: 'PropertyAlert',
+          entity_id: alert.id,
+          action: 'status_change',
+          actor_id: user.id,
+          actor_name: 'Automatic Property Dispatch',
+          before_value: JSON.stringify({ required_units: requiredUnits }),
+          after_value: JSON.stringify({ staffed_units: totalStaffedUnits, staffing_shortfall: staffingShortfall, event_key: shortageEventKey }),
+          field_changed: 'automatic_dispatch_staffing',
+          timestamp: new Date().toISOString(),
+          description: shortageMessage,
+        }).catch(() => null);
+      }
     }
     const eventKey = `autodispatch:${alert.source_key || alert.id}:${mode}${simulation ? ':simulation' : ''}`;
     const evaluationData = {
@@ -320,7 +424,7 @@ Deno.serve(async (req) => {
       mode,
       decision,
       recommended_unit_ids: recommendations.map((item: any) => item.unit_id),
-      ranking: ranked,
+      ranking: [...existingAssignmentSummaries, ...ranked.filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id)))],
       excluded_units: excluded,
       evaluated_at: new Date().toISOString(),
       evaluated_by: user.id,
@@ -331,6 +435,8 @@ Deno.serve(async (req) => {
         live_approved_by: property.auto_dispatch_live_approved_by || null,
         response_radius_miles: radius,
         required_units: requiredUnits,
+        staffed_units: totalStaffedUnits,
+        staffing_shortfall: staffingShortfall,
         backup_required: Boolean(property.auto_dispatch_backup_required),
         required_qualifications: requiredQualifications,
         required_equipment: requiredEquipment,
@@ -340,7 +446,8 @@ Deno.serve(async (req) => {
       },
       description: simulation
         ? 'Phase 2A safety simulation; no assignment or unit status was changed.'
-        : decision === 'assigned' ? 'Verified property alert assigned to the closest eligible unit(s) in live mode.'
+        : decision === 'assigned' ? 'Verified property alert fully staffed with the closest eligible unit(s) in live mode.'
+        : decision === 'partially_assigned' ? `Closest eligible unit(s) assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
     };
     const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ event_key: eventKey }, '-evaluated_at', 1).catch(() => []);
@@ -361,7 +468,10 @@ Deno.serve(async (req) => {
       recommendations,
       excluded_units: excluded,
       evaluation_id: evaluation?.id,
-      message: decision === 'assigned' ? 'Closest eligible unit assignment created.' : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
+      staffing_shortfall: staffingShortfall,
+      message: decision === 'assigned' ? 'Closest eligible unit assignment created.'
+        : decision === 'partially_assigned' ? `Closest eligible unit assigned; ${staffingShortfall} additional qualified unit(s) still required.`
+        : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
     });
   } catch (error) {
     console.error('geofenceDispatchAssignment failed', error);
