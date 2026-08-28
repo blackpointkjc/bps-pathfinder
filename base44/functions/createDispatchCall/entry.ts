@@ -27,19 +27,17 @@ function pointInPolygon(lat: number, lng: number, polygon: any[]) {
 function callIsInsideProperty(call: any, location: any) {
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
 
-  const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
-  if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
-    return pointInPolygon(lat, lng, polygon) ? 0 : null;
-  }
+  // Manual CAD calls follow the exact same rule as imported calls: only the
+  // custom Property Monitoring polygon saved on the Location page can create a
+  // PropertyAlert. No address, radius, or alternate geofence fallback is allowed.
+  const polygon = Array.isArray(location.property_monitoring_polygon)
+    ? location.property_monitoring_polygon
+    : [];
+  if (polygon.length < 3) return null;
 
-  const centerLat = Number(location.latitude);
-  const centerLng = Number(location.longitude);
-  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return null;
-  const distance = distanceMeters(lat, lng, centerLat, centerLng);
-  const radius = Number(location.property_monitoring_radius_meters || 500);
-  return distance <= radius ? distance : null;
+  return pointInPolygon(lat, lng, polygon) ? 0 : null;
 }
 
 Deno.serve(async (req) => {
