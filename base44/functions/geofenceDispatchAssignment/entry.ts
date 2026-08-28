@@ -82,7 +82,12 @@ Deno.serve(async (req) => {
 
     const openByEmail = new Map<string, any>();
     for (const entry of timeEntries || []) {
-      if (!entry.officer_email || !entry.clock_in || entry.clock_out || entry.archived === true) continue;
+      if (!entry.officer_email || !entry.clock_in || entry.archived === true) continue;
+      const clockInAt = new Date(entry.clock_in).getTime();
+      const clockOutAt = entry.clock_out ? new Date(entry.clock_out).getTime() : Number.POSITIVE_INFINITY;
+      // Some approved/scheduled payroll entries already contain the expected end
+      // time. They are still an active work session until that end time passes.
+      if (!Number.isFinite(clockInAt) || clockInAt > now || clockOutAt <= now) continue;
       const email = lower(entry.officer_email);
       if (!openByEmail.has(email)) openByEmail.set(email, entry);
     }
