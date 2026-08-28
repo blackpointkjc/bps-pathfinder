@@ -71,6 +71,14 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.DispatchCall.update(callId, { assigned_units: assignedUnits });
     await base44.asServiceRole.entities.User.update(chosen.user.id, { status:'Dispatched', current_call_id:callId, current_call_info:`Supervisor assist · ${call.agency_cad_number || call.bps_reference || call.call_id || call.id}`, status_since:nowIso, last_updated:nowIso }).catch(()=>null);
     await base44.asServiceRole.entities.ActiveOfficer.update(chosen.session.id, { status:'Dispatched', current_call_info:`Supervisor assist · ${call.incident || 'Active call'}`, last_update:nowIso }).catch(()=>null);
+    const unitRows = await base44.asServiceRole.entities.Unit.filter({ user_id: chosen.user.id }, '-last_update_at', 20).catch(()=>[]);
+    for (const unit of unitRows || []) {
+      await base44.asServiceRole.entities.Unit.update(unit.id, {
+        status:'Dispatched',
+        assigned_call_ids:Array.from(new Set([...(unit.assigned_call_ids || []).map(String), callId])),
+        last_update_at:nowIso,
+      }).catch(()=>null);
+    }
 
     const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
     const label = chosen.user.unit_number ? `Unit ${chosen.user.unit_number}` : (chosen.user.full_name || chosen.user.email);
