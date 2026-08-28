@@ -49,6 +49,7 @@
       "type": "string",
       "enum": [
         "active",
+        "partially_assigned",
         "assigned",
         "acknowledged",
         "resolved",
