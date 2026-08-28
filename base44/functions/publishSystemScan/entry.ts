@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
       );
       for (const issue of newlyDetectedIssues) {
         for (const administrator of administrators) {
-          await base44.asServiceRole.entities.Notification.create({
+          const notification = await base44.asServiceRole.entities.Notification.create({
             recipient_email: String(administrator.email).trim().toLowerCase(),
             type: 'system_issue',
             title: `System issue · ${issue.title}`,
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
             requires_acknowledgment: false,
             source_name: 'Pathfinder System Monitor',
           }).catch(() => null);
-          notificationsCreated += 1;
+          if (notification?.id) notificationsCreated += 1;
         }
       }
     }
