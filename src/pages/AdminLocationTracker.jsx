@@ -302,22 +302,25 @@ export default function AdminLocationTracker() {
       for (const locationData of latestByEmail.values()) {
         const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
         if (!isOperationallyVisibleUser(profile)) continue;
-        const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
-        const ageMs = Number.isFinite(stamp) ? now - stamp : Infinity;
+        const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
+        const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
         const name = profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.full_name || profile.email);
-        const hasGps = Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude));
+        const hasFreshGps = Number.isFinite(Number(locationData.latitude))
+          && Number.isFinite(Number(locationData.longitude))
+          && gpsAgeMs <= LIVE_SESSION_FRESH_MS;
+        const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
         const item = {
           name,
           email: profile.email,
           location: locationData.current_location || 'Signed in - GPS pending',
           role: profile.rank || profile.role || 'officer',
-          lastUpdate: locationData.last_update || null,
-          minutesSinceUpdate: Number.isFinite(ageMs) ? Math.max(0, Math.floor(ageMs / 60000)) : null,
-          trackingState: hasGps && ageMs <= LIVE_SESSION_FRESH_MS ? 'Live' : hasGps ? 'Last known' : 'Signed in - GPS unavailable',
+          lastUpdate: hadGps ? new Date(gpsStamp).toISOString() : null,
+          minutesSinceUpdate: hadGps ? Math.max(0, Math.floor(gpsAgeMs / 60000)) : null,
+          trackingState: hasFreshGps ? 'Live' : hadGps ? 'Last known' : 'Signed in - GPS unavailable',
         };
         results.total += 1;
-        if (hasGps && ageMs <= LIVE_SESSION_FRESH_MS) results.withLocation.push(item);
-        else if (hasGps) results.staleLocation.push(item);
+        if (hasFreshGps) results.withLocation.push(item);
+        else if (hadGps) results.staleLocation.push(item);
         else results.withoutLocation.push(item);
       }
 
@@ -354,9 +357,26 @@ export default function AdminLocationTracker() {
   const handleCheckAllLocations = async () => {
     setLocationCheckError('');
     setDeviceLocationState({ state: 'requesting', message: 'Requesting a fresh location from this device…' });
-    window.dispatchEvent(new CustomEvent('bps-request-location'));
     try {
-      await new Promise(resolve => window.setTimeout(resolve, 1200));
+      // Register before dispatching so a fast device fix cannot be missed. The
+      // request waits long enough for a phone/tablet/Windows GPS radio to wake,
+      // then checks every signed-in officer from the authoritative backend feed.
+      await new Promise(resolve => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          window.removeEventListener('bps-location-quality', handleResult);
+          window.clearTimeout(timeoutId);
+          resolve();
+        };
+        const handleResult = event => {
+          if (['live', 'permission_denied', 'unavailable', 'timeout', 'low_accuracy', 'stale'].includes(event?.detail?.state)) finish();
+        };
+        const timeoutId = window.setTimeout(finish, 16000);
+        window.addEventListener('bps-location-quality', handleResult);
+        window.dispatchEvent(new CustomEvent('bps-request-location'));
+      });
       await performLocationCheck();
     } catch (error) {
       setLocationCheckError(error?.message || 'Failed to check user locations. Please try again.');
@@ -372,7 +392,7 @@ export default function AdminLocationTracker() {
         clearInterval(interval);
       };
     }
-  }, [viewMode, hasAccess, allUsers, activeOfficerLocations, clockedInWithoutSession]);  
+  }, [viewMode, hasAccess, allUsers]);  
 
   const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
@@ -427,7 +447,7 @@ export default function AdminLocationTracker() {
           </Button>
         </div>
 
-        {deviceLocationState && ['permission_denied', 'unavailable', 'timeout', 'low_accuracy'].includes(deviceLocationState.state) && (
+        {deviceLocationState && ['permission_denied', 'unavailable', 'timeout', 'low_accuracy', 'stale'].includes(deviceLocationState.state) && (
           <Alert className="border-amber-400 bg-amber-50">
             <AlertTriangle className="h-4 w-4 text-amber-700" />
             <AlertDescription className="text-amber-950">
@@ -435,7 +455,9 @@ export default function AdminLocationTracker() {
                 ? 'Location permission is blocked on this device. Allow precise location for Pathfinder in the browser site settings, then select Check All Locations Now.'
                 : deviceLocationState.state === 'low_accuracy'
                   ? `This device reported an imprecise location${deviceLocationState.accuracy ? ` (about ${Math.round(deviceLocationState.accuracy)} meters)` : ''}. Enable precise location or GPS and try again.`
-                  : 'This device could not provide a current GPS location. Turn on device location services and try again.'}
+                  : deviceLocationState.state === 'stale'
+                    ? 'The browser returned a cached location. Pathfinder is retrying automatically for a current device fix.'
+                    : 'This device could not provide a current GPS location. Turn on device location services and try again.'}
             </AlertDescription>
           </Alert>
         )}
