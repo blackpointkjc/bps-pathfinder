@@ -19,6 +19,7 @@ const SOURCES = [
   // the same way ChatMention is (see the `assignment` check in showBanner).
   { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
   { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
+  { entity: 'Notification', label: 'System Issue Detected', page: 'AdminCenter', kind: 'announcement', targeted: 'system_issue' },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -243,10 +244,11 @@ export default function GlobalMessageBanner({ user }) {
       if (!record?.id) return;
       const senderIdentity = normalized(record.created_by_id || record.sender_user_id || record.sender_id || record.sender_email || record.created_by);
       const isOwnRecord = myIds.includes(senderIdentity);
-      if (isOwnRecord) return;
+      if (isOwnRecord && !source.targeted) return;
       if (source.direct && !visibleDirectMessage(record)) return;
       if (source.mention && normalized(record.recipient_email) !== normalized(user.email)) return;
       if (source.assignment && (record.type !== source.assignment || normalized(record.recipient_email) !== normalized(user.email))) return;
+      if (source.targeted && (record.type !== source.targeted || normalized(record.recipient_email) !== normalized(user.email))) return;
       if (source.kind === 'announcement' && record.audience === 'supervisors' && user.role !== 'admin' && !roles.has('supervisor')) return;
 
       const key = `${source.entity}:${record.id}`;
