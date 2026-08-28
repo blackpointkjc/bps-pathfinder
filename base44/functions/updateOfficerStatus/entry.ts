@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length });
+        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
