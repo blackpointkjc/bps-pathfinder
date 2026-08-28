@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import IDScanner from "../components/IDScanner";
+import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openVirginiaCriminalComplaintPrint } from '@/utils/virginiaCriminalComplaintPrint';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
@@ -23,6 +24,7 @@ export default function VACriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showIDScanner, setShowIDScanner] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [formData, setFormData] = useState({
     complaint_date: new Date().toISOString(),
     offense_date: format(new Date(), 'yyyy-MM-dd'),
@@ -50,6 +52,8 @@ export default function VACriminalComplaints() {
     facts_basis: "",
     court_type: "general_district",
     complainant_name: "",
+    complainant_signature_url: "",
+    complainant_signed_at: "",
     is_law_enforcement: true,
     authorization_type: "law_enforcement",
     authorization_given_by: "",
@@ -237,6 +241,8 @@ export default function VACriminalComplaints() {
       facts_basis: "",
       court_type: "general_district",
       complainant_name: user?.first_name && user?.last_name ? `${user.first_name} ${user.last_name}` : "",
+      complainant_signature_url: "",
+      complainant_signed_at: "",
       is_law_enforcement: true,
       authorization_type: "law_enforcement",
       authorization_given_by: "",
@@ -251,6 +257,10 @@ export default function VACriminalComplaints() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.complainant_signature_url) {
+      alert('A handwritten complainant signature is required before filing the complaint.');
+      return;
+    }
     
     const submissionData = {
       ...formData,
@@ -311,7 +321,7 @@ export default function VACriminalComplaints() {
       displayLocation,
       officerName: getOfficerFullDisplay(officerInfo?.email),
       complainantName: complainantPrintName,
-      signatureName: getOfficerFullDisplay(officerInfo?.email),
+      signatureUrl: complaint.complainant_signature_url || '',
       timeZone: siteLocation?.time_zone || 'America/New_York',
     });
     return;
@@ -705,6 +715,17 @@ export default function VACriminalComplaints() {
                       Complainant is a law-enforcement officer.
                     </Label>
                   </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-slate-900">Complainant Signature *</div>
+                        <div className="text-xs text-slate-500">The signature line is not auto-filled with a name or unit number. The complainant must actually sign.</div>
+                      </div>
+                      <Button type="button" variant="outline" onClick={() => setShowSignaturePad(true)}>{formData.complainant_signature_url ? 'Replace Signature' : 'Sign Complaint'}</Button>
+                    </div>
+                    {formData.complainant_signature_url && <img src={formData.complainant_signature_url} alt="Complainant signature" className="mt-3 h-20 max-w-sm rounded border bg-white object-contain" />}
+                  </div>
+                  {showSignaturePad && <SignaturePad officerName={formData.complainant_name || 'Complainant'} onSignatureComplete={(url) => { setFormData(prev => ({ ...prev, complainant_signature_url:url, complainant_signed_at:new Date().toISOString() })); setShowSignaturePad(false); }} onClose={() => setShowSignaturePad(false)} />}
                   {!formData.is_law_enforcement && (
                     <div className="space-y-4 border rounded-md p-4 bg-yellow-50">
                       <p className="text-sm font-medium text-yellow-800">
