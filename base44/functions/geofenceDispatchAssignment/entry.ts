@@ -72,6 +72,34 @@ Deno.serve(async (req) => {
     const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
     const mode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
     const radius = Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5));
+
+    // A completed live evaluation is the permanent idempotency receipt for this
+    // property-alert event. Refreshes, ingestion reconnects, and timed rechecks
+    // must never assign or announce the same alert again.
+    if (mode === 'live' && !simulation) {
+      const completed = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({
+        property_alert_id: alert.id,
+        mode: 'live',
+        decision: 'assigned',
+      }, '-evaluated_at', 1).catch(() => []);
+      if (completed?.length) {
+        return Response.json({
+          success: true,
+          mode: 'live',
+          shadow_mode: false,
+          simulation: false,
+          assignment_created: false,
+          unit_status_changed: false,
+          duplicate_event: true,
+          call_id: callId,
+          decision: 'assigned',
+          recommendations: completed[0].ranking || [],
+          excluded_units: completed[0].excluded_units || [],
+          evaluation_id: completed[0].id,
+          message: 'This property alert was already assigned. No duplicate action was taken.',
+        });
+      }
+    }
     const requiredUnits = Math.max(1, Number(property.auto_dispatch_required_units || 1), property.auto_dispatch_backup_required ? 2 : 1);
     const requiredQualifications = list(property.auto_dispatch_required_qualifications);
     const requiredEquipment = list(property.auto_dispatch_required_equipment);
