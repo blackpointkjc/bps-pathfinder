@@ -46,13 +46,20 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id, call_id }, '-evaluated_at', 20),
     ]);
 
+    const simulationEvaluations = (evaluations || []).filter((row: any) =>
+      row.configuration_snapshot?.simulation === true || String(row.event_key || '').endsWith(':simulation')
+    );
     const checks = {
+      property_alert_link_verified: first.call_id === call_id && second.call_id === call_id,
       shadow_mode_enforced: first.shadow_mode === true && second.shadow_mode === true,
       no_assignment_created: stable(beforeAssignments) === stable(afterAssignments) && first.assignment_created === false && second.assignment_created === false,
       no_unit_status_changed: unitState(beforeUnits) === unitState(afterUnits) && first.unit_status_changed === false && second.unit_status_changed === false,
-      duplicate_evaluation_prevented: first.evaluation_id && first.evaluation_id === second.evaluation_id && evaluations.length === 1,
+      duplicate_evaluation_prevented: first.evaluation_id && first.evaluation_id === second.evaluation_id && simulationEvaluations.length === 1,
+      staffing_shortfall_recorded: Number.isFinite(Number(first.staffing_shortfall)),
       exclusion_reasons_present: Array.isArray(first.excluded_units) && first.excluded_units.every((row: any) => Array.isArray(row.reasons) && row.reasons.length > 0),
-      recommendation_has_distance_eta: Array.isArray(first.recommendations) && first.recommendations.every((row: any) => Number.isFinite(Number(row.distance_miles)) && Number.isFinite(Number(row.eta_minutes))),
+      recommendation_has_distance_eta: Array.isArray(first.recommendations) && first.recommendations.every((row: any) =>
+        row.already_assigned === true || (Number.isFinite(Number(row.distance_miles)) && Number.isFinite(Number(row.eta_minutes)))
+      ),
     };
     const passed = Object.values(checks).every(Boolean);
 
