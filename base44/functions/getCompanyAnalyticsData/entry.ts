@@ -14,12 +14,26 @@ Deno.serve(async (req) => {
     }
 
     const errors: Record<string, string> = {};
-    const list = async (entityName: string, sort?: string) => {
+    const list = async (entityName: string, sort?: string, limit = 1000) => {
+      const entity = (base44.asServiceRole.entities as any)[entityName];
+      if (!entity?.list) {
+        errors[entityName] = `${entityName} service is unavailable`;
+        return [];
+      }
       try {
-        const entity = (base44.asServiceRole.entities as any)[entityName];
-        if (!entity?.list) throw new Error(`${entityName} service is unavailable`);
-        return await entity.list(sort, 3000);
+        return await entity.list(sort, limit);
       } catch (error) {
+        // Large archival collections can briefly exceed the database connection
+        // window. Retry once with a smaller bounded operational slice rather
+        // than failing the entire company analytics dashboard.
+        if (/timed out|timeout|server selection/i.test(String(error?.message || error)) && limit > 250) {
+          try {
+            return await entity.list(sort, 250);
+          } catch (retryError) {
+            errors[entityName] = retryError?.message || 'Unable to read data after retry';
+            return [];
+          }
+        }
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
       }
@@ -41,7 +55,7 @@ Deno.serve(async (req) => {
       list('CallOut', '-call_out_date'),
       list('CallForService', '-call_time'),
       list('DispatchCall', '-time_received'),
-      list('CallHistory', '-archived_date'),
+      list('CallHistory', '-archived_date', 500),
       list('PropertyAlert', '-created_date'),
       list('JobDutyRule', 'property_site'),
       list('Location', 'site_name'),
