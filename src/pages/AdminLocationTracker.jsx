@@ -761,10 +761,16 @@ export default function AdminLocationTracker() {
                       <ResilientTileLayer onUnavailable={setLiveMapUnavailable} />
                       <MapUpdater officers={officersForMap} historicalPath={null} />
                       {officersForMap.map((officer) => (
-                        <Marker 
-                          key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`} 
-                          position={[Number(officer.latitude), Number(officer.longitude)]}
-                          opacity={officer.gps_stale ? 0.55 : 1}
+                        <CircleMarker
+                          key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`}
+                          center={[Number(officer.latitude), Number(officer.longitude)]}
+                          radius={officer.gps_stale ? 7 : 9}
+                          pathOptions={{
+                            color: '#ffffff',
+                            weight: 2,
+                            fillColor: officer.gps_stale ? '#d97706' : '#2563eb',
+                            fillOpacity: officer.gps_stale ? 0.65 : 0.95,
+                          }}
                         >
                           <Popup autoPan={false}>
                             <div className="p-2">
@@ -783,7 +789,7 @@ export default function AdminLocationTracker() {
                               )}
                             </div>
                           </Popup>
-                        </Marker>
+                        </CircleMarker>
                       ))}
                     </MapContainer>
                     {officersForMap.length === 0 && (
