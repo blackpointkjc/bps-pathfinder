@@ -51,11 +51,17 @@ Deno.serve(async (req) => {
       100,
     );
     const primary = records?.[0] || null;
-    // Location heartbeats do not own CAD status. Preserve the current live status
-    // unless the caller deliberately supplies one (for initial session creation).
-    // This prevents a stale Layout user object from overwriting On Patrol/Enroute/
-    // On Scene/Busy after updateOfficerStatus has already changed it.
-    liveData.status = String(body.status || primary?.status || user.status || 'Signed In');
+    // Location heartbeats must never own CAD status. Only set status when the
+    // caller explicitly supplies one (initial session creation) or when creating
+    // a new record. When updating an existing record, do NOT include status —
+    // a heartbeat that reads primary.status before updateOfficerStatus writes
+    // and then writes after it creates a race that flips the officer back to
+    // the old status (e.g., Out of Service) on the board.
+    if (body.status) {
+      liveData.status = String(body.status);
+    } else if (!primary) {
+      liveData.status = String(user.status || 'Signed In');
+    }
     const activeOfficer = primary
       ? await base44.asServiceRole.entities.ActiveOfficer.update(primary.id, liveData)
       : await base44.asServiceRole.entities.ActiveOfficer.create(liveData);

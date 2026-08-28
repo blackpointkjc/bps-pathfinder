@@ -458,6 +458,7 @@ export default function AdminLocations({ embedded = false }) {
     const data = {
       ...formData,
       geofence_polygon: sharedBoundary,
+      property_monitoring_polygon: sharedBoundary,
       property_monitoring_boundary_type: sharedBoundary.length >= 3 ? 'polygon' : 'circle',
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
       longitude: formData.longitude ? parseFloat(formData.longitude) : null,
