@@ -342,14 +342,17 @@ export default function DispatchCenter() {
             const response = await base44.functions.invoke('requestSupervisorAssist', { call_id: selectedCall.id });
             const payload = response?.data || response || {};
             if (payload.error) throw new Error(payload.error);
-            if (!payload.assigned) toast.warning(payload.reason || 'No eligible supervisor is available right now.');
+            if (payload.pending || payload.request_recorded) {
+                toast.success(payload.reason || 'Supervisor request recorded and awaiting an eligible supervisor.');
+                await loadCallNotes(selectedCall.id);
+            } else if (!payload.assigned) toast.warning(payload.reason || 'No eligible supervisor is available right now.');
             else {
                 toast.success(`${payload.supervisor?.name || 'Supervisor'} assigned as closest available supervisor.`);
                 await loadCallNotes(selectedCall.id);
                 await loadActiveCalls();
             }
         } catch (error) {
-            toast.error(error?.message || 'Unable to request supervisor');
+            toast.error(error?.response?.data?.error || error?.message || 'Unable to request supervisor');
         }
     };
 
