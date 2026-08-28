@@ -16,6 +16,23 @@ function hasRole(user: any, role: string) {
   return (user?.additional_roles || []).map(lower).includes(lower(role));
 }
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const message = lower(error?.message || error?.response?.data?.error);
+      const transient = message.includes('rate limit') || message.includes('429') || message.includes('timeout') || message.includes('temporar') || message.includes('500');
+      if (!transient || attempt === attempts - 1) throw error;
+      await wait(attempt === 0 ? 250 : 750);
+    }
+  }
+  throw lastError;
+}
+
 function isFieldOfficer(user: any) {
   const rank = lower(user?.rank);
   if (!user?.email || user?.termination_date) return false;
@@ -38,7 +55,7 @@ Deno.serve(async (req) => {
     const simulation = input.simulation === true;
     if (!callId) return Response.json({ error: 'Missing call_id' }, { status: 400 });
 
-    const activeCall = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
+    const activeCall = await withRetry(() => base44.asServiceRole.entities.DispatchCall.get(callId)).catch(() => null);
     const archivedCalls = !activeCall && simulation
       ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
       : [];
@@ -49,15 +66,15 @@ Deno.serve(async (req) => {
     // Resolve the exact alert/property first, then load only operational datasets.
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
     const alert = input.property_alert_id
-      ? await base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id)).catch(() => null)
-      : (await base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1).catch(() => []))?.[0] || null;
+      ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
+      : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)).catch(() => []))?.[0] || null;
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
-    const property = await base44.asServiceRole.entities.Location.get(String(alert.propertyId)).catch(() => null);
+    const property = await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
 
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
-    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 500);
-    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1200);
+    const users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
+    const activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
+    const assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
 
     const propertyLat = Number(property.latitude ?? call.latitude);
     const propertyLon = Number(property.longitude ?? call.longitude);
