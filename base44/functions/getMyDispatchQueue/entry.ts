@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ unit_id: me.id }, '-assigned_at', 500).catch(() => []);
+    const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []);
     const activeAssignments = (assignments || []).filter((a: any) => !['cleared','cancelled'].includes(lower(a.status)));
     const callIds = [...new Set(activeAssignments.map((a: any) => String(a.call_id || '')).filter(Boolean))];
     const calls: any[] = [];
@@ -27,6 +28,7 @@ Deno.serve(async (req) => {
         ...call,
         assignment,
         dispatch_notes: notes || [],
+        welfare_check: (welfareChecks || []).find((check:any) => String(check.call_id) === String(call.id) && lower(check.status) === 'pending') || null,
         queue_priority: priorityWeight[lower(call.priority)] ?? 2,
       });
     }
