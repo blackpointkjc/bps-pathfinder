@@ -43,13 +43,14 @@ Deno.serve(async (req) => {
       ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
       : [];
     const call = activeCall || archivedCalls?.[0] || null;
-    const [alerts, locations, users, timeEntries, activeOfficers, assignments] = await Promise.all([
+    const [alerts, locations, users, timeEntries, activeOfficers, assignments, activeCalls] = await Promise.all([
       base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 20),
       base44.asServiceRole.entities.Location.list('-updated_date', 1000),
       base44.asServiceRole.entities.User.list('-updated_date', 1000),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
       base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
       base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000),
+      base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000),
     ]);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
 
@@ -94,8 +95,14 @@ Deno.serve(async (req) => {
         activeByEmail.set(email, active);
       }
     }
+    // Only assignments attached to a call that is still in DispatchCall may
+    // exclude a unit. Historical/orphaned CallAssignment rows must not keep an
+    // otherwise available officer permanently busy after the call is archived.
+    const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
     const busyUnitIds = new Set((assignments || [])
-      .filter((item: any) => item.call_id !== callId && !['cleared', 'cancelled'].includes(lower(item.status)))
+      .filter((item: any) => item.call_id !== callId
+        && activeCallIds.has(String(item.call_id))
+        && !['cleared', 'cancelled'].includes(lower(item.status)))
       .map((item: any) => String(item.unit_id)));
 
     const ranked: any[] = [];
