@@ -122,17 +122,17 @@ function AdministrationToolsOnly() {
 function AdminShadowBar({ mode, clients, selectedClient, onMode, onClient, onExit }) {
   const labels = { cad:'CAD', officer:'Officer', supervisor:'Supervisor', hr:'HR', client:'Client' };
   return (
-    <div className="sticky top-0 z-[70] border-b border-amber-400/40 bg-[#111827]/98 px-3 py-2 text-white shadow-xl backdrop-blur">
+    <div className="sticky top-0 z-[70] border-b border-slate-700 bg-[#09111d]/98 px-3 py-2 text-white shadow-lg backdrop-blur">
       <div className="mx-auto flex max-w-[1700px] flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2">
-          <Eye className="h-4 w-4 text-amber-300" />
-          <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Admin Shadow View</div><div className="text-xs font-bold">Viewing {labels[mode] || 'role'} exactly as that workspace renders</div></div>
+        <div className="flex items-center gap-2 pr-2 text-xs font-black text-cyan-200">
+          <Eye className="h-4 w-4" />
+          <span>Previewing as {labels[mode] || 'Role'}</span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {['cad','officer','supervisor','hr','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${mode===item?'border-amber-300 bg-amber-500/20 text-white':'border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400'}`}>{labels[item]}</button>)}
+        <div className="flex flex-wrap gap-1">
+          {['cad','officer','supervisor','hr','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-md border px-2.5 py-1.5 text-[11px] font-bold ${mode===item?'border-cyan-400 bg-cyan-500/15 text-cyan-100':'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{labels[item]}</button>)}
         </div>
-        {mode === 'client' && <select value={selectedClient} onChange={e=>onClient(e.target.value)} className="min-w-[280px] flex-1 rounded-lg border border-blue-500/50 bg-[#07111f] px-3 py-2 text-xs text-white sm:max-w-xl"><option value="">Select actual client account to shadow</option>{clients.map(client=><option key={client.id} value={client.id}>{client.__label}</option>)}</select>}
-        <button type="button" onClick={onExit} className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-950/60 px-3 py-2 text-xs font-black text-red-100 hover:bg-red-900"><X className="h-4 w-4"/>EXIT SHADOW</button>
+        {mode === 'client' && <select value={selectedClient} onChange={e=>onClient(e.target.value)} className="min-w-[280px] flex-1 rounded-md border border-blue-500/40 bg-[#07111f] px-3 py-1.5 text-xs text-white sm:max-w-xl"><option value="">Choose client account</option>{clients.map(client=><option key={client.id} value={client.id}>{client.__label}</option>)}</select>}
+        <button type="button" onClick={onExit} className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-[11px] font-black text-slate-200 hover:border-red-500 hover:text-red-200"><X className="h-3.5 w-3.5"/>Exit Preview</button>
       </div>
     </div>
   );
@@ -193,14 +193,14 @@ export default function AdminCenter() {
     <UnifiedCenter
       eyebrow="Master Administration"
       title="Admin Center"
-      description="Each tab contains only that role's tools. Use Shadow View to replace the workspace with the exact full role/account view for testing."
+      description="Administration and role-specific tools in one workspace. Preview any role when you need to verify exactly what that user experience looks like."
       sections={MASTER_SECTIONS}
       defaultSection="admin"
       queryParam="admin_center"
     >
       {section => {
         const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <SupervisorCenter embedded /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
-        return <div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#08111e] px-4 py-2"><div className="text-xs font-bold text-slate-400">Soft mirror: shared live tools, no duplicated page shell.</div>{section !== 'admin' && <button type="button" onClick={()=>enterShadow(section)} className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20"><Eye className="h-4 w-4"/>SHADOW FULL {section.toUpperCase()} VIEW</button>}</div>{mirror}</div>;
+        return <div className="min-w-0">{section !== 'admin' && <div className="flex justify-end border-b border-slate-800 bg-[#08111e] px-4 py-2"><button type="button" onClick={()=>enterShadow(section)} className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-[11px] font-black text-slate-200 hover:border-cyan-500 hover:text-cyan-200"><Eye className="h-3.5 w-3.5"/>Preview as {section.charAt(0).toUpperCase()+section.slice(1)}</button></div>}{mirror}</div>;
       }}
     </UnifiedCenter>
   );
