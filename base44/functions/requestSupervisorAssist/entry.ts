@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && liveCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
     const already = new Set((assignments || []).filter((a:any)=>String(a.call_id)===callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
 
-    const existingSupervisor = (users || []).find((u:any) => already.has(String(u.id)) && isSupervisor(u));
+    const existingSupervisor = (users || []).find((u:any) => String(u.id) !== String(me.id) && already.has(String(u.id)) && isSupervisor(u));
     if (existingSupervisor) {
       const existingLast = String(existingSupervisor.last_name || existingSupervisor.full_name || '').trim().split(/\s+/).pop();
       const existingRank = String(existingSupervisor.rank || 'Supervisor').trim();
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     const candidates:any[] = [];
     for (const u of users || []) {
-      if (!isSupervisor(u) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
+      if (!isSupervisor(u) || String(u.id) === String(me.id) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
       const session = activeByEmail.get(lower(u.email));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const lat = Number(session?.latitude), lon = Number(session?.longitude), accuracy = Number(session?.accuracy);
