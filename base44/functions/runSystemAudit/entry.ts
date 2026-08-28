@@ -11,6 +11,12 @@ type Finding = {
 
 const add = (findings: Finding[], finding: Finding) => findings.push(finding);
 const value = (record: any, ...keys: string[]) => keys.map(key => record?.[key]).find(item => item !== undefined && item !== null && String(item).trim() !== '');
+const hasCoordinateValue = (coordinate: unknown) => coordinate !== null && coordinate !== undefined && String(coordinate).trim() !== '' && Number.isFinite(Number(coordinate));
+const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordinateValue(latitude)
+  && hasCoordinateValue(longitude)
+  && Math.abs(Number(latitude)) <= 90
+  && Math.abs(Number(longitude)) <= 180
+  && !(Number(latitude) === 0 && Number(longitude) === 0);
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
@@ -397,12 +403,12 @@ Deno.serve(async (req) => {
       // current. Movement-history health must compare against gps_updated_at.
       const stamp = new Date(value(item, 'gps_updated_at') || 0).getTime();
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
-        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+        && hasValidCoordinates(item.latitude, item.longitude);
     });
     const recentMovement = movementHistory.filter(item => {
       const stamp = new Date(value(item, 'timestamp', 'created_date') || 0).getTime();
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
-        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+        && hasValidCoordinates(item.latitude, item.longitude);
     });
     if (liveLocations.length && !freshLiveLocations.length) add(findings, {
       key: 'location:no-fresh-live-units',
