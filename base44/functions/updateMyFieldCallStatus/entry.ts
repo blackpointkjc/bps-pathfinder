@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
           if (disposition) update.disposition = String(disposition).trim().slice(0, 1000);
         }
       }
+      if (status === 'Cleared') {
+        update.assigned_units = assigned.filter((id: any) => String(id) !== String(user.id));
+      }
       if (Object.keys(update).length) await base44.asServiceRole.entities.DispatchCall.update(call_id, update);
     }
 
