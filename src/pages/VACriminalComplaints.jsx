@@ -725,7 +725,7 @@ export default function VACriminalComplaints() {
                     </div>
                     {formData.complainant_signature_url && <img src={formData.complainant_signature_url} alt="Complainant signature" className="mt-3 h-20 max-w-sm rounded border bg-white object-contain" />}
                   </div>
-                  {showSignaturePad && <SignaturePad officerName={formData.complainant_name || 'Complainant'} onSignatureComplete={(url) => { setFormData(prev => ({ ...prev, complainant_signature_url:url, complainant_signed_at:new Date().toISOString() })); setShowSignaturePad(false); }} onClose={() => setShowSignaturePad(false)} />}
+                  {showSignaturePad && <SignaturePad officerName={formData.complainant_name || 'Complainant'} onSignatureComplete={(url) => { setFormData(prev => ({ ...prev, complainant_signature_url:url, complainant_signed_at:'' })); setShowSignaturePad(false); }} onClose={() => setShowSignaturePad(false)} />}
                   {!formData.is_law_enforcement && (
                     <div className="space-y-4 border rounded-md p-4 bg-yellow-50">
                       <p className="text-sm font-medium text-yellow-800">
