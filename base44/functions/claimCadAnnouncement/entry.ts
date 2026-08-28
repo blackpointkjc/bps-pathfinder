@@ -49,6 +49,23 @@ Deno.serve(async (req) => {
       cad_number: clean(body.cad_number),
       event_type: clean(body.event_type),
     });
+
+    // Self-heal: a concurrent claim for the same user/event can pass the
+    // existence check above at the same instant and create a duplicate receipt.
+    // Re-query and keep only the earliest; the audit flags duplicates of this
+    // exact user_email|event_key pair.
+    const allFor = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
+      { event_key: eventKey, user_email: userEmail },
+      'created_date',
+      10,
+    );
+    if (allFor?.length > 1) {
+      const [earliest, ...extras] = allFor;
+      await Promise.all(extras.map((r: any) =>
+        base44.asServiceRole.entities.CadAnnouncementReceipt.delete(r.id).catch(() => null)
+      ));
+      return Response.json({ success: true, claimed: true, receipt: earliest, deduplicated: extras.length });
+    }
     return Response.json({ success: true, claimed: true, receipt });
   } catch (error) {
     console.error('claimCadAnnouncement failed', error);

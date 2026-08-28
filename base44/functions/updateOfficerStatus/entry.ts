@@ -63,12 +63,32 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.Unit.list(undefined, 500).catch(() => []),
             base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []),
         ]);
-        const linkedUnits = (units || []).filter((unit: any) =>
+        const linkedUnitsRaw = (units || []).filter((unit: any) =>
             unit.user_id === user.id || String(unit.user_email || '').toLowerCase() === String(user.email || '').toLowerCase()
         );
         const linkedActive = (activeOfficers || []).filter((active: any) =>
             String(active.officer_email || '').toLowerCase() === String(user.email || '').toLowerCase()
         );
+
+        // Deduplicate Unit rows: a user should only have one active Unit. A
+        // historical race or admin action can create a second Unit for the same
+        // user, which the audit flags as a duplicate and can produce duplicate
+        // map/assignment entries. Keep the newest and delete the rest before
+        // updating the survivor.
+        let unitDedupedCount = 0;
+        let linkedUnits = linkedUnitsRaw;
+        if (linkedUnitsRaw.length > 1) {
+            const sorted = [...linkedUnitsRaw].sort((a, b) =>
+                new Date(b.updated_date || b.last_updated || b.created_date || 0).getTime() -
+                new Date(a.updated_date || a.last_updated || a.created_date || 0).getTime()
+            );
+            const [keep, ...extras] = sorted;
+            unitDedupedCount = extras.length;
+            await Promise.all(extras.map((u: any) =>
+                base44.asServiceRole.entities.Unit.delete(u.id).catch(() => null)
+            ));
+            linkedUnits = [keep];
+        }
         await Promise.all([
             ...linkedUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
                 status,
