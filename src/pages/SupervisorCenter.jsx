@@ -46,6 +46,7 @@ export default function SupervisorCenter({ embedded = false }) {
       sections={SECTIONS}
       defaultSection="officer"
       queryParam={embedded ? 'supervisor_section' : 'section'}
+      embedded={embedded}
     >
       {section => {
         if (section === 'officer') return <OfficerCenter embedded />;
