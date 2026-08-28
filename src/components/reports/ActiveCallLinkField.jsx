@@ -6,7 +6,7 @@ import { listAllDispatchCallsForLinking, applyDispatchCallToForm } from '@/lib/r
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 
 export default function ActiveCallLinkField({ formData, setFormData, label = 'Link to Active Call for Service' }) {
-  const { data: calls = [], isLoading } = useQuery({
+  const { data: calls = [], isLoading, error } = useQuery({
     queryKey: ['dispatchCallsForLinking'],
     queryFn: () => listAllDispatchCallsForLinking(1000),
     refetchInterval: 15000,
@@ -52,7 +52,8 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
           </Button>
         </div>
       )}
-      {!isLoading && calls.length === 0 && <div className="text-xs text-slate-500">No dispatch calls found.</div>}
+      {error && <div className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">Active call list could not load: {error.message}</div>}
+      {!isLoading && !error && calls.length === 0 && <div className="text-xs text-slate-500">No dispatch calls found.</div>}
     </div>
   );
 }
