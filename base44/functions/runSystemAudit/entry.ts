@@ -275,6 +275,40 @@ Deno.serve(async (req) => {
       description: `${duplicateEvaluationKeys.size} property alert event(s) have more than one decision row.`,
       count: duplicateEvaluationKeys.size,
     });
+    const locationByIdForDispatch = new Map(locations.map(item => [String(item.id), item]));
+    const latestEvaluationByAlert = new Map<string, any>();
+    [...evaluations]
+      .sort((a, b) => new Date(b.evaluated_at || b.updated_date || 0).getTime() - new Date(a.evaluated_at || a.updated_date || 0).getTime())
+      .forEach(item => {
+        const alertId = String(item.property_alert_id || '');
+        if (alertId && !latestEvaluationByAlert.has(alertId)) latestEvaluationByAlert.set(alertId, item);
+      });
+    const activeLivePropertyAlerts = alerts.filter(alert => {
+      if (alert.acknowledged === true || !callIds.has(String(alert.callId))) return false;
+      const property = locationByIdForDispatch.get(String(alert.propertyId));
+      return property?.auto_dispatch_enabled === true && property?.auto_dispatch_mode === 'live';
+    });
+    const missingLiveEvaluations = activeLivePropertyAlerts.filter(alert => !latestEvaluationByAlert.has(String(alert.id)));
+    if (missingLiveEvaluations.length) add(findings, {
+      key: 'auto-dispatch:missing-live-evaluation',
+      area: 'Automatic Dispatch',
+      severity: 'outage',
+      title: 'Active property alerts have not been evaluated',
+      description: `${missingLiveEvaluations.length} active live-mode property alert(s) have no automatic-dispatch decision.`,
+      count: missingLiveEvaluations.length,
+    });
+    const activeStaffingShortfalls = activeLivePropertyAlerts.filter(alert => {
+      const evaluation = latestEvaluationByAlert.get(String(alert.id));
+      return evaluation && ['no_eligible_unit', 'partially_assigned'].includes(String(evaluation.decision));
+    });
+    if (activeStaffingShortfalls.length) add(findings, {
+      key: 'auto-dispatch:active-staffing-shortfall',
+      area: 'Automatic Dispatch',
+      severity: 'outage',
+      title: 'Active property alerts require qualified units',
+      description: `${activeStaffingShortfalls.length} live property alert(s) have no eligible unit or still require backup. The alerts remain active for dispatcher action and automatic recheck.`,
+      count: activeStaffingShortfalls.length,
+    });
 
     const schedules = datasets.Schedule || [];
     const badSchedules = schedules.filter(item => !value(item, 'officer_email', 'user_email', 'user_id') || !value(item, 'location', 'site_name', 'location_id') || !value(item, 'start_time', 'shift_start', 'date'));
