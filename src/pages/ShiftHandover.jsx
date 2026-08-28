@@ -35,17 +35,27 @@ export default function ShiftHandover(){
   const roles = new Set((user?.additional_roles || []).map(normalize));
   const isSupervisor = user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || supervisoryRanks.has(normalize(user?.rank));
   const mySites=useMemo(()=>{
-    const assigned=[
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const activeRows = (locations || []).filter(location => {
+      if (location?.active !== true) return false;
+      if (location?.contract_end_date && String(location.contract_end_date).slice(0,10) < today) return false;
+      return Boolean(location?.site_name);
+    });
+    const activeByKey = new Map();
+    activeRows.forEach(location => {
+      const key = normalize(location.site_name);
+      if (!key || activeByKey.has(key)) return;
+      activeByKey.set(key, String(location.site_name).trim());
+    });
+    const assignedCandidates = [
       ...(user?.assigned_sites||[]),
       ...(user?.assigned_locations||[]),
       user?.assigned_location,
-      ...schedules.filter(s=>emailKey(s.officer_email)===emailKey(user?.email)).map(s=>s.location||s.site_name),
+      ...schedules.filter(s=>emailKey(s.officer_email)===emailKey(user?.email) && s.archived !== true).map(s=>s.location||s.site_name),
     ].filter(Boolean);
-    const activeLocations=locations.filter(l=>l.active!==false).map(l=>l.site_name||l.location_name||l.name).filter(Boolean);
-    const all = [...assigned, ...activeLocations];
-    const byKey = new Map();
-    all.forEach(site => { const key = normalize(site); if (key && !byKey.has(key)) byKey.set(key, String(site).trim()); });
-    return [...byKey.values()].sort((a,b)=>a.localeCompare(b));
+    const assignedActive = assignedCandidates.map(site => activeByKey.get(normalize(site))).filter(Boolean);
+    const source = assignedActive.length ? assignedActive : [...activeByKey.values()];
+    return [...new Map(source.map(site => [normalize(site), site])).values()].sort((a,b)=>a.localeCompare(b));
   },[schedules,locations,user?.email,user?.assigned_location,JSON.stringify(user?.assigned_sites||[]),JSON.stringify(user?.assigned_locations||[])]);
   const visible=useMemo(()=>{
     if (isSupervisor) return handovers;
