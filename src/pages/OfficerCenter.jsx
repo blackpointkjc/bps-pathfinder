@@ -80,9 +80,9 @@ const TOOLS = {
   ],
 };
 
-export default function OfficerCenter() {
+export default function OfficerCenter({ embedded = false }) {
   const desktop = useDesktopViewport();
-  if (!desktop) return <Dashboard />;
+  if (!desktop && !embedded) return <Dashboard />;
   return (
     <UnifiedCenter
       eyebrow="Officer Operations"
@@ -90,8 +90,9 @@ export default function OfficerCenter() {
       description="A cleaner desktop workspace for the officer's shift, field tools, reports, schedule, messages, profile, and training."
       sections={SECTIONS}
       defaultSection="today"
+      queryParam={embedded ? 'officer_section' : 'section'}
     >
-      {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
+      {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }
