@@ -43,7 +43,7 @@ export default function AutoDispatchShadowFeed() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Radar className="h-5 w-5 text-cyan-300" />
-          <h3 className="text-sm font-black uppercase tracking-wider text-white">Shadow Dispatch — Automatic Assignment</h3>
+          <h3 className="text-sm font-black uppercase tracking-wider text-white">Property Automatic Dispatch</h3>
         </div>
         <Badge className="border border-emerald-500/40 bg-emerald-950 text-emerald-200">AUTO-ASSIGN ACTIVE</Badge>
       </div>
