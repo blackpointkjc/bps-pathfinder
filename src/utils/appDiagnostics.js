@@ -269,7 +269,7 @@ export async function runClientFunctionalAudit() {
       area: 'Company Analytics',
       title: 'Company Analytics failed its functional check',
       run: async () => {
-        const response = await base44.functions.invoke('getCompanyAnalyticsData', {});
+        const response = await base44.functions.invoke('getCompanyAnalyticsData', { health_check: true });
         const payload = response?.data || response || {};
         if (payload.error) throw new Error(payload.error);
         if (!Array.isArray(payload.users) || !Array.isArray(payload.timeEntries)) throw new Error('The analytics service returned incomplete datasets.');
