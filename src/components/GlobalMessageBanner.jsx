@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, Volume2, VolumeX, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
-import { announceVoice, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
+import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
@@ -30,7 +30,9 @@ let notificationAudioContext;
 function audioContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
-  if (!notificationAudioContext) notificationAudioContext = new AudioContextClass();
+  if (!notificationAudioContext || notificationAudioContext.state === 'closed') {
+    notificationAudioContext = new AudioContextClass();
+  }
   return notificationAudioContext;
 }
 
@@ -644,9 +646,8 @@ export default function GlobalMessageBanner({ user }) {
         </button>
       </div>
       {voiceWarning && (
-        <div role="alert" className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
-          <span>CAD audio could not play. Visual alerts remain active.</span>
-          <button type="button" onClick={() => { setVoiceEnabled(true); setVoiceEnabledState(true); retryVoiceAnnouncement(); }} className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-amber-300">RETRY AUDIO</button>
+        <div role="alert" className="pointer-events-auto rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
+          CAD audio could not play. Pathfinder is retrying automatically. Visual alerts remain active.
         </div>
       )}
       <AnimatePresence>
