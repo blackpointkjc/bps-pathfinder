@@ -125,7 +125,7 @@ export function openVirginiaCriminalComplaintPrint(complaint, options = {}) {
 
       <div class="signature-grid">
         <div><div class="sig-line">${esc(complainantName)}</div><div class="sig-caption">NAME OF COMPLAINANT (LAST, FIRST, MIDDLE)<br/>(PRINT CLEARLY)</div></div>
-        <div><div class="sig-line">${esc(options.signatureName || '')}</div><div class="sig-caption">SIGNATURE OF COMPLAINANT</div></div>
+        <div><div class="sig-line">${options.signatureUrl ? `<img src="${esc(options.signatureUrl)}" alt="Complainant signature" style="max-height:34px;max-width:95%;object-fit:contain"/>` : ''}</div><div class="sig-caption">SIGNATURE OF COMPLAINANT</div></div>
       </div>
 
       <div class="sworn">Subscribed and sworn to before me this day.</div>
