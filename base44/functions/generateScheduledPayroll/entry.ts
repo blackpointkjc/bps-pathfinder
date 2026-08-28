@@ -1,7 +1,21 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const round = (value: number, digits = 2) => Number(Number(value || 0).toFixed(digits));
-const dateOnly = (value: unknown) => String(value || '').slice(0, 10);
+const dateOnly = (value: unknown) => {
+  const raw = String(value || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const date = new Date(raw);
+  if (!Number.isFinite(date.getTime())) return '';
+  // Payroll periods are company Eastern dates. Convert time-entry timestamps to
+  // the same zone before comparing them to period boundaries; UTC slicing can
+  // move late-evening shifts into the wrong payroll period.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+};
 
 function paidHours(entry: any) {
   const start = new Date(entry.clock_in).getTime();
