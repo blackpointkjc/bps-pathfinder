@@ -50,7 +50,9 @@ const AuthenticatedApp = () => {
   } = useAuth();
 
   const needsLogin = !isLoadingPublicSettings && !isLoadingAuth
-    && (authError?.type === 'auth_required' || (!authError && !isAuthenticated));
+    && (authError?.type === 'auth_required'
+      || authError?.type === 'microsoft_session_expired'
+      || (!authError && !isAuthenticated));
 
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
 
@@ -81,7 +83,12 @@ const AuthenticatedApp = () => {
         <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0b1725] p-6 shadow-2xl sm:p-8">
           <div className="text-xs font-black uppercase tracking-[0.2em] text-blue-300">BPS Pathfinder</div>
           <h1 className="mt-2 text-2xl font-black">Secure Sign In</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">Use Microsoft sign-in when your Microsoft email matches your Pathfinder login email. If the emails differ, use the standard Pathfinder sign-in; your linked Outlook and Teams tools will remain connected inside the app.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Sign in with your authorized BlackPoint Microsoft work email. Pathfinder uses the linked identity to keep your existing account, role, reports, schedule, and history connected even when your original login email is different.</p>
+          {authError?.type === 'microsoft_session_expired' && (
+            <div className="mt-4 rounded-xl border border-amber-500/50 bg-amber-950/40 p-3 text-sm font-semibold leading-5 text-amber-100">
+              Your Microsoft session has expired. Please sign in again with your BlackPoint email.
+            </div>
+          )}
           <button
             type="button"
             onClick={navigateToMicrosoftLogin}
