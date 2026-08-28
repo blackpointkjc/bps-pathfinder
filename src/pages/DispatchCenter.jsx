@@ -217,7 +217,7 @@ export default function DispatchCenter() {
             const recentCalls = [...uniqueCalls.values()].filter(call => {
                 const receivedAt = parseServerTimestamp(call.time_received || call.created_date)?.getTime() || 0;
                 const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
-                return isFresh && !['Cleared', 'Cancelled'].includes(call.status);
+                return isFresh && !call.time_cleared && !call.time_closed && !['Cleared', 'Cancelled'].includes(call.status);
             });
 
             recentCalls.sort((a, b) => {
