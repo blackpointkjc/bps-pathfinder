@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, ChevronDown, ChevronUp, Loader2, RefreshCw, ShieldAlert, UserX } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { CheckCircle2, ChevronDown, ChevronUp, FileWarning, Loader2, RefreshCw, ShieldAlert, UserX } from 'lucide-react';
 
 export default function AutoDispatchRecommendation({ alert }) {
   const [result, setResult] = useState(null);
@@ -11,6 +13,10 @@ export default function AutoDispatchRecommendation({ alert }) {
   const [showExcluded, setShowExcluded] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [oversightAction, setOversightAction] = useState('');
+  const [oversightReason, setOversightReason] = useState('');
+  const [oversightSaving, setOversightSaving] = useState(false);
+  const [oversightMessage, setOversightMessage] = useState('');
   const evaluatedRef = useRef('');
 
   const evaluate = useCallback(async (manual = false) => {
@@ -56,6 +62,35 @@ export default function AutoDispatchRecommendation({ alert }) {
       setTestResult({ passed: false, error: err?.response?.data?.error || err?.message || 'Safety test failed' });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const submitOversight = async () => {
+    if (oversightReason.trim().length < 5) {
+      setOversightMessage('Enter a documented reason of at least 5 characters.');
+      return;
+    }
+    setOversightSaving(true);
+    setOversightMessage('');
+    try {
+      const response = await base44.functions.invoke('manageAutoDispatchOversight', {
+        action: oversightAction,
+        property_alert_id: alert.id,
+        reason: oversightReason.trim(),
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      setOversightMessage('Saved to the permanent CAD audit history.');
+      setTimeout(() => {
+        setOversightAction('');
+        setOversightReason('');
+        setOversightMessage('');
+        evaluate(true);
+      }, 800);
+    } catch (err) {
+      setOversightMessage(err?.response?.data?.error || err?.message || 'Unable to save oversight action');
+    } finally {
+      setOversightSaving(false);
     }
   };
 
@@ -135,7 +170,16 @@ export default function AutoDispatchRecommendation({ alert }) {
         </div>
       )}
 
-      <div className="mt-3 border-t border-slate-700 pt-3">
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-700 pt-3">
+        <Button size="sm" variant="outline" onClick={() => setOversightAction('document_override')} className="h-7 border-amber-500/40 text-[10px] text-amber-100">
+          <FileWarning className="mr-1 h-3 w-3" />DOCUMENT OVERRIDE
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setOversightAction('resolve_false_alarm')} className="h-7 border-red-500/40 text-[10px] text-red-100">
+          RESOLVE FALSE ALARM
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setOversightAction('mark_test')} className="h-7 border-slate-500/40 text-[10px] text-slate-100">
+          MARK AS TEST
+        </Button>
         <Button size="sm" variant="outline" disabled={testing || running} onClick={runSafetyTest} className="h-7 border-cyan-500/40 text-[10px] text-cyan-100">
           {testing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldAlert className="mr-1 h-3 w-3" />}
           RUN SHADOW SAFETY TEST
@@ -148,6 +192,23 @@ export default function AutoDispatchRecommendation({ alert }) {
           </div>
         )}
       </div>
+
+      <Dialog open={Boolean(oversightAction)} onOpenChange={(open) => { if (!open && !oversightSaving) { setOversightAction(''); setOversightReason(''); setOversightMessage(''); } }}>
+        <DialogContent className="border-slate-700 bg-slate-950 text-white">
+          <DialogHeader>
+            <DialogTitle>{oversightAction === 'document_override' ? 'Document Dispatch Override' : oversightAction === 'resolve_false_alarm' ? 'Resolve False Alarm' : 'Mark Property Alert as Test'}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-300">This action is recorded with your identity, timestamp, CAD call, and reason.</p>
+          <Input value={oversightReason} onChange={(event) => setOversightReason(event.target.value)} placeholder="Required documented reason" disabled={oversightSaving} />
+          {oversightMessage && <div className="rounded border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200">{oversightMessage}</div>}
+          <DialogFooter>
+            <Button variant="outline" disabled={oversightSaving} onClick={() => setOversightAction('')}>Cancel</Button>
+            <Button disabled={oversightSaving || oversightReason.trim().length < 5} onClick={submitOversight}>
+              {oversightSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save action
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
