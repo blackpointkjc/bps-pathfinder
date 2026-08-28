@@ -1,0 +1,4 @@
+{
+  "name": "manageOfficerWelfare",
+  "description": "Creates and manages durable CAD officer welfare checks between dispatch, supervisors, and assigned officers."
+}
