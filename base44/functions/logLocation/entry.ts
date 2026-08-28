@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     // One row per officer per minute is sufficient for the map and prevents
     // multiple tabs/devices from producing a duplicate history stream.
     let historyRecorded = false;
-    if (acceptsGps && finiteNumber(body.accuracy, 9999) <= 100) {
+    if (acceptsGps) {
       const latestHistory = await base44.asServiceRole.entities.LocationHistory.filter(
         { officer_email: officerEmail },
         '-timestamp',
