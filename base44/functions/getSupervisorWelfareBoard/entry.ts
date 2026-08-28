@@ -8,8 +8,10 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
     const roles = new Set((me.additional_roles || []).map(lower));
-    if (me.role !== 'admin' && me.role !== 'dispatch' && !me.dispatch_role && !roles.has('supervisor') && !roles.has('full_access') && !roles.has('cad_access')) {
-      return Response.json({ error:'Supervisor or dispatch access required' }, { status:403 });
+    const rank = lower(me.rank);
+    const supervisoryRank = ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
+    if (me.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access') && !supervisoryRank) {
+      return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
     const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
@@ -45,7 +47,12 @@ Deno.serve(async (req) => {
         incident:call.incident || 'Call for service', location:call.location || '', priority:call.priority || 'medium',
         unit_id:officer.id, unit_number:session?.unit_number || officer.unit_number || '', officer_name:officer.full_name || [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.email,
         assignment_status:a.status || 'pending', assigned_at:a.assigned_at || '', accepted_at:a.accepted_at || '', elapsed_seconds:elapsedSeconds,
-        overdue, gps_updated_at:session?.gps_updated_at || '', latitude:session?.latitude ?? null, longitude:session?.longitude ?? null,
+        overdue,
+        officer_status:session?.status || officer.status || '',
+        gps_updated_at:session?.gps_updated_at || '',
+        gps_accuracy:session?.accuracy ?? null,
+        latitude:session?.latitude ?? null,
+        longitude:session?.longitude ?? null,
       });
     }
     board.sort((a,b)=>Number(b.overdue)-Number(a.overdue) || b.elapsed_seconds-a.elapsed_seconds);
