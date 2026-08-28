@@ -24,7 +24,8 @@
         "qr_patrol_report",
         "schedule_changed",
         "call_assignment",
-        "call_unassignment"
+        "call_unassignment",
+        "system_issue"
       ],
       "description": "Type of notification"
     },
