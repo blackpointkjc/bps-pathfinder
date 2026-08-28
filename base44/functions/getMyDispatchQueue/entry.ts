@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (v: unknown) => String(v || '').trim().toLowerCase();
 const terminal = new Set(['cleared','cancelled','canceled','closed','resolved','completed']);
+const isTerminalCall = (call: any) => terminal.has(lower(call?.status)) || Boolean(call?.time_cleared) || Boolean(call?.time_closed);
 const priorityWeight: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 Deno.serve(async (req) => {
@@ -17,7 +18,19 @@ Deno.serve(async (req) => {
     const calls: any[] = [];
     for (const callId of callIds) {
       const call = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
-      if (call && !terminal.has(lower(call.status))) calls.push(call);
+      if (!call) continue;
+      if (isTerminalCall(call)) {
+        const staleAssignments = activeAssignments.filter((a:any) => String(a.call_id) === String(callId));
+        for (const assignment of staleAssignments) {
+          await base44.asServiceRole.entities.CallAssignment.update(assignment.id, { status:'cleared', cleared_at: assignment.cleared_at || call.time_cleared || call.time_closed || new Date().toISOString() }).catch(() => null);
+        }
+        const remainingUnits = (call.assigned_units || []).map(String).filter((id:string) => id !== String(me.id));
+        if ((call.assigned_units || []).map(String).includes(String(me.id))) {
+          await base44.asServiceRole.entities.DispatchCall.update(call.id, { assigned_units: remainingUnits }).catch(() => null);
+        }
+        continue;
+      }
+      calls.push(call);
     }
 
     const queue: any[] = [];
