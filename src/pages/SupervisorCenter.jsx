@@ -1,5 +1,5 @@
 import { ClipboardCheck, ClipboardList, MessageCircle, ShieldCheck } from 'lucide-react';
-import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
+import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorDailyCode from './SupervisorDailyCode';
@@ -48,8 +48,6 @@ function SupervisorOversightLauncher() {
 }
 
 export default function SupervisorCenter() {
-  const desktop = useDesktopViewport();
-  if (!desktop) return <SupervisorTasks />;
   return (
     <UnifiedCenter eyebrow="Field Leadership" title="Supervisor Center" description="Supervisor-specific leadership, officer oversight, handoff, documentation, and personnel work. CAD dispatch operations remain in CAD Center." sections={SECTIONS} defaultSection="command">
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
