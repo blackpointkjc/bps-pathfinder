@@ -12,17 +12,17 @@ export function useDesktopViewport() {
   return desktop;
 }
 
-export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100' }) {
+export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section' }) {
   const initial = useMemo(() => {
-    const requested = new URLSearchParams(window.location.search).get('section');
+    const requested = new URLSearchParams(window.location.search).get(queryParam);
     return sections.some(section => section.id === requested) ? requested : defaultSection || sections[0]?.id;
-  }, [sections, defaultSection]);
+  }, [sections, defaultSection, queryParam]);
   const [section, setSection] = useState(initial);
 
   const select = next => {
     setSection(next);
     const url = new URL(window.location.href);
-    url.searchParams.set('section', next);
+    url.searchParams.set(queryParam, next);
     window.history.replaceState({}, '', url);
   };
 
