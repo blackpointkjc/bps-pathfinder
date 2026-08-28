@@ -447,8 +447,21 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    if (user.role !== 'admin' && user.role !== 'dispatch' && !roles.has('cad_access') && !roles.has('full_access')) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
+    const primaryRole = String(user.role || '').trim().toLowerCase();
+    const restrictedRoles = new Set(['client', 'student', 'pending']);
+    const isInternalUser = !restrictedRoles.has(primaryRole)
+      && String(user.employment_status || 'active').trim().toLowerCase() !== 'terminated';
+    const hasCadAccess = primaryRole === 'admin'
+      || primaryRole === 'dispatch'
+      || user.dispatch_role === true
+      || roles.has('dispatch')
+      || roles.has('cad_access')
+      || roles.has('full_access');
+    // Every authenticated internal app session may refresh this public, read-only
+    // emergency feed. Writes remain confined to this audited service-role function.
+    // Client/student/pending accounts cannot invoke ingestion.
+    if (!isInternalUser && !hasCadAccess) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const lease = await acquireIngestionLease(base44);
     if (!lease) {
