@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, Radio, ShieldAlert, Siren } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, Radio, ShieldAlert, Siren } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ const statusLabel = status => String(status || 'pending').replaceAll('_', ' ').t
 const priorityClass = priority => ({ critical:'bg-red-700', high:'bg-orange-600', medium:'bg-amber-600', low:'bg-slate-600' }[String(priority||'').toLowerCase()] || 'bg-slate-600');
 
 export default function OfficerDispatchQueue() {
-  const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState('');
   const [note, setNote] = useState('');
   const [disposition, setDisposition] = useState('');
