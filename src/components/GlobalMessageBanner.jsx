@@ -267,6 +267,10 @@ export default function GlobalMessageBanner({ user }) {
       recentFingerprints.current.set(fingerprint, Date.now());
       window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
 
+      const targetPage = source.targeted && record.source_name === 'Automatic Property Dispatch'
+        ? 'DispatchCenter'
+        : (record.page || source.page);
+
       if (!duplicate) {
         if (source.kind === 'message' && source.direct) {
           // Use concise CAD radio wording and the shared dispatch voice.
@@ -280,7 +284,7 @@ export default function GlobalMessageBanner({ user }) {
           playNotificationChime(source.kind === 'property');
         }
         window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-          detail: { page: record.page || source.page, key },
+          detail: { page: targetPage, key },
         }));
       }
 
@@ -288,7 +292,7 @@ export default function GlobalMessageBanner({ user }) {
       const banner = {
         id: key,
         title: source.label,
-        page: record.page || source.page,
+        page: targetPage,
         kind: source.kind,
         persistent: Boolean(source.mention || source.kind === 'announcement'),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
