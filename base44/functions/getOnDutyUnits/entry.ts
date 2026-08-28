@@ -35,11 +35,63 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, history: (history || []).filter((point: any) => Boolean(point.time_entry_id)) });
     }
 
-    const [timeEntries, activeOfficers, users] = await Promise.all([
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
-      base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
-      base44.asServiceRole.entities.User.list('-updated_date', 1000),
-    ]);
+    // Location-only consumers (the live map and its health probe) only need the
+    // canonical ActiveOfficer stream. Avoid loading TimeEntry + User on every map
+    // refresh; the old three-read burst was a major source of 429s and occasional
+    // 500 responses from the live tracker.
+    if (input?.location_only === true) {
+      const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
+      const freshCutoff = Date.now() - 15 * 60 * 1000;
+      const newestByEmail = new Map<string, any>();
+      for (const active of activeOfficers || []) {
+        const email = lower(active?.officer_email);
+        if (!email || newestByEmail.has(email)) continue;
+        newestByEmail.set(email, active);
+      }
+      const units = [...newestByEmail.values()]
+        .filter((active: any) => {
+          const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+          return active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= freshCutoff;
+        })
+        .map((active: any) => {
+          const gpsTs = new Date(active.gps_updated_at || 0).getTime();
+          const hasGps = Number.isFinite(gpsTs) && gpsTs >= freshCutoff && hasValidCoordinates(active.latitude, active.longitude);
+          const accuracy = Number(active.accuracy);
+          return {
+            id: active.id,
+            officer_email: active.officer_email,
+            officer_name: active.officer_name || active.officer_email,
+            full_name: active.officer_name || active.officer_email,
+            unit_number: active.unit_number || '',
+            status: active.status || 'Signed In',
+            latitude: hasGps ? Number(active.latitude) : null,
+            longitude: hasGps ? Number(active.longitude) : null,
+            heading: hasGps ? active.heading : null,
+            speed: hasGps ? active.speed : 0,
+            accuracy: Number.isFinite(accuracy) ? accuracy : null,
+            gps_updated_at: hasGps ? active.gps_updated_at : null,
+            last_gps_updated_at: active.gps_updated_at || null,
+            last_known_latitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+            last_known_longitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
+            last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+            gps_pending: !hasGps,
+            show_lights: active.show_lights,
+            current_call_info: active.current_call_info || '',
+            current_location: active.current_location || 'Signed In',
+            clock_in_time: active.clock_in_time || '',
+            last_update: active.last_update || active.updated_date || active.created_date || '',
+            last_updated: active.last_update || active.updated_date || active.created_date || '',
+            session_active: true,
+          };
+        });
+      return Response.json({ success: true, units, signed_in_count: units.length, location_only: true });
+    }
+
+    // Full CAD/unit-status consumers need all three datasets. Read sequentially so
+    // one function call does not hit the entity API with a simultaneous burst.
+    const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000);
+    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
 
     const openByEmail = new Map<string, any>();
     for (const entry of timeEntries || []) {
