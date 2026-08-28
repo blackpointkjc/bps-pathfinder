@@ -11,6 +11,7 @@ import SupervisorComplaints from './SupervisorComplaints';
 import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import CommandDashboard from './CommandDashboard';
+import SupervisorCommandBoard from './SupervisorCommandBoard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
 import ShiftHandover from './ShiftHandover';
@@ -26,6 +27,7 @@ const SECTIONS = [
 
 const TOOLS = {
   command: [
+    { id: 'welfare', label: 'Supervisor Command', component: SupervisorCommandBoard },
     { id: 'dashboard', label: 'Command Dashboard', component: CommandDashboard },
     { id: 'dispatch', label: 'Dispatch Center', component: DispatchCenter },
     { id: 'map', label: 'Live Map', component: Navigation },
