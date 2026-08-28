@@ -283,8 +283,9 @@ Deno.serve(async (req) => {
         const alertId = String(item.property_alert_id || '');
         if (alertId && !latestEvaluationByAlert.has(alertId)) latestEvaluationByAlert.set(alertId, item);
       });
+    const activeCallIdSet = new Set(activeCalls.map(item => String(item.id)));
     const activeLivePropertyAlerts = alerts.filter(alert => {
-      if (alert.acknowledged === true || !callIds.has(String(alert.callId))) return false;
+      if (alert.acknowledged === true || !activeCallIdSet.has(String(alert.callId))) return false;
       const property = locationByIdForDispatch.get(String(alert.propertyId));
       return property?.auto_dispatch_enabled === true && property?.auto_dispatch_mode === 'live';
     });
