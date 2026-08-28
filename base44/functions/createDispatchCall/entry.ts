@@ -108,7 +108,25 @@ Deno.serve(async (req) => {
       });
     });
 
-    await Promise.all([...assignmentWrites, ...alertWrites]);
+    await Promise.all(assignmentWrites);
+    const propertyAlerts = await Promise.all(alertWrites);
+    // A manually created CAD call inside a monitored property must enter the same
+    // verified property-alert evaluation path as an imported emergency call.
+    // Evaluation is attached to the saved PropertyAlert identity, so refreshes
+    // and realtime reconnects cannot create a second assignment.
+    await Promise.all(propertyAlerts.map((propertyAlert: any) =>
+      base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+        call_id: createdCall.id,
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => {
+        console.error('Automatic property-dispatch evaluation failed', {
+          call_id: createdCall.id,
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        });
+        return null;
+      })
+    ));
 
     const cadNumber = createdCall.agency_cad_number || createdCall.bps_reference || createdCall.call_id || createdCall.id;
     const priorityEvent = priority === 'critical' || priority === 'high';
@@ -145,7 +163,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       call: createdCall,
-      property_alerts_created: alertWrites.length,
+      property_alerts_created: propertyAlerts.length,
     });
   } catch (error) {
     console.error('createDispatchCall failed', error);
