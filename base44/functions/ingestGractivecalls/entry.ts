@@ -353,14 +353,14 @@ async function reconcilePropertyAlerts(base44: any) {
           ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
           : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
       });
-      // Phase 2A must run when the verified alert is created, not only when a
-      // dispatcher happens to open a page. This call remains shadow-only: the
-      // evaluator cannot create assignments or change unit status.
+      // Evaluate when the verified alert is created, not only when a dispatcher
+      // opens a page. The property's saved mode controls preview, review, or live
+      // assignment; the evaluator provides the idempotency receipt.
       await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
         call_id: call.id,
         property_alert_id: propertyAlert.id,
       }).catch((error: any) => {
-        console.error('Shadow automatic-dispatch evaluation failed', {
+        console.error('Automatic property-dispatch evaluation failed', {
           call_id: call.id,
           property_alert_id: propertyAlert.id,
           error: error?.message || String(error),
