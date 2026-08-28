@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
     const originLon = Number(call.longitude ?? requesterSession?.longitude);
     if (!Number.isFinite(originLat) || !Number.isFinite(originLon)) return Response.json({ error: 'No reliable call/requester coordinates available for closest-supervisor assignment' }, { status: 409 });
 
-    const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
+    const liveCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 300).catch(()=>[]);
+    const liveCallIds = new Set((liveCalls || []).filter((c:any)=>!['cleared','cancelled','closed','resolved','completed'].includes(lower(c.status))).map((c:any)=>String(c.id)));
+    const busyIds = new Set((assignments || []).filter((a:any) => String(a.call_id) !== callId && liveCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
     const already = new Set((assignments || []).filter((a:any)=>String(a.call_id)===callId && !['cleared','cancelled'].includes(lower(a.status))).map((a:any)=>String(a.unit_id)));
 
     const candidates:any[] = [];
