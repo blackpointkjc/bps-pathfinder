@@ -5,6 +5,12 @@ function roleSet(user: any) {
 }
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const hasCoordinateValue = (value: unknown) => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
+const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordinateValue(latitude)
+  && hasCoordinateValue(longitude)
+  && Math.abs(Number(latitude)) <= 90
+  && Math.abs(Number(longitude)) <= 180
+  && !(Number(latitude) === 0 && Number(longitude) === 0);
 
 Deno.serve(async (req) => {
   try {
@@ -69,8 +75,7 @@ Deno.serve(async (req) => {
       // features can decide whether a particular action needs a tighter fix.
       const hasReliableGps = Number.isFinite(gpsTs)
         && gpsTs >= freshCutoff
-        && Number.isFinite(Number(active.latitude))
-        && Number.isFinite(Number(active.longitude));
+        && hasValidCoordinates(active.latitude, active.longitude);
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
@@ -90,8 +95,8 @@ Deno.serve(async (req) => {
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
         last_gps_updated_at: active.gps_updated_at || null,
-        last_known_latitude: Number.isFinite(Number(active.latitude)) ? Number(active.latitude) : null,
-        last_known_longitude: Number.isFinite(Number(active.longitude)) ? Number(active.longitude) : null,
+        last_known_latitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+        last_known_longitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
         last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
         gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
