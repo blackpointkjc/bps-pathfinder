@@ -180,15 +180,15 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
       if (error) reject(error); else resolve(value);
     };
 
-    unsubscribe = subscribeLiveLocation(fix => {
-      if (acceptable(fix)) finish(fix);
-    });
     releaseTracking = startLiveLocationTracking({
       onError: error => {
         // Permission denial cannot recover without user action. Timeouts and
         // temporarily unavailable fixes may still recover through the shared watch.
         if (error?.code === 1) finish(null, error);
       },
+    });
+    unsubscribe = subscribeLiveLocation(fix => {
+      if (acceptable(fix)) finish(fix);
     });
 
     requestFreshLiveLocation({ timeoutMs }).catch(error => {
