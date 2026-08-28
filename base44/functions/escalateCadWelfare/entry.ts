@@ -8,8 +8,10 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
     const roles = new Set((me.additional_roles || []).map(lower));
-    const allowed = me.role === 'admin' || me.role === 'dispatch' || me.dispatch_role || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access');
-    if (!allowed) return Response.json({ error:'Supervisor or dispatch access required' }, { status:403 });
+    const rank = lower(me.rank);
+    const supervisoryRank = ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
+    const allowed = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || supervisoryRank;
+    if (!allowed) return Response.json({ error:'Supervisor access required' }, { status:403 });
 
     const body = await req.json().catch(() => ({}));
     const callId = String(body.call_id || '');
