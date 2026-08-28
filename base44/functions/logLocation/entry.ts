@@ -20,9 +20,25 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Valid latitude and longitude are required' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
+    const receivedAt = Date.now();
+    const now = new Date(receivedAt).toISOString();
     const officerEmail = String(user.email || body.officer_email || '').trim().toLowerCase();
     if (!officerEmail) return Response.json({ error: 'Officer email is required' }, { status: 400 });
+
+    const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
+      { officer_email: officerEmail },
+      '-last_update',
+      100,
+    );
+    const primary = records?.[0] || null;
+    const requestedFixAt = new Date(body.device_fix_at || now).getTime();
+    const deviceFixAt = Number.isFinite(requestedFixAt) && requestedFixAt <= receivedAt + 30000
+      ? requestedFixAt
+      : receivedAt;
+    const existingFixAt = new Date(primary?.gps_updated_at || 0).getTime();
+    const acceptsGps = hasGps
+      && deviceFixAt >= receivedAt - 2 * 60 * 1000
+      && (!Number.isFinite(existingFixAt) || deviceFixAt >= existingFixAt);
 
     const liveData: Record<string, unknown> = {
       officer_email: officerEmail,
@@ -36,8 +52,8 @@ Deno.serve(async (req) => {
       show_lights: body.show_lights === true,
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
-    if (hasGps) {
-      liveData.gps_updated_at = now;
+    if (acceptsGps) {
+      liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
       liveData.latitude = latitude;
       liveData.longitude = longitude;
       liveData.heading = finiteNumber(body.heading);
@@ -45,12 +61,6 @@ Deno.serve(async (req) => {
       liveData.accuracy = finiteNumber(body.accuracy);
     }
 
-    const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
-      { officer_email: officerEmail },
-      '-last_update',
-      100,
-    );
-    const primary = records?.[0] || null;
     // Location heartbeats must never own CAD status. Only set status when the
     // caller explicitly supplies one (initial session creation) or when creating
     // a new record. When updating an existing record, do NOT include status —
@@ -78,14 +88,14 @@ Deno.serve(async (req) => {
     // One row per officer per minute is sufficient for the map and prevents
     // multiple tabs/devices from producing a duplicate history stream.
     let historyRecorded = false;
-    if (hasGps && finiteNumber(body.accuracy, 9999) <= 100) {
+    if (acceptsGps && finiteNumber(body.accuracy, 9999) <= 100) {
       const latestHistory = await base44.asServiceRole.entities.LocationHistory.filter(
         { officer_email: officerEmail },
         '-timestamp',
         1,
       ).catch(() => []);
       const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
-      if (!Number.isFinite(latestAt) || Date.now() - latestAt >= 55000) {
+      if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= 55000) {
         await base44.asServiceRole.entities.LocationHistory.create({
           time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
           officer_email: officerEmail,
@@ -93,20 +103,21 @@ Deno.serve(async (req) => {
           location: String(liveData.current_location),
           latitude,
           longitude,
-          timestamp: now,
+          timestamp: new Date(deviceFixAt).toISOString(),
           accuracy: finiteNumber(body.accuracy),
         });
         historyRecorded = true;
       }
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps=${hasGps} history=${historyRecorded}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} history=${historyRecorded}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
-      latitude: hasGps ? latitude : null,
-      longitude: hasGps ? longitude : null,
-      gps_updated_at: hasGps ? now : activeOfficer.gps_updated_at || null,
+      latitude: acceptsGps ? latitude : null,
+      longitude: acceptsGps ? longitude : null,
+      gps_accepted: acceptsGps,
+      gps_updated_at: acceptsGps ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,
     });
