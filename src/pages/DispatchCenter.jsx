@@ -267,6 +267,21 @@ export default function DispatchCenter() {
         }
     };
 
+    // Keep the selected call's shared note stream live. Field officers and dispatch
+    // write to the same CallNote entity, so either side sees the other's update
+    // without reselecting or refreshing the call.
+    useEffect(() => {
+        if (!selectedCall?.id) return undefined;
+        const refreshNotes = () => loadCallNotes(selectedCall.id);
+        let unsubscribe;
+        try { unsubscribe = base44.entities.CallNote.subscribe(refreshNotes); } catch { /* polling below is fallback */ }
+        const timer = setInterval(refreshNotes, 10000);
+        return () => {
+            if (typeof unsubscribe === 'function') unsubscribe();
+            clearInterval(timer);
+        };
+    }, [selectedCall?.id]);
+
     const updateCallStatus = async (newStatus) => {
         if (!selectedCall || selectedCall.status === newStatus) return;
         try {
