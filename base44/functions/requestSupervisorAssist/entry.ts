@@ -58,15 +58,65 @@ Deno.serve(async (req) => {
       if (!isSupervisor(u) || String(u.id) === String(me.id) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
       const session = activeByEmail.get(lower(u.email));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
-      const lat = Number(session?.latitude), lon = Number(session?.longitude), accuracy = Number(session?.accuracy);
+      const lat = Number(session?.latitude), lon = Number(session?.longitude);
       const status = lower(session?.status || u.status);
-      if (!session || session.session_active === false || gpsAt < freshCutoff || !Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(accuracy) || accuracy > 150) continue;
-      if (!['available','signed in','signed_in'].includes(status)) continue;
+      if (!session || session.session_active === false || gpsAt < freshCutoff || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      // A signed-in supervisor who is not committed to another active call is eligible
+      // while Available, On Patrol, or another non-OOS idle state. GPS accuracy is kept
+      // as metadata but does not make the request fail outright.
+      if (['out of service','out_of_service','oos','distress','emergency'].includes(status)) continue;
       candidates.push({ user:u, session, distance:distanceMiles(originLat,originLon,lat,lon) });
     }
     candidates.sort((a,b)=>a.distance-b.distance);
     const chosen = candidates[0];
-    if (!chosen) return Response.json({ success:false, assigned:false, reason:'No available supervisor with fresh GPS is currently eligible.' });
+    if (!chosen) {
+      const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+      const requesterLast = String(me.last_name || me.full_name || '').trim().split(/\s+/).pop();
+      const requesterLabel = [String(me.rank || '').trim(), requesterLast].filter(Boolean).join(' ') || 'Officer';
+      const eventKey = `supervisor-request-pending:${callId}`;
+      const priorPending = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key:eventKey }, '-created_date', 1).catch(()=>[]);
+      if (!priorPending?.length) {
+        await base44.asServiceRole.entities.CallNote.create({
+          call_id:callId,
+          author_id:me.id,
+          author_name:requesterLabel,
+          note:'[SUPERVISOR REQUEST] Supervisor requested — awaiting an eligible signed-in supervisor with current location.',
+          note_type:'update'
+        }).catch(()=>null);
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id:callId,
+          incident_type:call.incident || '',
+          location:call.location || '',
+          old_status:call.status || '',
+          new_status:call.status || 'Dispatched',
+          unit_id:me.id,
+          unit_name:requesterLabel,
+          notes:'Supervisor assistance requested; no eligible supervisor is currently available for automatic assignment.',
+          event_key:eventKey,
+          event_type:'additional_unit',
+          announcement_text:`Supervisor requested by ${requesterLabel}. CAD number ${cad}. Awaiting an available supervisor.`,
+          announcement_priority:'high',
+          cad_number:String(cad),
+          triggering_action:'requestSupervisorAssist.pending',
+          audio_enabled:true,
+          sensitive:false
+        }).catch(()=>null);
+        for (const supervisor of (users || []).filter((u:any)=>String(u.id)!==String(me.id) && isSupervisor(u) && u.email && !u.termination_date)) {
+          await base44.asServiceRole.entities.Notification.create({
+            recipient_email:lower(supervisor.email),
+            type:'call_assignment',
+            title:`Supervisor Requested · ${cad}`,
+            message:`${requesterLabel} requested a supervisor at ${call.location || 'an active call'}. No eligible supervisor was available for automatic assignment; respond when available.`,
+            is_read:false,
+            related_id:callId,
+            priority:'high',
+            requires_acknowledgment:true,
+            source_name:'CAD Supervisor Request'
+          }).catch(()=>null);
+        }
+      }
+      return Response.json({ success:true, assigned:false, pending:true, request_recorded:true, reason:'Supervisor request recorded. Awaiting an eligible signed-in supervisor.' });
+    }
 
     const nowIso = new Date().toISOString();
     const existing = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: chosen.user.id }, '-assigned_at', 5).catch(()=>[]);
