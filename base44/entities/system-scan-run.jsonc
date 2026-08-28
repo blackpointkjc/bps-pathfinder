@@ -1,0 +1,81 @@
+{
+  "name": "SystemScanRun",
+  "type": "object",
+  "properties": {
+    "hour_key": {
+      "type": "string",
+      "description": "UTC hour bucket used for deduplication"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "issues_found",
+        "failed"
+      ],
+      "default": "healthy"
+    },
+    "issues_found": {
+      "type": "integer",
+      "default": 0
+    },
+    "outages": {
+      "type": "integer",
+      "default": 0
+    },
+    "degraded": {
+      "type": "integer",
+      "default": 0
+    },
+    "maintenance": {
+      "type": "integer",
+      "default": 0
+    },
+    "areas_checked": {
+      "type": "integer",
+      "default": 0
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "audit_json": {
+      "type": "string",
+      "description": "Serialized combined server and browser audit result"
+    },
+    "triggered_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "hour_key",
+    "status",
+    "scanned_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
