@@ -25,7 +25,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
           <div className="flex flex-wrap gap-2">
             {tools.map(item => (
               <button key={item.id} type="button" onClick={() => select(item.id)}
-                className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${tool === item.id ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white'}`}>
+                className={`min-w-0 whitespace-normal break-words rounded-lg border px-3 py-2 text-left text-xs font-bold leading-tight transition ${tool === item.id ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white'}`}>
                 {item.label}
               </button>
             ))}
