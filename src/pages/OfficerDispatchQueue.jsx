@@ -61,7 +61,11 @@ export default function OfficerDispatchQueue() {
       if (data.error) throw new Error(data.error);
       if (status === 'Cleared') setDisposition('');
       await refetch();
-      toast.success(status === 'Cleared' ? 'Call cleared. Moving to your next queued call.' : `${status} recorded.`);
+      if (status === 'Cleared') {
+        toast.success(data.next_call_number ? `Call cleared. Next call: ${data.next_call_number}.` : 'Call cleared. Your dispatch queue is clear.');
+      } else {
+        toast.success(`${status} recorded.`);
+      }
     } catch (e) { toast.error(e?.message || 'Unable to update call status'); }
     finally { setWorking(false); }
   };
