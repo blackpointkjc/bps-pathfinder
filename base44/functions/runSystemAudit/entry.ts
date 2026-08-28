@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       count: duplicateUnitUsers.size,
     });
 
-    const activeCalls = calls.filter(item => !['cleared', 'cancelled'].includes(String(item.status || '').toLowerCase()));
+    const activeCalls = calls.filter(item => !['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved'].includes(String(item.status || '').toLowerCase()));
     const incompleteCalls = activeCalls.filter(item => !item.incident || !item.location || !value(item, 'time_received', 'created_date'));
     if (incompleteCalls.length) add(findings, {
       key: 'cad:incomplete',
