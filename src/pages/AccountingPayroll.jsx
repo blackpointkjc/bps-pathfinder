@@ -62,7 +62,7 @@ export default function AccountingPayroll() {
   const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchPayroll } = useQuery({
     queryKey: ['accountingData', 'payroll'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', {});
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'payroll' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
