@@ -120,14 +120,14 @@ Deno.serve(async (req) => {
     }
 
     // The period end-date check below remains the authoritative safety boundary.
-    const [periods, entries, users, existingPayroll, configs, ptoUsage] = await Promise.all([
-      base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
-      base44.asServiceRole.entities.User.list(),
-      base44.asServiceRole.entities.PayrollEntry.list('-created_date', 5000),
-      base44.asServiceRole.entities.PayrollConfig.list(undefined, 20),
-      base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
-    ]);
+    // Read sequentially rather than issuing six large entity reads at once. The
+    // prior Promise.all burst could be throttled and surfaced to the page as a 500.
+    const periods = await base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000);
+    const users = await base44.asServiceRole.entities.User.list(undefined, 2000);
+    const existingPayroll = await base44.asServiceRole.entities.PayrollEntry.list('-created_date', 5000);
+    const configs = await base44.asServiceRole.entities.PayrollConfig.list(undefined, 20);
+    const ptoUsage = await base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000);
+    const entries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000);
     const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
     const existingKeys = new Set((existingPayroll || []).map((item: any) =>
       `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`
