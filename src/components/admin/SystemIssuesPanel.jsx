@@ -78,11 +78,12 @@ export default function SystemIssuesPanel({ currentUser }) {
     if (scanning) return;
     setScanning(true);
     try {
-      const [serverResponse, clientAudit] = await Promise.all([
-        base44.functions.invoke('runSystemAudit', {}),
-        runClientFunctionalAudit(),
-      ]);
+      // Run the server audit first, then the browser audit. Both scans touch
+      // shared Base44 services; launching them together can exhaust the request
+      // allowance and manufacture dozens of false outage cards.
+      const serverResponse = await base44.functions.invoke('runSystemAudit', {});
       const serverAudit = serverResponse?.data || serverResponse || {};
+      const clientAudit = await runClientFunctionalAudit();
       if (serverAudit.error) throw new Error(serverAudit.error);
       // Client and server scans intentionally overlap in a few areas. Collapse
       // duplicates so one underlying condition is shown once instead of creating
