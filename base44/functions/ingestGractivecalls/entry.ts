@@ -294,13 +294,14 @@ function propertyMatch(call: any, location: any) {
 }
 
 async function reconcilePropertyAlerts(base44: any) {
-  const [calls, locations, existingAlerts] = await Promise.all([
+  const [calls, locations, existingAlerts, existingEvaluations] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list('-created_date', 300),
     base44.asServiceRole.entities.Location.list('site_name', 100),
     // Read ALL alerts, not only unacknowledged alerts. An acknowledged alert is
     // still the authoritative record for that call/property pair and must not be
     // recreated every ingestion cycle.
     base44.asServiceRole.entities.PropertyAlert.list('-created_date', 3000).catch(() => []),
+    base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 3000).catch(() => []),
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
@@ -370,6 +371,38 @@ async function reconcilePropertyAlerts(base44: any) {
       propertyAlertsCreated += 1;
     }
   }
+  // Re-evaluate active, unacknowledged alerts when an administrator changes a
+  // property from Shadow to Live, and while waiting for an eligible unit. Honor
+  // the property's configured interval; the evaluator's permanent assigned
+  // receipt prevents duplicate assignments and announcements across retries.
+  const activeCallIds = new Set(activeCalls.map((call: any) => String(call.id)));
+  const propertyById = new Map(monitored.map((location: any) => [String(location.id), location]));
+  const latestEvaluationByAlert = new Map<string, any>();
+  for (const evaluation of existingEvaluations || []) {
+    const alertId = String(evaluation.property_alert_id || '');
+    if (!alertId || latestEvaluationByAlert.has(alertId)) continue;
+    latestEvaluationByAlert.set(alertId, evaluation);
+  }
+  const nowMs = Date.now();
+  for (const alert of existingAlerts || []) {
+    if (alert.acknowledged === true || !activeCallIds.has(String(alert.callId))) continue;
+    const property = propertyById.get(String(alert.propertyId));
+    if (!property || property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live') continue;
+    const latest = latestEvaluationByAlert.get(String(alert.id));
+    if (latest?.mode === 'live' && latest?.decision === 'assigned') continue;
+    const lastAt = new Date(latest?.evaluated_at || latest?.updated_date || 0).getTime();
+    const intervalMs = Math.max(30, Number(property.auto_dispatch_recheck_seconds || 60)) * 1000;
+    if (Number.isFinite(lastAt) && nowMs - lastAt < intervalMs) continue;
+    await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+      call_id: alert.callId,
+      property_alert_id: alert.id,
+    }).catch((error: any) => console.error('Live automatic-dispatch recheck failed', {
+      call_id: alert.callId,
+      property_alert_id: alert.id,
+      error: error?.message || String(error),
+    }));
+  }
+
   return propertyAlertsCreated;
 }
 
