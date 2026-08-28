@@ -51,6 +51,8 @@ export default function DispatchCenter() {
     const [noteText, setNoteText] = useState('');
     const [savingNote, setSavingNote] = useState(false);
     const [systemTime, setSystemTime] = useState(() => new Date());
+    const [welfareChecks, setWelfareChecks] = useState([]);
+    const [welfareWorking, setWelfareWorking] = useState(false);
 
     const rankLastName = (name) => {
         const raw = String(name || '').trim();
@@ -257,11 +259,22 @@ export default function DispatchCenter() {
         }
     };
 
+    const loadWelfareChecks = async (callId) => {
+        if (!callId) return setWelfareChecks([]);
+        try {
+            const rows = await base44.entities.OfficerWelfareCheck.filter({ call_id: callId }, '-requested_at', 50);
+            setWelfareChecks(rows || []);
+        } catch {
+            setWelfareChecks([]);
+        }
+    };
+
     const handleSelectCall = (call) => {
         setSelectedCall(call);
         if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileView('detail');
         setCallDistrict(null);
         loadCallNotes(call?.id);
+        loadWelfareChecks(call?.id);
         if (call?.latitude && call?.longitude) {
             lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
         }
@@ -273,11 +286,15 @@ export default function DispatchCenter() {
     useEffect(() => {
         if (!selectedCall?.id) return undefined;
         const refreshNotes = () => loadCallNotes(selectedCall.id);
+        const refreshWelfare = () => loadWelfareChecks(selectedCall.id);
         let unsubscribe;
+        let welfareUnsubscribe;
         try { unsubscribe = base44.entities.CallNote.subscribe(refreshNotes); } catch { /* polling below is fallback */ }
-        const timer = setInterval(refreshNotes, 10000);
+        try { welfareUnsubscribe = base44.entities.OfficerWelfareCheck.subscribe(refreshWelfare); } catch { /* polling below is fallback */ }
+        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 10000);
         return () => {
             if (typeof unsubscribe === 'function') unsubscribe();
+            if (typeof welfareUnsubscribe === 'function') welfareUnsubscribe();
             clearInterval(timer);
         };
     }, [selectedCall?.id]);
