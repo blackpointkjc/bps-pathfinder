@@ -36,7 +36,7 @@ const validPosition = item => validCoordinate(item?.latitude) && validCoordinate
 
 export default function SupervisorFieldOversight() {
   const [workingId, setWorkingId] = useState('');
-  const { data: welfarePayload = {}, isLoading: welfareLoading, error: welfareError, refetch: refetchWelfare } = useQuery({
+  const { data: welfarePayload = {}, isLoading: welfareLoading, error: welfareError, refetch: refetchWelfare, isFetching } = useQuery({
     queryKey: ['supervisorFieldOversight'],
     queryFn: async () => {
       const response = await base44.functions.invoke('getSupervisorWelfareBoard', {});
@@ -44,35 +44,20 @@ export default function SupervisorFieldOversight() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-  });
-  const { data: locationPayload = {}, refetch: refetchLocations } = useQuery({
-    queryKey: ['supervisorLiveOfficerLocations'],
-    queryFn: async () => {
-      const response = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
-      const data = response?.data || response || {};
-      if (data.error) throw new Error(data.error);
-      return data;
-    },
-    refetchInterval: 15000,
-    staleTime: 0,
-  });
-  const { data: activeCalls = [], refetch: refetchCalls } = useQuery({
-    queryKey: ['supervisorActiveCalls'],
-    queryFn: async () => {
-      const calls = await base44.entities.DispatchCall.list('-created_date', 300);
-      return (calls || []).filter(call => !terminal.has(lower(call.status)));
-    },
-    refetchInterval: 15000,
-    staleTime: 0,
+    // One supervisor snapshot replaces three competing polling loops. Keep the
+    // last good snapshot on screen while a refresh is in flight.
+    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+    staleTime: 20000,
+    retry: 2,
+    retryDelay: attempt => Math.min(2000 * (attempt + 1), 6000),
   });
 
   const board = welfarePayload.board || [];
   const welfareChecks = welfarePayload.welfare_checks || [];
   const displayByEmail = welfarePayload.display_by_email || {};
-  const liveUnits = locationPayload.units || [];
+  const liveUnits = welfarePayload.live_units || [];
+  const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email)] || board.find(row => lower(row.officer_email) === lower(unit?.officer_email))?.officer_name || 'Officer';
   const mappedUnits = useMemo(() => liveUnits.filter(validPosition), [liveUnits]);
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
@@ -81,7 +66,7 @@ export default function SupervisorFieldOversight() {
   const missingGps = useMemo(() => liveUnits.filter(row => !row.gps_updated_at || !validPosition(row)), [liveUnits]);
   const uniqueOfficers = useMemo(() => new Set(board.map(row => row.unit_id)).size, [board]);
 
-  const refreshAll = async () => Promise.allSettled([refetchWelfare(), refetchLocations(), refetchCalls()]);
+  const refreshAll = async () => refetchWelfare();
   const openCad = callOrRow => {
     const callId = callOrRow?.call_id || callOrRow?.id;
     window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`;
@@ -114,7 +99,7 @@ export default function SupervisorFieldOversight() {
   };
 
   return <div className="min-h-screen bg-[#07111d] text-slate-100">
-    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7"><div className="mx-auto flex max-w-[1700px] flex-wrap items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div><div className="flex gap-2"><Button variant="outline" onClick={refreshAll}><RefreshCw className="mr-2 h-4 w-4"/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div></div></div>
+    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7"><div className="mx-auto flex max-w-[1700px] flex-wrap items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div><div className="flex gap-2"><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div></div></div>
 
     <main className="mx-auto max-w-[1700px] space-y-5 p-4 md:p-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -130,7 +115,7 @@ export default function SupervisorFieldOversight() {
       <section className="grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
         <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Current Calls</h2><p className="text-xs text-slate-500">Supervisor read-only call overview — open CAD for dispatch actions</p></div><div className="max-h-[520px] divide-y divide-slate-800 overflow-y-auto">{activeCalls.length===0?<div className="p-8 text-center text-sm text-slate-500">No active calls.</div>:activeCalls.map(call=>{const assigned=board.filter(row=>String(row.call_id)===String(call.id));return <button key={call.id} type="button" onClick={()=>openCad(call)} className="block w-full p-4 text-left hover:bg-slate-900/60"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-xs font-black text-cyan-300">CAD {call.agency_cad_number||call.bps_reference||call.call_id||call.id}</div><div className="mt-1 font-black">{call.incident||'Call for Service'}</div></div><Badge variant="outline" className="border-slate-600 text-slate-200">{String(call.status||'ACTIVE').toUpperCase()}</Badge></div><div className="mt-2 flex items-start gap-2 text-xs text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5"/>{call.location||'Location not listed'}</div><div className="mt-2 text-xs text-slate-300">Assigned: {assigned.length?assigned.map(row=>row.unit_number?`Unit ${row.unit_number}`:row.officer_name).join(', '):'No active assignment shown'}</div></button>})}</div></div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Supervisor Attention</h2><p className="text-xs text-slate-500">Acknowledgements and active officer welfare checks</p></div>{welfareLoading?<div className="p-8 text-center text-sm text-slate-500">Loading welfare status…</div>:welfareError?<div className="p-4 text-sm text-red-300">{welfareError.message}</div>:<div className="divide-y divide-slate-800">{pendingWelfare.map(check=><div key={check.id} className="bg-red-950/15 p-4"><div className="flex flex-wrap items-center gap-2"><Badge className="bg-red-700">WELFARE PENDING</Badge><span className="text-xs font-black text-cyan-300">CAD {check.cad_number}</span></div><div className="mt-2 font-black">{check.officer_display_name || 'Officer'}</div><div className="mt-2 grid grid-cols-2 gap-2"><Info label="Waiting" value={elapsed(check.elapsed_seconds)} alert/><Info label="Status" value="AWAITING RESPONSE" alert/></div><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={()=>openCad({call_id:check.call_id})} className="flex-1">View CAD</Button><Button size="sm" onClick={()=>escalateWelfareCheck(check)} disabled={!!workingId} className="flex-1 bg-red-700 hover:bg-red-600">Emergency Escalate</Button></div></div>)}{attention.map(row=><div key={row.assignment_id} className="bg-red-950/15 p-4"><div className="flex flex-wrap items-center gap-2"><Badge className="bg-red-700">ATTENTION</Badge><span className="text-xs font-black text-cyan-300">CAD {row.cad_number}</span></div><div className="mt-2 font-black">{row.unit_number?`Unit ${row.unit_number} · `:''}{row.officer_name}</div><div className="mt-1 text-xs text-slate-400">{row.incident} · {row.location}</div><div className="mt-2 grid grid-cols-2 gap-2"><Info label="Timer" value={elapsed(row.elapsed_seconds)} alert/><Info label="GPS" value={gpsAge(row.gps_updated_at)} alert={!row.gps_updated_at}/></div><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={()=>openCad(row)} className="flex-1">View CAD</Button><Button size="sm" onClick={()=>escalate(row)} disabled={!!workingId} className="flex-1 bg-red-700 hover:bg-red-600">Escalate Welfare</Button></div></div>)}{pendingWelfare.length===0&&attention.length===0&&<div className="p-8 text-center"><CheckCircle2 className="mx-auto mb-2 h-9 w-9 text-emerald-400"/><div className="font-bold text-emerald-300">No active welfare concerns</div><div className="mt-1 text-xs text-slate-500">{pendingAck.length} assignment{pendingAck.length===1?'':'s'} currently awaiting acknowledgement.</div></div>}</div>}</div>
+        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Supervisor Attention</h2><p className="text-xs text-slate-500">Acknowledgements and active officer welfare checks</p></div>{welfareLoading && !welfarePayload.success?<div className="p-8 text-center text-sm text-slate-500">Loading supervisor operations…</div>:welfareError && !welfarePayload.success?<div className="p-4 text-sm text-red-300">Supervisor data is reconnecting. The last successful view will remain available after the next refresh.</div>:<div className="divide-y divide-slate-800">{pendingWelfare.map(check=><div key={check.id} className="bg-red-950/15 p-4"><div className="flex flex-wrap items-center gap-2"><Badge className="bg-red-700">WELFARE PENDING</Badge><span className="text-xs font-black text-cyan-300">CAD {check.cad_number}</span></div><div className="mt-2 font-black">{check.officer_display_name || 'Officer'}</div><div className="mt-2 grid grid-cols-2 gap-2"><Info label="Waiting" value={elapsed(check.elapsed_seconds)} alert/><Info label="Status" value="AWAITING RESPONSE" alert/></div><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={()=>openCad({call_id:check.call_id})} className="flex-1">View CAD</Button><Button size="sm" onClick={()=>escalateWelfareCheck(check)} disabled={!!workingId} className="flex-1 bg-red-700 hover:bg-red-600">Emergency Escalate</Button></div></div>)}{attention.map(row=><div key={row.assignment_id} className="bg-red-950/15 p-4"><div className="flex flex-wrap items-center gap-2"><Badge className="bg-red-700">ATTENTION</Badge><span className="text-xs font-black text-cyan-300">CAD {row.cad_number}</span></div><div className="mt-2 font-black">{row.unit_number?`Unit ${row.unit_number} · `:''}{row.officer_name}</div><div className="mt-1 text-xs text-slate-400">{row.incident} · {row.location}</div><div className="mt-2 grid grid-cols-2 gap-2"><Info label="Timer" value={elapsed(row.elapsed_seconds)} alert/><Info label="GPS" value={gpsAge(row.gps_updated_at)} alert={!row.gps_updated_at}/></div><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={()=>openCad(row)} className="flex-1">View CAD</Button><Button size="sm" onClick={()=>escalate(row)} disabled={!!workingId} className="flex-1 bg-red-700 hover:bg-red-600">Escalate Welfare</Button></div></div>)}{pendingWelfare.length===0&&attention.length===0&&<div className="p-8 text-center"><CheckCircle2 className="mx-auto mb-2 h-9 w-9 text-emerald-400"/><div className="font-bold text-emerald-300">No active welfare concerns</div><div className="mt-1 text-xs text-slate-500">{pendingAck.length} assignment{pendingAck.length===1?'':'s'} currently awaiting acknowledgement.</div></div>}</div>}</div>
       </section>
     </main>
   </div>;
