@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
       ['Maintenance Reports', datasets.MaintenanceReport || []],
     ] as const;
     reportChecks.forEach(([area, records]) => {
-      const incomplete = records.filter(item => !value(item, 'officer_email', 'created_by', 'officer_name') || !value(item, 'location', 'site_name', 'property_name') || !value(item, 'report_date', 'incident_date', 'created_date'));
+      const incomplete = records.filter(item => !value(item, 'officer_email', 'created_by', 'created_by_id', 'officer_name', 'primary_officer_name', 'primary_officer_id') || !value(item, 'location', 'site_name', 'property_name') || !value(item, 'report_date', 'incident_date', 'created_date'));
       if (incomplete.length) add(findings, {
         key: `reports:${area}`,
         area,
