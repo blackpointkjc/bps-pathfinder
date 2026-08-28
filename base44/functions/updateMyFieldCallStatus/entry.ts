@@ -21,7 +21,8 @@ Deno.serve(async (req) => {
     if (!['Acknowledged','Cleared'].includes(status) && call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
 
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
-    if (!assigned.includes(user.id) && user.role !== 'admin') {
+    const assignedIds = assigned.map((id:any) => String(id));
+    if (!assignedIds.includes(String(user.id)) && user.role !== 'admin') {
       return Response.json({ error: 'You must be assigned to this call before changing its status' }, { status: 403 });
     }
 
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
         }
       }
       if (status === 'Cleared') {
-        update.assigned_units = assigned.filter((id: any) => String(id) !== String(user.id));
+        update.assigned_units = assignedIds.filter((id: string) => id !== String(user.id));
       }
       if (Object.keys(update).length) await base44.asServiceRole.entities.DispatchCall.update(call_id, update);
     }
