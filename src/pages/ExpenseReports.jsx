@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
+const MILEAGE_RATE = 0.80;
+
 export default function ExpenseReports() {
   const [showDialog, setShowDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -104,7 +106,7 @@ export default function ExpenseReports() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { ...formData, amount: Number(formData.amount) };
+    const payload = { ...formData, amount: Number(formData.amount), tax_free: true };
     if (formData.category === 'travel') {
       const start = Number(formData.start_mileage);
       const end = Number(formData.end_mileage);
@@ -116,9 +118,16 @@ export default function ExpenseReports() {
         alert('Travel expenses require photos of both the starting and ending odometer readings.');
         return;
       }
+      const travelMiles = end - start;
+      const mileageReimbursement = Number((travelMiles * MILEAGE_RATE).toFixed(2));
       payload.start_mileage = start;
       payload.end_mileage = end;
-      payload.travel_miles = end - start;
+      payload.travel_miles = travelMiles;
+      payload.mileage_rate = MILEAGE_RATE;
+      payload.mileage_reimbursement = mileageReimbursement;
+      // Mileage reimbursement is calculated by policy and cannot be manually
+      // overridden by the officer.
+      payload.amount = mileageReimbursement;
     } else {
       delete payload.start_mileage;
       delete payload.end_mileage;
@@ -297,15 +306,19 @@ export default function ExpenseReports() {
             </div>
 
             <div className="space-y-2">
-              <Label>Amount ($) *</Label>
+              <Label>{formData.category === 'travel' ? 'Mileage Reimbursement ($0.80 per mile)' : 'Amount ($) *'}</Label>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                value={formData.category === 'travel'
+                  ? Math.max(0, Number(formData.end_mileage || 0) - Number(formData.start_mileage || 0)) * MILEAGE_RATE
+                  : formData.amount}
+                onChange={(e) => formData.category !== 'travel' && setFormData({...formData, amount: e.target.value})}
+                readOnly={formData.category === 'travel'}
                 required
               />
+              <p className="text-xs text-emerald-700">Approved officer expenses are tax-free reimbursements and are not added to taxable wages.</p>
             </div>
 
             <div className="space-y-2">
@@ -335,7 +348,7 @@ export default function ExpenseReports() {
                   </div>
                 </div>
                 {formData.start_mileage !== '' && formData.end_mileage !== '' && Number(formData.end_mileage) >= Number(formData.start_mileage) && (
-                  <p className="text-sm font-semibold text-blue-300">Travel distance: {Number(formData.end_mileage) - Number(formData.start_mileage)} miles</p>
+                  <p className="text-sm font-semibold text-blue-300">Travel distance: {Number(formData.end_mileage) - Number(formData.start_mileage)} miles · Reimbursement: ${((Number(formData.end_mileage) - Number(formData.start_mileage)) * MILEAGE_RATE).toFixed(2)} at $0.80/mile</p>
                 )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Starting Odometer Photo *</Label><Input type="file" accept="image/*" capture="environment" onChange={(e)=>handleFileUpload(e,'start_mileage_photo_url','starting odometer photo')} disabled={uploading}/>{formData.start_mileage_photo_url && <Badge className="bg-emerald-700">Start Photo Uploaded</Badge>}</div>
