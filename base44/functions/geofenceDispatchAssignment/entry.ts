@@ -72,14 +72,53 @@ Deno.serve(async (req) => {
     const property = await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
 
-    const users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
-    const activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
-    const assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
+    let users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
+    let activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
+    let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
 
     const propertyLat = Number(property.latitude ?? call.latitude);
     const propertyLon = Number(property.longitude ?? call.longitude);
     if (!Number.isFinite(propertyLat) || !Number.isFinite(propertyLon)) {
       return Response.json({ error: 'Property has no reliable coordinates' }, { status: 400 });
+    }
+
+    // Admin-only test units make Phase 2A simulation deterministic without
+    // modifying production users, live GPS sessions, assignments, or statuses.
+    // They exist only in memory for this request.
+    if (simulation && Array.isArray(input.test_units)) {
+      if (user.role !== 'admin') {
+        return Response.json({ error: 'Administrator access is required for synthetic dispatch tests' }, { status: 403 });
+      }
+      const nowIso = new Date().toISOString();
+      users = input.test_units.map((unit: any, index: number) => ({
+        id: String(unit.id || `simulation-unit-${index + 1}`),
+        email: String(unit.email || `simulation-${index + 1}@example.invalid`),
+        full_name: String(unit.name || `Simulation Unit ${index + 1}`),
+        unit_number: String(unit.unit_number || `T${index + 1}`),
+        rank: String(unit.rank || 'officer'),
+        additional_roles: ['officer'],
+        status: String(unit.status || 'Available'),
+        assigned_location_ids: [property.id],
+        division: property.division,
+        subdivision: property.subdivision,
+        officer_certifications: unit.qualifications || [],
+        equipment: unit.equipment || [],
+      }));
+      activeOfficers = input.test_units.map((unit: any, index: number) => ({
+        id: `simulation-session-${index + 1}`,
+        officer_email: String(unit.email || `simulation-${index + 1}@example.invalid`),
+        unit_number: String(unit.unit_number || `T${index + 1}`),
+        status: String(unit.status || 'Available'),
+        session_active: unit.session_active !== false,
+        clock_in_time: unit.clock_in_time || nowIso,
+        last_update: unit.last_update || nowIso,
+        gps_updated_at: unit.gps_updated_at || nowIso,
+        accuracy: unit.accuracy ?? 10,
+        latitude: unit.latitude,
+        longitude: unit.longitude,
+        current_location: property.site_name || property.address,
+      }));
+      assignments = [];
     }
 
     // Automatic assignment is opt-in per property. Shadow remains the default;
