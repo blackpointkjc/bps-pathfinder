@@ -56,22 +56,87 @@ Deno.serve(async (req) => {
       ['System Issues', 'SystemOutage'],
     ] as const;
 
-    await Promise.all(checks.map(async ([area, entityName]) => {
-      checkedAreas.push(area);
-      try {
-        const entity = (base44.asServiceRole.entities as any)[entityName];
-        if (!entity?.list) throw new Error(`${entityName} service is unavailable`);
-        datasets[entityName] = await entity.list('-created_date', 1000);
-      } catch (error) {
-        datasets[entityName] = [];
-        add(findings, {
-          key: `service:${entityName}`,
-          area,
-          severity: 'outage',
-          title: `${area} data service failed`,
-          description: error?.message || `The app could not read ${entityName} records.`,
-        });
+    const serviceFailures: Array<{ area: string; entityName: string; message: string }> = [];
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const readDataset = async (area: string, entityName: string) => {
+      const entity = (base44.asServiceRole.entities as any)[entityName];
+      if (!entity?.list) throw new Error(`${entityName} service is unavailable`);
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          return await entity.list('-created_date', 1000);
+        } catch (error) {
+          lastError = error;
+          const transient = /rate limit|too many requests|429|timed out|timeout/i.test(String(error?.message || error));
+          if (!transient || attempt === 2) break;
+          await delay(500 * (attempt + 1));
+        }
       }
+      throw lastError || new Error(`Unable to read ${entityName} records`);
+    };
+
+    // A full audit previously launched every dataset read simultaneously while
+    // the browser also ran analytics and payroll probes. That burst exhausted the
+    // shared Base44 request allowance and falsely labeled healthy modules as
+    // outages. Two workers keep the scan comprehensive without starving CAD/GPS.
+    let nextCheckIndex = 0;
+    const workers = Array.from({ length: 2 }, async () => {
+      while (nextCheckIndex < checks.length) {
+        const currentIndex = nextCheckIndex;
+        nextCheckIndex += 1;
+        const [area, entityName] = checks[currentIndex];
+        checkedAreas.push(area);
+        try {
+          datasets[entityName] = await readDataset(area, entityName);
+        } catch (error) {
+          datasets[entityName] = [];
+          serviceFailures.push({
+            area,
+            entityName,
+            message: error?.message || `The app could not read ${entityName} records.`,
+          });
+        }
+        await delay(75);
+      }
+    });
+    await Promise.all(workers);
+
+    const throttledFailures = serviceFailures.filter(item =>
+      /rate limit|too many requests|429/i.test(item.message)
+    );
+    if (throttledFailures.length) {
+      const throttledFinding: Finding = {
+        key: 'scan:rate-limited',
+        area: 'System Audit',
+        severity: 'degraded',
+        title: 'Full application scan was safely paused by request throttling',
+        description: `Base44 temporarily limited ${throttledFailures.length} scan read(s). Operational modules were not marked down. The hourly scanner will retry automatically.`,
+        count: throttledFailures.length,
+      };
+      return Response.json({
+        success: true,
+        scope: 'entire_app',
+        status: 'issues_found',
+        scan_incomplete: true,
+        findings: [throttledFinding],
+        summary: {
+          areas_checked: checkedAreas.length,
+          issues_found: 1,
+          outages: 0,
+          degraded: 1,
+          maintenance: 0,
+        },
+        checked_areas: checkedAreas,
+        scanned_at: new Date().toISOString(),
+        duration_ms: Date.now() - startedAt,
+      });
+    }
+    serviceFailures.forEach(failure => add(findings, {
+      key: `service:${failure.entityName}`,
+      area: failure.area,
+      severity: 'outage',
+      title: `${failure.area} data service failed`,
+      description: failure.message,
     }));
 
     const users = datasets.User || [];
