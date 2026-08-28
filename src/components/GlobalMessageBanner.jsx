@@ -290,7 +290,7 @@ export default function GlobalMessageBanner({ user }) {
       const text = bannerText(source, record);
       const banner = {
         id: key,
-        title: source.label,
+        title: source.kind === 'assignment' ? (record.title || source.label) : source.label,
         page: targetPage,
         kind: source.kind,
         persistent: Boolean(source.mention || source.kind === 'announcement'),
