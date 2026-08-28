@@ -5,7 +5,7 @@ import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
   Building2, Calendar, CalendarClock, Car, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
-  FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
+  FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
   Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, GitBranch
 } from 'lucide-react';
@@ -40,7 +40,7 @@ const CENTER_CONFIG = {
       { label: 'Live Operations', items: [
         ['Command Dashboard', 'CommandDashboard', Gauge],
         ['Dispatch Center', 'DispatchCenter', Radio],
-        ['Live Map', 'Navigation', Map],
+        ['Live Map', 'Navigation', MapIcon],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
         ['Dispatcher Log', 'DispatcherShiftReports', ClipboardList],
       ]},
