@@ -1,0 +1,113 @@
+{
+  "name": "SupervisorShiftHandover",
+  "type": "object",
+  "properties": {
+    "shift_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "shift_start": {
+      "type": "string"
+    },
+    "shift_end": {
+      "type": "string"
+    },
+    "departing_supervisor_email": {
+      "type": "string"
+    },
+    "departing_supervisor_name": {
+      "type": "string"
+    },
+    "incoming_supervisor_email": {
+      "type": "string"
+    },
+    "incoming_supervisor_name": {
+      "type": "string"
+    },
+    "area": {
+      "type": "string"
+    },
+    "command_summary": {
+      "type": "string"
+    },
+    "staffing_status": {
+      "type": "string"
+    },
+    "active_calls_summary": {
+      "type": "string"
+    },
+    "critical_incidents": {
+      "type": "string"
+    },
+    "bolo_safety_notes": {
+      "type": "string"
+    },
+    "unresolved_issues": {
+      "type": "string"
+    },
+    "pending_followups": {
+      "type": "string"
+    },
+    "equipment_fleet_status": {
+      "type": "string"
+    },
+    "client_site_concerns": {
+      "type": "string"
+    },
+    "acknowledged_by_incoming": {
+      "type": "boolean",
+      "default": false
+    },
+    "acknowledgement_time": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "shift_date",
+    "departing_supervisor_email",
+    "command_summary"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.incoming_supervisor_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
