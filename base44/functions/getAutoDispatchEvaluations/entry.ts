@@ -11,12 +11,12 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
       || roles.has('dispatch') || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
-    let [evaluations, propertyAlerts, activeCalls, locations] = await Promise.all([
-      base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200),
-      base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000),
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000),
-      base44.asServiceRole.entities.Location.list('site_name', 1000),
-    ]);
+    // Keep the oversight feed lightweight and predictable under shared request
+    // limits. Read the required datasets sequentially instead of in a burst.
+    let evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200);
+    const propertyAlerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000);
+    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    const locations = await base44.asServiceRole.entities.Location.list('site_name', 1000);
     const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
     const propertyById = new Map((locations || []).map((item: any) => [String(item.id), item]));
     const latestByAlert = new Map<string, any>();
@@ -43,8 +43,10 @@ Deno.serve(async (req) => {
     }).slice(0, 20);
 
     if (dueAlerts.length) {
-      await Promise.all(dueAlerts.map((alert: any) =>
-        base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+      // Re-evaluate one alert at a time. A reconnect can expose several due alerts
+      // together; serial recovery prevents duplicate/rate-limited dispatch work.
+      for (const alert of dueAlerts) {
+        await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
           call_id: alert.callId,
           property_alert_id: alert.id,
         }).catch((error: any) => {
@@ -54,8 +56,8 @@ Deno.serve(async (req) => {
             error: error?.message || String(error),
           });
           return null;
-        })
-      ));
+        });
+      }
       evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200);
     }
 
