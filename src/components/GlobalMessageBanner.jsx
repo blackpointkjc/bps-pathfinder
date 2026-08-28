@@ -19,7 +19,7 @@ const SOURCES = [
   // the same way ChatMention is (see the `assignment` check in showBanner).
   { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
   { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
-  { entity: 'Notification', label: 'System Issue Detected', page: 'AdminCenter', kind: 'announcement', targeted: 'system_issue' },
+  { entity: 'Notification', label: 'System Issue Detected', page: 'AdminPortal?tab=sysissues', kind: 'announcement', targeted: 'system_issue' },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
