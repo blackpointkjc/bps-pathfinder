@@ -107,11 +107,6 @@ export default function VATrespassNotices() {
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
-    const unitNumber = officer.unit_number || '';
-    
-    if (rank && lastName && unitNumber) {
-      return `${rank} ${lastName} Unit ${unitNumber}`;
-    }
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
@@ -410,6 +405,23 @@ export default function VATrespassNotices() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const missingRequired = [
+      ['First name', formData.subject_first_name],
+      ['Last name', formData.subject_last_name],
+      ['Street address', formData.subject_address],
+      ['City', formData.subject_city],
+      ['State', formData.subject_state],
+      ['ZIP code', formData.subject_zip],
+      ['Telephone number', formData.subject_phone],
+      ['Property / site', formData.location],
+      ['Reason for notice', formData.reason],
+      ['Officer signature', formData.officer_signature_url],
+    ].filter(([, value]) => !String(value || '').trim());
+    if (missingRequired.length) {
+      alert(`Complete the required Virginia notice fields before submitting: ${missingRequired.map(([label]) => label).join(', ')}.`);
+      return;
+    }
 
     if (formData.reason.includes('-') || (formData.subject_description && formData.subject_description.includes('-'))) {
       alert('Please do not use dashes (-) in your reports. Use bullets (•) or write in full sentences instead.');
