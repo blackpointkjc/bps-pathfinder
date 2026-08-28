@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
     const now = Date.now();
     const [evaluations, alerts, assignments, calls, locations, users, notifications] = await Promise.all([
-      base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ mode: 'live', decision: 'assigned' }, '-evaluated_at', 1000),
+      base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ mode: 'live' }, '-evaluated_at', 1000),
       base44.asServiceRole.entities.PropertyAlert.list('-created_date', 2000),
       base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000),
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000),
@@ -35,7 +35,10 @@ Deno.serve(async (req) => {
 
     let acknowledgementEscalations = 0;
     let responseEscalations = 0;
-    for (const evaluation of evaluations || []) {
+    const operationalEvaluations = (evaluations || []).filter((item: any) =>
+      ['assigned', 'partially_assigned'].includes(lower(item.decision))
+    );
+    for (const evaluation of operationalEvaluations) {
       const callId = String(evaluation.call_id || '');
       if (!activeCallIds.has(callId)) continue;
       const alert = alertById.get(String(evaluation.property_alert_id || ''));
@@ -44,15 +47,22 @@ Deno.serve(async (req) => {
       if (!alert || !call || !property) continue;
       const ackSeconds = Math.max(30, Number(property.auto_dispatch_acknowledgement_seconds || 120));
       const responseSeconds = Math.max(ackSeconds, Number(property.auto_dispatch_escalation_seconds || 300));
-      const assignedAt = new Date(evaluation.evaluated_at || evaluation.created_date || 0).getTime();
-      if (!Number.isFinite(assignedAt)) continue;
       const linkedAssignments = (assignments || []).filter((item: any) => item.call_id === callId && activeAssignment(item.status));
-      const pending = linkedAssignments.filter((item: any) => !item.accepted_at && lower(item.status) === 'pending');
-      const acceptedNotResponding = linkedAssignments.filter((item: any) => item.accepted_at && ['accepted', 'pending'].includes(lower(item.status)));
+      const pending = linkedAssignments.filter((item: any) => {
+        if (item.accepted_at || lower(item.status) !== 'pending') return false;
+        const assignedAt = new Date(item.assigned_at || item.created_date || 0).getTime();
+        return Number.isFinite(assignedAt) && now - assignedAt >= ackSeconds * 1000;
+      });
+      const acceptedNotResponding = linkedAssignments.filter((item: any) => {
+        if (!item.accepted_at || !['accepted', 'pending'].includes(lower(item.status))) return false;
+        const acceptedAt = new Date(item.accepted_at).getTime();
+        return Number.isFinite(acceptedAt) && now - acceptedAt >= responseSeconds * 1000;
+      });
       const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
 
       const emit = async (kind: string, affected: any[], message: string) => {
-        const eventKey = `autodispatch:${alert.id}:escalation:${kind}`;
+        const affectedUnitKey = affected.map((item: any) => String(item.unit_id)).sort().join('-') || 'unknown';
+        const eventKey = `autodispatch:${alert.id}:escalation:${kind}:${affectedUnitKey}`;
         const existingLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: eventKey }, '-created_date', 1).catch(() => []);
         if (existingLogs?.length) return false;
         await base44.asServiceRole.entities.CallStatusLog.create({
@@ -101,11 +111,11 @@ Deno.serve(async (req) => {
         return true;
       };
 
-      if (pending.length && now - assignedAt >= ackSeconds * 1000) {
+      if (pending.length) {
         const unitLabels = pending.map((item: any) => userById.get(String(item.unit_id))?.unit_number || item.unit_id).join(', ');
         if (await emit('acknowledgement', pending, `Automatic dispatch acknowledgement overdue. Unit ${unitLabels}. CAD number ${cad}.`)) acknowledgementEscalations += 1;
       }
-      if (acceptedNotResponding.length && now - assignedAt >= responseSeconds * 1000) {
+      if (acceptedNotResponding.length) {
         const unitLabels = acceptedNotResponding.map((item: any) => userById.get(String(item.unit_id))?.unit_number || item.unit_id).join(', ');
         if (await emit('response', acceptedNotResponding, `Automatic dispatch response overdue. Unit ${unitLabels}. CAD number ${cad}.`)) responseEscalations += 1;
       }
