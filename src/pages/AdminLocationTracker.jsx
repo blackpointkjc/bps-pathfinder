@@ -60,6 +60,12 @@ const MAP_TILE_PROVIDERS = [
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
   },
   {
+    name: 'CARTO Voyager',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+  },
+  {
     name: 'Esri World Street Map',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
@@ -68,17 +74,21 @@ const MAP_TILE_PROVIDERS = [
 
 function ResilientTileLayer({ onUnavailable }) {
   const [providerIndex, setProviderIndex] = useState(0);
-  const failureHandled = React.useRef(false);
+  const tileErrors = React.useRef(0);
   const provider = MAP_TILE_PROVIDERS[providerIndex];
 
   useEffect(() => {
-    failureHandled.current = false;
+    tileErrors.current = 0;
     onUnavailable(false);
   }, [providerIndex, onUnavailable]);
 
   const handleTileError = () => {
-    if (failureHandled.current) return;
-    failureHandled.current = true;
+    tileErrors.current += 1;
+    // A single missing edge tile is normal while panning. Switch providers only
+    // after several failures, otherwise a healthy street map can be replaced by
+    // a blank fallback on the first harmless tile error.
+    if (tileErrors.current < 4) return;
+    tileErrors.current = 0;
     if (providerIndex < MAP_TILE_PROVIDERS.length - 1) {
       setProviderIndex(current => current + 1);
     } else {
@@ -91,9 +101,13 @@ function ResilientTileLayer({ onUnavailable }) {
       key={provider.name}
       url={provider.url}
       attribution={provider.attribution}
+      subdomains={provider.subdomains}
       eventHandlers={{
         tileerror: handleTileError,
-        load: () => onUnavailable(false),
+        load: () => {
+          tileErrors.current = 0;
+          onUnavailable(false);
+        },
       }}
     />
   );
