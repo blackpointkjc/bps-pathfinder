@@ -19,7 +19,11 @@ export default function PropertyAlertsBanner() {
     useEffect(() => {
         loadAlerts();
         const interval = setInterval(loadAlerts, 60000);
-        return () => clearInterval(interval);
+        const unsubscribe = base44.entities.PropertyAlert.subscribe(() => loadAlerts());
+        return () => {
+            clearInterval(interval);
+            unsubscribe?.();
+        };
     }, []);
 
     const loadAlerts = async () => {
