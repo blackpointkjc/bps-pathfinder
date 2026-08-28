@@ -35,10 +35,15 @@ Deno.serve(async (req) => {
 
     const input = await req.json().catch(() => ({}));
     const callId = String(input.call_id || '');
+    const simulation = input.simulation === true;
     if (!callId) return Response.json({ error: 'Missing call_id' }, { status: 400 });
 
-    const [call, alerts, locations, users, timeEntries, activeOfficers, assignments] = await Promise.all([
-      base44.asServiceRole.entities.DispatchCall.get(callId),
+    const activeCall = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
+    const archivedCalls = !activeCall && simulation
+      ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
+      : [];
+    const call = activeCall || archivedCalls?.[0] || null;
+    const [alerts, locations, users, timeEntries, activeOfficers, assignments] = await Promise.all([
       base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 20),
       base44.asServiceRole.entities.Location.list('-updated_date', 1000),
       base44.asServiceRole.entities.User.list('-updated_date', 1000),
@@ -151,7 +156,7 @@ Deno.serve(async (req) => {
     const decision = mode === 'disabled' ? 'disabled'
       : mode === 'manual_review' ? 'manual_review'
       : recommendations.length ? 'recommended' : 'no_eligible_unit';
-    const eventKey = `autodispatch:${alert.source_key || alert.id}:${mode}`;
+    const eventKey = `autodispatch:${alert.source_key || alert.id}:${mode}${simulation ? ':simulation' : ''}`;
     const evaluationData = {
       event_key: eventKey,
       property_alert_id: alert.id,
@@ -173,8 +178,12 @@ Deno.serve(async (req) => {
         required_qualifications: requiredQualifications,
         required_equipment: requiredEquipment,
         required_ranks: requiredRanks,
+        simulation,
+        call_source: activeCall ? 'active' : 'archived_test',
       },
-      description: decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
+      description: simulation
+        ? 'Phase 2A safety simulation; no assignment or unit status was changed.'
+        : decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
     };
     const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ event_key: eventKey }, '-evaluated_at', 1).catch(() => []);
     const evaluation = existing?.length
@@ -184,6 +193,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       shadow_mode: true,
+      simulation,
       assignment_created: false,
       unit_status_changed: false,
       call_id: callId,
