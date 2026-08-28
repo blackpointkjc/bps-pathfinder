@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, Radio, ShieldAlert, Siren } from 'lucide-react';
+import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, Radio, ShieldAlert, Siren, HeartPulse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -82,6 +82,19 @@ export default function OfficerDispatchQueue() {
     finally { setWorking(false); }
   };
 
+  const respondWelfare = async action => {
+    if (!selected?.welfare_check?.id || working) return;
+    setWorking(true);
+    try {
+      const response = await base44.functions.invoke('manageOfficerWelfare', { action, check_id:selected.welfare_check.id });
+      const data = response?.data || response || {};
+      if (data.error) throw new Error(data.error);
+      toast.success(action === 'ok' ? 'Welfare OK sent to dispatch.' : 'Assistance request sent to dispatch and command.');
+      await refetch();
+    } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to respond to welfare check'); }
+    finally { setWorking(false); }
+  };
+
   const requestSupervisor = async () => {
     if (!selected || working) return;
     setWorking(true);
@@ -134,6 +147,8 @@ export default function OfficerDispatchQueue() {
           <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-xs font-bold text-cyan-300">CAD {selected.agency_cad_number || selected.bps_reference || selected.call_id || selected.id}</div><h2 className="mt-1 text-2xl font-black">{selected.incident || 'Call for Service'}</h2><div className="mt-2 flex items-start gap-2 text-sm text-slate-300"><MapPinned className="mt-0.5 h-4 w-4 text-cyan-400"/>{selected.location || 'Location unavailable'}{selected.cross_street ? ` · Cross: ${selected.cross_street}` : ''}</div>{selected.description && <p className="mt-3 rounded-lg bg-slate-950 p-3 text-sm text-slate-300">{selected.description}</p>}</div><Badge className={priorityClass(selected.priority)}>{String(selected.priority||'medium').toUpperCase()}</Badge></div>
           </section>
+
+          {selected.welfare_check && <section className="rounded-2xl border border-red-500/50 bg-red-950/25 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 font-black text-red-200"><HeartPulse className="h-5 w-5"/>WELFARE CHECK REQUESTED</div><div className="mt-1 text-xs text-slate-300">Dispatch is requesting your welfare status for this call.</div></div><div className="flex gap-2"><Button onClick={()=>respondWelfare('ok')} disabled={working} className="bg-emerald-700 hover:bg-emerald-600">WELFARE OK</Button><Button onClick={()=>respondWelfare('assist')} disabled={working} className="bg-red-700 hover:bg-red-600">NEED ASSISTANCE</Button></div></div></section>}
 
           <section className="grid gap-2 sm:grid-cols-4">
             <Button disabled={working || selected.assignment?.status==='accepted'} onClick={()=>changeStatus('Acknowledged')} className="bg-indigo-700 hover:bg-indigo-600">ACKNOWLEDGE</Button>
