@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Radio, X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -6,6 +7,7 @@ import { listAllDispatchCallsForLinking, applyDispatchCallToForm } from '@/lib/r
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 
 export default function ActiveCallLinkField({ formData, setFormData, label = 'Link to Active Call for Service' }) {
+  const appliedUrlCall = useRef(false);
   const { data: calls = [], isLoading, error } = useQuery({
     queryKey: ['dispatchCallsForLinking'],
     queryFn: () => listAllDispatchCallsForLinking(1000),
@@ -15,10 +17,23 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
   });
 
   const handleSelect = (callId) => {
-    const call = calls.find(item => item.id === callId);
+    const call = calls.find(item => item.id === callId || item.original_call_id === callId);
     if (!call) return;
     setFormData(prev => applyDispatchCallToForm(prev, call));
   };
+
+  // Queue/dispatch report buttons pass the active CAD call in the URL. Apply it
+  // once when the shared call feed arrives so every report form opens already
+  // linked to the call instead of forcing the officer to search again.
+  useEffect(() => {
+    if (appliedUrlCall.current || !calls.length || formData?.linked_call_id) return;
+    const callId = new URLSearchParams(window.location.search).get('call_id');
+    if (!callId) return;
+    const call = calls.find(item => String(item.id) === String(callId) || String(item.original_call_id || '') === String(callId));
+    if (!call) return;
+    appliedUrlCall.current = true;
+    setFormData(prev => applyDispatchCallToForm(prev, call));
+  }, [calls, formData?.linked_call_id, setFormData]);
 
   const clearLink = () => {
     setFormData(prev => ({
