@@ -4,6 +4,7 @@ import { runVoiceDedupeSelfTest } from '@/utils/voiceAnnouncer';
 const STORAGE_KEY = 'pathfinder_runtime_issues_v1';
 const MAX_ISSUES = 100;
 const pageModules = import.meta.glob('/src/pages/*.{jsx,js,tsx,ts}');
+const CURRENT_APP_SESSION_STARTED_AT = Date.now();
 
 const safeMessage = value => {
   if (value instanceof Error) return value.message || value.name;
@@ -276,7 +277,10 @@ export async function runClientFunctionalAudit() {
     }
   }));
 
-  const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+  // A runtime failure from an older deployed bundle is historical evidence, not a
+  // current outage. Scan errors captured during this loaded app session; any error
+  // that recurs after refresh is still reported immediately.
+  const cutoff = Math.max(Date.now() - (24 * 60 * 60 * 1000), CURRENT_APP_SESSION_STARTED_AT);
   const recentRuntime = getRuntimeIssues().filter(item => new Date(item.occurred_at || 0).getTime() >= cutoff);
   const groupedRuntime = new Map();
   recentRuntime.forEach(item => {
