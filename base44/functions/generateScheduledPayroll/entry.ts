@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
     const existingPayroll = await base44.asServiceRole.entities.PayrollEntry.list('-created_date', 5000);
     const configs = await base44.asServiceRole.entities.PayrollConfig.list(undefined, 20);
     const ptoUsage = await base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000);
+    const expenseReports = await base44.asServiceRole.entities.ExpenseReport.list('-expense_date', 5000);
     const entries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000);
     const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
     const existingKeys = new Set((existingPayroll || []).map((item: any) =>
@@ -146,6 +147,12 @@ Deno.serve(async (req) => {
         const email = String(usage.officer_email || '').toLowerCase();
         const officer = usersByEmail.get(email) as any;
         if (email && officer && Number(officer.hourly_rate || 0) > 0) eligibleEmails.add(email);
+      }
+      for (const expense of expenseReports || []) {
+        if (expense.status !== 'approved' || !expense.expense_date || expense.expense_date < candidate.start_date || expense.expense_date > candidate.end_date) continue;
+        const email = String(expense.officer_email || '').toLowerCase();
+        const officer = usersByEmail.get(email) as any;
+        if (email && officer) eligibleEmails.add(email);
       }
       return [...eligibleEmails].some(email => !existingKeys.has(`${email}|${candidate.start_date}|${candidate.end_date}`));
     };
@@ -186,12 +193,20 @@ Deno.serve(async (req) => {
     let created = 0;
     let duplicates = 0;
     const skippedNoRate: string[] = [];
-    // Ensure officers who only have PTO in the period still receive a payroll row.
+    // Ensure officers who only have PTO or an approved reimbursement in the
+    // period still receive a payroll row.
     for (const usage of ptoUsage || []) {
       if (usage.status !== 'active' || usage.usage_date < period.start_date || usage.usage_date > period.end_date) continue;
       const email = String(usage.officer_email || '').toLowerCase();
       const officer = usersByEmail.get(email) as any;
       if (!officer || Number(officer.hourly_rate || 0) <= 0) continue;
+      if (!grouped.has(email)) grouped.set(email, { officer, weekly: {}, holidays: [] });
+    }
+    for (const expense of expenseReports || []) {
+      if (expense.status !== 'approved' || !expense.expense_date || expense.expense_date < period.start_date || expense.expense_date > period.end_date) continue;
+      const email = String(expense.officer_email || '').toLowerCase();
+      const officer = usersByEmail.get(email) as any;
+      if (!email || !officer) continue;
       if (!grouped.has(email)) grouped.set(email, { officer, weekly: {}, holidays: [] });
     }
 
@@ -222,10 +237,17 @@ Deno.serve(async (req) => {
       // the weekly overtime threshold. Only hours actually worked create overtime.
       const ptoPay = ptoHours * baseRate;
       const gross = regularPay + overtimePay + holidayPay + ptoPay;
-      // Gross payroll only. Taxes, deductions, and net pay are handled externally.
-      const net = gross;
+      const officerExpenses = (expenseReports || []).filter((expense: any) =>
+        expense.status === 'approved' &&
+        String(expense.officer_email || '').toLowerCase() === email &&
+        expense.expense_date >= period.start_date && expense.expense_date <= period.end_date
+      );
+      const reimbursementTotal = round(officerExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount || 0), 0));
+      // Approved expenses are reimbursements, not taxable wages. Keep gross pay
+      // unchanged and add reimbursement only to the amount paid to the officer.
+      const net = gross + reimbursementTotal;
 
-      await base44.asServiceRole.entities.PayrollEntry.create({
+      const payrollEntry = await base44.asServiceRole.entities.PayrollEntry.create({
         officer_email: email,
         pay_period_start: period.start_date,
         pay_period_end: period.end_date,
@@ -244,6 +266,16 @@ Deno.serve(async (req) => {
         holiday_pay: round(holidayPay),
         pto_pay: round(ptoPay),
         gross_pay: round(gross),
+        tax_free_reimbursements: reimbursementTotal,
+        expense_reimbursement_detail: JSON.stringify(officerExpenses.map((expense: any) => ({
+          expense_id: expense.id,
+          expense_date: expense.expense_date,
+          category: expense.category,
+          amount: Number(expense.amount || 0),
+          description: expense.description || '',
+          tax_free: true,
+        }))),
+        total_payment_due: round(gross + reimbursementTotal),
         federal_tax: 0,
         state_tax: 0,
         social_security: 0,
@@ -257,8 +289,16 @@ Deno.serve(async (req) => {
         pto_detail: JSON.stringify(officerPto.map((usage: any) => ({ date: usage.usage_date, hours: Number(usage.hours || 0), reason: usage.reason || '', source_type: usage.source_type || '' }))),
         status: 'ready',
         payment_method: officer.payment_method || 'direct_deposit',
-        notes: `Automatically generated after ${period.period_name || 'payroll period'} ended.`,
+        notes: `Automatically generated after ${period.period_name || 'payroll period'} ended.${reimbursementTotal > 0 ? ` Includes $${reimbursementTotal.toFixed(2)} in tax-free expense reimbursements.` : ''}`,
       });
+      for (const expense of officerExpenses) {
+        await base44.asServiceRole.entities.ExpenseReport.update(expense.id, {
+          payroll_period_id: period.id,
+          payroll_entry_id: payrollEntry.id,
+          payroll_attached_at: new Date().toISOString(),
+          tax_free: true,
+        }).catch(() => null);
+      }
       created += 1;
     }
 
