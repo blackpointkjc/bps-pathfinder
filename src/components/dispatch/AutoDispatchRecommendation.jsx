@@ -113,6 +113,7 @@ export default function AutoDispatchRecommendation({ alert }) {
   const excluded = result.excluded_units || [];
   const disabled = result.decision === 'disabled';
   const manualReview = result.decision === 'manual_review';
+  const partiallyAssigned = result.decision === 'partially_assigned';
 
   return (
     <div className="mt-3 rounded-lg border border-cyan-500/30 bg-[#071827] p-3">
@@ -120,7 +121,7 @@ export default function AutoDispatchRecommendation({ alert }) {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-cyan-300" />
           <span className="text-[11px] font-black uppercase tracking-wider text-cyan-100">Automatic Dispatch</span>
-          <Badge className={`border text-[9px] ${result.mode === 'live' ? 'border-emerald-500/50 bg-emerald-950 text-emerald-200' : 'border-cyan-500/40 bg-cyan-950 text-cyan-200'}`}>{result.mode === 'live' ? (result.decision === 'assigned' ? 'LIVE — ASSIGNED' : 'LIVE') : 'SHADOW — NO STATUS CHANGE'}</Badge>
+          <Badge className={`border text-[9px] ${partiallyAssigned ? 'border-amber-500/50 bg-amber-950 text-amber-200' : result.mode === 'live' ? 'border-emerald-500/50 bg-emerald-950 text-emerald-200' : 'border-cyan-500/40 bg-cyan-950 text-cyan-200'}`}>{result.mode === 'live' ? (result.decision === 'assigned' ? 'LIVE — FULLY ASSIGNED' : partiallyAssigned ? 'LIVE — BACKUP NEEDED' : 'LIVE') : 'SHADOW — NO STATUS CHANGE'}</Badge>
         </div>
         <Button size="sm" variant="ghost" disabled={running} onClick={() => evaluate(true)} className="h-7 text-[10px] text-cyan-200">
           {running ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}RECHECK
@@ -145,6 +146,11 @@ export default function AutoDispatchRecommendation({ alert }) {
               <div className="text-right text-[10px] text-emerald-200">{unit.distance_miles} mi · ETA {unit.eta_minutes} min</div>
             </div>
           ))}
+          {partiallyAssigned && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs font-black text-amber-200">
+              <FileWarning className="h-4 w-4" />{result.staffing_shortfall || 1} ADDITIONAL QUALIFIED UNIT{Number(result.staffing_shortfall || 1) === 1 ? '' : 'S'} REQUIRED
+            </div>
+          )}
           <p className="text-[10px] text-slate-400">Selection requires clock-in, an active signed-in session, Available status, reliable current GPS, property authorization, qualifications, and no conflicting active assignment.</p>
         </div>
       ) : (
