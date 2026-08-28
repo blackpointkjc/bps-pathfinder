@@ -298,11 +298,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      await base44.asServiceRole.entities.DispatchCall.update(callId, {
-        assigned_units: Array.from(nextAssignedIds),
-        status: call.status === 'New' ? 'Dispatched' : call.status,
-        time_dispatched: call.time_dispatched || nowIso,
-      });
+      await Promise.all([
+        base44.asServiceRole.entities.DispatchCall.update(callId, {
+          assigned_units: Array.from(nextAssignedIds),
+          status: call.status === 'New' ? 'Dispatched' : call.status,
+          time_dispatched: call.time_dispatched || nowIso,
+        }),
+        base44.asServiceRole.entities.PropertyAlert.update(alert.id, {
+          lifecycle_status: 'assigned',
+          acknowledged: false,
+        }),
+      ]);
     }
     const eventKey = `autodispatch:${alert.source_key || alert.id}:${mode}${simulation ? ':simulation' : ''}`;
     const evaluationData = {
