@@ -284,7 +284,10 @@ export function announceVoice(text, options = {}) {
   // Keep every caller on the same voice/cadence. Call-site rate/pitch overrides
   // were the reason users heard two noticeably different announcement voices.
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
-  const clean = String(text).replace(/\s+/g, ' ').trim();
+  const clean = String(text)
+    .replace(/\bCAD\b/gi, 'C A D')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
   installVoiceUnlockListeners();
   return speakQueued(clean, options);
@@ -295,7 +298,10 @@ export function announceVoice(text, options = {}) {
 export function announceVoiceAsync(text, options = {}) {
   if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
-  const clean = String(text).replace(/\s+/g, ' ').trim();
+  const clean = String(text)
+    .replace(/\bCAD\b/gi, 'C A D')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
   installVoiceUnlockListeners();
   return new Promise(resolve => {
