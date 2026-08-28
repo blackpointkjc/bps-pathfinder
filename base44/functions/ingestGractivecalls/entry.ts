@@ -363,6 +363,27 @@ async function reconcilePropertyAlerts(base44: any) {
   return propertyAlertsCreated;
 }
 
+async function ensurePhase2ASafetyEvidence(base44: any) {
+  const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 1).catch(() => []);
+  if (existing?.length) return { status: 'already_verified', evaluation_id: existing[0].id };
+
+  const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 100).catch(() => []);
+  for (const alert of alerts || []) {
+    if (!alert?.id || !alert?.callId) continue;
+    const archived = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: alert.callId }, '-archived_date', 1).catch(() => []);
+    if (!archived?.length) continue;
+    const response = await base44.asServiceRole.functions.invoke('testAutoDispatchShadow', {
+      call_id: alert.callId,
+      property_alert_id: alert.id,
+      simulation: true,
+    });
+    const result = response?.data || response || {};
+    if (result.error) throw new Error(result.error);
+    return { status: result.passed ? 'passed' : 'failed', checks: result.checks || {}, tested_at: result.tested_at };
+  }
+  return { status: 'waiting_for_property_alert' };
+}
+
 function easternMonthParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).formatToParts(date);
   const year = parts.find(part => part.type === 'year')?.value || String(date.getUTCFullYear());
@@ -653,8 +674,12 @@ Deno.serve(async (req) => {
       console.error('Property alert reconciliation failed:', error);
       return 0;
     });
+    const phase2aSafety = await ensurePhase2ASafetyEvidence(base44).catch(error => {
+      console.error('Phase 2A shadow safety verification failed:', error);
+      return { status: 'failed', error: error?.message || String(error) };
+    });
 
-    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
+    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
     } finally {
       await releaseIngestionLease(base44, lease);
     }
