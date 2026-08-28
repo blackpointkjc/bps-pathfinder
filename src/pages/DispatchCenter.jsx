@@ -217,7 +217,10 @@ export default function DispatchCenter() {
             const recentCalls = [...uniqueCalls.values()].filter(call => {
                 const receivedAt = parseServerTimestamp(call.time_received || call.created_date)?.getTime() || 0;
                 const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
-                return isFresh && !call.time_cleared && !call.time_closed && !['Cleared', 'Cancelled'].includes(call.status);
+                // Keep Pathfinder CAD lifecycle authoritative for the live queue. The
+                // upstream agency may publish time_closed before our assigned officer
+                // clears the Pathfinder assignment, so time_closed alone must not hide it.
+                return isFresh && !['Cleared', 'Cancelled'].includes(call.status) && call.manual_dismissed !== true;
             });
 
             recentCalls.sort((a, b) => {
