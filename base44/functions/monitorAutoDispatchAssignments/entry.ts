@@ -14,15 +14,15 @@ Deno.serve(async (req) => {
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
 
     const now = Date.now();
-    const [evaluations, alerts, assignments, calls, locations, users, notifications] = await Promise.all([
-      base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ mode: 'live' }, '-evaluated_at', 1000),
-      base44.asServiceRole.entities.PropertyAlert.list('-created_date', 2000),
-      base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000),
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000),
-      base44.asServiceRole.entities.Location.list('-updated_date', 1000),
-      base44.asServiceRole.entities.User.list('-updated_date', 1000),
-      base44.asServiceRole.entities.Notification.list('-created_date', 5000),
-    ]);
+    // Escalation monitoring is operationally important and should not create a
+    // seven-read burst that competes with CAD/GPS traffic. Read sequentially.
+    const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ mode: 'live' }, '-evaluated_at', 1000);
+    const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 2000);
+    const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 3000);
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 3000);
+    const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 1000);
+    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
+    const notifications = await base44.asServiceRole.entities.Notification.list('-created_date', 5000);
     const alertById = new Map((alerts || []).map((item: any) => [String(item.id), item]));
     const callById = new Map((calls || []).map((item: any) => [String(item.id), item]));
     const locationById = new Map((locations || []).map((item: any) => [String(item.id), item]));
