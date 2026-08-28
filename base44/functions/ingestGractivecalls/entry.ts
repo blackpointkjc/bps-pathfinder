@@ -385,7 +385,8 @@ async function reconcilePropertyAlerts(base44: any) {
   }
   const nowMs = Date.now();
   for (const alert of existingAlerts || []) {
-    if (alert.acknowledged === true || !activeCallIds.has(String(alert.callId))) continue;
+    const lifecycle = String(alert.lifecycle_status || 'active').toLowerCase();
+    if (!activeCallIds.has(String(alert.callId)) || ['resolved', 'false_alarm', 'test'].includes(lifecycle)) continue;
     const property = propertyById.get(String(alert.propertyId));
     if (!property || property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live') continue;
     const latest = latestEvaluationByAlert.get(String(alert.id));
