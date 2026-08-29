@@ -417,7 +417,30 @@ export default function TimeClock() {
 
       const boundaryCheck = verifyAgainstLocationBoundary(location, userLat, userLng);
       if (boundaryCheck.ok) {
-        return { verified: true, coords: { lat: userLat, lng: userLng }, distance: boundaryCheck.distance, position };
+        return { verified: true, coords: { lat: userLat, lng: userLng }, accuracy: Number(fix.accuracy), distance: boundaryCheck.distance, position, verificationStatus: 'verified' };
+      }
+
+      // Windows/Wi-Fi positioning can be several hundred meters off even when
+      // the browser reports a smaller radius. Do not trap an officer outside the
+      // timekeeping system: a fresh fix within 750m of the selected property may
+      // clock in, but it is permanently flagged for supervisor review. Precise
+      // geofence verification remains the normal path.
+      const accuracy = Number(fix.accuracy);
+      const nearbyCoarseFix = Number.isFinite(accuracy)
+        && accuracy > 100
+        && accuracy <= 500
+        && Number.isFinite(Number(boundaryCheck.distance))
+        && Number(boundaryCheck.distance) <= 750;
+      if (nearbyCoarseFix) {
+        return {
+          verified: true,
+          coords: { lat: userLat, lng: userLng },
+          accuracy,
+          distance: boundaryCheck.distance,
+          position,
+          verificationStatus: 'low_accuracy_review',
+          verificationNote: `Clock-in accepted for supervisor review: browser accuracy ±${Math.round(accuracy)}m; reported position ${Math.round(Number(boundaryCheck.distance))}m outside the selected property boundary.`,
+        };
       }
       setGeoError(boundaryCheck.message);
       return { verified: false, distance: boundaryCheck.distance };
@@ -495,6 +518,9 @@ export default function TimeClock() {
       location: `${locationDetails.site_name} - ${locationDetails.address}`,
       clock_in_latitude: clockInLocation.latitude,
       clock_in_longitude: clockInLocation.longitude,
+      clock_in_accuracy: Number.isFinite(Number(verification.accuracy)) ? Number(verification.accuracy) : null,
+      location_verification_status: verification.verificationStatus || 'verified',
+      location_verification_note: verification.verificationNote || '',
     });
   };
 
