@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { endOfficerLocationSession } from '@/lib/officerLocationHub';
 
 // Keep one AuthContext instance across Vite/Base44 hot-module reloads. Without
 // this, the provider can remain mounted with the previous module's context while
@@ -267,32 +268,19 @@ export const AuthProvider = ({ children }) => {
   }, [isAuthenticated, user?.id, user?.email]);
 
   const logout = useCallback(async (shouldRedirect = true) => {
-    // Before clearing the auth token, force the signed-in CAD identity Out of
-    // Service. The backend is authoritative; the direct Unit/ActiveOfficer cleanup
-    // below is a last-resort fallback so a transient function failure cannot leave
-    // a ghost Available officer on dispatch after sign-out.
+    // Before clearing the auth token, force duty status OOS and close the one
+    // canonical live-location session. Pages never delete ActiveOfficer directly.
     try {
       const response = await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
     } catch (error) {
-      console.warn('[AUTH] Duty-status logout function failed; applying client fallback:', error?.message);
-      try {
-        const now = new Date().toISOString();
-        const units = await base44.entities.Unit.list(undefined, 500).catch(() => []);
-        const mine = (units || []).filter(unit => String(unit.user_id || '') === String(user?.id || ''));
-        await Promise.all(mine.map(unit => base44.entities.Unit.update(unit.id, {
-          status: 'Out of Service',
-          assigned_call_ids: [],
-          last_update_at: now,
-        }).catch(() => null)));
-        const liveRows = user?.email
-          ? await base44.entities.ActiveOfficer.filter({ officer_email: user.email }).catch(() => [])
-          : [];
-        await Promise.all((liveRows || []).map(row => base44.entities.ActiveOfficer.delete(row.id).catch(() => null)));
-      } catch (fallbackError) {
-        console.warn('[AUTH] Duty-status logout fallback also failed:', fallbackError?.message);
-      }
+      console.warn('[AUTH] Duty-status logout function failed:', error?.message);
+    }
+    try {
+      await endOfficerLocationSession();
+    } catch (locationError) {
+      console.warn('[AUTH] Live-location session close failed:', locationError?.message);
     }
 
     setUser(null);
