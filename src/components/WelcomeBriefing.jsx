@@ -6,7 +6,6 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
-import { listDirectoryUsers } from '@/lib/appDirectory';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
 const normalized = value => String(value || '').trim().toLowerCase();
