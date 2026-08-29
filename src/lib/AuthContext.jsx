@@ -254,7 +254,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkForcedOOS();
-    const interval = window.setInterval(checkForcedOOS, 3000);
+    // Forced-OOS remains responsive without querying every signed-in officer every 3 seconds.
+    const interval = window.setInterval(checkForcedOOS, 30000);
     // When the officer acknowledges the forced-OOS notice, complete the sign-out.
     const onAck = () => logout(true);
     window.addEventListener('bps:forced-oos-acknowledged', onAck);
