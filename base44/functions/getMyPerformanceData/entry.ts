@@ -1,7 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (v: any) => String(v || '').trim().toLowerCase();
-const sameEmail = (row: any, field: string, email: string) => lower(row?.[field]) === email;
+const sameEmail = (row: any, field: string, aliases: Set<string>) => aliases.has(lower(row?.[field]));
+const sameOfficer = (row: any, emailFields: string[], aliases: Set<string>, officerId: string, idFields: string[] = ['officer_id']) =>
+  emailFields.some(field => sameEmail(row, field, aliases)) ||
+  idFields.some(field => officerId && String(row?.[field] || '') === officerId);
 
 Deno.serve(async (req) => {
   try {
@@ -19,7 +22,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll, teamsLinksAll, outlookLinksAll] = await Promise.all([
       safeList('TimeEntry', '-clock_in'),
       safeList('Schedule', '-shift_date'),
       safeList('ShiftBid', '-created_date'),
@@ -41,16 +44,32 @@ Deno.serve(async (req) => {
       safeList('PropertyAlert', '-created_date'),
       safeList('JobDutyRule', 'property_site'),
       safeList('Location', 'site_name'),
+      safeList('MicrosoftTeamsIdentity', '-updated_at', 1000),
+      safeList('OutlookMailboxLink', '-last_verified_at', 1000),
     ]);
 
-    const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || ''));
-    const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myNotifications = notificationsAll.filter((r:any) => sameEmail(r, 'recipient_email', email));
-    const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', email));
+    // A Microsoft 365 sign-in can use a different address from the officer's
+    // Pathfinder work email. Join the records through the immutable User ID and
+    // every active linked alias so a valid account never appears to have zero data.
+    const officerId = String(me.id || '');
+    const aliases = new Set<string>([email]);
+    for (const link of teamsLinksAll || []) {
+      if (String(link?.user_id || '') !== officerId || link?.active === false) continue;
+      [link?.pathfinder_email, link?.microsoft_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
+    }
+    for (const link of outlookLinksAll || []) {
+      if (String(link?.user_id || '') !== officerId || link?.connected === false) continue;
+      [link?.pathfinder_email, link?.outlook_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
+    }
+
+    const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) || String(r?.created_by_id || '') === officerId);
+    const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myNotifications = notificationsAll.filter((r:any) => sameEmail(r, 'recipient_email', aliases));
+    const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
     // Return every successful scan that occurred at the officer's property while
     // the officer was working there. The scoring engine itself determines whether
@@ -81,12 +100,12 @@ Deno.serve(async (req) => {
     }));
     const relevantSiteKeys = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
     const partnerTimeEntries = timeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
-    const myIncidents = incidentsAll.filter((r:any) => sameEmail(r, 'officer_email', email) || sameEmail(r, 'created_by', email) || String(r?.created_by_id || '') === String(me.id || ''));
-    const myCommendations = commendationsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myComplaints = complaintsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myFeedback = feedbackAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myReviews = reviewsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
-    const myDailyReports = dailyReportsAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || ''));
+    const myIncidents = incidentsAll.filter((r:any) => sameOfficer(r, ['officer_email', 'created_by'], aliases, officerId, ['officer_id', 'created_by_id']));
+    const myCommendations = commendationsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
+    const myComplaints = complaintsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
+    const myFeedback = feedbackAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
+    const myReviews = reviewsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
+    const myDailyReports = dailyReportsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']));
 
     // PropertyAlert is the authoritative property-to-call link. DispatchCall rows are
     // archived after an hour, so rebuild one durable call feed from live + history + alerts.
@@ -202,6 +221,7 @@ Deno.serve(async (req) => {
         dailyActivityReports: myDailyReports.length,
         jobDutyRules: dutyRulesAll.length,
         propertyCalls: myPropertyCalls.length,
+        identityAliases: aliases.size,
       },
     });
   } catch (error) {
