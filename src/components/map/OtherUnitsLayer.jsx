@@ -94,6 +94,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
             longitude: hasLive ? liveLng : hasLast ? lastLng : coarseLng,
             location_state: locationState,
             display_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+            coarse_stale: locationState === 'low_accuracy' && unit.coarse_stale === true,
         };
     }).filter(Boolean);
 
@@ -212,7 +213,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
                                 <div className="space-y-2">
                                     <div className={`rounded-md px-2 py-1 text-[10px] font-black ${unit.location_state === 'live' ? 'bg-emerald-100 text-emerald-700' : unit.location_state === 'low_accuracy' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
-                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
+                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `${unit.coarse_stale ? 'LOW ACCURACY LAST KNOWN' : 'LOW ACCURACY GPS'}${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-600">Status:</span>
