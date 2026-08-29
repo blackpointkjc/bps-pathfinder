@@ -108,59 +108,41 @@ Deno.serve(async (req) => {
 
     const acceptedAccuracy = acceptsGps ? finiteNumber(body.accuracy, 999999) : 999999;
     let acceptedForPosition = false;
-    let candidateOnly = false;
     if (acceptsGps) {
       const precise = acceptedAccuracy <= 100;
-      const sameReliableSession = primary?.reliable_session_key === trackingSessionKey
-        && hasCoordinates(primary?.reliable_latitude, primary?.reliable_longitude);
-      const jumpFromReliable = sameReliableSession
-        ? distanceMeters(primary.reliable_latitude, primary.reliable_longitude, latitude, longitude)
-        : 0;
-      const candidateAgeMs = receivedAt - new Date(primary?.gps_candidate_updated_at || 0).getTime();
-      const corroboratesCandidate = precise
-        && primary?.gps_candidate_session_key === trackingSessionKey
-        && candidateAgeMs >= 0
-        && candidateAgeMs <= 5 * 60 * 1000
-        && distanceMeters(primary?.gps_candidate_latitude, primary?.gps_candidate_longitude, latitude, longitude) <= 350;
 
-      // A single browser/device jump must not move a tactical marker. Ordinary
-      // movement remains immediate within 500m; larger moves are promoted after
-      // a second nearby fix confirms the new cluster. This prevents a second tab,
-      // VPN/network estimate, or provider glitch from relocating an officer.
-      candidateOnly = precise && sameReliableSession && jumpFromReliable > 500 && !corroboratesCandidate;
-      acceptedForPosition = !candidateOnly;
+      // Promote every fresh, accurate device fix immediately. The freshness gate
+      // (deviceFixAt within the last 2 minutes and newer than the stored fix) plus
+      // the accuracy gate already filter stale fixes, VPN/network estimates, and
+      // provider glitches. A previous "jump guard" held any fix >500m from the last
+      // reliable position as a candidate until a second fix landed within 350m —
+      // but at normal driving speeds the next 15-second push lands farther than
+      // 350m away, so the candidate was never corroborated and the officer's marker
+      // froze at the old position for the entire drive. Real movement must update
+      // the live marker right away.
+      acceptedForPosition = true;
+      liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
+      liveData.latitude = latitude;
+      liveData.longitude = longitude;
+      liveData.heading = finiteNumber(body.heading);
+      liveData.speed = finiteNumber(body.speed);
+      liveData.accuracy = acceptedAccuracy;
+      liveData.gps_session_key = trackingSessionKey;
+      liveData.gps_candidate_latitude = null;
+      liveData.gps_candidate_longitude = null;
+      liveData.gps_candidate_accuracy = null;
+      liveData.gps_candidate_updated_at = null;
+      liveData.gps_candidate_session_key = '';
+      liveData.gps_candidate_count = 0;
 
-      if (candidateOnly) {
-        liveData.gps_candidate_latitude = latitude;
-        liveData.gps_candidate_longitude = longitude;
-        liveData.gps_candidate_accuracy = acceptedAccuracy;
-        liveData.gps_candidate_updated_at = new Date(deviceFixAt).toISOString();
-        liveData.gps_candidate_session_key = trackingSessionKey;
-        liveData.gps_candidate_count = 1;
-      } else {
-        liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
-        liveData.latitude = latitude;
-        liveData.longitude = longitude;
-        liveData.heading = finiteNumber(body.heading);
-        liveData.speed = finiteNumber(body.speed);
-        liveData.accuracy = acceptedAccuracy;
-        liveData.gps_session_key = trackingSessionKey;
-        liveData.gps_candidate_latitude = null;
-        liveData.gps_candidate_longitude = null;
-        liveData.gps_candidate_accuracy = null;
-        liveData.gps_candidate_updated_at = null;
-        liveData.gps_candidate_session_key = '';
-        liveData.gps_candidate_count = 0;
-
-        // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
-        // tactical coordinate. Coarse fixes remain available for diagnostics only.
-        if (precise) {
-          liveData.reliable_latitude = latitude;
-          liveData.reliable_longitude = longitude;
-          liveData.reliable_accuracy = acceptedAccuracy;
-          liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
-          liveData.reliable_session_key = trackingSessionKey;
-        }
+      // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
+      // tactical coordinate. Coarse fixes remain available for diagnostics only.
+      if (precise) {
+        liveData.reliable_latitude = latitude;
+        liveData.reliable_longitude = longitude;
+        liveData.reliable_accuracy = acceptedAccuracy;
+        liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
+        liveData.reliable_session_key = trackingSessionKey;
       }
     }
 
@@ -220,7 +202,7 @@ Deno.serve(async (req) => {
       latitude: acceptedForPosition ? latitude : null,
       longitude: acceptedForPosition ? longitude : null,
       gps_accepted: acceptedForPosition,
-      gps_candidate_only: candidateOnly,
+      gps_candidate_only: false,
       gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,

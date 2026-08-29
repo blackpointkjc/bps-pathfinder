@@ -656,7 +656,7 @@ export default function VATrespassNotices() {
                   : `<div class="sig-line"></div>`
                 }
                 ${(notice.officer_signature_url || notice.signature_url)
-                  ? `<div style="font-size: 8pt; text-align: center;">${officerFullName}<br/>${notice.created_date ? `Signed (Zulu): ${signedDateZulu}` : ''}</div>`
+                  ? `<div style="font-size: 8pt; text-align: center;">${officerLastName}<br/>${notice.created_date ? `Signed (Zulu): ${signedDateZulu}` : ''}</div>`
                   : `<div style="font-size: 8pt; text-align: center;">Date: ____________________</div>`
                 }
               </div>
