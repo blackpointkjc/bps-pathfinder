@@ -26,9 +26,9 @@ export default function OfficerDispatchQueue() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    staleTime: 15000,
   });
 
   const queue = payload.queue || [];
@@ -39,13 +39,21 @@ export default function OfficerDispatchQueue() {
 
   useEffect(() => {
     const unsubs = [];
+    let timer;
+    const scheduleRefresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => refetch(), 750);
+    };
     for (const entity of ['CallAssignment','CallNote','DispatchCall','OfficerWelfareCheck']) {
       try {
-        const unsub = base44.entities[entity].subscribe(() => refetch());
+        const unsub = base44.entities[entity].subscribe(scheduleRefresh);
         if (typeof unsub === 'function') unsubs.push(unsub);
       } catch {}
     }
-    return () => unsubs.forEach(fn => fn());
+    return () => {
+      window.clearTimeout(timer);
+      unsubs.forEach(fn => fn());
+    };
   }, [refetch]);
 
   const selected = useMemo(() => queue.find(call => call.id === selectedId) || queue[0] || null, [queue, selectedId]);
