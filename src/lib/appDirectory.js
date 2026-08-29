@@ -182,17 +182,18 @@ async function filterBucket(bucket, query = {}, sort, limit) {
   return rows;
 }
 
-export const listDirectoryUsers = async (sort, limit) => {
+export const listDirectoryUsers = async (sort, limit, strict = false) => {
   let rows = [];
   try {
     rows = await listBucket('users', sort, limit);
   } catch (error) {
+    if (strict) throw error;
     console.warn('[Directory] Full user directory unavailable; retaining the signed-in identity.', error?.message || error);
   }
 
-  // The authenticated user is the immutable fallback for every ID-based join.
-  // This protects reports, schedules, posts, chat, and performance views if a
-  // directory request is delayed or rate-limited while the page is mounting.
+  // General identity joins may use the signed-in account as a temporary fallback.
+  // Management screens pass strict=true so a failed directory request is shown as
+  // an error instead of falsely making every other employee disappear.
   try {
     const me = await base44.auth.me();
     if (me?.id && !rows.some(row => String(row?.id) === String(me.id))) rows = [...rows, me];
