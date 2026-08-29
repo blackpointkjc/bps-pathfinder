@@ -275,16 +275,6 @@ function CommandDashboardInner() {
 
             {/* ── SYSTEM HEADER BAR ── */}
             <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
-                <div className="command-dashboard-system-meta flex min-w-0 items-center gap-3">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        <span className="text-green-400 font-mono text-[10px] font-bold tracking-widest">SYSTEM ONLINE</span>
-                    </div>
-                    <div className="w-px h-4 bg-slate-700" />
-                    <span className="text-slate-500 font-mono text-[10px]">
-                        REFRESHED {lastRefresh ? fmtTime(lastRefresh) : '—'}
-                    </span>
-                </div>
                 <div className="command-dashboard-spacer flex-1" />
                 <div className="command-dashboard-actions flex items-center gap-1.5">
                     {/* Sync status */}
