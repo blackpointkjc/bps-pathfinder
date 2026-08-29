@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, MapPin, RefreshCw, Lock, Unlock } from 'lucide-react';
+import { Search, MapPin, RefreshCw, Lock, Unlock, LogOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
@@ -34,6 +34,9 @@ export default function Personnel() {
     const [accountLockDialog, setAccountLockDialog] = useState(null);
     const [accountLockReason, setAccountLockReason] = useState('');
     const [accountLockMessage, setAccountLockMessage] = useState('');
+    const [signOutDialog, setSignOutDialog] = useState(null);
+    const [signOutReason, setSignOutReason] = useState('');
+    const [signOutUpdatingId, setSignOutUpdatingId] = useState(null);
 
     useEffect(() => {
         init();
@@ -153,6 +156,27 @@ export default function Personnel() {
         }
     };
 
+    const handleForceSignOut = async () => {
+        if (!signOutDialog || currentUser?.role !== 'admin') return;
+        const reason = signOutReason.trim();
+        if (!reason) return;
+        const person = signOutDialog;
+        setSignOutUpdatingId(person.id);
+        try {
+            const response = await base44.functions.invoke('forceUserSignOut', { user_id: person.id, reason });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
+            setSignOutDialog(null);
+            setSignOutReason('');
+            toast.success(`${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email} was signed out of Pathfinder`);
+            await loadPersonnel();
+        } catch (error) {
+            toast.error(error?.response?.data?.error || error?.message || 'Unable to force sign out this user');
+        } finally {
+            setSignOutUpdatingId(null);
+        }
+    };
+
     const handleForceStatus = async () => {
         if (!statusDialog) return;
         const { person, action } = statusDialog;
@@ -194,6 +218,25 @@ export default function Personnel() {
 
     return (
         <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+            <Dialog open={!!signOutDialog} onOpenChange={open => { if (!open && !signOutUpdatingId) { setSignOutDialog(null); setSignOutReason(''); } }}>
+                <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
+                    <DialogHeader><DialogTitle>Force Sign Out of Pathfinder</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-300">{signOutDialog?.rank || 'Officer'} {signOutDialog?.last_name || signOutDialog?.full_name || signOutDialog?.email}</p>
+                        <p className="rounded-lg border border-red-900/70 bg-red-950/40 p-3 text-sm text-red-200">This ends the officer's active app session, removes the officer from live CAD status, and places the unit Out of Service. It does not change the officer's true time punches.</p>
+                        <div>
+                            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Required reason</label>
+                            <textarea autoFocus value={signOutReason} onChange={event => setSignOutReason(event.target.value)} placeholder="Why is this officer being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={!!signOutUpdatingId} onClick={() => { setSignOutDialog(null); setSignOutReason(''); }}>Cancel</Button>
+                        <Button className="bg-red-700 hover:bg-red-600" disabled={!!signOutUpdatingId || !signOutReason.trim()} onClick={handleForceSignOut}>
+                            <LogOut className="mr-2 h-4 w-4" />{signOutUpdatingId ? 'Signing out…' : 'Force Sign Out'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Dialog open={!!accountLockDialog} onOpenChange={open => { if (!open) { setAccountLockDialog(null); setAccountLockReason(''); setAccountLockMessage(''); } }}>
                 <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
                     <DialogHeader><DialogTitle>Lock User Account</DialogTitle></DialogHeader>
@@ -278,7 +321,7 @@ export default function Personnel() {
                     <div className="flex-1">EMAIL</div>
                     <div className="w-28 flex-shrink-0">STATUS</div>
                     <div className="w-20 flex-shrink-0">ROLE</div>
-                    <div className="w-52 flex-shrink-0">ACTIONS</div>
+                    <div className="w-72 flex-shrink-0">ACTIONS</div>
                 </div>
 
                 {filteredPersonnel.length === 0 ? (
@@ -306,7 +349,7 @@ export default function Personnel() {
                                     {person.role === 'admin' ? 'ADMIN' : person.dispatch_role ? 'DISP' : 'USER'}
                                 </span>
                             </div>
-                            <div className="col-span-2 flex w-full flex-wrap gap-1.5 md:col-span-1 md:w-52 md:flex-shrink-0 md:flex-nowrap">
+                            <div className="col-span-2 flex w-full flex-wrap gap-1.5 md:col-span-1 md:w-72 md:flex-shrink-0">
                                 <button onClick={() => window.location.href = createPageUrl('Navigation')}
                                     className="flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 rounded text-[9px] transition-all">
                                     <MapPin className="w-2.5 h-2.5" />MAP
@@ -321,6 +364,13 @@ export default function Personnel() {
                                         </button>
                                     );
                                 })()}
+                                {currentUser?.role === 'admin' && person.id !== currentUser.id && (
+                                    <button onClick={() => { setSignOutReason(''); setSignOutDialog(person); }} disabled={signOutUpdatingId === person.id}
+                                        title="End this officer's active Pathfinder session"
+                                        className="flex items-center gap-1 rounded border border-red-600 bg-red-950/70 px-2 py-1 text-[9px] font-bold text-red-200 transition-all hover:bg-red-900 disabled:opacity-50">
+                                        <LogOut className="h-2.5 w-2.5" />{signOutUpdatingId === person.id ? 'SIGNING OUT…' : 'SIGN OUT'}
+                                    </button>
+                                )}
                                 {currentUser?.role === 'admin' && (() => {
                                     const locked = accountLocks.some(entry => entry.user_id === person.id && entry.locked === true);
                                     return <button onClick={() => locked ? handleAccountUnlock(person) : openAccountLockDialog(person)}
