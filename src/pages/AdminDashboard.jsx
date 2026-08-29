@@ -1,7 +1,7 @@
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, FileText, AlertTriangle, Shield, Calendar, MapPin, Megaphone, GraduationCap, ClipboardList, Briefcase, CalendarClock, BookOpen, UserCheck, ShieldCheck, LayoutDashboard } from "lucide-react";
@@ -19,6 +19,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminDashboard() {
+  const queryClient = useQueryClient();
+  const completeTask = useMutation({
+    mutationFn: async task => {
+      const result = await base44.functions.invoke('getRoleWorkQueue', {
+        action: 'complete',
+        task_key: task.id,
+        title: task.title,
+        person: task.person,
+        kind: task.kind,
+        source_id: task.source_id,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] }),
+  });
+
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
@@ -61,8 +79,6 @@ export default function AdminDashboard() {
   const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
-      // Annual creation is idempotent and makes every due review immediately visible.
-      await base44.functions.invoke('generateAnnualPerformanceReviews', {}).catch(() => null);
       const result = await base44.functions.invoke('getRoleWorkQueue', {});
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
@@ -75,12 +91,8 @@ export default function AdminDashboard() {
 
   const directory = buildDirectoryIndex(allUsers || []);
   const getOfficerName = (ref) => operationalName(typeof ref === 'object' ? ref : { officer_email: ref }, directory, { fallback: 'Officer' });
-  const isWednesday = new Date().getDay() === 3;
-  const adminTasks = [
-    ...(adminWork.tasks || []),
-    ...(isWednesday ? [{ id: 'wednesday-schedule', title: 'Wednesday Schedule Planning', person: 'Weekly Administration Task', detail: 'Review availability, assignments, open shifts and publish the upcoming schedule.', page: 'AdminScheduling' }] : []),
-  ];
-  const pendingRequests = (adminWork.counts?.total || 0) + (isWednesday ? 1 : 0);
+  const adminTasks = adminWork.tasks || [];
+  const pendingRequests = adminWork.counts?.total || 0;
 
   const adminTools = [
     // Dashboard & Analytics
@@ -252,7 +264,9 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Administrative work queue</h2><p className="mt-1 text-xs text-slate-500">These are live Pathfinder records that need an administrative decision or weekly action.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
           <div className="mt-4 grid gap-2 xl:grid-cols-2">
             {!!adminWork.load_errors?.length && <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200 xl:col-span-2">Partial queue data: {adminWork.load_errors.join(', ')} could not be loaded. Available tasks are still shown below.</div>}
-            {adminWorkError ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200 xl:col-span-2">Administrative work queue could not load: {adminWorkError.message}</div> : adminTasks.length ? adminTasks.slice(0,16).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><Link to={createPageUrl(task.page)} className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
+            {adminWorkError ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200 xl:col-span-2">Administrative work queue could not load: {adminWorkError.message}</div> : adminTasks.length ? adminTasks.slice(0,16).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><div className="flex shrink-0 flex-wrap gap-2"><Link to={createPageUrl(task.page)} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link><button type="button" onClick={() => completeTask.mutate(task)} disabled={completeTask.isPending} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">MARK DONE</button></div></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
+            {!!adminWork.recently_completed?.length && <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/30 p-3 xl:col-span-2"><summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-slate-400">Recently completed ({adminWork.recently_completed.length})</summary><div className="mt-3 grid gap-2 sm:grid-cols-2">{adminWork.recently_completed.slice(0,8).map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs"><span className="font-bold text-slate-300">{item.title || item.task_key}</span><span className="text-emerald-300">{item.completed_at ? new Date(item.completed_at).toLocaleString() : 'Completed'}</span></div>)}</div></details>}
+            {completeTask.error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200 xl:col-span-2">{completeTask.error.message}</div>}
           </div>
         </section>
 
