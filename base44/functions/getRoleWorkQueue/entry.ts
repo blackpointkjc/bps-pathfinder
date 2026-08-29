@@ -158,6 +158,9 @@ Deno.serve(async (req) => {
     let confidentialReports: any[] = [];
     let maintenanceReports: any[] = [];
     let openDoorReports: any[] = [];
+    let expenseReports: any[] = [];
+    let shiftBids: any[] = [];
+    let specialCoverageRequests: any[] = [];
     let weekStatuses: any[] = [];
 
     if (queueRole === 'hr') {
@@ -171,7 +174,8 @@ Deno.serve(async (req) => {
       [
         entries, dailyReports, availability, accessRequests, shiftReports, incidentReports,
         trespassNotices, parkingViolations, criminalComplaints, dispatcherLogs, forceReports,
-        confidentialReports, maintenanceReports, openDoorReports, weekStatuses,
+        confidentialReports, maintenanceReports, openDoorReports, expenseReports,
+        shiftBids, specialCoverageRequests, weekStatuses,
       ] = await Promise.all([
         safeList('time entries for report matching', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
         safeList('daily activity reports', () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000)),
@@ -187,6 +191,9 @@ Deno.serve(async (req) => {
         safeList('confidential reports', () => base44.asServiceRole.entities.ConfidentialReport.list('-created_date', 1000)),
         safeList('maintenance reports', () => base44.asServiceRole.entities.MaintenanceReport.list('-created_date', 1000)),
         safeList('open-door reports', () => base44.asServiceRole.entities.OpenDoorReport.list('-created_date', 1000)),
+        safeList('expense reports', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 1000)),
+        safeList('shift bids', () => base44.asServiceRole.entities.ShiftBid.list('-created_date', 1000)),
+        safeList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 1000)),
         safeList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
       ]);
     }
@@ -244,8 +251,8 @@ Deno.serve(async (req) => {
       ['Dispatcher Shift Log', dispatcherLogs, ['submitted']],
       ['Use of Force Report', forceReports, ['submitted']],
       ['Confidential Report', confidentialReports, ['new', 'submitted', 'pending']],
-      ['Maintenance Report', maintenanceReports, ['submitted', 'pending']],
-      ['Open Door Report', openDoorReports, ['submitted', 'pending']],
+      ['Maintenance Report', maintenanceReports, ['reported', 'in_progress']],
+      ['Open Door Report', openDoorReports, ['open', 'referred']],
     ];
     const pendingReports = queueRole === 'admin' ? reportSources.flatMap(([label, rows, statuses]: any[]) =>
       (rows || []).filter((row: any) => statuses.includes(normalized(row.status)))
@@ -307,6 +314,17 @@ Deno.serve(async (req) => {
     for (const row of pendingReports) {
       const person = personFor(row);
       candidates.push({ id: `report-${row.queue_label}-${row.id}`, source_id: String(row.id), kind: 'report_review', priority: 'high', title: row.queue_label, person: person.name, detail: row.location || row.report_number || 'Submitted site report awaiting administrative review', page: 'AdminReports' });
+    }
+    for (const row of (expenseReports || []).filter(isPending)) {
+      const person = personFor(row);
+      candidates.push({ id: `expense-${row.id}`, source_id: String(row.id), kind: 'expense', priority: 'normal', title: 'Expense Approval', person: person.name, detail: `$${Number(row.amount || 0).toFixed(2)} · ${row.description || row.expense_date || 'Expense awaiting decision'}`, page: 'AdminExpenseApproval' });
+    }
+    for (const row of (shiftBids || []).filter(isPending)) {
+      const person = personFor(row);
+      candidates.push({ id: `shift-bid-${row.id}`, source_id: String(row.id), kind: 'shift_bid', priority: 'normal', title: 'Shift Bid Pending', person: person.name, detail: row.shift_name || row.shift_id || 'Open-shift bid awaiting scheduling decision', page: 'AdminShiftBids' });
+    }
+    for (const row of (specialCoverageRequests || []).filter(isPending)) {
+      candidates.push({ id: `special-coverage-${row.id}`, source_id: String(row.id), kind: 'special_coverage', priority: 'high', title: 'Special Coverage Request', person: row.client_email || 'Client request', detail: `${row.location || 'Location pending'} · ${row.start_date || 'Start date pending'}`, page: 'AdminSpecialRequests' });
     }
 
     const easternWeekday = new Date(`${now.date}T12:00:00Z`).getUTCDay();
@@ -373,7 +391,8 @@ Deno.serve(async (req) => {
       return normalized(state?.status) !== 'completed';
     });
     const recentCompleted = roleStates
-      .filter((state: any) => ['completed', 'auto_completed'].includes(normalized(state.status)))
+      .filter((state: any) => normalized(state.status) === 'completed'
+        || (normalized(state.status) === 'auto_completed' && !candidateKeys.has(String(state.task_key))))
       .sort((a: any, b: any) => String(b.completed_at || '').localeCompare(String(a.completed_at || '')))
       .slice(0, 12);
 
@@ -396,6 +415,9 @@ Deno.serve(async (req) => {
         access_requests: countKind('access'),
         performance_reviews: countKind('performance_review'),
         annual_reviews_due: countKind('annual_review_due'),
+        expenses: countKind('expense'),
+        shift_bids: countKind('shift_bid'),
+        special_coverage: countKind('special_coverage'),
         weekly_schedule: countKind('weekly_schedule'),
         clocked_in: activeEntries.length,
         active_employees: (users || []).filter((user: any) => !user.termination_date).length,
