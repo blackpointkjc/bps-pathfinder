@@ -1,7 +1,8 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,10 @@ import { isInternalMember } from '@/lib/directoryUtils';
 import { calculatePaidHours } from '@/lib/payrollCalculations';
 
 export default function ManageTimeEntries() {
+  const location = useLocation();
+  const requestedEntryId = new URLSearchParams(location.search).get('entry_id') || '';
+  const queueKind = new URLSearchParams(location.search).get('queue_kind') || '';
+  const openedEntryRef = useRef('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState("all");
   const [editingEntry, setEditingEntry] = useState(null);
@@ -50,6 +55,7 @@ export default function ManageTimeEntries() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
+  const hasPayrollAuthority = isAdmin || roles.has('full_access');
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
@@ -177,7 +183,10 @@ export default function ManageTimeEntries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
       queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
       setPayrollEntryId(null);
+      alert('Payroll and performance decision saved. The related work-queue task will close automatically.');
     },
     onError: (error) => {
       alert(error?.message || 'Unable to save the payroll decision');
@@ -271,6 +280,23 @@ export default function ManageTimeEntries() {
       relief_officer_email: entry.relief_officer_email || 'none',
     });
   };
+
+  useEffect(() => {
+    if (!requestedEntryId || !Array.isArray(timeEntries)) return;
+    if (selectedOfficer !== 'all') {
+      setSelectedOfficer('all');
+      return;
+    }
+    const entry = timeEntries.find(item => String(item.id) === String(requestedEntryId));
+    if (!entry) return;
+    const openKey = `${location.search}:${entry.id}`;
+    if (openedEntryRef.current === openKey) return;
+    openedEntryRef.current = openKey;
+    if (hasPayrollAuthority && entry.clock_out) openPayrollDecision(entry);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`time-entry-${entry.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [requestedEntryId, location.search, timeEntries, selectedOfficer, hasPayrollAuthority]);
 
   const groupByOfficer = (entries) => {
     const grouped = {};
@@ -459,7 +485,7 @@ export default function ManageTimeEntries() {
               <CardContent className="p-6">
                 <div className="space-y-3">
                   {entries.map((entry) => (
-                    <div key={entry.id}>
+                    <div key={entry.id} id={`time-entry-${entry.id}`} className={String(entry.id) === String(requestedEntryId) ? "scroll-mt-24 rounded-xl ring-2 ring-amber-400 ring-offset-2" : ""}>
                       {editingEntry === entry.id ? (
                         <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-400">
                           <div className="space-y-3">
@@ -587,14 +613,16 @@ export default function ManageTimeEntries() {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              {isAdmin && entry.clock_out && (
+                              {hasPayrollAuthority && entry.clock_out && (
                                 <Button
                                   variant="outline"
-                                  size="icon"
+                                  size="sm"
                                   title="Review payroll and performance handling"
                                   onClick={() => openPayrollDecision(entry)}
+                                  className="border-amber-400 bg-amber-100 font-bold text-amber-950 hover:bg-amber-200"
                                 >
-                                  <BadgeDollarSign className="w-4 h-4" />
+                                  <BadgeDollarSign className="mr-1.5 h-4 w-4" />
+                                  Review Pay
                                 </Button>
                               )}
                               <Button
@@ -618,24 +646,33 @@ export default function ManageTimeEntries() {
                             </div>
                           </div>
                         </div>
-                        {isAdmin && entry.clock_out && payrollEntryId === entry.id && (
+                        {hasPayrollAuthority && entry.clock_out && payrollEntryId === entry.id && (
                           <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
                             <div className="grid gap-4 lg:grid-cols-2">
-                              <div className="space-y-2 lg:col-span-2">
-                                <Label>Payroll and performance decision</Label>
-                                <Select
-                                  value={payrollForm.decision}
-                                  onValueChange={(decision) => setPayrollForm({ ...payrollForm, decision })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="relief_delay_approved">Approve relief delay — pay actual hours, exclude performance</SelectItem>
-                                    <SelectItem value="pay_overage_with_performance">Pay actual overage — count toward performance</SelectItem>
-                                    <SelectItem value="deny_overage_pay">Deny overage pay — use approved payroll hours</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                              <div className="space-y-3 lg:col-span-2">
+                                <div>
+                                  <Label className="text-base font-bold text-slate-950">Choose the payroll and performance decision</Label>
+                                  {queueKind === 'late_clock_out' && String(entry.id) === String(requestedEntryId) && (
+                                    <p className="mt-1 text-sm font-medium text-amber-900">This is the late clock-out from the work queue. Saving a decision closes that task automatically.</p>
+                                  )}
+                                </div>
+                                <div className="grid gap-2 md:grid-cols-3">
+                                  {[
+                                    ['relief_delay_approved', 'Approve late relief', 'Pay all actual hours and do not count the overage against performance.'],
+                                    ['pay_overage_with_performance', 'Pay and count overage', 'Pay all actual hours and count the late clock-out in performance.'],
+                                    ['deny_overage_pay', 'Limit payroll hours', 'Set the hours payroll will pay; preserve the true clock-in and clock-out record.'],
+                                  ].map(([decision, label, detail]) => (
+                                    <button
+                                      key={decision}
+                                      type="button"
+                                      onClick={() => setPayrollForm({ ...payrollForm, decision })}
+                                      className={`rounded-xl border-2 p-3 text-left transition ${payrollForm.decision === decision ? 'border-amber-500 bg-amber-100 shadow-sm' : 'border-slate-200 bg-white hover:border-amber-300'}`}
+                                    >
+                                      <span className="block text-sm font-black text-slate-950">{label}</span>
+                                      <span className="mt-1 block text-xs leading-5 text-slate-600">{detail}</span>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
 
                               <div className="rounded-lg border border-slate-200 bg-white p-3">
