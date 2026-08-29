@@ -1,0 +1,89 @@
+{
+  "name": "UserSessionControl",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Target Base44 user ID"
+    },
+    "user_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Target user's email address"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "force_sign_out"
+      ],
+      "description": "Administrative session action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Required administrative reason"
+    },
+    "issued_by_id": {
+      "type": "string"
+    },
+    "issued_by_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "issued_by_name": {
+      "type": "string"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Short enforcement window so a user can sign in again after the forced session ends"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "user_id",
+    "user_email",
+    "action",
+    "reason",
+    "issued_by_id",
+    "issued_by_email",
+    "issued_at",
+    "expires_at",
+    "active"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
