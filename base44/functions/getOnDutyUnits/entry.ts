@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
         last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : null),
         last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : null),
         coarse_latitude: !hasReliableGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
-        coarse_longitude: !hasReliableGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.longitude, active.latitude) ? Number(active.longitude) : null,
+        coarse_longitude: !hasReliableGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
         coarse_accuracy: !hasReliableGps && active.gps_session_key === active.tracking_session_key && Number.isFinite(accuracy) ? accuracy : null,
         coarse_gps_updated_at: !hasReliableGps && active.gps_session_key === active.tracking_session_key ? active.gps_updated_at || null : null,
         coarse_stale: !hasReliableGps && active.gps_session_key === active.tracking_session_key && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
