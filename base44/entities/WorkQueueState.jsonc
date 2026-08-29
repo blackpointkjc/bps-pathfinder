@@ -1,0 +1,81 @@
+{
+  "name": "WorkQueueState",
+  "type": "object",
+  "properties": {
+    "task_key": {
+      "type": "string",
+      "description": "Stable key for a generated queue task"
+    },
+    "queue_role": {
+      "type": "string",
+      "enum": [
+        "hr",
+        "admin"
+      ],
+      "description": "Team that owns this work item"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "completed",
+        "auto_completed"
+      ],
+      "default": "open"
+    },
+    "title": {
+      "type": "string"
+    },
+    "person": {
+      "type": "string"
+    },
+    "source_kind": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_by": {
+      "type": "string"
+    },
+    "completion_note": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "task_key",
+    "queue_role",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
