@@ -58,6 +58,12 @@ export function setVoiceEnabled(enabled) {
 
 export function stopVoice() {
   if (!isVoiceSupported()) return;
+  speechCancelGeneration += 1;
+  clearAutomaticRetry(true);
+  pendingSpeech = null;
+  lastBlockedSpeech = null;
+  activeSpeech = null;
+  speechQueue.length = 0;
   try { window.speechSynthesis.cancel(); } catch {}
 }
 
@@ -90,6 +96,7 @@ let unlockListenersInstalled = false;
 let automaticRetryTimer = null;
 let automaticRetryAttempt = 0;
 let automaticRetrySequence = null;
+let speechCancelGeneration = 0;
 const speechQueue = [];
 const PRIORITY = { emergency: 100, critical: 80, high: 60, normal: 40, low: 20 };
 
@@ -159,8 +166,8 @@ function scheduleAutomaticRetry(item) {
     clearAutomaticRetry(true);
     automaticRetrySequence = item.sequence;
   }
-  if (automaticRetryTimer || automaticRetryAttempt >= 6) return;
-  const delays = [1500, 3000, 6000, 12000, 20000, 30000];
+  if (automaticRetryTimer || automaticRetryAttempt >= 3) return;
+  const delays = [1500, 4000, 10000];
   const delay = delays[automaticRetryAttempt] || 30000;
   automaticRetryAttempt += 1;
   automaticRetryTimer = window.setTimeout(() => {
@@ -175,23 +182,32 @@ function nextQueuedSpeech() {
   const item = speechQueue.shift();
   activeSpeech = item;
   pendingSpeech = item;
+  const cancelGeneration = speechCancelGeneration;
   let started = false;
+  let finished = false;
   try {
     const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
-      clearAutomaticRetry(true);
+      // Starting playback cancels only the pending timer. Preserve the retry
+      // attempt count so a voice engine that repeatedly starts then errors cannot
+      // reset itself into an endless retry loop.
+      clearAutomaticRetry(false);
       pendingSpeech = null;
       if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
       window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: item.clean, eventId: item.options.eventId || null } }));
     };
-    const finish = success => {
+    const finish = (success, retryable = false) => {
+      if (finished) return;
+      finished = true;
+      const wasCancelled = cancelGeneration !== speechCancelGeneration;
       if (success) {
         markEventProcessed(item.options.eventId);
         if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
+        clearAutomaticRetry(true);
       }
       if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
-      if (!success) {
+      if (!success && retryable && !wasCancelled) {
         pendingSpeech = item;
         lastBlockedSpeech = item;
         scheduleAutomaticRetry(item);
@@ -201,9 +217,13 @@ function nextQueuedSpeech() {
     };
     utterance.onend = () => finish(true);
     utterance.onerror = event => {
-      lastBlockedSpeech = item;
-      window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: event?.error || 'playback_failed' } }));
-      finish(false);
+      const reason = event?.error || 'playback_failed';
+      const retryable = !['canceled', 'cancelled', 'interrupted'].includes(String(reason).toLowerCase());
+      if (retryable && cancelGeneration === speechCancelGeneration) {
+        lastBlockedSpeech = item;
+        window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason } }));
+      }
+      finish(false, retryable);
     };
     window.speechSynthesis.resume?.();
     window.speechSynthesis.speak(utterance);
@@ -215,14 +235,14 @@ function nextQueuedSpeech() {
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
         scheduleAutomaticRetry(item);
       }
-    }, 1200);
+    }, 1800);
   } catch (error) {
     pendingSpeech = item;
     lastBlockedSpeech = item;
     activeSpeech = null;
     item.resolve?.(false);
     window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
-    scheduleAutomaticRetry(item);
+    if (cancelGeneration === speechCancelGeneration) scheduleAutomaticRetry(item);
   }
 }
 
@@ -239,6 +259,12 @@ function speakQueued(clean, options = {}, resolve = null) {
   // Emergency traffic may preempt lower-priority speech. Routine/high traffic
   // never interrupts an emergency; it waits in the shared queue.
   if (priority >= PRIORITY.emergency && activeSpeech && activeSpeech.priority < PRIORITY.emergency) {
+    // Cancel the lower-priority utterance without allowing its onerror callback
+    // to place it into the automatic retry loop ahead of emergency traffic.
+    speechCancelGeneration += 1;
+    pendingSpeech = null;
+    lastBlockedSpeech = null;
+    clearAutomaticRetry(true);
     try { window.speechSynthesis.cancel(); } catch {}
     activeSpeech = null;
   }
@@ -254,7 +280,8 @@ function retryPendingSpeech() {
   lastBlockedSpeech = null;
   speechQueue.splice(0, speechQueue.length, ...speechQueue.filter(item => item.sequence !== blocked.sequence));
   if (activeSpeech?.sequence === blocked.sequence) activeSpeech = null;
-  try { window.speechSynthesis.cancel(); } catch {}
+  // Do not call cancel here. The failed/blocked item is already inactive, and
+  // canceling can emit another error event that schedules a duplicate retry.
   speechQueue.unshift(retryItem);
   window.speechSynthesis.resume?.();
   nextQueuedSpeech();
