@@ -231,10 +231,13 @@ Deno.serve(async (req) => {
     const onDutyUsers = (users || [])
       .filter(operational)
       .map((user: any) => {
-        const active = newestActiveByEmail.get(String(user.email).toLowerCase());
+        const email = String(user.email).toLowerCase();
+        const active = newestActiveByEmail.get(email);
+        const openEntry = openByEmail.get(email) || null;
         const activeTs = new Date(active?.last_update || active?.updated_date || active?.created_date || 0).getTime();
         const userStatusTs = new Date(user.last_updated || user.status_since || user.updated_date || 0).getTime();
         const signedInFresh = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= freshCutoff);
+        const operationallySignedIn = signedInFresh || Boolean(openEntry);
         // A dedicated status change writes User and ActiveOfficer together. If a
         // duplicate/racing ActiveOfficer row is momentarily older than User, honor
         // the newer User status instead of showing OOS/stale status on the board.
@@ -243,7 +246,12 @@ Deno.serve(async (req) => {
         const newestLiveStatus = Number.isFinite(userStatusTs) && userStatusTs > activeTs
           ? (user.status || active?.status || 'Available')
           : (active?.status || user.status || 'Available');
-        const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
+        const normalizedLiveStatus = lower(newestLiveStatus);
+        const resolvedStatus = signedInFresh
+          ? newestLiveStatus
+          : openEntry
+            ? (normalizedLiveStatus === 'out of service' || !newestLiveStatus ? 'Available' : newestLiveStatus)
+            : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
@@ -272,7 +280,7 @@ Deno.serve(async (req) => {
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
           current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
-          current_location: signedInFresh ? (active?.current_location || openByEmail.get(String(user.email).toLowerCase())?.location || user.assigned_location || '') : (user.assigned_location || ''),
+          current_location: operationallySignedIn ? (active?.current_location || openEntry?.location || user.assigned_location || '') : (user.assigned_location || ''),
           assigned_location: user.assigned_location || '',
           latitude: hasFreshGps ? Number(active.latitude) : null,
           longitude: hasFreshGps ? Number(active.longitude) : null,
@@ -293,11 +301,12 @@ Deno.serve(async (req) => {
           coarse_accuracy: !hasFreshGps && Number.isFinite(accuracy) ? accuracy : null,
           coarse_gps_updated_at: !hasFreshGps ? active?.gps_updated_at || null : null,
           coarse_stale: !hasFreshGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
-          gps_pending: signedInFresh && !hasFreshGps,
+          gps_pending: operationallySignedIn && !hasFreshGps,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
-          session_active: signedInFresh,
-          clock_in_time: openByEmail.get(String(user.email).toLowerCase())?.clock_in || active?.clock_in_time || '',
+          session_active: operationallySignedIn,
+          session_source: signedInFresh ? 'active_session' : openEntry ? 'open_time_entry' : 'signed_out',
+          clock_in_time: openEntry?.clock_in || active?.clock_in_time || '',
         };
       });
 
