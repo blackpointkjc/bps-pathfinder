@@ -70,6 +70,10 @@
       "type": "string",
       "description": "Current login or clocked-in session identity for GPS isolation"
     },
+    "gps_session_key": {
+      "type": "string",
+      "description": "Tracking session that produced the current raw GPS coordinate"
+    },
     "reliable_session_key": {
       "type": "string",
       "description": "Session identity that owns the preserved precise tactical GPS fix"
