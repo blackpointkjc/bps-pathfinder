@@ -64,12 +64,20 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = rolesOf(me);
-    const hasAccess = me.role === 'admin' || roles.has('hr') || roles.has('full_access')
-      || normalized(me.rank) === 'human resources';
-    if (!hasAccess) return Response.json({ error: 'HR or administrator access required' }, { status: 403 });
+    const canUseAdminQueue = me.role === 'admin' || roles.has('full_access');
+    const canUseHrQueue = canUseAdminQueue || roles.has('hr') || normalized(me.rank) === 'human resources';
+    if (!canUseHrQueue) return Response.json({ error: 'HR or administrator access required' }, { status: 403 });
 
-    const queueRole = me.role === 'admin' || roles.has('full_access') ? 'admin' : 'hr';
     const body = await req.json().catch(() => ({}));
+    const requestedQueueRole = normalized(body?.queue_role);
+    if (requestedQueueRole === 'admin' && !canUseAdminQueue) {
+      return Response.json({ error: 'Administrator access required' }, { status: 403 });
+    }
+    const queueRole = requestedQueueRole === 'hr'
+      ? 'hr'
+      : requestedQueueRole === 'admin'
+        ? 'admin'
+        : canUseAdminQueue ? 'admin' : 'hr';
     const loadErrors: string[] = [];
     const safeList = async (label: string, loader: () => Promise<any[]>) => {
       try {
@@ -337,6 +345,15 @@ Deno.serve(async (req) => {
       })
     ));
 
+    await Promise.allSettled(candidates.filter(task =>
+      normalized(stateByKey.get(String(task.id))?.status) === 'auto_completed'
+    ).map(task =>
+      base44.asServiceRole.entities.WorkQueueState.update(stateByKey.get(String(task.id)).id, {
+        status: 'open',
+        last_seen_at: observedAt,
+      })
+    ));
+
     if (loadErrors.length === 0) {
       await Promise.allSettled(roleStates.filter((state: any) =>
         normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
@@ -353,7 +370,7 @@ Deno.serve(async (req) => {
 
     const tasks = candidates.filter(task => {
       const state = stateByKey.get(String(task.id));
-      return !state || normalized(state.status) === 'open';
+      return normalized(state?.status) !== 'completed';
     });
     const recentCompleted = roleStates
       .filter((state: any) => ['completed', 'auto_completed'].includes(normalized(state.status)))
