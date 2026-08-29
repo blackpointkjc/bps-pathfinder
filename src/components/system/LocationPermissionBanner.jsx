@@ -49,7 +49,10 @@ export default function LocationPermissionBanner({ user }) {
   }, [user?.id]);
 
   if (!user?.id || !isInternalMember(user)) return null;
-  if (quality.state === 'checking' || quality.state === 'live' || quality.state === dismissedState) return null;
+  // A coarse browser fix is still syncing and is shown on maps with its accuracy
+  // radius. Do not interrupt every page with a recurring modal-style warning.
+  // Keep this banner only for actionable failures such as blocked/unavailable GPS.
+  if (quality.state === 'checking' || quality.state === 'live' || quality.state === 'low_accuracy' || quality.state === dismissedState) return null;
 
   const blocked = quality.state === 'permission_denied';
   const retry = async () => {
