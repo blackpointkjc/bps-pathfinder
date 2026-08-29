@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity, Users, History, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
+import { Circle, MapContainer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { getOfficerLocationHistory, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -72,46 +73,6 @@ const MAP_TILE_PROVIDERS = [
   },
 ];
 
-function ResilientTileLayer({ onUnavailable }) {
-  const [providerIndex, setProviderIndex] = useState(0);
-  const tileErrors = React.useRef(0);
-  const provider = MAP_TILE_PROVIDERS[providerIndex];
-
-  useEffect(() => {
-    tileErrors.current = 0;
-    onUnavailable(false);
-  }, [providerIndex, onUnavailable]);
-
-  const handleTileError = () => {
-    tileErrors.current += 1;
-    // A single missing edge tile is normal while panning. Switch providers only
-    // after several failures, otherwise a healthy street map can be replaced by
-    // a blank fallback on the first harmless tile error.
-    if (tileErrors.current < 4) return;
-    tileErrors.current = 0;
-    if (providerIndex < MAP_TILE_PROVIDERS.length - 1) {
-      setProviderIndex(current => current + 1);
-    } else {
-      onUnavailable(true);
-    }
-  };
-
-  return (
-    <TileLayer
-      key={provider.name}
-      url={provider.url}
-      attribution={provider.attribution}
-      subdomains={provider.subdomains}
-      eventHandlers={{
-        tileerror: handleTileError,
-        load: () => {
-          tileErrors.current = 0;
-          onUnavailable(false);
-        },
-      }}
-    />
-  );
-}
 
 function MapReadyHandler() {
   const map = useMap();
@@ -183,6 +144,7 @@ export default function AdminLocationTracker() {
   const [liveMapUnavailable, setLiveMapUnavailable] = useState(false);
   const [historyMapUnavailable, setHistoryMapUnavailable] = useState(false);
   const [deviceLocationState, setDeviceLocationState] = useState(null);
+  const [mapTheme, setMapTheme] = usePathfinderMapTheme();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -291,11 +253,9 @@ export default function AdminLocationTracker() {
   }, [locationHistory]);
 
   const getOfficerName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (officer?.first_name && officer?.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    return email;
+    const officer = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
+    if (officer?.last_name) return [officer.rank, officer.last_name].filter(Boolean).join(' ');
+    return officer?.unit_number ? `Unit ${officer.unit_number}` : 'Officer';
   };
 
   const performLocationCheck = async () => {
@@ -407,7 +367,10 @@ export default function AdminLocationTracker() {
     }
   }, [viewMode, hasAccess, allUsers]);  
 
-  const officersWithLocation = currentlyActiveOfficers?.filter(hasValidCoordinates) || [];
+  const officersWithLocation = (currentlyActiveOfficers?.filter(hasValidCoordinates) || []).map(o => ({
+    ...o,
+    gps_low_accuracy: Number.isFinite(Number(o.accuracy)) && Number(o.accuracy) > 150,
+  }));
   const officersWithLastKnown = (currentlyActiveOfficers || [])
     .filter(o => !hasValidCoordinates(o)
       && hasCoordinateValue(o.last_known_latitude)
@@ -454,7 +417,7 @@ export default function AdminLocationTracker() {
               </p>
             )}
           </div>
-          <Button
+          <div className="flex flex-wrap items-center gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><Button
             onClick={handleCheckAllLocations}
             disabled={checkingLocations}
             className="bg-blue-600 hover:bg-blue-700"
@@ -470,7 +433,7 @@ export default function AdminLocationTracker() {
                 Check All Locations Now
               </>
             )}
-          </Button>
+          </Button></div>
         </div>
 
         {deviceLocationState && ['permission_denied', 'unavailable', 'timeout', 'low_accuracy', 'stale'].includes(deviceLocationState.state) && (
@@ -748,18 +711,19 @@ export default function AdminLocationTracker() {
                       style={{ height: '100%', width: '100%' }}
                     >
                       <MapReadyHandler />
-                      <ResilientTileLayer onUnavailable={setLiveMapUnavailable} />
+                      <PathfinderTileLayer theme={mapTheme} />
                       <MapUpdater officers={officersForMap} historicalPath={null} />
                       {officersForMap.map((officer) => (
+                        <React.Fragment key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`}>
+                        {officer.gps_low_accuracy && Number.isFinite(Number(officer.accuracy)) && <Circle center={[Number(officer.latitude), Number(officer.longitude)]} radius={Math.max(25, Number(officer.accuracy))} pathOptions={{ color:'#f59e0b', weight:1.5, fillOpacity:.08, dashArray:'6 6' }} />}
                         <CircleMarker
-                          key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`}
                           center={[Number(officer.latitude), Number(officer.longitude)]}
                           radius={officer.gps_stale ? 7 : 9}
                           pathOptions={{
                             color: '#ffffff',
                             weight: 2,
-                            fillColor: officer.gps_stale ? '#d97706' : '#2563eb',
-                            fillOpacity: officer.gps_stale ? 0.65 : 0.95,
+                            fillColor: officer.gps_stale ? '#94a3b8' : officer.gps_low_accuracy ? '#f59e0b' : '#2563eb',
+                            fillOpacity: officer.gps_stale ? 0.55 : 0.95,
                           }}
                         >
                           <Popup autoPan={false}>
@@ -770,7 +734,7 @@ export default function AdminLocationTracker() {
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
                               <p className={`text-xs ${officer.gps_stale ? 'font-bold text-amber-700' : 'text-green-600'}`}>
-                                {officer.gps_stale ? 'LAST KNOWN GPS' : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
+                                {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
                                   ? format(new Date(officer.gps_updated_at || officer.last_gps_updated_at), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
@@ -780,6 +744,7 @@ export default function AdminLocationTracker() {
                             </div>
                           </Popup>
                         </CircleMarker>
+                        </React.Fragment>
                       ))}
                     </MapContainer>
                     {officersForMap.length === 0 && (
@@ -913,7 +878,7 @@ export default function AdminLocationTracker() {
                     style={{ height: '100%', width: '100%' }}
                   >
                     <MapReadyHandler />
-                    <ResilientTileLayer onUnavailable={setHistoryMapUnavailable} />
+                    <PathfinderTileLayer theme={mapTheme} />
                     <MapUpdater 
                       officers={[]} 
                       historicalPath={locationHistory}
