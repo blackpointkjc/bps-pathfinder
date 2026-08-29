@@ -57,6 +57,10 @@ Deno.serve(async (req) => {
         .map((active: any) => {
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
           const accuracy = Number(active.accuracy);
+          const reliableAccuracy = Number(active.reliable_accuracy);
+          const hasReliablePosition = hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
+            && Number.isFinite(reliableAccuracy)
+            && reliableAccuracy <= 100;
           const hasGps = Number.isFinite(gpsTs)
             && gpsTs >= gpsFreshCutoff
             && hasValidCoordinates(active.latitude, active.longitude)
@@ -75,10 +79,13 @@ Deno.serve(async (req) => {
             speed: hasGps ? active.speed : 0,
             accuracy: Number.isFinite(accuracy) ? accuracy : null,
             gps_updated_at: hasGps ? active.gps_updated_at : null,
-            last_gps_updated_at: active.gps_updated_at || null,
-            last_known_latitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
-            last_known_longitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
-            last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+            last_gps_updated_at: active.reliable_gps_updated_at || (hasGps ? active.gps_updated_at : null),
+            last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasGps ? Number(active.latitude) : null),
+            last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasGps ? Number(active.longitude) : null),
+            last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasGps ? accuracy : null),
+            coarse_latitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+            coarse_longitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
+            coarse_accuracy: !hasGps && Number.isFinite(accuracy) ? accuracy : null,
             gps_pending: !hasGps,
             show_lights: active.show_lights,
             current_call_info: active.current_call_info || '',
