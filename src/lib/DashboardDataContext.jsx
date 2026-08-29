@@ -5,6 +5,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 
 const DashboardDataContext = createContext(null);
@@ -138,9 +139,7 @@ export function DashboardDataProvider({ children }) {
             // immediately; fresh on-duty data replaces them when available.
             if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
                 try {
-                    const result = await base44.functions.invoke('getOnDutyUnits', {});
-                    const payload = result?.data || result || {};
-                    if (payload.error) throw new Error(payload.error);
+                    const payload = await getOfficerLocationSnapshot();
                     usersData = payload.users || [];
                     usersCacheRef.current = usersData;
                     lastUsersRefreshTime.current = Date.now();
