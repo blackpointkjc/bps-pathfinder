@@ -355,46 +355,31 @@ export default function AdminLocationTracker() {
     }
   }, [viewMode, hasAccess, allUsers]);  
 
-  const officersWithLocation = (currentlyActiveOfficers?.filter(hasValidCoordinates) || []).map(o => ({
-    ...o,
-    gps_low_accuracy: Number.isFinite(Number(o.accuracy)) && Number(o.accuracy) > 150,
-  }));
-  const officersWithLastKnown = (currentlyActiveOfficers || [])
-    .filter(o => !hasValidCoordinates(o)
-      && hasCoordinateValue(o.last_known_latitude)
-      && hasCoordinateValue(o.last_known_longitude)
-      && !(Number(o.last_known_latitude) === 0 && Number(o.last_known_longitude) === 0))
+  // Each officer's marker must follow their most recent device reading. A
+  // precise fix from 30 minutes ago is not "where they are now" if a newer
+  // (even coarse) fix exists — pick the newest valid coordinate and let the
+  // accuracy circle communicate the uncertainty.
+  const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
+  const officersForMap = (currentlyActiveOfficers || [])
     .map(o => {
-      const gpsAt = new Date(o.last_gps_updated_at || o.gps_updated_at || 0).getTime();
-      const accuracy = Number(o.last_known_accuracy);
-      const hasFreshCoarseFix = Number.isFinite(gpsAt)
-        && Date.now() - gpsAt <= 2 * 60 * 1000
-        && Number.isFinite(accuracy)
-        && accuracy > 100;
+      const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
+      const candidates = [];
+      if (valid(o.latitude, o.longitude)) candidates.push({ lat: Number(o.latitude), lng: Number(o.longitude), acc: Number(o.accuracy), ts: toLocTs(o.gps_updated_at), low: false });
+      if (valid(o.last_known_latitude, o.last_known_longitude)) candidates.push({ lat: Number(o.last_known_latitude), lng: Number(o.last_known_longitude), acc: Number(o.last_known_accuracy), ts: toLocTs(o.last_gps_updated_at || o.gps_updated_at), low: false });
+      if (valid(o.coarse_latitude, o.coarse_longitude)) candidates.push({ lat: Number(o.coarse_latitude), lng: Number(o.coarse_longitude), acc: Number(o.coarse_accuracy), ts: toLocTs(o.coarse_gps_updated_at || o.gps_updated_at), low: true });
+      if (!candidates.length) return null;
+      candidates.sort((a, b) => b.ts - a.ts);
+      const best = candidates[0];
       return {
         ...o,
-        latitude: Number(o.last_known_latitude),
-        longitude: Number(o.last_known_longitude),
-        accuracy: Number.isFinite(accuracy) ? accuracy : null,
-        gps_low_accuracy: hasFreshCoarseFix,
-        gps_stale: !hasFreshCoarseFix,
+        latitude: best.lat,
+        longitude: best.lng,
+        accuracy: Number.isFinite(best.acc) ? best.acc : null,
+        gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 150),
+        gps_stale: best.low && o.coarse_stale === true,
       };
-    });
-  const officersWithCoarseLocation = (currentlyActiveOfficers || [])
-    .filter(o => !hasValidCoordinates(o)
-      && !(hasCoordinateValue(o.last_known_latitude) && hasCoordinateValue(o.last_known_longitude))
-      && hasCoordinateValue(o.coarse_latitude)
-      && hasCoordinateValue(o.coarse_longitude)
-      && !(Number(o.coarse_latitude) === 0 && Number(o.coarse_longitude) === 0))
-    .map(o => ({
-      ...o,
-      latitude: Number(o.coarse_latitude),
-      longitude: Number(o.coarse_longitude),
-      accuracy: Number.isFinite(Number(o.coarse_accuracy)) ? Number(o.coarse_accuracy) : null,
-      gps_low_accuracy: true,
-      gps_stale: o.coarse_stale === true,
-    }));
-  const officersForMap = [...officersWithLocation, ...officersWithLastKnown, ...officersWithCoarseLocation];
+    })
+    .filter(Boolean);
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
     const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;

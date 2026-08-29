@@ -75,26 +75,28 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     
     // Keep every officer represented, but merge markers that are physically within
     // 25 feet so overlapping icons never hide one another.
+    const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
     const unitsToShow = units.filter(unit => unit.id !== currentUserId).map(unit => {
-        const liveLat = Number(unit.latitude);
-        const liveLng = Number(unit.longitude);
-        const lastLat = Number(unit.last_known_latitude);
-        const lastLng = Number(unit.last_known_longitude);
-        const coarseLat = Number(unit.coarse_latitude);
-        const coarseLng = Number(unit.coarse_longitude);
-        const hasLive = Number.isFinite(liveLat) && Number.isFinite(liveLng) && !(liveLat === 0 && liveLng === 0);
-        const hasLast = Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0);
-        const hasCoarse = Number.isFinite(coarseLat) && Number.isFinite(coarseLng) && !(coarseLat === 0 && coarseLng === 0);
-        if (!hasLive && !hasLast && !hasCoarse) return null;
-        const accuracy = Number(hasLive ? unit.accuracy : hasLast ? unit.last_known_accuracy : unit.coarse_accuracy);
-        const locationState = hasLive ? 'live' : hasLast ? 'last_known' : 'low_accuracy';
+        const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
+        // The officer's marker must follow the most recent device reading. A
+        // precise fix from 30 minutes ago is not "where they are now" if a newer
+        // (even coarse) fix exists — show the newest coordinate and let the
+        // accuracy circle communicate the uncertainty.
+        const candidates = [
+            { lat: Number(unit.latitude), lng: Number(unit.longitude), acc: Number(unit.accuracy), ts: toLocTs(unit.gps_updated_at), state: 'live' },
+            { lat: Number(unit.coarse_latitude), lng: Number(unit.coarse_longitude), acc: Number(unit.coarse_accuracy), ts: toLocTs(unit.coarse_gps_updated_at), state: 'low_accuracy' },
+            { lat: Number(unit.last_known_latitude), lng: Number(unit.last_known_longitude), acc: Number(unit.last_known_accuracy), ts: toLocTs(unit.last_gps_updated_at), state: 'last_known' },
+        ].filter(c => valid(c.lat, c.lng));
+        if (!candidates.length) return null;
+        candidates.sort((a, b) => b.ts - a.ts);
+        const best = candidates[0];
         return {
             ...unit,
-            latitude: hasLive ? liveLat : hasLast ? lastLat : coarseLat,
-            longitude: hasLive ? liveLng : hasLast ? lastLng : coarseLng,
-            location_state: locationState,
-            display_accuracy: Number.isFinite(accuracy) ? accuracy : null,
-            coarse_stale: locationState === 'low_accuracy' && unit.coarse_stale === true,
+            latitude: best.lat,
+            longitude: best.lng,
+            location_state: best.state,
+            display_accuracy: Number.isFinite(best.acc) ? best.acc : null,
+            coarse_stale: best.state === 'low_accuracy' && unit.coarse_stale === true,
         };
     }).filter(Boolean);
 
