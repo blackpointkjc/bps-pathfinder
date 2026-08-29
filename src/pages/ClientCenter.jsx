@@ -1,4 +1,4 @@
-import { AlertTriangle, Building2, FileText, CalendarClock } from 'lucide-react';
+import { AlertTriangle, Building2, FileText, CalendarClock, DollarSign } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import ClientDashboard from './ClientDashboard';
@@ -16,10 +16,11 @@ import ClientPayrollReport from './ClientPayrollReport';
 import ClientFeedback from './ClientFeedback';
 
 const SECTIONS = [
-  { id: 'overview', label: 'Overview', description: 'Dashboard, alerts and calls for service', icon: AlertTriangle },
-  { id: 'site', label: 'Site Operations', description: 'Unified schedule, supervisors, property details and trespass activity across every assigned site', icon: Building2 },
-  { id: 'records', label: 'Reports & Records', description: 'Approved reports, patrol verification and site documents', icon: FileText },
-  { id: 'requests', label: 'Service & Billing', description: 'Coverage requests, billing, invoices and service feedback', icon: CalendarClock },
+  { id: 'overview', label: 'Overview & Alerts', description: 'Dashboard, security alerts and calls for service', icon: AlertTriangle },
+  { id: 'site', label: 'Site Operations', description: 'Schedules, supervisors, property details and trespass activity across assigned sites', icon: Building2 },
+  { id: 'records', label: 'Reports & Documents', description: 'Approved reports, patrol verification and site documents', icon: FileText },
+  { id: 'requests', label: 'Requests & Feedback', description: 'Special coverage requests and service feedback', icon: CalendarClock },
+  { id: 'billing', label: 'Billing & Invoices', description: 'Billing records, invoices and approved service hours', icon: DollarSign },
 ];
 
 const TOOLS = {
@@ -41,8 +42,10 @@ const TOOLS = {
   ],
   requests: [
     { id: 'special', label: 'Special Requests', component: ClientSpecialRequests },
+    { id: 'feedback', label: 'Service Feedback', component: ClientFeedback },
+  ],
+  billing: [
     { id: 'payroll', label: 'Billing & Invoices', component: ClientPayrollReport },
-    { id: 'feedback', label: 'Feedback', component: ClientFeedback },
   ],
 };
 
