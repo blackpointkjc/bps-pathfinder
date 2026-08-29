@@ -12,6 +12,22 @@ const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordi
   && Math.abs(Number(longitude)) <= 180
   && !(Number(latitude) === 0 && Number(longitude) === 0);
 
+const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+async function readWithRetry(loader: () => Promise<any[]>, label: string) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(300 * (attempt + 1));
+    }
+  }
+  console.error(`getOnDutyUnits could not load ${label}`, lastError);
+  throw lastError;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -27,11 +43,11 @@ Deno.serve(async (req) => {
       if (me.role !== 'admin' && !roles.has('full_access') && !roles.has('supervisor')) {
         return Response.json({ error: 'Location history access required' }, { status: 403 });
       }
-      const history = await base44.asServiceRole.entities.LocationHistory.filter(
+      const history = await readWithRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
         { officer_email: String(input.history_email) },
         'timestamp',
         5000,
-      );
+      ), 'location history');
       return Response.json({ success: true, history: (history || []).filter((point: any) => Boolean(point.time_entry_id)) });
     }
 
@@ -40,7 +56,10 @@ Deno.serve(async (req) => {
     // refresh; the old three-read burst was a major source of 429s and occasional
     // 500 responses from the live tracker.
     if (input?.location_only === true) {
-      const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
+      const activeOfficers = await readWithRetry(
+        () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
+        'active officer sessions',
+      );
       const freshCutoff = Date.now() - 15 * 60 * 1000;
       const gpsFreshCutoff = Date.now() - 2 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
@@ -107,9 +126,18 @@ Deno.serve(async (req) => {
 
     // Full CAD/unit-status consumers need all three datasets. Read sequentially so
     // one function call does not hit the entity API with a simultaneous burst.
-    const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000);
-    const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 1000);
+    const timeEntries = await readWithRetry(
+      () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
+      'time entries',
+    );
+    const activeOfficers = await readWithRetry(
+      () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
+      'active officer sessions',
+    );
+    const users = await readWithRetry(
+      () => base44.asServiceRole.entities.User.list('-updated_date', 1000),
+      'officer directory',
+    );
 
     const openByEmail = new Map<string, any>();
     for (const entry of timeEntries || []) {
