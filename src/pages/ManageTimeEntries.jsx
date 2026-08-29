@@ -659,7 +659,7 @@ export default function ManageTimeEntries() {
                                 <div className="grid gap-2 md:grid-cols-3">
                                   {[
                                     ['relief_delay_approved', 'Approve late relief', 'Pay all actual hours and do not count the overage against performance.'],
-                                    ['pay_overage_with_performance', 'Pay and count overage', 'Pay all actual hours and count the late clock-out in performance.'],
+                                    ['pay_overage_with_performance', 'Reject relief — pay and count', 'Pay all actual hours and count the late clock-out in performance.'],
                                     ['deny_overage_pay', 'Limit payroll hours', 'Set the hours payroll will pay; preserve the true clock-in and clock-out record.'],
                                   ].map(([decision, label, detail]) => (
                                     <button
