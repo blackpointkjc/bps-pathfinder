@@ -479,71 +479,70 @@ export default function AdminConfidentialReports() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
-        <p className="text-slate-600">You don't have permission to access confidential reports.</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Admin Access Required</h2>
+        <p className="text-slate-400">You don't have permission to access confidential reports.</p>
       </div>
     );
   }
 
   return (
-    <div className="confidential-reports-page p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Shield className="w-8 h-8 text-red-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Confidential Reports</h1>
-            <p className="text-slate-600">Manage confidential officer concerns and reports</p>
+    <div className="confidential-reports-page min-h-screen bg-[radial-gradient(circle_at_top_left,_#251020_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <div className="relative overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-[#251523] via-[#101725] to-[#07101c] p-5 shadow-2xl md:p-7">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-rose-400/30 bg-rose-500/10"><Shield className="h-6 w-6 text-rose-300" /></div>
+            <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-rose-300">Protected Command Channel</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Confidential Reports</h1><p className="mt-1 text-sm text-slate-400">Review, investigate, document, and resolve confidential officer concerns.</p></div>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-blue-50">
-              <CardTitle className="text-blue-900 text-sm flex items-center gap-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-blue-900/50 bg-blue-950/25">
+              <CardTitle className="text-blue-300 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 New Reports
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <p className="text-4xl font-bold text-blue-900">{newReports.length}</p>
+              <p className="text-4xl font-bold text-blue-300">{newReports.length}</p>
               <p className="text-sm text-blue-600 mt-1">Awaiting review</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-amber-50">
-              <CardTitle className="text-amber-900 text-sm flex items-center gap-2">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-amber-900/50 bg-amber-950/25">
+              <CardTitle className="text-amber-300 text-sm flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Active Reports
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <p className="text-4xl font-bold text-amber-900">{activeReports.length}</p>
+              <p className="text-4xl font-bold text-amber-300">{activeReports.length}</p>
               <p className="text-sm text-amber-600 mt-1">Being handled</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-green-50">
-              <CardTitle className="text-green-900 text-sm flex items-center gap-2">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-emerald-900/50 bg-emerald-950/25">
+              <CardTitle className="text-emerald-300 text-sm flex items-center gap-2">
                 <Archive className="w-4 h-4" />
                 Resolved
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <p className="text-4xl font-bold text-green-900">{archivedReports.length}</p>
+              <p className="text-4xl font-bold text-emerald-300">{archivedReports.length}</p>
               <p className="text-sm text-green-600 mt-1">Completed</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader>
             <CardTitle>Reviewed Reports</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="investigating" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#0b1725] p-1">
                 <TabsTrigger value="investigating">
                   Investigating ({investigatingReports.length})
                 </TabsTrigger>
@@ -562,11 +561,11 @@ export default function AdminConfidentialReports() {
                             <Badge className="bg-orange-100 text-orange-800">Investigating</Badge>
                             <Badge variant="outline">{reportTypeLabels[report.report_type]}</Badge>
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">{report.description}</p>
+                          <p className="text-sm text-slate-400 mb-2">{report.description}</p>
                           {report.admin_notes && (
-                            <div className="mt-2 p-2 bg-slate-50 rounded">
+                            <div className="mt-2 p-2 bg-slate-950/50 rounded">
                               <p className="text-xs text-slate-500">Admin Notes:</p>
-                              <p className="text-sm text-slate-700">{report.admin_notes}</p>
+                              <p className="text-sm text-slate-300">{report.admin_notes}</p>
                             </div>
                           )}
                           {report.reviewed_by && (
@@ -601,11 +600,11 @@ export default function AdminConfidentialReports() {
                             <Badge className="bg-green-100 text-green-800">Resolved</Badge>
                             <Badge variant="outline">{reportTypeLabels[report.report_type]}</Badge>
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">{report.description}</p>
+                          <p className="text-sm text-slate-400 mb-2">{report.description}</p>
                           {report.admin_notes && (
-                            <div className="mt-2 p-2 bg-slate-50 rounded">
+                            <div className="mt-2 p-2 bg-slate-950/50 rounded">
                               <p className="text-xs text-slate-500">Resolution Notes:</p>
-                              <p className="text-sm text-slate-700">{report.admin_notes}</p>
+                              <p className="text-sm text-slate-300">{report.admin_notes}</p>
                             </div>
                           )}
                           {report.reviewed_by && (
@@ -627,7 +626,7 @@ export default function AdminConfidentialReports() {
         </Card>
 
         <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#0b1725] p-1">
             <TabsTrigger value="active">
               Active Reports ({activeReports.length})
             </TabsTrigger>
@@ -637,7 +636,7 @@ export default function AdminConfidentialReports() {
           </TabsList>
 
           <TabsContent value="active">
-            <Card className="border-none shadow-lg">
+            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
               <CardHeader>
                 <CardTitle>Active Confidential Reports</CardTitle>
               </CardHeader>
@@ -647,7 +646,7 @@ export default function AdminConfidentialReports() {
                     <div
                       key={report.id}
                       className={`p-5 rounded-lg border-l-4 ${
-                        !report.viewed ? 'bg-blue-50 border-l-blue-500' : 'bg-slate-50 border-l-slate-300'
+                        !report.viewed ? 'bg-blue-50 border-l-blue-500' : 'bg-slate-950/50 border-l-slate-300'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-3">
@@ -674,10 +673,10 @@ export default function AdminConfidentialReports() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">
+                          <p className="text-sm text-slate-400 mb-2">
                             Submitted {format(new Date(report.created_date), 'MMM d, yyyy h:mm a')}
                           </p>
-                          <p className="text-sm text-slate-700 line-clamp-2">
+                          <p className="text-sm text-slate-300 line-clamp-2">
                             {report.description}
                           </p>
                         </div>
@@ -694,7 +693,7 @@ export default function AdminConfidentialReports() {
                             size="sm"
                             variant="outline"
                             onClick={() => printReport(report)}
-                            className="bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                            className="bg-slate-950/50 text-slate-800 border-slate-200 hover:bg-slate-100"
                           >
                             <Printer className="w-4 h-4 mr-2" />
                             Print
@@ -717,7 +716,7 @@ export default function AdminConfidentialReports() {
           </TabsContent>
 
           <TabsContent value="archived">
-            <Card className="border-none shadow-lg">
+            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
               <CardHeader>
                 <CardTitle>Resolved Confidential Reports</CardTitle>
               </CardHeader>
@@ -726,7 +725,7 @@ export default function AdminConfidentialReports() {
                   {archivedReports.map((report) => (
                     <div
                       key={report.id}
-                      className="p-5 bg-slate-50 rounded-lg border border-slate-200 opacity-75"
+                      className="p-5 bg-slate-950/50 rounded-lg border border-slate-200 opacity-75"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
@@ -749,10 +748,10 @@ export default function AdminConfidentialReports() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-slate-600 mb-2">
+                          <p className="text-sm text-slate-400 mb-2">
                             Submitted {format(new Date(report.created_date), 'MMM d, yyyy h:mm a')}
                           </p>
-                          <p className="text-sm text-slate-700 line-clamp-2">
+                          <p className="text-sm text-slate-300 line-clamp-2">
                             {report.description}
                           </p>
                         </div>
@@ -769,7 +768,7 @@ export default function AdminConfidentialReports() {
                             size="sm"
                             variant="outline"
                             onClick={() => printReport(report)}
-                            className="bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                            className="bg-slate-950/50 text-slate-800 border-slate-200 hover:bg-slate-100"
                           >
                             <Printer className="w-4 h-4 mr-2" />
                             Print
@@ -798,10 +797,10 @@ export default function AdminConfidentialReports() {
           </MobileResponsiveDialogHeader>
           {selectedReport && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-950/50 rounded-lg">
                 <div>
                   <p className="text-xs text-slate-500 font-medium">Submitted By</p>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-white">
                     {selectedReport.anonymous ? (
                       <span className="flex items-center gap-1">
                         <UserX className="w-4 h-4" />
@@ -814,19 +813,19 @@ export default function AdminConfidentialReports() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-medium">Submission Date</p>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-white">
                     {format(new Date(selectedReport.created_date), 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-medium">Concern Type</p>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-white">
                     {reportTypeLabels[selectedReport.report_type]}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-medium">Preferred Contact</p>
-                  <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
+                  <p className="text-sm font-semibold text-white flex items-center gap-1">
                     {contactIcons[selectedReport.preferred_contact_method]}
                     {selectedReport.preferred_contact_method.replace(/_/g, ' ')}
                   </p>
@@ -834,7 +833,7 @@ export default function AdminConfidentialReports() {
               </div>
 
               <div>
-                <Label htmlFor="status" className="text-sm font-semibold text-slate-700 mb-2 block">
+                <Label htmlFor="status" className="text-sm font-semibold text-slate-300 mb-2 block">
                   Report Status
                 </Label>
                 <Select value={newStatus} onValueChange={setNewStatus}>
@@ -851,7 +850,7 @@ export default function AdminConfidentialReports() {
               </div>
 
               <div>
-                <Label htmlFor="admin_notes" className="text-sm font-semibold text-slate-700 mb-2 block">
+                <Label htmlFor="admin_notes" className="text-sm font-semibold text-slate-300 mb-2 block">
                   Admin Notes (Internal Only)
                 </Label>
                 <Textarea
@@ -876,7 +875,7 @@ export default function AdminConfidentialReports() {
                 <Button
                   variant="outline"
                   onClick={() => printReport(selectedReport)}
-                  className="bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                  className="bg-slate-950/50 text-slate-800 border-slate-200 hover:bg-slate-100"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   Print
