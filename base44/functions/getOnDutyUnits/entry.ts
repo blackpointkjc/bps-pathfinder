@@ -56,8 +56,12 @@ Deno.serve(async (req) => {
         })
         .map((active: any) => {
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
-          const hasGps = Number.isFinite(gpsTs) && gpsTs >= gpsFreshCutoff && hasValidCoordinates(active.latitude, active.longitude);
           const accuracy = Number(active.accuracy);
+          const hasGps = Number.isFinite(gpsTs)
+            && gpsTs >= gpsFreshCutoff
+            && hasValidCoordinates(active.latitude, active.longitude)
+            && Number.isFinite(accuracy)
+            && accuracy <= 100;
           return {
             id: active.id,
             officer_email: active.officer_email,
@@ -124,12 +128,14 @@ Deno.serve(async (req) => {
       if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
       const gpsTs = new Date(active.gps_updated_at || 0).getTime();
       const accuracy = Number(active.accuracy);
-      // Do not discard valid coordinates just because a desktop/indoor browser
-      // reports coarse accuracy. Keep the accuracy value so dispatch/geofence
-      // features can decide whether a particular action needs a tighter fix.
+      // Tactical maps must never present a coarse Wi-Fi/network estimate as an
+      // exact officer position. Preserve it as last-known diagnostic data, but a
+      // live coordinate requires a fresh fix with <=100m reported accuracy.
       const hasReliableGps = Number.isFinite(gpsTs)
         && gpsTs >= gpsFreshCutoff
-        && hasValidCoordinates(active.latitude, active.longitude);
+        && hasValidCoordinates(active.latitude, active.longitude)
+        && Number.isFinite(accuracy)
+        && accuracy <= 100;
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
@@ -214,11 +220,13 @@ Deno.serve(async (req) => {
           : (active?.status || user.status || 'Available');
         const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
+        const accuracy = Number(active?.accuracy);
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
-          && hasValidCoordinates(active?.latitude, active?.longitude);
-        const accuracy = Number(active?.accuracy);
+          && hasValidCoordinates(active?.latitude, active?.longitude)
+          && Number.isFinite(accuracy)
+          && accuracy <= 100;
         return {
           id: user.id,
           user_id: user.id,
