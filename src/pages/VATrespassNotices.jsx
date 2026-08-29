@@ -30,6 +30,7 @@ import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespa
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
+import { createReportCallLink } from '@/lib/reportCallLinking';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
@@ -292,6 +293,20 @@ export default function VATrespassNotices() {
           officer_ip_address: ipAddress,
         });
 
+        if (data.linked_call_id) {
+          try {
+            await createReportCallLink({
+              callId: data.linked_call_id,
+              callNumber: data.linked_call_number || '',
+              reportType: 'TrespassingNotice',
+              reportId: updated.id,
+              reportNumber: updated.police_report_number || updated.id,
+            });
+          } catch (linkError) {
+            console.error('Failed to persist trespass call link:', linkError);
+          }
+        }
+
         if (!isDraft) {
           if (editingTodoId) {
             await completeReportTodo(editingTodoId);
@@ -315,6 +330,20 @@ export default function VATrespassNotices() {
           status: isDraft ? "draft" : "active",
           officer_ip_address: ipAddress,
         });
+
+        if (data.linked_call_id) {
+          try {
+            await createReportCallLink({
+              callId: data.linked_call_id,
+              callNumber: data.linked_call_number || '',
+              reportType: 'TrespassingNotice',
+              reportId: notice.id,
+              reportNumber: notice.police_report_number || notice.id,
+            });
+          } catch (linkError) {
+            console.error('Failed to persist trespass call link:', linkError);
+          }
+        }
 
         if (!isDraft) {
           const location = locations?.find(loc => loc.site_name === data.location);
