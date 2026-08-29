@@ -56,21 +56,19 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
       }
     };
     sync();
-    const timer = setInterval(sync, 10000);
-    const onFocus = () => sync();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') sync();
+    }, 60000);
     const onStatusChanged = (event) => {
       const detail = event?.detail || {};
       if (detail.email && detail.status) {
         setCanonicalUnits(prev => prev.map(unit => String(unit.email || '').toLowerCase() === String(detail.email).toLowerCase() ? { ...unit, status: detail.status, session_active: detail.status !== 'Out of Service', last_updated: new Date().toISOString() } : unit));
       }
-      sync();
     };
-    window.addEventListener('focus', onFocus);
     window.addEventListener('bps-officer-status-changed', onStatusChanged);
     return () => {
       active = false;
       clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
       window.removeEventListener('bps-officer-status-changed', onStatusChanged);
     };
   }, []);
