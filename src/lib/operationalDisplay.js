@@ -15,10 +15,17 @@ export function operationalName(ref, usersOrIndex = [], options = {}) {
   const email = norm(typeof ref === 'object' ? (ref?.officer_email || ref?.email || ref?.created_by || ref?.user_email) : ref);
   const id = String(typeof ref === 'object' ? (ref?.officer_id || ref?.user_id || ref?.created_by_id || ref?.id || '') : ref || '');
   const row = index.byEmail.get(email) || index.byId.get(id);
-  const rank = String(row?.rank || '').trim();
+  const rank = String(row?.rank || (typeof ref === 'object' ? ref?.rank : '') || '').trim();
   const last = String(row?.last_name || '').trim();
   if (rank && last) return `${rank} ${last}`;
   if (last) return last;
+  const rawName = typeof ref === 'object' ? String(ref?.officer_name || ref?.employee_name || '').trim() : '';
+  if (rawName && !rawName.includes('@')) {
+    const parts = rawName.split(/\s+/).filter(Boolean);
+    const parsedLast = parts[parts.length - 1] || '';
+    if (rank && parsedLast) return `${rank} ${parsedLast}`;
+    if (parsedLast) return parsedLast;
+  }
   const unit = row?.unit_number || (typeof ref === 'object' ? ref?.unit_number : '');
   if (unit) return `Unit ${unit}`;
   return options.fallback || 'Officer';
