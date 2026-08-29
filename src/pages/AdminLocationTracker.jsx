@@ -376,13 +376,22 @@ export default function AdminLocationTracker() {
       && hasCoordinateValue(o.last_known_latitude)
       && hasCoordinateValue(o.last_known_longitude)
       && !(Number(o.last_known_latitude) === 0 && Number(o.last_known_longitude) === 0))
-    .map(o => ({
-      ...o,
-      latitude: Number(o.last_known_latitude),
-      longitude: Number(o.last_known_longitude),
-      accuracy: o.last_known_accuracy,
-      gps_stale: true,
-    }));
+    .map(o => {
+      const gpsAt = new Date(o.last_gps_updated_at || o.gps_updated_at || 0).getTime();
+      const accuracy = Number(o.last_known_accuracy);
+      const hasFreshCoarseFix = Number.isFinite(gpsAt)
+        && Date.now() - gpsAt <= 2 * 60 * 1000
+        && Number.isFinite(accuracy)
+        && accuracy > 100;
+      return {
+        ...o,
+        latitude: Number(o.last_known_latitude),
+        longitude: Number(o.last_known_longitude),
+        accuracy: Number.isFinite(accuracy) ? accuracy : null,
+        gps_low_accuracy: hasFreshCoarseFix,
+        gps_stale: !hasFreshCoarseFix,
+      };
+    });
   const officersForMap = [...officersWithLocation, ...officersWithLastKnown];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
