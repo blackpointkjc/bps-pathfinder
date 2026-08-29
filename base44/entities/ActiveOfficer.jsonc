@@ -47,7 +47,24 @@
     },
     "accuracy": {
       "type": "number",
-      "description": "GPS fix accuracy in meters"
+      "description": "Most recent device fix accuracy in meters, including coarse network fixes"
+    },
+    "reliable_latitude": {
+      "type": "number",
+      "description": "Most recent precise tactical GPS latitude (100 meters accuracy or better)"
+    },
+    "reliable_longitude": {
+      "type": "number",
+      "description": "Most recent precise tactical GPS longitude (100 meters accuracy or better)"
+    },
+    "reliable_accuracy": {
+      "type": "number",
+      "description": "Accuracy in meters for the preserved tactical GPS fix"
+    },
+    "reliable_gps_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Device timestamp of the most recent precise tactical GPS fix"
     },
     "unit_number": {
       "type": "string",
