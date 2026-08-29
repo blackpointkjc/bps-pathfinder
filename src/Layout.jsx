@@ -427,24 +427,29 @@ function allowedCenters(user) {
   const roles = normalizedRoles(user);
   const fullAccess = hasFullAccess(user);
   const rank = String(user?.rank || '').toLowerCase();
-  const withTrainer = centers => roles.has('trainer') ? [...new Set([...centers, 'training'])] : centers;
+  const withSupplementalCenters = centers => [...new Set([
+    ...centers,
+    ...(roles.has('accounting') ? ['accounting'] : []),
+    ...(roles.has('trainer') ? ['training'] : []),
+  ])];
 
   // Client and Student are intentionally isolated portal identities.
   if (roles.has('client') || user?.user_type === 'client') return ['client'];
   if (roles.has('student')) return ['student'];
 
   // Admin is the master soft-mirror workspace. CAD/Officer/Supervisor/HR/Client
-  // live inside Admin Center rather than appearing as duplicate top-level tabs.
-  if (user?.role === 'admin' || fullAccess) return withTrainer(['admin']);
-  if (user?.role === 'dispatch') return withTrainer(['cad']);
-  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withTrainer(['supervisor', 'cad']);
-  if (roles.has('officer')) return withTrainer(['cad', 'officer']);
-  if (roles.has('hr') || rank === 'human resources') return withTrainer(['hr']);
-  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withTrainer(['support']);
-  if (roles.has('accounting')) return withTrainer(['accounting']);
+  // live inside Admin Center. Accounting remains a visible workspace whenever
+  // the employee carries the accounting additional role.
+  if (user?.role === 'admin' || fullAccess) return withSupplementalCenters(['admin']);
+  if (user?.role === 'dispatch') return withSupplementalCenters(['cad']);
+  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withSupplementalCenters(['supervisor', 'cad']);
+  if (roles.has('officer')) return withSupplementalCenters(['cad', 'officer']);
+  if (roles.has('hr') || rank === 'human resources') return withSupplementalCenters(['hr']);
+  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withSupplementalCenters(['support']);
+  if (roles.has('accounting')) return withSupplementalCenters(['accounting']);
   if (roles.has('trainer')) return ['training'];
 
-  return roles.has('cad_access') ? ['cad'] : ['officer'];
+  return roles.has('cad_access') ? withSupplementalCenters(['cad']) : withSupplementalCenters(['officer']);
 }
 
 const CENTER_DEFAULT_PAGE = {
