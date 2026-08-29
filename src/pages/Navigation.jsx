@@ -583,9 +583,12 @@ export default function Navigation() {
             coords.push([currentLocation[0], currentLocation[1]]);
         }
         for (const u of mapVisibleUnits) {
-            if (Number.isFinite(Number(u.latitude)) && Number.isFinite(Number(u.longitude))) {
-                coords.push([Number(u.latitude), Number(u.longitude)]);
-            }
+            const liveLat = u.latitude === null || u.latitude === undefined ? NaN : Number(u.latitude);
+            const liveLng = u.longitude === null || u.longitude === undefined ? NaN : Number(u.longitude);
+            const lastLat = u.last_known_latitude === null || u.last_known_latitude === undefined ? NaN : Number(u.last_known_latitude);
+            const lastLng = u.last_known_longitude === null || u.last_known_longitude === undefined ? NaN : Number(u.last_known_longitude);
+            if (Number.isFinite(liveLat) && Number.isFinite(liveLng)) coords.push([liveLat, liveLng]);
+            else if (Number.isFinite(lastLat) && Number.isFinite(lastLng)) coords.push([lastLat, lastLng]);
         }
         if (coords.length === 0) {
             toast.error('No units with GPS coordinates to display');
@@ -727,7 +730,7 @@ export default function Navigation() {
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
                 <MapView
-                    currentLocation={currentLocation}
+                    currentLocation={isLiveTracking ? currentLocation : null}
                     destination={navDestination} route={navRoute} trafficSegments={null}
                     useOfflineTiles={!isOnline}
                     activeCalls={showActiveCalls ? activeCalls : []}
