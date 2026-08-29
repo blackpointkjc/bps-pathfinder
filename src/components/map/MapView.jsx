@@ -202,9 +202,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
     const getTileLayerUrl = () => {
         // Navigation uses the original Leaflet day/night basemaps.
         if (isNavigating) {
-            return mapTheme === 'night'
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
         if (useOfflineTiles) {
@@ -215,7 +213,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
         switch (baseMapType) {
@@ -230,10 +228,6 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
     };
 
     const getTileAttribution = () => {
-        if (mapTheme === 'night' && baseMapType !== 'satellite') {
-            return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
-        }
-        
         switch (baseMapType) {
             case 'satellite':
                 return '&copy; <a href="https://www.esri.com/">Esri</a>';
