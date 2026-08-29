@@ -128,6 +128,7 @@ export default function OperationalReliabilityRunner({ user }) {
           window.dispatchEvent(new CustomEvent('bps-work-queue-refreshed', { detail: results }));
         });
       } catch (error) {
+        try { localStorage.removeItem('bps:work-queue:last-hourly-check'); } catch {}
         console.error('Hourly work queue check failed:', error?.response?.data?.error || error?.message || error);
       } finally {
         workQueueRunning.current = false;
