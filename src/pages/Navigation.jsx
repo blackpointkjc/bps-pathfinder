@@ -16,7 +16,8 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
-import { getLiveLocation, requestFreshLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { getLiveLocation, isTacticalLocationFix, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation, TACTICAL_GPS_MAX_ACCURACY_METERS } from '@/lib/liveLocationService';
+import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -54,6 +55,7 @@ export default function Navigation() {
     const [activeCalls, setActiveCalls] = useState([]);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
+    const [gpsQuality, setGpsQuality] = useState({ state: 'acquiring', accuracy: null });
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
@@ -61,12 +63,7 @@ export default function Navigation() {
     const [unitStatus, setUnitStatus] = useState('Available');
     const [showLights, setShowLights] = useState(false);
     const [unitName] = useState(localStorage.getItem('unitName') || '');
-    const [mapTheme, setMapTheme] = useState(() => {
-        const saved = localStorage.getItem('mapTheme');
-        if (saved) return saved;
-        const h = new Date().getHours();
-        return h >= 6 && h < 19 ? 'day' : 'night';
-    });
+    const [mapTheme, setMapTheme] = usePathfinderMapTheme();
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [callSidebarCollapsed, setCallSidebarCollapsed] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
@@ -119,6 +116,14 @@ export default function Navigation() {
     useEffect(() => {
         init();
         const unsubscribe = subscribeLiveLocation((fix) => {
+            const quality = locationQuality(fix);
+            setGpsQuality(quality);
+            if (!isTacticalLocationFix(fix)) {
+                // A coarse Windows/Wi-Fi estimate is not an officer's exact tactical
+                // position. Keep requesting GPS, but never move the live shield to it.
+                setIsLiveTracking(false);
+                return;
+            }
             const coords = [fix.latitude, fix.longitude];
             setCurrentLocation(coords);
             if (fix.heading !== null) setHeading(fix.heading);
@@ -188,10 +193,6 @@ export default function Navigation() {
     }, [activeCalls, otherUnits]);
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
-
-    useEffect(() => {
-        localStorage.setItem('mapTheme', mapTheme);
-    }, [mapTheme]);
 
     useEffect(() => {
         const syncConnectivity = () => setIsOnline(navigator.onLine);
@@ -339,11 +340,17 @@ export default function Navigation() {
         } catch {}
         const fix = getLiveLocation(30000);
         if (fix) {
-            setCurrentLocation([fix.latitude, fix.longitude]);
-            if (fix.heading !== null) setHeading(fix.heading);
-            setSpeed(Math.round(fix.speed || 0));
-            setIsLiveTracking(true);
+            setGpsQuality(locationQuality(fix));
+            if (isTacticalLocationFix(fix)) {
+                setCurrentLocation([fix.latitude, fix.longitude]);
+                if (fix.heading !== null) setHeading(fix.heading);
+                setSpeed(Math.round(fix.speed || 0));
+                setIsLiveTracking(true);
+            } else {
+                setIsLiveTracking(false);
+            }
         }
+        requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 }).catch(() => null);
     };
 
     const handleSelfAssign = async () => {
@@ -421,30 +428,37 @@ export default function Navigation() {
     };
 
     const getFreshDeviceLocation = async () => {
+        setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
         try {
-            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 5000, maxAccuracyMeters: 100 });
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: TACTICAL_GPS_MAX_ACCURACY_METERS });
+            if (!isTacticalLocationFix(fix, 15000)) throw new Error('GPS accuracy is not precise enough yet');
             const fresh = [fix.latitude, fix.longitude];
+            setGpsQuality(locationQuality(fix));
             setCurrentLocation(fresh);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             setIsLiveTracking(true);
             return fresh;
         } catch (liveError) {
-            // Use the same singleton request already shared by clock-in, distress,
-            // reports, and background tracking. Navigation must not open a second
-            // browser geolocation handle.
             try {
-                const fix = await requestFreshLiveLocation({ timeoutMs: 12000 });
-                if (!fix) return currentLocation;
-                const fresh = [fix.latitude, fix.longitude];
+                const best = await requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 });
+                setGpsQuality(locationQuality(best));
+                if (!isTacticalLocationFix(best, 15000)) {
+                    setIsLiveTracking(false);
+                    return null;
+                }
+                const fresh = [best.latitude, best.longitude];
                 setCurrentLocation(fresh);
-                if (fix.heading !== null) setHeading(fix.heading);
-                setSpeed(Math.round(fix.speed || 0));
+                if (best.heading !== null) setHeading(best.heading);
+                setSpeed(Math.round(best.speed || 0));
                 setIsLiveTracking(true);
                 return fresh;
             } catch (deviceError) {
-                console.warn('[NAV] shared GPS request failed:', deviceError?.message || liveError?.message);
-                return currentLocation;
+                const fallback = getLiveLocation(30000);
+                setGpsQuality(locationQuality(fallback));
+                setIsLiveTracking(false);
+                console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
+                return null;
             }
         }
     };
