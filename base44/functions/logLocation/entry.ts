@@ -52,7 +52,17 @@ Deno.serve(async (req) => {
       show_lights: body.show_lights === true,
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
-    if (acceptsGps) {
+    if (body.reset_gps === true && !acceptsGps) {
+      // A newly established app session must never inherit a recent coordinate
+      // from the prior browser/login session. Keep the user signed in, but mark
+      // GPS pending until this session publishes its own fresh device fix.
+      liveData.gps_updated_at = null;
+      liveData.latitude = null;
+      liveData.longitude = null;
+      liveData.heading = null;
+      liveData.speed = 0;
+      liveData.accuracy = null;
+    } else if (acceptsGps) {
       liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
       liveData.latitude = latitude;
       liveData.longitude = longitude;
