@@ -58,6 +58,8 @@ export default function WelcomeBriefing({ user }) {
   const [loading, setLoading] = useState(true);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const [dataErrors, setDataErrors] = useState([]);
+  const [startingSession, setStartingSession] = useState(false);
+  const [startSessionError, setStartSessionError] = useState('');
   const loadRef = useRef(() => {});
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
@@ -74,7 +76,7 @@ export default function WelcomeBriefing({ user }) {
   useEffect(() => {
     if (!user?.id || !user?.email || !sessionKey || !storageKey) return;
     const now = Date.now();
-    const sessionSeen = sessionStorage.getItem(sessionKey) === 'shown';
+    const sessionSeen = sessionStorage.getItem(sessionKey) === 'acknowledged';
     const savedActive = Number.isFinite(new Date(localStorage.getItem(storageKey) || '').getTime()) ? new Date(localStorage.getItem(storageKey)).getTime() : null;
 
     // The login briefing is a once-per-login/browser-session window. It must not
@@ -82,7 +84,6 @@ export default function WelcomeBriefing({ user }) {
     // after an hour, their duty status changed, or a component remounted.
     if (sessionSeen) return;
 
-    sessionStorage.setItem(sessionKey, 'shown');
     localStorage.setItem(lastShownKey, new Date(now).toISOString());
     localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
     setOfflineSince(savedActive);
@@ -268,6 +269,35 @@ export default function WelcomeBriefing({ user }) {
     navigate(createPageUrl(page));
   };
 
+  const startSession = async () => {
+    if (startingSession) return;
+    setStartingSession(true);
+    setStartSessionError('');
+    try {
+      const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(normalized));
+      const operational = isOperationalOfficer(user)
+        || roles.has('officer')
+        || roles.has('supervisor')
+        || roles.has('cad_access')
+        || roles.has('dispatch');
+      if (operational) {
+        const response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
+        const payload = response?.data || response || {};
+        if (payload?.error) throw new Error(payload.error);
+        localStorage.setItem(lastStatusKey, payload.status || 'Available');
+        window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: payload.status || 'Available', source: 'welcome-briefing' } }));
+      }
+      sessionStorage.setItem(sessionKey, 'acknowledged');
+      localStorage.setItem(storageKey, new Date().toISOString());
+      setOpen(false);
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.message || 'Unable to start your Pathfinder session.';
+      setStartSessionError(message);
+    } finally {
+      setStartingSession(false);
+    }
+  };
+
   if (!user?.id || !user?.email) return null;
 
   return (
@@ -398,10 +428,11 @@ export default function WelcomeBriefing({ user }) {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><CheckCircle2 className="h-3.5 w-3.5"/><span>Review your briefing, then acknowledge it to start your session.</span></div>
                 <div className="sm:ml-auto flex gap-2">
-                  <button type="button" onClick={() => go('OfficerInbox')} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-blue-700/60 bg-blue-950/30 px-4 text-xs font-black text-blue-200 hover:bg-blue-900/40 sm:flex-none"><MessageCircle className="h-4 w-4"/>INBOX</button>
-                  <button type="button" onClick={() => setOpen(false)} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-xs font-black text-white shadow-lg hover:from-cyan-500 hover:to-blue-500 sm:flex-none"><CheckCircle2 className="h-4 w-4"/>START SESSION</button>
+                  <button type="button" onClick={() => go('OfficerInbox')} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-blue-700/60 bg-blue-950/30 px-4 text-xs font-black text-blue-200 hover:bg-blue-900/40 disabled:opacity-50 sm:flex-none"><MessageCircle className="h-4 w-4"/>INBOX</button>
+                  <button type="button" onClick={startSession} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-xs font-black text-white shadow-lg hover:from-cyan-500 hover:to-blue-500 disabled:cursor-wait disabled:opacity-70 sm:flex-none">{startingSession ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"/>STARTING…</> : <><CheckCircle2 className="h-4 w-4"/>START SESSION</>}</button>
                 </div>
               </div>
+              {startSessionError && <div className="mt-2 rounded-lg border border-red-700/60 bg-red-950/40 px-3 py-2 text-[11px] font-bold text-red-200">{startSessionError}</div>}
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-800"><motion.div className="h-full origin-left bg-gradient-to-r from-cyan-400 to-blue-500" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 30, ease: 'linear' }} /></div>
             </div>
           </motion.div>
