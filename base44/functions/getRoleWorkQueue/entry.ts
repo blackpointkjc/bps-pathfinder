@@ -61,26 +61,37 @@ Deno.serve(async (req) => {
       || normalized(me.rank) === 'human resources';
     if (!hasAccess) return Response.json({ error: 'HR or administrator access required' }, { status: 403 });
 
+    const loadErrors: string[] = [];
+    const safeList = async (label: string, loader: () => Promise<any[]>) => {
+      try {
+        return await loader();
+      } catch (error) {
+        console.error(`getRoleWorkQueue could not load ${label}`, error);
+        loadErrors.push(label);
+        return [];
+      }
+    };
+
     const [
       users, schedules, entries, dailyReports, timeOff, availability, accessRequests, reviews,
       shiftReports, incidentReports, trespassNotices, parkingViolations, criminalComplaints,
       dispatcherLogs, forceReports,
     ] = await Promise.all([
-      base44.asServiceRole.entities.User.list('-updated_date', 5000),
-      base44.asServiceRole.entities.Schedule.list('-shift_date', 5000),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000),
-      base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000),
-      base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000),
-      base44.asServiceRole.entities.AvailabilityRequest.list('-requested_at', 1000),
-      base44.asServiceRole.entities.AccessRequest.list('-created_date', 1000),
-      base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000),
-      base44.asServiceRole.entities.ShiftReport.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.IncidentReport.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.TrespassingNotice.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.ParkingViolation.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.CriminalComplaint.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.DispatcherShiftReport.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.UseOfForceReport.list('-created_date', 1000).catch(() => []),
+      safeList('employee directory', () => base44.asServiceRole.entities.User.list('-updated_date', 2000)),
+      safeList('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
+      safeList('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
+      safeList('daily activity reports', () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000)),
+      safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)),
+      safeList('availability requests', () => base44.asServiceRole.entities.AvailabilityRequest.list('-requested_at', 1000)),
+      safeList('access requests', () => base44.asServiceRole.entities.AccessRequest.list('-created_date', 1000)),
+      safeList('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000)),
+      safeList('shift reports', () => base44.asServiceRole.entities.ShiftReport.list('-created_date', 1000)),
+      safeList('incident reports', () => base44.asServiceRole.entities.IncidentReport.list('-created_date', 1000)),
+      safeList('trespass notices', () => base44.asServiceRole.entities.TrespassingNotice.list('-created_date', 1000)),
+      safeList('parking violations', () => base44.asServiceRole.entities.ParkingViolation.list('-created_date', 1000)),
+      safeList('criminal complaints', () => base44.asServiceRole.entities.CriminalComplaint.list('-created_date', 1000)),
+      safeList('dispatcher logs', () => base44.asServiceRole.entities.DispatcherShiftReport.list('-created_date', 1000)),
+      safeList('use-of-force reports', () => base44.asServiceRole.entities.UseOfForceReport.list('-created_date', 1000)),
     ]);
 
     const now = easternParts();
@@ -202,6 +213,7 @@ Deno.serve(async (req) => {
       success: true,
       generated_at: new Date().toISOString(),
       role: me.role === 'admin' ? 'admin' : 'hr',
+      load_errors: loadErrors,
       tasks,
       counts: {
         total: tasks.length,
