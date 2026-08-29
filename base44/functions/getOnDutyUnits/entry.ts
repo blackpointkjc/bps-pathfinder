@@ -135,6 +135,10 @@ Deno.serve(async (req) => {
       if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
       const gpsTs = new Date(active.gps_updated_at || 0).getTime();
       const accuracy = Number(active.accuracy);
+      const reliableAccuracy = Number(active.reliable_accuracy);
+      const hasReliablePosition = hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
+        && Number.isFinite(reliableAccuracy)
+        && reliableAccuracy <= 100;
       // Tactical maps must never present a coarse Wi-Fi/network estimate as an
       // exact officer position. Preserve it as last-known diagnostic data, but a
       // live coordinate requires a fresh fix with <=100m reported accuracy.
@@ -161,10 +165,13 @@ Deno.serve(async (req) => {
         speed: hasReliableGps ? active.speed : 0,
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
-        last_gps_updated_at: active.gps_updated_at || null,
-        last_known_latitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
-        last_known_longitude: hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
-        last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+        last_gps_updated_at: active.reliable_gps_updated_at || (hasReliableGps ? active.gps_updated_at : null),
+        last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasReliableGps ? Number(active.latitude) : null),
+        last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : null),
+        last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : null),
+        coarse_latitude: !hasReliableGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+        coarse_longitude: !hasReliableGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
+        coarse_accuracy: !hasReliableGps && Number.isFinite(accuracy) ? accuracy : null,
         gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
         current_call_info: active.current_call_info || user.current_call_info || '',
