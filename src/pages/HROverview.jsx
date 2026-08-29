@@ -15,6 +15,15 @@ const actions = [
 
 const clean = value => String(value || '').replace(/_/g, ' ').trim();
 
+const workQueueTaskUrl = item => {
+  const params = new URLSearchParams();
+  if (item?.source_id) params.set(item.page === 'ManageTimeEntries' ? 'entry_id' : 'record_id', String(item.source_id));
+  if (item?.id) params.set('queue_task', String(item.id));
+  if (item?.kind) params.set('queue_kind', String(item.kind));
+  const query = params.toString();
+  return `${createPageUrl(item?.page || 'HRCenter')}${query ? `?${query}` : ''}`;
+};
+
 export default function HROverview() {
   const queryClient = useQueryClient();
   const completeTask = useMutation({
@@ -90,7 +99,7 @@ export default function HROverview() {
             <div className="flex items-center justify-between"><div><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">HR work queue</h3></div><AlertCircle className="h-5 w-5 text-amber-300"/></div>
             <div className="mt-4 space-y-2">
               {!!data.load_errors?.length && <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">Partial queue data: {data.load_errors.join(', ')} could not be loaded. Available tasks are still shown below.</div>}
-              {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">HR work queue could not load: {error.message}</div> : pendingActions.length ? pendingActions.slice(0, 16).map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><div className="flex shrink-0 flex-wrap gap-2"><Link to={createPageUrl(item.page)} className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-center text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link><button type="button" onClick={() => completeTask.mutate(item)} disabled={completeTask.isPending} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">MARK DONE</button></div></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR actions are waiting.</div>}
+              {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">HR work queue could not load: {error.message}</div> : pendingActions.length ? pendingActions.slice(0, 16).map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><div className="flex shrink-0 flex-wrap gap-2"><Link to={workQueueTaskUrl(item)} className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-center text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link><button type="button" onClick={() => completeTask.mutate(item)} disabled={completeTask.isPending} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">MARK DONE</button></div></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR actions are waiting.</div>}
               {!!data.recently_completed?.length && <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/30 p-3"><summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-slate-400">Recently completed ({data.recently_completed.length})</summary><div className="mt-3 space-y-2">{data.recently_completed.slice(0,6).map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs"><span className="font-bold text-slate-300">{item.title || item.task_key}</span><span className="text-emerald-300">{item.completed_at ? new Date(item.completed_at).toLocaleString() : 'Completed'}</span></div>)}</div></details>}
               {completeTask.error && <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">{completeTask.error.message}</div>}
             </div>
