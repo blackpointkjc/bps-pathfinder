@@ -46,7 +46,7 @@ export default function ClientPayrollReport() {
     },
     enabled: !!user,
     initialData: {},
-    refetchInterval: 5000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });

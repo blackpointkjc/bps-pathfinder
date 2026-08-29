@@ -25,7 +25,7 @@ export default function SupervisorCommandBoard() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval:10000,
+    refetchInterval:60000,
     refetchOnWindowFocus:true,
     staleTime:0,
   });

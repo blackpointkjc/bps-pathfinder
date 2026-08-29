@@ -36,7 +36,7 @@ export default function ClientDashboard() {
     enabled: !!user && clientLocations.length > 0,
     initialData: {},
     staleTime: 0,
-    refetchInterval: 5000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 
@@ -69,7 +69,7 @@ export default function ClientDashboard() {
     },
     enabled: clientLocations.length > 0,
     staleTime: 0,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 

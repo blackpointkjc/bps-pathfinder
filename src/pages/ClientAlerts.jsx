@@ -22,7 +22,7 @@ export default function ClientAlerts() {
       return allAlerts.filter(alert => clientLocations.includes(alert.location));
     },
     enabled: clientLocations.length > 0,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 
   const activeAlerts = alerts?.filter(a => a.status === 'active') || [];

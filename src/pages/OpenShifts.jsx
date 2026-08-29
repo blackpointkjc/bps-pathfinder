@@ -35,7 +35,7 @@ export default function OpenShifts() {
       const openSchedules = allSchedules.filter(s => s.is_open === true);
       return openSchedules.filter(s => !isPast(startOfDay(parseISO(s.shift_date))));
     },
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 
   const { data: myBids } = useQuery({

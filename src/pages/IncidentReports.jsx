@@ -202,7 +202,7 @@ export default function IncidentReports() {
       return (rows || []).filter(bolo => bolo.status === 'active');
     },
     initialData: [],
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const selectBolo = (boloId) => {
@@ -219,7 +219,7 @@ export default function IncidentReports() {
     queryKey: ['dispatchCallsForIncidentReports'],
     queryFn: () => listAllDispatchCallsForLinking(1000),
     initialData: [],
-    refetchInterval: 15000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 

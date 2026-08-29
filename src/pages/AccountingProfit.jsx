@@ -39,7 +39,7 @@ export default function AccountingProfit() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 5000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });

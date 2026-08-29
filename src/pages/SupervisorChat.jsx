@@ -34,7 +34,7 @@ export default function SupervisorChat() {
     queryKey: ['supervisorChatMessages'],
     queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 500),
     enabled: !!user?.id,
-    refetchInterval: 15000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
     initialData: [],
   });

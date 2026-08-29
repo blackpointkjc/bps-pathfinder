@@ -40,7 +40,7 @@ export default function AdminSpecialRequests() {
     queryKey: ['allSchedulesSpecialCoverage'],
     queryFn: () => base44.entities.Schedule.list('-shift_date'),
     enabled: user?.role === 'admin',
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const { data: timeOffRequests = [] } = useQuery({

@@ -147,7 +147,7 @@ export default function AdminScheduling() {
     queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
     enabled: user?.role === 'admin',
     staleTime: 10000,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 
   const { data: weekStatus } = useQuery({

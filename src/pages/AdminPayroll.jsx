@@ -107,7 +107,7 @@ export default function AdminPayroll() {
       return payload.usage || [];
     },
     enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 
   const { data: timeEntries } = useQuery({

@@ -118,7 +118,7 @@ export default function Dashboard({ embedded = false }) {
       return userEntries.find(e => !e.clock_out) || null;
     },
     enabled: !!user?.email,
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const { data: todaySchedule } = useQuery({

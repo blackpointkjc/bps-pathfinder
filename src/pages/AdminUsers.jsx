@@ -113,7 +113,7 @@ export default function AdminUsers() {
     queryKey: ['pendingAccessRequests'],
     queryFn: () => base44.entities.AccessRequest.filter({ status: 'pending' }, '-created_date', 500),
     enabled: hasAccess,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
     initialData: [],
   });
 

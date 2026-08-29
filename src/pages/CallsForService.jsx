@@ -22,7 +22,7 @@ export default function CallsForService() {
   const { data: calls } = useQuery({
     queryKey: ['callsForService'],
     queryFn: () => base44.entities.CallForService.list('-call_time'),
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 60000, // Refresh every 10 seconds
     initialData: [],
   });
 

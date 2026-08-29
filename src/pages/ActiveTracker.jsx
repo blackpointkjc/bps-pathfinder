@@ -20,7 +20,7 @@ export default function ActiveTracker() {
       if (payload.error) throw new Error(payload.error);
       return payload.units || [];
     },
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     refetchOnWindowFocus: false,
   });
 

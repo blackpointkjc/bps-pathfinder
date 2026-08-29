@@ -11,7 +11,7 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
   const { data: calls = [], isLoading, error } = useQuery({
     queryKey: ['dispatchCallsForLinking'],
     queryFn: () => listAllDispatchCallsForLinking(1000),
-    refetchInterval: 15000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
     staleTime: 0,
   });

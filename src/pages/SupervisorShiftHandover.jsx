@@ -31,7 +31,7 @@ export default function SupervisorShiftHandover() {
   const [form, setForm] = useState(blank());
   const { data:user } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
   const { data:users=[] } = useQuery({ queryKey:['supervisorHandoverUsers'], queryFn:()=>listDirectoryUsers('last_name') });
-  const { data:handovers=[] } = useQuery({ queryKey:['supervisorShiftHandovers'], queryFn:()=>base44.entities.SupervisorShiftHandover.list('-created_date', 200), refetchInterval:10000 });
+  const { data:handovers=[] } = useQuery({ queryKey:['supervisorShiftHandovers'], queryFn:()=>base44.entities.SupervisorShiftHandover.list('-created_date', 200), refetchInterval:60000 });
   const supervisors = useMemo(() => users.filter(person => isSupervisor(person) && !person.termination_date && lower(person.email) !== lower(user?.email)), [users, user?.email]);
   const incoming = supervisors.find(person => lower(person.email) === lower(form.incoming_supervisor_email));
 
