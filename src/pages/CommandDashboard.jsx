@@ -16,6 +16,7 @@ import { useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -121,9 +122,8 @@ function CommandDashboardInner() {
         let active = true;
         const syncUnitStatus = async () => {
             try {
-                const response = await base44.functions.invoke('getOnDutyUnits', {});
-                const payload = response?.data || response || {};
-                if (active && !payload.error) setCanonicalStatusUsers(Array.isArray(payload.users) ? payload.users : []);
+                const payload = await getOfficerLocationSnapshot();
+                if (active) setCanonicalStatusUsers(Array.isArray(payload.users) ? payload.users : []);
             } catch {}
         };
         syncUnitStatus();
