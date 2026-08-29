@@ -253,15 +253,22 @@ export default function AdminDashboard() {
             <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
-                Pending Requests
+                Pending Actions
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
               <div className="text-3xl font-black text-white sm:text-4xl">{pendingRequests || 0}</div>
-              <p className="mt-1 text-sm text-amber-200">Awaiting approval</p>
+              <p className="mt-1 text-sm text-amber-200">Reports, requests, availability and weekly scheduling</p>
             </CardContent>
           </Card>
         </div>
+
+        <section className="rounded-2xl border border-amber-500/20 bg-[#0a1421] p-5 shadow-lg">
+          <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Administrative work queue</h2><p className="mt-1 text-xs text-slate-500">These are live Pathfinder records that need an administrative decision or weekly action.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
+          <div className="mt-4 grid gap-2 xl:grid-cols-2">
+            {adminTasks.length ? adminTasks.slice(0,12).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><Link to={createPageUrl(task.page)} className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
+          </div>
+        </section>
 
         <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
           <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg">
