@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
+import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 
 // Calculate distance between two GPS coordinates in meters
@@ -104,9 +105,7 @@ export default function BackgroundLocationTracker({ user }) {
     const request = uploadChainRef.current
       .catch(() => null)
       .then(async () => {
-        const response = await base44.functions.invoke('logLocation', data);
-        const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
+        const payload = await publishOfficerLocation(data);
         if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
         return payload.active_officer;
       });
