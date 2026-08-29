@@ -18,6 +18,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
+import { publishOfficerLocation } from '@/lib/officerLocationHub';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -249,10 +250,32 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: () => {
+    onSuccess: async (createdEntry, submittedEntry) => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
+
+      // A successful clock-in immediately establishes the same canonical live
+      // session used by every map. Do not wait for the background query's next
+      // 30-second refresh before the officer appears to dispatch.
+      const statusResult = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' }).catch(error => ({ error }));
+      const statusPayload = statusResult?.data || statusResult || {};
+      if (statusPayload?.error) {
+        console.warn('Clock-in saved, but Available status could not be synchronized:', statusPayload.error?.message || statusPayload.error);
+      }
+      await publishOfficerLocation({
+        officer_email: submittedEntry.officer_email,
+        current_location: submittedEntry.location,
+        clock_in_time: submittedEntry.clock_in,
+        time_entry_id: createdEntry?.id || '',
+        device_fix_at: new Date().toISOString(),
+        latitude: submittedEntry.clock_in_latitude,
+        longitude: submittedEntry.clock_in_longitude,
+        accuracy: submittedEntry.clock_in_accuracy,
+        status: statusPayload?.error ? undefined : 'Available',
+        session_active: true,
+      }).catch(error => console.warn('Clock-in saved, but live map synchronization is retrying:', error?.message));
+      window.dispatchEvent(new Event('bps-officer-status-changed'));
     },
   });
 
