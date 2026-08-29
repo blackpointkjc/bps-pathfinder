@@ -291,9 +291,17 @@ export function calculateClientFeedback(feedback = [], monthStart, monthEnd) {
 export function calculateSupervisorRating(reviews = [], monthStart, monthEnd) {
   const monthly = reviews.filter(review => {
     const date = review.review_date || easternDateKey(review.created_date);
-    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && Number(review.overall_rating) > 0;
-  });
-  const avgRating = monthly.length ? monthly.reduce((sum, review) => sum + Number(review.overall_rating || 0), 0) / monthly.length : null;
+    const effectiveRating = review.hr_approved === true && Number(review.final_rating) > 0
+      ? Number(review.final_rating)
+      : Number(review.overall_rating);
+    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && effectiveRating > 0;
+  }).map(review => ({
+    ...review,
+    effective_rating: review.hr_approved === true && Number(review.final_rating) > 0
+      ? Number(review.final_rating)
+      : Number(review.overall_rating),
+  }));
+  const avgRating = monthly.length ? monthly.reduce((sum, review) => sum + Number(review.effective_rating || 0), 0) / monthly.length : null;
   return { count: monthly.length, avgRating, score: avgRating == null ? null : Math.round((avgRating / 5) * 100), items: monthly };
 }
 
