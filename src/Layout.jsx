@@ -430,7 +430,7 @@ function allowedCenters(user) {
   // live inside Admin Center rather than appearing as duplicate top-level tabs.
   if (user?.role === 'admin' || fullAccess) return withTrainer(['admin']);
   if (user?.role === 'dispatch') return withTrainer(['cad']);
-  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withTrainer(['cad', 'supervisor']);
+  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withTrainer(['supervisor', 'cad']);
   if (roles.has('officer')) return withTrainer(['cad', 'officer']);
   if (roles.has('hr') || rank === 'human resources') return withTrainer(['hr']);
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withTrainer(['support']);
