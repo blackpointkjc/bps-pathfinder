@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Polygon } from "react-leaflet";
+import { MapContainer, Circle, Marker, Popup, useMapEvents, Polygon } from "react-leaflet";
+import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -148,10 +149,7 @@ export default function GeofenceManager({ location, onSave }) {
                 zoom={16}
                 style={{ height: "100%", width: "100%" }}
               >
-                <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <PathfinderTileLayer />
                 <MapClickHandler onMapClick={handleMapClick} isDrawingPolygon={isDrawingPolygon} />
                 
                 {location?.latitude && location?.longitude && (
