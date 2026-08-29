@@ -843,6 +843,7 @@ export default function Layout({ children, currentPageName }) {
   const [activeCenter, setActiveCenterState] = useState(() => allowedCenters(user)[0] || 'cad');
   const [unreadCounts, setUnreadCounts] = useState({});
   const mainScrollRef = useRef(null);
+  const roleHomeEntryHandledRef = useRef(false);
   const scrollPositionsRef = useRef({});
   const centerLastPagesRef = useRef(() => ({}));
   if (typeof centerLastPagesRef.current === 'function') {
@@ -889,7 +890,7 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
-    if (!user?.id || !currentPageName) return;
+    if (!user?.id || !currentPageName || roleHomeEntryHandledRef.current) return;
     const primaryCenter = allowedCenters(user)[0] || 'cad';
     const target = defaultPageForUser(user, !isMobileViewport);
     const routeKey = `bps-role-home-routed:${user.id}`;
@@ -897,8 +898,9 @@ export default function Layout({ children, currentPageName }) {
     const isReload = navigationEntry?.type === 'reload';
     const routed = sessionStorage.getItem(routeKey) === '1';
 
-    // Login AND a full browser refresh are app-entry events. Always resolve those
-    // to the user's primary role center; restored CAD routes/localStorage must not win.
+    // Resolve the role home exactly once for this Layout mount. A login or full
+    // browser refresh goes home; normal in-app navigation remains where the user chose.
+    roleHomeEntryHandledRef.current = true;
     if (!routed || isReload) {
       sessionStorage.setItem(routeKey, '1');
       setActiveCenter(primaryCenter);
