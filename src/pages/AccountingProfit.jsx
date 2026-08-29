@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingUp, TrendingDown, Download } from "lucide-react";
+import { AlertTriangle, Building2, Clock3, DollarSign, Download, RefreshCw, TrendingDown, TrendingUp, Users, WalletCards } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { calculatePaidHours, calculatePayrollHours } from "@/lib/payrollCalculations";
 import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 export default function AccountingProfit() {
@@ -28,7 +28,7 @@ export default function AccountingProfit() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: accountingData = {}, refetch: refetchProfit } = useQuery({
+  const { data: accountingData = {}, isLoading: accountingLoading, isFetching: accountingFetching, error: accountingError, refetch: refetchProfit } = useQuery({
     queryKey: ['accountingData', 'profit'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getAccountingData', {});
@@ -53,6 +53,7 @@ export default function AccountingProfit() {
   const ptoUsage = accountingData.ptoUsage || [];
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
+  const accountingLoadErrors = accountingData.load_errors || [];
 
   useEffect(() => {
     if (!isAccountingRole) return undefined;
@@ -134,9 +135,11 @@ export default function AccountingProfit() {
   const revenueByOfficer = {};
   const payrollByOfficer = {};
   const hoursByOfficer = {};
+  const payrollHoursByOfficer = {};
   const revenueBySite = {};
   const payrollBySite = {};
   const hoursBySite = {};
+  const payrollHoursBySite = {};
 
   const payrollBreakdownByOfficer = {};
   const weeklyHoursByOfficer = {};
@@ -152,10 +155,14 @@ export default function AccountingProfit() {
 
     const siteName = normalizeSiteName(entry.location) || 'Unassigned / Nonbillable';
     const location = locations.find(l => normalizeSiteName(l.site_name) === siteName);
-    const rawHours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
-    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
+    const rawServiceHours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const rawPayrollHours = entry.clock_out ? calculatePayrollHours(entry) : rawServiceHours;
+    const serviceHours = entry.clock_out ? Math.round(rawServiceHours * 100) / 100 : rawServiceHours;
+    const payrollHours = entry.clock_out ? Math.round(rawPayrollHours * 100) / 100 : rawPayrollHours;
     const { rate: billRate } = resolveBillingRate(entry, location, schedules);
-    const revenue = hours * billRate;
+    // Client billing follows the true service record. Payroll follows the approved
+    // payroll hours, so an administrator can limit pay without altering punches.
+    const revenue = serviceHours * billRate;
     const hourlyRate = Number(officer.hourly_rate) || 0;
     const shiftDate = new Date(entry.clock_in);
     const sunday = new Date(shiftDate);
@@ -163,12 +170,12 @@ export default function AccountingProfit() {
     sunday.setDate(sunday.getDate() - sunday.getDay());
     const weekKey = `${String(officer.email).toLowerCase()}|${format(sunday, 'yyyy-MM-dd')}`;
     const priorWeekHours = weeklyHoursByOfficer[weekKey] || 0;
-    const regularHours = Math.min(hours, Math.max(0, overtimeThreshold - priorWeekHours));
-    const overtimeHours = Math.max(0, hours - regularHours);
+    const regularHours = Math.min(payrollHours, Math.max(0, overtimeThreshold - priorWeekHours));
+    const overtimeHours = Math.max(0, payrollHours - regularHours);
     const regularPay = regularHours * hourlyRate;
     const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier;
     const payrollCost = regularPay + overtimePay;
-    weeklyHoursByOfficer[weekKey] = priorWeekHours + hours;
+    weeklyHoursByOfficer[weekKey] = priorWeekHours + payrollHours;
     const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
     const breakdown = payrollBreakdownByOfficer[officerName] || {
       regularHours: 0, regularPay: 0, overtimeHours: 0, overtimePay: 0, holidayHours: 0, holidayPay: 0,
@@ -181,12 +188,14 @@ export default function AccountingProfit() {
 
     revenueByOfficer[officerName] = (revenueByOfficer[officerName] || 0) + revenue;
     payrollByOfficer[officerName] = (payrollByOfficer[officerName] || 0) + payrollCost;
-    hoursByOfficer[officerName] = (hoursByOfficer[officerName] || 0) + hours;
+    hoursByOfficer[officerName] = (hoursByOfficer[officerName] || 0) + serviceHours;
+    payrollHoursByOfficer[officerName] = (payrollHoursByOfficer[officerName] || 0) + payrollHours;
 
     // Site profitability accrues immediately from time worked, including open shifts.
     revenueBySite[siteName] = (revenueBySite[siteName] || 0) + revenue;
     payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
-    hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
+    hoursBySite[siteName] = (hoursBySite[siteName] || 0) + serviceHours;
+    payrollHoursBySite[siteName] = (payrollHoursBySite[siteName] || 0) + payrollHours;
   });
 
   // If time records are unavailable for an older invoiced site, retain the
@@ -199,6 +208,8 @@ export default function AccountingProfit() {
   const accruedRevenue = Object.values(revenueBySite).reduce((sum, amount) => sum + amount, 0);
   const totalRevenue = accruedRevenue || invoiceRevenue;
   const totalPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
+  const totalServiceHours = Object.values(hoursByOfficer).reduce((sum, hours) => sum + hours, 0);
+  const totalApprovedPayrollHours = Object.values(payrollHoursByOfficer).reduce((sum, hours) => sum + hours, 0);
   const reimbursableExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const operatingExpenses = filteredCompanyExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const totalExpenses = reimbursableExpenses + operatingExpenses;
@@ -225,7 +236,7 @@ export default function AccountingProfit() {
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
         return `<tr>
           <td><strong>${site}</strong></td>
-          <td>${(hoursBySite[site] || 0).toFixed(2)}</td>
+          <td>${(hoursBySite[site] || 0).toFixed(2)} / ${(payrollHoursBySite[site] || 0).toFixed(2)}</td>
           <td>${money(revenue)}</td>
           <td>${money(payroll)}</td>
           <td class="${profit >= 0 ? 'positive' : 'negative'}">${money(profit)}</td>
@@ -243,7 +254,7 @@ export default function AccountingProfit() {
         const breakdown = payrollBreakdownByOfficer[officerName] || {};
         return `<tr>
           <td><strong>${officerName}</strong></td>
-          <td>${hours.toFixed(2)}</td>
+          <td>${hours.toFixed(2)} / ${(payrollHoursByOfficer[officerName] || 0).toFixed(2)}</td>
           <td>${money(revenue)}</td>
           <td>${money(payroll)}</td>
           <td class="${profit >= 0 ? 'positive' : 'negative'}">${money(profit)}</td>
@@ -314,9 +325,9 @@ export default function AccountingProfit() {
             <div class="metric"><div class="label">Net margin</div><div class="value">${profitMargin.toFixed(1)}%</div></div>
           </section>
           <h2>Profitability by Site</h2>
-          <table><thead><tr><th>Site / Cost Center</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Site Contribution</th><th>Margin</th></tr></thead><tbody>${siteRows || '<tr><td colspan="6">No site activity for this period.</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Site / Cost Center</th><th>Service / Paid Hours</th><th>Revenue</th><th>Payroll</th><th>Site Contribution</th><th>Margin</th></tr></thead><tbody>${siteRows || '<tr><td colspan="6">No site activity for this period.</td></tr>'}</tbody></table>
           <h2>Profitability by Employee</h2>
-          <table><thead><tr><th>Employee</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Contribution</th><th>Overtime Hours</th></tr></thead><tbody>${officerRows || '<tr><td colspan="6">No employee activity for this period.</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Employee</th><th>Service / Paid Hours</th><th>Revenue</th><th>Payroll</th><th>Contribution</th><th>Overtime Hours</th></tr></thead><tbody>${officerRows || '<tr><td colspan="6">No employee activity for this period.</td></tr>'}</tbody></table>
           <footer class="footer"><span>Internal financial report • Confidential</span></footer>
         </main>
       </body>
