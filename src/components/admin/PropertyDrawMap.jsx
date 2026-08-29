@@ -69,8 +69,8 @@ export default function PropertyDrawMap({ mode, center, radius, polygon, onCente
         scrollWheelZoom={true}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; CARTO"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
         />
 
         <MapEventBinder
