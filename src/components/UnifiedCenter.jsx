@@ -26,15 +26,15 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
     window.history.replaceState({}, '', url);
   };
 
-  const sectionGrid = sections.length >= 6
+  // Center navigation should read like one compact navigation rail, not another
+  // dashboard made of large cards. Keep every center consistent and scannable.
+  const sectionGrid = sections.length >= 5
     ? 'md:grid-cols-3 xl:grid-cols-6'
-    : sections.length === 5
-      ? 'md:grid-cols-3 xl:grid-cols-5'
-      : sections.length === 4
-        ? 'md:grid-cols-4'
-        : sections.length === 3
-          ? 'md:grid-cols-3'
-          : 'md:grid-cols-2';
+    : sections.length === 4
+      ? 'md:grid-cols-4'
+      : sections.length === 3
+        ? 'md:grid-cols-3'
+        : 'md:grid-cols-2';
 
   return (
     <div className="min-h-full w-full min-w-0 overflow-x-hidden bg-[#070d17] text-slate-100">
@@ -45,17 +45,14 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
             <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">{title}</h1>
             <p className="mt-1 max-w-4xl text-sm text-slate-400">{description}</p>
           </>}
-          <div className={`${embedded ? '' : 'mt-5'} grid grid-cols-2 gap-2 ${sectionGrid}`}>
-            {sections.map(({ id, label, description: sectionDescription, icon: Icon }) => {
+          <div className={`${embedded ? '' : 'mt-4'} grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-[#07101c] p-1.5 ${sectionGrid}`}>
+            {sections.map(({ id, label, icon: Icon }) => {
               const active = section === id;
               return (
                 <button key={id} type="button" onClick={() => select(id)} aria-pressed={active}
-                  className={`min-w-0 rounded-xl border p-3 text-left transition ${active ? 'border-cyan-400/60 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,.12)]' : 'border-slate-800 bg-slate-900/70 hover:border-slate-600 hover:bg-slate-900'}`}>
-                  <div className="flex items-center gap-2">
-                    {Icon && <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-slate-500'}`} />}
-                    <span className={`min-w-0 whitespace-normal break-words text-[11px] font-black leading-tight sm:text-xs ${active ? 'text-white' : 'text-slate-300'}`}>{label}</span>
-                  </div>
-                  {sectionDescription && <p className="mt-1 hidden whitespace-normal break-words text-[10px] leading-4 text-slate-500 xl:block">{sectionDescription}</p>}
+                  className={`flex min-h-11 min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${active ? 'border-cyan-400/50 bg-[#17466a] text-white shadow-sm' : 'border-transparent bg-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}>
+                  {Icon && <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-slate-500'}`} />}
+                  <span className="min-w-0 truncate text-[11px] font-black sm:text-xs">{label}</span>
                 </button>
               );
             })}
