@@ -78,6 +78,31 @@
       "type": "string",
       "description": "Session identity that owns the preserved precise tactical GPS fix"
     },
+    "gps_candidate_latitude": {
+      "type": "number",
+      "description": "Uncorroborated precise GPS jump awaiting a second nearby fix"
+    },
+    "gps_candidate_longitude": {
+      "type": "number",
+      "description": "Uncorroborated precise GPS jump awaiting a second nearby fix"
+    },
+    "gps_candidate_accuracy": {
+      "type": "number",
+      "description": "Accuracy of the uncorroborated candidate fix"
+    },
+    "gps_candidate_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the candidate GPS fix"
+    },
+    "gps_candidate_session_key": {
+      "type": "string",
+      "description": "Tracking session that owns the candidate GPS fix"
+    },
+    "gps_candidate_count": {
+      "type": "number",
+      "description": "Consecutive nearby fixes supporting the candidate location"
+    },
     "unit_number": {
       "type": "string",
       "description": "Officer or vehicle unit number"
