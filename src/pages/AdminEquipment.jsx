@@ -161,9 +161,11 @@ export default function AdminEquipment() {
   const cellText = (value) => {
     if (value == null) return '';
     if (value instanceof Date) return value.toISOString().slice(0, 10);
-    if (typeof value === 'object' && value.text) return String(value.text).trim();
-    if (typeof value === 'object' && value.result != null) return String(value.result).trim();
-    return String(value).trim();
+    let text = '';
+    if (typeof value === 'object' && value.text) text = String(value.text).trim();
+    else if (typeof value === 'object' && value.result != null) text = String(value.result).trim();
+    else text = String(value).trim();
+    return text === '-' ? '' : text;
   };
   const parseCsv = (text) => {
     const rows = [];
@@ -200,17 +202,30 @@ export default function AdminEquipment() {
   const mapImportRow = (source) => {
     const row = Object.fromEntries(Object.entries(source).map(([key, value]) => [normalizeHeader(key), cellText(value)]));
     const pick = (...keys) => keys.map(normalizeHeader).map(key => row[key]).find(value => value !== undefined && value !== '') || '';
+    const deviceType = pick('device_type', 'model_number', 'model');
     const typeRaw = pick('equipment_type', 'type', 'category').toLowerCase().replace(/\s+/g, '_');
     const allowedTypes = new Set(['computer','laptop','tablet','phone','radio','vehicle','firearm','uniform','badge','body_camera','taser','other']);
+    const inferredType = /^tlk\s*\d+/i.test(deviceType) ? 'radio' : (allowedTypes.has(typeRaw) ? typeRaw : 'other');
     const conditionRaw = pick('condition').toLowerCase();
     const allowedConditions = new Set(['new','good','fair','poor','damaged']);
     const statusRaw = pick('status').toLowerCase();
     const assignedTo = resolveOfficerEmail(pick('assigned_to', 'assigned_officer', 'officer', 'officer_email'));
     const purchaseCost = Number(String(pick('purchase_cost', 'cost', 'price')).replace(/[$,]/g, ''));
+    const sourceStatus = pick('status');
+    const sourceConnected = pick('connected');
+    const sourceSoftware = pick('software_version');
+    const sourceTier = pick('tier_package');
+    const sourceNotes = [
+      sourceStatus ? `Source status: ${sourceStatus}` : '',
+      sourceConnected ? `Connected: ${sourceConnected}` : '',
+      sourceSoftware ? `Software: ${sourceSoftware}` : '',
+      sourceTier ? `Tier: ${sourceTier}` : '',
+      pick('notes', 'note', 'comments')
+    ].filter(Boolean).join(' | ');
     return {
-      equipment_type: allowedTypes.has(typeRaw) ? typeRaw : 'other',
-      product_name: pick('product_name', 'name', 'equipment_name', 'item'),
-      model_number: pick('model_number', 'model'),
+      equipment_type: inferredType,
+      product_name: pick('product_name', 'name', 'equipment_name', 'item', 'display_name'),
+      model_number: deviceType,
       serial_number: pick('serial_number', 'serial', 'asset_id', 'asset_number', 'inventory_number'),
       imei_number: pick('imei_number', 'imei'),
       date_issued: pick('date_issued', 'issued_date'),
@@ -219,7 +234,7 @@ export default function AdminEquipment() {
       purchase_date: pick('purchase_date', 'purchased_date'),
       purchase_cost: Number.isFinite(purchaseCost) && purchaseCost >= 0 ? purchaseCost : undefined,
       warranty_expiration: pick('warranty_expiration', 'warranty_expires', 'warranty_date'),
-      notes: pick('notes', 'note', 'comments'),
+      notes: sourceNotes,
       status: ['available','assigned','maintenance','retired'].includes(statusRaw) ? statusRaw : (assignedTo ? 'assigned' : 'available'),
     };
   };
