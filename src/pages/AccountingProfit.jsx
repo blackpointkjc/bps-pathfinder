@@ -347,45 +347,60 @@ export default function AccountingProfit() {
           @page { margin: 0.5in; }
         }
       `}</style>
-      <div className="container mx-auto p-4 md:p-6 max-w-7xl print-area">
-      <div className="mb-8 rounded-3xl bg-slate-950 p-6 md:p-8 text-white shadow-xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300 mb-3">
-            Financial intelligence
+      <div className="container mx-auto max-w-7xl p-4 md:p-6 print-area">
+      <section className="relative mb-6 overflow-hidden rounded-[30px] border border-slate-700/80 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-2xl md:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
+              <WalletCards className="h-3.5 w-3.5" />
+              Financial operations
+            </div>
+            <h1 className="text-3xl font-black tracking-tight md:text-5xl">Company Profit Report</h1>
+            <p className="mt-3 max-w-2xl text-base text-slate-300">Earned billing, gross accrued wages, operating costs, and margin—calculated from live operational records.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />Live as of {format(liveNow, 'MMM d, yyyy h:mm:ss a')}</span>
+              {accountingFetching && <span className="inline-flex items-center gap-2 text-sky-300"><RefreshCw className="h-3.5 w-3.5 animate-spin" />Refreshing</span>}
+            </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Company Profit Report</h1>
-          <p className="text-slate-300 mt-2">Earned billing, gross accrued wages, operating costs, and margin</p>
-          <p className="text-sm text-slate-400 mt-2">Live as of {format(liveNow, 'MMM d, yyyy h:mm:ss a')}</p>
+          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+            <Button onClick={() => refetchProfit()} disabled={accountingFetching} className="border border-slate-600 bg-slate-800 text-white hover:bg-slate-700 no-print">
+              <RefreshCw className={`mr-2 h-4 w-4 ${accountingFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
+              <Download className="mr-2 h-4 w-4" />
+              Open Professional Report
+            </Button>
+          </div>
         </div>
-        <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
-          <Download className="w-4 h-4 mr-2" />
-          Open Professional Report
-        </Button>
-      </div>
-
-      {/* Date Range Selector */}
-      <Card className="mb-6 no-print rounded-2xl border-slate-200 shadow-sm">
-        <CardContent className="p-5 md:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
+        <div className="relative mt-7 grid gap-4 border-t border-white/10 pt-6 md:grid-cols-2">
+          <div>
+            <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400">Period start</Label>
+            <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="border-slate-600 bg-slate-950/60 text-white [color-scheme:dark]" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400">Period end</Label>
+            <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="border-slate-600 bg-slate-950/60 text-white [color-scheme:dark]" />
+          </div>
+        </div>
+      </section>
+
+      {accountingError && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-700/60 bg-red-950/40 p-4 text-red-100">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+          <div><p className="font-bold">Profit data could not be loaded</p><p className="mt-1 text-sm text-red-200">{accountingError.message || 'Refresh to try again.'}</p></div>
+        </div>
+      )}
+      {!accountingError && accountingLoadErrors.length > 0 && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-600/50 bg-amber-950/30 p-4 text-amber-100">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+          <div><p className="font-bold">Some financial sources are temporarily unavailable</p><p className="mt-1 text-sm text-amber-200">Available totals remain visible. Refresh after the remaining sources recover.</p></div>
+        </div>
+      )}
+      {accountingLoading && (
+        <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
+      )}
 
       {/* Print Date Range Display */}
       <div className="hidden print:block mb-6 p-4 bg-slate-50 rounded-lg border">
@@ -394,106 +409,56 @@ export default function AccountingProfit() {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-green-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <DollarSign className="w-6 h-6 text-green-500" />
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Earned Revenue</p>
-                <p className="text-lg font-bold text-slate-900">
-                  ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
+      {/* Financial summary */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Earned billing', value: totalRevenue, icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: `${totalServiceHours.toFixed(1)} service hours` },
+          { label: 'Gross accrued wages', value: totalPayroll, icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: `${totalApprovedPayrollHours.toFixed(1)} approved payroll hours` },
+          { label: 'Operating costs', value: totalExpenses, icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Approved reimbursements and paid expenses' },
+          { label: 'Net profit', value: netProfit, icon: netProfit >= 0 ? TrendingUp : TrendingDown, color: netProfit >= 0 ? 'text-violet-300' : 'text-red-300', border: netProfit >= 0 ? 'border-violet-500/35' : 'border-red-500/35', note: `${profitMargin.toFixed(1)}% net margin` },
+        ].map(metric => {
+          const Icon = metric.icon;
+          return (
+            <Card key={metric.label} className={`overflow-hidden rounded-2xl border bg-slate-900/85 text-white shadow-lg ${metric.border}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{metric.label}</p>
+                    <p className={`mt-3 break-words text-3xl font-black tracking-tight ${metric.color}`}>
+                      {metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-slate-400">{metric.note}</p>
+                  </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                    <Icon className={`h-5 w-5 ${metric.color}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      <div className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Service hours', value: `${totalServiceHours.toFixed(2)}h`, icon: Clock3 },
+          { label: 'Approved payroll hours', value: `${totalApprovedPayrollHours.toFixed(2)}h`, icon: WalletCards },
+          { label: 'PTO labor cost', value: `$${ptoCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Users },
+          { label: 'Total operating outlay', value: `$${(totalExpenses + ptoCost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Building2 },
+        ].map(item => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-950/50 px-4 py-3">
+              <Icon className="h-4 w-4 shrink-0 text-slate-400" />
+              <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.label}</p><p className="truncate text-sm font-bold text-slate-200">{item.value}</p></div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-red-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <DollarSign className="w-6 h-6 text-red-500" />
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Accrued Payroll</p>
-                <p className="text-lg font-bold text-slate-900">
-                  ${totalPayroll.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <DollarSign className="w-6 h-6 text-amber-500" />
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Expenses</p>
-                <p className="text-lg font-bold text-slate-900">
-                  ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-orange-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <DollarSign className="w-6 h-6 text-orange-500" />
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">PTO Cost</p>
-                <p className="text-lg font-bold text-slate-900">
-                  ${ptoCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={`rounded-2xl border-slate-200 border-l-4 shadow-sm ${netProfit >= 0 ? 'border-l-blue-500' : 'border-l-red-500'}`}>
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              {netProfit >= 0 ? (
-                <TrendingUp className="w-6 h-6 text-blue-500" />
-              ) : (
-                <TrendingDown className="w-6 h-6 text-red-500" />
-              )}
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Net Profit</p>
-                <p className={`text-lg font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                  ${netProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-purple-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              {profitMargin >= 0 ? (
-                <TrendingUp className="w-6 h-6 text-purple-500" />
-              ) : (
-                <TrendingDown className="w-6 h-6 text-red-500" />
-              )}
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Margin</p>
-                <p className={`text-lg font-bold ${profitMargin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                  {profitMargin.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+          );
+        })}
       </div>
 
       {/* Profit by Site */}
-      <Card className="mb-6">
+      <Card className="mb-6 overflow-hidden rounded-2xl border-slate-700 bg-slate-900/80 text-white shadow-xl">
         <CardHeader>
-          <CardTitle>Profit Breakdown by Site</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-white"><Building2 className="h-5 w-5 text-emerald-300" />Profitability by Site</CardTitle>
         </CardHeader>
         <CardContent>
           {Object.keys(revenueBySite).length === 0 ? (
@@ -511,14 +476,14 @@ export default function AccountingProfit() {
                   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
                   return (
-                    <div key={site} className="p-4 bg-slate-50 rounded-lg">
+                    <div key={site} className="rounded-xl border border-slate-700 bg-slate-950/55 p-4">
                       <div className="flex items-center justify-between mb-2">
                         <p className="font-semibold text-slate-900">{site}</p>
                         <Badge className={profit >= 0 ? 'bg-green-600' : 'bg-red-600'}>
                           {margin.toFixed(1)}% margin
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-5">
                         <div>
                           <p className="text-slate-600">Revenue</p>
                           <p className="font-bold text-green-600">${revenue.toFixed(2)}</p>
@@ -528,8 +493,12 @@ export default function AccountingProfit() {
                           <p className="font-bold text-red-600">${payroll.toFixed(2)}</p>
                         </div>
                         <div>
-                          <p className="text-slate-600">Hours</p>
-                          <p className="font-bold text-slate-900">{hoursBySite[site]?.toFixed(1) || 0}</p>
+                          <p className="text-slate-400">Service Hours</p>
+                          <p className="font-bold text-white">{hoursBySite[site]?.toFixed(1) || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400">Paid Hours</p>
+                          <p className="font-bold text-sky-300">{payrollHoursBySite[site]?.toFixed(1) || 0}</p>
                         </div>
                         <div>
                           <p className="text-slate-600">Profit</p>
@@ -547,9 +516,9 @@ export default function AccountingProfit() {
       </Card>
 
       {/* Profit by Officer */}
-      <Card>
+      <Card className="overflow-hidden rounded-2xl border-slate-700 bg-slate-900/80 text-white shadow-xl">
         <CardHeader>
-          <CardTitle>Profit Breakdown by Officer</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-white"><Users className="h-5 w-5 text-sky-300" />Profitability by Officer</CardTitle>
         </CardHeader>
         <CardContent>
           {Object.keys(revenueByOfficer).length === 0 ? (
@@ -570,16 +539,16 @@ export default function AccountingProfit() {
                   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
                   return (
-                    <div key={officer} className="p-4 bg-slate-50 rounded-lg border">
+                    <div key={officer} className="rounded-xl border border-slate-700 bg-slate-950/55 p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-4">
+                        <div className="flex min-w-0 items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                             {officer.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-900">{officer}</p>
+                            <p className="font-semibold text-white">{officer}</p>
                             <p className="text-sm text-slate-600">
-                              Revenue: ${revenue.toFixed(2)} | Payroll: ${payroll.toFixed(2)}
+                              Service: {(hoursByOfficer[officer] || 0).toFixed(1)}h • Paid: {(payrollHoursByOfficer[officer] || 0).toFixed(1)}h • Billing: ${revenue.toFixed(2)} • Wages: ${payroll.toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -592,21 +561,21 @@ export default function AccountingProfit() {
                           </Badge>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-sm border-t pt-3">
-                        <div className="bg-white p-2 rounded">
+                      <div className="grid grid-cols-1 gap-3 border-t border-slate-700 pt-3 text-sm sm:grid-cols-3">
+                        <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
                           <p className="text-slate-600 text-xs">Regular</p>
-                          <p className="font-bold text-slate-900">{breakdown.regularHours?.toFixed(1) || 0}h</p>
-                          <p className="text-slate-700 font-semibold">${breakdown.regularPay?.toFixed(2) || '0.00'}</p>
+                          <p className="font-bold text-white">{breakdown.regularHours?.toFixed(1) || 0}h</p>
+                          <p className="font-semibold text-slate-300">${breakdown.regularPay?.toFixed(2) || '0.00'}</p>
                         </div>
-                        <div className="bg-white p-2 rounded">
+                        <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
                           <p className="text-slate-600 text-xs">Overtime</p>
                           <p className="font-bold text-orange-600">{breakdown.overtimeHours?.toFixed(1) || 0}h</p>
-                          <p className="text-slate-700 font-semibold">${breakdown.overtimePay?.toFixed(2) || '0.00'}</p>
+                          <p className="font-semibold text-slate-300">${breakdown.overtimePay?.toFixed(2) || '0.00'}</p>
                         </div>
-                        <div className="bg-white p-2 rounded">
+                        <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
                           <p className="text-slate-600 text-xs">Holiday</p>
                           <p className="font-bold text-green-600">{breakdown.holidayHours?.toFixed(1) || 0}h</p>
-                          <p className="text-slate-700 font-semibold">${breakdown.holidayPay?.toFixed(2) || '0.00'}</p>
+                          <p className="font-semibold text-slate-300">${breakdown.holidayPay?.toFixed(2) || '0.00'}</p>
                         </div>
                       </div>
                     </div>
