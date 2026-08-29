@@ -5,6 +5,26 @@ function finiteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function hasCoordinates(latitude: unknown, longitude: unknown) {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng)
+    && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+    && !(lat === 0 && lng === 0);
+}
+
+function distanceMeters(lat1: unknown, lng1: unknown, lat2: unknown, lng2: unknown) {
+  if (!hasCoordinates(lat1, lng1) || !hasCoordinates(lat2, lng2)) return Infinity;
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const earthRadius = 6371000;
+  const dLat = toRadians(Number(lat2) - Number(lat1));
+  const dLng = toRadians(Number(lng2) - Number(lng1));
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRadians(Number(lat1))) * Math.cos(toRadians(Number(lat2)))
+    * Math.sin(dLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -84,23 +104,63 @@ Deno.serve(async (req) => {
       liveData.heading = null;
       liveData.speed = 0;
       liveData.accuracy = null;
-    } else if (acceptsGps) {
-      const acceptedAccuracy = finiteNumber(body.accuracy, 999999);
-      liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
-      liveData.latitude = latitude;
-      liveData.longitude = longitude;
-      liveData.heading = finiteNumber(body.heading);
-      liveData.speed = finiteNumber(body.speed);
-      liveData.accuracy = acceptedAccuracy;
-      liveData.gps_session_key = trackingSessionKey;
-      // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
-      // tactical coordinate. Coarse fixes remain available for diagnostics only.
-      if (Number.isFinite(acceptedAccuracy) && acceptedAccuracy <= 100) {
-        liveData.reliable_latitude = latitude;
-        liveData.reliable_longitude = longitude;
-        liveData.reliable_accuracy = acceptedAccuracy;
-        liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
-        liveData.reliable_session_key = trackingSessionKey;
+    }
+
+    const acceptedAccuracy = acceptsGps ? finiteNumber(body.accuracy, 999999) : 999999;
+    let acceptedForPosition = false;
+    let candidateOnly = false;
+    if (acceptsGps) {
+      const precise = acceptedAccuracy <= 100;
+      const sameReliableSession = primary?.reliable_session_key === trackingSessionKey
+        && hasCoordinates(primary?.reliable_latitude, primary?.reliable_longitude);
+      const jumpFromReliable = sameReliableSession
+        ? distanceMeters(primary.reliable_latitude, primary.reliable_longitude, latitude, longitude)
+        : 0;
+      const candidateAgeMs = receivedAt - new Date(primary?.gps_candidate_updated_at || 0).getTime();
+      const corroboratesCandidate = precise
+        && primary?.gps_candidate_session_key === trackingSessionKey
+        && candidateAgeMs >= 0
+        && candidateAgeMs <= 5 * 60 * 1000
+        && distanceMeters(primary?.gps_candidate_latitude, primary?.gps_candidate_longitude, latitude, longitude) <= 350;
+
+      // A single browser/device jump must not move a tactical marker. Ordinary
+      // movement remains immediate within 500m; larger moves are promoted after
+      // a second nearby fix confirms the new cluster. This prevents a second tab,
+      // VPN/network estimate, or provider glitch from relocating an officer.
+      candidateOnly = precise && sameReliableSession && jumpFromReliable > 500 && !corroboratesCandidate;
+      acceptedForPosition = !candidateOnly;
+
+      if (candidateOnly) {
+        liveData.gps_candidate_latitude = latitude;
+        liveData.gps_candidate_longitude = longitude;
+        liveData.gps_candidate_accuracy = acceptedAccuracy;
+        liveData.gps_candidate_updated_at = new Date(deviceFixAt).toISOString();
+        liveData.gps_candidate_session_key = trackingSessionKey;
+        liveData.gps_candidate_count = 1;
+      } else {
+        liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
+        liveData.latitude = latitude;
+        liveData.longitude = longitude;
+        liveData.heading = finiteNumber(body.heading);
+        liveData.speed = finiteNumber(body.speed);
+        liveData.accuracy = acceptedAccuracy;
+        liveData.gps_session_key = trackingSessionKey;
+        liveData.gps_candidate_latitude = null;
+        liveData.gps_candidate_longitude = null;
+        liveData.gps_candidate_accuracy = null;
+        liveData.gps_candidate_updated_at = null;
+        liveData.gps_candidate_session_key = '';
+        liveData.gps_candidate_count = 0;
+
+        // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
+        // tactical coordinate. Coarse fixes remain available for diagnostics only.
+        if (precise) {
+          liveData.reliable_latitude = latitude;
+          liveData.reliable_longitude = longitude;
+          liveData.reliable_accuracy = acceptedAccuracy;
+          liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
+          liveData.reliable_session_key = trackingSessionKey;
+        }
       }
     }
 
@@ -131,7 +191,7 @@ Deno.serve(async (req) => {
     // One row per officer per minute is sufficient for the map and prevents
     // multiple tabs/devices from producing a duplicate history stream.
     let historyRecorded = false;
-    if (acceptsGps) {
+    if (acceptedForPosition && acceptedAccuracy <= 5000) {
       const latestHistory = await base44.asServiceRole.entities.LocationHistory.filter(
         { officer_email: officerEmail },
         '-timestamp',
@@ -157,10 +217,11 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       active_officer: activeOfficer,
-      latitude: acceptsGps ? latitude : null,
-      longitude: acceptsGps ? longitude : null,
-      gps_accepted: acceptsGps,
-      gps_updated_at: acceptsGps ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
+      latitude: acceptedForPosition ? latitude : null,
+      longitude: acceptedForPosition ? longitude : null,
+      gps_accepted: acceptedForPosition,
+      gps_candidate_only: candidateOnly,
+      gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,
     });
