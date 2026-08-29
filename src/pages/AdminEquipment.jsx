@@ -1,5 +1,6 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useState } from "react";
+import { useRef, useState } from "react";
+import ExcelJS from 'exceljs';
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Package, Plus, Edit, Trash2, User, Search, AlertCircle } from "lucide-react";
+import { Package, Plus, Edit, Trash2, User, Search, AlertCircle, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
@@ -21,6 +22,9 @@ export default function AdminEquipment() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const importInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     equipment_type: "",
@@ -152,6 +156,119 @@ export default function AdminEquipment() {
   });
 
   const activeOfficers = users.filter(isOperationalOfficer);
+
+  const normalizeHeader = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const cellText = (value) => {
+    if (value == null) return '';
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    if (typeof value === 'object' && value.text) return String(value.text).trim();
+    if (typeof value === 'object' && value.result != null) return String(value.result).trim();
+    return String(value).trim();
+  };
+  const parseCsv = (text) => {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i], next = text[i + 1];
+      if (ch === '"' && quoted && next === '"') { cell += '"'; i += 1; continue; }
+      if (ch === '"') { quoted = !quoted; continue; }
+      if (ch === ',' && !quoted) { row.push(cell); cell = ''; continue; }
+      if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && next === '\n') i += 1;
+        row.push(cell); cell = '';
+        if (row.some(value => String(value).trim())) rows.push(row);
+        row = [];
+        continue;
+      }
+      cell += ch;
+    }
+    row.push(cell);
+    if (row.some(value => String(value).trim())) rows.push(row);
+    return rows;
+  };
+  const resolveOfficerEmail = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    const match = activeOfficers.find(officer => {
+      const full = `${officer.first_name || ''} ${officer.last_name || ''}`.trim().toLowerCase();
+      const rankLast = `${officer.rank || ''} ${officer.last_name || ''}`.trim().toLowerCase();
+      return String(officer.email || '').toLowerCase() === lower || full === lower || rankLast === lower || String(officer.last_name || '').toLowerCase() === lower;
+    });
+    return match?.email || (raw.includes('@') ? raw.toLowerCase() : '');
+  };
+  const mapImportRow = (source) => {
+    const row = Object.fromEntries(Object.entries(source).map(([key, value]) => [normalizeHeader(key), cellText(value)]));
+    const pick = (...keys) => keys.map(normalizeHeader).map(key => row[key]).find(value => value !== undefined && value !== '') || '';
+    const typeRaw = pick('equipment_type', 'type', 'category').toLowerCase().replace(/\s+/g, '_');
+    const allowedTypes = new Set(['computer','laptop','tablet','phone','radio','vehicle','firearm','uniform','badge','body_camera','taser','other']);
+    const conditionRaw = pick('condition').toLowerCase();
+    const allowedConditions = new Set(['new','good','fair','poor','damaged']);
+    const statusRaw = pick('status').toLowerCase();
+    const assignedTo = resolveOfficerEmail(pick('assigned_to', 'assigned_officer', 'officer', 'officer_email'));
+    const purchaseCost = Number(String(pick('purchase_cost', 'cost', 'price')).replace(/[$,]/g, ''));
+    return {
+      equipment_type: allowedTypes.has(typeRaw) ? typeRaw : 'other',
+      product_name: pick('product_name', 'name', 'equipment_name', 'item'),
+      model_number: pick('model_number', 'model'),
+      serial_number: pick('serial_number', 'serial', 'asset_id', 'asset_number', 'inventory_number'),
+      imei_number: pick('imei_number', 'imei'),
+      date_issued: pick('date_issued', 'issued_date'),
+      assigned_to: assignedTo,
+      condition: allowedConditions.has(conditionRaw) ? conditionRaw : 'good',
+      purchase_date: pick('purchase_date', 'purchased_date'),
+      purchase_cost: Number.isFinite(purchaseCost) && purchaseCost >= 0 ? purchaseCost : undefined,
+      warranty_expiration: pick('warranty_expiration', 'warranty_expires', 'warranty_date'),
+      notes: pick('notes', 'note', 'comments'),
+      status: ['available','assigned','maintenance','retired'].includes(statusRaw) ? statusRaw : (assignedTo ? 'assigned' : 'available'),
+    };
+  };
+  const handleEquipmentImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      let rawRows = [];
+      if (extension === 'csv') {
+        rawRows = parseCsv(await file.text());
+      } else if (extension === 'xlsx') {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(await file.arrayBuffer());
+        const sheet = workbook.worksheets[0];
+        if (!sheet) throw new Error('The workbook does not contain a worksheet.');
+        sheet.eachRow({ includeEmpty: false }, row => rawRows.push(row.values.slice(1).map(cellText)));
+      } else {
+        throw new Error('Use an .xlsx or .csv equipment file.');
+      }
+      if (rawRows.length < 2) throw new Error('The file needs a header row and at least one equipment row.');
+      const headers = rawRows[0].map(cellText);
+      const imported = rawRows.slice(1).map(values => Object.fromEntries(headers.map((header, index) => [header, values[index]]))).map(mapImportRow);
+      const valid = imported.filter(row => row.product_name && row.serial_number);
+      const invalid = imported.length - valid.length;
+      const existingBySerial = new Map((equipment || []).filter(item => item.serial_number).map(item => [String(item.serial_number).trim().toLowerCase(), item]));
+      let created = 0, updated = 0, failed = 0;
+      for (const row of valid) {
+        try {
+          const duplicate = existingBySerial.get(String(row.serial_number).trim().toLowerCase());
+          const payload = Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined));
+          if (duplicate?.id) { await base44.entities.Equipment.update(duplicate.id, payload); updated += 1; }
+          else { const createdRow = await base44.entities.Equipment.create(payload); created += 1; existingBySerial.set(String(row.serial_number).trim().toLowerCase(), createdRow); }
+        } catch (error) {
+          console.error('Equipment import row failed', row.serial_number, error);
+          failed += 1;
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      setImportResult({ file: file.name, total: imported.length, created, updated, invalid, failed });
+    } catch (error) {
+      setImportResult({ error: error?.message || 'Unable to import equipment file.' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
