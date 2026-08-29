@@ -20,6 +20,13 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   }, [safeSections, defaultSection, queryParam]);
   const [section, setSection] = useState(initial);
 
+  useEffect(() => {
+    if (!safeSections.length) return;
+    if (!safeSections.some(item => item.id === section)) {
+      setSection(defaultSection && safeSections.some(item => item.id === defaultSection) ? defaultSection : safeSections[0].id);
+    }
+  }, [section, defaultSection, safeSections]);
+
   const select = next => {
     setSection(next);
     const url = new URL(window.location.href);
