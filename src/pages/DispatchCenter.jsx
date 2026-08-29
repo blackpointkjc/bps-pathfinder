@@ -434,8 +434,12 @@ export default function DispatchCenter() {
     const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
     const unassignedCalls = activeCalls.filter(call => !call.assigned_units?.length);
     const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(call.priority));
-    const oldestCallMinutes = activeCalls.length
-        ? Math.max(...activeCalls.map(call => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000))))
+    // "Old/wait" time is a Pathfinder property-monitoring metric only. General
+    // GRAC/agency calls must never make this timer old or red.
+    const propertyAlertCalls = activeCalls.filter(call => Boolean(findPropertyMatch(call, monitoredProperties)));
+    const callAgeMinutes = (call) => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000));
+    const oldestPropertyCallMinutes = propertyAlertCalls.length
+        ? Math.max(...propertyAlertCalls.map(callAgeMinutes))
         : 0;
 
     const handleAcknowledge = () => {
@@ -523,7 +527,7 @@ export default function DispatchCenter() {
                     { label: 'HIGH PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
                     { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
                     { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
-                    { label: 'OLDEST WAIT', value: `${oldestCallMinutes}m`, tone: oldestCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
+                    { label: 'PROPERTY OLDEST', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
                 ].map(({ label, value, tone, icon: Icon }) => (
                     <div key={label} className="flex min-w-0 items-center gap-1.5 border-b border-r border-[#17283b] px-2 py-1.5 lg:border-b-0">
                         <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
@@ -610,9 +614,13 @@ export default function DispatchCenter() {
                                     </div>
                                     <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
                                         <div>{formatEasternTime(call.time_received || call.created_date)}</div>
-                                        <div className={`mt-1 font-bold ${Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
-                                            {Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000))} MIN AGO
-                                        </div>
+                                        {findPropertyMatch(call, monitoredProperties) ? (
+                                            <div className={`mt-1 font-bold ${callAgeMinutes(call) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
+                                                {callAgeMinutes(call)} MIN AGO · PROPERTY
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 font-bold text-slate-700">AGENCY CALL</div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
