@@ -24,38 +24,41 @@ export default function AdminDashboard() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
+  const { data: allUsers = [] } = useQuery({
     queryKey: ['adminDashboardActiveUsers'],
     queryFn: async () => {
       const users = await listDirectoryUsers();
-      return users.filter(u => !u.termination_date);
+      return (Array.isArray(users) ? users : []).filter(u => !u?.termination_date);
     },
     enabled: user?.role === 'admin',
+    initialData: [],
   });
 
-  const { data: todayEntries } = useQuery({
+  const { data: todayEntries = [] } = useQuery({
     queryKey: ['todayTimeEntries'],
     queryFn: async () => {
       const entries = await base44.entities.TimeEntry.list('-created_date');
       const today = format(new Date(), 'yyyy-MM-dd');
-      return entries.filter(e => 
+      return (Array.isArray(entries) ? entries : []).filter(e => 
         format(new Date(e.clock_in), 'yyyy-MM-dd') === today
       );
     },
     enabled: user?.role === 'admin',
+    initialData: [],
   });
 
-  const { data: activeOfficers } = useQuery({
+  const { data: activeOfficers = 0 } = useQuery({
     queryKey: ['activeOfficers'],
     queryFn: async () => {
       const entries = await base44.entities.TimeEntry.list('-created_date');
-      const active = entries.filter(e => !e.clock_out);
+      const active = (Array.isArray(entries) ? entries : []).filter(e => !e?.clock_out);
       return active.length;
     },
     enabled: user?.role === 'admin',
+    initialData: 0,
   });
 
-  const { data: adminWork = {} } = useQuery({
+  const { data: adminWork = { reports: [], availability: [], timeOff: [] } } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
       const reportRows = [];
@@ -77,8 +80,8 @@ export default function AdminDashboard() {
       const timeOff = await base44.entities.TimeOffRequest.list('-created_date', 100).catch(() => []);
       return {
         reports: reportRows,
-        availability: availability.filter(row => String(row.status || '').toLowerCase() === 'pending'),
-        timeOff: timeOff.filter(row => String(row.status || '').toLowerCase() === 'pending'),
+        availability: (Array.isArray(availability) ? availability : []).filter(row => String(row?.status || '').toLowerCase() === 'pending'),
+        timeOff: (Array.isArray(timeOff) ? timeOff : []).filter(row => String(row?.status || '').toLowerCase() === 'pending'),
       };
     },
     enabled: user?.role === 'admin',
