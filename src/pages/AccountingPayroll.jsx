@@ -124,9 +124,9 @@ export default function AccountingPayroll() {
         const payload = result?.data || result || {};
         if (payload.error) throw new Error(payload.error);
         setPayrollCatchup({
-          state: payload.created > 0 ? 'created' : 'current',
-          message: payload.created > 0
-            ? `${payload.created} missing payroll report${payload.created === 1 ? '' : 's'} created for ${period.period_name}.`
+          state: payload.created > 0 || payload.updated > 0 ? 'created' : 'current',
+          message: payload.created > 0 || payload.updated > 0
+            ? `${payload.created || 0} payroll report${payload.created === 1 ? '' : 's'} created and ${payload.updated || 0} recalculated for ${period.period_name}.`
             : `${period.period_name} payroll reports are current.`,
         });
         queryClient.invalidateQueries({ queryKey: ['accountingData'] });
@@ -158,10 +158,10 @@ export default function AccountingPayroll() {
       await queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       await refetchPayroll();
       setPayrollCatchup({
-        state: payload.created > 0 ? 'created' : 'current',
-        message: payload.created > 0
-          ? `${payload.created} payroll report${payload.created === 1 ? '' : 's'} created for ${period.period_name}.`
-          : `${period.period_name} is current. Existing reports were preserved and no duplicates were created.`,
+        state: payload.created > 0 || payload.updated > 0 ? 'created' : 'current',
+        message: payload.created > 0 || payload.updated > 0
+          ? `${payload.created || 0} payroll report${payload.created === 1 ? '' : 's'} created and ${payload.updated || 0} recalculated for ${period.period_name}.`
+          : `${period.period_name} is current. No payroll values required changes.`,
       });
       payrollCatchupAttempts.current.add(period.id);
     } catch (error) {
@@ -588,7 +588,10 @@ export default function AccountingPayroll() {
   const generatedGross = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
     .reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
-  const totalGross = Math.max(generatedGross, accruedGross);
+  const hasGeneratedPayroll = payrollEntries.some(entry =>
+    !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date)
+  );
+  const totalGross = hasGeneratedPayroll ? generatedGross : accruedGross;
   const totalPayrollHours = selectedPeriod ? timeEntries.reduce((sum, entry) => {
     const entryDate = String(entry.clock_in || '').slice(0, 10);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
