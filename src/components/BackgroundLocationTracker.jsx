@@ -116,7 +116,8 @@ export default function BackgroundLocationTracker({ user }) {
   // Establish the live session through the same backend upsert used by GPS/heartbeat.
   // Do not directly create/delete ActiveOfficer rows here: that raced with logLocation
   // and produced duplicate live rows for the same officer, allowing status boards to
-  // briefly resolve the wrong/stale record.
+  // briefly resolve the wrong/stale record. Do not clear the server's last coordinate
+  // on mount: opening another page/tab must not erase a valid fix from an active device.
   useEffect(() => {
     if (!shouldPublish || !user?.email) return;
 
@@ -124,7 +125,6 @@ export default function BackgroundLocationTracker({ user }) {
       try {
         await persistLiveState({
           heartbeat_only: true,
-          reset_gps: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
@@ -196,6 +196,7 @@ export default function BackgroundLocationTracker({ user }) {
           unit_number: user.unit_number || '',
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+          time_entry_id: activeEntry?.id || '',
           last_update: new Date().toISOString(),
           device_fix_at: new Date(fixTimestamp).toISOString(),
           latitude: lat,
@@ -315,6 +316,7 @@ export default function BackgroundLocationTracker({ user }) {
             unit_number: user.unit_number || '',
             current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
             clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+            time_entry_id: activeEntry?.id || '',
             ...(fix && Date.now() - Number(fix.timestamp || 0) <= 2 * 60 * 1000 ? {
               latitude: fix.latitude,
               longitude: fix.longitude,
