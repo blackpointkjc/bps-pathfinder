@@ -99,8 +99,8 @@ export default function DispatchCenter() {
         const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
         const localInterval = setInterval(() => {
             loadActiveCalls();
-        }, 20000);
-        const unitsInterval = setInterval(loadUnits, 10000);
+        }, 60000);
+        const unitsInterval = setInterval(loadUnits, 20000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onStatusChanged = () => loadUnits();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
@@ -158,6 +158,7 @@ export default function DispatchCenter() {
                 || user.dispatch_role === true
                 || roles.has('dispatch')
                 || roles.has('cad_access')
+                || roles.has('supervisor')
                 || roles.has('full_access');
             
             if (!hasDispatchAccess) {
@@ -166,10 +167,9 @@ export default function DispatchCenter() {
                 return;
             }
 
-            await Promise.all([
-                loadUnits(),
-                loadActiveCalls()
-            ]);
+            // Initialize sequentially so opening CAD does not create a request burst.
+            await loadActiveCalls();
+            await loadUnits();
         } catch (error) {
             console.error('Error initializing:', error);
             toast.error('Failed to load dispatch center');
