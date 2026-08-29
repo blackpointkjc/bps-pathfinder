@@ -136,7 +136,10 @@ Deno.serve(async (req) => {
     const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
     // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
     const mode = requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
-    const radius = Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5));
+    // Shadow dispatch uses a company-wide 500-meter nearby threshold. Officers
+    // do not have to be assigned to the property's geofence or operating area.
+    const nearbyLimitMeters = 500;
+    const radius = nearbyLimitMeters / 1609.344;
 
     // A completed live evaluation is the permanent idempotency receipt for this
     // property-alert event. Refreshes, ingestion reconnects, and timed rechecks
@@ -236,9 +239,8 @@ Deno.serve(async (req) => {
         propertyValues.some(propertyValue => authorization === propertyValue
           || (propertyValue.length >= 4 && (authorization.includes(propertyValue) || propertyValue.includes(authorization))))
       );
-      // A reliable GPS result keeps response-area policy strict. With no GPS,
-      // clocked-in units remain eligible but matching-area units rank ahead.
-      if (reliableGps && !authorizedForProperty) reasons.push('No matching property, division, or response-area authorization');
+      // Property/geofence membership affects ranking only. It never blocks a
+      // nearby officer from receiving the call.
 
       const officerQualifications = [
         ...list(officer.officer_certifications),
@@ -259,7 +261,8 @@ Deno.serve(async (req) => {
       if (requiredRanks.length && !requiredRanks.includes(lower(officer.rank))) reasons.push('Rank does not meet property policy');
 
       const distance = reliableGps ? distanceMiles(propertyLat, propertyLon, lat, lon) : Number.POSITIVE_INFINITY;
-      if (reliableGps && distance > radius) reasons.push(`Outside configured ${radius} mile response radius`);
+      const distanceMeters = Number.isFinite(distance) ? distance * 1609.344 : Number.POSITIVE_INFINITY;
+      if (reliableGps && distanceMeters > nearbyLimitMeters) reasons.push(`More than ${nearbyLimitMeters} meters from the call`);
 
       const locationFallback = !reliableGps;
       const clockInTime = openEntry?.clock_in || session?.clock_in_time || null;
@@ -284,8 +287,8 @@ Deno.serve(async (req) => {
           ...summary,
           score,
           reasons: locationFallback
-            ? ['Clocked in', 'Available', authorizedForProperty ? 'Authorized response area' : 'Company-wide clocked-in fallback', 'GPS unavailable; location requirement waived', 'No higher-priority assignment']
-            : ['Clocked in', 'Available', 'Fresh reliable GPS', 'Authorized', 'Within radius', 'No higher-priority assignment'],
+            ? ['Clocked in', 'Available', authorizedForProperty ? 'Matching response area' : 'Company-wide clocked-in fallback', 'GPS unavailable; location requirement waived', 'No higher-priority assignment']
+            : ['Clocked in', 'Available', 'Fresh reliable GPS', `Within ${nearbyLimitMeters} meters`, 'Geofence membership not required', 'No higher-priority assignment'],
         });
       }
     }
