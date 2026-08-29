@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
@@ -18,6 +18,7 @@ import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
 import CallHeatmapLayer from './CallHeatmapLayer';
+import PathfinderTileLayer from './PathfinderTileLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -248,14 +249,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             minZoom={3}
             maxZoom={20}
         >
-            <TileLayer
-                key={`${baseMapType}-${mapTheme}-${isNavigating ? 'nav' : 'normal'}`}
-                attribution={getTileAttribution()}
-                url={getTileLayerUrl()}
-                maxZoom={20}
-                maxNativeZoom={20}
-                className={mapTheme === 'night' ? 'map-night-mode' : ''}
-            />
+            <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
 
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
