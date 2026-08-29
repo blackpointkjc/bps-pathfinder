@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { runVoiceDedupeSelfTest } from '@/utils/voiceAnnouncer';
+import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const STORAGE_KEY = 'pathfinder_runtime_issues_v1';
 const MAX_ISSUES = 100;
@@ -213,9 +214,7 @@ export async function runClientFunctionalAudit() {
       area: 'Live Location Tracking',
       title: 'Live officer tracking failed its functional check',
       run: async () => {
-        const response = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
-        const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
+        const payload = await getOfficerLocationSnapshot({ locationOnly: true });
         if (!Array.isArray(payload.units)) throw new Error('The live-unit service returned an invalid response.');
       },
     },
