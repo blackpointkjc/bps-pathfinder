@@ -12,26 +12,38 @@ export default function ActiveTracker() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: activeOfficers = [] } = useQuery({
-    queryKey: ['activeOfficers'],
+  const { data: activeOfficers = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['activeOfficers', user?.id],
     queryFn: async () => {
       const result = await base44.functions.invoke('getOnDutyUnits', {});
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      return payload.units || [];
+      // Full getOnDutyUnits returns the canonical enriched user rows. Use those
+      // when available so rank/name/status/location all come from one source.
+      const rows = Array.isArray(payload.users) && payload.users.length ? payload.users : (payload.units || []);
+      return rows.filter(row => row.session_active !== false && row.status !== 'Out of Service');
     },
+    enabled: !!user?.id,
     refetchInterval: 30000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    retry: 1,
   });
 
   // Read-only view. The app-wide BackgroundLocationTracker is the only component
   // permitted to create/update/remove ActiveOfficer live-location records.
 
-  if (user?.role !== 'admin') {
+  const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const canTrack = roles.has('admin') || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access') || roles.has('dispatch') || user?.dispatch_role === true;
+  const officerDisplay = (officer) => {
+    const last = String(officer?.last_name || officer?.full_name || officer?.officer_name || '').trim().split(/\s+/).pop();
+    return [officer?.rank, last].filter(Boolean).join(' ') || (officer?.unit_number ? `Unit ${officer.unit_number}` : 'Officer');
+  };
+
+  if (user?.id && !canTrack) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Operational Tracking Access Required</h2>
         <p className="text-slate-600">You don't have permission to access this page.</p>
       </div>
     );
@@ -73,8 +85,7 @@ export default function ActiveTracker() {
                         {officer.officer_name?.charAt(0) || 'O'}
                       </span>
                     </div>
-                    {/* Using officer.officer_name directly as it's already the display name for ActiveOfficer records */}
-                    <span className="text-slate-900">{officer.officer_name}</span> 
+                    <span className="text-slate-900">{officerDisplay(officer)}</span> 
                   </div>
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" title="Active" />
                 </CardTitle>
@@ -84,7 +95,7 @@ export default function ActiveTracker() {
                   <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-xs text-slate-500">Current Location</p>
-                    <p className="text-sm font-semibold text-slate-900">{officer.current_location}</p>
+                    <p className="text-sm font-semibold text-slate-900">{officer.current_location || officer.assigned_location || 'Location pending'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
@@ -105,10 +116,10 @@ export default function ActiveTracker() {
                     </p>
                   </div>
                 </div>
-                {officer.latitude && officer.longitude && (
+                {Number.isFinite(Number(officer.latitude)) && Number.isFinite(Number(officer.longitude)) && (
                   <div className="pt-2 border-t border-slate-200">
                     <p className="text-xs text-slate-500 font-mono">
-                      GPS: {officer.latitude.toFixed(6)}, {officer.longitude.toFixed(6)}
+                      GPS: {Number(officer.latitude).toFixed(6)}, {Number(officer.longitude).toFixed(6)}
                     </p>
                   </div>
                 )}
@@ -117,11 +128,22 @@ export default function ActiveTracker() {
           ))}
         </div>
 
-        {!activeOfficers?.length && (
+        {error && (
+          <Card className="border border-red-800/50 bg-red-950/20 shadow-lg">
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" />
+              <p className="font-bold text-red-200">Officer tracking could not refresh.</p>
+              <p className="mt-1 text-sm text-slate-400">{error?.message || 'Unable to load the live officer feed.'}</p>
+              <button onClick={() => refetch()} className="mt-4 rounded-lg border border-red-600 px-4 py-2 text-xs font-black text-red-100">TRY AGAIN</button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!isLoading && !error && !activeOfficers?.length && (
           <Card className="border-none shadow-lg">
             <CardContent className="p-12 text-center">
               <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <p className="text-slate-500">No officers currently on duty</p>
+              <p className="text-slate-500">No officers currently have a fresh active tracking session.</p>
             </CardContent>
           </Card>
         )}
@@ -129,7 +151,7 @@ export default function ActiveTracker() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
             <strong>Note:</strong> Officer locations update automatically while they are signed into the app. 
-            This page refreshes every 5 seconds to show real-time status.
+            Live location comes from the same canonical Pathfinder GPS/session feed used by CAD. This page refreshes every 30 seconds and also refreshes when you return to the window.
           </p>
         </div>
       </div>
