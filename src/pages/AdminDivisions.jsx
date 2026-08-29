@@ -196,17 +196,17 @@ export default function AdminDivisions() {
   }
 
   return (
-    <div className="divisions-page p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-600" />
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Company Areas & Divisions</h1>
-              <p className="text-slate-600">Use two clear levels: Division = state/region; Operating Area = city/market inside that division.</p>
+    <div className="divisions-page min-h-screen p-3 sm:p-4 md:p-6">
+      <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-8">
+        <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <Shield className="h-8 w-8 shrink-0 text-amber-600" />
+            <div className="min-w-0">
+              <h1 className="break-words text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">Company Areas & Divisions</h1>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">Use two clear levels: Division = state/region; Operating Area = city/market inside that division.</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto">
             <Button
               onClick={() => {
                 setEditingDivision(null);
@@ -221,10 +221,10 @@ export default function AdminDivisions() {
                 setShowDialog(true);
               }}
               variant="outline"
-              className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+              className="w-full justify-center whitespace-normal border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 xl:w-auto"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Operating Area
+              <Plus className="mr-2 h-4 w-4 shrink-0" />
+              <span>Add Operating Area</span>
             </Button>
             <Button
               onClick={() => {
@@ -232,10 +232,10 @@ export default function AdminDivisions() {
                 resetForm();
                 setShowDialog(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="w-full justify-center whitespace-normal bg-blue-600 hover:bg-blue-700 xl:w-auto"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Division / Region
+              <Plus className="mr-2 h-4 w-4 shrink-0" />
+              <span>Add Division / Region</span>
             </Button>
           </div>
         </div>
