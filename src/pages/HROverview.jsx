@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, CalendarClock, Clock3, Building2, Users, ClipboardCheck, ArrowRight, UserCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -16,6 +16,24 @@ const actions = [
 const clean = value => String(value || '').replace(/_/g, ' ').trim();
 
 export default function HROverview() {
+  const queryClient = useQueryClient();
+  const completeTask = useMutation({
+    mutationFn: async item => {
+      const result = await base44.functions.invoke('getRoleWorkQueue', {
+        action: 'complete',
+        task_key: item.id,
+        title: item.title,
+        person: item.person,
+        kind: item.kind,
+        source_id: item.source_id,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] }),
+  });
+
   const { data = {}, isLoading, error } = useQuery({
     queryKey: ['hrOverviewSnapshot'],
     queryFn: async () => {
@@ -49,7 +67,7 @@ export default function HROverview() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[['Active Employees', counts.active_employees ?? employees.length, Users, 'Directory accounts currently active'], ['Clocked In', counts.clocked_in ?? activeEntries.length, UserCheck, 'Employees with open time entries'], ['Attendance / Reports', (counts.missed_clock_ins || 0) + (counts.missing_reports || 0), AlertCircle, 'Missed clock-ins and required reports'], ['All Pending HR Work', counts.total || 0, ClipboardCheck, 'PTO, users, reports, availability and reviews']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
+          {[['Active Employees', counts.active_employees ?? employees.length, Users, 'Directory accounts currently active'], ['Clocked In', counts.clocked_in ?? activeEntries.length, UserCheck, 'Employees with open time entries'], ['Attendance Exceptions', counts.missed_clock_ins || 0, AlertCircle, 'Scheduled employees who have not clocked in'], ['All Pending HR Work', counts.total || 0, ClipboardCheck, 'Attendance, PTO and performance reviews']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
@@ -57,7 +75,9 @@ export default function HROverview() {
             <div className="flex items-center justify-between"><div><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">HR work queue</h3></div><AlertCircle className="h-5 w-5 text-amber-300"/></div>
             <div className="mt-4 space-y-2">
               {!!data.load_errors?.length && <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">Partial queue data: {data.load_errors.join(', ')} could not be loaded. Available tasks are still shown below.</div>}
-              {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">HR work queue could not load: {error.message}</div> : pendingActions.length ? pendingActions.slice(0, 16).map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><Link to={createPageUrl(item.page)} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR actions are waiting.</div>}
+              {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">HR work queue could not load: {error.message}</div> : pendingActions.length ? pendingActions.slice(0, 16).map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><div className="flex shrink-0 flex-wrap gap-2"><Link to={createPageUrl(item.page)} className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-center text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link><button type="button" onClick={() => completeTask.mutate(item)} disabled={completeTask.isPending} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">MARK DONE</button></div></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR actions are waiting.</div>}
+              {!!data.recently_completed?.length && <details className="mt-3 rounded-xl border border-slate-800 bg-slate-950/30 p-3"><summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-slate-400">Recently completed ({data.recently_completed.length})</summary><div className="mt-3 space-y-2">{data.recently_completed.slice(0,6).map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs"><span className="font-bold text-slate-300">{item.title || item.task_key}</span><span className="text-emerald-300">{item.completed_at ? new Date(item.completed_at).toLocaleString() : 'Completed'}</span></div>)}</div></details>}
+              {completeTask.error && <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">{completeTask.error.message}</div>}
             </div>
           </section>
 
