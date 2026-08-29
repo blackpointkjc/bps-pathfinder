@@ -3,7 +3,6 @@ import { Briefcase, CalendarClock, Clock3, Building2, Users, ClipboardCheck, Arr
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryUsers } from '@/lib/appDirectory';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 
 const actions = [
@@ -17,43 +16,26 @@ const actions = [
 const clean = value => String(value || '').replace(/_/g, ' ').trim();
 
 export default function HROverview() {
-  const { data = {}, isLoading } = useQuery({
+  const { data = {}, isLoading, error } = useQuery({
     queryKey: ['hrOverviewSnapshot'],
     queryFn: async () => {
-      const employees = await listDirectoryUsers('-last_updated', 500).catch(() => []);
-      const leave = await base44.entities.TimeOffRequest.list('-created_date', 150).catch(() => []);
-      const reviewsResult = await base44.functions.invoke('managePerformanceReviews', { action: 'list' }).catch(() => ({}));
-      const reviewsPayload = reviewsResult?.data || reviewsResult || {};
-      const entries = await base44.entities.TimeEntry.list('-clock_in', 150).catch(() => []);
-      return { employees, leave, reviews: reviewsPayload.reviews || [], entries };
+      // Idempotent: creates only annual reviews that are actually due and missing.
+      const annualResult = await base44.functions.invoke('generateAnnualPerformanceReviews', {}).catch(err => ({ data: { error: err?.message || 'Annual review check failed' } }));
+      const annualPayload = annualResult?.data || annualResult || {};
+      const queueResult = await base44.functions.invoke('getRoleWorkQueue', {});
+      const queue = queueResult?.data || queueResult || {};
+      if (queue.error) throw new Error(queue.error);
+      return { ...queue, annual_review_check_error: annualPayload.error || '' };
     },
-    staleTime: 60000,
-    refetchInterval: 120000,
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const employees = (data.employees || []).filter(row => !row.termination_date);
   const directory = buildDirectoryIndex(employees);
-  const pendingLeave = (data.leave || []).filter(row => String(row.status || '').toLowerCase() === 'pending');
-  const openReviews = (data.reviews || []).filter(row => String(row.workflow_stage || '').toLowerCase() !== 'approved');
-  const hrApprovalReviews = openReviews.filter(row => String(row.workflow_stage || '').toLowerCase() === 'hr_approval_pending');
-  const activeEntries = (data.entries || []).filter(row => row.clock_in && !row.clock_out);
-
-  const pendingActions = [
-    ...pendingLeave.slice(0, 5).map(row => ({
-      id: `pto-${row.id}`,
-      title: operationalName(row, directory, { fallback: 'Employee' }),
-      type: 'PTO / Leave Request',
-      detail: clean(row.request_type || row.leave_type || 'Pending approval'),
-      page: 'AdminPTOApproval',
-    })),
-    ...hrApprovalReviews.slice(0, 5).map(row => ({
-      id: `review-${row.id}`,
-      title: operationalName(row, directory, { fallback: 'Officer' }),
-      type: 'Performance Review Final Approval',
-      detail: 'Supervisor and officer steps complete · HR approval required',
-      page: 'AdminPerformanceReviews',
-    })),
-  ].slice(0, 8);
+  const counts = data.counts || {};
+  const activeEntries = data.active_entries || [];
+  const pendingActions = data.tasks || [];
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
@@ -67,14 +49,14 @@ export default function HROverview() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[['Active Employees', employees.length, Users, 'Directory accounts currently active'], ['Clocked In', activeEntries.length, UserCheck, 'Employees with open time entries'], ['PTO Awaiting Action', pendingLeave.length, CalendarClock, 'Real requests requiring HR decision'], ['HR Review Approvals', hrApprovalReviews.length, ClipboardCheck, 'Performance reviews ready for HR']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
+          {[['Active Employees', counts.active_employees ?? employees.length, Users, 'Directory accounts currently active'], ['Clocked In', counts.clocked_in ?? activeEntries.length, UserCheck, 'Employees with open time entries'], ['Attendance / Reports', (counts.missed_clock_ins || 0) + (counts.missing_reports || 0), AlertCircle, 'Missed clock-ins and required reports'], ['All Pending HR Work', counts.total || 0, ClipboardCheck, 'PTO, users, reports, availability and reviews']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
           <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5">
             <div className="flex items-center justify-between"><div><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">HR work queue</h3></div><AlertCircle className="h-5 w-5 text-amber-300"/></div>
             <div className="mt-4 space-y-2">
-              {pendingActions.length ? pendingActions.map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.type}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><Link to={createPageUrl(item.page)} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR approvals are waiting.</div>}
+              {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">HR work queue could not load: {error.message}</div> : pendingActions.length ? pendingActions.slice(0, 16).map(item => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-bold text-white">{item.title}</div><div className="text-xs font-bold text-amber-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div></div><Link to={createPageUrl(item.page)} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">OPEN TASK</Link></div>) : <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-800/60 p-7 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4"/>No HR actions are waiting.</div>}
             </div>
           </section>
 
