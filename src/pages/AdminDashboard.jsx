@@ -237,6 +237,30 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
+        <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Today's Workforce Activity</div><h2 className="mt-1 text-xl font-black text-white">Clock activity and staffing movement</h2></div>
+              <Clock className="h-5 w-5 text-cyan-300" />
+            </div>
+            <div className="mt-4 space-y-2">
+              {(todayEntries || []).slice(0, 7).map(entry => (
+                <div key={entry.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3">
+                  <div className="min-w-0"><div className="truncate text-sm font-bold text-white">{getOfficerName(entry.officer_email)}</div><div className="truncate text-xs text-cyan-300">{entry.location || 'Location not listed'}</div></div>
+                  <div className="shrink-0 text-right text-xs text-slate-400"><div>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '—'}</div><div className={entry.clock_out ? 'text-slate-500' : 'font-bold text-emerald-300'}>{entry.clock_out ? `Out ${format(new Date(entry.clock_out), 'h:mm a')}` : 'ON DUTY'}</div></div>
+                </div>
+              ))}
+              {!(todayEntries || []).length && <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No time activity has been recorded today.</div>}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg">
+            <div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Command Shortcuts</div><h2 className="mt-1 text-xl font-black text-white">Most-used administration tools</h2>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+              {adminTools.filter(tool => ['analytics','scheduling','tracker','all_reports','announcements'].includes(tool.id)).map(tool => <Link key={tool.id} to={tool.url} className="group flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 transition hover:border-cyan-500/40 hover:bg-[#102238]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-300"><tool.icon className="h-4 w-4"/></div><span className="min-w-0 flex-1 text-sm font-bold text-white">{tool.title}</span><span className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan-300">→</span></Link>)}
+            </div>
+          </section>
+        </div>
 
       </div>
     </div>
