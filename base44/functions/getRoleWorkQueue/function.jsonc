@@ -1,0 +1,34 @@
+{
+  "name": "getRoleWorkQueue",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Hourly Administrative Work Queue Scan",
+      "description": "Refresh administrative reports, access, scheduling, expense and request tasks every hour.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "5 * * * *",
+      "function_args": {
+        "queue_role": "admin",
+        "hourly_check": true
+      },
+      "ends_type": "never",
+      "is_active": true
+    },
+    {
+      "name": "Hourly HR Work Queue Scan",
+      "description": "Refresh attendance, late clock-out, leave and performance-review tasks every hour.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "35 * * * *",
+      "function_args": {
+        "queue_role": "hr",
+        "hourly_check": true
+      },
+      "ends_type": "never",
+      "is_active": true
+    }
+  ]
+}
