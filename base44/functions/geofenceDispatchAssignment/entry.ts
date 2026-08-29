@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
 
     let users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
     let activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
+    let timeEntries = await withRetry(() => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1500));
     let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
 
     const propertyLat = Number(property.latitude ?? call.latitude);
@@ -117,6 +118,13 @@ Deno.serve(async (req) => {
         latitude: unit.latitude,
         longitude: unit.longitude,
         current_location: property.site_name || property.address,
+      }));
+      timeEntries = input.test_units.filter((unit: any) => unit.session_active !== false).map((unit: any, index: number) => ({
+        id: `simulation-entry-${index + 1}`,
+        officer_email: String(unit.email || `simulation-${index + 1}@example.invalid`),
+        clock_in: unit.clock_in_time || nowIso,
+        location: property.site_name || property.address,
+        archived: false,
       }));
       assignments = [];
     }
@@ -175,6 +183,15 @@ Deno.serve(async (req) => {
         activeByEmail.set(email, active);
       }
     }
+    const openEntryByEmail = new Map<string, any>();
+    for (const entry of timeEntries || []) {
+      const email = lower(entry.officer_email);
+      if (!email || !entry.clock_in || entry.clock_out || entry.archived === true) continue;
+      const previous = openEntryByEmail.get(email);
+      if (!previous || new Date(entry.clock_in).getTime() > new Date(previous.clock_in).getTime()) {
+        openEntryByEmail.set(email, entry);
+      }
+    }
     // Assignment lifecycle is authoritative for unit occupancy. Clearing/archive
     // workflows already close CallAssignment rows; avoiding a second full call-list
     // read keeps this evaluator fast and reliable during refresh/reconnect storms.
@@ -190,33 +207,38 @@ Deno.serve(async (req) => {
       const reasons: string[] = [];
       const email = lower(officer.email);
       const session = activeByEmail.get(email);
-      const status = lower(session?.status || officer.status);
+      const openEntry = openEntryByEmail.get(email);
+      const clockedIn = Boolean(openEntry || (session && session.session_active !== false));
+      const status = lower(session?.status || officer.status || (openEntry ? 'Available' : ''));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
       const lat = Number(session?.latitude);
       const lon = Number(session?.longitude);
+      const reliableGps = Boolean(session && session.session_active !== false
+        && Number.isFinite(gpsAt) && gpsAt >= freshCutoff
+        && Number.isFinite(lat) && Number.isFinite(lon)
+        && Number.isFinite(accuracy) && accuracy <= 100);
 
-      // BackgroundLocationTracker only keeps session_active true while the field
-      // officer has an active operational session, so use that canonical live state
-      // instead of re-reading the entire TimeEntry ledger on every dispatch check.
-      if (!session || session.session_active === false) reasons.push('No active signed-in/clocked-in GPS session');
+      // GPS improves ranking but is not an eligibility requirement. If location
+      // cannot be obtained, a true open TimeEntry is the authoritative fallback.
+      if (!clockedIn) reasons.push('Officer is not currently clocked in');
       if (status !== 'available') reasons.push(`Status is ${session?.status || officer.status || 'unknown'}, not Available`);
-      if (!Number.isFinite(gpsAt) || gpsAt < freshCutoff) reasons.push('GPS location is stale');
-      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(accuracy) || accuracy > 100) reasons.push('GPS location is missing or unreliable');
       if (busyUnitIds.has(String(officer.id))) reasons.push('Officer has another active call assignment');
 
       const authorizationValues = [
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
         ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
         ...(Array.isArray(officer.assigned_sites) ? officer.assigned_sites : []),
-        officer.division, officer.subdivision, session?.current_location,
+        officer.division, officer.subdivision, session?.current_location, openEntry?.location,
       ].map(lower).filter(Boolean);
       const propertyValues = [property.id, property.site_name, property.address, property.division, property.subdivision].map(lower).filter(Boolean);
       const authorizedForProperty = authorizationValues.some(authorization =>
         propertyValues.some(propertyValue => authorization === propertyValue
           || (propertyValue.length >= 4 && (authorization.includes(propertyValue) || propertyValue.includes(authorization))))
       );
-      if (!authorizedForProperty) reasons.push('No matching property, division, or response-area authorization');
+      // A reliable GPS result keeps response-area policy strict. With no GPS,
+      // clocked-in units remain eligible but matching-area units rank ahead.
+      if (reliableGps && !authorizedForProperty) reasons.push('No matching property, division, or response-area authorization');
 
       const officerQualifications = [
         ...list(officer.officer_certifications),
@@ -236,24 +258,43 @@ Deno.serve(async (req) => {
       if (missingEquipment.length) reasons.push(`Missing equipment: ${missingEquipment.join(', ')}`);
       if (requiredRanks.length && !requiredRanks.includes(lower(officer.rank))) reasons.push('Rank does not meet property policy');
 
-      let distance = Number.POSITIVE_INFINITY;
-      if (Number.isFinite(lat) && Number.isFinite(lon)) distance = distanceMiles(propertyLat, propertyLon, lat, lon);
-      if (!Number.isFinite(distance) || distance > radius) reasons.push(`Outside configured ${radius} mile response radius`);
+      const distance = reliableGps ? distanceMiles(propertyLat, propertyLon, lat, lon) : Number.POSITIVE_INFINITY;
+      if (reliableGps && distance > radius) reasons.push(`Outside configured ${radius} mile response radius`);
 
+      const locationFallback = !reliableGps;
+      const clockInTime = openEntry?.clock_in || session?.clock_in_time || null;
       const summary = {
         unit_id: officer.id,
         officer_email: officer.email,
         unit_number: session?.unit_number || officer.unit_number || '',
         officer_name: officer.full_name || [officer.first_name, officer.last_name].filter(Boolean).join(' '),
-        status: session?.status || officer.status || '',
+        status: session?.status || officer.status || (openEntry ? 'Available' : ''),
         distance_miles: Number.isFinite(distance) ? Number(distance.toFixed(2)) : null,
         eta_minutes: Number.isFinite(distance) ? Math.max(1, Math.ceil(distance * 2)) : null,
+        location_fallback: locationFallback,
+        authorization_fallback: locationFallback && !authorizedForProperty,
+        clock_in_time: clockInTime,
       };
-      if (reasons.length) excluded.push({ ...summary, reasons });
-      else ranked.push({ ...summary, score: Number(distance.toFixed(3)), reasons: ['Clocked in', 'Active session', 'Available', 'Fresh reliable GPS', 'Authorized', 'Within radius', 'No higher-priority assignment'] });
+      if (reasons.length) {
+        const gpsReason = locationFallback && clockedIn ? ['GPS unavailable; clock-in fallback considered'] : [];
+        excluded.push({ ...summary, reasons: [...reasons, ...gpsReason] });
+      } else {
+        const score = locationFallback ? (authorizedForProperty ? 10000 : 11000) : Number(distance.toFixed(3));
+        ranked.push({
+          ...summary,
+          score,
+          reasons: locationFallback
+            ? ['Clocked in', 'Available', authorizedForProperty ? 'Authorized response area' : 'Company-wide clocked-in fallback', 'GPS unavailable; location requirement waived', 'No higher-priority assignment']
+            : ['Clocked in', 'Available', 'Fresh reliable GPS', 'Authorized', 'Within radius', 'No higher-priority assignment'],
+        });
+      }
     }
 
-    ranked.sort((a, b) => a.score - b.score);
+    ranked.sort((a, b) => {
+      if (Boolean(a.location_fallback) !== Boolean(b.location_fallback)) return a.location_fallback ? 1 : -1;
+      if (a.score !== b.score) return a.score - b.score;
+      return new Date(a.clock_in_time || 0).getTime() - new Date(b.clock_in_time || 0).getTime();
+    });
     const existingCallAssignments = (assignments || []).filter((item: any) =>
       String(item.call_id) === callId && !['cleared', 'cancelled'].includes(lower(item.status))
     );
