@@ -103,24 +103,10 @@ Deno.serve(async (req) => {
             }).catch(() => null)),
         ]);
 
-        // If the officer is signed in but their ActiveOfficer row was lost/expired,
-        // changing CAD status must recreate the live session instead of letting the
-        // Unit Status Board immediately resolve them back to OOS.
-        let createdActive = null;
-        if (!linkedActive.length && status !== 'Out of Service') {
-            createdActive = await base44.asServiceRole.entities.ActiveOfficer.create({
-                officer_email: user.email,
-                officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-                unit_number: user.unit_number || '',
-                current_location: user.current_location || user.assigned_location || 'Signed In',
-                clock_in_time: now,
-                last_update: now,
-                status,
-                user_role: user.role || 'user',
-                session_active: true,
-                current_call_info: user.current_call_info || '',
-            });
-        }
+        // Status changes never create a live-location session. BackgroundLocationTracker
+        // + logLocation exclusively own live session creation/GPS publication. If no
+        // active row exists, the status remains on User/Unit until the canonical
+        // location process establishes the session.
 
         if (status === 'Available' && !duplicateTransition) {
             const callId = user.current_call_id || 'unit-status';
@@ -143,7 +129,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
+        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length, active_record_created: false, unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
