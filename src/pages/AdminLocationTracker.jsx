@@ -392,7 +392,7 @@ export default function AdminLocationTracker() {
       longitude: Number(o.coarse_longitude),
       accuracy: Number.isFinite(Number(o.coarse_accuracy)) ? Number(o.coarse_accuracy) : null,
       gps_low_accuracy: true,
-      gps_stale: false,
+      gps_stale: o.coarse_stale === true,
     }));
   const officersForMap = [...officersWithLocation, ...officersWithLastKnown, ...officersWithCoarseLocation];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
