@@ -28,6 +28,23 @@
       "type": "number",
       "description": "GPS longitude where officer clocked in"
     },
+    "clock_in_accuracy": {
+      "type": "number",
+      "description": "Browser-reported accuracy radius in meters at clock in"
+    },
+    "location_verification_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "low_accuracy_review",
+        "manual_override"
+      ],
+      "description": "How the clock-in location was verified"
+    },
+    "location_verification_note": {
+      "type": "string",
+      "description": "Audit explanation when a low-accuracy or manual location fallback was used"
+    },
     "clock_out_latitude": {
       "type": "number",
       "description": "GPS latitude where officer clocked out"
