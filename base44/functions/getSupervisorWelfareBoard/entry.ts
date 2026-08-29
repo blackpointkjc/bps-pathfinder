@@ -23,29 +23,20 @@ Deno.serve(async (req) => {
     const activeCallIds = new Set(activeCalls.map((call:any) => String(call.id)));
     const assignments = (await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600))
       .filter((a:any) => activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status)));
-    const sessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300);
+    // Officer GPS/status is intentionally NOT loaded here. All live-location data
+    // comes from the canonical getOnDutyUnits feed through officerLocationHub.
     const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []);
     const statusLogs = await base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []);
     const users = await base44.asServiceRole.entities.User.list('-updated_date', 750);
 
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
-    const userByEmail = new Map((users || []).filter((u:any)=>u.email).map((u:any)=>[lower(u.email), u]));
-    const sessionByEmail = new Map<string,any>();
-    for (const s of sessions || []) {
-      const key = lower(s.officer_email);
-      if (!key || sessionByEmail.has(key)) continue;
-      sessionByEmail.set(key, s);
-    }
-
     const now = Date.now();
-    const freshCutoff = now - 15 * 60 * 1000;
     const board:any[] = [];
     for (const a of assignments || []) {
       const call:any = callById.get(String(a.call_id));
       const officer:any = userById.get(String(a.unit_id));
       if (!call || !officer) continue;
-      const session = sessionByEmail.get(lower(officer.email));
       const anchor = lower(a.status) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));
       const pendingAckSeconds = Math.max(30, Number(call.welfare_acknowledgement_seconds || 120));
@@ -56,11 +47,9 @@ Deno.serve(async (req) => {
       board.push({
         assignment_id:a.id, call_id:call.id, cad_number:call.agency_cad_number || call.bps_reference || call.call_id || call.id,
         incident:call.incident || 'Call for service', location:call.location || '', priority:call.priority || 'medium',
-        unit_id:officer.id, unit_number:session?.unit_number || officer.unit_number || '', officer_email:lower(officer.email),
+        unit_id:officer.id, unit_number:officer.unit_number || '', officer_email:lower(officer.email),
         officer_name:[String(officer.rank || '').trim(), String(officer.last_name || '').trim() || String(officer.full_name || '').trim().split(/\s+/).pop()].filter(Boolean).join(' ') || 'Officer',
         assignment_status:a.status || 'pending', assigned_at:a.assigned_at || '', accepted_at:a.accepted_at || '', elapsed_seconds:elapsedSeconds, overdue,
-        officer_status:session?.status || officer.status || '', gps_updated_at:session?.gps_updated_at || '', gps_accuracy:session?.accuracy ?? null,
-        latitude:session?.latitude ?? null, longitude:session?.longitude ?? null,
       });
     }
     board.sort((a,b)=>Number(b.overdue)-Number(a.overdue) || b.elapsed_seconds-a.elapsed_seconds);
@@ -99,26 +88,12 @@ Deno.serve(async (req) => {
         };
       });
 
-    const liveUnits:any[] = [];
-    for (const [email, session] of sessionByEmail.entries()) {
-      const updatedAt = new Date(session?.last_update || session?.gps_updated_at || 0).getTime();
-      if (session?.session_active === false || !Number.isFinite(updatedAt) || updatedAt < freshCutoff) continue;
-      const officer:any = userByEmail.get(email);
-      liveUnits.push({
-        id:session.id, officer_email:email, unit_number:session.unit_number || officer?.unit_number || '', status:session.status || 'Signed In',
-        current_location:session.current_location || '', current_call_info:session.current_call_info || '', gps_updated_at:session.gps_updated_at || '',
-        latitude:validCoord(session.latitude) ? Number(session.latitude) : null, longitude:validCoord(session.longitude) ? Number(session.longitude) : null,
-        accuracy:session.accuracy ?? null,
-      });
-    }
-
     return Response.json({
       success:true,
       board,
       welfare_checks:activeWelfareChecks,
       supervisor_requests:pendingSupervisorRequests,
       display_by_email:displayByEmail,
-      live_units:liveUnits,
       active_calls:activeCalls,
       overdue_count:board.filter(x=>x.overdue).length,
       generated_at:new Date().toISOString(),
