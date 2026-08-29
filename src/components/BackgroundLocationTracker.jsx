@@ -130,6 +130,7 @@ export default function BackgroundLocationTracker({ user }) {
           unit_number: user.unit_number || '',
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+          time_entry_id: activeEntry?.id || '',
           user_role: user?.role || 'user',
           session_active: true,
         });
