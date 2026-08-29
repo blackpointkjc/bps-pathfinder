@@ -94,7 +94,8 @@ export default function AccountingPayroll() {
   const officers = accountingData.users || [];
   const timeEntries = accountingData.timeEntries || [];
   const config = accountingData.config || null;
-  const payrollPeriods = accountingData.payrollPeriods || [];
+  const payrollPeriods = accountingData.payrollPeriods || accountingData.payroll_periods || accountingData.periods || [];
+  const accountingLoadErrors = accountingData.load_errors || [];
 
   const latestEndedPayrollPeriod = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -923,7 +924,8 @@ export default function AccountingPayroll() {
     <div className="container mx-auto p-6 max-w-7xl">
       {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
       {payrollCatchup.state !== 'idle' && <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${payrollCatchup.state === 'error' ? 'border-red-300 bg-red-50 text-red-900' : payrollCatchup.state === 'created' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-blue-300 bg-blue-50 text-blue-900'}`}>{payrollCatchup.message}</div>}
-      {accountingError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Payroll data could not be loaded: {accountingError.message}</div>}
+      {accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><span>Payroll data could not be loaded: {accountingError?.response?.data?.error || accountingError.message}</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-black hover:bg-red-100">RETRY</button></div>}
+      {!!accountingLoadErrors.length && !accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span>Partial payroll data: {accountingLoadErrors.join(', ')} could not be loaded. Available payroll information remains visible.</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-black hover:bg-amber-100">RETRY MISSING DATA</button></div>}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>
