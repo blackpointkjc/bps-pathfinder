@@ -2,7 +2,7 @@ import { confirmInApp } from '@/lib/inAppDialog';
 import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { calculatePaidHours } from '@/lib/payrollCalculations';
 
 export default function ManageTimeEntries() {
   const location = useLocation();
+  const navigate = useNavigate();
   const requestedEntryId = new URLSearchParams(location.search).get('entry_id') || '';
   const queueKind = new URLSearchParams(location.search).get('queue_kind') || '';
   const openedEntryRef = useRef('');
@@ -46,6 +47,17 @@ export default function ManageTimeEntries() {
   });
 
   const queryClient = useQueryClient();
+
+  const clearTaskDeepLink = () => {
+    const params = new URLSearchParams(location.search);
+    const before = params.toString();
+    ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
+    const after = params.toString();
+    openedEntryRef.current = '';
+    if (after !== before) {
+      navigate({ pathname: location.pathname, search: after ? `?${after}` : '' }, { replace: true });
+    }
+  };
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -148,6 +160,7 @@ export default function ManageTimeEntries() {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       setEditingEntry(null);
+      clearTaskDeepLink();
       setEditFormData({
         clock_in: "",
         clock_out: "",
@@ -186,6 +199,7 @@ export default function ManageTimeEntries() {
       queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
       setPayrollEntryId(null);
+      clearTaskDeepLink();
       alert('Payroll and performance decision saved. The related work-queue task will close automatically.');
     },
     onError: (error) => {
@@ -222,6 +236,7 @@ export default function ManageTimeEntries() {
 
   const handleCancelEdit = () => {
     setEditingEntry(null);
+    clearTaskDeepLink();
     setEditFormData({
       clock_in: "",
       clock_out: "",
@@ -738,7 +753,7 @@ export default function ManageTimeEntries() {
                             </div>
 
                             <div className="mt-4 flex flex-wrap justify-end gap-2">
-                              <Button type="button" variant="outline" onClick={() => setPayrollEntryId(null)}>
+                              <Button type="button" variant="outline" onClick={() => { setPayrollEntryId(null); clearTaskDeepLink(); }}>
                                 Cancel
                               </Button>
                               <Button
