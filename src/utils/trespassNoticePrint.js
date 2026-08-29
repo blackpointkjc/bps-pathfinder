@@ -34,7 +34,8 @@ function openVirginiaNotice(notice, options = {}) {
   const subjectCityLine = [notice.subject_city, notice.subject_state, notice.subject_zip].filter(Boolean).join(', ');
   const propertyAddress = options.propertyAddress || loc.address || notice.location || '';
   const propertyCityLine = [loc.city, loc.state || 'VA', loc.zip_code || loc.zip].filter(Boolean).join(', ');
-  const officerPrinted = options.signatureName || options.officerName || '';
+  const rawOfficerPrinted = options.signatureName || options.officerName || '';
+  const officerPrinted = String(rawOfficerPrinted).trim().split(/\s+/).filter(Boolean).pop() || '';
   const date = notice.notice_date ? new Date(notice.notice_date) : new Date();
   const dateText = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
   const year = Number.isNaN(date.getTime()) ? '' : date.getFullYear();
@@ -62,7 +63,7 @@ function openVirginiaNotice(notice, options = {}) {
   <p class="legal"><strong>THIS NOTICE SHALL REMAIN IN FULL FORCE AND EFFECT UNTIL SUCH TIME AS THE PETITIONER WITHDRAWS THIS NOTICE OR OTHERWISE RENDERS IT INVALID.</strong></p>
   <div class="reason"><strong>REASON FOR NOTICE:</strong> ${esc(notice.reason || '')}${notice.linked_call_number ? `<br/><strong>C A D:</strong> ${esc(notice.linked_call_number)}` : ''}</div>
 
-  <div class="datesig"><div class="line">${notice.officer_signature_url || notice.signature_url ? `<img src="${esc(notice.officer_signature_url || notice.signature_url)}" style="max-height:38px;max-width:100%;object-fit:contain"/>` : ''}</div><div class="small">THIS</div><div class="line">${esc(dateText)}</div><div class="small">${esc(String(year))}</div></div>
+  <div class="datesig"><div class="line"></div><div class="small">THIS</div><div class="line">${esc(dateText)}</div><div class="small">${esc(String(year))}</div></div>
   <div class="printed"><strong>PETITIONER / AUTHORIZED AGENT PRINTED NAME:</strong> <span style="border-bottom:1px solid #000;padding:0 8px">${esc(officerPrinted)}</span></div>
   <div class="signrow"><div>${sig(notice.witness_signature_url,'WITNESS SIGNATURE')}<div class="small" style="text-align:center;margin-top:3px">${esc(notice.witness_name || '')}</div></div><div>${sig(notice.subject_signature_url,'SUBJECT SIGNATURE / ACKNOWLEDGMENT')}<div class="small" style="text-align:center;margin-top:3px">${esc(subjectName)}</div></div><div>${sig(notice.officer_signature_url || notice.signature_url,'AUTHORIZED AGENT SIGNATURE')}<div class="small" style="text-align:center;margin-top:3px">${esc(officerPrinted)}</div></div></div>
   <div class="note">NOTE: ONE RECIPIENT PER NOTICE. Subject and witness signature areas remain available even if a person declines or is unavailable to sign.</div>
