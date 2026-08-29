@@ -27,7 +27,10 @@ function paidHours(entry: any) {
     if (!Number.isFinite(breakStart) || !Number.isFinite(breakEnd) || breakEnd <= breakStart) return total;
     return total + Math.max(0, Math.min(end, breakEnd) - Math.max(start, breakStart));
   }, 0);
-  return Math.max(0, (end - start - breakMs) / 3600000);
+  const actualHours = Math.max(0, (end - start - breakMs) / 3600000);
+  if (!entry?.payroll_adjustment_decision) return actualHours;
+  const approvedHours = Number(entry.payroll_hours_override);
+  return Number.isFinite(approvedHours) && approvedHours >= 0 ? approvedHours : actualHours;
 }
 
 function sundayKey(value: unknown) {
@@ -144,9 +147,11 @@ Deno.serve(async (req) => {
     const expenseReports = await base44.asServiceRole.entities.ExpenseReport.list('-expense_date', 5000);
     const entries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000);
     const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
-    const existingKeys = new Set((existingPayroll || []).map((item: any) =>
-      `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`
-    ));
+    const payrollKey = (item: any) =>
+      `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`;
+    const existingKeys = new Set((existingPayroll || []).map(payrollKey));
+    const existingByKey = new Map((existingPayroll || []).map((item: any) => [payrollKey(item), item]));
+    const recalculateExisting = manualRun && body.force === true;
     const hasMissingEligibleOfficer = (candidate: any) => {
       const eligibleEmails = new Set<string>();
       for (const timeEntry of entries || []) {
@@ -177,7 +182,7 @@ Deno.serve(async (req) => {
           .sort((a: any, b: any) => String(a.end_date).localeCompare(String(b.end_date)))
           .find(hasMissingEligibleOfficer);
     if (!period) return Response.json({ success: true, skipped: true, reason: `No incomplete payroll period ended on or before ${endedDate}` });
-    if (body.period_id && !hasMissingEligibleOfficer(period)) {
+    if (body.period_id && !recalculateExisting && !hasMissingEligibleOfficer(period)) {
       return Response.json({ success: true, skipped: true, period_id: period.id, period_name: period.period_name, reason: 'Every eligible officer already has a payroll record for this period' });
     }
 
@@ -205,6 +210,7 @@ Deno.serve(async (req) => {
     }
 
     let created = 0;
+    let updated = 0;
     let duplicates = 0;
     const skippedNoRate: string[] = [];
     // Ensure officers who only have PTO or an approved reimbursement in the
@@ -226,7 +232,8 @@ Deno.serve(async (req) => {
 
     for (const [email, data] of grouped.entries()) {
       const key = `${email}|${period.start_date}|${period.end_date}`;
-      if (existingKeys.has(key)) { duplicates += 1; continue; }
+      const existingForKey = existingByKey.get(key);
+      if (existingForKey && !recalculateExisting) { duplicates += 1; continue; }
       const officer = data.officer;
       const baseRate = Number(officer.hourly_rate);
       const overtimeRate = Number(officer.overtime_rate_override || baseRate * overtimeMultiplier);
@@ -261,7 +268,7 @@ Deno.serve(async (req) => {
       // unchanged and add reimbursement only to the amount paid to the officer.
       const net = gross + reimbursementTotal;
 
-      const payrollEntry = await base44.asServiceRole.entities.PayrollEntry.create({
+      const payrollData = {
         officer_email: email,
         pay_period_start: period.start_date,
         pay_period_end: period.end_date,
@@ -301,10 +308,16 @@ Deno.serve(async (req) => {
         tip_occupation_code: '000',
         holidays_worked: JSON.stringify(data.holidays),
         pto_detail: JSON.stringify(officerPto.map((usage: any) => ({ date: usage.usage_date, hours: Number(usage.hours || 0), reason: usage.reason || '', source_type: usage.source_type || '' }))),
-        status: 'ready',
         payment_method: officer.payment_method || 'direct_deposit',
-        notes: `Automatically generated after ${period.period_name || 'payroll period'} ended.${reimbursementTotal > 0 ? ` Includes $${reimbursementTotal.toFixed(2)} in tax-free expense reimbursements.` : ''}`,
-      });
+        notes: `${existingForKey ? 'Recalculated' : 'Automatically generated'} after ${period.period_name || 'payroll period'} ended.${reimbursementTotal > 0 ? ` Includes $${reimbursementTotal.toFixed(2)} in tax-free expense reimbursements.` : ''}`,
+        last_recalculated_at: new Date().toISOString(),
+        payroll_source: existingForKey ? 'manual_recalculation' : 'scheduled_generation',
+      };
+      const payrollEntry = existingForKey
+        ? await base44.asServiceRole.entities.PayrollEntry.update(existingForKey.id, payrollData)
+        : await base44.asServiceRole.entities.PayrollEntry.create({ ...payrollData, status: 'ready' });
+      if (existingForKey) updated += 1;
+      else created += 1;
       for (const expense of officerExpenses) {
         await base44.asServiceRole.entities.ExpenseReport.update(expense.id, {
           payroll_period_id: period.id,
@@ -313,7 +326,6 @@ Deno.serve(async (req) => {
           tax_free: true,
         }).catch(() => null);
       }
-      created += 1;
     }
 
     if (period.status !== 'closed') await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { status: 'closed' });
@@ -331,14 +343,14 @@ Deno.serve(async (req) => {
         recipient_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
         type: 'payroll',
         priority: 'high',
-        title: `Payroll ready: ${period.period_name}`,
-        message: `${created} payroll report record(s) are ready for ${period.start_date} through ${period.end_date}. Open Payroll and print the master and itemized officer sheets.`, 
+        title: `Payroll ${updated > 0 ? 'recalculated' : 'ready'}: ${period.period_name}`,
+        message: `${created} payroll report record(s) created and ${updated} recalculated for ${period.start_date} through ${period.end_date}. Open Payroll to review the current approved hours and amounts.`, 
         action_url: '/AccountingCenter?section=payroll',
         read: false,
       });
     }
 
-    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, duplicates, skipped_no_rate: skippedNoRate });
+    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, skipped_no_rate: skippedNoRate });
   } catch (error) {
     console.error('generateScheduledPayroll failed', error);
     return Response.json({ error: error?.message || 'Unable to generate scheduled payroll' }, { status: 500 });
