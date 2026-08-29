@@ -40,6 +40,17 @@ export default function ClientDashboard() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: clientRequests = [] } = useQuery({
+    queryKey: ['clientDashboardRequests', user?.id, user?.email, getClientPreviewId()],
+    queryFn: async () => {
+      const rows = await base44.entities.SpecialCoverageRequest.list('-created_date', 100).catch(() => []);
+      return rows.filter(row => row.created_by_id === user?.id || String(row.client_email || '').toLowerCase() === String(user?.email || '').toLowerCase());
+    },
+    enabled: !!user,
+    staleTime: 60000,
+    refetchInterval: 120000,
+  });
+
   const { data: reports } = useQuery({
     queryKey: ['clientDashboardReports', clientLocations.join('|')],
     queryFn: async () => {
@@ -86,6 +97,7 @@ export default function ClientDashboard() {
   const totalReports = Object.values(reports || {}).reduce((sum, arr) => sum + arr.length, 0);
   const liveEntries = (liveBilling.time_entries || []).filter(entry => entry?.clock_in && !entry?.clock_out);
   const liveOfficers = liveBilling.officers || [];
+  const pendingClientRequests = clientRequests.filter(row => ['pending','submitted','under_review'].includes(String(row.status || '').toLowerCase()));
 
   return (
     <div className="min-h-screen bg-[#070d17] p-4 text-white md:p-6">
@@ -159,6 +171,11 @@ export default function ClientDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <section className="rounded-2xl border border-amber-500/20 bg-[#0a1421] p-5 shadow-lg">
+          <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Service requests in progress</h2><p className="mt-1 text-xs text-slate-500">Requests you submitted that are still pending or under review.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
+          <div className="mt-4 space-y-2">{pendingClientRequests.slice(0,6).map(row => <div key={row.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">Special Coverage Request</div><div className="text-xs font-bold text-cyan-200">{row.location || 'Assigned property'}</div><div className="mt-1 text-xs text-slate-500">{row.reason || row.special_requirements || 'Coverage request'} · {String(row.status || 'pending').replace(/_/g,' ')}</div></div><Link to={createPageUrl('ClientSpecialRequests')} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">VIEW TASK</Link></div>)}{!pendingClientRequests.length && <div className="rounded-xl border border-dashed border-emerald-800/60 p-6 text-center text-sm text-emerald-300">No client requests are waiting for action.</div>}</div>
+        </section>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
           <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg">
