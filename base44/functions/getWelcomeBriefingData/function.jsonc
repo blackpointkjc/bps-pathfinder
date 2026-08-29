@@ -1,0 +1,4 @@
+{
+  "name": "getWelcomeBriefingData",
+  "description": "Returns one role-aware login briefing snapshot without browser-side request bursts."
+}
