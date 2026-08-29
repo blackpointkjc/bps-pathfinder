@@ -167,31 +167,17 @@ export default function SupervisorUseOfForce() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">
-            Use-of-Force Reports
-          </h1>
-          <p className="text-slate-600">
-            Document and manage use-of-force incidents
-          </p>
-        </div>
-
-        <div className="mb-6 flex justify-end">
-          <Button
-            onClick={() => setShowDialog(true)}
-            className="bg-amber-600 hover:bg-amber-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Report
-          </Button>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#351d08_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-br from-[#33210e] via-[#111925] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
+          <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-amber-300">Supervisor Oversight</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Use-of-Force Reports</h1><p className="mt-1 text-sm text-slate-400">Document, review, and manage use-of-force incidents.</p></div>
+          <Button onClick={() => setShowDialog(true)} className="w-full shrink-0 rounded-xl bg-amber-600 hover:bg-amber-500 sm:w-auto"><Plus className="mr-2 h-4 w-4" />New Report</Button>
         </div>
 
         <div className="grid gap-4">
           {filteredReports.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6 text-center text-slate-600">
+            <Card className="rounded-2xl border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl">
+              <CardContent className="rounded-xl border border-dashed border-slate-700 py-10 text-center text-slate-400">
                 No use-of-force reports found.
               </CardContent>
             </Card>
@@ -199,7 +185,7 @@ export default function SupervisorUseOfForce() {
             filteredReports.map((report) => (
               <Card
                 key={report.id}
-                className="hover:shadow-lg transition-shadow"
+                className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl transition hover:border-amber-600/50 hover:shadow-2xl"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -217,18 +203,18 @@ export default function SupervisorUseOfForce() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <p className="text-xs text-slate-500 uppercase font-semibold">
                         Location
                       </p>
-                      <p className="text-sm text-slate-900">{report.location}</p>
+                      <p className="text-sm text-white">{report.location}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 uppercase font-semibold">
                         Force Type
                       </p>
-                      <p className="text-sm text-slate-900">
+                      <p className="text-sm text-white">
                         {getForceTypeLabel(report.force_type)}
                       </p>
                     </div>
@@ -237,7 +223,7 @@ export default function SupervisorUseOfForce() {
                     <p className="text-xs text-slate-500 uppercase font-semibold mb-1">
                       Description
                     </p>
-                    <p className="text-sm text-slate-700">
+                    <p className="text-sm text-slate-300">
                       {report.description}
                     </p>
                   </div>
@@ -289,7 +275,7 @@ export default function SupervisorUseOfForce() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="officer_email">Officer *</Label>
                   <Select
@@ -346,7 +332,7 @@ export default function SupervisorUseOfForce() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="incident_date">Incident Date *</Label>
                   <Input
@@ -400,7 +386,7 @@ export default function SupervisorUseOfForce() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="injury_reported">Injury Reported?</Label>
                   <Select
