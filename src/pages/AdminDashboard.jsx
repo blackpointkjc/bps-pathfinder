@@ -83,6 +83,17 @@ export default function AdminDashboard() {
       const result = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      const previous = queryClient.getQueryData(['adminDashboardWorkQueue']) || {};
+      if (payload.load_errors?.length && previous.tasks?.length) {
+        const mergedTasks = [...(payload.tasks || []), ...previous.tasks]
+          .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
+        return {
+          ...payload,
+          tasks: mergedTasks,
+          counts: { ...(previous.counts || {}), total: mergedTasks.length },
+          retaining_last_confirmed_tasks: true,
+        };
+      }
       return payload;
     },
     enabled: user?.role === 'admin',
