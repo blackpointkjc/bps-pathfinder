@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -28,6 +28,7 @@ export default function MyPerformanceAnalytics() {
   const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
   const currentMonthName = format(new Date(), 'MMMM yyyy');
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -44,13 +45,27 @@ export default function MyPerformanceAnalytics() {
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 60000,
+    staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
-    // This backend joins many performance sources in one call. Refresh on page
-    // entry/focus instead of re-running the full aggregation every 30 seconds.
-    refetchInterval: false,
+    // HR decisions, approved reviews and edited attendance must become visible
+    // without requiring the officer to leave and reopen the page.
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   });
+
+  React.useEffect(() => {
+    if (!user?.id || !user?.email) return undefined;
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] });
+    const unsubscribers = [];
+    for (const entity of ['TimeEntry', 'Schedule', 'TrainingAssignment', 'TrainingCompletion', 'QRScanEvent', 'PerformanceReview', 'ClientFeedback', 'Commendation']) {
+      try {
+        const unsubscribe = base44.entities[entity].subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch { /* The one-minute authoritative refresh remains available. */ }
+    }
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [queryClient, user?.id, user?.email]);
 
   const timeEntries = performanceData.timeEntries || [];
   const schedules = performanceData.schedules || [];
