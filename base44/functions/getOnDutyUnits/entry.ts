@@ -246,6 +246,7 @@ Deno.serve(async (req) => {
           last_gps_updated_at: active?.gps_updated_at || null,
           last_known_latitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
           last_known_longitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
+          last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
           gps_pending: signedInFresh && !hasFreshGps,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
