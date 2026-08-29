@@ -99,13 +99,13 @@ Deno.serve(async (req) => {
     };
 
     const activeEntries = (entries || []).filter((entry: any) => entry.clock_in && !entry.clock_out && entry.archived !== true);
-    const today'sEntries = (entries || []).filter((entry: any) => easternParts(entry.clock_in).date === now.date && entry.archived !== true);
+    const todayEntries = (entries || []).filter((entry: any) => easternParts(entry.clock_in).date === now.date && entry.archived !== true);
     const missedClockIns = (schedules || []).filter((shift: any) => {
       if (shift.archived === true || shift.is_open === true || normalized(shift.officer_email) === 'open') return false;
       if (String(shift.shift_date || '') !== now.date) return false;
       const start = parseWallMinutes(shift.start_time);
       if (start < 0 || start > fiveMinutesAgo) return false;
-      return !today'sEntries.some((entry: any) => {
+      return !todayEntries.some((entry: any) => {
         if (normalized(entry.officer_email) !== normalized(shift.officer_email)) return false;
         const entryMinute = easternParts(entry.clock_in).minutes;
         const sameLocation = normalized(entry.location) === normalized(shift.location);
