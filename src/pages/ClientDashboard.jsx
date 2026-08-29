@@ -88,12 +88,12 @@ export default function ClientDashboard() {
   const liveOfficers = liveBilling.officers || [];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#070d17] p-4 text-white md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-6">
         <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Client Security Portal</p>
           <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Welcome, {user?.first_name || 'Client'}</h1>
-          <p className="mt-2 text-sm text-slate-400">A unified view of security operations across all properties assigned to your account.</p>
+          <p className="mt-2 text-sm text-slate-400">Live coverage, verified activity, reports and service access across all properties assigned to your account.</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {assignedLocations.map(location => <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-800/70 p-3"><div className="flex items-center gap-2 font-bold text-white"><MapPin className="h-4 w-4 text-cyan-400" />{location.site_name}</div><p className="mt-1 text-xs text-slate-400">{location.address || 'Address not listed'}</p></div>)}
           </div>
@@ -101,7 +101,7 @@ export default function ClientDashboard() {
 
         <div className="rounded-2xl border border-cyan-900/50 bg-[#0b1725] p-4 shadow-lg">
           <div className="flex items-center justify-between gap-3">
-            <div><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Live Coverage</p><p className="mt-1 text-sm text-slate-400">Current clocked-in coverage at your properties · refreshes every 5 seconds</p></div>
+            <div><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Live Coverage</p><p className="mt-1 text-sm text-slate-400">Current clocked-in coverage at your properties · realtime with safety refresh</p></div>
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm font-black text-emerald-300">{liveEntries.length} ACTIVE</div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -114,16 +114,16 @@ export default function ClientDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+          <Card className="border border-blue-500/25 bg-[#0b1725] text-white shadow-lg">
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-blue-900">Total Reports</CardTitle>
+              <CardTitle className="text-sm font-black text-blue-200">Total Reports</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-blue-900">{totalReports}</p>
+              <p className="text-4xl font-black text-white">{totalReports}</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-slate-700 bg-[#0b1725] text-white shadow-lg">
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -131,11 +131,11 @@ export default function ClientDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-slate-900">{reports?.incident.length || 0}</p>
+              <p className="text-3xl font-black text-white">{reports?.incident?.length || 0}</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-slate-700 bg-[#0b1725] text-white shadow-lg">
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <UserX className="w-4 h-4 text-orange-600" />
@@ -143,11 +143,11 @@ export default function ClientDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-slate-900">{reports?.trespass.length || 0}</p>
+              <p className="text-3xl font-black text-white">{reports?.trespass?.length || 0}</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-slate-700 bg-[#0b1725] text-white shadow-lg">
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Clock className="w-4 h-4 text-purple-600" /> {/* Changed from Car */}
@@ -155,7 +155,7 @@ export default function ClientDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-slate-900">{reports?.shift.length || 0}</p> {/* Changed from parking */}
+              <p className="text-3xl font-black text-white">{reports?.shift?.length || 0}</p>
             </CardContent>
           </Card>
         </div>
@@ -170,7 +170,7 @@ export default function ClientDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="text-slate-600 text-sm">View active and archived police, fire, EMS, and BPS calls verified for your property</p>
+                <p className="text-slate-400 text-sm">View active and archived police, fire, EMS, and BPS calls verified for your property</p>
               </CardContent>
             </Card>
           </Link>
@@ -184,7 +184,7 @@ export default function ClientDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="text-slate-600 text-sm">Access approved reports across all of your assigned sites</p>
+                <p className="text-slate-400 text-sm">Access approved reports across all of your assigned sites</p>
               </CardContent>
             </Card>
           </Link>
@@ -198,7 +198,7 @@ export default function ClientDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="text-slate-600 text-sm">Update trespass notice expiration dates</p>
+                <p className="text-slate-400 text-sm">Review and manage trespass records for your properties</p>
               </CardContent>
             </Card>
           </Link>
@@ -212,7 +212,7 @@ export default function ClientDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="text-slate-600 text-sm">View and update your location details</p>
+                <p className="text-slate-400 text-sm">View property details and authorized site information</p>
               </CardContent>
             </Card>
           </Link>
