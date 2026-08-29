@@ -301,26 +301,43 @@ export default function AdminEquipment() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-            <Package className="w-6 h-6 text-white" />
+      <div className="mb-6 rounded-2xl border border-slate-800 bg-[#09131f] p-5 text-white shadow-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10">
+              <Package className="w-6 h-6 text-cyan-300" />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-400">Asset Control</div>
+              <h1 className="text-3xl font-black">Equipment Management</h1>
+              <p className="text-sm text-slate-400">Inventory, bulk import, assignments, condition and lifecycle tracking</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Equipment Management</h1>
-            <p className="text-slate-600">Track and assign equipment to officers</p>
+          <div className="flex flex-wrap gap-2">
+            <input ref={importInputRef} type="file" accept=".xlsx,.csv" onChange={handleEquipmentImport} className="hidden" />
+            <Button type="button" variant="outline" disabled={importing} onClick={() => importInputRef.current?.click()} className="border-emerald-600/60 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/40 hover:text-white">
+              {importing ? <FileSpreadsheet className="mr-2 h-4 w-4 animate-pulse" /> : <Upload className="mr-2 h-4 w-4" />}
+              {importing ? 'Importing…' : 'Import Excel / CSV'}
+            </Button>
+            <Button
+              onClick={() => {
+                resetForm();
+                setShowDialog(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-500"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Equipment
+            </Button>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setShowDialog(true);
-          }}
-          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Equipment
-        </Button>
+        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-xs text-slate-400">
+          <span className="font-black text-slate-200">Bulk import columns:</span> equipment type, product/name, model, serial/asset ID, IMEI, assigned officer/email, condition, status, issue date, purchase date/cost, warranty expiration and notes. Existing matching serial numbers are updated instead of duplicated.
+        </div>
+        {importResult && <div className={`mt-3 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${importResult.error ? 'border-red-700/50 bg-red-950/30 text-red-200' : 'border-emerald-700/50 bg-emerald-950/25 text-emerald-200'}`}>
+          {importResult.error ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+          <div>{importResult.error ? importResult.error : <><strong>{importResult.file}</strong>: {importResult.created} created, {importResult.updated} updated, {importResult.invalid} skipped for missing name/serial, {importResult.failed} failed.</>}</div>
+        </div>}
       </div>
 
       <Card className="mb-6">
