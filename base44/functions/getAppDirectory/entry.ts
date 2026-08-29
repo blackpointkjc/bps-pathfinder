@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.User.list(undefined, 1000)
     );
     const rawLocations = await listWithRetry('locations', () =>
-      base44.asServiceRole.entities.Location.list('site_name', 1000)
+      base44.asServiceRole.entities.Location.list('site_name', 1000), true
     );
     const rawDivisions = await listWithRetry('divisions', () =>
       base44.asServiceRole.entities.Division.list('division_name', 1000), true
