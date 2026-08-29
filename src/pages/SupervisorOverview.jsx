@@ -36,24 +36,30 @@ export default function SupervisorOverview() {
   const writeups = tasks.writeups || [];
   const reviews = [...(tasks.reviews || []), ...(tasks.reviewFollowUps || [])];
   const inspections = tasks.inspections || [];
+  const missedClockIns = tasks.missedClockIns || [];
+  const missingReports = tasks.missingReports || [];
   const liveUnits = board.live_units || [];
   const activeCalls = board.active_calls || [];
   const welfare = board.welfare_checks || board.active_welfare || [];
   const supervisorRequests = board.supervisor_requests || [];
   const attention = [
+    ...missedClockIns.slice(0,3).map(row => ({ label: 'Missed Clock-In', detail: `${operationalName(row, directory, { fallback: 'Officer' })} · ${row.start_time || 'scheduled'} at ${row.location || 'site'}` })),
     ...supervisorRequests.slice(0,2).map(row => ({ label: 'Supervisor Request', detail: row.call_number || row.location || 'Field request pending' })),
     ...welfare.slice(0,2).map(row => ({ label: 'Welfare Check', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
+    ...missingReports.slice(0,2).map(row => ({ label: 'Missing Required Report', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
     ...writeups.slice(0,1).map(row => ({ label: 'Write-Up', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
-  ].slice(0,5);
+  ].slice(0,7);
 
   const taskQueue = [
+    ...missedClockIns.slice(0,6).map(row => ({ id:`missed-clock-${row.id}`, title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}`, page:'ManageTimeEntries' })),
+    ...missingReports.slice(0,6).map(row => ({ id:`missing-report-${row.id}`, title:'Required Daily Report Missing', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${String(row.clock_in || '').slice(0,10)} · ${row.location || 'Location not listed'}`, page:'MissingReportsCheck' })),
     ...reviews.slice(0,4).map(row => ({ id:`review-${row.id}`, title:'Performance Review', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Supervisor review/signature workflow requires action', page:'SupervisorPerformanceReview' })),
     ...inspections.slice(0,4).map(row => ({ id:`inspection-${row.id}`, title:'Officer Inspection', person:operationalName(row,directory,{fallback:'Officer'}), detail:row.location || 'Inspection follow-up required', page:'SupervisorInspections' })),
     ...writeups.slice(0,4).map(row => ({ id:`writeup-${row.id}`, title:'Write-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Disciplinary review requires supervisor action', page:'SupervisorWriteUps' })),
     ...complaints.slice(0,4).map(row => ({ id:`complaint-${row.id}`, title:'Complaint Investigation', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Complaint investigation/follow-up required', page:'SupervisorComplaints' })),
   ].slice(0,10);
 
-  const totalTasks = complaints.length + writeups.length + reviews.length + inspections.length;
+  const totalTasks = complaints.length + writeups.length + reviews.length + inspections.length + missedClockIns.length + missingReports.length;
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
@@ -67,7 +73,7 @@ export default function SupervisorOverview() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[['Live Units', liveUnits.length, Users, 'Units currently visible to supervisor'], ['Active Calls', activeCalls.length, Siren, 'Calls requiring field response'], ['Welfare / Requests', welfare.length + supervisorRequests.length, Activity, 'Officer welfare and assist requests'], ['Action Items', totalTasks, ClipboardList, 'Reviews, inspections and discipline']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
+          {[['Live Units', liveUnits.length, Users, 'Units currently visible to supervisor'], ['Active Calls', activeCalls.length, Siren, 'Calls requiring field response'], ['Welfare / Requests', welfare.length + supervisorRequests.length, Activity, 'Officer welfare and assist requests'], ['Action Items', totalTasks, ClipboardList, 'Attendance, reports, reviews and discipline']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
