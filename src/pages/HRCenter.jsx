@@ -13,28 +13,30 @@ import AdminSupportStaffClock from './AdminSupportStaffClock';
 import HROverview from './HROverview';
 
 const SECTIONS = [
-  { id: 'overview', label: 'Overview', description: 'HR command dashboard and priority actions', icon: LayoutDashboard },
-  { id: 'employees', label: 'Employees', description: 'Employee records, time entries and divisions', icon: Briefcase },
-  { id: 'leave', label: 'Leave & Performance', description: 'PTO and employee performance workflow', icon: CalendarClock },
-  { id: 'clients', label: 'Client Assignments', description: 'Client accounts and assignments', icon: Building2 },
-  { id: 'support', label: 'Support Clock In', description: 'Support staff clock-in workspace', icon: Clock3 },
+  { id: 'overview', label: 'Overview & Work Queue', description: 'HR alerts, approvals and workforce status', icon: LayoutDashboard },
+  { id: 'employees', label: 'Workforce & Structure', description: 'Employees, divisions and client assignments', icon: Building2 },
+  { id: 'support', label: 'Time & Attendance', description: 'Employee time records and support clock-in', icon: Clock3 },
+  { id: 'leave', label: 'PTO & Leave', description: 'PTO decisions, adjustments and loss history', icon: CalendarClock },
+  { id: 'clients', label: 'Performance Reviews', description: 'Annual and manual employee review workflow', icon: Briefcase },
 ];
 
 const TOOLS = {
   overview: [{ id: 'overview', label: 'HR Overview', component: HROverview }],
   employees: [
     { id: 'employees', label: 'Company Employees', component: HRManageCompanyEmployees },
-    { id: 'timeentries', label: 'Time Entries', component: ManageTimeEntries },
-    { id: 'divisions', label: 'Divisions', component: AdminDivisions },
+    { id: 'divisions', label: 'Divisions & Operating Areas', component: AdminDivisions },
+    { id: 'clients', label: 'Client Accounts & Assignments', component: ManageClients },
+  ],
+  support: [
+    { id: 'timeentries', label: 'Employee Time Entries', component: ManageTimeEntries },
+    { id: 'supportclock', label: 'Support Staff Clock', component: AdminSupportStaffClock },
   ],
   leave: [
     { id: 'pto', label: 'PTO Approval & History', component: AdminPTOApproval },
     { id: 'manualpto', label: 'Manual PTO', component: AdminManualPTO },
     { id: 'ptoloss', label: 'PTO Loss Report', component: AdminPTOLossReport },
-    { id: 'reviews', label: 'Performance Reviews', component: AdminPerformanceReviews },
   ],
-  clients: [{ id: 'clients', label: 'Client Accounts & Assignments', component: ManageClients }],
-  support: [{ id: 'supportclock', label: 'Support Staff Clock', component: AdminSupportStaffClock }],
+  clients: [{ id: 'reviews', label: 'Performance Reviews', component: AdminPerformanceReviews }],
 };
 
 export default function HRCenter({ embedded = false }) {
