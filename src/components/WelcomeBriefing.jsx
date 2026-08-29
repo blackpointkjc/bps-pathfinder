@@ -12,6 +12,34 @@ const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
 const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
+function easternMinutesNow() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const read = type => Number(parts.find(part => part.type === type)?.value || 0);
+  return (read('hour') % 24) * 60 + read('minute');
+}
+
+function shiftHasNotEnded(shift, nowMinutes = easternMinutesNow()) {
+  const parse = value => {
+    const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i);
+    if (!match) return -1;
+    let hour = Number(match[1]);
+    const suffix = normalized(match[3]);
+    if (suffix === 'pm' && hour < 12) hour += 12;
+    if (suffix === 'am' && hour === 12) hour = 0;
+    return hour * 60 + Number(match[2]);
+  };
+  const start = parse(shift?.start_time);
+  const end = parse(shift?.end_time);
+  if (end < 0) return true;
+  if (start >= 0 && end <= start) return true;
+  return end > nowMinutes;
+}
+
 function activeAnnouncement(announcement) {
   const created = new Date(announcement?.created_date || 0).getTime();
   if (!created) return false;
@@ -148,11 +176,14 @@ export default function WelcomeBriefing({ user }) {
         });
         const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
         const unit = units?.[0] || null;
-        const shift = (schedules || []).find(item => !item.is_open) || null;
+        const briefingMinutes = easternMinutesNow();
+        const relevantUserSchedules = (schedules || []).filter(item => shiftHasNotEnded(item, briefingMinutes));
+        const relevantCompanySchedules = (allSchedules || []).filter(item => shiftHasNotEnded(item, briefingMinutes));
+        const shift = relevantUserSchedules.find(item => !item.is_open) || null;
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: allSchedules || [], activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
+        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
         setDataErrors(failedSources);
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
@@ -393,12 +424,12 @@ export default function WelcomeBriefing({ user }) {
                     )}
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
+                  <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 sm:gap-3">
                     <BriefCard icon={MessageCircle} label="Teams Messages" value={pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
-                    <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail={brief.appUpdates.length ? 'Unread platform or software updates' : 'No new app updates'} tone="violet" />
+                    {brief.appUpdates.length > 0 && <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail="Unread platform or software update records" tone="violet" />}
                     <BriefCard icon={ClipboardList} label="Assigned Tasks" value={brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} />
-                    <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail={brief.updates.length ? 'Unread account, schedule, or system updates' : 'No other pending updates'} tone="blue" />
+                    {brief.updates.length > 0 && <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail="Unread account, schedule, or system notification records" tone="blue" />}
                     <BriefCard icon={Siren} label="Property Calls While Away" value={brief.propertyAlerts.length} detail={brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
 
@@ -413,7 +444,7 @@ export default function WelcomeBriefing({ user }) {
 
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-black/15 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-slate-300">Session Summary</div></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, assigned tasks, system updates, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, assigned tasks, new app updates, or monitored-property calls were found for this session.'}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, assigned tasks, verified notifications, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, assigned tasks, verified notifications, or monitored-property calls were found for this session.'}</p>
                     {brief.propertyAlerts.slice(0, 3).map(alert => (
                       <button key={alert.id} type="button" onClick={() => go('DispatchCenter')} className="mt-2 flex w-full items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/20 p-3 text-left hover:bg-red-950/35">
                         <Siren className="mt-0.5 h-4 w-4 shrink-0 text-red-300"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{alert.propertyName || 'Monitored Property'} · {alert.callIncident || 'Call for service'}</div><div className="mt-1 break-words text-[10px] text-slate-400">{alert.callLocation || alert.description || 'Location unavailable'}</div></div><ChevronRight className="h-4 w-4 shrink-0 text-slate-600"/>
