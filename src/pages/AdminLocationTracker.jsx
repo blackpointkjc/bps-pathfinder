@@ -380,7 +380,21 @@ export default function AdminLocationTracker() {
         gps_stale: !hasFreshCoarseFix,
       };
     });
-  const officersForMap = [...officersWithLocation, ...officersWithLastKnown];
+  const officersWithCoarseLocation = (currentlyActiveOfficers || [])
+    .filter(o => !hasValidCoordinates(o)
+      && !(hasCoordinateValue(o.last_known_latitude) && hasCoordinateValue(o.last_known_longitude))
+      && hasCoordinateValue(o.coarse_latitude)
+      && hasCoordinateValue(o.coarse_longitude)
+      && !(Number(o.coarse_latitude) === 0 && Number(o.coarse_longitude) === 0))
+    .map(o => ({
+      ...o,
+      latitude: Number(o.coarse_latitude),
+      longitude: Number(o.coarse_longitude),
+      accuracy: Number.isFinite(Number(o.coarse_accuracy)) ? Number(o.coarse_accuracy) : null,
+      gps_low_accuracy: true,
+      gps_stale: false,
+    }));
+  const officersForMap = [...officersWithLocation, ...officersWithLastKnown, ...officersWithCoarseLocation];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
     const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;
