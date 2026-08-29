@@ -28,14 +28,16 @@ export default function AutoDispatchShadowFeed() {
   useEffect(() => {
     load();
     const unsubscribe = base44.entities.AutoDispatchEvaluation.subscribe(() => load());
-    const interval = setInterval(load, 30000);
+    const interval = setInterval(load, error ? 5000 : 30000);
     return () => {
       unsubscribe?.();
       clearInterval(interval);
     };
-  }, []);
+  }, [error]);
 
-  if (error) return <div className="mb-3 border-b border-amber-500/20 bg-amber-950/10 px-3 py-2 text-[10px] font-bold text-amber-200">Automatic-dispatch status is temporarily unavailable. CAD operations remain online.</div>;
+  // This is an oversight panel, not a CAD availability gate. A transient status
+  // refresh failure must never display an outage banner or imply CAD is down.
+  // Keep the last good evaluation visible and retry quietly in the background.
   if (!evaluations.length) return null;
 
   return (
