@@ -24,13 +24,34 @@ export function isClientAccount(user) {
   return roles.has('client') || rank === 'client' || type === 'client';
 }
 
-export function isInternalMember(user) {
-  if (!user?.email || user.termination_date || isClientAccount(user)) return false;
+export function isCompanyEmployeeAccount(user) {
+  if (!user?.email || isClientAccount(user)) return false;
   const roles = new Set((user.additional_roles || []).map(role => String(role).toLowerCase()));
   const rank = String(user.rank || '').trim().toLowerCase();
   const type = String(user.user_type || user.account_type || user.portal_type || '').trim().toLowerCase();
-  if (roles.has('student') || rank === 'student' || type === 'student' || type === 'pending') return false;
-  return user.role === 'admin' || roles.has('officer') || roles.has('hr') || roles.has('support') || roles.has('support_staff') || roles.has('accounting') || roles.has('trainer') || roles.has('supervisor') || roles.has('full_access') || String(user.employment_status || '').toLowerCase() === 'active';
+  const status = String(user.account_status || '').trim().toLowerCase();
+  const officerRanks = new Set([
+    'officer','unarmed officer','senior officer','corporal','sergeant','first sergeant',
+    'lieutenant','captain','major','lt colonel','lieutenant colonel','colonel','supervisor'
+  ]);
+  const isOfficer = roles.has('officer') || roles.has('cad_access') || roles.has('supervisor') || officerRanks.has(rank);
+  if (isOfficer) return true;
+  if (roles.has('student') || rank === 'student' || type === 'student') return false;
+  if ((type === 'pending' || status === 'pending') && !user.termination_date) return false;
+  return user.role === 'admin'
+    || roles.has('hr')
+    || roles.has('support')
+    || roles.has('support_staff')
+    || roles.has('accounting')
+    || roles.has('trainer')
+    || roles.has('full_access')
+    || ['human resources', 'support staff'].includes(rank)
+    || String(user.employment_status || '').toLowerCase() === 'active'
+    || Boolean(user.termination_date);
+}
+
+export function isInternalMember(user) {
+  return Boolean(!user?.termination_date && isCompanyEmployeeAccount(user));
 }
 
 export function displayDirectoryName(user) {
