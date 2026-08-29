@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
     }) : [];
 
     const lateReviewCutoff = Date.now() - 21 * 86400000;
-    const lateClockOuts = (entries || []).flatMap((entry: any) => {
+    const lateClockOuts = queueRole === 'hr' ? (entries || []).flatMap((entry: any) => {
       if (!entry?.id || !entry.clock_in || !entry.clock_out || entry.archived === true || entry.payroll_adjustment_decision) return [];
       if (new Date(entry.clock_out).getTime() < lateReviewCutoff) return [];
       const clockIn = easternParts(entry.clock_in);
@@ -285,7 +285,7 @@ Deno.serve(async (req) => {
       const actualEndMinutes = clockOut.minutes + dayOffset(clockIn.date, clockOut.date) * 1440;
       const lateMinutes = Math.round(actualEndMinutes - scheduledEndMinutes);
       return lateMinutes > 0 ? [{ entry, scheduled, lateMinutes }] : [];
-    });
+    }) : [];
 
     const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
     const legacyReportKeys = new Set((dailyReports || []).map((report: any) =>
@@ -413,6 +413,13 @@ Deno.serve(async (req) => {
           page: 'AdminScheduling',
         });
       }
+    }
+
+    const allowedKinds = queueRole === 'hr'
+      ? new Set(['missed_clock_in', 'late_clock_out', 'pto', 'performance_review', 'annual_review_due'])
+      : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
+    for (let index = candidates.length - 1; index >= 0; index -= 1) {
+      if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
     }
 
     const priorityOrder: Record<string, number> = { critical: 0, high: 1, normal: 2 };
