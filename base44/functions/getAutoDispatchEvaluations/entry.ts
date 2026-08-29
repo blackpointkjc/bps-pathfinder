@@ -40,18 +40,24 @@ Deno.serve(async (req) => {
     const activeCalls = await withRetry(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 250), 2).catch(() => []);
     const propertyAlerts = await withRetry(() => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 250), 2).catch(() => []);
 
-    const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
-    const knownAlertIds = new Set((propertyAlerts || []).map((item: any) => String(item.id)));
+    const terminalStatuses = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+    const activeCallIds = new Set((activeCalls || [])
+      .filter((item: any) => !terminalStatuses.has(lower(item.status)) && item.manual_dismissed !== true)
+      .map((item: any) => String(item.id)));
+    const knownAlertIds = new Set((propertyAlerts || [])
+      .filter((item: any) => !['false_alarm', 'resolved', 'test', 'dismissed'].includes(lower(item.lifecycle_status)))
+      .map((item: any) => String(item.id)));
     const latestByAlert = new Map<string, any>();
 
     for (const row of evaluations || []) {
       const key = String(row.property_alert_id || row.event_key || row.id || '');
       if (!key || latestByAlert.has(key)) continue;
       if (row.configuration_snapshot?.simulation === true || String(row.event_key || '').endsWith(':simulation')) continue;
-      // Filter to active calls when the active-call dataset loaded successfully.
-      if (activeCallIds.size && row.call_id && !activeCallIds.has(String(row.call_id))) continue;
-      // Filter deleted/orphaned alerts only when alert data loaded successfully.
-      if (knownAlertIds.size && row.property_alert_id && !knownAlertIds.has(String(row.property_alert_id))) continue;
+      // A shadow/evaluation row is visible only while BOTH its call and property
+      // alert are currently active. Never fall back to historical evaluations when
+      // there are zero active calls; that caused the shadow panel to flash back on refresh.
+      if (!row.call_id || !activeCallIds.has(String(row.call_id))) continue;
+      if (!row.property_alert_id || !knownAlertIds.has(String(row.property_alert_id))) continue;
       latestByAlert.set(key, row);
     }
 
@@ -59,7 +65,7 @@ Deno.serve(async (req) => {
       success: true,
       service_status: 'online',
       evaluations: [...latestByAlert.values()].slice(0, 20),
-      partial: activeCallIds.size === 0 || knownAlertIds.size === 0,
+      partial: false,
     });
   } catch (error) {
     console.error('getAutoDispatchEvaluations failed', error);
