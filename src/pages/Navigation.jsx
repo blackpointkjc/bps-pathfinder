@@ -607,12 +607,16 @@ export default function Navigation() {
             const currentEmail = currentUser?.email?.toLowerCase();
             const units = sourceUnits
                 .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
-                .filter(unit => Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude)))
+                .filter(unit => {
+                    const hasLive = Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude));
+                    const hasLast = Number.isFinite(Number(unit.last_known_latitude)) && Number.isFinite(Number(unit.last_known_longitude));
+                    return hasLive || hasLast;
+                })
                 .map(unit => ({
                     ...unit,
                     email: unit.officer_email || unit.email,
-                    latitude: Number(unit.latitude),
-                    longitude: Number(unit.longitude),
+                    latitude: unit.latitude === null || unit.latitude === undefined ? null : Number(unit.latitude),
+                    longitude: unit.longitude === null || unit.longitude === undefined ? null : Number(unit.longitude),
                     heading: Number(unit.heading) || 0,
                     isUnionLead: unit.is_union_lead === true || unit.isUnionLead === true,
                     unionMembers: Number(unit.union_member_count || unit.unionMembers) || 1,
