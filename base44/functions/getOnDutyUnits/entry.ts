@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     if (input?.location_only === true) {
       const activeOfficers = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000);
       const freshCutoff = Date.now() - 15 * 60 * 1000;
+      const gpsFreshCutoff = Date.now() - 2 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
         const email = lower(active?.officer_email);
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
         })
         .map((active: any) => {
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
-          const hasGps = Number.isFinite(gpsTs) && gpsTs >= freshCutoff && hasValidCoordinates(active.latitude, active.longitude);
+          const hasGps = Number.isFinite(gpsTs) && gpsTs >= gpsFreshCutoff && hasValidCoordinates(active.latitude, active.longitude);
           const accuracy = Number(active.accuracy);
           return {
             id: active.id,
@@ -116,6 +117,7 @@ Deno.serve(async (req) => {
     // One freshness window across Pathfinder. A signed-in unit remains available
     // to live maps for 15 minutes after its most recent heartbeat/GPS update.
     const freshCutoff = Date.now() - 15 * 60 * 1000;
+    const gpsFreshCutoff = Date.now() - 2 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
@@ -126,7 +128,7 @@ Deno.serve(async (req) => {
       // reports coarse accuracy. Keep the accuracy value so dispatch/geofence
       // features can decide whether a particular action needs a tighter fix.
       const hasReliableGps = Number.isFinite(gpsTs)
-        && gpsTs >= freshCutoff
+        && gpsTs >= gpsFreshCutoff
         && hasValidCoordinates(active.latitude, active.longitude);
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
@@ -214,7 +216,7 @@ Deno.serve(async (req) => {
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
-          && gpsTs >= freshCutoff
+          && gpsTs >= gpsFreshCutoff
           && hasValidCoordinates(active?.latitude, active?.longitude);
         const accuracy = Number(active?.accuracy);
         return {
