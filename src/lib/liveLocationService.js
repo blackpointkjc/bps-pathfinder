@@ -8,11 +8,37 @@ let retainCount = 0;
 let freshRequest = null;
 let lifecycleListenersInstalled = false;
 
+export const TACTICAL_GPS_MAX_ACCURACY_METERS = 100;
+export const PRECISION_GPS_TARGET_METERS = 50;
+
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
   timeout: 30000,
   maximumAge: 0,
 };
+
+export function isTacticalLocationFix(fix, maxAgeMs = 30000) {
+  if (!fix) return false;
+  const latitude = Number(fix.latitude);
+  const longitude = Number(fix.longitude);
+  const accuracy = Number(fix.accuracy);
+  const timestamp = Number(fix.timestamp) || 0;
+  return Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && Number.isFinite(accuracy)
+    && accuracy <= TACTICAL_GPS_MAX_ACCURACY_METERS
+    && timestamp > 0
+    && Date.now() - timestamp <= maxAgeMs;
+}
+
+export function locationQuality(fix, maxAgeMs = 30000) {
+  if (!fix) return { state: 'unavailable', accuracy: null };
+  const ageMs = Date.now() - (Number(fix.timestamp) || 0);
+  const accuracy = Number(fix.accuracy);
+  if (!Number.isFinite(ageMs) || ageMs > maxAgeMs) return { state: 'stale', accuracy: Number.isFinite(accuracy) ? accuracy : null, ageMs };
+  if (!Number.isFinite(accuracy) || accuracy > TACTICAL_GPS_MAX_ACCURACY_METERS) return { state: 'low_accuracy', accuracy: Number.isFinite(accuracy) ? accuracy : null, ageMs };
+  return { state: 'live', accuracy, ageMs };
+}
 
 function geolocationSupported() {
   return typeof navigator !== 'undefined' && !!navigator.geolocation;
@@ -98,7 +124,7 @@ export function requestFreshLiveLocation({ timeoutMs = 15000 } = {}) {
   return freshRequest;
 }
 
-export function requestBestLiveLocation({ timeoutMs = 12000, targetAccuracyMeters = 75 } = {}) {
+export function requestBestLiveLocation({ timeoutMs = 15000, targetAccuracyMeters = PRECISION_GPS_TARGET_METERS } = {}) {
   if (!geolocationSupported()) return requestFreshLiveLocation({ timeoutMs });
   return new Promise((resolve, reject) => {
     let best = getLiveLocation(60000);
