@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
-import { isInternalMember } from '@/lib/directoryUtils';
+import { isCompanyEmployeeAccount } from '@/lib/directoryUtils';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
@@ -178,7 +178,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   // HR/member directory contains only internal employees. Client and student
   // accounts stay in their dedicated menus and never appear in this list.
-  const allEmployees = (users || []).filter(isInternalMember);
+  const allEmployees = (users || []).filter(isCompanyEmployeeAccount);
   const activeEmployees = allEmployees.filter(u => !u.termination_date);
   const terminatedEmployees = allEmployees.filter(u => u.termination_date);
 
@@ -436,6 +436,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
               </CardTitle>
               <div className="flex flex-wrap gap-2 mt-1">
                 {userData.role === 'admin' && <Badge className="bg-amber-100 text-amber-800 border-amber-300">Admin</Badge>}
+                {(userData.additional_roles || []).map(role => String(role).toLowerCase()).includes('officer') && <Badge className="border-blue-300 bg-blue-100 text-blue-900">Officer</Badge>}
                 {isTerminated && <Badge variant="destructive">Terminated</Badge>}
                 {userData.rank && <Badge className={getRankColor(userData.rank)}>{userData.rank}</Badge>}
                 {userData.unit_number && <Badge variant="outline">Unit #{userData.unit_number}</Badge>}
