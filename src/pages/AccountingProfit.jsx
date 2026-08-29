@@ -425,7 +425,7 @@ export default function AccountingProfit() {
                   <div className="min-w-0">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{metric.label}</p>
                     <p className={`mt-3 break-words text-3xl font-black tracking-tight ${metric.color}`}>
-                      {metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {metric.value < 0 ? '-' : ''}${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <p className="mt-2 text-sm leading-5 text-slate-400">{metric.note}</p>
                   </div>
@@ -462,8 +462,8 @@ export default function AccountingProfit() {
         </CardHeader>
         <CardContent>
           {Object.keys(revenueBySite).length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 rounded-lg">
-              <p className="text-slate-500">No site data available for the selected date range.</p>
+            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/45 p-8 text-center">
+              <p className="text-slate-300">No site activity was found for this period.</p>
               <p className="text-sm text-slate-400 mt-2">Make sure officers have clocked time entries with locations that have bill rates configured.</p>
             </div>
           ) : (
@@ -478,19 +478,19 @@ export default function AccountingProfit() {
                   return (
                     <div key={site} className="rounded-xl border border-slate-700 bg-slate-950/55 p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="font-semibold text-slate-900">{site}</p>
+                        <p className="font-semibold text-white">{site}</p>
                         <Badge className={profit >= 0 ? 'bg-green-600' : 'bg-red-600'}>
                           {margin.toFixed(1)}% margin
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-5">
                         <div>
-                          <p className="text-slate-600">Revenue</p>
-                          <p className="font-bold text-green-600">${revenue.toFixed(2)}</p>
+                          <p className="text-slate-400">Billing</p>
+                          <p className="font-bold text-emerald-300">${revenue.toFixed(2)}</p>
                         </div>
                         <div>
-                          <p className="text-slate-600">Payroll</p>
-                          <p className="font-bold text-red-600">${payroll.toFixed(2)}</p>
+                          <p className="text-slate-400">Gross Wages</p>
+                          <p className="font-bold text-rose-300">${payroll.toFixed(2)}</p>
                         </div>
                         <div>
                           <p className="text-slate-400">Service Hours</p>
@@ -501,7 +501,7 @@ export default function AccountingProfit() {
                           <p className="font-bold text-sky-300">{payrollHoursBySite[site]?.toFixed(1) || 0}</p>
                         </div>
                         <div>
-                          <p className="text-slate-600">Profit</p>
+                          <p className="text-slate-400">Contribution</p>
                           <p className={`font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             ${profit.toFixed(2)}
                           </p>
@@ -522,8 +522,8 @@ export default function AccountingProfit() {
         </CardHeader>
         <CardContent>
           {Object.keys(revenueByOfficer).length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 rounded-lg">
-              <p className="text-slate-500">No officer data available for the selected date range.</p>
+            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/45 p-8 text-center">
+              <p className="text-slate-300">No officer activity was found for this period.</p>
               <p className="text-sm text-slate-400 mt-2">Make sure officers have clocked time entries with valid hourly rates and bill rates.</p>
             </div>
           ) : (
@@ -540,14 +540,14 @@ export default function AccountingProfit() {
 
                   return (
                     <div key={officer} className="rounded-xl border border-slate-700 bg-slate-950/55 p-4">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                             {officer.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>
                             <p className="font-semibold text-white">{officer}</p>
-                            <p className="text-sm text-slate-600">
+                            <p className="max-w-2xl text-sm leading-5 text-slate-400">
                               Service: {(hoursByOfficer[officer] || 0).toFixed(1)}h • Paid: {(payrollHoursByOfficer[officer] || 0).toFixed(1)}h • Billing: ${revenue.toFixed(2)} • Wages: ${payroll.toFixed(2)}
                             </p>
                           </div>
@@ -563,17 +563,17 @@ export default function AccountingProfit() {
                       </div>
                       <div className="grid grid-cols-1 gap-3 border-t border-slate-700 pt-3 text-sm sm:grid-cols-3">
                         <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                          <p className="text-slate-600 text-xs">Regular</p>
+                          <p className="text-xs text-slate-400">Regular</p>
                           <p className="font-bold text-white">{breakdown.regularHours?.toFixed(1) || 0}h</p>
                           <p className="font-semibold text-slate-300">${breakdown.regularPay?.toFixed(2) || '0.00'}</p>
                         </div>
                         <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                          <p className="text-slate-600 text-xs">Overtime</p>
+                          <p className="text-xs text-slate-400">Overtime</p>
                           <p className="font-bold text-orange-600">{breakdown.overtimeHours?.toFixed(1) || 0}h</p>
                           <p className="font-semibold text-slate-300">${breakdown.overtimePay?.toFixed(2) || '0.00'}</p>
                         </div>
                         <div className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                          <p className="text-slate-600 text-xs">Holiday</p>
+                          <p className="text-xs text-slate-400">Holiday</p>
                           <p className="font-bold text-green-600">{breakdown.holidayHours?.toFixed(1) || 0}h</p>
                           <p className="font-semibold text-slate-300">${breakdown.holidayPay?.toFixed(2) || '0.00'}</p>
                         </div>
