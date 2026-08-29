@@ -102,6 +102,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   let onTime = 0;
   let late = 0;
   let missed = 0;
+  let overrun = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
@@ -161,17 +162,21 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       lateClockOutMinutes = actualOutWall != null && scheduledEndWall != null ? Math.max(0, actualOutWall - scheduledEndWall) : 0;
     }
 
-    // This metric is specifically On-Time Arrival. Clocking in early or staying
-    // past scheduled end is not an arrival failure and must never lower it.
-    // Those facts remain available below for audit/display but are neutral here.
+    // Clocking out late is neutral unless an administrator explicitly records
+    // that the overrun should count toward performance. Approved relief delays
+    // remain visible in the audit record but never lower the officer's score.
     const earlyIncidentException = false;
     const lateIncidentException = false;
     const earlyViolation = false;
-    const lateClockOutViolation = false;
+    const lateClockOutViolation = lateClockOutMinutes > 5
+      && entry.performance_overage_counted === true
+      && entry.performance_exception !== true;
     const arrivalViolation = minutesLate > 5;
-    const status = arrivalViolation ? 'late' : 'on_time';
+    const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
-    if (status === 'on_time') onTime++; else late++;
+    if (status === 'on_time') onTime++;
+    else if (status === 'overrun') overrun++;
+    else late++;
     details.push({
       status,
       shift_date: schedule.shift_date,
@@ -192,8 +197,8 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     });
   }
 
-  const total = onTime + late + missed;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, total, details };
+  const total = onTime + late + missed + overrun;
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
