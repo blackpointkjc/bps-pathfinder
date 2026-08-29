@@ -18,7 +18,8 @@ import {
   MobileResponsiveDialogTitle,
 } from "../components/MobileResponsiveDialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MapContainer, TileLayer, Marker, Circle, Polygon, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Circle, Polygon, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
@@ -1068,7 +1069,7 @@ export default function AdminLocations({ embedded = false }) {
                 </div>
                 <div className={`h-80 rounded-lg overflow-hidden border ${drawingBoundary ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-700'}`}>
                   <MapContainer center={mapCenter} zoom={17} style={{ height: '100%', width: '100%' }}>
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
+                    <PathfinderTileLayer />
                     <MapUpdater center={mapCenter} zoom={17} />
                     <Marker position={mapCenter} />
                     {(formData.geofence_polygon || []).length < 3 && (
