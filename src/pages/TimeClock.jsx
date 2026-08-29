@@ -503,20 +503,10 @@ export default function TimeClock() {
 
     const locationDetails = locations?.find(loc => activeEntry.location?.includes(loc.site_name));
     
-    // Admin bypass - no location verification
-    if (isAdmin && !locationDetails?.is_special_event) {
-      clockOutMutation.mutate({
-        id: activeEntry.id,
-        data: {
-          clock_out: new Date().toISOString(),
-          notes,
-          clock_out_latitude: null,
-          clock_out_longitude: null,
-        },
-      });
-      return;
-    }
-    
+    // Every field session uses the same shared device location at clock-out.
+    // If the device cannot provide a fix, the existing flagged clock-out fallback
+    // still prevents a trapped open time entry.
+
     const isSpecial = locationDetails?.is_special_event || isSpecialAssignment(activeEntry.location);
 
     setVerifyingLocation(true);
