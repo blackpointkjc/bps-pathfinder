@@ -355,20 +355,18 @@ Provide:
           officer_ip_address: ipAddress,
         });
 
-        if (data.linked_call_id) {
-          try {
-            await createReportCallLink({
-              callId: data.linked_call_id,
-              callNumber: data.linked_call_number || '',
-              reportType: 'IncidentReport',
-              reportId: updated.id,
-              reportNumber: updated.report_number || updated.id,
-              primaryOfficerId: data.primary_officer_id || '',
-              primaryOfficerName: data.primary_officer_name || '',
-            });
-          } catch (linkError) {
-            console.error('Failed to persist incident call link:', linkError);
-          }
+        try {
+          await createReportCallLink({
+            callId: data.linked_call_id || '',
+            callNumber: data.linked_call_number || '',
+            reportType: 'IncidentReport',
+            reportId: updated.id,
+            reportNumber: updated.report_number || updated.id,
+            primaryOfficerId: data.primary_officer_id || '',
+            primaryOfficerName: data.primary_officer_name || '',
+          });
+        } catch (linkError) {
+          console.error('Failed to synchronize incident call link:', linkError);
         }
 
         if (!isDraft) {
