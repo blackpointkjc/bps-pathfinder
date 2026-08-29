@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
     const now = new Date(receivedAt).toISOString();
     const officerEmail = String(user.email || body.officer_email || '').trim().toLowerCase();
     if (!officerEmail) return Response.json({ error: 'Officer email is required' }, { status: 400 });
+    const trackingSessionKey = String(body.time_entry_id || body.clock_in_time || `login-session:${now}`);
 
     const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
       { officer_email: officerEmail },
@@ -66,6 +67,7 @@ Deno.serve(async (req) => {
       unit_number: String(body.unit_number || user.unit_number || ''),
       current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
       clock_in_time: String(body.clock_in_time || now),
+      tracking_session_key: trackingSessionKey,
       last_update: now,
       user_role: String(body.user_role || user.role || 'user'),
       session_active: true,
@@ -97,6 +99,7 @@ Deno.serve(async (req) => {
         liveData.reliable_longitude = longitude;
         liveData.reliable_accuracy = acceptedAccuracy;
         liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
+        liveData.reliable_session_key = trackingSessionKey;
       }
     }
 
