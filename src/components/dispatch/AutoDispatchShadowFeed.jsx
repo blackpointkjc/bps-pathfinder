@@ -27,13 +27,22 @@ export default function AutoDispatchShadowFeed() {
 
   useEffect(() => {
     load();
-    const unsubscribe = base44.entities.AutoDispatchEvaluation.subscribe(() => load());
-    const interval = setInterval(load, error ? 5000 : 30000);
+    let refreshTimer;
+    const scheduleLoad = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(load, 1000);
+    };
+    const unsubscribe = base44.entities.AutoDispatchEvaluation.subscribe(scheduleLoad);
+    // Never retry faster when the backend is already failing; that creates a 429 retry storm.
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 60000);
     return () => {
       unsubscribe?.();
       clearInterval(interval);
+      window.clearTimeout(refreshTimer);
     };
-  }, [error]);
+  }, []);
 
   // This is an oversight panel, not a CAD availability gate. A transient status
   // refresh failure must never display an outage banner or imply CAD is down.
