@@ -342,7 +342,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
 
     heartbeat();
-    const heartbeatId = window.setInterval(heartbeat, 15000);
+    const heartbeatId = window.setInterval(heartbeat, 30000);
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
