@@ -62,32 +62,36 @@ const MASTER_SECTIONS = [
 ];
 
 const ADMIN_SECTIONS = [
-  { id: 'command', label: 'Command', description: 'Dashboard, analytics and live oversight', icon: Activity },
-  { id: 'schedule', label: 'Scheduling & Fleet', description: 'Scheduling, bids, fleet and availability', icon: Calendar },
-  { id: 'people', label: 'Personnel & Sites', description: 'Users, locations, equipment and chain', icon: Users },
-  { id: 'reports', label: 'Reports & Quality', description: 'All operational review and quality tools', icon: ClipboardList },
-  { id: 'communications', label: 'Communications', description: 'Announcements, requests and documents', icon: MessageCircle },
-  { id: 'system', label: 'System & Support', description: 'QR patrol, portal settings and support clock', icon: BarChart3 },
+  { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
+  { id: 'people', label: 'People & Access', description: 'Users, access, platoons and availability decisions', icon: Users },
+  { id: 'schedule', label: 'Scheduling & Time', description: 'Schedules, planned shifts, bids and support time', icon: Calendar },
+  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, fleet, equipment and post orders', icon: Building2 },
+  { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
+  { id: 'communications', label: 'Requests & Documents', description: 'Announcements, special requests and documents', icon: MessageCircle },
+  { id: 'system', label: 'Patrol & System', description: 'QR patrol administration and portal settings', icon: BarChart3 },
 ];
 
 const ADMIN_TOOLS = {
   command: [
     { id: 'dashboard', label: 'Dashboard', component: AdminDashboard },
     { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
-    { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
-    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
-  ],
-  schedule: [
-    { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
-    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
-    { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
-    { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
-    { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
   ],
   people: [
     { id: 'users', label: 'Users & Accounts', component: AdminUsers },
     { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
+    { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
+  ],
+  schedule: [
+    { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
+    { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
+    { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
+    { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
+  ],
+  sites: [
+    { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
+    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
     { id: 'locations', label: 'Locations', component: AdminLocations },
+    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
     { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
   ],
@@ -110,7 +114,6 @@ const ADMIN_TOOLS = {
     { id: 'qrprint', label: 'QR Print Manager', component: AdminQRPrintManager },
     { id: 'qrreports', label: 'QR Patrol Reports', component: AdminQRReports },
     { id: 'settings', label: 'Portal Settings', component: AdminPortalSettings },
-    { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
   ],
 };
 
