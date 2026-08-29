@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
+import { requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 
@@ -292,7 +292,7 @@ export default function BackgroundLocationTracker({ user }) {
     // this same stream instead of opening competing watchPosition handles.
     const unsubscribe = subscribeLiveLocation(saveLocation);
     const releaseTracking = startLiveLocationTracking({ onError: reportLocationError });
-    requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => null);
+    requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 75 }).catch(() => requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => null));
 
     return () => {
       unsubscribe();
