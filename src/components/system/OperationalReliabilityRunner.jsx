@@ -5,6 +5,8 @@ const DISPATCH_INTERVAL_MS = 2 * 60 * 1000;
 const PAYROLL_CHECK_INTERVAL_MS = 60 * 1000;
 const PAYROLL_CLAIM_MS = 30 * 60 * 1000;
 const DISPATCH_CLAIM_MS = 90 * 1000;
+const WORK_QUEUE_INTERVAL_MS = 5 * 60 * 1000;
+const WORK_QUEUE_CLAIM_MS = 60 * 60 * 1000;
 
 const normalize = (value) => String(value || '').trim().toLowerCase();
 
@@ -52,11 +54,15 @@ async function withBrowserLock(name, callback) {
 export default function OperationalReliabilityRunner({ user }) {
   const dispatchRunning = useRef(false);
   const payrollRunning = useRef(false);
+  const workQueueRunning = useRef(false);
   const roles = roleSet(user);
   const canMonitorDispatch = roles.has('admin') || roles.has('dispatch') || roles.has('dispatcher')
     || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access')
     || Boolean(user?.dispatch_role);
   const canRunPayroll = roles.has('admin') || roles.has('accounting') || roles.has('full_access');
+  const canRunAdminQueue = roles.has('admin') || roles.has('full_access');
+  const canRunHrQueue = canRunAdminQueue || roles.has('hr') || normalize(user?.rank) === 'human resources';
+  const canRunWorkQueue = canRunAdminQueue || canRunHrQueue;
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -101,14 +107,44 @@ export default function OperationalReliabilityRunner({ user }) {
       }
     };
 
+    const runWorkQueueIfDue = async () => {
+      if (!active || !canRunWorkQueue || workQueueRunning.current || document.hidden) return;
+      if (!claimStorageKey('bps:work-queue:last-hourly-check', WORK_QUEUE_CLAIM_MS)) return;
+      workQueueRunning.current = true;
+      try {
+        await withBrowserLock('bps-hourly-work-queue-check', async () => {
+          const results = {};
+          if (canRunAdminQueue) {
+            const response = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin', hourly_check: true });
+            results.admin = response?.data || response || {};
+            if (results.admin.error) throw new Error(results.admin.error);
+            await new Promise(resolve => window.setTimeout(resolve, 750));
+          }
+          if (canRunHrQueue) {
+            const response = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr', hourly_check: true });
+            results.hr = response?.data || response || {};
+            if (results.hr.error) throw new Error(results.hr.error);
+          }
+          window.dispatchEvent(new CustomEvent('bps-work-queue-refreshed', { detail: results }));
+        });
+      } catch (error) {
+        console.error('Hourly work queue check failed:', error?.response?.data?.error || error?.message || error);
+      } finally {
+        workQueueRunning.current = false;
+      }
+    };
+
     runDispatchMonitor();
     runPayrollIfDue();
+    runWorkQueueIfDue();
     const dispatchInterval = window.setInterval(runDispatchMonitor, DISPATCH_INTERVAL_MS);
     const payrollInterval = window.setInterval(runPayrollIfDue, PAYROLL_CHECK_INTERVAL_MS);
+    const workQueueInterval = window.setInterval(runWorkQueueIfDue, WORK_QUEUE_INTERVAL_MS);
     const onVisible = () => {
       if (!document.hidden) {
         runDispatchMonitor();
         runPayrollIfDue();
+        runWorkQueueIfDue();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -118,10 +154,11 @@ export default function OperationalReliabilityRunner({ user }) {
       active = false;
       window.clearInterval(dispatchInterval);
       window.clearInterval(payrollInterval);
+      window.clearInterval(workQueueInterval);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-  }, [user?.id, canMonitorDispatch, canRunPayroll]);
+  }, [user?.id, canMonitorDispatch, canRunPayroll, canRunWorkQueue, canRunAdminQueue, canRunHrQueue]);
 
   return null;
 }
