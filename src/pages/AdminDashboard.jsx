@@ -27,6 +27,11 @@ const workQueueTaskUrl = task => {
   return `${createPageUrl(task?.page || 'AdminDashboard')}${query ? `?${query}` : ''}`;
 };
 
+const ADMIN_QUEUE_KINDS = new Set([
+  'missing_report', 'availability', 'access', 'report_review', 'expense',
+  'shift_bid', 'special_coverage', 'weekly_schedule',
+]);
+
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const completeTask = useMutation({
@@ -92,9 +97,11 @@ export default function AdminDashboard() {
       const result = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      const currentTasks = (payload.tasks || []).filter(task => ADMIN_QUEUE_KINDS.has(task.kind));
       const previous = queryClient.getQueryData(['adminDashboardWorkQueue']) || {};
       if (payload.load_errors?.length && previous.tasks?.length) {
-        const mergedTasks = [...(payload.tasks || []), ...previous.tasks]
+        const retainedTasks = (previous.tasks || []).filter(task => ADMIN_QUEUE_KINDS.has(task.kind));
+        const mergedTasks = [...currentTasks, ...retainedTasks]
           .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
         return {
           ...payload,
@@ -103,7 +110,7 @@ export default function AdminDashboard() {
           retaining_last_confirmed_tasks: true,
         };
       }
-      return payload;
+      return { ...payload, tasks: currentTasks, counts: { ...(payload.counts || {}), total: currentTasks.length } };
     },
     enabled: user?.role === 'admin',
     staleTime: 0,
