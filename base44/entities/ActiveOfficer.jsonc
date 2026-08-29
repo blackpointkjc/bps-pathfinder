@@ -66,6 +66,14 @@
       "format": "date-time",
       "description": "Device timestamp of the most recent precise tactical GPS fix"
     },
+    "tracking_session_key": {
+      "type": "string",
+      "description": "Current login or clocked-in session identity for GPS isolation"
+    },
+    "reliable_session_key": {
+      "type": "string",
+      "description": "Session identity that owns the preserved precise tactical GPS fix"
+    },
     "unit_number": {
       "type": "string",
       "description": "Officer or vehicle unit number"
