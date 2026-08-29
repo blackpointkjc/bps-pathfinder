@@ -7,11 +7,11 @@ import ManageStudents from './ManageStudents';
 import TrainerOverview from './TrainerOverview';
 
 const SECTIONS = [
-  { id: 'overview', label: 'Overview', description: 'Training command dashboard and workload', icon: LayoutDashboard },
-  { id: 'courses', label: 'Training Setup', description: 'Create and manage the training catalog and modules', icon: GraduationCap },
-  { id: 'classes', label: 'Training Records', description: 'Classes, rosters, certificates and school records', icon: BookOpen },
-  { id: 'compliance', label: 'Compliance & Records', description: 'Officer certifications, assignments, reviews, alerts and reporting', icon: ShieldCheck },
-  { id: 'students', label: 'Students', description: 'Student accounts and assigned training', icon: Users },
+  { id: 'overview', label: 'Overview & Work Queue', description: 'Training dashboard, alerts and priority workload', icon: LayoutDashboard },
+  { id: 'courses', label: 'Course Setup', description: 'Create and manage the training catalog and modules', icon: GraduationCap },
+  { id: 'classes', label: 'Classes & Certificates', description: 'Classes, rosters, certificates and school records', icon: BookOpen },
+  { id: 'compliance', label: 'Compliance', description: 'Officer certifications, assignments, reviews, alerts and reporting', icon: ShieldCheck },
+  { id: 'students', label: 'Student Management', description: 'Student accounts and assigned training', icon: Users },
 ];
 
 export default function TrainerCenter() {
