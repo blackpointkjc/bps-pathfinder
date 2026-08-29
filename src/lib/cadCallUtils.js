@@ -51,14 +51,14 @@ export function suggestClosestUnits(callData, units) {
   if (!callData?.latitude || !callData?.longitude || !units?.length) return [];
 
   const unitsWithDistance = units
-    .filter(u => u.current_latitude && u.current_longitude && u.status === 'Available')
+    .filter(u => Number.isFinite(Number(u.latitude)) && Number.isFinite(Number(u.longitude)) && u.status === 'Available')
     .map(u => ({
       ...u,
       distance: calculateDistance(
         callData.latitude,
         callData.longitude,
-        u.current_latitude,
-        u.current_longitude
+        Number(u.latitude),
+        Number(u.longitude)
       )
     }))
     .sort((a, b) => a.distance - b.distance);
