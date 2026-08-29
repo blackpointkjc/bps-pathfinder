@@ -216,6 +216,59 @@ export const AuthProvider = ({ children }) => {
     };
   }, [checkAppState]);
 
+  // CAD administrators can terminate an officer's current Pathfinder session.
+  // Realtime subscription makes the action immediate; polling and focus checks
+  // provide a reliable fallback when the browser loses its live connection.
+  const forcedSessionLogoutInProgress = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id || !user?.email || forcedSessionLogoutInProgress.current) return;
+
+    let active = true;
+    let unsubscribe;
+    const checkForcedSignOut = async () => {
+      try {
+        const controls = await base44.entities.UserSessionControl.filter({
+          user_id: user.id,
+          action: 'force_sign_out',
+          active: true,
+        }, '-issued_at', 5);
+        if (!active || forcedSessionLogoutInProgress.current || !controls?.length) return;
+
+        const now = Date.now();
+        const control = controls.find(item => {
+          const expiry = new Date(item.expires_at || '').getTime();
+          return Number.isFinite(expiry) && expiry > now;
+        });
+        if (!control?.id) return;
+
+        const handledKey = `bps:force-sign-out:${control.id}`;
+        try {
+          if (localStorage.getItem(handledKey) === 'handled') return;
+          localStorage.setItem(handledKey, 'handled');
+        } catch (_) {}
+
+        forcedSessionLogoutInProgress.current = true;
+        await logout(true);
+      } catch (error) {
+        console.warn('[AUTH] Force sign-out check unavailable:', error?.message);
+      }
+    };
+
+    checkForcedSignOut();
+    try {
+      unsubscribe = base44.entities.UserSessionControl.subscribe(() => checkForcedSignOut());
+    } catch (_) {}
+    const interval = window.setInterval(checkForcedSignOut, 10000);
+    window.addEventListener('focus', checkForcedSignOut);
+
+    return () => {
+      active = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
+      window.clearInterval(interval);
+      window.removeEventListener('focus', checkForcedSignOut);
+    };
+  }, [isAuthenticated, user?.id, user?.email]);
+
   // A supervisor/dispatch/admin can force an officer Out of Service from the
   // Personnel page. That is a server-side duty-status override, so the target
   // browser must also be removed from the authenticated session. Poll only the
