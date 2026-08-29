@@ -26,6 +26,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 
 
@@ -103,7 +104,7 @@ export default function DispatchCenter() {
             window.clearTimeout(unitRefreshTimer);
             unitRefreshTimer = window.setTimeout(loadUnits, 750);
         };
-        const unsubscribeUnits = base44.entities.ActiveOfficer.subscribe(scheduleUnitRefresh);
+        const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             loadActiveCalls();
         }, 60000);
@@ -192,9 +193,7 @@ export default function DispatchCenter() {
             // One canonical status feed is shared by Dispatch Center, Command, and
             // the Unit Status Board. Only officers with a fresh signed-in CAD session
             // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const response = await base44.functions.invoke('getOnDutyUnits', {});
-            const payload = response?.data || response || {};
-            if (payload.error) throw new Error(payload.error);
+            const payload = await getOfficerLocationSnapshot();
             const eligibleUnits = (payload.users || [])
                 .filter(isOperationalOfficer)
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
