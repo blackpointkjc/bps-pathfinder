@@ -49,7 +49,7 @@ export default function HROverview() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 60000,
+    refetchInterval: 60 * 60 * 1000,
   });
 
   const employees = (data.employees || []).filter(row => !row.termination_date);
