@@ -15,8 +15,22 @@ export default function ActiveBoloBanner() {
       } catch (_) {}
     };
     load();
-    const id = setInterval(load, 15000);
-    return () => { mounted = false; clearInterval(id); };
+    let refreshTimer;
+    const scheduleLoad = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(load, 800);
+    };
+    let unsubscribe;
+    try { unsubscribe = base44.entities.BOLOAlert.subscribe(scheduleLoad); } catch {}
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 60000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+      window.clearTimeout(refreshTimer);
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   const sorted = useMemo(() => [...bolos].sort((a,b) => {
