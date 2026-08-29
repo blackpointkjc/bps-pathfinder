@@ -95,24 +95,26 @@ Deno.serve(async (req) => {
           return Array.isArray(rows) ? rows : [];
         } catch (error) {
           lastError = error;
-          if (attempt < 2) await delay(300 * (attempt + 1) + Math.min(300, label.length * 7));
+          if (attempt < 2) await delay(800 * (attempt + 1) + Math.min(400, label.length * 9));
         }
       }
       console.error(`getRoleWorkQueue could not load ${label}`, lastError);
       loadErrors.push(label);
       return [];
     };
-    const loadLimited = async (loaders: Array<() => Promise<any[]>>, concurrency = 2) => {
+    const loadLimited = async (loaders: Array<() => Promise<any[]>>, concurrency = 1) => {
       const results: any[][] = [];
       for (let index = 0; index < loaders.length; index += concurrency) {
         const batch = loaders.slice(index, index + concurrency);
         results.push(...await Promise.all(batch.map(loader => loader())));
+        if (index + concurrency < loaders.length) await delay(175);
       }
       return results;
     };
-    const settleLimited = async (actions: Array<() => Promise<any>>, concurrency = 2) => {
+    const settleLimited = async (actions: Array<() => Promise<any>>, concurrency = 1) => {
       for (let index = 0; index < actions.length; index += concurrency) {
         await Promise.allSettled(actions.slice(index, index + concurrency).map(action => action()));
+        if (index + concurrency < actions.length) await delay(100);
       }
     };
 
