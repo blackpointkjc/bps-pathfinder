@@ -678,8 +678,8 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-5xl font-bold text-slate-900">{officersWithLocation.length}</div>
-                  <p className="text-xs text-slate-500 mt-1">With location data</p>
+                  <div className="text-5xl font-bold text-slate-900">{officersForMap.length}</div>
+                  <p className="text-xs text-slate-500 mt-1">Live, low-accuracy, or last-known location data</p>
                 </CardContent>
               </Card>
 
@@ -742,13 +742,13 @@ export default function AdminLocationTracker() {
                               <p className="text-xs text-slate-500">
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
-                              <p className={`text-xs ${officer.gps_stale ? 'font-bold text-amber-700' : 'text-green-600'}`}>
+                              <p className={`text-xs ${officer.gps_stale || officer.gps_low_accuracy ? 'font-bold text-amber-700' : 'text-green-600'}`}>
                                 {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
                                   ? format(new Date(officer.gps_updated_at || officer.last_gps_updated_at), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
-                              {officer.gps_stale && (
-                                <p className="mt-1 text-[10px] font-bold text-red-700">Not eligible for automatic dispatch until fresh GPS returns.</p>
+                              {(officer.gps_stale || officer.gps_low_accuracy) && (
+                                <p className="mt-1 text-[10px] font-bold text-red-700">Not eligible for automatic dispatch until fresh, precise GPS returns.</p>
                               )}
                             </div>
                           </Popup>
