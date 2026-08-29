@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
     const candidateKeys = new Set(candidates.map(task => String(task.id)));
     const observedAt = new Date().toISOString();
 
-    await Promise.allSettled(candidates.filter(task => !stateByKey.has(String(task.id))).map(task =>
+    await settleLimited(candidates.filter(task => !stateByKey.has(String(task.id))).map(task => () =>
       base44.asServiceRole.entities.WorkQueueState.create({
         task_key: String(task.id),
         queue_role: queueRole,
@@ -383,9 +383,9 @@ Deno.serve(async (req) => {
       })
     ));
 
-    await Promise.allSettled(candidates.filter(task =>
+    await settleLimited(candidates.filter(task =>
       normalized(stateByKey.get(String(task.id))?.status) === 'auto_completed'
-    ).map(task =>
+    ).map(task => () =>
       base44.asServiceRole.entities.WorkQueueState.update(stateByKey.get(String(task.id)).id, {
         status: 'open',
         last_seen_at: observedAt,
@@ -393,9 +393,9 @@ Deno.serve(async (req) => {
     ));
 
     if (loadErrors.length === 0) {
-      await Promise.allSettled(roleStates.filter((state: any) =>
+      await settleLimited(roleStates.filter((state: any) =>
         normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
-      ).map((state: any) =>
+      ).map((state: any) => () =>
         base44.asServiceRole.entities.WorkQueueState.update(state.id, {
           status: 'auto_completed',
           completed_at: observedAt,
