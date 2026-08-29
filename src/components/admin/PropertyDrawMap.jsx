@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Circle, Polygon, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Circle, Polygon, Marker, Polyline, useMap } from 'react-leaflet';
+import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -68,10 +69,7 @@ export default function PropertyDrawMap({ mode, center, radius, polygon, onCente
         zoomControl={true}
         scrollWheelZoom={true}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
+        <PathfinderTileLayer />
 
         <MapEventBinder
           mode={mode}
