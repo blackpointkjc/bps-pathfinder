@@ -379,8 +379,6 @@ export default function GlobalMessageBanner({ user }) {
 
       const summary = propertyCallSummary(record, call);
       const propertyEventKey = `property:${callKey}:${currentStatus}`;
-      const settings = audioSettings.current;
-      const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
       const email = normalized(user.email);
       const priorAcknowledgements = email
         ? await Promise.all([
@@ -391,18 +389,10 @@ export default function GlobalMessageBanner({ user }) {
           ]).then(results => results.flat())
         : [];
       if (priorAcknowledgements?.length) return;
-      if (settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert')) && email) {
-        const claim = await claimAnnouncementEvent({
-          event_key: propertyEventKey,
-          event_id: record.id,
-          cad_number: call.agency_cad_number || call.bps_reference || call.call_id || '',
-          event_type: 'property_alert',
-        }).catch(error => ({ claimed: false, error }));
-        if (claim?.claimed) {
-          const accepted = speakNotification(`Property alert. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000, eventId: propertyEventKey, priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal', volume: settings.volume, voiceProfile: settings.voice_profile });
-          await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
-        }
-      }
+      // CallStatusLog is the only owner of property-alert speech. PropertyAlert
+      // owns the visual/chime and per-user acknowledgement only. Keeping speech
+      // out of this second realtime subscription prevents the same call from
+      // being spoken twice under two different event keys.
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
