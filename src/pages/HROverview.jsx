@@ -44,6 +44,18 @@ export default function HROverview() {
       const queueResult = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr' });
       const queue = queueResult?.data || queueResult || {};
       if (queue.error) throw new Error(queue.error);
+      const previous = queryClient.getQueryData(['hrOverviewSnapshot']) || {};
+      if (queue.load_errors?.length && previous.tasks?.length) {
+        const mergedTasks = [...(queue.tasks || []), ...previous.tasks]
+          .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
+        return {
+          ...queue,
+          tasks: mergedTasks,
+          counts: { ...(previous.counts || {}), total: mergedTasks.length },
+          annual_review_check_error: annualPayload.error || '',
+          retaining_last_confirmed_tasks: true,
+        };
+      }
       return { ...queue, annual_review_check_error: annualPayload.error || '' };
     },
     staleTime: 0,
@@ -70,7 +82,7 @@ export default function HROverview() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[['Active Employees', counts.active_employees ?? employees.length, Users, 'Directory accounts currently active'], ['Clocked In', counts.clocked_in ?? activeEntries.length, UserCheck, 'Employees with open time entries'], ['Attendance Exceptions', counts.missed_clock_ins || 0, AlertCircle, 'Scheduled employees who have not clocked in'], ['All Pending HR Work', counts.total || 0, ClipboardCheck, 'Attendance, PTO and performance reviews']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
+          {[['Active Employees', counts.active_employees ?? employees.length, Users, 'Directory accounts currently active'], ['Clocked In', counts.clocked_in ?? activeEntries.length, UserCheck, 'Employees with open time entries'], ['Attendance Exceptions', (counts.missed_clock_ins || 0) + (counts.late_clock_outs || 0), AlertCircle, 'Missed clock-ins and late clock-outs awaiting review'], ['All Pending HR Work', counts.total || 0, ClipboardCheck, 'Attendance, PTO and performance reviews']].map(([label,value,Icon,detail]) => <div key={label} className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="flex items-center justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300"><Icon className="h-5 w-5"/></div><span className="text-3xl font-black">{value}</span></div><div className="mt-4 text-sm font-black">{label}</div><div className="mt-1 text-xs text-slate-500">{detail}</div></div>)}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
