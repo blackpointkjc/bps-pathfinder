@@ -83,12 +83,21 @@ Deno.serve(async (req) => {
       liveData.speed = 0;
       liveData.accuracy = null;
     } else if (acceptsGps) {
+      const acceptedAccuracy = finiteNumber(body.accuracy, Number.POSITIVE_INFINITY);
       liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
       liveData.latitude = latitude;
       liveData.longitude = longitude;
       liveData.heading = finiteNumber(body.heading);
       liveData.speed = finiteNumber(body.speed);
-      liveData.accuracy = finiteNumber(body.accuracy);
+      liveData.accuracy = acceptedAccuracy;
+      // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
+      // tactical coordinate. Coarse fixes remain available for diagnostics only.
+      if (Number.isFinite(acceptedAccuracy) && acceptedAccuracy <= 100) {
+        liveData.reliable_latitude = latitude;
+        liveData.reliable_longitude = longitude;
+        liveData.reliable_accuracy = acceptedAccuracy;
+        liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
+      }
     }
 
     // Location heartbeats must never own CAD status. Only set status when the
