@@ -26,6 +26,7 @@ export default function HROverview() {
         person: item.person,
         kind: item.kind,
         source_id: item.source_id,
+        queue_role: 'hr',
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
@@ -40,7 +41,7 @@ export default function HROverview() {
       // Idempotent: creates only annual reviews that are actually due and missing.
       const annualResult = await base44.functions.invoke('generateAnnualPerformanceReviews', {}).catch(err => ({ data: { error: err?.message || 'Annual review check failed' } }));
       const annualPayload = annualResult?.data || annualResult || {};
-      const queueResult = await base44.functions.invoke('getRoleWorkQueue', {});
+      const queueResult = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr' });
       const queue = queueResult?.data || queueResult || {};
       if (queue.error) throw new Error(queue.error);
       return { ...queue, annual_review_check_error: annualPayload.error || '' };
