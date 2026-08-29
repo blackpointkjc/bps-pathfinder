@@ -202,7 +202,7 @@ export default function OfficerProfile() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
@@ -210,15 +210,14 @@ export default function OfficerProfile() {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedPhoto}
       />
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">My Profile</h1>
-          <p className="text-slate-600">View and update your profile information</p>
+      <div className="mx-auto max-w-5xl space-y-5">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl md:p-7">
+          <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
         </div>
 
-        <Card className="border-none shadow-lg bg-white">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-blue-950/35 to-violet-950/25">
+            <CardTitle className="flex items-center gap-2 text-white">
               <User className="w-5 h-5 text-blue-600" />
               Profile Photo
             </CardTitle>
@@ -253,12 +252,12 @@ export default function OfficerProfile() {
                 />
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-2xl font-bold text-white">
                   {user?.first_name && user?.last_name 
                     ? `${user.first_name} ${user.last_name}`
                     : user?.full_name || 'Officer'}
                 </h2>
-                <p className="text-slate-600">{user?.email}</p>
+                <p className="text-slate-400">{user?.email}</p>
                 <div className="flex gap-2 mt-3 justify-center md:justify-start flex-wrap">
                   {user?.rank && (
                     <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
@@ -291,9 +290,9 @@ export default function OfficerProfile() {
         </Card>
 
         {myCompanyMailbox && (
-          <Card className="border-none shadow-lg bg-white">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
             <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-blue-50">
-              <CardTitle className="flex items-center gap-2 text-slate-900"><Mail className="h-5 w-5 text-emerald-600" /> Company Email</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-white"><Mail className="h-5 w-5 text-emerald-600" /> Company Email</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -302,8 +301,8 @@ export default function OfficerProfile() {
                 <p className="mt-2 text-xs leading-5 text-emerald-700">This mailbox is assigned by the company. You can update only your mailbox password here. Address and server settings are controlled by an administrator.</p>
               </div>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div><Label className="text-sm text-slate-600">New Email Password</Label><Input type="password" autoComplete="new-password" value={companyMailPassword} onChange={e => setCompanyMailPassword(e.target.value)} placeholder="Enter new password" /></div>
-                <div><Label className="text-sm text-slate-600">Confirm New Password</Label><Input type="password" autoComplete="new-password" value={companyMailPasswordConfirm} onChange={e => setCompanyMailPasswordConfirm(e.target.value)} placeholder="Confirm new password" /></div>
+                <div><Label className="text-sm text-slate-400">New Email Password</Label><Input type="password" autoComplete="new-password" value={companyMailPassword} onChange={e => setCompanyMailPassword(e.target.value)} placeholder="Enter new password" /></div>
+                <div><Label className="text-sm text-slate-400">Confirm New Password</Label><Input type="password" autoComplete="new-password" value={companyMailPasswordConfirm} onChange={e => setCompanyMailPasswordConfirm(e.target.value)} placeholder="Confirm new password" /></div>
               </div>
               <Button type="button" className="mt-4" onClick={updateCompanyMailPassword} disabled={savingCompanyMailPassword || !companyMailPassword || !companyMailPasswordConfirm}>
                 <KeyRound className="mr-2 h-4 w-4" />{savingCompanyMailPassword ? 'Verifying…' : 'Update Company Email Password'}
@@ -312,33 +311,33 @@ export default function OfficerProfile() {
           </Card>
         )}
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="border-b">
-            <CardTitle className="text-slate-900">Contact Information</CardTitle>
+            <CardTitle className="text-white">Contact Information</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-slate-600 text-sm">Email</Label>
-                <p className="text-slate-900 font-medium">{user?.email}</p>
+                <Label className="text-slate-400 text-sm">Email</Label>
+                <p className="text-white font-medium">{user?.email}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Phone</Label>
-                <p className="text-slate-900 font-medium">{user?.mobile_phone || user?.phone || 'N/A'}</p>
+                <Label className="text-slate-400 text-sm">Phone</Label>
+                <p className="text-white font-medium">{user?.mobile_phone || user?.phone || 'N/A'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Unit Number</Label>
-                <p className="text-slate-900 font-medium">{user?.unit_number || 'N/A'}</p>
+                <Label className="text-slate-400 text-sm">Unit Number</Label>
+                <p className="text-white font-medium">{user?.unit_number || 'N/A'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Hire Date</Label>
-                <p className="text-slate-900 font-medium">
+                <Label className="text-slate-400 text-sm">Hire Date</Label>
+                <p className="text-white font-medium">
                   {user?.hire_date ? new Date(user.hire_date).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">DCJS Expiration</Label>
-                <p className="text-slate-900 font-medium">
+                <Label className="text-slate-400 text-sm">DCJS Expiration</Label>
+                <p className="text-white font-medium">
                   {(() => {
                     const val = computeDcjsExpiration(user?.officer_certifications) || user?.dcjs_expiration;
                     return val ? new Date(val).toLocaleDateString() : 'N/A';
@@ -346,8 +345,8 @@ export default function OfficerProfile() {
                 </p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Firearm Expiration</Label>
-                <p className="text-slate-900 font-medium">
+                <Label className="text-slate-400 text-sm">Firearm Expiration</Label>
+                <p className="text-white font-medium">
                   {(() => {
                     const val = computeFirearmExpiration(user?.officer_certifications) || user?.firearm_expiration;
                     return val ? new Date(val).toLocaleDateString() : 'N/A';
@@ -358,9 +357,9 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-white">
               <Phone className="w-5 h-5 text-amber-600" />
               Emergency Contact
             </CardTitle>
@@ -368,24 +367,24 @@ export default function OfficerProfile() {
           <CardContent className="p-6">
             <div className="grid md:grid-cols-3 gap-4">
               <div>
-                <Label className="text-slate-600 text-sm">Contact Name</Label>
-                <p className="text-slate-900 font-medium">{user?.emergency_contact_name || 'Not set'}</p>
+                <Label className="text-slate-400 text-sm">Contact Name</Label>
+                <p className="text-white font-medium">{user?.emergency_contact_name || 'Not set'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Relationship</Label>
-                <p className="text-slate-900 font-medium">{user?.emergency_contact_relationship || 'Not set'}</p>
+                <Label className="text-slate-400 text-sm">Relationship</Label>
+                <p className="text-white font-medium">{user?.emergency_contact_relationship || 'Not set'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Phone Number</Label>
-                <p className="text-slate-900 font-medium">{user?.emergency_contact_phone || 'Not set'}</p>
+                <Label className="text-slate-400 text-sm">Phone Number</Label>
+                <p className="text-white font-medium">{user?.emergency_contact_phone || 'Not set'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-white">
               <Shield className="w-5 h-5 text-blue-600" />
               Certifications & Licenses
             </CardTitle>
@@ -393,16 +392,16 @@ export default function OfficerProfile() {
           <CardContent className="p-6 space-y-4">
             <div className="grid md:grid-cols-3 gap-4 pb-4 border-b">
               <div>
-                <Label className="text-slate-600 text-sm">Driver's License #</Label>
-                <p className="text-slate-900 font-medium">{user?.drivers_license_number || 'Not set'}</p>
+                <Label className="text-slate-400 text-sm">Driver's License #</Label>
+                <p className="text-white font-medium">{user?.drivers_license_number || 'Not set'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">State</Label>
-                <p className="text-slate-900 font-medium">{user?.drivers_license_state || 'Not set'}</p>
+                <Label className="text-slate-400 text-sm">State</Label>
+                <p className="text-white font-medium">{user?.drivers_license_state || 'Not set'}</p>
               </div>
               <div>
-                <Label className="text-slate-600 text-sm">Expiration</Label>
-                <p className="text-slate-900 font-medium">
+                <Label className="text-slate-400 text-sm">Expiration</Label>
+                <p className="text-white font-medium">
                   {user?.drivers_license_expiration ? format(new Date(user.drivers_license_expiration), 'MMM d, yyyy') : 'Not set'}
                 </p>
               </div>
@@ -411,7 +410,7 @@ export default function OfficerProfile() {
             {certificationRows.length > 0 ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="font-semibold text-slate-900">My Certifications</h4>
+                  <h4 className="font-semibold text-white">My Certifications</h4>
                   <span className="text-xs text-slate-500">{certificationRows.length} record{certificationRows.length === 1 ? '' : 's'}</span>
                 </div>
                 {certificationRows.map((cert) => {
@@ -422,15 +421,15 @@ export default function OfficerProfile() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold text-blue-900">{cert.name}</p>
-                            {cert.course_id && <Badge variant="outline" className="border-blue-300 bg-white text-blue-800">{cert.course_id}</Badge>}
+                            {cert.course_id && <Badge variant="outline" className="border-blue-300 bg-[#0d1725] text-blue-800">{cert.course_id}</Badge>}
                             <Badge className={status === 'expired' ? 'bg-red-600' : status === 'expiring' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-600'}>
                               {status === 'expiring' ? 'Expiring Soon' : status.charAt(0).toUpperCase() + status.slice(1)}
                             </Badge>
                           </div>
-                          <p className="mt-1 text-sm text-slate-600">Issued by: {cert.issuer || 'Not specified'}</p>
+                          <p className="mt-1 text-sm text-slate-400">Issued by: {cert.issuer || 'Not specified'}</p>
                           {cert.certificate_number && <p className="text-xs text-slate-500">Certificate #: {cert.certificate_number}</p>}
                           {cert.issue_date && <p className="text-xs text-slate-500">Issued: {format(new Date(`${cert.issue_date}T00:00:00`), 'MMM d, yyyy')}</p>}
-                          {cert.notes && <p className="mt-1 text-xs text-slate-600">{cert.notes}</p>}
+                          {cert.notes && <p className="mt-1 text-xs text-slate-400">{cert.notes}</p>}
                         </div>
                         <div className="shrink-0 text-left sm:text-right">
                           <p className="text-xs font-medium text-slate-700">{cert.expiration_date ? `Expires ${format(new Date(`${cert.expiration_date}T00:00:00`), 'MMM d, yyyy')}` : 'No expiration'}</p>
@@ -442,22 +441,22 @@ export default function OfficerProfile() {
                 })}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-6 text-center text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-950/45 py-6 text-center text-slate-500">
                 <Shield className="mx-auto mb-3 h-10 w-10 opacity-30" />
                 <p className="text-sm">No certifications or licenses have been added to your officer record yet.</p>
               </div>
             )}
 
             <div className="mt-4 border-t pt-4">
-              <p className="text-sm text-slate-600">Certification status shown here is synced from your officer certification record in Training Compliance. Contact Training or HR if a record needs to be corrected.</p>
+              <p className="text-sm text-slate-400">Certification status shown here is synced from your officer certification record in Training Compliance. Contact Training or HR if a record needs to be corrected.</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
-              <Package className="w-5 h-5 text-slate-600" />
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Package className="w-5 h-5 text-slate-400" />
               Assigned Equipment
             </CardTitle>
           </CardHeader>
@@ -465,11 +464,11 @@ export default function OfficerProfile() {
             {assignedEquipment && assignedEquipment.length > 0 ? (
               <div className="space-y-3">
                 {assignedEquipment.map((equip) => (
-                  <div key={equip.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div key={equip.id} className="p-3 bg-slate-950/45 rounded-lg border border-slate-200">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold text-slate-900">{equip.product_name || equip.equipment_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
-                        <p className="text-sm text-slate-600">{equip.equipment_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
+                        <p className="font-semibold text-white">{equip.product_name || equip.equipment_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
+                        <p className="text-sm text-slate-400">{equip.equipment_type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
                         {equip.serial_number && (
                           <p className="text-xs text-slate-500">Serial #: {equip.serial_number}</p>
                         )}
@@ -506,7 +505,7 @@ export default function OfficerProfile() {
             <CardContent className="p-6 text-center">
               <Award className="w-10 h-10 text-green-600 mx-auto mb-2" />
               <p className="text-4xl font-bold text-green-600">{commendations?.length || 0}</p>
-              <p className="text-sm text-slate-600">Commendations</p>
+              <p className="text-sm text-slate-400">Commendations</p>
             </CardContent>
           </Card>
 
@@ -514,7 +513,7 @@ export default function OfficerProfile() {
             <CardContent className="p-6 text-center">
               <AlertTriangle className="w-10 h-10 text-red-600 mx-auto mb-2" />
               <p className="text-4xl font-bold text-red-600">{complaints?.length || 0}</p>
-              <p className="text-sm text-slate-600">Complaints</p>
+              <p className="text-sm text-slate-400">Complaints</p>
             </CardContent>
           </Card>
 
@@ -522,14 +521,14 @@ export default function OfficerProfile() {
             <CardContent className="p-6 text-center">
               <ClipboardCheck className="w-10 h-10 text-purple-600 mx-auto mb-2" />
               <p className="text-4xl font-bold text-purple-600">{performanceReviews?.length || 0}</p>
-              <p className="text-sm text-slate-600">Performance Reviews</p>
+              <p className="text-sm text-slate-400">Performance Reviews</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-white">
               <Award className="w-5 h-5 text-green-600" />
               Commendations ({commendations?.length || 0})
             </CardTitle>
@@ -550,8 +549,8 @@ export default function OfficerProfile() {
                               {comm.points_awarded} Point{comm.points_awarded !== 1 ? 's' : ''}
                             </Badge>
                           </div>
-                          <p className="text-sm text-slate-900 font-semibold mb-1">{comm.description}</p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-sm text-white font-semibold mb-1">{comm.description}</p>
+                          <p className="text-xs text-slate-400">
                             Issued by: {comm.issued_by_name || comm.issued_by} • {format(parseISO(comm.commendation_date), 'MMM d, yyyy')}
                           </p>
                         </div>
@@ -568,9 +567,9 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-white">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               Complaints & Investigations ({complaints?.length || 0})
             </CardTitle>
@@ -599,18 +598,18 @@ export default function OfficerProfile() {
                               comp.severity === 'critical' ? 'border-red-600 text-red-600' :
                               comp.severity === 'serious' ? 'border-orange-600 text-orange-600' :
                               comp.severity === 'moderate' ? 'border-amber-600 text-amber-600' :
-                              'border-slate-400 text-slate-600'
+                              'border-slate-400 text-slate-400'
                             }>
                               {comp.severity}
                             </Badge>
                           </div>
-                          <p className="text-sm text-slate-900 mb-1">{comp.description}</p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-sm text-white mb-1">{comp.description}</p>
+                          <p className="text-xs text-slate-400">
                             Filed: {format(parseISO(comp.complaint_date), 'MMM d, yyyy')}
                             {comp.investigation_completed_date && ` • Closed: ${format(parseISO(comp.investigation_completed_date), 'MMM d, yyyy')}`}
                           </p>
                           {comp.investigation_notes && (
-                            <div className="mt-2 p-2 bg-white rounded border border-red-100">
+                            <div className="mt-2 p-2 bg-[#0d1725] rounded border border-red-100">
                               <p className="text-xs text-slate-700"><strong>Investigation:</strong> {comp.investigation_notes}</p>
                             </div>
                           )}
@@ -628,9 +627,9 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-white">
               <ClipboardCheck className="w-5 h-5 text-purple-600" />
               Performance Review History ({performanceReviews?.length || 0})
             </CardTitle>
@@ -654,10 +653,10 @@ export default function OfficerProfile() {
                             <p className="font-bold text-lg text-purple-900">
                               {format(parseISO(review.review_date), 'MMMM d, yyyy')}
                             </p>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs text-slate-400">
                               Review Period: {format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}
                             </p>
-                            <p className="text-xs text-slate-600">Reviewer: {review.reviewer_name || review.reviewer_email}</p>
+                            <p className="text-xs text-slate-400">Reviewer: {review.reviewer_name || review.reviewer_email}</p>
                           </div>
                           <div className="text-right">
                             <div className="flex items-center gap-1">
@@ -668,28 +667,28 @@ export default function OfficerProfile() {
                                 />
                               ))}
                             </div>
-                            <p className="text-xs text-slate-600 mt-1">Overall: {review.overall_rating}/5</p>
+                            <p className="text-xs text-slate-400 mt-1">Overall: {review.overall_rating}/5</p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                          <div className="text-center p-2 bg-white rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Punctuality</p>
                             <p className="text-lg font-bold text-purple-600">{review.punctuality_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-white rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Professional</p>
                             <p className="text-lg font-bold text-purple-600">{review.professionalism_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-white rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Reports</p>
                             <p className="text-lg font-bold text-purple-600">{review.report_quality_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-white rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Teamwork</p>
                             <p className="text-lg font-bold text-purple-600">{review.teamwork_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-white rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Initiative</p>
                             <p className="text-lg font-bold text-purple-600">{review.initiative_rating || '-'}/5</p>
                           </div>
@@ -715,28 +714,28 @@ export default function OfficerProfile() {
                         {review.strengths && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-green-700 mb-1">Strengths:</p>
-                            <p className="text-sm text-slate-700 bg-white p-2 rounded border border-green-100">{review.strengths}</p>
+                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-green-100">{review.strengths}</p>
                           </div>
                         )}
 
                         {review.areas_for_improvement && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-amber-700 mb-1">Areas for Improvement:</p>
-                            <p className="text-sm text-slate-700 bg-white p-2 rounded border border-amber-100">{review.areas_for_improvement}</p>
+                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-amber-100">{review.areas_for_improvement}</p>
                           </div>
                         )}
 
                         {review.goals_for_next_period && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-blue-700 mb-1">Goals:</p>
-                            <p className="text-sm text-slate-700 bg-white p-2 rounded border border-blue-100">{review.goals_for_next_period}</p>
+                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-blue-100">{review.goals_for_next_period}</p>
                           </div>
                         )}
 
                         {review.reviewer_comments && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-purple-700 mb-1">Reviewer Comments:</p>
-                            <p className="text-sm text-slate-700 bg-white p-2 rounded border border-purple-100">{review.reviewer_comments}</p>
+                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-purple-100">{review.reviewer_comments}</p>
                           </div>
                         )}
 
@@ -755,7 +754,7 @@ export default function OfficerProfile() {
             )}
           </CardContent>
         </Card>
-        <Card className="border-2 border-red-300 shadow-lg bg-white">
+        <Card className="border-2 border-red-300 shadow-lg bg-[#0d1725]">
           <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b">
             <CardTitle className="flex items-center gap-2 text-red-700">
               <Shield className="w-5 h-5" />
