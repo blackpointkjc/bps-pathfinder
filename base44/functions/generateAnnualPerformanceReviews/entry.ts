@@ -88,10 +88,9 @@ Deno.serve(async (req) => {
     if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('hr')) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
+    // This function is idempotent by annual_review_key, so HR/admin dashboards
+    // may safely ensure due reviews at any time instead of depending on one exact hour.
     const now = easternNow();
-    if (now.hour !== 8) {
-      return Response.json({ success: true, skipped: true, reason: 'Outside the 8 AM Eastern annual-review window' });
-    }
 
     const [users, existingReviews] = await Promise.all([
       base44.asServiceRole.entities.User.list(undefined, 5000),
