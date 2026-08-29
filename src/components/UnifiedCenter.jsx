@@ -13,10 +13,11 @@ export function useDesktopViewport() {
 }
 
 export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false }) {
+  const safeSections = Array.isArray(sections) ? sections : [];
   const initial = useMemo(() => {
     const requested = new URLSearchParams(window.location.search).get(queryParam);
-    return sections.some(section => section.id === requested) ? requested : defaultSection || sections[0]?.id;
-  }, [sections, defaultSection, queryParam]);
+    return safeSections.some(section => section.id === requested) ? requested : defaultSection || safeSections[0]?.id;
+  }, [safeSections, defaultSection, queryParam]);
   const [section, setSection] = useState(initial);
 
   const select = next => {
@@ -28,11 +29,11 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
 
   // Center navigation should read like one compact navigation rail, not another
   // dashboard made of large cards. Keep every center consistent and scannable.
-  const sectionGrid = sections.length >= 5
+  const sectionGrid = safeSections.length >= 5
     ? 'md:grid-cols-3 xl:grid-cols-6'
-    : sections.length === 4
+    : safeSections.length === 4
       ? 'md:grid-cols-4'
-      : sections.length === 3
+      : safeSections.length === 3
         ? 'md:grid-cols-3'
         : 'md:grid-cols-2';
 
@@ -46,7 +47,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
             <p className="mt-1 max-w-4xl text-sm text-slate-400">{description}</p>
           </>}
           <div className={`${embedded ? '' : 'mt-4'} grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-[#07101c] p-1.5 ${sectionGrid}`}>
-            {sections.map(({ id, label, icon: Icon }) => {
+            {safeSections.map(({ id, label, icon: Icon }) => {
               const active = section === id;
               return (
                 <button key={id} type="button" onClick={() => select(id)} aria-pressed={active}
@@ -59,7 +60,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           </div>
         </div>
       </header>
-      <main className={`mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] min-w-0 overflow-x-hidden border-x border-slate-800/70 ${contentClassName}`}><div className="w-full min-w-0 max-w-full overflow-x-hidden">{children(section)}</div></main>
+      <main className={`mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] min-w-0 overflow-x-hidden border-x border-slate-800/70 ${contentClassName}`}><div className="w-full min-w-0 max-w-full overflow-x-hidden">{typeof children === 'function' ? children(section) : children}</div></main>
     </div>
   );
 }
