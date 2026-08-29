@@ -35,7 +35,7 @@ export default function HROverview() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] }),
   });
 
-  const { data = {}, isLoading, error } = useQuery({
+  const { data = {}, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['hrOverviewSnapshot'],
     queryFn: async () => {
       // Idempotent: creates only annual reviews that are actually due and missing.
@@ -46,7 +46,9 @@ export default function HROverview() {
       if (queue.error) throw new Error(queue.error);
       return { ...queue, annual_review_check_error: annualPayload.error || '' };
     },
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     refetchInterval: 60000,
   });
 
@@ -63,7 +65,7 @@ export default function HROverview() {
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div><div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[.22em] text-cyan-300"><Briefcase className="h-4 w-4"/>Human Resources Command</div><h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">HR Operations Dashboard</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Live workforce status plus the actual HR approvals and review steps waiting for action.</p></div>
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-200">{isLoading ? 'LOADING HR DATA' : `${pendingActions.length} ACTIONS WAITING`}</div>
+            <div className="flex flex-wrap items-center gap-2"><div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-200">{isLoading ? 'LOADING HR DATA' : `${pendingActions.length} ACTIONS WAITING`}</div><button type="button" onClick={() => refetch()} disabled={isFetching} className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-xs font-black text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">{isFetching ? 'CHECKING…' : 'REFRESH TASKS'}</button></div>
           </div>
         </section>
 
