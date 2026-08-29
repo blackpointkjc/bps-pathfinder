@@ -29,6 +29,7 @@ import MicrosoftMailSetupGate from '@/components/MicrosoftMailSetupGate';
 import OutlookNotificationMonitor from '@/components/OutlookNotificationMonitor';
 import TeamsNotificationMonitor from '@/components/TeamsNotificationMonitor';
 import AdminHourlySystemScan from '@/components/admin/AdminHourlySystemScan';
+import OperationalReliabilityRunner from '@/components/system/OperationalReliabilityRunner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -1240,7 +1241,7 @@ export default function Layout({ children, currentPageName }) {
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
-  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><AdminHourlySystemScan user={user} /><OperationalReliabilityRunner user={user} /><PerformanceReviewTaskGate user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <aside className="relative hidden flex-col border-r border-[#1c3049] lg:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
