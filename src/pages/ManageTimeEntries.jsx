@@ -67,7 +67,7 @@ export default function ManageTimeEntries() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
-  const hasPayrollAuthority = isAdmin || roles.has('full_access');
+  const hasPayrollAuthority = isAdmin || isHR;
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
