@@ -736,7 +736,7 @@ export default function Navigation() {
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
                 <MapView
-                    currentLocation={isLiveTracking ? currentLocation : null}
+                    currentLocation={currentLocation}
                     destination={navDestination} route={navRoute} trafficSegments={null}
                     useOfflineTiles={!isOnline}
                     activeCalls={showActiveCalls ? activeCalls : []}

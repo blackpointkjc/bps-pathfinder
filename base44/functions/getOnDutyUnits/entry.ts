@@ -85,11 +85,15 @@ Deno.serve(async (req) => {
             last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasGps ? Number(active.latitude) : null),
             last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasGps ? Number(active.longitude) : null),
             last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasGps ? accuracy : null),
-            coarse_latitude: !hasGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
-            coarse_longitude: !hasGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
-            coarse_accuracy: !hasGps && active.gps_session_key === active.tracking_session_key && Number.isFinite(accuracy) ? accuracy : null,
-            coarse_gps_updated_at: !hasGps && active.gps_session_key === active.tracking_session_key ? active.gps_updated_at || null : null,
-            coarse_stale: !hasGps && active.gps_session_key === active.tracking_session_key && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
+            // Show the officer's best available device position even when it isn't
+            // precise (Wi-Fi/indoor fixes). The session-key equality check formerly
+            // hid officers whose heartbeat desynced gps_session_key; any valid
+            // stored coordinate in the current record is a better marker than none.
+            coarse_latitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+            coarse_longitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
+            coarse_accuracy: !hasGps && Number.isFinite(accuracy) ? accuracy : null,
+            coarse_gps_updated_at: !hasGps ? active.gps_updated_at || null : null,
+            coarse_stale: !hasGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
             gps_pending: !hasGps,
             show_lights: active.show_lights,
             current_call_info: active.current_call_info || '',
@@ -175,11 +179,14 @@ Deno.serve(async (req) => {
         last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasReliableGps ? Number(active.latitude) : null),
         last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : null),
         last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : null),
-        coarse_latitude: !hasReliableGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
-        coarse_longitude: !hasReliableGps && active.gps_session_key === active.tracking_session_key && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
-        coarse_accuracy: !hasReliableGps && active.gps_session_key === active.tracking_session_key && Number.isFinite(accuracy) ? accuracy : null,
-        coarse_gps_updated_at: !hasReliableGps && active.gps_session_key === active.tracking_session_key ? active.gps_updated_at || null : null,
-        coarse_stale: !hasReliableGps && active.gps_session_key === active.tracking_session_key && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
+        // Show the officer's best available device position even when it isn't
+        // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the current
+        // record renders as a low-accuracy marker rather than hiding the officer.
+        coarse_latitude: !hasReliableGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
+        coarse_longitude: !hasReliableGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
+        coarse_accuracy: !hasReliableGps && Number.isFinite(accuracy) ? accuracy : null,
+        coarse_gps_updated_at: !hasReliableGps ? active.gps_updated_at || null : null,
+        coarse_stale: !hasReliableGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
         gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
         current_call_info: active.current_call_info || user.current_call_info || '',
@@ -283,11 +290,15 @@ Deno.serve(async (req) => {
           last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps ? Number(active.latitude) : null),
           last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps ? Number(active.longitude) : null),
           last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps ? accuracy : null),
-          coarse_latitude: !hasFreshGps && active?.gps_session_key === active?.tracking_session_key && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
-          coarse_longitude: !hasFreshGps && active?.gps_session_key === active?.tracking_session_key && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
-          coarse_accuracy: !hasFreshGps && active?.gps_session_key === active?.tracking_session_key && Number.isFinite(accuracy) ? accuracy : null,
-          coarse_gps_updated_at: !hasFreshGps && active?.gps_session_key === active?.tracking_session_key ? active?.gps_updated_at || null : null,
-          coarse_stale: !hasFreshGps && active?.gps_session_key === active?.tracking_session_key && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
+          // Show the officer's best available device position even when it isn't
+          // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the
+          // current record renders as a low-accuracy marker rather than hiding
+          // the officer.
+          coarse_latitude: !hasFreshGps && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
+          coarse_longitude: !hasFreshGps && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
+          coarse_accuracy: !hasFreshGps && Number.isFinite(accuracy) ? accuracy : null,
+          coarse_gps_updated_at: !hasFreshGps ? active?.gps_updated_at || null : null,
+          coarse_stale: !hasFreshGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
           gps_pending: signedInFresh && !hasFreshGps,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
