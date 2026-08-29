@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool' }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const safeTools = Array.isArray(tools) ? tools : [];
   const initial = useMemo(() => {
     const requested = new URLSearchParams(location.search).get(queryParam);
@@ -20,9 +21,11 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
 
   const select = next => {
     setTool(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set(queryParam, next);
-    window.history.replaceState({}, '', url);
+    const params = new URLSearchParams(location.search);
+    params.set(queryParam, next);
+    ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
   };
 
   const active = safeTools.find(item => item.id === tool) || safeTools[0];
