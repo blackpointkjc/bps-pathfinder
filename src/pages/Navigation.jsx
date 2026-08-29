@@ -583,29 +583,18 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            let sourceUnits = [];
-            try {
-                const result = await base44.functions.invoke('getOnDutyUnits', {});
-                const payload = result?.data || result || {};
-                if (payload.error) throw new Error(payload.error);
-                sourceUnits = payload.units || [];
-                if (sourceUnits.length === 0) {
-                    sourceUnits = await base44.entities.ActiveOfficer.list('-last_update', 500);
-                }
-            } catch (functionError) {
-                console.warn('[NAV] on-duty unit function failed; using live GPS rows:', functionError?.message);
-                sourceUnits = await base44.entities.ActiveOfficer.list('-last_update', 500);
-            }
+            // Navigation consumes the same canonical unit snapshot as CAD and the
+            // admin tracker. Never fall back to raw ActiveOfficer rows, because a
+            // stale stored coordinate must not become a live map marker.
+            const result = await base44.functions.invoke('getOnDutyUnits', {});
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
+            const sourceUnits = (Array.isArray(payload.users) ? payload.users : payload.units || [])
+                .filter(unit => unit.session_active !== false);
             const currentEmail = currentUser?.email?.toLowerCase();
-            const freshCutoff = Date.now() - 15 * 60 * 1000;
             const units = sourceUnits
-                .filter(unit => {
-                    const updated = new Date(unit.last_update || unit.last_updated || unit.updated_date || unit.created_date || 0).getTime();
-                    return updated >= freshCutoff;
-                })
                 .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
                 .filter(unit => Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude)))
-                .filter(unit => Number.isFinite(Number(unit.accuracy)) && Number(unit.accuracy) <= 100)
                 .map(unit => ({
                     ...unit,
                     email: unit.officer_email || unit.email,
