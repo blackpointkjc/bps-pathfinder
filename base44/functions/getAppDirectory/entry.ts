@@ -5,6 +5,23 @@ function lowerRoles(user: any) {
 }
 
 const cleanEmail = (value: any) => String(value || '').trim().toLowerCase();
+const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function listWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(700 * (attempt + 1));
+    }
+  }
+  console.error(`getAppDirectory could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 
 function addEmailAliases(entry: any, teamsByUser: Map<string, any>, outlookByUser: Map<string, any>) {
   const teams = teamsByUser.get(String(entry?.id || ''));
@@ -79,13 +96,24 @@ Deno.serve(async (req) => {
     const clientOnly = !fullAccess && (roles.has('client') || me.user_type === 'client' || rank === 'client');
     const studentOnly = !fullAccess && roles.has('student');
 
-    const [rawUsers, rawLocations, rawDivisions, rawTeamsLinks, rawOutlookLinks] = await Promise.all([
-      base44.asServiceRole.entities.User.list(undefined, 1000),
-      base44.asServiceRole.entities.Location.list('site_name', 1000),
-      base44.asServiceRole.entities.Division.list('division_name', 1000).catch(() => []),
-      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000).catch(() => []),
-      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000).catch(() => []),
-    ]);
+    // Directory reads are intentionally serialized and retried. Loading five
+    // service-role entities at once was intermittently rate-limited, which made
+    // Manage Employees fall back to only the signed-in user and appear to remove officers.
+    const rawUsers = await listWithRetry('company employees', () =>
+      base44.asServiceRole.entities.User.list(undefined, 1000)
+    );
+    const rawLocations = await listWithRetry('locations', () =>
+      base44.asServiceRole.entities.Location.list('site_name', 1000)
+    );
+    const rawDivisions = await listWithRetry('divisions', () =>
+      base44.asServiceRole.entities.Division.list('division_name', 1000), true
+    );
+    const rawTeamsLinks = await listWithRetry('Teams identities', () =>
+      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000), true
+    );
+    const rawOutlookLinks = await listWithRetry('Outlook identities', () =>
+      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000), true
+    );
 
     const teamsByUser = new Map<string, any>();
     for (const link of rawTeamsLinks || []) {
