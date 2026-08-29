@@ -44,6 +44,13 @@ function addDays(dateValue: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function dayOffset(fromDate: string, toDate: string) {
+  const from = new Date(`${fromDate}T12:00:00Z`).getTime();
+  const to = new Date(`${toDate}T12:00:00Z`).getTime();
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
+  return Math.round((to - from) / 86400000);
+}
+
 function actualPaidHours(entry: any) {
   const start = new Date(entry?.clock_in || 0).getTime();
   const end = new Date(entry?.clock_out || 0).getTime();
@@ -248,6 +255,35 @@ Deno.serve(async (req) => {
       });
     }) : [];
 
+    const lateReviewCutoff = Date.now() - 21 * 86400000;
+    const lateClockOuts = queueRole === 'hr' ? (entries || []).flatMap((entry: any) => {
+      if (!entry?.id || !entry.clock_in || !entry.clock_out || entry.archived === true || entry.payroll_adjustment_decision) return [];
+      if (new Date(entry.clock_out).getTime() < lateReviewCutoff) return [];
+      const clockIn = easternParts(entry.clock_in);
+      const clockOut = easternParts(entry.clock_out);
+      const sameDaySchedules = (schedules || []).filter((shift: any) =>
+        shift.archived !== true
+        && normalized(shift.officer_email) === normalized(entry.officer_email)
+        && String(shift.shift_date || '').slice(0, 10) === clockIn.date
+      );
+      if (!sameDaySchedules.length) return [];
+      const sameLocationSchedules = sameDaySchedules.filter((shift: any) =>
+        normalized(shift.location) && normalized(shift.location) === normalized(entry.location)
+      );
+      const pool = sameLocationSchedules.length ? sameLocationSchedules : sameDaySchedules;
+      const scheduled = [...pool].sort((left: any, right: any) =>
+        Math.abs(parseWallMinutes(left.start_time) - clockIn.minutes)
+        - Math.abs(parseWallMinutes(right.start_time) - clockIn.minutes)
+      )[0];
+      const startMinutes = parseWallMinutes(scheduled?.start_time);
+      const endWallMinutes = parseWallMinutes(scheduled?.end_time);
+      if (startMinutes < 0 || endWallMinutes < 0) return [];
+      const scheduledEndMinutes = endWallMinutes <= startMinutes ? endWallMinutes + 1440 : endWallMinutes;
+      const actualEndMinutes = clockOut.minutes + dayOffset(clockIn.date, clockOut.date) * 1440;
+      const lateMinutes = Math.round(actualEndMinutes - scheduledEndMinutes);
+      return lateMinutes > 5 ? [{ entry, scheduled, lateMinutes }] : [];
+    }) : [];
+
     const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
     const legacyReportKeys = new Set((dailyReports || []).map((report: any) =>
       `${normalized(report.officer_email || report.created_by)}|${String(report.report_date || '')}|${normalized(report.location)}`
@@ -299,6 +335,19 @@ Deno.serve(async (req) => {
         id: `missed-clock-${shift.id}`, source_id: String(shift.id), kind: 'missed_clock_in', priority: 'critical',
         title: 'Scheduled Officer Has Not Clocked In', person: person.name,
         detail: `${shift.start_time || 'Start time'} at ${shift.location || 'assigned location'} · over 5 minutes late`,
+        page: 'ManageTimeEntries',
+      });
+    }
+    for (const item of lateClockOuts) {
+      const person = personFor(item.entry);
+      candidates.push({
+        id: `late-clock-out-${item.entry.id}`,
+        source_id: String(item.entry.id),
+        kind: 'late_clock_out',
+        priority: 'high',
+        title: 'Late Clock-Out Requires Decision',
+        person: person.name,
+        detail: `${item.lateMinutes} minutes past the scheduled ${item.scheduled.end_time || 'end time'} at ${item.entry.location || item.scheduled.location || 'assigned location'} · approve or reject payroll treatment`,
         page: 'ManageTimeEntries',
       });
     }
@@ -428,6 +477,7 @@ Deno.serve(async (req) => {
       counts: {
         total: tasks.length,
         missed_clock_ins: countKind('missed_clock_in'),
+        late_clock_outs: countKind('late_clock_out'),
         missing_reports: countKind('missing_report'),
         pending_reports: countKind('report_review'),
         time_off: countKind('pto'),
