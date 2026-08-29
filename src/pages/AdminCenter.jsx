@@ -34,6 +34,17 @@ import AdminSupportStaffClock from './AdminSupportStaffClock';
 import CADCenter from './CADCenter';
 import OfficerCenter from './OfficerCenter';
 import SupervisorCenter from './SupervisorCenter';
+import SupervisorFieldOversight from './SupervisorFieldOversight';
+import SupervisorShiftHandover from './SupervisorShiftHandover';
+import SupervisorTasks from './SupervisorTasks';
+import SupervisorDailyCode from './SupervisorDailyCode';
+import SupervisorInspections from './SupervisorInspections';
+import SupervisorPerformanceReview from './SupervisorPerformanceReview';
+import SupervisorWriteUps from './SupervisorWriteUps';
+import SupervisorUseOfForce from './SupervisorUseOfForce';
+import SupervisorComplaints from './SupervisorComplaints';
+import SupervisorChat from './SupervisorChat';
+import RankStructure from './RankStructure';
 import HRCenter from './HRCenter';
 import ClientCenter from './ClientCenter';
 import { base44 } from '@/api/base44Client';
@@ -102,6 +113,35 @@ const ADMIN_TOOLS = {
     { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
   ],
 };
+
+const ADMIN_SUPERVISOR_SECTIONS = [
+  { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
+  { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },
+];
+
+const ADMIN_SUPERVISOR_TOOLS = {
+  operations: [
+    { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
+    { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
+    { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
+    { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
+    { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
+    { id: 'rank', label: 'Rank Structure', component: RankStructure },
+  ],
+  oversight: [
+    { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
+    { id: 'reviews', label: 'Performance Reviews', component: SupervisorPerformanceReview },
+    { id: 'writeups', label: 'Write-Ups', component: SupervisorWriteUps },
+    { id: 'force', label: 'Use of Force', component: SupervisorUseOfForce },
+    { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
+  ],
+};
+
+function AdminSupervisorToolsOnly() {
+  return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Supervisor tools" sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="operations" queryParam="admin_supervisor_section" embedded>
+    {section => <CenterToolSection key={section} tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />}
+  </UnifiedCenter>;
+}
 
 function AdministrationToolsOnly() {
   return (
@@ -199,7 +239,7 @@ export default function AdminCenter() {
       queryParam="admin_center"
     >
       {section => {
-        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <SupervisorCenter embedded /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
+        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
         return <div className="min-w-0">{section !== 'admin' && <div className="flex justify-end border-b border-slate-800 bg-[#08111e] px-4 py-2"><button type="button" onClick={()=>enterShadow(section)} className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-[11px] font-black text-slate-200 hover:border-cyan-500 hover:text-cyan-200"><Eye className="h-3.5 w-3.5"/>Preview as {section.charAt(0).toUpperCase()+section.slice(1)}</button></div>}{mirror}</div>;
       }}
     </UnifiedCenter>
