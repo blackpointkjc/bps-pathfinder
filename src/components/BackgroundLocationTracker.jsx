@@ -125,6 +125,7 @@ export default function BackgroundLocationTracker({ user }) {
       try {
         await persistLiveState({
           heartbeat_only: true,
+          reset_gps: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
