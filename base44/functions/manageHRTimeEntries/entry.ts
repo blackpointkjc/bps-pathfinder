@@ -175,8 +175,6 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
       holiday_pay: round(holidayPay),
       pto_pay: round(ptoPay),
       gross_pay: round(gross),
-      tax_free_reimbursements: round(reimbursementTotal),
-      total_payment_due: round(netPay),
       net_pay: round(netPay),
       holidays_worked: JSON.stringify(holidays),
       pto_detail: JSON.stringify(officerPto.map((usage: any) => ({
@@ -185,8 +183,6 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
         reason: usage.reason || '',
         source_type: usage.source_type || '',
       }))),
-      last_recalculated_at: recalculatedAt,
-      payroll_source: 'time_entry_sync',
     });
   }
 
@@ -203,6 +199,18 @@ async function syncTouchedPayrollRecords(base44: any, entries: any[]) {
     updated += await syncPayrollPeriodForEntry(base44, entry);
   }
   return updated;
+}
+
+async function syncPayrollWithoutBreakingHr(base44: any, entries: any[]) {
+  try {
+    return { updated: await syncTouchedPayrollRecords(base44, entries), warning: '' };
+  } catch (error) {
+    console.error('Time entry saved, but payroll refresh failed', error);
+    return {
+      updated: 0,
+      warning: `Time entry saved. Payroll refresh will retry from Accounting: ${error?.message || 'unknown payroll error'}`,
+    };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -302,14 +310,15 @@ Deno.serve(async (req) => {
         timestamp: now,
       }).catch(() => null);
 
-      const payrollEntriesUpdated = await syncTouchedPayrollRecords(base44, [entry]);
+      const payrollSync = await syncPayrollWithoutBreakingHr(base44, [entry]);
 
       return Response.json({
         success: true,
         entry,
         actual_hours: actualHours,
         approved_hours: approvedHours,
-        payroll_entries_updated: payrollEntriesUpdated,
+        payroll_entries_updated: payrollSync.updated,
+        payroll_sync_warning: payrollSync.warning,
         true_punches_preserved: true,
       });
     }
@@ -321,8 +330,10 @@ Deno.serve(async (req) => {
       }
       for (const field of PAYROLL_FIELDS) delete data[field];
       const entry = await base44.asServiceRole.entities.TimeEntry.create(data);
-      const payrollEntriesUpdated = entry.clock_out ? await syncTouchedPayrollRecords(base44, [entry]) : 0;
-      return Response.json({ success: true, entry, payroll_entries_updated: payrollEntriesUpdated });
+      const payrollSync = entry.clock_out
+        ? await syncPayrollWithoutBreakingHr(base44, [entry])
+        : { updated: 0, warning: '' };
+      return Response.json({ success: true, entry, payroll_entries_updated: payrollSync.updated, payroll_sync_warning: payrollSync.warning });
     }
 
     if (action === 'update') {
@@ -333,16 +344,16 @@ Deno.serve(async (req) => {
       }
       const existing = await base44.asServiceRole.entities.TimeEntry.get(body.id);
       const entry = await base44.asServiceRole.entities.TimeEntry.update(body.id, data);
-      const payrollEntriesUpdated = await syncTouchedPayrollRecords(base44, [existing, entry]);
-      return Response.json({ success: true, entry, payroll_entries_updated: payrollEntriesUpdated });
+      const payrollSync = await syncPayrollWithoutBreakingHr(base44, [existing, entry]);
+      return Response.json({ success: true, entry, payroll_entries_updated: payrollSync.updated, payroll_sync_warning: payrollSync.warning });
     }
 
     if (action === 'delete') {
       if (!body.id) return Response.json({ error: 'Time entry ID is required' }, { status: 400 });
       const existing = await base44.asServiceRole.entities.TimeEntry.get(body.id);
       await base44.asServiceRole.entities.TimeEntry.delete(body.id);
-      const payrollEntriesUpdated = await syncTouchedPayrollRecords(base44, [existing]);
-      return Response.json({ success: true, payroll_entries_updated: payrollEntriesUpdated });
+      const payrollSync = await syncPayrollWithoutBreakingHr(base44, [existing]);
+      return Response.json({ success: true, payroll_entries_updated: payrollSync.updated, payroll_sync_warning: payrollSync.warning });
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
