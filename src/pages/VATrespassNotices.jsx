@@ -103,14 +103,8 @@ export default function VATrespassNotices() {
 
   const getOfficerSignature = (officerRef) => {
     const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
-    if (!officer) return String(officerRef || 'Unknown Officer');
-    
-    const rank = officer.rank || '';
-    const lastName = officer.last_name || '';
-    if (rank && lastName) {
-      return `${rank} ${lastName}`;
-    }
-    return officer.email || String(officerRef || 'Unknown Officer');
+    if (!officer) return String(officerRef || 'Officer');
+    return officer.last_name || officer.email || String(officerRef || 'Officer');
   };
 
   const getOfficerFullName = (officerRef) => {
@@ -440,7 +434,7 @@ export default function VATrespassNotices() {
   const printNotice = (notice) => {
     const siteLocation = locations?.find(loc => loc.site_name === notice.location);
     const officer = allUsers?.find(u => String(u.id) === String(notice.created_by_id));
-    const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : 'Officer';
+    const officerLastName = officer?.last_name || getOfficerSignature(notice.created_by_id) || 'Officer';
     openTrespassNoticePrint(notice, {
       jurisdiction: 'VA',
       locationRecord: siteLocation || { site_name: notice.location, division: 'Virginia' },
@@ -448,8 +442,8 @@ export default function VATrespassNotices() {
       propertyAddress: siteLocation?.address || notice.location,
       senderName: 'Black Point Protection',
       senderAddress: siteLocation?.address || notice.location,
-      officerName: officerFullName,
-      signatureName: getOfficerSignature(notice.created_by_id),
+      officerName: officerLastName,
+      signatureName: officerLastName,
       timeZone: siteLocation?.time_zone || 'America/New_York',
       policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Virginia' }),
     });
@@ -1168,48 +1162,42 @@ export default function VATrespassNotices() {
           {selectedNotice && (
             <div className="py-4">
               {/* Same view dialog content as original */}
-              <div className="bg-white p-8 border-2 border-slate-300 rounded-lg">
-                <div className="text-center border-b-4 border-black pb-6 mb-6">
-                  <h2 className="text-3xl font-bold text-red-700 mb-2">OFFICIAL VA TRESPASS NOTICE</h2>
-                  <p className="text-xl font-semibold">{selectedNotice.location}</p>
-                  <p className="text-slate-600">{format(new Date(selectedNotice.notice_date), 'MMMM d, yyyy h:mm a')}</p>
+              <div className="mx-auto max-w-[8.5in] rounded-sm border border-slate-400 bg-white p-4 text-black shadow-sm sm:p-7">
+                <div className="mb-6 text-center text-2xl font-black underline sm:text-3xl">NOTICE OF NO TRESPASS</div>
+
+                <div className="space-y-2 text-sm leading-6">
+                  <div className="grid grid-cols-[150px_1fr] gap-2"><strong className="underline">TO BE SERVED ON:</strong><div className="border-b border-black px-2">{selectedNotice.subject_name}</div></div>
+                  <div className="grid grid-cols-[150px_1fr] gap-2"><span/><div className="border-b border-black px-2">{selectedNotice.subject_address || ''}</div></div>
+                  <div className="grid grid-cols-[150px_1fr] gap-2"><span/><div className="border-b border-black px-2">{[selectedNotice.subject_city, selectedNotice.subject_state, selectedNotice.subject_zip].filter(Boolean).join(', ')}</div></div>
+                  <div className="grid grid-cols-[150px_1fr] gap-2"><span/><div className="border-b border-black px-2">{selectedNotice.subject_phone || ''}</div></div>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-bold text-lg mb-2 uppercase">Subject Information:</h3>
-                    <div className="ml-4 space-y-1">
-                      <p><strong>Name:</strong> {selectedNotice.subject_name}</p>
-                      {selectedNotice.subject_description && (
-                        <p><strong>Description:</strong> {selectedNotice.subject_description}</p>
-                      )}
-                      {selectedNotice.subject_id && (
-                        <p><strong>ID Number:</strong> {selectedNotice.subject_id}</p>
-                      )}
-                      {selectedNotice.vehicle_info && (
-                        <p><strong>Vehicle:</strong> {selectedNotice.vehicle_info}</p>
-                      )}
-                    </div>
-                  </div>
+                <p className="my-5 text-sm font-black italic underline">YOU ARE HEREBY NOTIFIED NOT TO CONTACT THE PETITIONER OF THIS NOTICE FOR ANY REASON OR TRESPASS UPON HIS/HER PROPERTY AT ANY TIME.</p>
+                <p className="text-sm leading-6">If any person without authority of law goes upon or remains upon the lands, buildings or premises of another after having been forbidden to do so, whether orally or in writing, by the owner, lessee, custodian or other person lawfully in charge, such person may be subject to prosecution pursuant to § 18.2-119 Code of Virginia, as amended.</p>
 
-                  <div>
-                    <h3 className="font-bold text-lg mb-2 uppercase">Reason for Trespass Notice:</h3>
-                    <p className="ml-4">{selectedNotice.reason}</p>
-                  </div>
+                <div className="my-5 border border-black p-3 text-sm"><strong>REASON FOR NOTICE:</strong> {selectedNotice.reason || ''}{selectedNotice.linked_call_number && <><br/><strong>C A D:</strong> {selectedNotice.linked_call_number}</>}</div>
 
-                  <div className="bg-yellow-50 border-2 border-yellow-600 rounded-lg p-4 mt-8">
-                    <h3 className="font-bold text-lg text-yellow-800 mb-2">LEGAL NOTICE</h3>
-                    <p className="font-semibold mb-2">Virginia Code § 18.2-119</p>
-                    <p className="mb-2">You are hereby notified that you are not permitted on this property. Violation of this notice may result in arrest and criminal prosecution for trespassing.</p>
-                  </div>
+                <div className="mb-5 text-sm"><strong>PETITIONER / AUTHORIZED AGENT PRINTED NAME:</strong> <span className="inline-block min-w-40 border-b border-black px-2">{getOfficerSignature(selectedNotice.created_by_id)}</span></div>
 
-                  <div className="mt-8 pt-6 border-t-2 border-gray-300">
-                    <p className="font-bold text-base mb-2">Issued by:</p>
-                    <p className="text-2xl italic text-gray-800" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(selectedNotice.created_by_id)}
-                    </p>
+                <div className="grid gap-5 md:grid-cols-3">
+                  <div className="text-center">
+                    <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{selectedNotice.witness_signature_url ? <img src={selectedNotice.witness_signature_url} alt="Witness digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No witness signature captured</span>}</div>
+                    <div className="mt-1 text-xs font-bold">WITNESS SIGNATURE</div>
+                    <div className="mt-1 text-xs">{selectedNotice.witness_name || ''}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{selectedNotice.subject_signature_url ? <img src={selectedNotice.subject_signature_url} alt="Subject digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No subject signature captured / declined</span>}</div>
+                    <div className="mt-1 text-xs font-bold">SUBJECT SIGNATURE / ACKNOWLEDGMENT</div>
+                    <div className="mt-1 text-xs">{selectedNotice.subject_name}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{(selectedNotice.officer_signature_url || selectedNotice.signature_url) ? <img src={selectedNotice.officer_signature_url || selectedNotice.signature_url} alt="Authorized agent digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No authorized-agent signature captured</span>}</div>
+                    <div className="mt-1 text-xs font-bold">AUTHORIZED AGENT SIGNATURE</div>
+                    <div className="mt-1 text-xs">{getOfficerSignature(selectedNotice.created_by_id)}</div>
                   </div>
                 </div>
+
+                <div className="mt-5 border-t border-black pt-3 text-xs font-semibold">One recipient per notice. Witness and subject signature areas remain visible when a person declines or is unavailable to sign.</div>
               </div>
             </div>
           )}
