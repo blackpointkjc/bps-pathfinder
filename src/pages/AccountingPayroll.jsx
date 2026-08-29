@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Zap, AlertTriangle, Printer } from "lucide-react";
 import { format, isValid, parseISO, startOfWeek } from "date-fns";
-import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { calculatePaidHours, calculatePayrollHours } from "@/lib/payrollCalculations";
 import { calculateLiveHours } from "@/lib/billingRates";
 
 const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
@@ -280,13 +280,14 @@ export default function AccountingPayroll() {
           return;
         }
 
-        const hours = calculatePaidHours(entry);
+        const actualHours = calculatePaidHours(entry);
+        const hours = calculatePayrollHours(entry);
         
-        if (hours > 16) {
+        if (actualHours > 16) {
           issues.push({
             severity: 'medium',
             officer: `${officer.first_name} ${officer.last_name}`,
-            message: `Abnormal shift: ${hours.toFixed(2)} hours on ${safeFormatDate(entry.clock_in)}`
+            message: `Abnormal shift: ${actualHours.toFixed(2)} actual hours on ${safeFormatDate(entry.clock_in)}`
           });
         }
 
@@ -579,7 +580,7 @@ export default function AccountingPayroll() {
     const entryDate = String(entry.clock_in || '').slice(0, 10);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     const officer = officers.find(item => String(item.email).toLowerCase() === String(entry.officer_email).toLowerCase());
-    const rawHours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const rawHours = entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow);
     const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
     return sum + hours * (Number(officer?.hourly_rate) || 0);
   }, 0) : 0;
@@ -590,7 +591,7 @@ export default function AccountingPayroll() {
   const totalPayrollHours = selectedPeriod ? timeEntries.reduce((sum, entry) => {
     const entryDate = String(entry.clock_in || '').slice(0, 10);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
-    return sum + (entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow));
+    return sum + (entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow));
   }, 0) : 0;
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
@@ -891,11 +892,12 @@ export default function AccountingPayroll() {
       const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
       const shifts = entryForOfficer(entry);
       const shiftRows = shifts.map(shift => {
-        const hours = calculatePaidHours(shift);
-        return `<tr><td>${safeFormatDate(shift.clock_in, 'EEE, MMM d, yyyy')}</td><td>${esc(shift.location || 'Unassigned')}</td><td>${safeFormatDate(shift.clock_in, 'h:mm a')}</td><td>${safeFormatDate(shift.clock_out, 'h:mm a')}</td><td class="num">${hours.toFixed(2)}</td></tr>`;
+        const actualHours = calculatePaidHours(shift);
+        const payrollHours = calculatePayrollHours(shift);
+        return `<tr><td>${safeFormatDate(shift.clock_in, 'EEE, MMM d, yyyy')}</td><td>${esc(shift.location || 'Unassigned')}</td><td>${safeFormatDate(shift.clock_in, 'h:mm a')}</td><td>${safeFormatDate(shift.clock_out, 'h:mm a')}</td><td class="num">${actualHours.toFixed(2)}</td><td class="num">${payrollHours.toFixed(2)}</td></tr>`;
       }).join('');
       return `<section class="employee-sheet"><div class="employee-head"><div><h2>${esc(name)}</h2><div>${esc(entry.officer_email)}</div></div><div><strong>Pay period:</strong> ${esc(entry.pay_period_start)} through ${esc(entry.pay_period_end)}</div></div>
-        <table><thead><tr><th>Date</th><th>Location</th><th>Clock In</th><th>Clock Out</th><th class="num">Hours</th></tr></thead><tbody>${shiftRows || '<tr><td colspan="5">No completed time entries found for this payroll record.</td></tr>'}</tbody></table>
+        <table><thead><tr><th>Date</th><th>Location</th><th>Clock In</th><th>Clock Out</th><th class="num">Actual Hours</th><th class="num">Payroll Hours</th></tr></thead><tbody>${shiftRows || '<tr><td colspan="6">No completed time entries found for this payroll record.</td></tr>'}</tbody></table>
         <div class="earnings"><div>Regular: <strong>${Number(entry.regular_hours || 0).toFixed(2)} hrs × $${money(entry.hourly_rate)} = $${money(entry.regular_pay)}</strong></div><div>Overtime: <strong>${Number(entry.overtime_hours || 0).toFixed(2)} hrs × $${money(entry.overtime_rate)} = $${money(entry.overtime_pay)}</strong></div><div>Holiday: <strong>${Number(entry.holiday_hours || 0).toFixed(2)} hrs × $${money(entry.holiday_rate)} = $${money(entry.holiday_pay)}</strong></div><div class="gross">Gross pay to enter in payroll system: $${money(entry.gross_pay)}</div></div>
         <div class="signatures"><span>Reviewed by: ____________________</span><span>Date: ____________</span></div></section>`;
     }).join('');
