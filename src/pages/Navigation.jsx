@@ -17,6 +17,7 @@ import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, requestFreshLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
@@ -140,7 +141,7 @@ export default function Navigation() {
                 if (document.visibilityState === 'visible') fetchOtherUnits();
             }, 1000);
         };
-        const unsubscribe = base44.entities.ActiveOfficer.subscribe(scheduleUnitRefresh);
+        const unsubscribe = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         // Realtime handles movement; use a slow safety poll so several officers
         // publishing GPS at once cannot trigger a full roster read for each event.
         const fallback = setInterval(() => {
@@ -586,9 +587,7 @@ export default function Navigation() {
             // Navigation consumes the same canonical unit snapshot as CAD and the
             // admin tracker. Never fall back to raw ActiveOfficer rows, because a
             // stale stored coordinate must not become a live map marker.
-            const result = await base44.functions.invoke('getOnDutyUnits', {});
-            const payload = result?.data || result || {};
-            if (payload.error) throw new Error(payload.error);
+            const payload = await getOfficerLocationSnapshot();
             const sourceUnits = (Array.isArray(payload.users) ? payload.users : payload.units || [])
                 .filter(unit => unit.session_active !== false);
             const currentEmail = currentUser?.email?.toLowerCase();
