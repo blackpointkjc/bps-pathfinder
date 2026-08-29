@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut } from "lucide-react";
 import { differenceInMinutes } from "date-fns";
-import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-leaflet";
+import { MapContainer, Marker, Circle, Polygon, Popup } from "react-leaflet";
+import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -206,7 +207,7 @@ export default function AdminGeofenceAlerts() {
                               style={{ height: '100%', width: '100%' }}
                               scrollWheelZoom={false}
                             >
-                              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                              <PathfinderTileLayer />
                               {locCoords.polygon?.length >= 3 ? (
                                 <Polygon positions={locCoords.polygon} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 3 }}>
                                   <Popup autoPan={false}>Approved property geofence - {alert.location}</Popup>
