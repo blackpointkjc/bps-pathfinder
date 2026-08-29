@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function useDesktopViewport() {
   const [desktop, setDesktop] = useState(() => typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches);
@@ -15,6 +15,7 @@ export function useDesktopViewport() {
 
 export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const safeSections = Array.isArray(sections) ? sections : [];
   const initial = useMemo(() => {
     const requested = new URLSearchParams(location.search).get(queryParam);
@@ -32,9 +33,13 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
 
   const select = next => {
     setSection(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set(queryParam, next);
-    window.history.replaceState({}, '', url);
+    const params = new URLSearchParams(location.search);
+    params.set(queryParam, next);
+    ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
+    if (queryParam === 'section') params.delete('tool');
+    else if (queryParam.endsWith('_section')) params.delete(queryParam.replace(/_section$/, '_tool'));
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
   };
 
   // Center navigation should read like one compact navigation rail, not another
