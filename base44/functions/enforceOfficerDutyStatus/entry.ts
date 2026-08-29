@@ -18,7 +18,19 @@ function displayName(user: any) {
 async function retireLiveOfficer(base44: any, email: string) {
   const rows = await base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []);
   const mine = (rows || []).filter((row: any) => lower(row.officer_email) === lower(email));
-  await Promise.all(mine.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.delete(row.id).catch(() => null)));
+  const now = new Date().toISOString();
+  await Promise.all(mine.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
+    session_active: false,
+    status: 'Out of Service',
+    last_update: now,
+    gps_updated_at: null,
+    latitude: null,
+    longitude: null,
+    heading: null,
+    speed: 0,
+    accuracy: null,
+    current_call_info: '',
+  }).catch(() => null)));
   return mine.length;
 }
 
