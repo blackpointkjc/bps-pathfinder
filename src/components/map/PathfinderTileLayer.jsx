@@ -37,8 +37,10 @@ export function MapThemeToggle({ theme, onChange, className = '' }) {
   );
 }
 
-export default function PathfinderTileLayer({ theme = 'day', satellite = false }) {
-  const night = theme === 'night';
+export default function PathfinderTileLayer({ theme, satellite = false }) {
+  const [globalTheme] = usePathfinderMapTheme();
+  const effectiveTheme = theme || globalTheme;
+  const night = effectiveTheme === 'night';
   const url = satellite
     ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -46,7 +48,7 @@ export default function PathfinderTileLayer({ theme = 'day', satellite = false }
   return (
     <>
       <TileLayer
-        key={`${satellite ? 'satellite' : 'street'}-${theme}`}
+        key={`${satellite ? 'satellite' : 'street'}-${effectiveTheme}`}
         url={url}
         attribution={attribution}
         maxZoom={20}
