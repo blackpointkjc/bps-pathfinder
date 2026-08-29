@@ -714,8 +714,8 @@ export default function DispatchCenter() {
                                         zoomControl={true}
                                     >
                                         <TileLayer
-                                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                                            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                         />
                                         <ActiveCallMarkers
                                             calls={activeCalls}
@@ -770,7 +770,7 @@ export default function DispatchCenter() {
                         </div>
                         <div className="min-h-0 flex-1">
                             <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
-                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
+                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
                                 <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
                                 <OfficerDistressMarker autoCenter={true} />
                             </MapContainer>
