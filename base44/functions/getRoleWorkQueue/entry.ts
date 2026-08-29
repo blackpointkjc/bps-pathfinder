@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
       const scheduledEndMinutes = endWallMinutes <= startMinutes ? endWallMinutes + 1440 : endWallMinutes;
       const actualEndMinutes = clockOut.minutes + dayOffset(clockIn.date, clockOut.date) * 1440;
       const lateMinutes = Math.round(actualEndMinutes - scheduledEndMinutes);
-      return lateMinutes > 5 ? [{ entry, scheduled, lateMinutes }] : [];
+      return lateMinutes > 0 ? [{ entry, scheduled, lateMinutes }] : [];
     });
 
     const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
