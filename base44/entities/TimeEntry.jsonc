@@ -80,6 +80,54 @@
         }
       }
     },
+    "payroll_adjustment_decision": {
+      "type": "string",
+      "enum": [
+        "relief_delay_approved",
+        "pay_overage_with_performance",
+        "deny_overage_pay"
+      ],
+      "description": "Admin decision for post-shift relief delay or excess-hours handling"
+    },
+    "payroll_hours_override": {
+      "type": "number",
+      "description": "Hours approved for payroll without changing the true clock punches"
+    },
+    "actual_hours_snapshot": {
+      "type": "number",
+      "description": "Actual paid hours calculated from the immutable clock punches when the decision was made"
+    },
+    "approved_hours_snapshot": {
+      "type": "number",
+      "description": "Payroll hours approved by the administrator when the decision was made"
+    },
+    "performance_exception": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the excess time is excluded from performance because the next officer arrived late"
+    },
+    "performance_overage_counted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the excess time is counted as a performance overrun"
+    },
+    "payroll_adjustment_reason": {
+      "type": "string",
+      "description": "Required audit reason for the payroll and performance decision"
+    },
+    "relief_officer_email": {
+      "type": "string",
+      "description": "Optional email of the late relief officer connected to the exception"
+    },
+    "payroll_adjusted_by": {
+      "type": "string",
+      "description": "Administrator email that made the payroll decision"
+    },
+    "payroll_adjusted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the payroll decision was made"
+    },
     "notes": {
       "type": "string",
       "description": "Additional notes about the shift"
