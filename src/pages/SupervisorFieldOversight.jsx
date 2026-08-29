@@ -10,6 +10,7 @@ import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import 'leaflet/dist/leaflet.css';
 import { toast } from 'sonner';
 import { createPageUrl } from '../utils';
+import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const lower = value => String(value || '').trim().toLowerCase();
 const terminal = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'resolved', 'completed']);
@@ -82,8 +83,8 @@ export default function SupervisorFieldOversight() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => refetchWelfare(), 600);
     };
-    const unsubscribers = [];
-    for (const entity of ['ActiveOfficer','CallAssignment','OfficerWelfareCheck','CallStatusLog','DispatchCall']) {
+    const unsubscribers = [subscribeOfficerLocationChanges(scheduleRefresh)];
+    for (const entity of ['CallAssignment','OfficerWelfareCheck','CallStatusLog','DispatchCall']) {
       try {
         const unsub = base44.entities[entity].subscribe(scheduleRefresh);
         if (typeof unsub === 'function') unsubscribers.push(unsub);
