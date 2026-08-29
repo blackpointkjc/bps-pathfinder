@@ -104,6 +104,7 @@ export function requestBestLiveLocation({ timeoutMs = 12000, targetAccuracyMeter
     let best = getLiveLocation(60000);
     let finished = false;
     let timer;
+    let unsubscribe = () => {};
     const finish = (error) => {
       if (finished) return;
       finished = true;
@@ -116,7 +117,7 @@ export function requestBestLiveLocation({ timeoutMs = 12000, targetAccuracyMeter
       if (!best || Number(fix.accuracy) < Number(best.accuracy) || Number(fix.timestamp) > Number(best.timestamp) + 30000) best = fix;
       if (Number.isFinite(Number(best.accuracy)) && Number(best.accuracy) <= targetAccuracyMeters) finish();
     };
-    const unsubscribe = subscribeLiveLocation(consider);
+    unsubscribe = subscribeLiveLocation(consider);
     requestFreshLiveLocation({ timeoutMs: Math.min(timeoutMs, 10000) }).then(consider).catch(error => {
       if (error?.code === 1) finish(error);
     });
