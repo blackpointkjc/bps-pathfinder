@@ -70,9 +70,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const isHrReadOnly = false;
   const hasAccess = canManageEmployees;
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error: usersError, refetch: refetchUsers, isFetching: usersFetching } = useQuery({
     queryKey: ['directoryUsers', 'manageCompanyEmployees', portalContext],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: hasAccess,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -506,6 +506,16 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading employees...</p>
         </div>
+      ) : usersError ? (
+        <Alert className="border-red-300 bg-red-50 text-red-900">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>Employee directory could not load: {usersError.message}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetchUsers()} disabled={usersFetching}>
+              {usersFetching ? 'Retrying…' : 'Retry'}
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
