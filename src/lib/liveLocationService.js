@@ -39,7 +39,7 @@ function publishLocationError(error) {
 
 export function publishLiveLocation(fix) {
   if (!fix || !Number.isFinite(Number(fix.latitude)) || !Number.isFinite(Number(fix.longitude))) return;
-  latestFix = {
+  const candidate = {
     latitude: Number(fix.latitude),
     longitude: Number(fix.longitude),
     accuracy: Number.isFinite(Number(fix.accuracy)) ? Number(fix.accuracy) : Infinity,
@@ -47,6 +47,12 @@ export function publishLiveLocation(fix) {
     speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
     timestamp: Number(fix.timestamp) || Date.now(),
   };
+  // GPS radios often begin with a coarse Wi-Fi/network fix and improve seconds
+  // later. Do not replace a recent precise fix with a substantially worse one.
+  if (latestFix && candidate.timestamp - latestFix.timestamp < 30000
+      && Number.isFinite(latestFix.accuracy)
+      && candidate.accuracy > latestFix.accuracy + 25) return;
+  latestFix = candidate;
   listeners.forEach(listener => {
     try { listener(latestFix); } catch (_) {}
   });
@@ -90,6 +96,32 @@ export function requestFreshLiveLocation({ timeoutMs = 15000 } = {}) {
   });
 
   return freshRequest;
+}
+
+export function requestBestLiveLocation({ timeoutMs = 12000, targetAccuracyMeters = 75 } = {}) {
+  if (!geolocationSupported()) return requestFreshLiveLocation({ timeoutMs });
+  return new Promise((resolve, reject) => {
+    let best = getLiveLocation(60000);
+    let finished = false;
+    let timer;
+    const finish = (error) => {
+      if (finished) return;
+      finished = true;
+      unsubscribe();
+      window.clearTimeout(timer);
+      if (best) resolve(best); else reject(error || new Error('LIVE_LOCATION_TIMEOUT'));
+    };
+    const consider = fix => {
+      if (!fix) return;
+      if (!best || Number(fix.accuracy) < Number(best.accuracy) || Number(fix.timestamp) > Number(best.timestamp) + 30000) best = fix;
+      if (Number.isFinite(Number(best.accuracy)) && Number(best.accuracy) <= targetAccuracyMeters) finish();
+    };
+    const unsubscribe = subscribeLiveLocation(consider);
+    requestFreshLiveLocation({ timeoutMs: Math.min(timeoutMs, 10000) }).then(consider).catch(error => {
+      if (error?.code === 1) finish(error);
+    });
+    timer = window.setTimeout(() => finish(), timeoutMs);
+  });
 }
 
 function requestWhenUsable() {
