@@ -133,14 +133,23 @@ export default function Navigation() {
     useEffect(() => {
         if (!currentUser?.id) return;
         fetchOtherUnits();
-        const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => fetchOtherUnits());
-        // GPS writers push about every 5 seconds, so keep Navigation on the same
-        // cadence even if realtime entity subscriptions are delayed or dropped.
-        // Do not force an extra refresh when the tab/window is restored.
-        const fallback = setInterval(fetchOtherUnits, 5000);
+        let refreshTimer;
+        const scheduleUnitRefresh = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => {
+                if (document.visibilityState === 'visible') fetchOtherUnits();
+            }, 1000);
+        };
+        const unsubscribe = base44.entities.ActiveOfficer.subscribe(scheduleUnitRefresh);
+        // Realtime handles movement; use a slow safety poll so several officers
+        // publishing GPS at once cannot trigger a full roster read for each event.
+        const fallback = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchOtherUnits();
+        }, 30000);
         return () => {
             unsubscribe?.();
             clearInterval(fallback);
+            window.clearTimeout(refreshTimer);
         };
     }, [currentUser?.id]);
 
@@ -148,11 +157,19 @@ export default function Navigation() {
         // GRAC ingestion is owned app-wide by DashboardDataProvider. Navigation only
         // reads DispatchCall so opening the map cannot start another backend sync loop.
         fetchCalls();
-        const unsubscribe = base44.entities.DispatchCall.subscribe(() => fetchCalls());
-        const localInterval = setInterval(fetchCalls, 20000);
+        let refreshTimer;
+        const scheduleCallRefresh = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => fetchCalls(), 900);
+        };
+        const unsubscribe = base44.entities.DispatchCall.subscribe(scheduleCallRefresh);
+        const localInterval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchCalls();
+        }, 60000);
         return () => {
             unsubscribe?.();
             clearInterval(localInterval);
+            window.clearTimeout(refreshTimer);
         };
     }, []);
 
