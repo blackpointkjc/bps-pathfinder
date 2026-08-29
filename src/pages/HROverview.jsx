@@ -24,6 +24,10 @@ const workQueueTaskUrl = item => {
   return `${createPageUrl(item?.page || 'HRCenter')}${query ? `?${query}` : ''}`;
 };
 
+const HR_QUEUE_KINDS = new Set([
+  'missed_clock_in', 'late_clock_out', 'pto', 'performance_review', 'annual_review_due',
+]);
+
 export default function HROverview() {
   const queryClient = useQueryClient();
   const completeTask = useMutation({
@@ -53,9 +57,11 @@ export default function HROverview() {
       const queueResult = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr' });
       const queue = queueResult?.data || queueResult || {};
       if (queue.error) throw new Error(queue.error);
+      const currentTasks = (queue.tasks || []).filter(task => HR_QUEUE_KINDS.has(task.kind));
       const previous = queryClient.getQueryData(['hrOverviewSnapshot']) || {};
       if (queue.load_errors?.length && previous.tasks?.length) {
-        const mergedTasks = [...(queue.tasks || []), ...previous.tasks]
+        const retainedTasks = (previous.tasks || []).filter(task => HR_QUEUE_KINDS.has(task.kind));
+        const mergedTasks = [...currentTasks, ...retainedTasks]
           .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
         return {
           ...queue,
@@ -65,7 +71,12 @@ export default function HROverview() {
           retaining_last_confirmed_tasks: true,
         };
       }
-      return { ...queue, annual_review_check_error: annualPayload.error || '' };
+      return {
+        ...queue,
+        tasks: currentTasks,
+        counts: { ...(queue.counts || {}), total: currentTasks.length },
+        annual_review_check_error: annualPayload.error || '',
+      };
     },
     staleTime: 0,
     refetchOnMount: 'always',
