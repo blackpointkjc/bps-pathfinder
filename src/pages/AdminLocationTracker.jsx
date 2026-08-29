@@ -55,25 +55,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const MAP_TILE_PROVIDERS = [
-  {
-    name: 'OpenStreetMap',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
-  },
-  {
-    name: 'Esri World Street Map',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri',
-  },
-  {
-    name: 'Esri World Imagery',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri',
-  },
-];
-
-
 function MapReadyHandler() {
   const map = useMap();
   useEffect(() => {
@@ -141,8 +122,7 @@ export default function AdminLocationTracker() {
   const [locationCheckResults, setLocationCheckResults] = useState(null);
   const [lastAutoCheck, setLastAutoCheck] = useState(null);
   const [locationCheckError, setLocationCheckError] = useState('');
-  const [liveMapUnavailable, setLiveMapUnavailable] = useState(false);
-  const [historyMapUnavailable, setHistoryMapUnavailable] = useState(false);
+  const [mapUnavailable, setMapUnavailable] = useState(false);
   const [deviceLocationState, setDeviceLocationState] = useState(null);
   const [mapTheme, setMapTheme] = usePathfinderMapTheme();
 
@@ -184,8 +164,16 @@ export default function AdminLocationTracker() {
 
   useEffect(() => {
     const handleLocationQuality = (event) => setDeviceLocationState(event?.detail || null);
+    const handleMapFailure = () => setMapUnavailable(true);
+    const handleMapLoaded = () => setMapUnavailable(false);
     window.addEventListener('bps-location-quality', handleLocationQuality);
-    return () => window.removeEventListener('bps-location-quality', handleLocationQuality);
+    window.addEventListener('bps-map-tiles-failed', handleMapFailure);
+    window.addEventListener('bps-map-tiles-loaded', handleMapLoaded);
+    return () => {
+      window.removeEventListener('bps-location-quality', handleLocationQuality);
+      window.removeEventListener('bps-map-tiles-failed', handleMapFailure);
+      window.removeEventListener('bps-map-tiles-loaded', handleMapLoaded);
+    };
   }, []);
 
   const newestLocationByEmail = React.useMemo(() => {
@@ -705,7 +693,7 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {liveMapUnavailable && (
+                  {mapUnavailable && (
                     <Alert className="m-4 border-amber-400 bg-amber-50">
                       <AlertTriangle className="h-4 w-4 text-amber-700" />
                       <AlertDescription className="text-amber-950">
@@ -872,7 +860,7 @@ export default function AdminLocationTracker() {
               
               {locationHistory && locationHistory.length > 0 ? (
                 <>
-                  {historyMapUnavailable && (
+                  {mapUnavailable && (
                     <Alert className="m-4 border-amber-400 bg-amber-50">
                       <AlertTriangle className="h-4 w-4 text-amber-700" />
                       <AlertDescription className="text-amber-950">
