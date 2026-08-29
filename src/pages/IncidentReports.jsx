@@ -20,7 +20,7 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import { listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
+import { listAllDispatchCallsForLinking, createReportCallLink } from '@/lib/reportCallLinking';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
   formatReportClock,
@@ -355,6 +355,22 @@ Provide:
           officer_ip_address: ipAddress,
         });
 
+        if (data.linked_call_id) {
+          try {
+            await createReportCallLink({
+              callId: data.linked_call_id,
+              callNumber: data.linked_call_number || '',
+              reportType: 'IncidentReport',
+              reportId: updated.id,
+              reportNumber: updated.report_number || updated.id,
+              primaryOfficerId: data.primary_officer_id || '',
+              primaryOfficerName: data.primary_officer_name || '',
+            });
+          } catch (linkError) {
+            console.error('Failed to persist incident call link:', linkError);
+          }
+        }
+
         if (!isDraft) {
           if (editingTodoId) {
             await completeReportTodo(editingTodoId);
@@ -386,19 +402,17 @@ Provide:
 
         if (data.linked_call_id) {
           try {
-            await base44.entities.ReportCallLink.create({
-              call_id: data.linked_call_id,
-              call_number: data.linked_call_number || '',
-              report_type: 'IncidentReport',
-              report_id: report.id,
-              report_number: newReportNumber,
-              primary_officer_id: data.primary_officer_id || '',
-              primary_officer_name: data.primary_officer_name || '',
-              linked_at: new Date().toISOString(),
-              status: 'active',
+            await createReportCallLink({
+              callId: data.linked_call_id,
+              callNumber: data.linked_call_number || '',
+              reportType: 'IncidentReport',
+              reportId: report.id,
+              reportNumber: newReportNumber,
+              primaryOfficerId: data.primary_officer_id || '',
+              primaryOfficerName: data.primary_officer_name || '',
             });
           } catch (linkError) {
-            console.error('Failed to link report to call:', linkError);
+            console.error('Failed to persist incident call link:', linkError);
           }
         }
 
