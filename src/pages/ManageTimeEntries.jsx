@@ -48,6 +48,12 @@ export default function ManageTimeEntries() {
 
   const queryClient = useQueryClient();
 
+  const invalidatePayrollViews = () => {
+    queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+    queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+    queryClient.invalidateQueries({ queryKey: ['payrollTimeEntries'] });
+  };
+
   const clearTaskDeepLink = () => {
     const params = new URLSearchParams(location.search);
     const before = params.toString();
@@ -125,6 +131,7 @@ export default function ManageTimeEntries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      invalidatePayrollViews();
       setShowAddForm(false);
       setNewEntry({
         officer_email: "",
@@ -159,6 +166,7 @@ export default function ManageTimeEntries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      invalidatePayrollViews();
       setEditingEntry(null);
       clearTaskDeepLink();
       setEditFormData({
@@ -179,6 +187,7 @@ export default function ManageTimeEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      invalidatePayrollViews();
     },
   });
 
@@ -198,6 +207,7 @@ export default function ManageTimeEntries() {
       queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
+      invalidatePayrollViews();
       setPayrollEntryId(null);
       clearTaskDeepLink();
       alert('Payroll and performance decision saved. The related work-queue task will close automatically.');
