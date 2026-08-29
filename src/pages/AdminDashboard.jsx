@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     initialData: 0,
   });
 
-  const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError } = useQuery({
+  const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError, isFetching: adminWorkRefreshing, refetch: refetchAdminWork } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin' });
@@ -86,7 +86,9 @@ export default function AdminDashboard() {
       return payload;
     },
     enabled: user?.role === 'admin',
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     refetchInterval: 60000,
   });
 
@@ -262,7 +264,7 @@ export default function AdminDashboard() {
         </div>
 
         <section className="rounded-2xl border border-amber-500/20 bg-[#0a1421] p-5 shadow-lg">
-          <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Administrative work queue</h2><p className="mt-1 text-xs text-slate-500">These are live Pathfinder records that need an administrative decision or weekly action.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Administrative work queue</h2><p className="mt-1 text-xs text-slate-500">These are live Pathfinder records that need an administrative decision or weekly action.</p></div><button type="button" onClick={() => refetchAdminWork()} disabled={adminWorkRefreshing} className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20 disabled:opacity-50"><AlertTriangle className="h-4 w-4"/>{adminWorkRefreshing ? 'CHECKING…' : 'REFRESH TASKS'}</button></div>
           <div className="mt-4 grid gap-2 xl:grid-cols-2">
             {!!adminWork.load_errors?.length && <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200 xl:col-span-2">Partial queue data: {adminWork.load_errors.join(', ')} could not be loaded. Available tasks are still shown below.</div>}
             {adminWorkError ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200 xl:col-span-2">Administrative work queue could not load: {adminWorkError.message}</div> : adminTasks.length ? adminTasks.slice(0,16).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><div className="flex shrink-0 flex-wrap gap-2"><Link to={createPageUrl(task.page)} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link><button type="button" onClick={() => completeTask.mutate(task)} disabled={completeTask.isPending} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">MARK DONE</button></div></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
