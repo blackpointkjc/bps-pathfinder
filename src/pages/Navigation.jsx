@@ -118,18 +118,23 @@ export default function Navigation() {
         const unsubscribe = subscribeLiveLocation((fix) => {
             const quality = locationQuality(fix);
             setGpsQuality(quality);
-            if (!isTacticalLocationFix(fix)) {
-                // A coarse Windows/Wi-Fi estimate is not an officer's exact tactical
-                // position. Keep requesting GPS, but never move the live shield to it.
+            const lat = Number(fix?.latitude);
+            const lng = Number(fix?.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
                 setIsLiveTracking(false);
                 return;
             }
-            const coords = [fix.latitude, fix.longitude];
+            // Show the officer's own marker at the best available device fix. A
+            // desktop/indoor Wi-Fi estimate is often the only fix available; rejecting
+            // it left the self-marker off the map and the view stuck on Richmond.
+            // isLiveTracking still reflects whether the fix is precise enough for
+            // tactical use, but the icon and map focus follow the current fix.
+            const coords = [lat, lng];
             setCurrentLocation(coords);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             setLocationHistory(prev => [...prev, coords].slice(-30));
-            setIsLiveTracking(true);
+            setIsLiveTracking(isTacticalLocationFix(fix));
         });
         return unsubscribe;
     }, []);
@@ -341,14 +346,14 @@ export default function Navigation() {
         const fix = getLiveLocation(30000);
         if (fix) {
             setGpsQuality(locationQuality(fix));
-            if (isTacticalLocationFix(fix)) {
-                setCurrentLocation([fix.latitude, fix.longitude]);
+            const lat = Number(fix.latitude);
+            const lng = Number(fix.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                setCurrentLocation([lat, lng]);
                 if (fix.heading !== null) setHeading(fix.heading);
                 setSpeed(Math.round(fix.speed || 0));
-                setIsLiveTracking(true);
-            } else {
-                setIsLiveTracking(false);
             }
+            setIsLiveTracking(isTacticalLocationFix(fix));
         }
         requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 }).catch(() => null);
     };
@@ -613,7 +618,8 @@ export default function Navigation() {
                 .filter(unit => {
                     const hasLive = Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude));
                     const hasLast = Number.isFinite(Number(unit.last_known_latitude)) && Number.isFinite(Number(unit.last_known_longitude));
-                    return hasLive || hasLast;
+                    const hasCoarse = Number.isFinite(Number(unit.coarse_latitude)) && Number.isFinite(Number(unit.coarse_longitude));
+                    return hasLive || hasLast || hasCoarse;
                 })
                 .map(unit => ({
                     ...unit,
