@@ -1,6 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const message = lower(error?.message || error?.response?.data?.error);
+      const transient = message.includes('rate limit') || message.includes('429') || message.includes('timeout') || message.includes('temporar') || message.includes('500');
+      if (!transient || attempt === attempts - 1) throw error;
+      await wait(attempt === 0 ? 250 : 700);
+    }
+  }
+  throw lastError;
+}
 
 Deno.serve(async (req) => {
   try {
@@ -11,65 +28,39 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
       || roles.has('dispatch') || roles.has('supervisor') || roles.has('cad_access') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
-    // Keep the oversight feed lightweight and predictable under shared request
-    // limits. Read the required datasets sequentially instead of in a burst.
-    let evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200);
-    const propertyAlerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 500);
-    const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
-    const locations = await base44.asServiceRole.entities.Location.list('site_name', 300);
+
+    // This function is an oversight/read service only. Actual automatic dispatch is
+    // triggered by property-alert ingestion / call creation / explicit evaluation.
+    // Keeping this path read-only prevents a CAD status refresh from recursively
+    // launching dispatch work and taking the CAD workspace down under load.
+    const evaluations = await withRetry(() => base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 120));
+
+    // These two lookups are optional display filters. A transient failure must not
+    // turn Automatic Dispatch into an outage; return the latest known evaluations.
+    const activeCalls = await withRetry(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 250), 2).catch(() => []);
+    const propertyAlerts = await withRetry(() => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 250), 2).catch(() => []);
+
     const activeCallIds = new Set((activeCalls || []).map((item: any) => String(item.id)));
-    const propertyById = new Map((locations || []).map((item: any) => [String(item.id), item]));
+    const knownAlertIds = new Set((propertyAlerts || []).map((item: any) => String(item.id)));
     const latestByAlert = new Map<string, any>();
-    for (const evaluation of evaluations || []) {
-      const alertId = String(evaluation.property_alert_id || '');
-      if (alertId && !latestByAlert.has(alertId)) latestByAlert.set(alertId, evaluation);
+
+    for (const row of evaluations || []) {
+      const key = String(row.property_alert_id || row.event_key || row.id || '');
+      if (!key || latestByAlert.has(key)) continue;
+      if (row.configuration_snapshot?.simulation === true || String(row.event_key || '').endsWith(':simulation')) continue;
+      // Filter to active calls when the active-call dataset loaded successfully.
+      if (activeCallIds.size && row.call_id && !activeCallIds.has(String(row.call_id))) continue;
+      // Filter deleted/orphaned alerts only when alert data loaded successfully.
+      if (knownAlertIds.size && row.property_alert_id && !knownAlertIds.has(String(row.property_alert_id))) continue;
+      latestByAlert.set(key, row);
     }
 
-    // Self-heal a missed creation trigger while the dispatch feed is open. This is
-    // the same idempotent evaluator used by ingestion and manual call creation;
-    // it only runs for unresolved alerts tied to a currently active CAD call.
-    const now = Date.now();
-    const dueAlerts = (propertyAlerts || []).filter((alert: any) => {
-      const lifecycle = lower(alert.lifecycle_status || 'active');
-      if (!activeCallIds.has(String(alert.callId)) || ['resolved', 'false_alarm', 'test'].includes(lifecycle)) return false;
-      const property: any = propertyById.get(String(alert.propertyId));
-      if (!property || property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live') return false;
-      if (!property.auto_dispatch_live_approved_at || !property.auto_dispatch_live_approved_by) return false;
-      const latest = latestByAlert.get(String(alert.id));
-      if (latest?.mode === 'live' && latest?.decision === 'assigned') return false;
-      const lastAt = new Date(latest?.evaluated_at || latest?.updated_date || 0).getTime();
-      const intervalMs = Math.max(30, Number(property.auto_dispatch_recheck_seconds || 60)) * 1000;
-      return !Number.isFinite(lastAt) || now - lastAt >= intervalMs;
-    }).slice(0, 5);
-
-    if (dueAlerts.length) {
-      // Re-evaluate one alert at a time. A reconnect can expose several due alerts
-      // together; serial recovery prevents duplicate/rate-limited dispatch work.
-      for (const alert of dueAlerts) {
-        await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
-          call_id: alert.callId,
-          property_alert_id: alert.id,
-        }).catch((error: any) => {
-          console.error('Automatic property-dispatch feed recovery failed', {
-            call_id: alert.callId,
-            property_alert_id: alert.id,
-            error: error?.message || String(error),
-          });
-          return null;
-        });
-      }
-      evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 200);
-    }
-
-    const verifiedAlertIds = new Set((propertyAlerts || []).map((item: any) => String(item.id)));
-    const propertyModeById = new Map((locations || []).map((item: any) => [String(item.id), item.auto_dispatch_enabled === true ? String(item.auto_dispatch_mode || 'shadow') : 'disabled']));
-    const linked = (evaluations || []).filter((item: any) => verifiedAlertIds.has(String(item.property_alert_id)));
-    const operational = linked.filter((item: any) => activeCallIds.has(String(item.call_id))
-      && item.configuration_snapshot?.simulation !== true
-      && !String(item.event_key || '').endsWith(':simulation')
-      && String(item.mode) === String(propertyModeById.get(String(item.property_id)) || item.mode));
-    const safetyTests = linked.filter((item: any) => item.configuration_snapshot?.simulation === true || String(item.event_key || '').endsWith(':simulation'));
-    return Response.json({ success: true, evaluations: operational, latest_safety_test: safetyTests[0] || null });
+    return Response.json({
+      success: true,
+      service_status: 'online',
+      evaluations: [...latestByAlert.values()].slice(0, 20),
+      partial: activeCallIds.size === 0 || knownAlertIds.size === 0,
+    });
   } catch (error) {
     console.error('getAutoDispatchEvaluations failed', error);
     return Response.json({ error: error?.message || 'Unable to load automatic-dispatch evaluations' }, { status: 500 });
