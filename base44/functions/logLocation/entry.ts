@@ -30,6 +30,26 @@ Deno.serve(async (req) => {
       '-last_update',
       100,
     );
+
+    if (body.end_session === true) {
+      const ended = [];
+      for (const record of records || []) {
+        ended.push(await base44.asServiceRole.entities.ActiveOfficer.update(record.id, {
+          session_active: false,
+          status: 'Out of Service',
+          last_update: now,
+          gps_updated_at: null,
+          latitude: null,
+          longitude: null,
+          heading: null,
+          speed: 0,
+          accuracy: null,
+          current_call_info: '',
+        }).catch(() => null));
+      }
+      return Response.json({ success: true, session_ended: true, records_updated: ended.filter(Boolean).length });
+    }
+
     const primary = records?.[0] || null;
     const requestedFixAt = new Date(body.device_fix_at || now).getTime();
     const deviceFixAt = Number.isFinite(requestedFixAt) && requestedFixAt <= receivedAt + 30000
