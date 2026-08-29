@@ -71,7 +71,7 @@ export default function SupervisorFieldOversight() {
   const liveUnits = useMemo(() => (locationPayload.users || []).filter(unit => unit.session_active === true && unit.status !== 'Out of Service'), [locationPayload.users]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
-  const mappedUnits = useMemo(() => liveUnits.filter(unit => validPosition(unit) || (validCoordinate(unit?.last_known_latitude) && validCoordinate(unit?.last_known_longitude))), [liveUnits]);
+  const mappedUnits = useMemo(() => liveUnits.filter(unit => validPosition(unit) || (validCoordinate(unit?.last_known_latitude) && validCoordinate(unit?.last_known_longitude)) || (validCoordinate(unit?.coarse_latitude) && validCoordinate(unit?.coarse_longitude))), [liveUnits]);
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
   const attentionCount = attention.length + supervisorRequests.length + welfareChecks.filter(check => lower(check.status) === 'pending').length;
   const pendingWelfare = useMemo(() => welfareChecks.filter(check => lower(check.status) === 'pending'), [welfareChecks]);
