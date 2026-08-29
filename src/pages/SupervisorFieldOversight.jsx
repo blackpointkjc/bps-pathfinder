@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, MapPin, RefreshCw, ShieldCheck, Signal, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
+import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
+import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import { toast } from 'sonner';
 import { createPageUrl } from '../utils';
-import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const lower = value => String(value || '').trim().toLowerCase();
 const terminal = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'resolved', 'completed']);
@@ -35,16 +36,9 @@ const statusTone = status => ({
 }[lower(status)] || 'border-slate-600 bg-slate-800 text-slate-200');
 const validCoordinate = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
 const validPosition = item => validCoordinate(item?.latitude) && validCoordinate(item?.longitude) && Math.abs(Number(item.latitude)) <= 90 && Math.abs(Number(item.longitude)) <= 180 && !(Number(item.latitude) === 0 && Number(item.longitude) === 0);
-const officerMapIcon = unit => L.divIcon({
-  className: 'bps-supervisor-officer-marker',
-  html: `<div style="width:38px;height:38px;border-radius:12px 12px 14px 14px;background:#0b3b68;border:3px solid #67e8f9;box-shadow:0 3px 14px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;position:relative"><span style="position:absolute;top:-8px;width:17px;height:10px;border-radius:8px 8px 2px 2px;background:#67e8f9;border:2px solid #07111d"></span>${String(unit?.unit_number || 'OF').slice(0,4)}</div>`,
-  iconSize:[38,42],
-  iconAnchor:[19,38],
-  popupAnchor:[0,-38],
-});
-
 export default function SupervisorFieldOversight() {
   const [workingId, setWorkingId] = useState('');
+  const [mapTheme, setMapTheme] = usePathfinderMapTheme();
   const { data: welfarePayload = {}, isLoading: welfareLoading, error: welfareError, refetch: refetchWelfare, isFetching } = useQuery({
     queryKey: ['supervisorFieldOversight'],
     queryFn: async () => {
@@ -62,14 +56,22 @@ export default function SupervisorFieldOversight() {
     retryDelay: attempt => Math.min(2000 * (attempt + 1), 6000),
   });
 
+  const { data: locationPayload = {}, refetch: refetchLocations } = useQuery({
+    queryKey: ['supervisorCanonicalLocations'],
+    queryFn: () => getOfficerLocationSnapshot(),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 5000,
+  });
+
   const board = welfarePayload.board || [];
   const welfareChecks = welfarePayload.welfare_checks || [];
   const supervisorRequests = welfarePayload.supervisor_requests || [];
   const displayByEmail = welfarePayload.display_by_email || {};
-  const liveUnits = welfarePayload.live_units || [];
+  const liveUnits = useMemo(() => (locationPayload.users || []).filter(unit => unit.session_active === true && unit.status !== 'Out of Service'), [locationPayload.users]);
   const activeCalls = welfarePayload.active_calls || [];
-  const officerLabel = unit => displayByEmail[lower(unit?.officer_email)] || board.find(row => lower(row.officer_email) === lower(unit?.officer_email))?.officer_name || 'Officer';
-  const mappedUnits = useMemo(() => liveUnits.filter(validPosition), [liveUnits]);
+  const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
+  const mappedUnits = useMemo(() => liveUnits.filter(unit => validPosition(unit) || (validCoordinate(unit?.last_known_latitude) && validCoordinate(unit?.last_known_longitude))), [liveUnits]);
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
   const attentionCount = attention.length + supervisorRequests.length + welfareChecks.filter(check => lower(check.status) === 'pending').length;
   const pendingWelfare = useMemo(() => welfareChecks.filter(check => lower(check.status) === 'pending'), [welfareChecks]);
@@ -83,7 +85,11 @@ export default function SupervisorFieldOversight() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => refetchWelfare(), 600);
     };
-    const unsubscribers = [subscribeOfficerLocationChanges(scheduleRefresh)];
+    const onLocationChanged = () => {
+      scheduleRefresh();
+      refetchLocations();
+    };
+    const unsubscribers = [subscribeOfficerLocationChanges(onLocationChanged)];
     for (const entity of ['CallAssignment','OfficerWelfareCheck','CallStatusLog','DispatchCall']) {
       try {
         const unsub = base44.entities[entity].subscribe(scheduleRefresh);
@@ -94,9 +100,9 @@ export default function SupervisorFieldOversight() {
       window.clearTimeout(timer);
       unsubscribers.forEach(fn => fn());
     };
-  }, [refetchWelfare]);
+  }, [refetchWelfare, refetchLocations]);
 
-  const refreshAll = async () => refetchWelfare();
+  const refreshAll = async () => Promise.all([refetchWelfare(), refetchLocations()]);
   const openCad = callOrRow => {
     const callId = callOrRow?.call_id || callOrRow?.id;
     window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`;
@@ -129,7 +135,7 @@ export default function SupervisorFieldOversight() {
   };
 
   return <div className="min-h-screen bg-[#07111d] text-slate-100">
-    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7"><div className="mx-auto flex max-w-[1700px] flex-wrap items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div><div className="flex gap-2"><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div></div></div>
+    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7"><div className="mx-auto flex max-w-[1700px] flex-wrap items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div><div className="flex flex-wrap gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme}/><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div></div></div>
 
     <main className="mx-auto max-w-[1700px] space-y-5 p-4 md:p-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -137,7 +143,7 @@ export default function SupervisorFieldOversight() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.65fr_.9fr]">
-        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="flex items-center justify-between border-b border-slate-700 px-4 py-3"><div><h2 className="font-black">Live Operational Map</h2><p className="text-xs text-slate-500">Officer locations and active CAD calls</p></div><div className="flex gap-3 text-[10px] font-bold"><span className="text-cyan-300">● OFFICER</span><span className="text-red-300">● ACTIVE CALL</span></div></div><div className="h-[480px] min-h-[360px] w-full"><MapContainer center={[37.5407,-77.4360]} zoom={11} className="h-full w-full" zoomControl><TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors'/><ActiveCallMarkers calls={activeCalls} onCallClick={openCad}/>{mappedUnits.map(unit=><Marker key={unit.id || unit.officer_email} position={[Number(unit.latitude),Number(unit.longitude)]} icon={officerMapIcon(unit)}><Popup><div className="min-w-[190px]"><strong>{unit.unit_number?`Unit ${unit.unit_number} · `:''}{officerLabel(unit)}</strong><br/>Status: {unit.status || 'Signed In'}<br/>GPS: {gpsAge(unit.gps_updated_at)}<br/>{unit.current_call_info ? `Call: ${unit.current_call_info}` : 'No current call listed'}</div></Popup></Marker>)}</MapContainer></div></div>
+        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="flex items-center justify-between border-b border-slate-700 px-4 py-3"><div><h2 className="font-black">Live Operational Map</h2><p className="text-xs text-slate-500">Live, low-accuracy and last-known officer positions from the same CAD location feed</p></div><div className="flex gap-3 text-[10px] font-bold"><span className="text-cyan-300">● OFFICER</span><span className="text-red-300">● ACTIVE CALL</span></div></div><div className="h-[480px] min-h-[360px] w-full"><MapContainer center={[37.5407,-77.4360]} zoom={11} className="h-full w-full" zoomControl><PathfinderTileLayer theme={mapTheme}/><ActiveCallMarkers calls={activeCalls} onCallClick={openCad}/><OtherUnitsLayer units={mappedUnits} currentUserId={null}/></MapContainer></div></div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Unit Status</h2><p className="text-xs text-slate-500">Current signed-in officers</p></div><div className="max-h-[480px] divide-y divide-slate-800 overflow-y-auto">{liveUnits.length===0?<div className="p-8 text-center text-sm text-slate-500">No signed-in units.</div>:liveUnits.map(unit=><div key={unit.id || unit.officer_email} className="p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-bold">{unit.unit_number?`Unit ${unit.unit_number} · `:''}{officerLabel(unit)}</div><div className="mt-1 text-xs text-slate-400">{unit.current_location || 'Location not listed'}</div></div><Badge variant="outline" className="border-slate-600 text-slate-200">{String(unit.status||'Signed In').toUpperCase()}</Badge></div><div className="mt-2 flex flex-wrap gap-2 text-[10px]"><span className={validPosition(unit)?'text-emerald-300':'text-amber-300'}>{validPosition(unit)?`GPS ${gpsAge(unit.gps_updated_at)}`:'GPS unavailable'}</span>{unit.current_call_info&&<span className="text-cyan-300">{unit.current_call_info}</span>}</div></div>)}</div></div>
       </section>
