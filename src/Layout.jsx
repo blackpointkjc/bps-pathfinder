@@ -1165,22 +1165,28 @@ export default function Layout({ children, currentPageName }) {
     };
 
     monitor();
-    // Realtime payload shapes vary by SDK version, so any property-alert event
-    // triggers a refresh. The short poll and focus hooks cover dropped websocket
-    // events and background-tab suspension without waiting thirty seconds.
-    const id = setInterval(monitor, 5000);
-    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(() => monitor());
-    const refreshOnFocus = () => monitor();
-    const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible') monitor();
+    // Realtime owns fast delivery. Use one slow fallback poll and debounce entity
+    // events so a burst of alert writes cannot fan out into four list requests per event.
+    let refreshTimer;
+    const scheduleMonitor = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        if (!cancelled && document.visibilityState === 'visible') monitor();
+      }, 1200);
     };
-    window.addEventListener('focus', refreshOnFocus);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') monitor();
+    }, 60000);
+    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') scheduleMonitor();
+    };
     document.addEventListener('visibilitychange', refreshOnVisibility);
     return () => {
       cancelled = true;
       clearInterval(id);
+      window.clearTimeout(refreshTimer);
       unsubscribeAlerts?.();
-      window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', refreshOnVisibility);
     };
   }, [user?.id, user?.email, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
