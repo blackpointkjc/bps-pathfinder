@@ -106,24 +106,27 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-600" />
+    <div className="min-h-screen bg-[#070d17] p-3 pb-24 text-white sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5 sm:space-y-6">
+        <div className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl sm:p-6 md:p-8">
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-6 w-6 text-cyan-300" /></div>
             <div>
-              <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl md:text-4xl">Admin Dashboard</h1>
-              <p className="text-sm text-slate-600 sm:text-base">Manage officers and monitor activity</p>
+              <div className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Master Administration</div>
+              <h1 className="mt-1 text-3xl font-black leading-tight text-white md:text-4xl">Admin Command Dashboard</h1>
+              <p className="mt-1 text-sm text-slate-400 sm:text-base">Live staffing, activity, requests and administration status in one view.</p>
             </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-center sm:w-auto">
+              <Button className="w-full justify-center border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 sm:w-auto">
                 <LayoutDashboard className="w-4 h-4 mr-2" />
                 All Admin Tools
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
+            <DropdownMenuContent className="w-64 border-slate-700 bg-[#0b1725] text-slate-100">
               <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
@@ -175,6 +178,7 @@ export default function AdminDashboard() {
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
