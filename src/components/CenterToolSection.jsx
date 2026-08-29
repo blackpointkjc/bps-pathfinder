@@ -1,12 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool' }) {
+  const location = useLocation();
   const safeTools = Array.isArray(tools) ? tools : [];
   const initial = useMemo(() => {
-    const requested = new URLSearchParams(window.location.search).get(queryParam);
+    const requested = new URLSearchParams(location.search).get(queryParam);
     return safeTools.some(tool => tool.id === requested) ? requested : defaultTool || safeTools[0]?.id;
-  }, [safeTools, defaultTool, queryParam]);
+  }, [location.search, safeTools, defaultTool, queryParam]);
   const [tool, setTool] = useState(initial);
+
+  useEffect(() => {
+    if (!safeTools.length) return;
+    const requested = new URLSearchParams(location.search).get(queryParam);
+    const fallback = defaultTool && safeTools.some(item => item.id === defaultTool) ? defaultTool : safeTools[0].id;
+    const next = requested && safeTools.some(item => item.id === requested) ? requested : fallback;
+    if (next !== tool) setTool(next);
+  }, [location.search, queryParam, tool, defaultTool, safeTools]);
 
   const select = next => {
     setTool(next);
