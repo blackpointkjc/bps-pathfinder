@@ -199,11 +199,12 @@ Deno.serve(async (req) => {
       ]);
     } else {
       [
-        entries, dailyReports, availability, accessRequests, shiftReports, incidentReports,
+        schedules, entries, dailyReports, availability, accessRequests, shiftReports, incidentReports,
         trespassNotices, parkingViolations, criminalComplaints, dispatcherLogs, forceReports,
         confidentialReports, maintenanceReports, openDoorReports, expenseReports,
         shiftBids, specialCoverageRequests, weekStatuses,
       ] = await loadLimited([
+        () => safeList('schedules for payroll exceptions', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
         () => safeList('time entries for report matching', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
         () => safeList('daily activity reports', () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000)),
         () => safeList('availability requests', () => base44.asServiceRole.entities.AvailabilityRequest.list('-requested_at', 1000)),
@@ -256,7 +257,7 @@ Deno.serve(async (req) => {
     }) : [];
 
     const lateReviewCutoff = Date.now() - 21 * 86400000;
-    const lateClockOuts = queueRole === 'hr' ? (entries || []).flatMap((entry: any) => {
+    const lateClockOuts = (entries || []).flatMap((entry: any) => {
       if (!entry?.id || !entry.clock_in || !entry.clock_out || entry.archived === true || entry.payroll_adjustment_decision) return [];
       if (new Date(entry.clock_out).getTime() < lateReviewCutoff) return [];
       const clockIn = easternParts(entry.clock_in);
@@ -282,7 +283,7 @@ Deno.serve(async (req) => {
       const actualEndMinutes = clockOut.minutes + dayOffset(clockIn.date, clockOut.date) * 1440;
       const lateMinutes = Math.round(actualEndMinutes - scheduledEndMinutes);
       return lateMinutes > 5 ? [{ entry, scheduled, lateMinutes }] : [];
-    }) : [];
+    });
 
     const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
     const legacyReportKeys = new Set((dailyReports || []).map((report: any) =>
