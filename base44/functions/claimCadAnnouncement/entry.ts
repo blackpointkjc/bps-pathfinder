@@ -64,7 +64,11 @@ Deno.serve(async (req) => {
       await Promise.all(extras.map((r: any) =>
         base44.asServiceRole.entities.CadAnnouncementReceipt.delete(r.id).catch(() => null)
       ));
-      return Response.json({ success: true, claimed: true, receipt: earliest, deduplicated: extras.length });
+      // Only the request that created the surviving earliest receipt owns audio.
+      // A concurrent request whose newly-created receipt was removed must return
+      // claimed:false or two devices can both speak the same event.
+      const ownsClaim = String(earliest.id) === String(receipt.id);
+      return Response.json({ success: true, claimed: ownsClaim, receipt: earliest, deduplicated: extras.length });
     }
     return Response.json({ success: true, claimed: true, receipt });
   } catch (error) {
