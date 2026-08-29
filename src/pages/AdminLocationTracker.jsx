@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
+import { getOfficerLocationHistory, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -201,10 +202,7 @@ export default function AdminLocationTracker() {
   const { data: activeOfficerPayload = {} } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload;
+      return getOfficerLocationSnapshot({ locationOnly: true });
     },
     // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
     // 30-second safety poll instead of repeatedly hitting the backend.
@@ -216,7 +214,7 @@ export default function AdminLocationTracker() {
   const activeOfficerLocations = activeOfficerPayload.units || [];
   useEffect(() => {
     if (!hasAccess) return undefined;
-    const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => {
+    const unsubscribe = subscribeOfficerLocationChanges(() => {
       queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
     });
     return unsubscribe;
@@ -270,12 +268,7 @@ export default function AdminLocationTracker() {
     queryKey: ['locationHistory', selectedOfficerEmail, selectedDate],
     queryFn: async () => {
       if (!selectedOfficerEmail || !selectedDate) return [];
-      const result = await base44.functions.invoke('getOnDutyUnits', {
-        history_email: selectedOfficerEmail,
-      });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      const allHistory = payload.history || [];
+      const allHistory = await getOfficerLocationHistory(selectedOfficerEmail);
       const start = new Date(`${selectedDate}T00:00:00`);
       const end = new Date(`${selectedDate}T23:59:59.999`);
       return (allHistory || []).filter(h => {
@@ -308,9 +301,7 @@ export default function AdminLocationTracker() {
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
-      const response = await base44.functions.invoke('getOnDutyUnits', { location_only: true });
-      const freshPayload = response?.data || response || {};
-      if (freshPayload.error) throw new Error(freshPayload.error);
+      const freshPayload = await getOfficerLocationSnapshot({ locationOnly: true });
       const freshLocations = freshPayload.units || [];
       const freshClockedInWithoutSession = freshPayload.clocked_in_without_session || [];
       const freshUsers = allUsers || [];
