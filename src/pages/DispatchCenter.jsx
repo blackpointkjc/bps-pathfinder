@@ -12,6 +12,7 @@ import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
+import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
@@ -97,6 +98,12 @@ export default function DispatchCenter() {
         // GRAC ingestion is owned app-wide by DashboardDataProvider. Dispatch Center
         // listens for persisted call changes instead of launching a second sync loop.
         const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
+        let unitRefreshTimer;
+        const scheduleUnitRefresh = () => {
+            window.clearTimeout(unitRefreshTimer);
+            unitRefreshTimer = window.setTimeout(loadUnits, 750);
+        };
+        const unsubscribeUnits = base44.entities.ActiveOfficer.subscribe(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             loadActiveCalls();
         }, 60000);
@@ -107,6 +114,8 @@ export default function DispatchCenter() {
 
         return () => {
             unsubscribeCalls?.();
+            unsubscribeUnits?.();
+            window.clearTimeout(unitRefreshTimer);
             clearInterval(localInterval);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
@@ -729,6 +738,7 @@ export default function DispatchCenter() {
                                             calls={activeCalls}
                                             onCallClick={handleSelectCall}
                                         />
+                                        <OtherUnitsLayer units={units} currentUserId={currentUser?.id} />
                                         <OfficerDistressMarker autoCenter={true} />
                                     </MapContainer>
                                 </div>
@@ -780,6 +790,7 @@ export default function DispatchCenter() {
                             <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
                                 <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
+                                <OtherUnitsLayer units={units} currentUserId={currentUser?.id} />
                                 <OfficerDistressMarker autoCenter={true} />
                             </MapContainer>
                         </div>
