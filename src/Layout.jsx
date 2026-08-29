@@ -887,6 +887,28 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
+    if (!user?.id || !currentPageName) return;
+    const routeKey = `bps-role-home-routed:${user.id}`;
+    if (sessionStorage.getItem(routeKey) === '1') return;
+    // CommandDashboard is the legacy app mainPage. On first authenticated load,
+    // route users to the primary workspace for their role instead of leaving
+    // everyone in CAD simply because that legacy page rendered first.
+    if (currentPageName !== 'CommandDashboard') {
+      sessionStorage.setItem(routeKey, '1');
+      return;
+    }
+    const target = defaultPageForUser(user, !isMobileViewport);
+    sessionStorage.setItem(routeKey, '1');
+    if (target && target !== currentPageName) {
+      const targetCenters = PAGE_TO_CENTERS[target] || [];
+      const available = allowedCenters(user);
+      const targetCenter = targetCenters.find(center => available.includes(center)) || available[0];
+      if (targetCenter) setActiveCenter(targetCenter);
+      navigate(createPageUrl(target), { replace: true });
+    }
+  }, [user?.id, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || []), currentPageName, isMobileViewport]);
+
+  useEffect(() => {
     const openTools = event => {
       setMobileSection(event?.detail?.section || null);
       setMobileOpen(true);
