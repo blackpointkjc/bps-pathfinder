@@ -293,18 +293,16 @@ export default function VATrespassNotices() {
           officer_ip_address: ipAddress,
         });
 
-        if (data.linked_call_id) {
-          try {
-            await createReportCallLink({
-              callId: data.linked_call_id,
-              callNumber: data.linked_call_number || '',
-              reportType: 'TrespassingNotice',
-              reportId: updated.id,
-              reportNumber: updated.police_report_number || updated.id,
-            });
-          } catch (linkError) {
-            console.error('Failed to persist trespass call link:', linkError);
-          }
+        try {
+          await createReportCallLink({
+            callId: data.linked_call_id || '',
+            callNumber: data.linked_call_number || '',
+            reportType: 'TrespassingNotice',
+            reportId: updated.id,
+            reportNumber: updated.police_report_number || updated.id,
+          });
+        } catch (linkError) {
+          console.error('Failed to synchronize trespass call link:', linkError);
         }
 
         if (!isDraft) {
