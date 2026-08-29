@@ -90,44 +90,20 @@ export default function WelcomeBriefing({ user }) {
     let active = true;
     const load = async () => {
       const failedSources = [];
-      const track = label => error => {
-        failedSources.push(label);
-        console.error(`Welcome briefing: "${label}" failed to load`, error);
-        return [];
-      };
       try {
-        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        // Keep each burst below the Base44 per-user request threshold. This
-        // briefing used to launch sixteen reads simultaneously during sign-in.
-        const first = await Promise.all([
-          Promise.resolve([]),
-          base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(track('Teams mentions')),
-          base44.entities.Announcement.list('-created_date', 100).catch(track('Announcements')),
-          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000).catch(track('Announcement read status')),
-        ]);
-        const second = await Promise.all([
-          base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(track('Notifications')),
-          base44.entities.PropertyAlert.list('-created_date', 300).catch(track('Property alerts')),
-          base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(track('Property alert dismissals')),
-          base44.entities.Unit.filter({ user_id: user.id }).catch(track('Your unit status')),
-          base44.entities.Task.filter({ assigned_to: user.id }, '-created_date', 200).catch(track('Assigned tasks')),
-        ]);
-        const third = await Promise.all([
-          base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(track('Your schedule')),
-          base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(track('Vehicle assignments')),
-          base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(track('Status overrides')),
-          listDirectoryUsers('last_name', 1000).catch(track('Personnel directory')),
-        ]);
-        const fourth = await Promise.all([
-          base44.entities.Unit.list('-last_update_at', 500).catch(track('Unit roster')),
-          base44.entities.Schedule.filter({ shift_date: today }).catch(track("Today's staffing schedule")),
-          base44.entities.TimeEntry.list('-clock_in', 1000).catch(track('Time clock records')),
-          base44.entities.DispatchCall.list('-created_date', 500).catch(track('Dispatch calls')),
-        ]);
-        const [messages, mentions, announcements, receipts] = first;
-        const [notifications, propertyAlerts, propertyAlertReceipts, units, assignedTasks] = second;
-        const [schedules, vehicleAssignments, overrides, allUsers] = third;
-        const [allUnits, allSchedules, timeEntries, dispatchCalls] = fourth;
+        // Load one authenticated backend snapshot instead of launching many
+        // browser-side entity requests during sign-in. This keeps the briefing
+        // stable under role permissions and Base44 rate limits.
+        const response = await base44.functions.invoke('getWelcomeBriefingData', {});
+        const snapshot = response?.data || response || {};
+        if (snapshot?.error) throw new Error(snapshot.error);
+        const {
+          messages = [], mentions = [], announcements = [], receipts = [],
+          notifications = [], propertyAlerts = [], propertyAlertReceipts = [],
+          units = [], assignedTasks = [], schedules = [], vehicleAssignments = [],
+          overrides = [], allUsers = [], allUnits = [], allSchedules = [],
+          timeEntries = [], dispatchCalls = []
+        } = snapshot;
         if (!active) return;
         const receiptIds = getLocalReadAnnouncementIds(user.email);
         (receipts || []).forEach(receipt => {
