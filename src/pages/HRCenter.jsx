@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, Building2, Clock3 } from 'lucide-react';
+import { Briefcase, CalendarClock, Building2, Clock3, LayoutDashboard } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import HRManageCompanyEmployees from './HRManageCompanyEmployees';
@@ -10,8 +10,10 @@ import AdminPTOLossReport from './AdminPTOLossReport';
 import AdminPerformanceReviews from './AdminPerformanceReviews';
 import ManageClients from './ManageClients';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
+import HROverview from './HROverview';
 
 const SECTIONS = [
+  { id: 'overview', label: 'Overview', description: 'HR command dashboard and priority actions', icon: LayoutDashboard },
   { id: 'employees', label: 'Employees', description: 'Employee records, time entries and divisions', icon: Briefcase },
   { id: 'leave', label: 'Leave & Performance', description: 'PTO and employee performance workflow', icon: CalendarClock },
   { id: 'clients', label: 'Client Assignments', description: 'Client accounts and assignments', icon: Building2 },
@@ -19,6 +21,7 @@ const SECTIONS = [
 ];
 
 const TOOLS = {
+  overview: [{ id: 'overview', label: 'HR Overview', component: HROverview }],
   employees: [
     { id: 'employees', label: 'Company Employees', component: HRManageCompanyEmployees },
     { id: 'timeentries', label: 'Time Entries', component: ManageTimeEntries },
@@ -36,7 +39,7 @@ const TOOLS = {
 
 export default function HRCenter({ embedded = false }) {
   return (
-    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="employees" queryParam={embedded ? 'hr_section' : 'section'} embedded={embedded}>
+    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, leave, performance, client assignments, and support clock-in." sections={SECTIONS} defaultSection="overview" queryParam={embedded ? 'hr_section' : 'section'} embedded={embedded}>
       {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'hr_tool' : 'tool'} />}
     </UnifiedCenter>
   );
