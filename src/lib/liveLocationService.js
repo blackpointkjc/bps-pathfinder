@@ -90,9 +90,9 @@ export function getLiveLocation(maxAgeMs = 15000) {
   return latestFix;
 }
 
-export function subscribeLiveLocation(listener) {
+export function subscribeLiveLocation(listener, { emitCurrent = true } = {}) {
   listeners.add(listener);
-  if (latestFix) listener(latestFix);
+  if (emitCurrent && latestFix) listener(latestFix);
   return () => listeners.delete(listener);
 }
 
@@ -126,8 +126,12 @@ export function requestFreshLiveLocation({ timeoutMs = 15000 } = {}) {
 
 export function requestBestLiveLocation({ timeoutMs = 15000, targetAccuracyMeters = PRECISION_GPS_TARGET_METERS } = {}) {
   if (!geolocationSupported()) return requestFreshLiveLocation({ timeoutMs });
+  const current = getLiveLocation(60000);
+  if (current && Number.isFinite(Number(current.accuracy)) && Number(current.accuracy) <= targetAccuracyMeters) {
+    return Promise.resolve(current);
+  }
   return new Promise((resolve, reject) => {
-    let best = getLiveLocation(60000);
+    let best = current;
     let finished = false;
     let timer;
     let unsubscribe = () => {};
@@ -143,7 +147,10 @@ export function requestBestLiveLocation({ timeoutMs = 15000, targetAccuracyMeter
       if (!best || Number(fix.accuracy) < Number(best.accuracy) || Number(fix.timestamp) > Number(best.timestamp) + 30000) best = fix;
       if (Number.isFinite(Number(best.accuracy)) && Number(best.accuracy) <= targetAccuracyMeters) finish();
     };
-    unsubscribe = subscribeLiveLocation(consider);
+    // Do not synchronously replay latestFix during subscription. The current fix
+    // was evaluated above; replaying it before `unsubscribe` is assigned leaks a
+    // listener and eventually creates multiple competing location consumers.
+    unsubscribe = subscribeLiveLocation(consider, { emitCurrent: false });
     requestFreshLiveLocation({ timeoutMs: Math.min(timeoutMs, 10000) }).then(consider).catch(error => {
       if (error?.code === 1) finish(error);
     });
@@ -248,7 +255,7 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
     });
     unsubscribe = subscribeLiveLocation(fix => {
       if (acceptable(fix)) finish(fix);
-    });
+    }, { emitCurrent: false });
 
     requestFreshLiveLocation({ timeoutMs }).catch(error => {
       if (error?.code === 1 || error?.message === 'GEOLOCATION_NOT_SUPPORTED') finish(null, error);
