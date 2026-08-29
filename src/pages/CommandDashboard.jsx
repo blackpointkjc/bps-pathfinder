@@ -127,7 +127,9 @@ function CommandDashboardInner() {
             } catch {}
         };
         syncUnitStatus();
-        const timer = setInterval(syncUnitStatus, 10000);
+        // DashboardDataContext already keeps the shared roster current; this is a slow
+        // safety refresh so the command page does not duplicate the same backend call.
+        const timer = setInterval(syncUnitStatus, 60000);
         const onStatusChanged = () => syncUnitStatus();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
         return () => {
