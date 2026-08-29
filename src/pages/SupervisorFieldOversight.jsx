@@ -14,7 +14,6 @@ import { createPageUrl } from '../utils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const lower = value => String(value || '').trim().toLowerCase();
-const terminal = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'resolved', 'completed']);
 const elapsed = seconds => {
   const total = Math.max(0, Number(seconds) || 0);
   const minutes = Math.floor(total / 60);
@@ -28,12 +27,6 @@ const gpsAge = value => {
   if (age < 3600) return `${Math.floor(age / 60)}m ago`;
   return `${Math.floor(age / 3600)}h ago`;
 };
-const statusTone = status => ({
-  pending: 'border-amber-500/50 bg-amber-500/10 text-amber-200',
-  accepted: 'border-indigo-500/50 bg-indigo-500/10 text-indigo-200',
-  enroute: 'border-blue-500/50 bg-blue-500/10 text-blue-200',
-  on_scene: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200',
-}[lower(status)] || 'border-slate-600 bg-slate-800 text-slate-200');
 const validCoordinate = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
 const validPosition = item => validCoordinate(item?.latitude) && validCoordinate(item?.longitude) && Math.abs(Number(item.latitude)) <= 90 && Math.abs(Number(item.longitude)) <= 180 && !(Number(item.latitude) === 0 && Number(item.longitude) === 0);
 export default function SupervisorFieldOversight() {
