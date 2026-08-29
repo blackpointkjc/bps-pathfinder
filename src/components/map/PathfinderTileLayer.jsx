@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TileLayer } from 'react-leaflet';
 
 const THEME_KEY = 'bps-map-theme';
@@ -62,10 +62,12 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
   const providers = useMemo(() => PROVIDERS[providerGroup], [providerGroup]);
   const [providerIndex, setProviderIndex] = useState(0);
   const [, setTileErrors] = useState(0);
+  const loadedNoticeRef = useRef(false);
 
   useEffect(() => {
     setProviderIndex(0);
     setTileErrors(0);
+    loadedNoticeRef.current = false;
   }, [providerGroup]);
 
   const provider = providers[Math.min(providerIndex, providers.length - 1)];
@@ -74,7 +76,11 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
       const next = errors + 1;
       if (next >= 3 && providerIndex < providers.length - 1) {
         setProviderIndex(index => Math.min(index + 1, providers.length - 1));
+        loadedNoticeRef.current = false;
         return 0;
+      }
+      if (next >= 3 && providerIndex >= providers.length - 1) {
+        window.dispatchEvent(new CustomEvent('bps-map-tiles-failed', { detail: { providerGroup } }));
       }
       return next;
     });
@@ -90,7 +96,14 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
         maxZoom={20}
         maxNativeZoom={19}
         className={provider.filter ? 'bps-night-map-tiles' : ''}
-        eventHandlers={{ tileerror: handleTileError }}
+        eventHandlers={{
+          tileerror: handleTileError,
+          tileload: () => {
+            if (loadedNoticeRef.current) return;
+            loadedNoticeRef.current = true;
+            window.dispatchEvent(new CustomEvent('bps-map-tiles-loaded', { detail: { providerGroup, provider: provider.id } }));
+          },
+        }}
       />
       <style>{`.bps-night-map-tiles{filter:invert(1) hue-rotate(180deg) brightness(.72) contrast(1.18) saturate(.55);}`}</style>
     </>
