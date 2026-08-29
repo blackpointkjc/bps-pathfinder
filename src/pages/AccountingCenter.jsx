@@ -9,10 +9,10 @@ import AccountingProfit from './AccountingProfit';
 import AccountingOverview from './AccountingOverview';
 
 const SECTIONS = [
-  { id: 'dashboard', label: 'Overview', description: 'Financial operations dashboard and priority workload', icon: LayoutDashboard },
-  { id: 'payroll', label: 'Payroll', description: 'Payroll processing and payroll dates', icon: DollarSign },
+  { id: 'dashboard', label: 'Overview & Work Queue', description: 'Financial operations dashboard and priority workload', icon: LayoutDashboard },
+  { id: 'payroll', label: 'Payroll', description: 'Payroll processing, approved hours and payroll dates', icon: DollarSign },
   { id: 'billing', label: 'Billing & Expenses', description: 'Client invoices, bills, expenses and approvals', icon: FileText },
-  { id: 'overview', label: 'Financial Overview', description: 'Company revenue, labor, expenses, and profit', icon: BarChart3 },
+  { id: 'overview', label: 'Profitability', description: 'Company revenue, labor, expenses and profit', icon: BarChart3 },
 ];
 
 const TOOLS = {
