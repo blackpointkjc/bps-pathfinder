@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { calculatePayrollHours } from "@/lib/payrollCalculations";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminPayroll() {
@@ -202,7 +202,7 @@ export default function AdminPayroll() {
         };
       }
       
-      const hours = calculatePaidHours(entry);
+      const hours = calculatePayrollHours(entry);
       const locationName = entry.location ? entry.location.split(' - ')[0] : 'N/A';
       
       grouped[entry.officer_email].entries.push({
