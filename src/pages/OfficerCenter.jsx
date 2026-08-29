@@ -30,12 +30,12 @@ import RankStructure from './RankStructure';
 import RankDuties from './RankDuties';
 
 const SECTIONS = [
-  { id: 'today', label: 'Today', description: 'Dashboard, clock and schedule', icon: CalendarClock },
-  { id: 'field', label: 'Field Tools', description: 'Post orders, patrol, handover and enforcement forms', icon: Shield },
-  { id: 'reports', label: 'Reports', description: 'Daily, incident and support reports', icon: ClipboardList },
-  { id: 'schedule', label: 'Schedule & Availability', description: 'Availability, open shifts and payroll dates', icon: Wrench },
-  { id: 'messages', label: 'Messages', description: 'Announcements and communication shortcuts', icon: MessageCircle },
-  { id: 'profile', label: 'Profile & Training', description: 'Profile, performance, training and rank information', icon: UserRound },
+  { id: 'today', label: 'Today', description: 'Dashboard, announcements, clock and schedule', icon: CalendarClock },
+  { id: 'field', label: 'Patrol & Post', description: 'Post orders, QR patrol and shift handover', icon: Wrench },
+  { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints and summons', icon: Shield },
+  { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and confidential reports', icon: ClipboardList },
+  { id: 'schedule', label: 'Schedule & Pay', description: 'Availability, requests, open shifts and payroll dates', icon: CalendarClock },
+  { id: 'profile', label: 'Career & Training', description: 'Profile, performance, reviews, training and rank', icon: UserRound },
 ];
 
 const TOOLS = {
@@ -43,11 +43,14 @@ const TOOLS = {
     { id: 'dashboard', label: 'Dashboard', component: Dashboard },
     { id: 'clock', label: 'Time Clock', component: TimeClock },
     { id: 'myschedule', label: 'My Schedule', component: Schedule },
+    { id: 'announcements', label: 'Announcements', component: Announcements },
   ],
   field: [
     { id: 'postorders', label: 'Post Orders', component: PostOrders },
     { id: 'qr', label: 'QR Patrol', component: QRPatrolScan },
     { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
+  ],
+  messages: [
     { id: 'law', label: 'Virginia Law', component: VirginiaFieldLawAssistant },
     { id: 'trespass', label: 'VA Trespass', component: VATrespassNotices },
     { id: 'complaint', label: 'VA Complaint', component: VACriminalComplaints },
@@ -66,9 +69,6 @@ const TOOLS = {
     { id: 'time', label: 'Time Request', component: TimeRequests },
     { id: 'openshifts', label: 'Open Shifts', component: OpenShifts },
     { id: 'payroll', label: 'Payroll Dates', component: OfficerPayrollDates },
-  ],
-  messages: [
-    { id: 'announcements', label: 'Announcements', component: Announcements },
   ],
   profile: [
     { id: 'profile', label: 'My Profile', component: OfficerProfile },
