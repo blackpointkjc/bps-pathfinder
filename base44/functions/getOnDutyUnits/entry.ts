@@ -60,7 +60,9 @@ Deno.serve(async (req) => {
           const reliableAccuracy = Number(active.reliable_accuracy);
           const hasReliablePosition = hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
             && Number.isFinite(reliableAccuracy)
-            && reliableAccuracy <= 100;
+            && reliableAccuracy <= 100
+            && Boolean(active.tracking_session_key)
+            && active.reliable_session_key === active.tracking_session_key;
           const hasGps = Number.isFinite(gpsTs)
             && gpsTs >= gpsFreshCutoff
             && hasValidCoordinates(active.latitude, active.longitude)
@@ -138,7 +140,9 @@ Deno.serve(async (req) => {
       const reliableAccuracy = Number(active.reliable_accuracy);
       const hasReliablePosition = hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
         && Number.isFinite(reliableAccuracy)
-        && reliableAccuracy <= 100;
+        && reliableAccuracy <= 100
+        && Boolean(active.tracking_session_key)
+        && active.reliable_session_key === active.tracking_session_key;
       // Tactical maps must never present a coarse Wi-Fi/network estimate as an
       // exact officer position. Preserve it as last-known diagnostic data, but a
       // live coordinate requires a fresh fix with <=100m reported accuracy.
@@ -238,7 +242,9 @@ Deno.serve(async (req) => {
         const reliableAccuracy = Number(active?.reliable_accuracy);
         const hasReliablePosition = hasValidCoordinates(active?.reliable_latitude, active?.reliable_longitude)
           && Number.isFinite(reliableAccuracy)
-          && reliableAccuracy <= 100;
+          && reliableAccuracy <= 100
+          && Boolean(active?.tracking_session_key)
+          && active?.reliable_session_key === active?.tracking_session_key;
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
