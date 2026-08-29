@@ -46,14 +46,10 @@ export default function AutoDispatchRecommendation({ alert }) {
     evaluate(false);
   }, [evaluate]);
 
-  // Automatic dispatch is an operational service, not a one-shot preview. If a
-  // transient backend throttle/network failure occurs, reconnect automatically
-  // until the evaluator answers again. Keep the last good result on screen.
-  useEffect(() => {
-    if (!error) return undefined;
-    const timer = setTimeout(() => evaluate(true), 3000);
-    return () => clearTimeout(timer);
-  }, [error, evaluate]);
+  // Do not retry-loop an evaluation when the backend is already throttled. The
+  // active PropertyAlert subscription/poll will remount or the user can RECHECK.
+  // This prevents a hidden shadow evaluator from creating another 429 storm.
+  useEffect(() => undefined, [error, evaluate]);
 
   const runSafetyTest = async () => {
     setTesting(true);
