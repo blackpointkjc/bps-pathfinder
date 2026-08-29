@@ -409,11 +409,11 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-white md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_42%,_#050a12_100%)] p-3 text-white sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-5">
+        <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
+            <h1 className="flex min-w-0 items-center gap-3 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">
               <BarChart3 className="w-8 h-8 text-blue-600" />
               Company Analytics
             </h1>
@@ -442,29 +442,29 @@ export default function AdminAnalytics() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate != null ? `${companyOnTimeStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">On-Time Rate</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <BarChart3 className="w-6 h-6 text-cyan-500 mb-2" />
               <p className="text-2xl font-bold text-cyan-400">{companyOverallScore != null ? `${companyOverallScore}%` : '—'}</p>
               <p className="text-xs text-slate-400">Overall Performance</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <Users className="w-6 h-6 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-blue-600">{filteredUsers.length}</p>
               <p className="text-xs text-slate-400">Active Officers</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
               <p className="text-2xl font-bold text-purple-600">
@@ -473,14 +473,14 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Need Training</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <Clock className="w-6 h-6 text-amber-600 mb-2" />
               <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg || 0}m</p>
               <p className="text-xs text-slate-400">Avg Response</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <AlertTriangle className="w-6 h-6 text-red-600 mb-2" />
               <p className="text-2xl font-bold text-red-600">
@@ -489,14 +489,14 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Total OT</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <Award className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{commendationStats.total || 0}</p>
               <p className="text-xs text-slate-400">Commendations</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
             <CardContent className="p-4">
               <AlertTriangle className="w-6 h-6 text-rose-600 mb-2" />
               <p className="text-2xl font-bold text-rose-600">{complaintStats.total || 0}</p>
