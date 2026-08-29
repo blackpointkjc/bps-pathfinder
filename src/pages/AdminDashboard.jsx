@@ -1,4 +1,5 @@
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,22 +55,47 @@ export default function AdminDashboard() {
     enabled: user?.role === 'admin',
   });
 
-  const { data: pendingRequests } = useQuery({
-    queryKey: ['allPendingRequests'],
+  const { data: adminWork = {} } = useQuery({
+    queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
-      const requests = await base44.entities.TimeOffRequest.filter({ status: 'pending' });
-      return requests.length;
+      const reportRows = [];
+      const sources = [
+        ['Shift Report', base44.entities.ShiftReport, ['submitted']],
+        ['Daily Activity', base44.entities.DailyActivityReport, ['submitted']],
+        ['Incident Report', base44.entities.IncidentReport, ['submitted','pending']],
+        ['Trespass Notice', base44.entities.TrespassingNotice, ['active']],
+        ['Parking Violation', base44.entities.ParkingViolation, ['issued']],
+        ['Criminal Complaint', base44.entities.CriminalComplaint, ['submitted']],
+        ['Dispatcher Log', base44.entities.DispatcherShiftReport, ['submitted']],
+      ];
+      for (const [label, entity, statuses] of sources) {
+        if (!entity?.list) continue;
+        const rows = await entity.list('-created_date', 80).catch(() => []);
+        rows.filter(row => statuses.includes(String(row.status || '').toLowerCase())).forEach(row => reportRows.push({ ...row, __type: label }));
+      }
+      const availability = await base44.entities.AvailabilityRequest.list('-requested_at', 100).catch(() => []);
+      const timeOff = await base44.entities.TimeOffRequest.list('-created_date', 100).catch(() => []);
+      return {
+        reports: reportRows,
+        availability: availability.filter(row => String(row.status || '').toLowerCase() === 'pending'),
+        timeOff: timeOff.filter(row => String(row.status || '').toLowerCase() === 'pending'),
+      };
     },
     enabled: user?.role === 'admin',
+    staleTime: 60000,
+    refetchInterval: 120000,
   });
 
-  const getOfficerName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (officer?.first_name && officer?.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    return email;
-  };
+  const directory = buildDirectoryIndex(allUsers || []);
+  const getOfficerName = (ref) => operationalName(typeof ref === 'object' ? ref : { officer_email: ref }, directory, { fallback: 'Officer' });
+  const isWednesday = new Date().getDay() === 3;
+  const adminTasks = [
+    ...(adminWork.reports || []).slice(0, 6).map(row => ({ id: `report-${row.__type}-${row.id}`, title: row.__type, person: getOfficerName(row), detail: row.location || row.report_number || 'Submitted report awaiting approval', page: 'AdminReports' })),
+    ...(adminWork.availability || []).slice(0, 5).map(row => ({ id: `availability-${row.id}`, title: 'Officer Availability & Assignment', person: getOfficerName(row), detail: 'Availability request awaiting admin approval', page: 'AdminOfficerManagement' })),
+    ...(adminWork.timeOff || []).slice(0, 4).map(row => ({ id: `request-${row.id}`, title: 'Schedule / Time-Off Request', person: getOfficerName(row), detail: row.reason || row.request_type || 'Request awaiting review', page: 'AdminSpecialRequests' })),
+    ...(isWednesday ? [{ id: 'wednesday-schedule', title: 'Wednesday Schedule Planning', person: 'Weekly Administration Task', detail: 'Review availability, assignments, open shifts and publish the upcoming schedule.', page: 'AdminScheduling' }] : []),
+  ];
+  const pendingRequests = adminTasks.length;
 
   const adminTools = [
     // Dashboard & Analytics
