@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       liveData.speed = 0;
       liveData.accuracy = null;
     } else if (acceptsGps) {
-      const acceptedAccuracy = finiteNumber(body.accuracy, Number.POSITIVE_INFINITY);
+      const acceptedAccuracy = finiteNumber(body.accuracy, 999999);
       liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
       liveData.latitude = latitude;
       liveData.longitude = longitude;
