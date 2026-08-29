@@ -211,13 +211,22 @@ Deno.serve(async (req) => {
           ? (user.status || active?.status || 'Available')
           : (active?.status || user.status || 'Available');
         const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
+        const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
+        const hasFreshGps = signedInFresh
+          && Number.isFinite(gpsTs)
+          && gpsTs >= freshCutoff
+          && hasValidCoordinates(active?.latitude, active?.longitude);
+        const accuracy = Number(active?.accuracy);
         return {
           id: user.id,
           user_id: user.id,
+          active_officer_id: active?.id || '',
           email: user.email,
+          officer_email: user.email,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
           full_name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
+          officer_name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
           rank: user.rank || '',
           profile_photo_url: user.profile_photo_url || '',
           unit_number: active?.unit_number || user.unit_number || '',
@@ -226,8 +235,20 @@ Deno.serve(async (req) => {
           current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
           current_location: signedInFresh ? (active?.current_location || openByEmail.get(String(user.email).toLowerCase())?.location || user.assigned_location || '') : (user.assigned_location || ''),
           assigned_location: user.assigned_location || '',
+          latitude: hasFreshGps ? Number(active.latitude) : null,
+          longitude: hasFreshGps ? Number(active.longitude) : null,
+          heading: hasFreshGps ? active.heading : null,
+          speed: hasFreshGps ? active.speed : 0,
+          accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          gps_updated_at: hasFreshGps ? active.gps_updated_at : null,
+          last_gps_updated_at: active?.gps_updated_at || null,
+          last_known_latitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
+          last_known_longitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
+          gps_pending: signedInFresh && !hasFreshGps,
+          last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
           session_active: signedInFresh,
+          clock_in_time: openByEmail.get(String(user.email).toLowerCase())?.clock_in || active?.clock_in_time || '',
         };
       });
 
