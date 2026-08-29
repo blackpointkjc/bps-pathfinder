@@ -29,6 +29,7 @@ export default function AdminDashboard() {
         person: task.person,
         kind: task.kind,
         source_id: task.source_id,
+        queue_role: 'admin',
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
   const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getRoleWorkQueue', {});
+      const result = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
