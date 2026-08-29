@@ -10,7 +10,7 @@ import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
@@ -27,6 +27,7 @@ import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 
 
 
@@ -55,6 +56,7 @@ export default function DispatchCenter() {
     const [systemTime, setSystemTime] = useState(() => new Date());
     const [welfareChecks, setWelfareChecks] = useState([]);
     const [welfareWorking, setWelfareWorking] = useState(false);
+    const [mapTheme, setMapTheme] = usePathfinderMapTheme();
 
     const rankLastName = (name) => {
         const raw = String(name || '').trim();
@@ -731,15 +733,12 @@ export default function DispatchCenter() {
                                         className="h-full w-full"
                                         zoomControl={true}
                                     >
-                                        <TileLayer
-                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                        />
+                                        <PathfinderTileLayer theme={mapTheme} />
                                         <ActiveCallMarkers
                                             calls={activeCalls}
                                             onCallClick={handleSelectCall}
                                         />
-                                        <OtherUnitsLayer units={units} currentUserId={currentUser?.id} />
+                                        <OtherUnitsLayer units={units} currentUserId={null} />
                                         <OfficerDistressMarker autoCenter={true} />
                                     </MapContainer>
                                 </div>
@@ -785,13 +784,13 @@ export default function DispatchCenter() {
                         <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-emerald-400" />
                             <span className="text-xs font-black tracking-widest text-emerald-300">LIVE TACTICAL MAP</span>
-                            <button onClick={() => setShowMap(false)} className="ml-auto rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button>
+                            <div className="ml-auto flex items-center gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><button onClick={() => setShowMap(false)} className="rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button></div>
                         </div>
                         <div className="min-h-0 flex-1">
                             <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
+                                <PathfinderTileLayer theme={mapTheme} />
                                 <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
-                                <OtherUnitsLayer units={units} currentUserId={currentUser?.id} />
+                                <OtherUnitsLayer units={units} currentUserId={null} />
                                 <OfficerDistressMarker autoCenter={true} />
                             </MapContainer>
                         </div>
