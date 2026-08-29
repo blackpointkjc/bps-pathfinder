@@ -209,7 +209,7 @@ export default function AdminLocationTracker() {
     },
     // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
     // 15-second safety poll instead of hitting the backend every five seconds.
-    refetchInterval: 15000,
+    refetchInterval: 30000,
     refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
