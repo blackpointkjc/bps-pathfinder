@@ -16,18 +16,18 @@ import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorOverview from './SupervisorOverview';
 
 const SECTIONS = [
-  { id: 'overview', label: 'Overview', description: 'Supervisor command overview and priority actions', icon: LayoutDashboard },
-  { id: 'officer', label: 'Officer Center', description: 'Your normal officer shift, field tools, reports, schedule, profile and training', icon: Shield },
-  { id: 'command', label: 'Supervisor Operations', description: 'Live field oversight, welfare, supervisor requests and duty handoff', icon: ShieldCheck },
-  { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: ClipboardCheck },
+  { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
+  { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
+  { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
+  { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
 ];
 
 const COMMAND_TOOLS = [
+  { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
-  { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
-  { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
   { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
+  { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
   { id: 'rank', label: 'Rank Structure', component: RankStructure },
 ];
 
