@@ -23,7 +23,6 @@ import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
   formatReportClock,
   formatReportDate,
@@ -830,7 +829,6 @@ export default function DailyActivityReports() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                         <div className="grid md:grid-cols-3 gap-4">
                            <div className="space-y-2">
                              <Label htmlFor="report_date">Report Date *</Label>
