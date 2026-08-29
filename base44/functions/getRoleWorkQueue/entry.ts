@@ -79,13 +79,33 @@ Deno.serve(async (req) => {
         ? 'admin'
         : canUseAdminQueue ? 'admin' : 'hr';
     const loadErrors: string[] = [];
+    const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
     const safeList = async (label: string, loader: () => Promise<any[]>) => {
-      try {
-        return await loader();
-      } catch (error) {
-        console.error(`getRoleWorkQueue could not load ${label}`, error);
-        loadErrors.push(label);
-        return [];
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const rows = await loader();
+          return Array.isArray(rows) ? rows : [];
+        } catch (error) {
+          lastError = error;
+          if (attempt < 2) await delay(300 * (attempt + 1) + Math.min(300, label.length * 7));
+        }
+      }
+      console.error(`getRoleWorkQueue could not load ${label}`, lastError);
+      loadErrors.push(label);
+      return [];
+    };
+    const loadLimited = async (loaders: Array<() => Promise<any[]>>, concurrency = 2) => {
+      const results: any[][] = [];
+      for (let index = 0; index < loaders.length; index += concurrency) {
+        const batch = loaders.slice(index, index + concurrency);
+        results.push(...await Promise.all(batch.map(loader => loader())));
+      }
+      return results;
+    };
+    const settleLimited = async (actions: Array<() => Promise<any>>, concurrency = 2) => {
+      for (let index = 0; index < actions.length; index += concurrency) {
+        await Promise.allSettled(actions.slice(index, index + concurrency).map(action => action()));
       }
     };
 
@@ -164,11 +184,11 @@ Deno.serve(async (req) => {
     let weekStatuses: any[] = [];
 
     if (queueRole === 'hr') {
-      [schedules, entries, timeOff, reviews] = await Promise.all([
-        safeList('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
-        safeList('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
-        safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)),
-        safeList('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000)),
+      [schedules, entries, timeOff, reviews] = await loadLimited([
+        () => safeList('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
+        () => safeList('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
+        () => safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)),
+        () => safeList('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000)),
       ]);
     } else {
       [
@@ -176,25 +196,25 @@ Deno.serve(async (req) => {
         trespassNotices, parkingViolations, criminalComplaints, dispatcherLogs, forceReports,
         confidentialReports, maintenanceReports, openDoorReports, expenseReports,
         shiftBids, specialCoverageRequests, weekStatuses,
-      ] = await Promise.all([
-        safeList('time entries for report matching', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
-        safeList('daily activity reports', () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000)),
-        safeList('availability requests', () => base44.asServiceRole.entities.AvailabilityRequest.list('-requested_at', 1000)),
-        safeList('access requests', () => base44.asServiceRole.entities.AccessRequest.list('-created_date', 1000)),
-        safeList('shift reports', () => base44.asServiceRole.entities.ShiftReport.list('-created_date', 1000)),
-        safeList('incident reports', () => base44.asServiceRole.entities.IncidentReport.list('-created_date', 1000)),
-        safeList('trespass notices', () => base44.asServiceRole.entities.TrespassingNotice.list('-created_date', 1000)),
-        safeList('parking violations', () => base44.asServiceRole.entities.ParkingViolation.list('-created_date', 1000)),
-        safeList('criminal complaints', () => base44.asServiceRole.entities.CriminalComplaint.list('-created_date', 1000)),
-        safeList('dispatcher logs', () => base44.asServiceRole.entities.DispatcherShiftReport.list('-created_date', 1000)),
-        safeList('use-of-force reports', () => base44.asServiceRole.entities.UseOfForceReport.list('-created_date', 1000)),
-        safeList('confidential reports', () => base44.asServiceRole.entities.ConfidentialReport.list('-created_date', 1000)),
-        safeList('maintenance reports', () => base44.asServiceRole.entities.MaintenanceReport.list('-created_date', 1000)),
-        safeList('open-door reports', () => base44.asServiceRole.entities.OpenDoorReport.list('-created_date', 1000)),
-        safeList('expense reports', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 1000)),
-        safeList('shift bids', () => base44.asServiceRole.entities.ShiftBid.list('-created_date', 1000)),
-        safeList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 1000)),
-        safeList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
+      ] = await loadLimited([
+        () => safeList('time entries for report matching', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
+        () => safeList('daily activity reports', () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 5000)),
+        () => safeList('availability requests', () => base44.asServiceRole.entities.AvailabilityRequest.list('-requested_at', 1000)),
+        () => safeList('access requests', () => base44.asServiceRole.entities.AccessRequest.list('-created_date', 1000)),
+        () => safeList('shift reports', () => base44.asServiceRole.entities.ShiftReport.list('-created_date', 1000)),
+        () => safeList('incident reports', () => base44.asServiceRole.entities.IncidentReport.list('-created_date', 1000)),
+        () => safeList('trespass notices', () => base44.asServiceRole.entities.TrespassingNotice.list('-created_date', 1000)),
+        () => safeList('parking violations', () => base44.asServiceRole.entities.ParkingViolation.list('-created_date', 1000)),
+        () => safeList('criminal complaints', () => base44.asServiceRole.entities.CriminalComplaint.list('-created_date', 1000)),
+        () => safeList('dispatcher logs', () => base44.asServiceRole.entities.DispatcherShiftReport.list('-created_date', 1000)),
+        () => safeList('use-of-force reports', () => base44.asServiceRole.entities.UseOfForceReport.list('-created_date', 1000)),
+        () => safeList('confidential reports', () => base44.asServiceRole.entities.ConfidentialReport.list('-created_date', 1000)),
+        () => safeList('maintenance reports', () => base44.asServiceRole.entities.MaintenanceReport.list('-created_date', 1000)),
+        () => safeList('open-door reports', () => base44.asServiceRole.entities.OpenDoorReport.list('-created_date', 1000)),
+        () => safeList('expense reports', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 1000)),
+        () => safeList('shift bids', () => base44.asServiceRole.entities.ShiftBid.list('-created_date', 1000)),
+        () => safeList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 1000)),
+        () => safeList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
       ]);
     }
 
