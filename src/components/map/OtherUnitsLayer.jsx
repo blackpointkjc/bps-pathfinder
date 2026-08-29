@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Circle, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ const getAgencyLabel = (unitNumber) => {
 };
 
 // Law-enforcement-style patrol shield for officer/unit locations.
-const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber) => {
+const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber, locationState = 'live') => {
     let statusColor = '#64748B';
     if (status === 'Dispatched' || status === 'Enroute') statusColor = '#EF4444';
     else if (status === 'On Scene') statusColor = '#22C55E';
@@ -26,6 +26,8 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     else if (status === 'Busy') statusColor = '#F59E0B';
     else if (status === 'Out of Service') statusColor = '#475569';
     if (isSupervisor) statusColor = '#EAB308';
+    if (locationState === 'last_known') statusColor = '#94A3B8';
+    if (locationState === 'low_accuracy') statusColor = '#F59E0B';
 
     const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
     const unitLabel = String(unitNumber || getAgencyLabel(unitNumber) || 'UNIT').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) || 'UNIT';
@@ -37,7 +39,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
           <div style="position:relative;width:38px;height:46px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
             ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.9);z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsPoliceFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsPoliceFlash .8s .4s infinite"></span></div>` : ''}
             <svg width="54" height="58" viewBox="0 0 54 58" style="position:absolute;top:5px;left:0;z-index:2;overflow:visible">
-              <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2"/>
+              <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${locationState === 'last_known' ? '#94a3b8' : isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2" opacity="${locationState === 'last_known' ? '.72' : '1'}"/>
               <path d="M27 7 L42 12 V26 C42 36 36 44 27 49 C18 44 12 36 12 26 V12 Z" fill="#0f3b68" stroke="${statusColor}" stroke-width="2"/>
               <circle cx="27" cy="25" r="9" fill="#e5eef8" stroke="#93c5fd" stroke-width="1.2"/>
               <path d="M27 17.2 L29.2 22.3 L34.7 22.8 L30.5 26.5 L31.8 31.8 L27 29 L22.2 31.8 L23.5 26.5 L19.3 22.8 L24.8 22.3 Z" fill="${isSupervisor ? '#eab308' : '#123b63'}"/>
@@ -72,13 +74,26 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     
     // Keep every officer represented, but merge markers that are physically within
     // 25 feet so overlapping icons never hide one another.
-    const unitsToShow = units.filter(unit =>
-        unit.id !== currentUserId &&
-        Number.isFinite(Number(unit.latitude)) &&
-        Number.isFinite(Number(unit.longitude)) &&
-        Number(unit.latitude) !== 0 &&
-        Number(unit.longitude) !== 0
-    ).map(unit => ({ ...unit, latitude: Number(unit.latitude), longitude: Number(unit.longitude) }));
+    const unitsToShow = units.filter(unit => unit.id !== currentUserId).map(unit => {
+        const liveLat = Number(unit.latitude);
+        const liveLng = Number(unit.longitude);
+        const lastLat = Number(unit.last_known_latitude);
+        const lastLng = Number(unit.last_known_longitude);
+        const hasLive = Number.isFinite(liveLat) && Number.isFinite(liveLng) && !(liveLat === 0 && liveLng === 0);
+        const hasLast = Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0);
+        if (!hasLive && !hasLast) return null;
+        const accuracy = Number(unit.accuracy ?? unit.last_known_accuracy);
+        const locationState = hasLive
+            ? (Number.isFinite(accuracy) && accuracy > 150 ? 'low_accuracy' : 'live')
+            : 'last_known';
+        return {
+            ...unit,
+            latitude: hasLive ? liveLat : lastLat,
+            longitude: hasLive ? liveLng : lastLng,
+            location_state: locationState,
+            display_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+        };
+    }).filter(Boolean);
 
     if (unitsToShow.length === 0) return null;
     
@@ -162,11 +177,13 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
             {unitsToShow.map((unit) => {
                 const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.last_updated || ''}`;
                 return (
+                <>
+                {unit.location_state === 'low_accuracy' && unit.display_accuracy && <Circle center={[unit.latitude, unit.longitude]} radius={Math.max(25, unit.display_accuracy)} pathOptions={{ color:'#f59e0b', weight:1.5, fillOpacity:.08, dashArray:'6 6' }} />}
                 <Marker
                     key={markerKey}
                     position={[unit.latitude, unit.longitude]}
                     title={unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.officer_name || unit.email || 'Officer'}
-                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.location_state)}
                     eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
                         <Popup autoPan={false}>
@@ -192,6 +209,9 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <div className={`rounded-md px-2 py-1 text-[10px] font-black ${unit.location_state === 'live' ? 'bg-emerald-100 text-emerald-700' : unit.location_state === 'low_accuracy' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
+                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
+                                    </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
@@ -230,6 +250,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                             </div>
                         </Popup>
                         </Marker>
+                        </>
                         );
                         })}
                         </MarkerClusterGroup>
