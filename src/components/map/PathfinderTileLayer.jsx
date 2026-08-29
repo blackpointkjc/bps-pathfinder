@@ -61,7 +61,7 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
   const providerGroup = satellite ? 'satellite' : effectiveTheme === 'night' ? 'night' : 'street';
   const providers = useMemo(() => PROVIDERS[providerGroup], [providerGroup]);
   const [providerIndex, setProviderIndex] = useState(0);
-  const [tileErrors, setTileErrors] = useState(0);
+  const [, setTileErrors] = useState(0);
 
   useEffect(() => {
     setProviderIndex(0);
