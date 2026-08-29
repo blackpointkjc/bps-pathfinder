@@ -84,9 +84,15 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         const hasLast = Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0);
         if (!hasLive && !hasLast) return null;
         const accuracy = Number(unit.accuracy ?? unit.last_known_accuracy);
+        const lastGpsAt = new Date(unit.gps_updated_at || unit.last_gps_updated_at || 0).getTime();
+        const freshCoarseFix = hasLast
+            && Number.isFinite(lastGpsAt)
+            && Date.now() - lastGpsAt <= 2 * 60 * 1000
+            && Number.isFinite(accuracy)
+            && accuracy > 100;
         const locationState = hasLive
-            ? (Number.isFinite(accuracy) && accuracy > 150 ? 'low_accuracy' : 'live')
-            : 'last_known';
+            ? (Number.isFinite(accuracy) && accuracy > 100 ? 'low_accuracy' : 'live')
+            : freshCoarseFix ? 'low_accuracy' : 'last_known';
         return {
             ...unit,
             latitude: hasLive ? liveLat : lastLat,
