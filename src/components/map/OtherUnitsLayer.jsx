@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Circle, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -177,7 +178,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
             {unitsToShow.map((unit) => {
                 const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.last_updated || ''}`;
                 return (
-                <>
+                <Fragment key={markerKey}>
                 {unit.location_state === 'low_accuracy' && unit.display_accuracy && <Circle center={[unit.latitude, unit.longitude]} radius={Math.max(25, unit.display_accuracy)} pathOptions={{ color:'#f59e0b', weight:1.5, fillOpacity:.08, dashArray:'6 6' }} />}
                 <Marker
                     key={markerKey}
@@ -250,7 +251,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                             </div>
                         </Popup>
                         </Marker>
-                        </>
+                        </Fragment>
                         );
                         })}
                         </MarkerClusterGroup>
