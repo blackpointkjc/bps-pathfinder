@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     if (action === 'approve') {
       updated = await entity.update(reportId, {
         status: config.approveStatus,
-        admin_notes: null,
+        admin_notes: '',
         was_rejected: false,
       });
 
