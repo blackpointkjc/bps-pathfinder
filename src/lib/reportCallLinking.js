@@ -62,9 +62,20 @@ export function applyDispatchCallToForm(prev, call) {
 }
 
 export async function createReportCallLink({ callId, callNumber, reportType, reportId, reportNumber = '', primaryOfficerId = '', primaryOfficerName = '' }) {
-  if (!callId || !reportId || !reportType) return null;
+  if (!reportId || !reportType) return null;
   const existing = await base44.entities.ReportCallLink.filter({ report_type: reportType, report_id: reportId }).catch(() => []);
   const activeExisting = (existing || []).find(link => link.status !== 'detached');
+
+  // Synchronize the canonical relationship, including detach when an edited
+  // report intentionally clears its CAD link. This prevents stale call history.
+  if (!callId) {
+    if (!activeExisting?.id) return null;
+    return base44.entities.ReportCallLink.update(activeExisting.id, {
+      status: 'detached',
+      detached_at: new Date().toISOString(),
+    });
+  }
+
   const payload = {
     call_id: callId,
     call_number: callNumber || '',
