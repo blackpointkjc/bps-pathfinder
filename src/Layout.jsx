@@ -890,13 +890,9 @@ export default function Layout({ children, currentPageName }) {
     if (!user?.id || !currentPageName) return;
     const routeKey = `bps-role-home-routed:${user.id}`;
     if (sessionStorage.getItem(routeKey) === '1') return;
-    // CommandDashboard is the legacy app mainPage. On first authenticated load,
-    // route users to the primary workspace for their role instead of leaving
-    // everyone in CAD simply because that legacy page rendered first.
-    if (currentPageName !== 'CommandDashboard') {
-      sessionStorage.setItem(routeKey, '1');
-      return;
-    }
+    // Base44/browser restore can reopen any previous route (including CADCenter),
+    // so the first authenticated render must always resolve the user's true role
+    // home. Do this once per login session, regardless of which stale route opened.
     const target = defaultPageForUser(user, !isMobileViewport);
     sessionStorage.setItem(routeKey, '1');
     if (target && target !== currentPageName) {
