@@ -895,15 +895,14 @@ export default function Layout({ children, currentPageName }) {
     const primaryCenter = allowedCenters(user)[0] || 'cad';
     const target = defaultPageForUser(user, !isMobileViewport);
     const routeKey = `bps-role-home-routed:${user.id}`;
-    const navigationEntry = typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')?.[0] : null;
-    const isReload = navigationEntry?.type === 'reload';
-    const routed = sessionStorage.getItem(routeKey) === '1';
+    const isRootLanding = typeof window !== 'undefined' && window.location.pathname === '/';
 
-    // Resolve the role home exactly once for this Layout mount. A login or full
-    // browser refresh goes home; normal in-app navigation remains where the user chose.
+    // Resolve the role home only from the true root landing route. Direct URLs,
+    // browser refreshes, communication links, and task links must remain on the
+    // page the user opened instead of being forced back to the dashboard.
     roleHomeEntryHandledRef.current = true;
-    if (!routed || isReload) {
-      sessionStorage.setItem(routeKey, '1');
+    sessionStorage.setItem(routeKey, '1');
+    if (isRootLanding) {
       setActiveCenter(primaryCenter);
       if (target && target !== currentPageName) navigate(createPageUrl(target), { replace: true });
     }
