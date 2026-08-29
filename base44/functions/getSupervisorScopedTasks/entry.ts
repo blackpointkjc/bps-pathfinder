@@ -13,6 +13,31 @@ const reviewerOutranks = (reviewer:any, officer:any) => {
   const officerLevel = rankLevel(officer);
   return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
 };
+
+const TIME_ZONE = 'America/New_York';
+const easternParts = (value: Date | string = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return { date: '', minutes: -1 };
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const read = (type:string) => Number(parts.find(part => part.type === type)?.value || 0);
+  return {
+    date: `${read('year')}-${String(read('month')).padStart(2, '0')}-${String(read('day')).padStart(2, '0')}`,
+    minutes: (read('hour') % 24) * 60 + read('minute'),
+  };
+};
+const wallMinutes = (value:any) => {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i);
+  if (!match) return -1;
+  let hour = Number(match[1]);
+  const suffix = normalized(match[3]);
+  if (suffix === 'pm' && hour < 12) hour += 12;
+  if (suffix === 'am' && hour === 12) hour = 0;
+  return hour * 60 + Number(match[2]);
+};
+
 const rolesOf = (u:any) => new Set((u?.additional_roles || []).map((r:any) => String(r).toLowerCase()));
 const operational = (u:any) => {
   const roles = rolesOf(u);
@@ -108,11 +133,14 @@ Deno.serve(async (req) => {
     }));
     if (request?.peopleOnly) return Response.json({ assignedPeople });
 
-    const [complaints, writeups, reviews, inspections] = await Promise.all([
+    const [complaints, writeups, reviews, inspections, schedules, timeEntries, dailyReports] = await Promise.all([
       base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000),
       base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000),
       base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000),
       base44.asServiceRole.entities.InspectionReport.list('-inspection_date', 1000),
+      base44.asServiceRole.entities.Schedule.list('-shift_date', 2500),
+      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 2500),
+      base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 2500),
     ]);
 
     const officerForReview = (review:any) => (allUsers || []).find((person:any) =>
@@ -120,8 +148,32 @@ Deno.serve(async (req) => {
       (!review.officer_id && normalized(person.email) === normalized(review.officer_email))
     );
 
+    const now = easternParts();
+    const todayEntries = (timeEntries || []).filter((entry:any) => entry.archived !== true && easternParts(entry.clock_in).date === now.date);
+    const missedClockIns = (schedules || []).filter((shift:any) => {
+      if (!isAssigned(shift.officer_email) || shift.archived === true || shift.is_open === true || normalized(shift.officer_email) === 'open') return false;
+      if (String(shift.shift_date || '') !== now.date) return false;
+      const start = wallMinutes(shift.start_time);
+      if (start < 0 || start > now.minutes - 5) return false;
+      return !todayEntries.some((entry:any) => normalized(entry.officer_email) === normalized(shift.officer_email)
+        && (normalized(entry.location) === normalized(shift.location) || Math.abs(easternParts(entry.clock_in).minutes - start) <= 240));
+    });
+    const reportShiftIds = new Set((dailyReports || []).map((report:any) => String(report.shift_id || '')).filter(Boolean));
+    const reportLegacyKeys = new Set((dailyReports || []).map((report:any) =>
+      `${normalized(report.officer_email || report.created_by)}|${String(report.report_date || '')}|${normalized(report.location)}`
+    ));
+    const recentCutoff = Date.now() - 21 * 86400000;
+    const missingReports = (timeEntries || []).filter((entry:any) => {
+      if (!isAssigned(entry.officer_email) || !entry.clock_in || !entry.clock_out || entry.archived === true) return false;
+      if (new Date(entry.clock_out).getTime() < recentCutoff || reportShiftIds.has(String(entry.id))) return false;
+      const key = `${normalized(entry.officer_email)}|${easternParts(entry.clock_in).date}|${normalized(entry.location)}`;
+      return !reportLegacyKeys.has(key);
+    });
+
     return Response.json({
       assignedPeople,
+      missedClockIns,
+      missingReports,
       complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
       writeups: (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval'),
       reviews: (reviews || []).filter((r:any) => {
