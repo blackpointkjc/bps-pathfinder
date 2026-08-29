@@ -235,6 +235,10 @@ Deno.serve(async (req) => {
         const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
+        const reliableAccuracy = Number(active?.reliable_accuracy);
+        const hasReliablePosition = hasValidCoordinates(active?.reliable_latitude, active?.reliable_longitude)
+          && Number.isFinite(reliableAccuracy)
+          && reliableAccuracy <= 100;
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
@@ -265,10 +269,13 @@ Deno.serve(async (req) => {
           speed: hasFreshGps ? active.speed : 0,
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
           gps_updated_at: hasFreshGps ? active.gps_updated_at : null,
-          last_gps_updated_at: active?.gps_updated_at || null,
-          last_known_latitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
-          last_known_longitude: hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
-          last_known_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          last_gps_updated_at: active?.reliable_gps_updated_at || (hasFreshGps ? active?.gps_updated_at : null),
+          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps ? Number(active.latitude) : null),
+          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps ? Number(active.longitude) : null),
+          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps ? accuracy : null),
+          coarse_latitude: !hasFreshGps && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.latitude) : null,
+          coarse_longitude: !hasFreshGps && hasValidCoordinates(active?.latitude, active?.longitude) ? Number(active.longitude) : null,
+          coarse_accuracy: !hasFreshGps && Number.isFinite(accuracy) ? accuracy : null,
           gps_pending: signedInFresh && !hasFreshGps,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
