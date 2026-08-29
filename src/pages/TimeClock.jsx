@@ -12,7 +12,8 @@ import { Clock, MapPin, CheckCircle, XCircle, Navigation, AlertCircle, Calendar 
 import { generateTimeClockPrint } from "../components/TimeClockPrintView";
 import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MapContainer, TileLayer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
+import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
@@ -782,10 +783,7 @@ export default function TimeClock() {
                           style={{ height: '100%', width: '100%' }}
                           scrollWheelZoom={false}
                         >
-                          <TileLayer
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                          />
+                          <PathfinderTileLayer />
                           <MapUpdater center={[currentLocationCoords.lat, currentLocationCoords.lng]} />
                           <Marker position={[currentLocationCoords.lat, currentLocationCoords.lng]} />
                           {(() => {
