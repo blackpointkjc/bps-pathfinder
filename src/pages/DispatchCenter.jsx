@@ -203,7 +203,9 @@ export default function DispatchCenter() {
             setUnits(eligibleUnits);
         } catch (error) {
             console.error('Error loading canonical CAD units:', error);
-            setUnits([]);
+            // A transient backend/rate-limit failure must not make every officer
+            // disappear from the tactical map. Keep the last confirmed snapshot
+            // and let realtime/polling recover on the next successful refresh.
         }
     };
 
