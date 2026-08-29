@@ -28,3 +28,11 @@ export const calculatePaidHours = (entry) => {
   // on_break flags must never erase hours after the employee has clocked out.
   return Math.max(0, (shiftEnd - shiftStart - completedBreakMs) / 3600000);
 };
+
+export const calculatePayrollHours = (entry) => {
+  const actualHours = calculatePaidHours(entry);
+  if (!entry?.payroll_adjustment_decision) return actualHours;
+
+  const approvedHours = Number(entry.payroll_hours_override);
+  return Number.isFinite(approvedHours) && approvedHours >= 0 ? approvedHours : actualHours;
+};
