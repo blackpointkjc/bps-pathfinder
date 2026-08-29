@@ -134,7 +134,7 @@ export default function Navigation() {
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             setLocationHistory(prev => [...prev, coords].slice(-30));
-            setIsLiveTracking(isTacticalLocationFix(fix));
+            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
         });
         return unsubscribe;
     }, []);
@@ -353,7 +353,7 @@ export default function Navigation() {
                 if (fix.heading !== null) setHeading(fix.heading);
                 setSpeed(Math.round(fix.speed || 0));
             }
-            setIsLiveTracking(isTacticalLocationFix(fix));
+            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
         }
         requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 }).catch(() => null);
     };
@@ -435,33 +435,37 @@ export default function Navigation() {
     const getFreshDeviceLocation = async () => {
         setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
         try {
-            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: TACTICAL_GPS_MAX_ACCURACY_METERS });
-            if (!isTacticalLocationFix(fix, 15000)) throw new Error('GPS accuracy is not precise enough yet');
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: Infinity });
             const fresh = [fix.latitude, fix.longitude];
-            setGpsQuality(locationQuality(fix));
+            const quality = locationQuality(fix);
+            setGpsQuality(quality);
             setCurrentLocation(fresh);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
-            setIsLiveTracking(true);
+            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
             return fresh;
         } catch (liveError) {
             try {
                 const best = await requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 });
-                setGpsQuality(locationQuality(best));
-                if (!isTacticalLocationFix(best, 15000)) {
-                    setIsLiveTracking(false);
-                    return null;
-                }
+                const quality = locationQuality(best);
+                setGpsQuality(quality);
+                if (!best) return null;
                 const fresh = [best.latitude, best.longitude];
                 setCurrentLocation(fresh);
                 if (best.heading !== null) setHeading(best.heading);
                 setSpeed(Math.round(best.speed || 0));
-                setIsLiveTracking(true);
+                setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
                 return fresh;
             } catch (deviceError) {
                 const fallback = getLiveLocation(30000);
-                setGpsQuality(locationQuality(fallback));
-                setIsLiveTracking(false);
+                const fallbackQuality = locationQuality(fallback);
+                setGpsQuality(fallbackQuality);
+                if (fallback) {
+                    setCurrentLocation([fallback.latitude, fallback.longitude]);
+                    setIsLiveTracking(fallbackQuality.state === 'live' || fallbackQuality.state === 'low_accuracy');
+                } else {
+                    setIsLiveTracking(false);
+                }
                 console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
                 return null;
             }
