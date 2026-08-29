@@ -65,9 +65,7 @@ Deno.serve(async (req) => {
             && active.reliable_session_key === active.tracking_session_key;
           const hasGps = Number.isFinite(gpsTs)
             && gpsTs >= gpsFreshCutoff
-            && hasValidCoordinates(active.latitude, active.longitude)
-            && Number.isFinite(accuracy)
-            && accuracy <= 100;
+            && hasValidCoordinates(active.latitude, active.longitude);
           return {
             id: active.id,
             officer_email: active.officer_email,
@@ -149,14 +147,12 @@ Deno.serve(async (req) => {
         && reliableAccuracy <= 100
         && Boolean(active.tracking_session_key)
         && active.reliable_session_key === active.tracking_session_key;
-      // Tactical maps must never present a coarse Wi-Fi/network estimate as an
-      // exact officer position. Preserve it as last-known diagnostic data, but a
-      // live coordinate requires a fresh fix with <=100m reported accuracy.
+      // Any fresh browser/device fix remains visible. Accuracy is returned with
+      // the coordinate so every map can show uncertainty instead of hiding the
+      // officer when Windows/Wi-Fi assisted positioning is coarse.
       const hasReliableGps = Number.isFinite(gpsTs)
         && gpsTs >= gpsFreshCutoff
-        && hasValidCoordinates(active.latitude, active.longitude)
-        && Number.isFinite(accuracy)
-        && accuracy <= 100;
+        && hasValidCoordinates(active.latitude, active.longitude);
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
@@ -259,9 +255,7 @@ Deno.serve(async (req) => {
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
-          && hasValidCoordinates(active?.latitude, active?.longitude)
-          && Number.isFinite(accuracy)
-          && accuracy <= 100;
+          && hasValidCoordinates(active?.latitude, active?.longitude);
         return {
           id: user.id,
           user_id: user.id,
