@@ -12,6 +12,7 @@ import { ShieldCheck, Lock, AlertCircle, CheckCircle, FileText, Loader2 } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { createReportCallLink } from '@/lib/reportCallLinking';
 
 export default function ConfidentialReport() {
   const queryClient = useQueryClient();
@@ -46,7 +47,23 @@ export default function ConfidentialReport() {
   const myReports = (reports || []).filter(r => !r.archived);
 
   const submitReportMutation = useMutation({
-    mutationFn: (data) => base44.entities.ConfidentialReport.create(data),
+    mutationFn: async (data) => {
+      const report = await base44.entities.ConfidentialReport.create(data);
+      if (data.linked_call_id) {
+        try {
+          await createReportCallLink({
+            callId: data.linked_call_id,
+            callNumber: data.linked_call_number || '',
+            reportType: 'ConfidentialReport',
+            reportId: report.id,
+            reportNumber: report.id,
+          });
+        } catch (linkError) {
+          console.error('Failed to persist confidential report call link:', linkError);
+        }
+      }
+      return report;
+    },
     onSuccess: () => {
       setSubmitted(true);
       // Invalidate and refetch reports to update the list after a new submission
