@@ -187,17 +187,17 @@ export default function ExpenseReports() {
   const totalApproved = approvedExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#0b2c27_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-[#102c2b] via-[#0c1a26] to-[#07101c] p-5 shadow-2xl md:p-7">
           <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <DollarSign className="w-8 h-8 text-white" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-500/10 shadow-lg sm:h-14 sm:w-14">
+                <DollarSign className="h-7 w-7 text-emerald-300" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent sm:text-4xl">Expense Reports</h1>
-                <p className="text-slate-600 mt-1">Submit and track your expense reimbursements</p>
+                <h1 className="break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Expense Reports</h1>
+                <p className="mt-1 break-words text-sm text-slate-400">Submit receipts, track approvals, and manage reimbursements.</p>
               </div>
             </div>
             <Button onClick={() => setShowDialog(true)} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg hover:from-green-700 hover:to-emerald-700 sm:w-auto">
@@ -207,58 +207,58 @@ export default function ExpenseReports() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white">
-            <CardContent className="p-8">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Card className="overflow-hidden rounded-2xl border border-amber-700/50 bg-gradient-to-br from-amber-950/55 to-[#0d1725] text-white shadow-xl">
+            <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-5xl font-bold mb-2">${totalPending.toFixed(2)}</p>
+                  <p className="mb-2 break-words text-3xl font-black sm:text-4xl">${totalPending.toFixed(2)}</p>
                   <p className="text-yellow-100 font-medium">Pending Approval</p>
                 </div>
-                <Clock className="w-16 h-16 text-white/40" />
+                <Clock className="h-10 w-10 shrink-0 text-white/25 sm:h-12 sm:w-12" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-xl bg-gradient-to-br from-green-400 to-emerald-600 text-white">
-            <CardContent className="p-8">
+          <Card className="overflow-hidden rounded-2xl border border-emerald-700/50 bg-gradient-to-br from-emerald-950/55 to-[#0d1725] text-white shadow-xl">
+            <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-5xl font-bold mb-2">${totalApproved.toFixed(2)}</p>
+                  <p className="mb-2 break-words text-3xl font-black sm:text-4xl">${totalApproved.toFixed(2)}</p>
                   <p className="text-green-100 font-medium">Approved</p>
                 </div>
-                <DollarSign className="w-16 h-16 text-white/40" />
+                <DollarSign className="h-10 w-10 shrink-0 text-white/25 sm:h-12 sm:w-12" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-xl bg-gradient-to-br from-blue-400 to-indigo-600 text-white">
-            <CardContent className="p-8">
+          <Card className="overflow-hidden rounded-2xl border border-blue-700/50 bg-gradient-to-br from-blue-950/55 to-[#0d1725] text-white shadow-xl">
+            <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-5xl font-bold mb-2">{expenses.length}</p>
+                  <p className="mb-2 break-words text-3xl font-black sm:text-4xl">{expenses.length}</p>
                   <p className="text-blue-100 font-medium">Total Submitted</p>
                 </div>
-                <FileText className="w-16 h-16 text-white/40" />
+                <FileText className="h-10 w-10 shrink-0 text-white/25 sm:h-12 sm:w-12" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader>
             <CardTitle>My Expense Reports</CardTitle>
           </CardHeader>
           <CardContent>
             {expenses.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="rounded-xl border border-dashed border-slate-700 py-10 text-center">
                 <DollarSign className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                 <p className="text-slate-500">No expense reports submitted yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {expenses.map((expense) => (
-                  <div key={expense.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all">
+                  <div key={expense.id} className="rounded-xl border border-slate-700 bg-[#101b29] p-4 transition-all hover:border-emerald-600/50 hover:shadow-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
@@ -266,14 +266,14 @@ export default function ExpenseReports() {
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">${expense.amount.toFixed(2)}</h3>
-                          <p className="text-sm text-slate-600">{expense.category.replace(/_/g, ' ').toUpperCase()}</p>
+                          <p className="text-sm text-slate-400">{expense.category.replace(/_/g, ' ').toUpperCase()}</p>
                         </div>
                       </div>
                       <Badge className={getStatusColor(expense.status)}>
                         {expense.status.toUpperCase()}
                       </Badge>
                     </div>
-                    <p className="text-slate-700 mb-2">{expense.description}</p>
+                    <p className="text-slate-300 mb-2">{expense.description}</p>
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -287,8 +287,8 @@ export default function ExpenseReports() {
                     </div>
                     {expense.reviewer_notes && (
                       <div className="mt-3 p-3 bg-slate-50 rounded border border-slate-200">
-                        <p className="text-sm font-semibold text-slate-700">Reviewer Notes:</p>
-                        <p className="text-sm text-slate-600">{expense.reviewer_notes}</p>
+                        <p className="text-sm font-semibold text-slate-300">Reviewer Notes:</p>
+                        <p className="text-sm text-slate-400">{expense.reviewer_notes}</p>
                       </div>
                     )}
                     {expense.status === 'rejected' && (
