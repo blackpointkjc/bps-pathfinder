@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       dispatch_log: Array.isArray(data.dispatch_log) ? data.dispatch_log : [],
       status: isDraft ? 'draft' : 'submitted',
       was_rejected: false,
-      admin_notes: null,
+      admin_notes: '',
     };
 
     let report;
