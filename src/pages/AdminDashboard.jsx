@@ -58,47 +58,29 @@ export default function AdminDashboard() {
     initialData: 0,
   });
 
-  const { data: adminWork = { reports: [], availability: [], timeOff: [] } } = useQuery({
+  const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
     queryFn: async () => {
-      const reportRows = [];
-      const sources = [
-        ['Shift Report', base44.entities.ShiftReport, ['submitted']],
-        ['Daily Activity', base44.entities.DailyActivityReport, ['submitted']],
-        ['Incident Report', base44.entities.IncidentReport, ['submitted','pending']],
-        ['Trespass Notice', base44.entities.TrespassingNotice, ['active']],
-        ['Parking Violation', base44.entities.ParkingViolation, ['issued']],
-        ['Criminal Complaint', base44.entities.CriminalComplaint, ['submitted']],
-        ['Dispatcher Log', base44.entities.DispatcherShiftReport, ['submitted']],
-      ];
-      for (const [label, entity, statuses] of sources) {
-        if (!entity?.list) continue;
-        const rows = await entity.list('-created_date', 80).catch(() => []);
-        rows.filter(row => statuses.includes(String(row.status || '').toLowerCase())).forEach(row => reportRows.push({ ...row, __type: label }));
-      }
-      const availability = await base44.entities.AvailabilityRequest.list('-requested_at', 100).catch(() => []);
-      const timeOff = await base44.entities.TimeOffRequest.list('-created_date', 100).catch(() => []);
-      return {
-        reports: reportRows,
-        availability: (Array.isArray(availability) ? availability : []).filter(row => String(row?.status || '').toLowerCase() === 'pending'),
-        timeOff: (Array.isArray(timeOff) ? timeOff : []).filter(row => String(row?.status || '').toLowerCase() === 'pending'),
-      };
+      // Annual creation is idempotent and makes every due review immediately visible.
+      await base44.functions.invoke('generateAnnualPerformanceReviews', {}).catch(() => null);
+      const result = await base44.functions.invoke('getRoleWorkQueue', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: user?.role === 'admin',
-    staleTime: 60000,
-    refetchInterval: 120000,
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const directory = buildDirectoryIndex(allUsers || []);
   const getOfficerName = (ref) => operationalName(typeof ref === 'object' ? ref : { officer_email: ref }, directory, { fallback: 'Officer' });
   const isWednesday = new Date().getDay() === 3;
   const adminTasks = [
-    ...(adminWork.reports || []).slice(0, 6).map(row => ({ id: `report-${row.__type}-${row.id}`, title: row.__type, person: getOfficerName(row), detail: row.location || row.report_number || 'Submitted report awaiting approval', page: 'AdminReports' })),
-    ...(adminWork.availability || []).slice(0, 5).map(row => ({ id: `availability-${row.id}`, title: 'Officer Availability & Assignment', person: getOfficerName(row), detail: 'Availability request awaiting admin approval', page: 'AdminOfficerManagement' })),
-    ...(adminWork.timeOff || []).slice(0, 4).map(row => ({ id: `request-${row.id}`, title: 'Schedule / Time-Off Request', person: getOfficerName(row), detail: row.reason || row.request_type || 'Request awaiting review', page: 'AdminSpecialRequests' })),
+    ...(adminWork.tasks || []),
     ...(isWednesday ? [{ id: 'wednesday-schedule', title: 'Wednesday Schedule Planning', person: 'Weekly Administration Task', detail: 'Review availability, assignments, open shifts and publish the upcoming schedule.', page: 'AdminScheduling' }] : []),
   ];
-  const pendingRequests = adminTasks.length;
+  const pendingRequests = (adminWork.counts?.total || 0) + (isWednesday ? 1 : 0);
 
   const adminTools = [
     // Dashboard & Analytics
@@ -269,7 +251,7 @@ export default function AdminDashboard() {
         <section className="rounded-2xl border border-amber-500/20 bg-[#0a1421] p-5 shadow-lg">
           <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Administrative work queue</h2><p className="mt-1 text-xs text-slate-500">These are live Pathfinder records that need an administrative decision or weekly action.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
           <div className="mt-4 grid gap-2 xl:grid-cols-2">
-            {adminTasks.length ? adminTasks.slice(0,12).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><Link to={createPageUrl(task.page)} className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
+            {adminWorkError ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200 xl:col-span-2">Administrative work queue could not load: {adminWorkError.message}</div> : adminTasks.length ? adminTasks.slice(0,16).map(task => <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">{task.title}</div><div className="mt-0.5 text-xs font-bold text-cyan-200">{task.person}</div><div className="mt-1 truncate text-xs text-slate-500">{task.detail}</div></div><Link to={createPageUrl(task.page)} className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20">OPEN TASK</Link></div>) : <div className="rounded-xl border border-dashed border-emerald-800/60 p-7 text-center text-sm text-emerald-300 xl:col-span-2">No administrative actions are waiting right now.</div>}
           </div>
         </section>
 
