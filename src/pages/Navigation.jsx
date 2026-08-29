@@ -693,7 +693,14 @@ export default function Navigation() {
 
 
 
-    const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
+    const selfEntry = currentUser ? {
+        ...currentUser,
+        status: unitStatus,
+        latitude: isLiveTracking && currentLocation ? currentLocation[0] : null,
+        longitude: isLiveTracking && currentLocation ? currentLocation[1] : null,
+        accuracy: gpsQuality?.accuracy ?? null,
+        gps_quality_state: gpsQuality?.state || 'acquiring',
+    } : null;
     const otherOnline = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
     const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
     // Officer-safety rule: every authorized officer sees every recently active unit.
@@ -768,12 +775,12 @@ export default function Navigation() {
 
                     {/* Status Pills */}
                     <div className="flex items-center gap-1.5 pointer-events-auto flex-1 overflow-hidden">
-                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono font-bold ${
-                            isLiveTracking ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-500'
+                        <button type="button" onClick={recenter} title="Request a precise GPS fix and center the map" className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono font-bold ${
+                            isLiveTracking ? 'bg-green-500/10 border-green-500/30 text-green-400' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-800 border-slate-700 text-slate-500'
                         }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isLiveTracking ? 'bg-green-400 animate-pulse' : 'bg-slate-600'}`} />
-                            GPS
-                        </div>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isLiveTracking ? 'bg-green-400 animate-pulse' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
+                            {isLiveTracking ? `GPS${Number.isFinite(Number(gpsQuality?.accuracy)) ? ` ±${Math.round(Number(gpsQuality.accuracy))}m` : ''}` : gpsQuality?.state === 'low_accuracy' ? `GPS LOW ±${Math.round(Number(gpsQuality?.accuracy || 0))}m` : gpsQuality?.state === 'acquiring' ? 'GPS ACQUIRING' : 'GPS UNAVAILABLE'}
+                        </button>
                         <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono ${
                             isOnline ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
                         }`}>
@@ -1132,7 +1139,7 @@ export default function Navigation() {
                         },
                         {
                             key: 'theme',
-                            onClick: () => setMapTheme(theme => theme === 'day' ? 'night' : 'day'),
+                            onClick: () => setMapTheme(mapTheme === 'night' ? 'day' : 'night'),
                             title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
                             icon: <Layers className="h-4 w-4" />,
                             active: mapTheme === 'night',
@@ -1149,7 +1156,13 @@ export default function Navigation() {
                         <button
                             key={button.key}
                             type="button"
-                            onClick={button.onClick}
+                            onPointerDown={(event) => { event.stopPropagation(); }}
+                            onMouseDown={(event) => { event.stopPropagation(); }}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                button.onClick?.();
+                            }}
                             title={button.title}
                             aria-label={button.title}
                             aria-pressed={button.active}
