@@ -159,25 +159,28 @@ export default function AdminPostOrders() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
-        <p className="text-slate-600">You don't have permission to access this page.</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Admin Access Required</h2>
+        <p className="text-slate-400">You don't have permission to access this page.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-8 h-8 text-blue-600" />
-            Manage Post Orders
-          </h1>
-          <p className="text-slate-600">Configure site post orders and general post orders shown to all officers</p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl md:p-7">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><FileText className="h-6 w-6 text-blue-300" /></div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Operations Standards</div>
+              <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Manage Post Orders</h1>
+              <p className="mt-1 break-words text-sm leading-5 text-slate-400">Configure site-specific and company-wide instructions shown to officers.</p>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="sites">
-          <TabsList className="bg-white border">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-slate-700 bg-[#0b1725] p-1 sm:w-auto">
             <TabsTrigger value="sites" className="gap-2">
               <MapPin className="w-4 h-4" />
               Site Post Orders
@@ -194,17 +197,17 @@ export default function AdminPostOrders() {
               {locations?.map((location) => {
                 const existingPostOrder = postOrders?.find(po => po.site_name === location.site_name);
                 return (
-                  <Card key={location.id} className="border-none shadow-lg">
-                    <CardHeader className={`${existingPostOrder ? 'bg-gradient-to-r from-green-50 to-blue-50' : 'bg-gradient-to-r from-slate-50 to-slate-100'}`}>
+                  <Card key={location.id} className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0b1725] text-slate-100 shadow-xl">
+                    <CardHeader className={`${existingPostOrder ? 'bg-gradient-to-r from-emerald-950/35 to-blue-950/30' : 'bg-gradient-to-r from-[#101b2b] to-[#0c1624]'}`}>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-3">
+                        <CardTitle className="flex min-w-0 flex-1 items-start gap-3">
                           <MapPin className="w-5 h-5 text-blue-600" />
                           <div>
-                            <span className="text-slate-900">{location.site_name}</span>
-                            <p className="text-sm font-normal text-slate-600 mt-1">{location.address}</p>
+                            <span className="text-white">{location.site_name}</span>
+                            <p className="text-sm font-normal text-slate-400 mt-1">{location.address}</p>
                           </div>
                         </CardTitle>
-                        <div className="flex items-center gap-2">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                           {existingPostOrder ? (
                             <>
                               <Badge className="bg-green-600 text-white">
@@ -229,7 +232,7 @@ export default function AdminPostOrders() {
                       <CardContent className="p-4">
                         <div className="grid md:grid-cols-3 gap-4 text-sm">
                           <div>
-                            <p className="text-slate-600 font-semibold">Post Type:</p>
+                            <p className="text-slate-400 font-semibold">Post Type:</p>
                             <Badge className={`${
                               existingPostOrder.post_type === 'armed' ? 'bg-red-600' :
                               existingPostOrder.post_type === 'concealed_carry' ? 'bg-orange-600' :
@@ -239,12 +242,12 @@ export default function AdminPostOrders() {
                             </Badge>
                           </div>
                           <div>
-                            <p className="text-slate-600 font-semibold">Property Manager:</p>
-                            <p className="text-slate-900">{existingPostOrder.property_manager_name || 'Not set'}</p>
+                            <p className="text-slate-400 font-semibold">Property Manager:</p>
+                            <p className="text-white">{existingPostOrder.property_manager_name || 'Not set'}</p>
                           </div>
                           <div>
-                            <p className="text-slate-600 font-semibold">Supervisors:</p>
-                            <p className="text-slate-900">{existingPostOrder.assigned_supervisors?.length || 0} assigned</p>
+                            <p className="text-slate-400 font-semibold">Supervisors:</p>
+                            <p className="text-white">{existingPostOrder.assigned_supervisors?.length || 0} assigned</p>
                           </div>
                         </div>
                       </CardContent>
@@ -267,10 +270,10 @@ export default function AdminPostOrders() {
             </div>
             <div className="grid gap-4">
               {generalSections.map((section) => (
-                <Card key={section.id} className="border border-slate-200 shadow-sm">
+                <Card key={section.id} className="rounded-2xl border border-slate-700 bg-[#0b1725] text-slate-100 shadow-lg">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                      <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
                         <BookOpen className="w-4 h-4 text-slate-500" />
                         {section.section_title}
                       </CardTitle>
@@ -285,7 +288,7 @@ export default function AdminPostOrders() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <p className="text-sm text-slate-600 whitespace-pre-wrap line-clamp-3">{section.content}</p>
+                    <p className="text-sm text-slate-400 whitespace-pre-wrap line-clamp-3">{section.content}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -348,8 +351,8 @@ export default function AdminPostOrders() {
                 {(() => {
                   const loc = locations?.find(l => l.site_name === formData.site_name);
                   const sups = loc?.assigned_supervisors || [];
-                  if (sups.length === 0) return <p className="text-sm text-slate-600 italic">No supervisors assigned to this location yet.</p>;
-                  return <div className="space-y-1 mt-2">{sups.map(email => <div key={email} className="text-sm text-slate-900 font-medium">• {getSupervisorName(email)}</div>)}</div>;
+                  if (sups.length === 0) return <p className="text-sm text-slate-400 italic">No supervisors assigned to this location yet.</p>;
+                  return <div className="space-y-1 mt-2">{sups.map(email => <div key={email} className="text-sm text-white font-medium">• {getSupervisorName(email)}</div>)}</div>;
                 })()}
               </div>
             </div>
