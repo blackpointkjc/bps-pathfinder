@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export function useDesktopViewport() {
   const [desktop, setDesktop] = useState(() => typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches);
@@ -13,19 +14,21 @@ export function useDesktopViewport() {
 }
 
 export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false }) {
+  const location = useLocation();
   const safeSections = Array.isArray(sections) ? sections : [];
   const initial = useMemo(() => {
-    const requested = new URLSearchParams(window.location.search).get(queryParam);
+    const requested = new URLSearchParams(location.search).get(queryParam);
     return safeSections.some(section => section.id === requested) ? requested : defaultSection || safeSections[0]?.id;
-  }, [safeSections, defaultSection, queryParam]);
+  }, [location.search, safeSections, defaultSection, queryParam]);
   const [section, setSection] = useState(initial);
 
   useEffect(() => {
     if (!safeSections.length) return;
-    if (!safeSections.some(item => item.id === section)) {
-      setSection(defaultSection && safeSections.some(item => item.id === defaultSection) ? defaultSection : safeSections[0].id);
-    }
-  }, [section, defaultSection, safeSections]);
+    const requested = new URLSearchParams(location.search).get(queryParam);
+    const fallback = defaultSection && safeSections.some(item => item.id === defaultSection) ? defaultSection : safeSections[0].id;
+    const next = requested && safeSections.some(item => item.id === requested) ? requested : fallback;
+    if (next !== section) setSection(next);
+  }, [location.search, queryParam, section, defaultSection, safeSections]);
 
   const select = next => {
     setSection(next);
