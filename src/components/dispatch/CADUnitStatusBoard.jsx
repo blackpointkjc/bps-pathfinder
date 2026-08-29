@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
+import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const STATUS_ORDER = ['All','Available','Dispatched','On Patrol','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
@@ -47,9 +48,8 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     let active = true;
     const sync = async () => {
       try {
-        const response = await base44.functions.invoke('getOnDutyUnits', {});
-        const payload = response?.data || response || {};
-        if (!active || payload.error) return;
+        const payload = await getOfficerLocationSnapshot();
+        if (!active) return;
         setCanonicalUnits(Array.isArray(payload.users) ? payload.users : []);
       } catch {
         // Keep rendering the parent feed if the canonical refresh is temporarily unavailable.
