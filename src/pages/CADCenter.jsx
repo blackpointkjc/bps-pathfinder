@@ -16,9 +16,9 @@ import DispatcherShiftReports from './DispatcherShiftReports';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const BASE_SECTIONS = [
-  { id: 'live', label: 'Live Operations', description: 'Command board, dispatch queue and live map', icon: Activity },
-  { id: 'alerts', label: 'Alerts', description: 'BOLOs, officer-safety and property notices', icon: AlertTriangle },
-  { id: 'history', label: 'History & Intelligence', description: 'Call history and company-wide record search', icon: History },
+  { id: 'live', label: 'Live Command', description: 'Command board, dispatch queues and live map', icon: Activity },
+  { id: 'alerts', label: 'Alerts & Safety', description: 'BOLOs, officer-safety and property notices', icon: AlertTriangle },
+  { id: 'history', label: 'History & Records', description: 'Dispatcher logs, call history and company-wide record search', icon: History },
 ];
 
 const TOOLS = {
@@ -27,10 +27,10 @@ const TOOLS = {
     { id: 'dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'officerqueue', label: 'Officer Queue', component: OfficerDispatchQueue },
     { id: 'map', label: 'Live Map', component: Navigation },
-    { id: 'dispatchlog', label: 'Dispatcher Log', component: DispatcherShiftReports },
   ],
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
+    { id: 'dispatchlog', label: 'Dispatcher Log', component: DispatcherShiftReports },
     { id: 'history', label: 'Call History', component: CallHistory },
     { id: 'records', label: 'Records AI', component: RecordsAssistant },
   ],
@@ -47,7 +47,7 @@ export default function CADCenter({ embedded = false }) {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const fullAccess = user?.role === 'admin' || roles.has('full_access');
   const sections = fullAccess
-    ? [...BASE_SECTIONS, { id: 'admin', label: 'CAD Administration', description: 'Personnel, reports and control settings', icon: Settings }]
+    ? [...BASE_SECTIONS, { id: 'admin', label: 'Admin & Staffing', description: 'CAD personnel, reporting and control settings', icon: Settings }]
     : BASE_SECTIONS;
 
   if (!desktop && !embedded) return <CommandDashboard />;
