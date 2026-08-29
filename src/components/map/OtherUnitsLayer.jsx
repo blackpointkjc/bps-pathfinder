@@ -80,23 +80,18 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         const liveLng = Number(unit.longitude);
         const lastLat = Number(unit.last_known_latitude);
         const lastLng = Number(unit.last_known_longitude);
+        const coarseLat = Number(unit.coarse_latitude);
+        const coarseLng = Number(unit.coarse_longitude);
         const hasLive = Number.isFinite(liveLat) && Number.isFinite(liveLng) && !(liveLat === 0 && liveLng === 0);
         const hasLast = Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0);
-        if (!hasLive && !hasLast) return null;
-        const accuracy = Number(unit.accuracy ?? unit.last_known_accuracy);
-        const lastGpsAt = new Date(unit.gps_updated_at || unit.last_gps_updated_at || 0).getTime();
-        const freshCoarseFix = hasLast
-            && Number.isFinite(lastGpsAt)
-            && Date.now() - lastGpsAt <= 2 * 60 * 1000
-            && Number.isFinite(accuracy)
-            && accuracy > 100;
-        const locationState = hasLive
-            ? (Number.isFinite(accuracy) && accuracy > 100 ? 'low_accuracy' : 'live')
-            : freshCoarseFix ? 'low_accuracy' : 'last_known';
+        const hasCoarse = Number.isFinite(coarseLat) && Number.isFinite(coarseLng) && !(coarseLat === 0 && coarseLng === 0);
+        if (!hasLive && !hasLast && !hasCoarse) return null;
+        const accuracy = Number(hasLive ? unit.accuracy : hasLast ? unit.last_known_accuracy : unit.coarse_accuracy);
+        const locationState = hasLive ? 'live' : hasLast ? 'last_known' : 'low_accuracy';
         return {
             ...unit,
-            latitude: hasLive ? liveLat : lastLat,
-            longitude: hasLive ? liveLng : lastLng,
+            latitude: hasLive ? liveLat : hasLast ? lastLat : coarseLat,
+            longitude: hasLive ? liveLng : hasLast ? lastLng : coarseLng,
             location_state: locationState,
             display_accuracy: Number.isFinite(accuracy) ? accuracy : null,
         };
