@@ -100,7 +100,7 @@ export default function DispatchCenter() {
         const localInterval = setInterval(() => {
             loadActiveCalls();
         }, 60000);
-        const unitsInterval = setInterval(loadUnits, 20000);
+        const unitsInterval = setInterval(loadUnits, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onStatusChanged = () => loadUnits();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
@@ -294,7 +294,7 @@ export default function DispatchCenter() {
         let welfareUnsubscribe;
         try { unsubscribe = base44.entities.CallNote.subscribe(refreshNotes); } catch { /* polling below is fallback */ }
         try { welfareUnsubscribe = base44.entities.OfficerWelfareCheck.subscribe(refreshWelfare); } catch { /* polling below is fallback */ }
-        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 10000);
+        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 30000);
         return () => {
             if (typeof unsubscribe === 'function') unsubscribe();
             if (typeof welfareUnsubscribe === 'function') welfareUnsubscribe();
