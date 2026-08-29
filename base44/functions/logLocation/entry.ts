@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
       liveData.heading = finiteNumber(body.heading);
       liveData.speed = finiteNumber(body.speed);
       liveData.accuracy = acceptedAccuracy;
+      liveData.gps_session_key = trackingSessionKey;
       // Never let a later Wi-Fi/IP estimate overwrite the officer's last precise
       // tactical coordinate. Coarse fixes remain available for diagnostics only.
       if (Number.isFinite(acceptedAccuracy) && acceptedAccuracy <= 100) {
