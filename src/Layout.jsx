@@ -838,7 +838,9 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
-  const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
+  // The user's primary role owns the initial workspace. Do not bootstrap from a
+  // stale browser-wide CAD selection left by a previous page or role.
+  const [activeCenter, setActiveCenterState] = useState(() => allowedCenters(user)[0] || 'cad');
   const [unreadCounts, setUnreadCounts] = useState({});
   const mainScrollRef = useRef(null);
   const scrollPositionsRef = useRef({});
@@ -888,19 +890,19 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     if (!user?.id || !currentPageName) return;
-    const routeKey = `bps-role-home-routed:${user.id}`;
-    if (sessionStorage.getItem(routeKey) === '1') return;
-    // Base44/browser restore can reopen any previous route (including CADCenter),
-    // so the first authenticated render must always resolve the user's true role
-    // home. Do this once per login session, regardless of which stale route opened.
+    const primaryCenter = allowedCenters(user)[0] || 'cad';
     const target = defaultPageForUser(user, !isMobileViewport);
-    sessionStorage.setItem(routeKey, '1');
-    if (target && target !== currentPageName) {
-      const targetCenters = PAGE_TO_CENTERS[target] || [];
-      const available = allowedCenters(user);
-      const targetCenter = targetCenters.find(center => available.includes(center)) || available[0];
-      if (targetCenter) setActiveCenter(targetCenter);
-      navigate(createPageUrl(target), { replace: true });
+    const routeKey = `bps-role-home-routed:${user.id}`;
+    const navigationEntry = typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')?.[0] : null;
+    const isReload = navigationEntry?.type === 'reload';
+    const routed = sessionStorage.getItem(routeKey) === '1';
+
+    // Login AND a full browser refresh are app-entry events. Always resolve those
+    // to the user's primary role center; restored CAD routes/localStorage must not win.
+    if (!routed || isReload) {
+      sessionStorage.setItem(routeKey, '1');
+      setActiveCenter(primaryCenter);
+      if (target && target !== currentPageName) navigate(createPageUrl(target), { replace: true });
     }
   }, [user?.id, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || []), currentPageName, isMobileViewport]);
 
