@@ -160,6 +160,17 @@ export default function ClientDashboard() {
           </Card>
         </div>
 
+        <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg">
+            <div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Recent Verified Activity</div><h2 className="mt-1 text-xl font-black text-white">Latest reports from your properties</h2>
+            <div className="mt-4 space-y-2">
+              {[...(reports?.incident || []).map(row=>({...row,_type:'Incident'})), ...(reports?.shift || []).map(row=>({...row,_type:'Shift Report'})), ...(reports?.trespass || []).map(row=>({...row,_type:'Trespass'}))].sort((a,b)=>new Date(b.created_date||b.report_date||0)-new Date(a.created_date||a.report_date||0)).slice(0,6).map((row,index)=><div key={row.id||index} className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3"><div className="min-w-0"><div className="text-sm font-bold text-white">{row._type}</div><div className="truncate text-xs text-cyan-300">{row.location || 'Assigned property'}</div></div><div className="max-w-[45%] truncate text-right text-xs text-slate-500">{row.incident_type || row.reason || row.summary || row.subject_name || 'Verified record'}</div></div>)}
+              {!((reports?.incident?.length||0)+(reports?.shift?.length||0)+(reports?.trespass?.length||0)) && <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No recent verified activity is available.</div>}
+            </div>
+          </section>
+          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5 shadow-lg"><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Service Access</div><h2 className="mt-1 text-xl font-black text-white">Common client actions</h2><div className="mt-4 space-y-2">{[["Calls for Service","ClientCallHistory",Radio],["All Reports","ClientReports",FileText],["Trespass Management","ClientTrespass",UserX],["Property Information","ClientLocation",MapPin]].map(([label,page,Icon])=><Link key={label} to={createPageUrl(page)} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-500/40 hover:bg-[#102238]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-300"><Icon className="h-4 w-4"/></div><span className="flex-1">{label}</span><span className="text-slate-600">→</span></Link>)}</div></section>
+        </div>
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link to={createPageUrl("ClientCallHistory")}>
             <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
