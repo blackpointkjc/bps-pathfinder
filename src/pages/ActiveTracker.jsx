@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -15,9 +16,7 @@ export default function ActiveTracker() {
   const { data: activeOfficers = [], isLoading, error, refetch } = useQuery({
     queryKey: ['activeOfficers', user?.id],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getOnDutyUnits', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
+      const payload = await getOfficerLocationSnapshot();
       // Full getOnDutyUnits returns the canonical enriched user rows. Use those
       // when available so rank/name/status/location all come from one source.
       const rows = Array.isArray(payload.users) && payload.users.length ? payload.users : (payload.units || []);
@@ -29,8 +28,10 @@ export default function ActiveTracker() {
     retry: 1,
   });
 
+  useEffect(() => subscribeOfficerLocationChanges(() => refetch()), [refetch]);
+
   // Read-only view. The app-wide BackgroundLocationTracker is the only component
-  // permitted to create/update/remove ActiveOfficer live-location records.
+  // permitted to publish the live officer-location record.
 
   const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
   const canTrack = roles.has('admin') || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access') || roles.has('dispatch') || user?.dispatch_role === true;
