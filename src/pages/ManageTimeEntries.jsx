@@ -59,7 +59,6 @@ export default function ManageTimeEntries() {
     const before = params.toString();
     ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
     const after = params.toString();
-    openedEntryRef.current = '';
     if (after !== before) {
       navigate({ pathname: location.pathname, search: after ? `?${after}` : '' }, { replace: true });
     }
@@ -77,7 +76,7 @@ export default function ManageTimeEntries() {
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: isAdmin || isHR,
     initialData: [],
     staleTime: 0,
@@ -307,7 +306,11 @@ export default function ManageTimeEntries() {
   };
 
   useEffect(() => {
-    if (!requestedEntryId || !Array.isArray(timeEntries)) return;
+    if (!requestedEntryId) {
+      openedEntryRef.current = '';
+      return;
+    }
+    if (!Array.isArray(timeEntries)) return;
     if (selectedOfficer !== 'all') {
       setSelectedOfficer('all');
       return;
