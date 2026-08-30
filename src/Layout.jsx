@@ -400,6 +400,14 @@ const DARK_WORKSPACE_PAGES = new Set([
   'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal', 'CADCenter'
 ]);
 
+const OFFICER_MODERN_PAGES = new Set([
+  'PostOrders', 'Summons', 'VACriminalComplaints', 'VATrespassNotices',
+  'DailyActivityReports', 'IncidentReports', 'MaintenanceReports', 'OpenDoorReports',
+  'ConfidentialReport', 'ExpenseReports', 'QRPatrolScan', 'OpenShifts',
+  'OfficerPayrollDates', 'OfficerPerformanceReviews', 'OfficerTraining',
+  'RankStructure', 'RankDuties', 'OfficerAvailability'
+]);
+
 function normalizedRoles(user) {
   return new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(role => String(role).toLowerCase()));
 }
@@ -836,7 +844,14 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const sidebarStorageKey = `bps-sidebar-collapsed:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(sidebarStorageKey) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
@@ -864,6 +879,14 @@ export default function Layout({ children, currentPageName }) {
     }
   }
   const unreadStorageKey = `bps-unread-counts:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(sidebarStorageKey, String(collapsed));
+    } catch {
+      // Browser privacy modes can disable local storage; the sidebar still works for this session.
+    }
+  }, [collapsed, sidebarStorageKey]);
 
   const setActiveCenter = center => {
     setActiveCenterState(center);
@@ -1390,7 +1413,7 @@ export default function Layout({ children, currentPageName }) {
       </div>}
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
