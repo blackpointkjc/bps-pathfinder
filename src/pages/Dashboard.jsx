@@ -272,7 +272,7 @@ export default function Dashboard({ embedded = false }) {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className={`relative overflow-hidden bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-screen'}`}>
+    <div className={`bps-command-page relative overflow-hidden bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-screen'}`}>
       {/* Cinematic animated gradient mesh background */}
       {!embedded && <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
