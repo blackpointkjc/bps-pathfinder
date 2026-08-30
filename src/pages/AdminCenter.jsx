@@ -6,6 +6,7 @@ import AdminDashboard from './AdminDashboard';
 import AdminAnalytics from './AdminAnalytics';
 import AdminLocationTracker from './AdminLocationTracker';
 import AdminGeofenceAlerts from './AdminGeofenceAlerts';
+import AdminAutoDispatchControls from './AdminAutoDispatchControls';
 import AdminScheduling from './AdminScheduling';
 import FleetVehicleAssignments from './FleetVehicleAssignments';
 import DutySupervisorScheduling from './DutySupervisorScheduling';
@@ -66,7 +67,7 @@ const ADMIN_SECTIONS = [
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
   { id: 'people', label: 'People & Access', description: 'Users, access, platoons and availability decisions', icon: Users },
   { id: 'schedule', label: 'Scheduling & Time', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
-  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, equipment and post orders', icon: Building2 },
+  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, automatic dispatch, CAD controls, portal visibility, equipment, post orders and patrol rules', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
   { id: 'communications', label: 'Requests & Documents', description: 'Announcements, special requests and documents', icon: MessageCircle },
   { id: 'system', label: 'Patrol & System', description: 'QR patrol administration and portal settings', icon: BarChart3 },
@@ -94,7 +95,11 @@ const ADMIN_TOOLS = {
   sites: [
     { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
     { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
+    { id: 'autodispatch', label: 'Automatic Dispatch', component: AdminAutoDispatchControls },
     { id: 'locations', label: 'Locations', component: AdminLocations },
+    { id: 'cadcontrol', label: 'CAD Admin Controls', component: AdminPortal },
+    { id: 'settings', label: 'Portal Visibility', component: AdminPortalSettings },
+    { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
     { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
   ],
@@ -112,12 +117,7 @@ const ADMIN_TOOLS = {
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
   ],
-  system: [
-    { id: 'autodispatch', label: 'Auto Dispatch Control', component: AdminGeofenceAlerts },
-    { id: 'qr', label: 'QR Patrol Management', component: AdminQRCenter },
-    { id: 'cadcontrol', label: 'CAD Admin Control', component: AdminPortal },
-    { id: 'settings', label: 'Portal Settings', component: AdminPortalSettings },
-  ],
+  system: [],
 };
 
 const ADMIN_SUPERVISOR_SECTIONS = [
