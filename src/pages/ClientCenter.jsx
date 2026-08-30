@@ -52,7 +52,7 @@ const TOOLS = {
 export default function ClientCenter({ embedded = false }) {
   return (
     <UnifiedCenter eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview" contentClassName="client-portal-shell bg-[#070d17] text-slate-100" queryParam={embedded ? 'client_section' : 'section'} embedded={embedded}>
-      {section => <CenterToolSection key={section} tools={TOOLS[section]} queryParam={embedded ? 'client_tool' : 'tool'} />}
+      {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'client_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }
