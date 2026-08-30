@@ -191,6 +191,8 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       late_clock_out_violation: lateClockOutViolation,
       early_incident_exception: earlyIncidentException,
       late_incident_exception: lateIncidentException,
+      performance_exception: entry.performance_exception === true,
+      performance_overage_counted: entry.performance_overage_counted === true,
       location: schedule.location || '',
       schedule_id: schedule.id,
       time_entry_id: entry.id,
