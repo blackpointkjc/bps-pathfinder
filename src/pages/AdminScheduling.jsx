@@ -1808,26 +1808,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       return;
     }
 
-    // Determine the actual `shift_date` to store in the database (always the START date)
-    let actualShiftDate = editingShift.shift_date; // This is the date from the form
-
-    // If it's a split shift, we interpret editingShift.shift_date as the "end day" in the form for user convenience
-    if (editingShift.is_split_shift) {
-        if (editingShift.linked_shift_id) {
-            // If linked, use the start date of the linked shift (which must be on the previous day)
-            const linkedShift = schedules?.find(s => s.id === editingShift.linked_shift_id);
-            if (linkedShift) {
-                actualShiftDate = linkedShift.shift_date; // Use the start date of the linked shift
-            } else {
-                // Fallback in case linkedShift not found, assume form date is end day and calculate start
-                actualShiftDate = format(subDays(parseISO(editingShift.shift_date), 1), 'yyyy-MM-dd');
-            }
-        } else {
-            // If not linked, but it's a split shift, the actual start date is the day before the form date
-            actualShiftDate = format(subDays(parseISO(editingShift.shift_date), 1), 'yyyy-MM-dd');
-        }
-    }
-    // If not a split shift, actualShiftDate remains editingShift.shift_date (which should be the start date)
+    // The selected date is always the calendar day this segment starts.
+    // Linking a split segment to an earlier shift must never move its date.
+    const actualShiftDate = editingShift.shift_date;
 
     updateScheduleMutation.mutate({
       id: editingShift.id,
@@ -2002,20 +1985,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       return;
     }
 
-    let actualShiftDate = newShift.shift_date;
-
-    if (newShift.is_split_shift) {
-        if (newShift.linked_shift_id) {
-            const linkedShift = schedules?.find(s => s.id === newShift.linked_shift_id);
-            if (linkedShift) {
-                actualShiftDate = linkedShift.shift_date;
-            } else {
-                actualShiftDate = format(subDays(parseISO(newShift.shift_date), 1), 'yyyy-MM-dd');
-            }
-        } else {
-            actualShiftDate = format(subDays(parseISO(newShift.shift_date), 1), 'yyyy-MM-dd');
-        }
-    }
+    // Store the exact date selected in the form. A split-shift link is a
+    // relationship only; it does not change the start date of this segment.
+    const actualShiftDate = newShift.shift_date;
     
     const primaryShift = {
        officer_email: officerEmailToStore,
