@@ -49,6 +49,7 @@ export default function Schedule() {
 
   const vehicleAssignments = scheduleData.vehicleAssignments || [];
   const dutySupervisorAssignments = scheduleData.dutySupervisorAssignments || [];
+  const scheduleLocations = scheduleData.locations || [];
 
   const intervalFor = (dateValue, startValue, endValue) => {
     const date = String(dateValue || '').slice(0, 10);
@@ -68,6 +69,13 @@ export default function Schedule() {
       const [dutyStart, dutyEnd] = intervalFor(row.assignment_date, row.start_time, row.end_time);
       return dutyStart < shiftEnd && shiftStart < dutyEnd;
     });
+  };
+  const dedicatedSupervisorForShift = shift => {
+    const location = scheduleLocations.find(row => normalizeSite(row.site_name) === normalizeSite(shift.location));
+    const email = (location?.assigned_supervisors || [])[0];
+    if (!email) return null;
+    const person = companyUsers.find(row => String(row.email || '').toLowerCase() === String(email).toLowerCase());
+    return { email, name: person ? `${person.rank || 'Supervisor'} ${person.last_name || person.first_name || ''}`.trim() : email, location: location?.site_name || shift.location };
   };
 
   useEffect(() => {
