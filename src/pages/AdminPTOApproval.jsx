@@ -178,12 +178,12 @@ export default function AdminPTOApproval() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">PTO Approval</h1>
+            <h1 className="text-3xl font-black text-white">PTO Approval</h1>
             <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
           </div>
         </div>
