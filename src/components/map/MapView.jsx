@@ -107,9 +107,9 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
             const container = typeof map.getContainer === 'function' ? map.getContainer() : null;
+            try { map.stop(); } catch (_) {}
             if (container && container.isConnected) {
                 try { map.closePopup(); } catch (_) {}
-                try { map.stop(); } catch (_) {}
             }
         };
     }, [map]);
@@ -138,7 +138,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     // Handle external map centering (from call detail sidebar)
     useEffect(() => {
         if (mapCenter) {
-            map.setView(mapCenter, 16, { animate: true, duration: 0.5 });
+            map.setView(mapCenter, 16, { animate: false });
         }
     }, [mapCenter, map]);
 
@@ -149,7 +149,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         if (valid.length === 0) return;
         const bounds = L.latLngBounds(valid.map(c => [c[0], c[1]]));
         if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [70, 70], animate: true, duration: 0.5 });
+            map.fitBounds(bounds, { padding: [70, 70], animate: false });
         }
     }, [fitBounds, map]);
 
@@ -164,17 +164,17 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
         if (routeBounds && !isNavigating) {
             // Only fit bounds when first showing route, not during navigation
-            map.fitBounds(routeBounds, { padding: [50, 50] });
+            map.fitBounds(routeBounds, { padding: [50, 50], animate: false });
         } else if (center && (!prevCenterRef.current || 
             Math.abs(center[0] - prevCenterRef.current[0]) > 0.00005 || 
             Math.abs(center[1] - prevCenterRef.current[1]) > 0.00005)) {
 
             // When navigating, keep map zoomed in and centered on user
             if (isNavigating) {
-                map.setView(center, 18, { animate: true, duration: 0.3 });
+                map.setView(center, 18, { animate: false });
             } else {
                 // Don't auto-zoom when not navigating, just pan to follow user
-                map.panTo(center, { animate: true, duration: 0.3 });
+                map.panTo(center, { animate: false });
             }
             prevCenterRef.current = center;
         }
