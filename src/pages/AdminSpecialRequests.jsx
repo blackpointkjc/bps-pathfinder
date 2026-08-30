@@ -312,12 +312,12 @@ export default function AdminSpecialRequests() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-3 pb-24 sm:p-4 md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Special Coverage Requests</h1>
+            <h1 className="text-3xl font-black text-white">Special Coverage Requests</h1>
             <p className="text-slate-600">Review and schedule client special coverage requests</p>
           </div>
         </div>
