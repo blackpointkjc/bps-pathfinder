@@ -477,7 +477,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   );
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
@@ -489,7 +489,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         <div className="flex items-center gap-3 mb-4">
           <Briefcase className="w-8 h-8 text-blue-600" />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Manage Company Employees</h1>
+            <h1 className="text-3xl font-black text-white">Manage Company Employees</h1>
             <p className="text-slate-600">{portalContext === 'hr' ? 'HR employee directory and account access management' : portalContext === 'training' ? 'Training-managed employee certifications and records' : 'Active company users and assigned operational roles'}</p>
           </div>
         </div>
