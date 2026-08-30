@@ -1296,6 +1296,50 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   }
 }
 
+/* Shared dashboard KPI cards: keep icon, value, label, and supporting text
+   visually centered throughout Pathfinder. These are summary cards, not data
+   entry panels, so asymmetric left/right placement makes the dashboards look
+   unbalanced at wide desktop widths. */
+.bps-kpi-card {
+  display: flex;
+  min-width: 0;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.bps-kpi-icon {
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: .8rem;
+  margin-bottom: .65rem;
+}
+
+.bps-kpi-value {
+  max-width: 100%;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.bps-kpi-label {
+  margin-top: .7rem;
+  width: 100%;
+  text-align: center;
+}
+
+.bps-kpi-detail {
+  margin-top: .25rem;
+  width: 100%;
+  max-width: 18rem;
+  text-align: center;
+}
+
 @media (min-width: 640px) and (max-width: 1023px) {
   .command-dashboard-system-meta {
     width: auto;
