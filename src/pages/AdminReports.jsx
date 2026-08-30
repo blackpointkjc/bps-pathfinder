@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Check, Printer, FileText, AlertTriangle, UserX, Eye, Car, X, Mail, ClipboardList } from "lucide-react";
+import { Shield, Check, Printer, FileText, AlertTriangle, UserX, Eye, Car, X, Mail, ClipboardList, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 
 
+import AdminQRReports from './AdminQRReports';
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
@@ -1234,9 +1235,12 @@ export default function AdminReports() {
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => setSelectedReviewType('all')} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>All Pending ({pendingTotal})</button>
             {reviewTypes.map(type => <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>{type.label} ({type.rows.length})</button>)}
+            <button onClick={() => setSelectedReviewType('qr_patrol')} className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === 'qr_patrol' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}><QrCode className="h-3.5 w-3.5"/>QR Patrol Reports</button>
           </div>
 
-          {visibleReviewQueue.length === 0 ? (
+          {selectedReviewType === 'qr_patrol' ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1522]"><AdminQRReports embedded /></div>
+          ) : visibleReviewQueue.length === 0 ? (
             <Card className="border-dashed border-slate-700 bg-[#0b1522] text-slate-300">
               <CardContent className="p-12 text-center"><FileText className="mx-auto mb-3 h-12 w-12 text-slate-600" /><h3 className="text-lg font-bold text-white">No reports waiting in this queue</h3><p className="mt-1 text-sm text-slate-500">Submitted reports will appear here until they are approved or returned for revision.</p></CardContent>
             </Card>
