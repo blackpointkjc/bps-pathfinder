@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Car, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Car, Users, ShieldCheck } from "lucide-react";
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
@@ -48,6 +48,31 @@ export default function Schedule() {
   });
 
   const vehicleAssignments = scheduleData.vehicleAssignments || [];
+  const dutySupervisorAssignments = scheduleData.dutySupervisorAssignments || [];
+
+  const timeMinutes = value => {
+    const [hours = 0, mins = 0] = String(value || '00:00').split(':').map(Number);
+    return (hours * 60) + mins;
+  };
+  const timeOverlaps = (aStart, aEnd, bStart, bEnd) => {
+    const normalize = (start, end) => {
+      const s = timeMinutes(start);
+      let e = timeMinutes(end);
+      if (e <= s) e += 1440;
+      return [s, e];
+    };
+    const [as, ae] = normalize(aStart, aEnd);
+    const [bs, be] = normalize(bStart, bEnd);
+    return as < be && bs < ae;
+  };
+  const normalizeSite = value => String(value || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
+  const dutySupervisorForShift = shift => dutySupervisorAssignments.find(row => {
+    if (String(row.assignment_date || '').slice(0, 10) !== String(shift.shift_date || '').slice(0, 10)) return false;
+    if (String(row.status || '').toLowerCase() === 'cancelled') return false;
+    const coverage = String(row.location || 'ALL');
+    const locationMatches = coverage === 'ALL' || normalizeSite(coverage) === normalizeSite(shift.location);
+    return locationMatches && timeOverlaps(row.start_time, row.end_time, shift.start_time, shift.end_time);
+  });
 
   useEffect(() => {
     if (!user?.email) return undefined;
@@ -213,7 +238,7 @@ export default function Schedule() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-black text-white">My Schedule</h1>
-            <p className="text-slate-400">Rolling five-day view · shifts, partners, and fleet assignments</p>
+            <p className="text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p>
           </div>
 
         </div>
@@ -416,6 +441,20 @@ export default function Schedule() {
                                 <div className="min-w-0"><div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Partner</div><div className="truncate text-[11px] font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div></div>
                               </div>
                             )}
+                            {(() => {
+                              const duty = dutySupervisorForShift(schedule);
+                              if (!duty) return null;
+                              return (
+                                <div className="mt-2 flex items-start gap-2 rounded-lg border border-cyan-700/50 bg-cyan-950/20 px-2.5 py-2">
+                                  <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">Duty Supervisor</div>
+                                    <div className="truncate text-[12px] font-black text-cyan-100">{duty.supervisor_name || getUserName(duty.supervisor_email)}</div>
+                                    <div className="mt-0.5 truncate text-[9px] text-cyan-300/80">Coverage {duty.start_time}–{duty.end_time}{duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}</div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             {(() => {
                               const vehicle = vehicleAssignments.find(a =>
                                 a.assignment_date === schedule.shift_date &&
