@@ -4,6 +4,9 @@ const round = (value: number, digits = 2) => Number(Number(value || 0).toFixed(d
 const dateOnly = (value: unknown) => {
   const raw = String(value || '');
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // Imported/date-anchored punches use exact UTC midnight to represent the
+  // selected work date. Preserve that date so a period-start shift is not lost.
+  if (/^\d{4}-\d{2}-\d{2}T00:00:00(?:\.000)?Z$/.test(raw)) return raw.slice(0, 10);
   const date = new Date(raw);
   if (!Number.isFinite(date.getTime())) return '';
   // Payroll periods are company Eastern dates. Convert time-entry timestamps to
