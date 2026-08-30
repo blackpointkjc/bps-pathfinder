@@ -270,7 +270,7 @@ function CommandDashboardInner() {
     );
 
     return (
-        <div className="command-dashboard min-h-full min-w-0 overflow-x-hidden bg-slate-950 flex flex-col">
+        <div className="bps-command-page command-dashboard min-h-full min-w-0 overflow-x-hidden bg-slate-950 flex flex-col">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
             <ActiveBoloBanner />
             {isDispatchOrAdmin && <AutoDispatchShadowFeed />}
@@ -322,7 +322,7 @@ function CommandDashboardInner() {
             )}
 
             {/* ── MASTER STATUS TILES ── */}
-            <div className="command-dashboard-kpis flex-none grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 border-b border-slate-800">
+            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-2 border-b border-slate-800 bg-[#080d16] p-2 sm:grid-cols-4 md:grid-cols-8">
                 {[
                     { label: 'ACTIVE CALLS', val: calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
                     { label: 'P1 CRITICAL', val: criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
@@ -333,7 +333,7 @@ function CommandDashboardInner() {
                     { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
                 ].map(({ label, val, color, bg, border, flash }) => (
-                    <div key={label} className={`command-dashboard-kpi ${bg} ${border} border-t-2 border-t-slate-700/60 px-2 py-2.5 flex min-w-0 flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
+                    <div key={label} className={`command-dashboard-kpi ${bg} rounded-xl border border-slate-700/80 px-2 py-3 flex min-w-0 flex-col items-center justify-center text-center shadow-lg ${flash ? 'animate-pulse' : ''}`}>
                         <span className={`text-2xl md:text-3xl font-mono font-black leading-none ${color} drop-shadow-[0_0_10px_currentColor]`}>{val}</span>
                         <span className="text-[9px] text-slate-500 font-mono font-bold tracking-widest mt-1 text-center">{label}</span>
                     </div>
