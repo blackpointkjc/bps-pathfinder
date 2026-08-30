@@ -157,10 +157,10 @@ export default function Schedule() {
 
   const currentPeriod = getCurrentPayrollPeriod();
 
-  // Rolling five-day schedule window. Offset moves in five-day blocks.
+  // Rolling four-day schedule window. Offset moves in four-day blocks.
   const today = startOfDay(new Date());
-  const weekStart = addDays(today, currentWeekOffset * 5);
-  const weekEnd = addDays(weekStart, 4);
+  const weekStart = addDays(today, currentWeekOffset * 4);
+  const weekEnd = addDays(weekStart, 3);
 
   const { data: openShifts } = useQuery({
     queryKey: ['openShifts', format(weekStart, 'yyyy-MM-dd'), format(weekEnd, 'yyyy-MM-dd')],
@@ -197,7 +197,7 @@ export default function Schedule() {
     },
   });
 
-  const weekDays = React.useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const weekDays = React.useMemo(() => Array.from({ length: 4 }, (_, index) => addDays(weekStart, index)), [weekStart]);
 
   const isDatePublished = React.useCallback((dateStr) => {
     if (!dateStr || !allWeekStatuses || !user?.email) return false;
@@ -282,7 +282,7 @@ export default function Schedule() {
       <div className="mx-auto max-w-[1600px] space-y-6">
         <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div><div className="text-[11px] font-black uppercase tracking-[.25em] text-cyan-300">Officer Scheduling</div><h1 className="mt-2 text-3xl font-black text-white md:text-4xl">My Schedule</h1><p className="mt-2 text-sm text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p></div>
+            <div><div className="text-[11px] font-black uppercase tracking-[.25em] text-cyan-300">Officer Scheduling</div><h1 className="mt-2 text-3xl font-black text-white md:text-4xl">My Schedule</h1><p className="mt-2 text-sm text-slate-400">Rolling four-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p></div>
             <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>LIVE UPDATES ENABLED</span></div>
           </div>
         </section>
@@ -311,8 +311,8 @@ export default function Schedule() {
         )}
 
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-sm font-semibold text-white">Rolling 5-Day Schedule</div>
-          <div className="text-xs text-slate-400">Today starts on the far left. Use the arrows to move backward or forward five days at a time.</div>
+          <div className="text-sm font-semibold text-white">Rolling 4-Day Schedule</div>
+          <div className="text-xs text-slate-400">Today starts on the far left. Use the arrows to move backward or forward four days at a time.</div>
         </div>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
@@ -322,21 +322,21 @@ export default function Schedule() {
               onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
             >
               <ChevronLeft className="mr-1 h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Previous 5 Days</span><span className="sm:hidden">Previous</span>
+              <span className="hidden sm:inline">Previous 4 Days</span><span className="sm:hidden">Previous</span>
             </Button>
             <div className="order-first text-center sm:order-none">
               <p className="font-bold text-white">
                 {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
               </p>
               <p className="text-xs text-slate-400 sm:text-sm">
-                5-day rolling schedule
+                4-day rolling schedule
               </p>
             </div>
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset + 1)}
             >
-              <span className="hidden sm:inline">Next 5 Days</span><span className="sm:hidden">Next</span>
+              <span className="hidden sm:inline">Next 4 Days</span><span className="sm:hidden">Next</span>
               <ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
             </Button>
           </div>
@@ -423,7 +423,7 @@ export default function Schedule() {
         )}
 
         <div className="pb-2">
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 md:grid md:grid-cols-5 md:overflow-visible">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 md:grid md:grid-cols-4 md:overflow-visible">
             {weekDays.map((day) => {
               const daySchedules = getScheduleForDate(day);
               const ptoEntry = checkPTOForDate(day);
@@ -436,7 +436,7 @@ export default function Schedule() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Calendar className={`h-4 w-4 ${isToday ? 'text-blue-400' : 'text-slate-500'}`} />
-                          <span className="truncate text-sm font-black text-white">{format(day, 'EEE')}</span>
+                          <span className="text-sm font-black text-white">{format(day, 'EEE')}</span>
                           {isToday && <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
                         </div>
                         <div className="mt-1 text-[11px] font-medium text-slate-400">{format(day, 'MMM d, yyyy')}</div>
@@ -501,26 +501,26 @@ export default function Schedule() {
                             style={{ top: placement.top, height: placement.height }}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span className="truncate text-[11px] font-black text-white">{placement.carryover ? `12:00 AM–${schedule.end_time}` : `${schedule.start_time}–${schedule.end_time}`}</span>
+                              <span className="text-[11px] font-black leading-4 text-white">{placement.carryover ? `12:00 AM–${schedule.end_time}` : `${schedule.start_time}–${schedule.end_time}`}</span>
                               {isSplitShift && <span className="rounded bg-purple-400/20 px-1 text-[8px] font-black text-purple-200">SPLIT</span>}
                             </div>
                             {placement.crossesMidnight && <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">Continues next day</div>}
                             {placement.carryover && <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">Continued from previous day</div>}
                             <button type="button" onClick={() => openInMaps(schedule.location)} className="mt-1 flex w-full items-start gap-1 text-left">
                               <MapPin className={`mt-0.5 h-3 w-3 shrink-0 ${isSplitShift ? 'text-purple-300' : 'text-blue-300'}`} />
-                              <span className="line-clamp-2 text-[10px] font-semibold leading-3 text-slate-100">{schedule.location}</span>
+                              <span className="whitespace-normal break-words text-[10px] font-semibold leading-4 text-slate-100">{schedule.location}</span>
                             </button>
                             {placement.height >= 92 && schedule.partner_officer_email && (
-                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-slate-300"><Users className="h-3 w-3 shrink-0 text-blue-300" />{getUserName(schedule.partner_officer_email)}</div>
+                              <div className="mt-1 flex items-start gap-1 whitespace-normal break-words text-[9px] leading-4 text-slate-300"><Users className="h-3 w-3 shrink-0 text-blue-300" />{getUserName(schedule.partner_officer_email)}</div>
                             )}
                             {placement.height >= 120 && supervisorName && (
-                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-cyan-200"><ShieldCheck className="h-3 w-3 shrink-0" />{supervisorName}</div>
+                              <div className="mt-1 flex items-start gap-1 whitespace-normal break-words text-[9px] leading-4 text-cyan-200"><ShieldCheck className="h-3 w-3 shrink-0" />{supervisorName}</div>
                             )}
                             {placement.height >= 148 && vehicle?.vehicle_label && (
-                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-amber-200"><Car className="h-3 w-3 shrink-0" />{vehicle.vehicle_label}</div>
+                              <div className="mt-1 flex items-start gap-1 whitespace-normal break-words text-[9px] leading-4 text-amber-200"><Car className="h-3 w-3 shrink-0" />{vehicle.vehicle_label}</div>
                             )}
-                            {placement.height >= 210 && schedule.site_details && <p className="mt-2 line-clamp-3 border-t border-white/10 pt-1 text-[9px] leading-3 text-slate-300">{schedule.site_details}</p>}
-                            {placement.height >= 270 && schedule.special_instructions && <p className="mt-1 line-clamp-3 text-[9px] leading-3 text-blue-200">{schedule.special_instructions}</p>}
+                            {placement.height >= 210 && schedule.site_details && <p className="mt-2 whitespace-normal break-words border-t border-white/10 pt-1 text-[9px] leading-4 text-slate-300">{schedule.site_details}</p>}
+                            {placement.height >= 270 && schedule.special_instructions && <p className="mt-1 whitespace-normal break-words text-[9px] leading-4 text-blue-200">{schedule.special_instructions}</p>}
                           </div>
                         );
                       })}
