@@ -237,20 +237,14 @@ export default function Schedule() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="schedule-dark min-h-screen bg-slate-950 p-4 text-slate-100 md:p-6">
+    <div className="bps-command-page schedule-dark min-h-screen bg-[#080d16] p-4 text-slate-100 md:p-6">
       <div className="mx-auto max-w-[1600px] space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black text-white">My Schedule</h1>
-            <p className="text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p>
+        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div><div className="text-[11px] font-black uppercase tracking-[.25em] text-cyan-300">Officer Scheduling</div><h1 className="mt-2 text-3xl font-black text-white md:text-4xl">My Schedule</h1><p className="mt-2 text-sm text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p></div>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>LIVE UPDATES ENABLED</span></div>
           </div>
-
-        </div>
-
-        <div className="flex items-center justify-end gap-2 text-sm text-slate-600 mt-2">
-            <RefreshCw className="w-4 h-4" />
-            <span>Live updates enabled</span>
-          </div>
+        </section>
         {scheduleError && <div className="rounded-xl border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">Schedule data could not be loaded: {scheduleError.message}</div>}
 
         {currentPeriod && (
