@@ -50,10 +50,10 @@ export default function SupervisorTasks() {
                      (followUpInspections?.length || 0);
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 mb-2">
+          <h1 className="mb-2 flex items-center gap-2 text-3xl font-black text-white">
             <ClipboardList className="w-8 h-8 text-green-600" />
             Supervisor Action Items
           </h1>
