@@ -219,9 +219,13 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
     const minutesLateOut = Math.max(0, actualEnd - scheduledEnd);
     const earlyException = minutesEarly > 10 && incidentExcuses(officerIncidents, officer, aliases, actualStart, scheduledStart);
     const lateException = minutesLateOut > 10 && incidentExcuses(officerIncidents, officer, aliases, scheduledEnd, actualEnd);
+    const performanceException = entry.performance_exception === true;
     const arrivalViolation = minutesLate > 5;
     const earlyViolation = minutesEarly > 10 && !earlyException;
-    const lateOutViolation = minutesLateOut > 10 && !lateException;
+    const lateOutViolation = minutesLateOut > 10
+      && entry.performance_overage_counted === true
+      && !performanceException
+      && !lateException;
     const compliant = !arrivalViolation && !earlyViolation && !lateOutViolation;
     if (compliant) onTime += 1; else violations += 1;
     punctualityDetails.push({
@@ -234,6 +238,8 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
       late_clock_out_minutes: minutesLateOut,
       early_incident_exception: earlyException,
       late_incident_exception: lateException,
+      performance_exception: performanceException,
+      performance_overage_counted: entry.performance_overage_counted === true,
     });
   }
 
