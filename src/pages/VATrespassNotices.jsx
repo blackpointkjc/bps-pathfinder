@@ -704,11 +704,11 @@ export default function VATrespassNotices() {
   }) || [];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">VA Trespass Notices</h1>
+            <h1 className="mb-2 text-2xl font-black text-white md:text-3xl">VA Trespass Notices</h1>
             <p className="text-sm md:text-base text-slate-600">Issue and track Virginia trespass notices</p>
           </div>
           <Button
