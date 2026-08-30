@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, MapPin, RefreshCw, ShieldCheck, Signal, Users } from 'lucide-react';
@@ -30,6 +31,7 @@ const gpsAge = value => {
 const validCoordinate = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
 const validPosition = item => validCoordinate(item?.latitude) && validCoordinate(item?.longitude) && Math.abs(Number(item.latitude)) <= 90 && Math.abs(Number(item.longitude)) <= 180 && !(Number(item.latitude) === 0 && Number(item.longitude) === 0);
 export default function SupervisorFieldOversight() {
+  const navigate = useNavigate();
   const [workingId, setWorkingId] = useState('');
   const [mapTheme, setMapTheme] = usePathfinderMapTheme();
   const { data: welfarePayload = {}, isLoading: welfareLoading, error: welfareError, refetch: refetchWelfare, isFetching } = useQuery({
@@ -61,7 +63,27 @@ export default function SupervisorFieldOversight() {
   const welfareChecks = welfarePayload.welfare_checks || [];
   const supervisorRequests = welfarePayload.supervisor_requests || [];
   const displayByEmail = welfarePayload.display_by_email || {};
-  const liveUnits = useMemo(() => (locationPayload.users || []).filter(unit => unit.session_active === true && unit.status !== 'Out of Service'), [locationPayload.users]);
+  const liveUnits = useMemo(() => {
+    const signedIn = (locationPayload.users || []).filter(unit => unit.session_active === true);
+    const openPunchFallbacks = locationPayload.clocked_in_without_session || [];
+    const byOfficer = new Map();
+    for (const unit of [...signedIn, ...openPunchFallbacks]) {
+      const key = lower(unit?.officer_email || unit?.email || unit?.id);
+      if (!key) continue;
+      const current = byOfficer.get(key) || {};
+      byOfficer.set(key, {
+        ...unit,
+        ...current,
+        session_active: true,
+        session_source: current.session_source || unit.session_source || 'open_time_entry',
+        status: (current.status && current.status !== 'Out of Service')
+          ? current.status
+          : (unit.status && unit.status !== 'Out of Service' ? unit.status : 'Available'),
+        gps_pending: !validPosition(current) && !validPosition(unit),
+      });
+    }
+    return [...byOfficer.values()];
+  }, [locationPayload.users, locationPayload.clocked_in_without_session]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
   const mappedUnits = useMemo(() => liveUnits.filter(unit => validPosition(unit) || (validCoordinate(unit?.last_known_latitude) && validCoordinate(unit?.last_known_longitude)) || (validCoordinate(unit?.coarse_latitude) && validCoordinate(unit?.coarse_longitude))), [liveUnits]);
@@ -98,7 +120,7 @@ export default function SupervisorFieldOversight() {
   const refreshAll = async () => Promise.all([refetchWelfare(), refetchLocations()]);
   const openCad = callOrRow => {
     const callId = callOrRow?.call_id || callOrRow?.id;
-    window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`;
+    navigate(`${createPageUrl('CADCenter')}?section=live&tool=dispatch${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`);
   };
   const escalateWelfareCheck = async check => {
     if (!check?.id || workingId) return;
