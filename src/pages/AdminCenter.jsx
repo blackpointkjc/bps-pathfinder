@@ -29,6 +29,9 @@ import AdminSpecialRequests from './AdminSpecialRequests';
 import AdminQRCenter from './AdminQRCenter';
 import AdminPortalSettings from './AdminPortalSettings';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
+import Personnel from './Personnel';
+import PathfinderReports from './Reports';
+import AdminPortal from './AdminPortal';
 import CADCenter from './CADCenter';
 import OfficerCenter from './OfficerCenter';
 import SupervisorCenter from './SupervisorCenter';
@@ -78,6 +81,7 @@ const ADMIN_TOOLS = {
     { id: 'users', label: 'Users & Accounts', component: AdminUsers },
     { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
     { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
+    { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
   ],
   schedule: [
     { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
@@ -102,13 +106,16 @@ const ADMIN_TOOLS = {
     { id: 'complaints', label: 'Complaints', component: AdminComplaints },
     { id: 'commendations', label: 'Commendations', component: AdminCommendations },
     { id: 'feedback', label: 'Client Feedback', component: AdminClientFeedback },
+    { id: 'cadreports', label: 'CAD Reports', component: PathfinderReports },
   ],
   communications: [
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
   ],
   system: [
+    { id: 'autodispatch', label: 'Auto Dispatch Control', component: AdminGeofenceAlerts },
     { id: 'qr', label: 'QR Patrol Management', component: AdminQRCenter },
+    { id: 'cadcontrol', label: 'CAD Admin Control', component: AdminPortal },
     { id: 'settings', label: 'Portal Settings', component: AdminPortalSettings },
   ],
 };
