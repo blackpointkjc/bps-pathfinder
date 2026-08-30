@@ -63,7 +63,7 @@ export default function CADCenter({ embedded = false }) {
       queryParam={embedded ? 'cad_section' : 'section'}
       embedded={embedded}
     >
-      {section => <CenterToolSection key={section} tools={TOOLS[section] || TOOLS.live} queryParam={embedded ? 'cad_tool' : 'tool'} />}
+      {section => <CenterToolSection tools={TOOLS[section] || TOOLS.live} queryParam={embedded ? 'cad_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }
