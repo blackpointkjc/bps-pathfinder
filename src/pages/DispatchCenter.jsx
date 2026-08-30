@@ -22,7 +22,6 @@ import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
-import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
@@ -101,8 +100,9 @@ export default function DispatchCenter() {
         init();
         loadMonitoredProperties();
 
-        // GRAC ingestion is owned app-wide by DashboardDataProvider. Dispatch Center
-        // listens for persisted call changes instead of launching a second sync loop.
+        // Keep website calls live even when Dispatch Center is opened directly.
+        // The backend lease makes this safe across multiple signed-in dispatch tabs.
+        syncWebsiteCalls();
         const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
         let unitRefreshTimer;
         const scheduleUnitRefresh = () => {
@@ -113,6 +113,7 @@ export default function DispatchCenter() {
         const localInterval = setInterval(() => {
             loadActiveCalls();
         }, 60000);
+        const websiteCallsInterval = setInterval(syncWebsiteCalls, 120000);
         const unitsInterval = setInterval(loadUnits, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onStatusChanged = () => loadUnits();
@@ -123,6 +124,7 @@ export default function DispatchCenter() {
             unsubscribeUnits?.();
             window.clearTimeout(unitRefreshTimer);
             clearInterval(localInterval);
+            clearInterval(websiteCallsInterval);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
@@ -195,14 +197,18 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            // One canonical status feed is shared by Dispatch Center, Command, and
-            // the Unit Status Board. Only officers with a fresh signed-in CAD session
-            // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const payload = await getOfficerLocationSnapshot();
-            const eligibleUnits = (payload.users || [])
-                .filter(isOperationalOfficer)
-                .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
-                .map(unit => ({ ...unit, label: unit.unit_number || unit.full_name || unit.email }))
+            // Use the lightweight signed-in session stream so an active officer
+            // cannot disappear while the larger roster/time-entry request is busy.
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
+            const eligibleUnits = (payload.units || [])
+                .filter(unit => unit.status !== 'Out of Service' && unit.session_active !== false)
+                .map(unit => ({
+                    ...unit,
+                    email: unit.email || unit.officer_email,
+                    full_name: unit.full_name || unit.officer_name || unit.officer_email,
+                    additional_roles: unit.additional_roles?.length ? unit.additional_roles : ['officer'],
+                    label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
+                }))
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
             setUnits(eligibleUnits);
         } catch (error) {
@@ -211,6 +217,19 @@ export default function DispatchCenter() {
             // disappear from the tactical map. Keep the last confirmed snapshot
             // and let realtime/polling recover on the next successful refresh.
         }
+    };
+
+    const syncWebsiteCalls = async () => {
+        try {
+            const response = await base44.functions.invoke('ingestGractivecalls', {});
+            const payload = response?.data || response || {};
+            if (payload.error || payload.success === false) {
+                throw new Error(payload.error || 'Website call sync did not complete');
+            }
+        } catch (error) {
+            console.warn('Website call sync failed; keeping the last confirmed call list:', error?.message || error);
+        }
+        await loadActiveCalls();
     };
 
     const loadActiveCalls = async () => {
