@@ -122,12 +122,12 @@ export default function Announcements() {
   return (
     <>
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="p-4 md:p-8 min-h-screen">
+        <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
               <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-2">Company Announcements</h1>
+                <h1 className="mb-2 text-3xl font-black text-white">Company Announcements</h1>
                 <p className="text-slate-600">Stay updated with the latest company news</p>
               </div>
             </div>
