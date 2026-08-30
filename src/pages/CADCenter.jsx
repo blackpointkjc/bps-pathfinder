@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, History, Settings } from 'lucide-react';
+import { Activity, AlertTriangle, History } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
@@ -9,9 +9,6 @@ import Navigation from './Navigation';
 import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
-import Personnel from './Personnel';
-import PathfinderReports from './Reports';
-import AdminPortal from './AdminPortal';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const BASE_SECTIONS = [
@@ -32,21 +29,12 @@ const TOOLS = {
     { id: 'history', label: 'Call History', component: CallHistory },
     { id: 'records', label: 'Records AI', component: RecordsAssistant },
   ],
-  admin: [
-    { id: 'personnel', label: 'CAD Personnel', component: Personnel },
-    { id: 'reports', label: 'CAD Reports', component: PathfinderReports },
-    { id: 'control', label: 'Admin Control', component: AdminPortal },
-  ],
 };
 
 export default function CADCenter({ embedded = false }) {
   const desktop = useDesktopViewport();
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const fullAccess = user?.role === 'admin' || roles.has('full_access');
-  const sections = fullAccess
-    ? [...BASE_SECTIONS, { id: 'admin', label: 'Admin & Staffing', description: 'CAD personnel, reporting and control settings', icon: Settings }]
-    : BASE_SECTIONS;
+  useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const sections = BASE_SECTIONS;
 
   if (!desktop && !embedded) return <CommandDashboard />;
 
