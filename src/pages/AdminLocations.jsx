@@ -412,6 +412,14 @@ export default function AdminLocations({ embedded = false }) {
     setShowDialog(true);
   };
 
+  useEffect(() => {
+    if (!locations?.length || showDialog) return;
+    const locationId = new URLSearchParams(window.location.search).get('location_id');
+    if (!locationId) return;
+    const target = locations.find(location => String(location.id) === String(locationId));
+    if (target) handleEdit(target);
+  }, [locations, showDialog]);
+
   const addBoundaryPoint = (point) => {
     const next = [...(formData.geofence_polygon || []), point];
     setFormData(prev => ({
@@ -1173,7 +1181,8 @@ export default function AdminLocations({ embedded = false }) {
             )}
 
             {formData.property_monitoring_enabled && (
-              <div className="rounded-xl border border-cyan-500/40 bg-cyan-950/20 p-4 space-y-4">
+              <div className={`rounded-2xl border p-5 space-y-4 shadow-xl ${formData.auto_dispatch_enabled && formData.auto_dispatch_mode === 'live' ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-amber-500/50 bg-amber-950/20'}`}>
+                <div className={`rounded-xl border px-4 py-3 text-xs font-black ${formData.auto_dispatch_enabled && formData.auto_dispatch_mode === 'live' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'}`}>{formData.auto_dispatch_enabled ? `CURRENT PROPERTY DISPATCH MODE: ${(formData.auto_dispatch_mode || 'shadow').replaceAll('_',' ').toUpperCase()}` : 'AUTOMATIC DISPATCH IS OFF FOR THIS PROPERTY — PROPERTY ALERTS WILL NOT AUTO-ASSIGN A UNIT'}</div>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <Label className="font-semibold text-cyan-100">Automatic Property-Alert Dispatch</Label>
