@@ -1,0 +1,73 @@
+{
+  "name": "DutySupervisorAssignment",
+  "type": "object",
+  "properties": {
+    "assignment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "description": "Specific site/location name, or ALL for company-wide duty coverage"
+    },
+    "supervisor_email": {
+      "type": "string"
+    },
+    "supervisor_name": {
+      "type": "string"
+    },
+    "supervisor_rank": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "active",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "created_by_email": {
+      "type": "string"
+    },
+    "updated_by_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "assignment_date",
+    "start_time",
+    "end_time",
+    "supervisor_email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
