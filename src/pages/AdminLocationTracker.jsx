@@ -99,13 +99,13 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
       }
       
       if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16, animate: false });
       }
     } else if (officers && officers.length > 0) {
       const validOfficers = officers.filter(hasValidCoordinates);
       if (validOfficers.length > 0) {
         const bounds = validOfficers.map(o => [Number(o.latitude), Number(o.longitude)]);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
       }
     }
   }, [officers, historicalPath, clockInLocation, clockOutLocation, map]);
