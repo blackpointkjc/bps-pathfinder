@@ -1,26 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool' }) {
   const location = useLocation();
   const navigate = useNavigate();
   const safeTools = Array.isArray(tools) ? tools : [];
-  const initial = useMemo(() => {
-    const requested = new URLSearchParams(location.search).get(queryParam);
-    return safeTools.some(tool => tool.id === requested) ? requested : defaultTool || safeTools[0]?.id;
-  }, [location.search, safeTools, defaultTool, queryParam]);
-  const [tool, setTool] = useState(initial);
-
-  useEffect(() => {
-    if (!safeTools.length) return;
-    const requested = new URLSearchParams(location.search).get(queryParam);
-    const fallback = defaultTool && safeTools.some(item => item.id === defaultTool) ? defaultTool : safeTools[0].id;
-    const next = requested && safeTools.some(item => item.id === requested) ? requested : fallback;
-    if (next !== tool) setTool(next);
-  }, [location.search, queryParam, tool, defaultTool, safeTools]);
+  const requestedTool = new URLSearchParams(location.search).get(queryParam);
+  const fallbackTool = defaultTool && safeTools.some(item => item.id === defaultTool)
+    ? defaultTool
+    : safeTools[0]?.id;
+  const tool = requestedTool && safeTools.some(item => item.id === requestedTool)
+    ? requestedTool
+    : fallbackTool;
 
   const select = next => {
-    setTool(next);
     const params = new URLSearchParams(location.search);
     params.set(queryParam, next);
     ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
