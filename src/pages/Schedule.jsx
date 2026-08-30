@@ -12,6 +12,34 @@ import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirector
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
+const TIMELINE_HOUR_HEIGHT = 56;
+const TIMELINE_HEIGHT = TIMELINE_HOUR_HEIGHT * 24;
+const TIMELINE_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+const minutesFromTime = value => {
+  const [hours = 0, minutes = 0] = String(value || '00:00').slice(0, 5).split(':').map(Number);
+  return Math.max(0, Math.min(1440, (hours * 60) + minutes));
+};
+
+const hourLabel = hour => {
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+};
+
+const timelinePlacement = schedule => {
+  const startMinutes = Math.min(1439, minutesFromTime(schedule.start_time));
+  const rawEndMinutes = minutesFromTime(schedule.end_time);
+  const crossesMidnight = rawEndMinutes <= startMinutes;
+  const visibleEndMinutes = crossesMidnight ? 1440 : Math.min(1440, rawEndMinutes);
+  const visibleMinutes = Math.max(1, visibleEndMinutes - startMinutes);
+  return {
+    top: (startMinutes / 60) * TIMELINE_HOUR_HEIGHT,
+    height: Math.max(38, (visibleMinutes / 60) * TIMELINE_HOUR_HEIGHT),
+    crossesMidnight,
+  };
+};
+
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedPayrollPeriod] = useState("all");
@@ -378,130 +406,111 @@ export default function Schedule() {
         )}
 
         <div className="pb-2">
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-5">
-          {weekDays.map((day) => {
-            const daySchedules = getScheduleForDate(day);
-            const ptoEntry = checkPTOForDate(day);
-            const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 md:grid md:grid-cols-5 md:overflow-visible">
+            {weekDays.map((day) => {
+              const daySchedules = getScheduleForDate(day);
+              const ptoEntry = checkPTOForDate(day);
+              const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
-            return (
-              <Card key={day.toString()} className={`w-[calc(100vw-2.5rem)] max-w-[430px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-[82vw] md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
-                <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
-                  <CardTitle className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Calendar className={`h-4 w-4 ${isToday ? 'text-blue-400' : 'text-slate-500'}`} />
-                        <span className="truncate text-sm font-black text-white">{format(day, 'EEE')}</span>
-                        {isToday && <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
+              return (
+                <Card key={day.toString()} className={`w-[calc(100vw-2.5rem)] max-w-[430px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-[82vw] md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
+                  <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-3 py-3`}>
+                    <CardTitle className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Calendar className={`h-4 w-4 ${isToday ? 'text-blue-400' : 'text-slate-500'}`} />
+                          <span className="truncate text-sm font-black text-white">{format(day, 'EEE')}</span>
+                          {isToday && <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
+                        </div>
+                        <div className="mt-1 text-[11px] font-medium text-slate-400">{format(day, 'MMM d, yyyy')}</div>
                       </div>
-                      <div className="mt-1 text-[11px] font-medium text-slate-400">{format(day, 'MMM d, yyyy')}</div>
-                    </div>
-                    {ptoEntry && <Badge className="bg-green-700 text-white">PTO</Badge>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2.5 sm:min-h-[170px] xl:min-h-[190px]">
-                  {ptoEntry ? (
-                    <div className="rounded-lg border border-green-800/60 bg-green-950/20 py-6 text-center">
-                      <p className="mb-2 text-lg font-bold text-green-300">✓ Time Off Approved</p>
-                      <p className="text-sm font-semibold text-green-400">{ptoEntry.reason}</p>
-                      {ptoEntry.admin_notes && (
-                        <p className="mt-2 text-xs text-green-500">Admin Note: {ptoEntry.admin_notes}</p>
+                      {ptoEntry && <Badge className="bg-green-700 text-white">PTO</Badge>}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="relative border-b border-slate-800 bg-[#08111d]" style={{ height: TIMELINE_HEIGHT }}>
+                      {TIMELINE_HOURS.map(hour => (
+                        <div
+                          key={hour}
+                          className="absolute inset-x-0 border-t border-slate-800/80"
+                          style={{ top: hour * TIMELINE_HOUR_HEIGHT }}
+                        >
+                          <span className="absolute left-1 top-1 rounded bg-[#08111d]/95 px-1 text-[9px] font-bold text-slate-500">
+                            {hourLabel(hour)}
+                          </span>
+                        </div>
+                      ))}
+
+                      {ptoEntry && (
+                        <div className="absolute left-11 right-1 top-2 z-20 rounded-lg border border-green-700/60 bg-green-950/90 p-2 text-center shadow-lg">
+                          <p className="text-xs font-black text-green-200">TIME OFF APPROVED</p>
+                          <p className="mt-1 text-[10px] text-green-300">{ptoEntry.reason}</p>
+                          {ptoEntry.admin_notes && <p className="mt-1 text-[9px] text-green-400">Admin: {ptoEntry.admin_notes}</p>}
+                        </div>
                       )}
-                    </div>
-                  ) : daySchedules.length > 0 ? (
-                    <div className="space-y-4">
-                      {daySchedules.map((schedule) => {
-                        const isSplitShift = schedule.is_split_shift === true;
-                        
+
+                      {!ptoEntry && daySchedules.length === 0 && (
+                        <div className="absolute left-11 right-2 rounded-lg border border-dashed border-slate-700 bg-slate-950/75 px-2 py-3 text-center text-[10px] font-bold text-slate-500" style={{ top: 8 * TIMELINE_HOUR_HEIGHT }}>
+                          NO SHIFT
+                        </div>
+                      )}
+
+                      {!ptoEntry && daySchedules.map(schedule => {
+                        const placement = timelinePlacement(schedule);
+                        const isSplitShift = schedule.is_split_shift === true || Boolean(schedule.linked_shift_id);
+                        const duty = dutySupervisorForShift(schedule);
+                        const dedicated = dedicatedSupervisorForShift(schedule);
+                        const supervisorName = duty?.supervisor_name || (duty ? getUserName(duty.supervisor_email) : dedicated?.name);
+                        const vehicle = vehicleAssignments.find(a =>
+                          a.assignment_date === schedule.shift_date &&
+                          (a.primary_officer_email === user?.email || a.partner_officer_email === user?.email) &&
+                          (!a.start_time || a.start_time === schedule.start_time)
+                        );
+                        const detailTitle = [
+                          `${schedule.start_time}–${schedule.end_time}${placement.crossesMidnight ? ' (continues next day)' : ''}`,
+                          schedule.location,
+                          schedule.partner_officer_email ? `Partner: ${getUserName(schedule.partner_officer_email)}` : '',
+                          supervisorName ? `Supervisor: ${supervisorName}` : '',
+                          vehicle?.vehicle_label ? `Vehicle: ${vehicle.vehicle_label}` : '',
+                          schedule.site_details || '',
+                          schedule.special_instructions || '',
+                        ].filter(Boolean).join('\n');
+
                         return (
-                          <div key={schedule.id} className={`rounded-xl border p-2.5 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-blue-950/20'}`}>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Clock className={`h-4 w-4 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
-                                  <span className="text-sm font-black text-white xl:text-[13px]">{schedule.start_time}–{schedule.end_time}</span>
-                                </div>
-                                {isSplitShift && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">SPLIT</span>}
-                              </div>
-                              <button onClick={() => openInMaps(schedule.location)} className="group flex w-full items-start gap-2 text-left">
-                                <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
-                                <span className="min-w-0 break-words text-[11px] font-semibold leading-4 text-slate-200 group-hover:text-white">{schedule.location}</span>
-                                <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-300" />
-                              </button>
+                          <div
+                            key={schedule.id}
+                            title={detailTitle}
+                            className={`absolute left-11 right-1 z-10 overflow-hidden rounded-lg border p-2 shadow-lg ${isSplitShift ? 'border-purple-500/70 bg-purple-950/95' : 'border-blue-500/70 bg-blue-950/95'}`}
+                            style={{ top: placement.top, height: placement.height }}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="truncate text-[11px] font-black text-white">{schedule.start_time}–{schedule.end_time}</span>
+                              {isSplitShift && <span className="rounded bg-purple-400/20 px-1 text-[8px] font-black text-purple-200">SPLIT</span>}
                             </div>
-                            {schedule.partner_officer_email && (
-                              <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/60 px-2.5 py-2">
-                                <Users className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                                <div className="min-w-0"><div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Partner</div><div className="truncate text-[11px] font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div></div>
-                              </div>
+                            {placement.crossesMidnight && <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">Continues next day</div>}
+                            <button type="button" onClick={() => openInMaps(schedule.location)} className="mt-1 flex w-full items-start gap-1 text-left">
+                              <MapPin className={`mt-0.5 h-3 w-3 shrink-0 ${isSplitShift ? 'text-purple-300' : 'text-blue-300'}`} />
+                              <span className="line-clamp-2 text-[10px] font-semibold leading-3 text-slate-100">{schedule.location}</span>
+                            </button>
+                            {placement.height >= 92 && schedule.partner_officer_email && (
+                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-slate-300"><Users className="h-3 w-3 shrink-0 text-blue-300" />{getUserName(schedule.partner_officer_email)}</div>
                             )}
-                            {(() => {
-                              const duty = dutySupervisorForShift(schedule);
-                              const dedicated = dedicatedSupervisorForShift(schedule);
-                              const supervisorName = duty?.supervisor_name || (duty ? getUserName(duty.supervisor_email) : dedicated?.name);
-                              if (!supervisorName) return null;
-                              return (
-                                <div className="mt-2 flex items-start gap-2 rounded-xl border border-cyan-700/50 bg-cyan-950/20 px-3 py-3">
-                                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-                                  <div className="min-w-0 flex-1 break-words">
-                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">{duty ? 'Duty Supervisor' : 'Dedicated Site Supervisor'}</div>
-                                    <div className="mt-0.5 break-words text-[12px] font-black leading-4 text-cyan-100">{supervisorName}</div>
-                                    <div className="mt-1 break-words text-[10px] leading-4 text-cyan-300/90">{duty ? `Coverage ${duty.start_time}–${duty.end_time}${duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}` : `${dedicated.location} dedicated supervisor`}</div>
-                                    <div className="mt-1.5 text-[9px] font-semibold leading-4 text-cyan-200">Contact this supervisor first for site-specific issues, guidance, or escalation while you are assigned here.</div>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            {(() => {
-                              const vehicle = vehicleAssignments.find(a =>
-                                a.assignment_date === schedule.shift_date &&
-                                (a.primary_officer_email === user?.email || a.partner_officer_email === user?.email) &&
-                                (!a.start_time || a.start_time === schedule.start_time)
-                              );
-                              const isPartner = vehicle?.partner_officer_email === user?.email;
-                              if (!vehicle) return null;
-                              return (
-                                <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-700/50 bg-amber-950/20 px-2.5 py-2">
-                                  <Car className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-[9px] font-bold uppercase tracking-wide text-amber-400">Fleet Vehicle</div>
-                                    <div className="truncate text-[12px] font-black text-amber-200">{vehicle.vehicle_label}</div>
-                                    {vehicle.partner_officer_name && <div className="mt-0.5 truncate text-[9px] text-amber-300/80">Assigned with {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            {schedule.site_details && (
-                              <div className="mt-4 p-3 bg-white rounded border border-blue-200">
-                                <p className="text-xs text-blue-700 font-medium mb-1 flex items-center gap-1">
-                                  <Info className="w-3 h-3" />
-                                  Site Details
-                                </p>
-                                <p className="text-sm text-slate-700">{schedule.site_details}</p>
-                              </div>
+                            {placement.height >= 120 && supervisorName && (
+                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-cyan-200"><ShieldCheck className="h-3 w-3 shrink-0" />{supervisorName}</div>
                             )}
-                            {schedule.special_instructions && (
-                              <div className="mt-4 p-3 bg-white rounded border border-blue-200">
-                                <p className="text-xs text-blue-700 font-medium mb-1 flex items-center gap-1">
-                                  <FileText className="w-3 h-3" />
-                                  Special Instructions
-                                </p>
-                                <p className="text-sm text-slate-700">{schedule.special_instructions}</p>
-                              </div>
+                            {placement.height >= 148 && vehicle?.vehicle_label && (
+                              <div className="mt-1 flex items-center gap-1 truncate text-[9px] text-amber-200"><Car className="h-3 w-3 shrink-0" />{vehicle.vehicle_label}</div>
                             )}
+                            {placement.height >= 210 && schedule.site_details && <p className="mt-2 line-clamp-3 border-t border-white/10 pt-1 text-[9px] leading-3 text-slate-300">{schedule.site_details}</p>}
+                            {placement.height >= 270 && schedule.special_instructions && <p className="mt-1 line-clamp-3 text-[9px] leading-3 text-blue-200">{schedule.special_instructions}</p>}
                           </div>
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-3 py-7 text-center">
-                      <div className="text-[11px] font-medium text-slate-600">NO SHIFT</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </div>
