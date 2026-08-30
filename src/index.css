@@ -1298,13 +1298,18 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
 
 /* Shared command-center visual language. UnifiedCenter is the safe theme boundary:
    presentation is modernized without changing page queries, forms, or actions. */
-.bps-command-theme {
+.bps-command-theme,
+.bps-command-page {
   --bps-command-bg: #080d16;
   --bps-command-panel: #0d1420;
   --bps-command-panel-2: #101826;
   --bps-command-border: #2a374a;
   --bps-command-muted: #98a6ba;
   background: var(--bps-command-bg);
+}
+
+.bps-command-page {
+  color: #f8fafc;
 }
 
 .bps-command-theme .bps-command-content {
