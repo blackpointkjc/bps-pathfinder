@@ -119,9 +119,9 @@ Deno.serve(async (req) => {
     };
 
     const states = await safeList('work queue completion history', () =>
-      base44.asServiceRole.entities.WorkQueueState.list('-completed_at', 5000)
+      base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole }, '-completed_at', 2000)
     );
-    const roleStates = (states || []).filter((state: any) => normalized(state.queue_role) === queueRole);
+    const roleStates = states || [];
 
     if (normalized(body?.action) === 'complete') {
       const taskKey = String(body?.task_key || '').trim();
@@ -465,10 +465,43 @@ Deno.serve(async (req) => {
       ));
     }
 
-    const tasks = candidates.filter(task => {
+    let tasks = candidates.filter(task => {
       const state = stateByKey.get(String(task.id));
       return normalized(state?.status) !== 'completed';
     });
+
+    // When one source is temporarily unavailable, keep its previously confirmed
+    // open tasks visible. This prevents work from disappearing and reappearing
+    // across hourly refreshes or page reloads.
+    if (loadErrors.length) {
+      const destinationFor = (kind: string) => {
+        if (kind === 'pto') return 'AdminPTOApproval';
+        if (kind === 'performance_review' || kind === 'annual_review_due') return 'AdminPerformanceReviews';
+        if (kind === 'missed_clock_in' || kind === 'late_clock_out') return 'ManageTimeEntries';
+        if (kind === 'access') return 'AdminUsers';
+        if (kind === 'availability') return 'AdminOfficerManagement';
+        if (kind === 'expense') return 'AdminExpenseApproval';
+        if (kind === 'shift_bid') return 'AdminShiftBids';
+        if (kind === 'special_coverage') return 'AdminSpecialRequests';
+        if (kind === 'weekly_schedule') return 'AdminScheduling';
+        return 'AdminReports';
+      };
+      const retained = roleStates.filter((state: any) =>
+        normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
+      ).map((state: any) => ({
+        id: String(state.task_key),
+        source_id: String(state.source_id || ''),
+        kind: normalized(state.source_kind),
+        priority: 'high',
+        title: state.title || 'Pending work item',
+        person: state.person || 'Employee',
+        detail: 'Retained from the last confirmed queue check while source data reloads.',
+        page: destinationFor(normalized(state.source_kind)),
+        retained: true,
+      }));
+      tasks = [...tasks, ...retained]
+        .filter((task, index, rows) => rows.findIndex(item => String(item.id) === String(task.id)) === index);
+    }
     const recentCompleted = roleStates
       .filter((state: any) => normalized(state.status) === 'completed'
         || (normalized(state.status) === 'auto_completed' && !candidateKeys.has(String(state.task_key))))
