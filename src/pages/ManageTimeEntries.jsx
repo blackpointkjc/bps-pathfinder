@@ -15,12 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { calculatePaidHours } from '@/lib/payrollCalculations';
+import { createPageUrl } from '@/utils';
 
 export default function ManageTimeEntries() {
   const location = useLocation();
   const navigate = useNavigate();
   const requestedEntryId = new URLSearchParams(location.search).get('entry_id') || '';
   const queueKind = new URLSearchParams(location.search).get('queue_kind') || '';
+  const queueTaskId = new URLSearchParams(location.search).get('queue_task') || '';
   const openedEntryRef = useRef('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState("all");
@@ -73,6 +75,18 @@ export default function ManageTimeEntries() {
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
   const hasPayrollAuthority = isAdmin || isHR;
+
+  const returnToRoleCenter = () => {
+    if (!queueTaskId) {
+      clearTaskDeepLink();
+      return;
+    }
+    const destination = isAdmin
+      ? `${createPageUrl('AdminCenter')}?admin_center=admin&admin_ops_section=command&admin_ops_tool=dashboard`
+      : `${createPageUrl('HRCenter')}?section=overview&tool=overview`;
+    navigate(destination, { replace: true });
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  };
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
@@ -167,7 +181,7 @@ export default function ManageTimeEntries() {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       invalidatePayrollViews();
       setEditingEntry(null);
-      clearTaskDeepLink();
+      returnToRoleCenter();
       setEditFormData({
         clock_in: "",
         clock_out: "",
@@ -208,8 +222,7 @@ export default function ManageTimeEntries() {
       queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
       invalidatePayrollViews();
       setPayrollEntryId(null);
-      clearTaskDeepLink();
-      alert('Payroll and performance decision saved. The related work-queue task will close automatically.');
+      returnToRoleCenter();
     },
     onError: (error) => {
       alert(error?.message || 'Unable to save the payroll decision');
