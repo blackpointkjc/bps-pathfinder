@@ -147,6 +147,7 @@ import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
 import OfficerAvailability from './pages/OfficerAvailability';
 import FleetVehicleAssignments from './pages/FleetVehicleAssignments';
+import DutySupervisorScheduling from './pages/DutySupervisorScheduling';
 import OfficerCenter from './pages/OfficerCenter';
 import OfficerDispatchQueue from './pages/OfficerDispatchQueue';
 import OfficerInbox from './pages/OfficerInbox';
@@ -294,6 +295,7 @@ export const PAGES = {
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
     "OfficerAvailability": OfficerAvailability,
     "FleetVehicleAssignments": FleetVehicleAssignments,
+    "DutySupervisorScheduling": DutySupervisorScheduling,
     "OfficerCenter": OfficerCenter,
     "OfficerDispatchQueue": OfficerDispatchQueue,
     "OfficerInbox": OfficerInbox,
