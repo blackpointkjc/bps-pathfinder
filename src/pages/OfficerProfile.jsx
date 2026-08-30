@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export default function OfficerProfile() {
   const { data: user } = useQuery({
     queryKey: ['officerProfileUser'],
     queryFn: async () => {
-      const authUser = await base44.auth.me();
+      const authUser = await getCurrentDirectoryUser();
       if (!authUser?.email) return authUser;
       const rows = await base44.entities.User.filter({ email: authUser.email }).catch(() => []);
       return rows?.[0] ? { ...authUser, ...rows[0] } : authUser;
