@@ -38,14 +38,23 @@
       "enum": [
         "pending",
         "approved",
-        "denied"
+        "denied",
+        "cancelled"
       ],
       "default": "pending",
       "description": "Status of the request"
     },
+    "requested_by_email": {
+      "type": "string",
+      "description": "Work email of the employee requesting time off"
+    },
+    "requested_by_name": {
+      "type": "string",
+      "description": "Display name of the employee requesting time off"
+    },
     "admin_notes": {
       "type": "string",
-      "description": "Notes from admin regarding the request"
+      "description": "Notes from HR regarding the request"
     },
     "reviewed_by": {
       "type": "string",
@@ -55,6 +64,19 @@
       "type": "string",
       "format": "date-time",
       "description": "When the request was reviewed"
+    },
+    "cancelled_by": {
+      "type": "string",
+      "description": "HR user who cancelled the request"
+    },
+    "cancelled_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the request was cancelled"
+    },
+    "hours_restored": {
+      "type": "number",
+      "description": "Paid leave hours restored when an approved request is cancelled"
     }
   },
   "required": [
