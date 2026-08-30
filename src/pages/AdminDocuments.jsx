@@ -48,7 +48,12 @@ export default function AdminDocuments() {
   });
 
   const deleteDocMutation = useMutation({
-    mutationFn: (id) => base44.entities.TrainingDocument.delete(id),
+    mutationFn: async (id) => {
+      const response = await base44.functions.invoke('manageTrainingDocuments', { action: 'delete', id });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingDocuments'] });
     },
@@ -66,16 +71,16 @@ export default function AdminDocuments() {
     try {
       const { file_url } = await uploadInternalFile(formData.file);
 
-      await base44.entities.TrainingDocument.create({
+      const response = await base44.functions.invoke('manageTrainingDocuments', { action: 'create', data: {
         title: formData.title,
         description: formData.description,
-        file_url: file_url,
+        file_url,
         file_name: formData.file.name,
         category: formData.category,
-        locations: formData.locations.length > 0 ? formData.locations : null,
-        uploaded_date: new Date().toISOString(),
-        uploaded_by: user?.email,
-      });
+        locations: formData.locations,
+      }});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
 
       queryClient.invalidateQueries({ queryKey: ['trainingDocuments'] });
       setShowForm(false);
