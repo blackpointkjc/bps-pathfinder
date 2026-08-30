@@ -71,7 +71,6 @@ export default function HROverview() {
           ],
         };
       });
-      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     },
   });
 
