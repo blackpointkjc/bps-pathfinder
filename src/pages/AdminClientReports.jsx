@@ -340,11 +340,11 @@ export default function AdminClientReports() {
     .sort((a, b) => a.first_name.localeCompare(b.first_name));
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4 print:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Client Reports</h1>
+            <h1 className="text-3xl font-black text-white">Client Reports</h1>
             <p className="text-slate-600">Generate hours and activity reports for client sites</p>
           </div>
         </div>
