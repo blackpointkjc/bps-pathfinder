@@ -1266,6 +1266,13 @@ export default function Layout({ children, currentPageName }) {
     navigate(`${createPageUrl('Navigation')}?${params.toString()}`);
   };
 
+  const openMobileToolsMenu = () => {
+    setMobileSection(null);
+    const centers = allowedCenters(user);
+    if (!centers.includes(activeCenter)) setActiveCenter(centers[0] || 'officer');
+    setMobileOpen(true);
+  };
+
   if (!canAccessPage(user, currentPageName)) {
     return <Navigate to={createPageUrl(defaultPageForUser(user, true))} replace />;
   }
@@ -1406,12 +1413,7 @@ export default function Layout({ children, currentPageName }) {
         }
       }}
       onReports={() => { const centers = allowedCenters(user); setActiveCenter(centers.includes('supervisor') ? 'supervisor' : 'officer'); setMobileSection('reports'); setMobileOpen(true); }}
-      onMenu={() => {
-        setMobileSection(null);
-        const centers = allowedCenters(user);
-        if (!centers.includes(activeCenter)) setActiveCenter(centers[0] || 'officer');
-        setMobileOpen(true);
-      }}
+      onMenu={openMobileToolsMenu}
     />
   </div></MicrosoftMailSetupGate>;
 }
