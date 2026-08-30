@@ -91,6 +91,25 @@
     "net_pay": {
       "type": "number"
     },
+    "tax_free_reimbursements": {
+      "type": "number",
+      "default": 0,
+      "description": "Approved expense reimbursements paid outside taxable wages"
+    },
+    "total_payment_due": {
+      "type": "number",
+      "default": 0,
+      "description": "Net payroll pay plus tax-free reimbursements"
+    },
+    "last_recalculated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last live recalculation timestamp"
+    },
+    "payroll_source": {
+      "type": "string",
+      "description": "Workflow that last calculated this payroll row"
+    },
     "qualified_overtime_premium": {
       "type": "number",
       "description": "FLSA overtime premium eligible for the federal qualified overtime deduction"
