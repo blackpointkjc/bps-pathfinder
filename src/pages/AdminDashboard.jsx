@@ -32,7 +32,7 @@ const ADMIN_QUEUE_KINDS = new Set([
   'shift_bid', 'special_coverage', 'weekly_schedule',
 ]);
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ embedded = false }) {
   const queryClient = useQueryClient();
   const completeTask = useMutation({
     mutationFn: async task => {
@@ -173,17 +173,17 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070d17] p-3 pb-24 text-white sm:p-4 md:p-6">
+    <div className={`min-h-screen bg-[#070d17] pb-24 text-white ${embedded ? 'p-3' : 'p-3 sm:p-4 md:p-6'}`}>
       <div className="mx-auto max-w-[1500px] space-y-5 sm:space-y-6">
-        <div className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl sm:p-6 md:p-8">
+        <div className={`relative overflow-hidden border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] shadow-2xl ${embedded ? 'rounded-xl p-3 md:p-4' : 'rounded-3xl p-5 sm:p-6 md:p-8'}`}>
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className={`relative flex flex-col gap-3 sm:flex-row sm:justify-between ${embedded ? 'sm:items-center' : 'sm:items-end'}`}>
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-6 w-6 text-cyan-300" /></div>
+            <div className={`flex items-center justify-center border border-cyan-400/30 bg-cyan-500/10 ${embedded ? 'h-9 w-9 rounded-lg' : 'h-12 w-12 rounded-2xl'}`}><Shield className={`${embedded ? 'h-4 w-4' : 'h-6 w-6'} text-cyan-300`} /></div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Master Administration</div>
-              <h1 className="mt-1 text-3xl font-black leading-tight text-white md:text-4xl">Admin Command Dashboard</h1>
-              <p className="mt-1 text-sm text-slate-400 sm:text-base">Live staffing, activity, requests and administration status in one view.</p>
+              {!embedded && <div className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Master Administration</div>}
+              <h1 className={`font-black leading-tight text-white ${embedded ? 'text-xl md:text-2xl' : 'mt-1 text-3xl md:text-4xl'}`}>Admin Command Dashboard</h1>
+              {!embedded && <p className="mt-1 text-sm text-slate-400 sm:text-base">Live staffing, activity, requests and administration status in one view.</p>}
             </div>
           </div>
           <DropdownMenu>
