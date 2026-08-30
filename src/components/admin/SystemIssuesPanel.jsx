@@ -186,6 +186,7 @@ export default function SystemIssuesPanel({ currentUser }) {
               Last full scan: {formatESTTime(audit.scanned_at)} · {audit.duration_ms || 0} ms
               {audit.client_summary && ` · ${audit.client_summary.page_modules_loaded}/${audit.client_summary.page_modules_checked} page modules loaded · ${audit.client_summary.runtime_errors_24h} runtime errors captured this app session`}
             </div>
+            {(audit.summary?.issues_found || 0) === 0 && <div className="mt-3 rounded-xl border border-emerald-700/50 bg-emerald-950/25 px-4 py-3 text-xs font-bold text-emerald-200"><CheckCircle className="mr-2 inline h-4 w-4"/>CURRENT STATUS: HEALTHY. Resolved historical Axios/diagnostic errors remain available only under Resolved System Issues and do not represent a current outage.</div>}
           </div>
         )}
       </section>
@@ -215,6 +216,7 @@ export default function SystemIssuesPanel({ currentUser }) {
                         </div>
                         <div className="mt-1 text-sm font-bold text-white">{finding.title}</div>
                         <div className="mt-1 text-xs leading-relaxed text-slate-300">{finding.description}</div>
+                        {/request failed with status code 500|axioserror/i.test(String(finding.description || '')) && <div className="mt-2 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-[10px] text-slate-400">This is a diagnostic request failure. Check the finding timestamp and Active/Resolved state below before treating it as a current application outage.</div>}
                       </div>
                     </div>
                   </div>
