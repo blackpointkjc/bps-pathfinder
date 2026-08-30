@@ -312,7 +312,7 @@ export function announceVoice(text, options = {}) {
   // were the reason users heard two noticeably different announcement voices.
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = String(text)
-    .replace(/\bCAD\b/gi, 'C A D')
+    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
@@ -326,7 +326,7 @@ export function announceVoiceAsync(text, options = {}) {
   if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = String(text)
-    .replace(/\bCAD\b/gi, 'C A D')
+    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
