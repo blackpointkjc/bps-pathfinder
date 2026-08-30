@@ -232,33 +232,6 @@ export default function AdminQRCheckpoints() {
         </Select>
       </div>
 
-      <Card className="border-blue-900/60 bg-gradient-to-br from-blue-950 via-slate-950 to-blue-950 text-white shadow-lg">
-        <CardContent className="p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-cyan-700" />
-            <div>
-              <p className="font-bold text-white">Property Duty Rules</p>
-              <p className="text-xs text-slate-400">Configure report duties and QR requirements for each property using the same rules enforced in Officer and Company Analytics.</p>
-            </div>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {allSites.map(site => {
-              const rule = dutyRules.find(item => item.property_site === site);
-              return (
-                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-blue-800/60 bg-blue-950/55 p-3 text-left transition hover:border-cyan-500 hover:bg-blue-900/70">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-white">{site}</span>
-                    <Badge className={rule?.effective_date ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule?.effective_date ? `Effective ${rule.effective_date}` : rule ? 'Not scoring yet' : 'Not configured'}</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-300">DAR: {rule?.daily_activity_report_required === true ? 'Required' : 'Not required'} • Incident: {rule?.incident_report_required_for_property_calls === true ? 'Required' : 'Not required'}</p>
-                  <p className="text-xs text-slate-300">QR: {rule ? (rule.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min • ${rule.required_checkpoint_ids?.length || checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'Disabled by property rule') : (checkpoints.some(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false) ? `Required by existing checkpoint defaults • ${checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'No QR requirement configured')}</p>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Table */}
       <Card className="border-slate-700 bg-slate-900 text-white shadow-lg">
         <CardContent className="p-0">
@@ -323,54 +296,6 @@ export default function AdminQRCheckpoints() {
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={showRuleForm} onOpenChange={setShowRuleForm}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto border-slate-700 bg-slate-950 text-white">
-          <DialogHeader><DialogTitle>Job Duty Rules — {ruleForm.property_site}</DialogTitle></DialogHeader>
-          <div className="space-y-5">
-            <div className="rounded-lg border border-amber-700/60 bg-amber-950/20 p-3">
-              <Label className="text-amber-200">Performance Effective Date</Label>
-              <Input type="date" value={ruleForm.effective_date} onChange={e => setRuleForm(p => ({...p, effective_date: e.target.value}))} className="mt-2" />
-              <p className="mt-2 text-xs text-amber-100/70">Nothing before this date is scored as a missed DAR, incident report, or QR duty. Leave blank while configuring/testing the property rule.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3"><Label>Daily Activity Report required every worked shift</Label><Switch checked={ruleForm.daily_activity_report_required} onCheckedChange={v => setRuleForm(p => ({...p, daily_activity_report_required: v}))} /></div>
-              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3"><Label>Incident Report required for property calls</Label><Switch checked={ruleForm.incident_report_required_for_property_calls} onCheckedChange={v => setRuleForm(p => ({...p, incident_report_required_for_property_calls: v}))} /></div>
-              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3 sm:col-span-2"><Label>QR compliance required</Label><Switch checked={ruleForm.qr_required} onCheckedChange={v => setRuleForm(p => ({...p, qr_required: v}))} /></div>
-            </div>
-
-            {ruleForm.qr_required && (
-              <div className="space-y-4 rounded-xl border border-cyan-900 bg-slate-900 p-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div><Label>Frequency (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_frequency_minutes} onChange={e => setRuleForm(p => ({...p, qr_frequency_minutes: Number(e.target.value || 60)}))} /></div>
-                  <div><Label>Scan window (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_window_minutes} onChange={e => setRuleForm(p => ({...p, qr_window_minutes: Number(e.target.value || 30)}))} /></div>
-                  <div><Label>Minimum scans per shift</Label><Input type="number" min="0" value={ruleForm.qr_scans_per_shift} onChange={e => setRuleForm(p => ({...p, qr_scans_per_shift: Number(e.target.value || 0)}))} /></div>
-                </div>
-                <div>
-                  <Label className="mb-2 block">Required QR codes for this property</Label>
-                  <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
-                    {checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).length === 0 ? (
-                      <p className="text-sm text-slate-500">No active checkpoints exist for this property yet.</p>
-                    ) : checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).map(cp => {
-                      const checked = ruleForm.required_checkpoint_ids.includes(cp.id);
-                      return (
-                        <label key={cp.id} className="flex items-center gap-3 text-sm text-slate-200">
-                          <input type="checkbox" checked={checked} onChange={e => setRuleForm(p => ({...p, required_checkpoint_ids: e.target.checked ? [...p.required_checkpoint_ids, cp.id] : p.required_checkpoint_ids.filter(id => id !== cp.id)}))} />
-                          <span><strong>{cp.checkpoint_name}</strong> — {cp.location_label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">If no specific QR codes are selected, all checkpoints marked Required for this property are used.</p>
-                </div>
-              </div>
-            )}
-
-            <div><Label>Rule Notes</Label><Input value={ruleForm.notes} onChange={e => setRuleForm(p => ({...p, notes: e.target.value}))} placeholder="Optional instructions for this property" /></div>
-            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowRuleForm(false)}>Cancel</Button><Button onClick={() => saveRuleMutation.mutate(ruleForm)} disabled={saveRuleMutation.isPending}>{saveRuleMutation.isPending ? 'Saving...' : 'Save Property Rules'}</Button></div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={(v) => !v && resetForm()}>
