@@ -1296,6 +1296,68 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   }
 }
 
+/* Shared command-center visual language. UnifiedCenter is the safe theme boundary:
+   presentation is modernized without changing page queries, forms, or actions. */
+.bps-command-theme {
+  --bps-command-bg: #080d16;
+  --bps-command-panel: #0d1420;
+  --bps-command-panel-2: #101826;
+  --bps-command-border: #2a374a;
+  --bps-command-muted: #98a6ba;
+  background: var(--bps-command-bg);
+}
+
+.bps-command-theme .bps-command-content {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(35, 117, 163, .06), transparent 28rem),
+    var(--bps-command-bg);
+}
+
+.bps-command-theme .bps-command-content :is(.rounded-xl, .rounded-2xl, .rounded-3xl)[class*="border"] {
+  border-color: var(--bps-command-border);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+}
+
+.bps-command-theme .bps-command-content :is(.rounded-2xl, .rounded-3xl)[class*="border"] {
+  border-radius: 1.55rem;
+}
+
+.bps-command-theme .bps-command-content :is(.bg-card, .bg-slate-900, .bg-slate-950\/30, .bg-slate-950\/40, .bg-slate-950\/60, .bg-slate-950\/70) {
+  background-color: var(--bps-command-panel) !important;
+}
+
+.bps-command-theme .bps-command-content section[class*="border"],
+.bps-command-theme .bps-command-content article[class*="border"] {
+  border-color: var(--bps-command-border);
+}
+
+.bps-command-theme .bps-command-content h1,
+.bps-command-theme .bps-command-content h2,
+.bps-command-theme .bps-command-content h3 {
+  letter-spacing: -.02em;
+}
+
+.bps-command-theme .bps-command-content [class*="uppercase"][class*="tracking-"] {
+  letter-spacing: .16em;
+}
+
+.bps-command-theme .bps-command-content table {
+  border-color: var(--bps-command-border);
+}
+
+.bps-command-theme .bps-command-content thead {
+  background: #0a111c;
+}
+
+.bps-command-theme .bps-command-content tbody tr {
+  border-color: rgba(42, 55, 74, .72);
+}
+
+.bps-command-theme .bps-command-content button[class*="border"],
+.bps-command-theme .bps-command-content a[class*="border"] {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
+}
+
 /* Shared dashboard KPI cards: keep icon, value, label, and supporting text
    visually centered throughout Pathfinder. These are summary cards, not data
    entry panels, so asymmetric left/right placement makes the dashboards look
