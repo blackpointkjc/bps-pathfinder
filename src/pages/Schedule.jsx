@@ -213,7 +213,9 @@ export default function Schedule() {
 
   const visibleSchedules = React.useMemo(() => {
     if (!schedules) return [];
-    const windowStartStr = format(weekStart, 'yyyy-MM-dd');
+    // Include the prior start-date so an overnight shift that began yesterday
+    // can render its after-midnight segment in the first visible day.
+    const windowStartStr = format(addDays(weekStart, -1), 'yyyy-MM-dd');
     const windowEndStr = format(weekEnd, 'yyyy-MM-dd');
     return schedules.filter(s =>
       s.shift_date >= windowStartStr &&
