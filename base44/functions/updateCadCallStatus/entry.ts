@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       Dispatched: `Unit dispatched. ${call.incident || 'Call for service'}. CAD number ${cadNumber}.`,
       Enroute: `Unit en route. CAD number ${cadNumber}.`,
       'On Scene': `Unit on scene. CAD number ${cadNumber}.`,
-      Cleared: `Call cleared. CAD number ${cadNumber}. Officer returned to available status.`,
+      Cleared: `Call cleared. CAD number ${cadNumber}.`,
       Cancelled: `Call cancelled. CAD number ${cadNumber}. ${cancellationTerminology}.`,
     };
     await base44.asServiceRole.entities.CallStatusLog.create({
