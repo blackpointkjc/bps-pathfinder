@@ -33,7 +33,7 @@ const TOOLS = {
 export default function AccountingCenter() {
   return (
     <UnifiedCenter eyebrow="Finance & Accounting" title="Accounting Center" description="One desktop workspace for payroll, billing, expenses, profitability, and tax tracking." sections={SECTIONS} defaultSection="dashboard">
-      {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
+      {section => <CenterToolSection tools={TOOLS[section]} />}
     </UnifiedCenter>
   );
 }
