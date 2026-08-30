@@ -102,11 +102,6 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
     if (unitsToShow.length === 0) return null;
     
-    const locationSignature = unitsToShow
-        .map(unit => `${unit.id}:${Number(unit.latitude).toFixed(6)}:${Number(unit.longitude).toFixed(6)}:${unit.last_updated || ''}`)
-        .sort()
-        .join('|');
-
     const handleClusterClick = (event) => {
         const cluster = event?.layer;
         const childMarkers = cluster?.getAllChildMarkers?.() || [];
@@ -144,7 +139,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
     return (
         <MarkerClusterGroup
-            key={locationSignature}
+            animate={false}
             chunkedLoading
             maxClusterRadius={(zoom) => {
                 // Web Mercator ground resolution near central Virginia. This keeps
