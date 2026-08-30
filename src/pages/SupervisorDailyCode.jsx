@@ -81,13 +81,13 @@ export default function SupervisorDailyCode() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-white max-w-2xl mx-auto space-y-6">
+    <div className="bps-command-page mx-auto min-h-screen max-w-3xl space-y-6 bg-[#080d16] p-4 text-white md:p-8">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-600 -ml-2">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Daily Code</h1>
+          <h1 className="text-2xl font-black text-white">My Daily Code</h1>
           <p className="text-sm text-slate-500">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
       </div>
