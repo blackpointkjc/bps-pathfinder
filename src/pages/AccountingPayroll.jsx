@@ -884,11 +884,17 @@ export default function AccountingPayroll() {
         String(item.clock_in).slice(0, 10) >= payrollEntry.pay_period_start &&
         String(item.clock_in).slice(0, 10) <= payrollEntry.pay_period_end)
       .sort((a, b) => new Date(a.clock_in) - new Date(b.clock_in));
+    const reportHoursForEntry = payrollEntry => {
+      const shifts = entryForOfficer(payrollEntry);
+      return shifts.length
+        ? shifts.reduce((sum, shift) => sum + calculatePayrollHours(shift), 0)
+        : Number(payrollEntry.hours_worked || 0);
+    };
 
     const masterRows = entriesToReport.map(entry => {
       const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
       const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
-      return `<tr><td>${esc(name)}</td><td>${esc(entry.officer_email)}</td><td class="num">${Number(entry.regular_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.overtime_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.holiday_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.hours_worked || 0).toFixed(2)}</td><td class="num">$${money(entry.hourly_rate)}</td><td class="num">$${money(entry.gross_pay)}</td></tr>`;
+      return `<tr><td>${esc(name)}</td><td>${esc(entry.officer_email)}</td><td class="num">${Number(entry.regular_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.overtime_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.holiday_hours || 0).toFixed(2)}</td><td class="num">${reportHoursForEntry(entry).toFixed(2)}</td><td class="num">$${money(entry.hourly_rate)}</td><td class="num">$${money(entry.gross_pay)}</td></tr>`;
     }).join('');
 
     const detailSections = entriesToReport.map(entry => {
@@ -911,10 +917,10 @@ export default function AccountingPayroll() {
       ...entriesToReport.map(entry => {
         const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
         const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
-        return [name,entry.officer_email,entry.pay_period_start,entry.pay_period_end,entry.regular_hours,entry.hourly_rate,entry.regular_pay,entry.overtime_hours,entry.overtime_rate,entry.overtime_pay,entry.holiday_hours,entry.holiday_rate,entry.holiday_pay,entry.hours_worked,entry.gross_pay];
+        return [name,entry.officer_email,entry.pay_period_start,entry.pay_period_end,entry.regular_hours,entry.hourly_rate,entry.regular_pay,entry.overtime_hours,entry.overtime_rate,entry.overtime_pay,entry.holiday_hours,entry.holiday_rate,entry.holiday_pay,reportHoursForEntry(entry),entry.gross_pay];
       })
     ].map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const totalHours = entriesToReport.reduce((sum, e) => sum + Number(e.hours_worked || 0), 0);
+    const totalHours = entriesToReport.reduce((sum, entry) => sum + reportHoursForEntry(entry), 0);
     const totalGrossReport = entriesToReport.reduce((sum, e) => sum + Number(e.gross_pay || 0), 0);
 
     reportWindow.document.write(`<!doctype html><html><head><title>Payroll Transfer Report</title><style>
