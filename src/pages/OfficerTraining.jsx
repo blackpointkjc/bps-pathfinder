@@ -266,7 +266,7 @@ export default function OfficerTraining() {
   const overdueCount = assignments.filter(a => a.due_date && isPast(new Date(a.due_date)) && a.status !== 'approved').length;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 p-3 sm:p-4 md:p-5">
+    <div className="bps-command-page min-h-screen overflow-x-hidden bg-[#080d16] p-3 text-white sm:p-4 md:p-5">
       <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
 
         {/* Header */}
@@ -276,7 +276,7 @@ export default function OfficerTraining() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Training & Compliance</h1>
+              <h1 className="text-xl font-black text-white sm:text-2xl">My Training & Compliance</h1>
             <p className="text-slate-500 text-sm">All training modules, certifications, and compliance records</p>
             </div>
           </div>
