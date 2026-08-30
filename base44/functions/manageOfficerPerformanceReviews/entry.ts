@@ -82,16 +82,23 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || 'list');
+    const roles = rolesOf(me);
+    let officer = me;
+    if (action === 'list' && body.preview_user_id) {
+      if (me.role !== 'admin' && !roles.has('full_access')) return Response.json({ error: 'Preview access denied' }, { status: 403 });
+      officer = await base44.asServiceRole.entities.User.get(String(body.preview_user_id)).catch(() => null);
+      if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
+    }
     // Signing must be fast and deterministic. The immutable officer ID survives
     // email/Microsoft migrations, so fetch only the requested review on acknowledge.
     const aliases = action === 'list'
-      ? await identity(base44, me)
+      ? await identity(base44, officer)
       : new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
     let all = action === 'acknowledge' && body.review_id
       ? [await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id))]
       : await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000);
     all = (all || []).filter(Boolean);
-    const owns = (review: any) => String(review.officer_id || '') === String(me.id || '') || aliases.has(key(review.officer_email));
+    const owns = (review: any) => String(review.officer_id || '') === String(officer.id || '') || aliases.has(key(review.officer_email));
 
     if (action === 'list') {
       return Response.json({ success: true, reviews: (all || []).filter(owns) });
