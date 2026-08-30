@@ -266,9 +266,12 @@ export default function GlobalMessageBanner({ user }) {
       recentFingerprints.current.set(fingerprint, Date.now());
       window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
 
-      const targetPage = source.targeted && record.source_name === 'Automatic Property Dispatch'
-        ? 'DispatchCenter'
-        : (record.page || source.page);
+      const isWelfareNotification = source.kind === 'assignment' && record.source_name === 'CAD Welfare';
+      const targetPage = isWelfareNotification
+        ? 'OfficerDispatchQueue'
+        : source.targeted && record.source_name === 'Automatic Property Dispatch'
+          ? 'DispatchCenter'
+          : (record.page || source.page);
 
       if (!duplicate) {
         if (source.kind === 'message' && source.direct) {
@@ -293,8 +296,10 @@ export default function GlobalMessageBanner({ user }) {
         title: source.kind === 'assignment' ? (record.title || source.label) : source.label,
         page: targetPage,
         kind: source.kind,
-        persistent: Boolean(source.mention || source.kind === 'announcement'),
+        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
+        notificationId: isWelfareNotification ? record.id : null,
+        relatedId: isWelfareNotification ? String(record.related_id || '') : '',
         fingerprint,
         sender: text.sender,
         photo: record.sender_photo_url || '',
@@ -459,6 +464,10 @@ export default function GlobalMessageBanner({ user }) {
           voiceProfile: settings.voice_profile,
         });
         await finalizeAnnouncementEvent(claim, record.event_key, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+        // Officer distress already has the full-width main emergency banner.
+        // Keep this durable event as the one audio owner without drawing the
+        // second floating red card shown over the CAD workspace.
+        if (record.event_type === 'officer_emergency' && record.triggering_action === 'manageOfficerDistress.activate') return;
         // These events already have a dedicated targeted visual owner (Notification,
         // PropertyAlert, or BOLO). CallStatusLog remains the single durable audio
         // source, but must not create a second visual popup for the same event.
@@ -549,6 +558,33 @@ export default function GlobalMessageBanner({ user }) {
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch (error) {
         console.warn(`Unable to subscribe to ${source.entity}:`, error?.message);
+      }
+    }
+
+    const welfareSource = SOURCES.find(source => source.assignment === 'call_assignment');
+    if (welfareSource && user.email) {
+      Promise.all([
+        base44.entities.Notification.filter({ recipient_email: normalized(user.email), type: 'call_assignment', is_read: false }, '-created_date', 50),
+        base44.entities.OfficerWelfareCheck.filter({ officer_email: normalized(user.email), status: 'pending' }, '-requested_at', 50),
+      ]).then(([notifications, pendingChecks]) => {
+        const pendingIds = new Set((pendingChecks || []).map(check => String(check.id)));
+        (notifications || [])
+          .filter(record => record.source_name === 'CAD Welfare' && pendingIds.has(String(record.related_id || '')))
+          .slice()
+          .reverse()
+          .forEach(record => showBanner(welfareSource, record));
+      }).catch(() => null);
+
+      try {
+        const welfareUnsubscribe = base44.entities.OfficerWelfareCheck.subscribe(event => {
+          if (event?.type !== 'update' || normalized(event.data?.officer_email) !== normalized(user.email)) return;
+          if (normalized(event.data?.status) === 'pending') return;
+          const relatedId = String(event.data?.id || '');
+          setBanners(current => current.filter(entry => entry.relatedId !== relatedId));
+        });
+        if (typeof welfareUnsubscribe === 'function') unsubscribers.push(welfareUnsubscribe);
+      } catch (error) {
+        console.warn('Unable to subscribe to officer welfare alerts:', error?.message);
       }
     }
 
@@ -662,6 +698,12 @@ export default function GlobalMessageBanner({ user }) {
             onClick={async () => {
               if (banner.kind === 'mention' && banner.recordId) {
                 await base44.entities.ChatMention.update(banner.recordId, { read: true, read_at: new Date().toISOString() }).catch(() => null);
+              }
+              if (banner.notificationId) {
+                await base44.entities.Notification.update(banner.notificationId, {
+                  is_read: true,
+                  acknowledged_at: new Date().toISOString(),
+                }).catch(() => null);
               }
               await dismiss(banner.id);
               window.location.href = createPageUrl(banner.page);
