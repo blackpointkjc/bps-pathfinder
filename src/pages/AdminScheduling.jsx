@@ -997,7 +997,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     ) || [];
     
     const sortedSchedules = officerSchedules.sort((a, b) => {
-      // Calculate display date - split shifts show on their END date (shift_date + 1)
+      // Display every shift on the date it starts.
       const displayDateA = a.shift_date;
       const displayDateB = b.shift_date;
       
@@ -1051,7 +1051,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
     const scheduleHTML = sortedSchedules.map(schedule => {
       const isSplitShift = schedule.is_split_shift === true;
-      // For display, split shifts show on their END date
+      // Display every shift on the date it starts.
       const displayDate = parseISO(schedule.shift_date);
       const hours = calculateShiftHours(schedule.start_time, schedule.end_time);
       
@@ -1690,7 +1690,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
           const officerShifts = payrollWeekSchedules
             .filter(s => s.officer_email === email)
             .sort((a, b) => {
-              // Display date: split shifts show on END date (shift_date + 1)
+              // Display date is always the selected shift start date.
               const displayDateA = a.shift_date;
               const displayDateB = b.shift_date;
               
@@ -3019,7 +3019,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                           {shift.partner_officer_email && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-blue-300"><Users className="h-3.5 w-3.5"/>Partner: {getOfficerName(shift.partner_officer_email)}</p>}
                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
                             <Badge className="border border-blue-700/50 bg-blue-950/40 text-blue-200">{shift.start_time}–{shift.end_time}</Badge>
-                            {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Overnight</Badge>}
+                            {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Split Shift</Badge>}
                             {shift.is_open && <Badge className="border border-cyan-700/50 bg-cyan-950/40 text-cyan-200">Open</Badge>}
                           </div>
                         </div>
@@ -3769,7 +3769,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-purple-600">
-                  If linked, this shift will be placed on the same day as the linked shift
+                  If linked, this segment stays on its selected start date and remains connected to the earlier shift
                 </p>
               </div>
             )}
@@ -3777,7 +3777,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             {newShift.is_split_shift && newShift.start_time && newShift.end_time && newShift.shift_date && (
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                 <p className="text-xs text-purple-900">
-                  <strong>Split Shift Preview:</strong> This shift ({newShift.start_time} - {newShift.end_time}) will appear in purple. {newShift.linked_shift_id ? `It will be placed on ${format(subDays(parseISO(newShift.shift_date), 1), 'MMM d')} with the linked shift.` : `It will appear on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')}.`}
+                  <strong>Split Shift Preview:</strong> This shift ({newShift.start_time} - {newShift.end_time}) will appear in purple. {newShift.linked_shift_id ? `It will stay on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')} and remain linked to the earlier segment.` : `It will appear on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')}.`}
                 </p>
               </div>
             )}
@@ -4048,7 +4048,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-purple-600">
-                  If linked, this shift will be placed on the same day as the linked shift
+                  If linked, this segment stays on its selected start date and remains connected to the earlier shift
                 </p>
               </div>
             )}
@@ -4056,7 +4056,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             {(editingShift?.is_split_shift && editingShift?.start_time && editingShift?.end_time && editingShift?.shift_date) && (
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                 <p className="text-xs text-purple-900">
-                  <strong>Split Shift Preview:</strong> This shift ({editingShift.start_time} - {editingShift.end_time}) will appear in purple. {editingShift.linked_shift_id ? `It will be placed on ${format(subDays(parseISO(editingShift.shift_date), 1), 'MMM d')} with the linked shift.` : `It will appear on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')}.`}
+                  <strong>Split Shift Preview:</strong> This shift ({editingShift.start_time} - {editingShift.end_time}) will appear in purple. {editingShift.linked_shift_id ? `It will stay on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')} and remain linked to the earlier segment.` : `It will appear on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')}.`}
                 </p>
               </div>
             )}
