@@ -12,13 +12,12 @@ import RecordsAssistant from './RecordsAssistant';
 import Personnel from './Personnel';
 import PathfinderReports from './Reports';
 import AdminPortal from './AdminPortal';
-import DispatcherShiftReports from './DispatcherShiftReports';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const BASE_SECTIONS = [
   { id: 'live', label: 'Live Command', description: 'Command board, dispatch queues and live map', icon: Activity },
   { id: 'alerts', label: 'Alerts & Safety', description: 'BOLOs, officer-safety and property notices', icon: AlertTriangle },
-  { id: 'history', label: 'History & Records', description: 'Dispatcher logs, call history and company-wide record search', icon: History },
+  { id: 'history', label: 'History & Records', description: 'Call history and company-wide record search', icon: History },
 ];
 
 const TOOLS = {
@@ -30,7 +29,6 @@ const TOOLS = {
   ],
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
-    { id: 'dispatchlog', label: 'Dispatcher Log', component: DispatcherShiftReports },
     { id: 'history', label: 'Call History', component: CallHistory },
     { id: 'records', label: 'Records AI', component: RecordsAssistant },
   ],
