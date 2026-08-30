@@ -12,7 +12,7 @@ import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
-import { useDashboardData } from '@/lib/DashboardDataContext';
+import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -565,5 +565,9 @@ function CommandDashboardInner() {
 }
 
 export default function CommandDashboard() {
-    return <CommandDashboardInner />;
+    return (
+        <DashboardDataProvider>
+            <CommandDashboardInner />
+        </DashboardDataProvider>
+    );
 }
