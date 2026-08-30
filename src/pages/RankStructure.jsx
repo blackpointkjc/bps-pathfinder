@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +92,7 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
 
 export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
-  const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>base44.auth.me()});
+  const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>getCurrentDirectoryUser()});
   const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers()});
   const roles=rolesOf(user);
   const allowed=user?.role==='admin'||roles.has('officer')||roles.has('cad_access')||roles.has('supervisor')||roles.has('full_access');
