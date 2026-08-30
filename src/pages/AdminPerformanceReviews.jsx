@@ -329,15 +329,12 @@ export default function AdminPerformanceReviews() {
                                         ? ` effective ${format(parseISO(review.pay_effective_date), 'MMM d, yyyy')}` 
                                         : ' effective immediately';
                                       if (await confirmInApp(`Approve pay adjustment from $${review.current_hourly_rate.toFixed(2)}/hr to $${review.suggested_hourly_rate.toFixed(2)}/hr for ${review.officer_name}${effectiveMsg}?`)) {
-                                        await base44.entities.PerformanceReview.update(review.id, {
-                                          pay_adjustment_approved: true,
-                                          pay_adjustment_approved_by: user.email,
-                                          pay_adjustment_date: new Date().toISOString(),
+                                        const result = await base44.functions.invoke('managePerformanceReviews', {
+                                          action: 'approve_pay_adjustment',
+                                          review_id: review.id,
                                         });
-                                        await base44.entities.User.update(
-                                          allUsers.find(u => u.email === review.officer_email).id,
-                                          { hourly_rate: review.suggested_hourly_rate }
-                                        );
+                                        const payload = result?.data || result || {};
+                                        if (payload.error) throw new Error(payload.error);
                                         queryClient.invalidateQueries({ queryKey: ['allPerformanceReviews'] });
                                         queryClient.invalidateQueries({ queryKey: ['allUsers'] });
                                         toast.success('Pay adjustment approved and applied.');
