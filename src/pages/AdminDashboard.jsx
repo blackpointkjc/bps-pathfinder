@@ -63,7 +63,6 @@ export default function AdminDashboard() {
           ],
         };
       });
-      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     },
   });
 
