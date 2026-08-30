@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users } from "lucide-react";
+import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users, Car, UserCheck } from "lucide-react";
 import { format, addDays, subDays, startOfWeek, addWeeks, parseISO } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
