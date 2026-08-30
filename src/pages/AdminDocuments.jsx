@@ -32,16 +32,18 @@ export default function AdminDocuments() {
     queryFn: () => base44.auth.me(),
   });
 
+  const trainerAccess = user?.role === 'admin' || (user?.additional_roles || []).some(role => ['trainer','training','full_access'].includes(String(role || '').toLowerCase()));
+
   const { data: documents } = useQuery({
     queryKey: ['trainingDocuments'],
     queryFn: () => base44.entities.TrainingDocument.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: trainerAccess,
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'adminDocuments'],
     queryFn: () => listDirectoryLocations('site_name', 1000),
-    enabled: user?.role === 'admin',
+    enabled: trainerAccess,
     initialData: [],
   });
 
@@ -92,17 +94,17 @@ export default function AdminDocuments() {
     }
   };
 
-  if (user?.role !== 'admin') {
+  if (!trainerAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Trainer Access Required</h2>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-slate-50">
+    <div className="bps-command-page p-4 md:p-8 min-h-screen bg-[#080d16] text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
