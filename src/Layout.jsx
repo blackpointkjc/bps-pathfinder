@@ -844,7 +844,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const sidebarStorageKey = `bps-sidebar-collapsed:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
+  const sidebarStorageKey = 'bps-sidebar-collapsed';
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(sidebarStorageKey) === 'true';
