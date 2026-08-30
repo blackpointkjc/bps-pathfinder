@@ -14,9 +14,10 @@ export default function PullToRefresh({ onRefresh, children }) {
   const THRESHOLD = 70;
 
   const handleTouchStart = (e) => {
-    // Only trigger if scrolled to top
-    const el = e.currentTarget;
-    if (el.scrollTop > 0) return;
+    // Layout owns vertical scrolling. Pull-to-refresh should only begin when
+    // that shared page scroller is already at the top.
+    const pageScroller = e.currentTarget.closest('.mobile-field-content');
+    if ((pageScroller?.scrollTop || 0) > 0) return;
     startY.current = e.touches[0].clientY;
   };
 
@@ -48,7 +49,7 @@ export default function PullToRefresh({ onRefresh, children }) {
 
   return (
     <div
-      className="relative h-full overflow-y-auto overscroll-none"
+      className="relative min-h-full overflow-visible overscroll-y-none"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
