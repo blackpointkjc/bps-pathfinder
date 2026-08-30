@@ -577,6 +577,7 @@ Deno.serve(async (req) => {
       excluded_units: excluded,
       evaluation_id: evaluation?.id,
       staffing_shortfall: staffingShortfall,
+      configuration_snapshot: evaluationData.configuration_snapshot,
       message: decision === 'assigned' ? 'Closest eligible unit assignment created.'
         : decision === 'partially_assigned' ? `Closest eligible unit assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
