@@ -599,7 +599,51 @@ export default function AccountingPayroll() {
   }, 0) : 0;
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
-  const currentReportEntries = selectedPayrollEntries.filter(entry => ['ready', 'exported', 'draft', 'approved', 'paid'].includes(entry.status));
+  const generatedReportEntries = selectedPayrollEntries.filter(entry => ['ready', 'exported', 'draft', 'approved', 'paid'].includes(entry.status));
+  const generatedOfficerEmails = new Set(generatedReportEntries.map(entry => String(entry.officer_email || '').toLowerCase()));
+  const inProgressByOfficer = new Map();
+  if (selectedPeriod) {
+    for (const entry of timeEntries) {
+      if (!entry.clock_in || entry.archived === true) continue;
+      const entryDate = String(entry.clock_in).slice(0, 10);
+      if (entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) continue;
+      const email = String(entry.officer_email || '').toLowerCase();
+      if (!email || generatedOfficerEmails.has(email)) continue;
+      const officer = officers.find(item => String(item.email || '').toLowerCase() === email);
+      if (!officer) continue;
+      const hours = entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow);
+      if (!(hours > 0)) continue;
+      const existing = inProgressByOfficer.get(email) || { hours: 0, officer };
+      existing.hours += hours;
+      inProgressByOfficer.set(email, existing);
+    }
+  }
+  const inProgressReportEntries = [...inProgressByOfficer.entries()].map(([email, data]) => {
+    const hours = Math.round(Number(data.hours || 0) * 10000) / 10000;
+    const rate = Number(data.officer?.hourly_rate || 0);
+    const gross = Math.round(hours * rate * 100) / 100;
+    return {
+      id: `in-progress-${selectedPeriod?.id || 'period'}-${email}`,
+      officer_email: email,
+      pay_period_start: selectedPeriod?.start_date,
+      pay_period_end: selectedPeriod?.end_date,
+      regular_hours: hours,
+      overtime_hours: 0,
+      holiday_hours: 0,
+      hours_worked: hours,
+      hourly_rate: rate,
+      regular_pay: gross,
+      overtime_pay: 0,
+      holiday_pay: 0,
+      gross_pay: gross,
+      net_pay: gross,
+      status: 'in_progress',
+      payroll_source: 'live_time_entries',
+      _inProgress: true,
+    };
+  });
+  const currentReportEntries = [...generatedReportEntries, ...inProgressReportEntries]
+    .sort((a, b) => String(a.officer_email || '').localeCompare(String(b.officer_email || '')));
   // Generate Gusto-compatible payroll report
   const generatePayrollReport = (entriesToReport) => {
     const reportWindow = window.open('', '_blank');
