@@ -114,6 +114,30 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, reviews: reviews || [] });
     }
 
+    if (action === 'approve_pay_adjustment') {
+      const review = await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id || ''));
+      if (!review) return Response.json({ error: 'Performance review not found.' }, { status: 404 });
+      const newRate = Number(review.suggested_hourly_rate);
+      if (!Number.isFinite(newRate) || newRate <= 0) {
+        return Response.json({ error: 'This review does not contain a valid pay recommendation.' }, { status: 400 });
+      }
+      const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
+      const officer = (users || []).find((user: any) =>
+        (review.officer_id && String(user.id || '') === String(review.officer_id))
+        || emailKey(user.email) === emailKey(review.officer_email)
+      );
+      if (!officer?.id) return Response.json({ error: 'Officer account not found.' }, { status: 404 });
+      const now = new Date().toISOString();
+      await base44.asServiceRole.entities.PerformanceReview.update(review.id, {
+        pay_adjustment_approved: true,
+        pay_adjustment_approved_by: me.email,
+        pay_adjustment_date: now,
+      });
+      await base44.asServiceRole.entities.User.update(officer.id, { hourly_rate: newRate });
+      await notify(base44, officer.email, 'Pay Adjustment Approved', `HR approved your new hourly rate of $${newRate.toFixed(2)}.`, review.id);
+      return Response.json({ success: true, hourly_rate: newRate, officer_id: officer.id });
+    }
+
     if (action === 'approve') {
       const review = await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id || ''));
       if (!review) return Response.json({ error: 'Performance review not found.' }, { status: 404 });
