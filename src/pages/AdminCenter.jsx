@@ -8,6 +8,7 @@ import AdminLocationTracker from './AdminLocationTracker';
 import AdminGeofenceAlerts from './AdminGeofenceAlerts';
 import AdminScheduling from './AdminScheduling';
 import FleetVehicleAssignments from './FleetVehicleAssignments';
+import DutySupervisorScheduling from './DutySupervisorScheduling';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminPlannedShifts from './AdminPlannedShifts';
 import AdminShiftBids from './AdminShiftBids';
@@ -83,6 +84,8 @@ const ADMIN_TOOLS = {
   ],
   schedule: [
     { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
+    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
+    { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
     { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
     { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
     { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
@@ -91,7 +94,6 @@ const ADMIN_TOOLS = {
     { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
     { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
     { id: 'locations', label: 'Locations', component: AdminLocations },
-    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
     { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
   ],
