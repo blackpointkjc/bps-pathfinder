@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, ChevronDown, ChevronUp, FileWarning, Loader2, RefreshCw, ShieldAlert, UserX } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, FileWarning, Loader2, RefreshCw, ShieldAlert, UserX, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 export default function AutoDispatchRecommendation({ alert }) {
   const [result, setResult] = useState(null);
@@ -117,6 +119,17 @@ export default function AutoDispatchRecommendation({ alert }) {
   const disabled = result.decision === 'disabled';
   const manualReview = result.decision === 'manual_review';
   const partiallyAssigned = result.decision === 'partially_assigned';
+  const config = result.configuration_snapshot || {};
+  const configReason = config.configured_mode === 'disabled'
+    ? 'Property automatic dispatch is turned OFF.'
+    : config.configured_mode === 'shadow'
+      ? 'Property is in SHADOW mode. Recommendations may be shown, but no unit is automatically assigned.'
+      : config.configured_mode === 'manual_review'
+        ? 'Property is configured for MANUAL REVIEW.'
+        : config.configured_mode === 'live' && config.live_approved !== true
+          ? 'Property is set to LIVE but does not have the required live-dispatch approval.'
+          : ''; 
+  const propertySettingsUrl = `${createPageUrl('AdminLocations')}?location_id=${encodeURIComponent(result.property?.id || alert?.propertyId || '')}`;
 
   return (
     <div className="mt-3 rounded-lg border border-cyan-500/30 bg-[#071827] p-3">
@@ -131,10 +144,12 @@ export default function AutoDispatchRecommendation({ alert }) {
         </Button>
       </div>
 
+      {(disabled || manualReview || configReason) && <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-950/25 p-3"><div className="text-xs font-black text-amber-200">{configReason || (disabled ? 'Automatic dispatch is disabled for this property.' : 'This property requires manual review.')}</div><div className="mt-2 grid gap-2 text-[10px] text-slate-300 sm:grid-cols-4"><div><span className="text-slate-500">PROPERTY</span><div className="font-bold text-white">{result.property?.name || alert?.propertyName || 'Monitored property'}</div></div><div><span className="text-slate-500">SAVED MODE</span><div className="font-bold text-white">{String(config.configured_mode || result.mode || 'unknown').replaceAll('_',' ').toUpperCase()}</div></div><div><span className="text-slate-500">LIVE APPROVED</span><div className="font-bold text-white">{config.live_approved ? 'YES' : 'NO'}</div></div><div><span className="text-slate-500">REQUIRED UNITS</span><div className="font-bold text-white">{config.required_units ?? '—'}</div></div></div><Link to={propertySettingsUrl} className="mt-3 inline-flex items-center rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[10px] font-black text-amber-100 hover:bg-amber-500/20"><Settings className="mr-1.5 h-3.5 w-3.5"/>OPEN PROPERTY AUTO-DISPATCH SETTINGS</Link></div>}
+
       {disabled ? (
-        <div className="mt-2 text-xs font-semibold text-slate-400">Automatic dispatch is disabled for this property. Manual dispatch remains available.</div>
+        <div className="mt-2 text-xs font-semibold text-slate-400">Manual dispatch remains available until this property's automatic-dispatch setting is enabled.</div>
       ) : manualReview ? (
-        <div className="mt-2 text-xs font-semibold text-amber-300">This property requires manual review. Recommendations are recorded without assigning a unit.</div>
+        <div className="mt-2 text-xs font-semibold text-amber-300">No automatic assignment will occur until the property configuration above is changed to an approved Live mode.</div>
       ) : recommendations.length ? (
         <div className="mt-2 space-y-2">
           {recommendations.map((unit, index) => (
