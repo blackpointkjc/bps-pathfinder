@@ -285,7 +285,8 @@ export function openBlackPointReport({
         const scale = oneLetterPage / naturalHeight;
         if (scale >= 0.82) shell.style.zoom = String(Math.min(0.98, scale));
       }
-      setTimeout(function () { window.print(); }, 150);
+      // Do not force the browser print dialog immediately. Keep this as a real
+      // preview with visible Print and Back to Pathfinder controls.
     });
   </script>
 </body>
