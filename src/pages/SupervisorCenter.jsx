@@ -53,8 +53,8 @@ export default function SupervisorCenter({ embedded = false }) {
       {section => {
         if (section === 'overview') return <SupervisorOverview />;
         if (section === 'officer') return <OfficerCenter embedded />;
-        if (section === 'command') return <CenterToolSection key={section} tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
-        return <CenterToolSection key={section} tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+        if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+        return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
       }}
     </UnifiedCenter>
   );
