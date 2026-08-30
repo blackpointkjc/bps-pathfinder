@@ -337,6 +337,33 @@ async function reconcilePropertyAlerts(base44: any) {
           ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
           : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
       });
+      // Every newly verified monitored-property alert owns one durable CAD audio
+      // event. Auto-dispatch may later create assignment/escalation events, but a
+      // staffing shortage or disabled auto-dispatch must never make the original
+      // active-call announcement disappear.
+      const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+      const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
+      const priorPropertyEvents = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: propertyEventKey }, '-created_date', 1).catch(() => []);
+      if (!priorPropertyEvents?.length) {
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id: String(call.id),
+          incident_type: call.incident || 'Call for service',
+          location: call.location || location.address || '',
+          old_status: '',
+          new_status: call.status || 'New',
+          notes: `Monitored-property active call detected for ${location.site_name || location.address || 'property'}.`,
+          latitude: call.latitude,
+          longitude: call.longitude,
+          event_key: propertyEventKey,
+          event_type: 'property_alert',
+          announcement_text: `Active call for service at ${location.site_name || location.address || 'monitored property'}. ${call.incident || 'Call for service'} at ${call.location || location.address || 'address unavailable'}. CAD number ${cadNumber}.`,
+          announcement_priority: ['critical', 'high'].includes(String(call.priority || '').toLowerCase()) ? String(call.priority).toLowerCase() : 'high',
+          cad_number: String(cadNumber),
+          triggering_action: 'ingestGractivecalls.property_alert_created',
+          audio_enabled: true,
+          sensitive: false,
+        }).catch((error: any) => console.error('Unable to publish property alert announcement event', error?.message || error));
+      }
       // Evaluate when the verified alert is created, not only when a dispatcher
       // opens a page. The property's saved mode controls preview, review, or live
       // assignment; the evaluator provides the idempotency receipt.
