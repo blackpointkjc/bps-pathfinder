@@ -35,7 +35,11 @@ const actualPaidHours = (entry: any) => {
 const round = (value: number, digits = 2) => Number(Number(value || 0).toFixed(digits));
 
 const easternDateOnly = (value: unknown) => {
-  const date = new Date(String(value || ''));
+  const raw = String(value || '');
+  // Imported/date-anchored punches use exact UTC midnight to represent the
+  // selected work date. Preserve that boundary date during live payroll sync.
+  if (/^\d{4}-\d{2}-\d{2}T00:00:00(?:\.000)?Z$/.test(raw)) return raw.slice(0, 10);
+  const date = new Date(raw);
   if (!Number.isFinite(date.getTime())) return '';
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
