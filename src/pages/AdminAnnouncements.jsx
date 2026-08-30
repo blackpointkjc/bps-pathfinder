@@ -217,13 +217,13 @@ export default function AdminAnnouncements() {
   }) || [];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Manage Announcements</h1>
+              <h1 className="text-3xl font-black text-white">Manage Announcements</h1>
               <p className="text-slate-600">Post company-wide announcements</p>
             </div>
           </div>
