@@ -904,7 +904,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     if (!user?.id || !currentPageName || roleHomeEntryHandledRef.current) return;
     const primaryCenter = allowedCenters(user)[0] || 'cad';
-    const target = defaultPageForUser(user, !isMobileViewport);
+    const target = defaultPageForUser(user, true);
     const routeKey = `bps-role-home-routed:${user.id}`;
     const isRootLanding = typeof window !== 'undefined' && window.location.pathname === '/';
 
@@ -1267,7 +1267,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   if (!canAccessPage(user, currentPageName)) {
-    return <Navigate to={createPageUrl(defaultPageForUser(user, !isMobileViewport))} replace />;
+    return <Navigate to={createPageUrl(defaultPageForUser(user, true))} replace />;
   }
 
   // Keep direct task and tool routes on the page the user opened. Center pages
