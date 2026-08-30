@@ -26,7 +26,6 @@ import AdminCommendations from './AdminCommendations';
 import AdminClientFeedback from './AdminClientFeedback';
 import AdminAnnouncements from './AdminAnnouncements';
 import AdminSpecialRequests from './AdminSpecialRequests';
-import AdminDocuments from './AdminDocuments';
 import AdminQRCenter from './AdminQRCenter';
 import AdminPortalSettings from './AdminPortalSettings';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
