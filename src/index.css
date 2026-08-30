@@ -213,6 +213,20 @@
   background-size: 32px 32px;
 }
 
+/* The application shell already owns the viewport height and scrolling.
+   Legacy pages frequently include Tailwind's min-h-screen (100vh), which
+   creates a second viewport inside the shell and produces large blank areas
+   and excessive vertical scrolling. Normalize those nested pages to the
+   available shell height instead. */
+.cad-app main [class*="min-h-screen"] {
+  min-height: 100% !important;
+}
+
+.cad-app main > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .cad-app main h1 {
   letter-spacing: -0.025em;
 }
