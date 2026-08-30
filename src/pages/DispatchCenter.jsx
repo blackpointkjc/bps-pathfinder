@@ -28,6 +28,7 @@ import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
+import DispatcherShiftReports from './DispatcherShiftReports';
 
 
 
@@ -41,6 +42,7 @@ export default function DispatchCenter() {
     const [loading, setLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
+    const [showDispatchLog, setShowDispatchLog] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
@@ -88,6 +90,7 @@ export default function DispatchCenter() {
             if (event.key === 'Escape') {
                 setSelectedCall(null);
                 setShowMessaging(false);
+                setShowDispatchLog(false);
             }
         };
         window.addEventListener('keydown', handleKeyboardShortcuts);
@@ -462,7 +465,7 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="cad-command-workstation flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
+        <div className="cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
@@ -496,7 +499,7 @@ export default function DispatchCenter() {
                         }`}>
                         {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
                     </button>
-                    <button onClick={() => navigate(createPageUrl('DispatcherShiftReports'))} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> DISPATCH LOG</button>
+                    <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-blue-950/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> DISPATCH LOG</button>
                     <button onClick={() => {
                         const params = new URLSearchParams({ new: '1' });
                         if (selectedCall?.id) {
@@ -526,6 +529,24 @@ export default function DispatchCenter() {
                     </div>
                 </div>
             </div>
+
+            {showDispatchLog && (
+                <section className="absolute inset-0 z-[130] flex min-h-0 flex-col overflow-hidden bg-[#060b12]" aria-label="Dispatcher Shift Log">
+                    <div className="flex flex-none items-center gap-3 border-b border-blue-900/70 bg-[#08111d] px-4 py-3">
+                        <ClipboardList className="h-4 w-4 text-blue-300" />
+                        <div>
+                            <div className="text-xs font-black tracking-[0.14em] text-white">DISPATCHER SHIFT LOG</div>
+                            <div className="text-[9px] text-slate-500">Inner Dispatch Center workspace</div>
+                        </div>
+                        <button type="button" onClick={() => setShowDispatchLog(false)} className="ml-auto rounded border border-slate-600 px-3 py-2 text-[10px] font-black text-slate-200 hover:bg-slate-800">
+                            BACK TO LIVE DISPATCH
+                        </button>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        <DispatcherShiftReports embedded />
+                    </div>
+                </section>
+            )}
 
             <PropertyAlertsBanner />
             <AutoDispatchShadowFeed />
