@@ -197,13 +197,13 @@ export default function ManageClients() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Briefcase className="w-8 h-8 text-purple-600" />
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Manage Clients</h1>
+              <h1 className="text-3xl font-black text-white">Manage Clients</h1>
               <p className="text-slate-600">Manage clients assigned from Admin → Pending Users</p>
             </div>
           </div>
