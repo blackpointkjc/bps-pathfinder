@@ -1,4 +1,5 @@
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { motion } from "framer-motion";
@@ -74,7 +75,7 @@ export default function Dashboard({ embedded = false }) {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: directoryProfile } = useQuery({
