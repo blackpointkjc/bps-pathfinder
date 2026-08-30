@@ -397,12 +397,12 @@ export default function AdminLocationTracker() {
   }
 
   return (
-    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8">
       <div className="mx-auto max-w-[1400px] space-y-5 sm:space-y-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
               <Activity className="w-8 h-8 text-green-600" />
               User Location Tracker
             </h1>
