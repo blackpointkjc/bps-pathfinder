@@ -1,4 +1,5 @@
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, ClipboardCheck, UserCheck, ChevronDown, ChevronUp } from "lucide-react";
@@ -9,7 +10,7 @@ export default function RankDuties() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const ranks = [
