@@ -5,6 +5,7 @@ import TrainingRecords from './TrainingRecords';
 import AdminTrainingCompliance from './AdminTrainingCompliance';
 import ManageStudents from './ManageStudents';
 import TrainerOverview from './TrainerOverview';
+import AdminDocuments from './AdminDocuments';
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Work Queue', description: 'Training dashboard, alerts and priority workload', icon: LayoutDashboard },
@@ -12,6 +13,7 @@ const SECTIONS = [
   { id: 'classes', label: 'Classes & Certificates', description: 'Classes, rosters, certificates and school records', icon: BookOpen },
   { id: 'compliance', label: 'Compliance', description: 'Officer certifications, assignments, reviews, alerts and reporting', icon: ShieldCheck },
   { id: 'students', label: 'Student Management', description: 'Student accounts and assigned training', icon: Users },
+  { id: 'documents', label: 'Training Documents', description: 'Training manuals, policies, site materials and reference files', icon: BookOpen },
 ];
 
 export default function TrainerCenter() {
@@ -24,6 +26,7 @@ export default function TrainerCenter() {
           {section === 'classes' && <TrainingRecords embedded />}
           {section === 'compliance' && <AdminTrainingCompliance embedded />}
           {section === 'students' && <ManageStudents embedded />}
+          {section === 'documents' && <AdminDocuments embedded />}
         </div>
       )}
     </UnifiedCenter>
