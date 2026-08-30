@@ -196,13 +196,13 @@ export default function AdminDivisions() {
   }
 
   return (
-    <div className="divisions-page min-h-screen p-3 sm:p-4 md:p-6">
+    <div className="bps-command-page divisions-page min-h-screen bg-[#080d16] p-3 text-white sm:p-4 md:p-6">
       <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-8">
         <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <Shield className="h-8 w-8 shrink-0 text-amber-600" />
             <div className="min-w-0">
-              <h1 className="break-words text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">Company Areas & Divisions</h1>
+              <h1 className="break-words text-2xl font-black leading-tight text-white sm:text-3xl">Company Areas & Divisions</h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">Use two clear levels: Division = state/region; Operating Area = city/market inside that division.</p>
             </div>
           </div>
