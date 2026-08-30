@@ -96,6 +96,9 @@ export default function Schedule() {
     subscribe(base44.entities.VehicleAssignment, () => {
       queryClient.invalidateQueries({ queryKey: ['myScheduleData', user.email] });
     });
+    subscribe(base44.entities.DutySupervisorAssignment, () => {
+      queryClient.invalidateQueries({ queryKey: ['myScheduleData', user.email] });
+    });
 
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [user?.email, queryClient]);
@@ -224,6 +227,7 @@ export default function Schedule() {
     await queryClient.invalidateQueries({ queryKey: ['myApprovedPTO'] });
     await queryClient.invalidateQueries({ queryKey: ['openShifts'] });
     await queryClient.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
+    await queryClient.invalidateQueries({ queryKey: ['dutySupervisorAssignments'] });
   };
 
   const getUserName = (email) => {
