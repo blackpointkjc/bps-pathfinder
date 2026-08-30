@@ -1313,48 +1313,48 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
     var(--bps-command-bg);
 }
 
-.bps-command-theme .bps-command-content :is(.rounded-xl, .rounded-2xl, .rounded-3xl)[class*="border"] {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) :is(.rounded-xl, .rounded-2xl, .rounded-3xl)[class*="border"] {
   border-color: var(--bps-command-border);
   box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
 }
 
-.bps-command-theme .bps-command-content :is(.rounded-2xl, .rounded-3xl)[class*="border"] {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) :is(.rounded-2xl, .rounded-3xl)[class*="border"] {
   border-radius: 1.55rem;
 }
 
-.bps-command-theme .bps-command-content :is(.bg-card, .bg-slate-900, .bg-slate-950\/30, .bg-slate-950\/40, .bg-slate-950\/60, .bg-slate-950\/70) {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) :is(.bg-card, .bg-slate-900, .bg-slate-950\/30, .bg-slate-950\/40, .bg-slate-950\/60, .bg-slate-950\/70) {
   background-color: var(--bps-command-panel) !important;
 }
 
-.bps-command-theme .bps-command-content section[class*="border"],
-.bps-command-theme .bps-command-content article[class*="border"] {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) section[class*="border"],
+:is(.bps-command-theme .bps-command-content, .bps-command-page) article[class*="border"] {
   border-color: var(--bps-command-border);
 }
 
-.bps-command-theme .bps-command-content h1,
-.bps-command-theme .bps-command-content h2,
-.bps-command-theme .bps-command-content h3 {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) h1,
+:is(.bps-command-theme .bps-command-content, .bps-command-page) h2,
+:is(.bps-command-theme .bps-command-content, .bps-command-page) h3 {
   letter-spacing: -.02em;
 }
 
-.bps-command-theme .bps-command-content [class*="uppercase"][class*="tracking-"] {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) [class*="uppercase"][class*="tracking-"] {
   letter-spacing: .16em;
 }
 
-.bps-command-theme .bps-command-content table {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) table {
   border-color: var(--bps-command-border);
 }
 
-.bps-command-theme .bps-command-content thead {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) thead {
   background: #0a111c;
 }
 
-.bps-command-theme .bps-command-content tbody tr {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) tbody tr {
   border-color: rgba(42, 55, 74, .72);
 }
 
-.bps-command-theme .bps-command-content button[class*="border"],
-.bps-command-theme .bps-command-content a[class*="border"] {
+:is(.bps-command-theme .bps-command-content, .bps-command-page) button[class*="border"],
+:is(.bps-command-theme .bps-command-content, .bps-command-page) a[class*="border"] {
   box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
 }
 
