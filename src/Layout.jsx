@@ -1382,8 +1382,7 @@ export default function Layout({ children, currentPageName }) {
           {!ROOT_PAGES.has(currentPageName) && (
             <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] lg:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
-          {!ROOT_PAGES.has(currentPageName) && (
-            <Link
+          <Link
               to={createPageUrl(userHomePage)}
               className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-blue-500/70 bg-blue-600/20 px-3 text-[10px] font-black uppercase tracking-wider text-blue-100 hover:bg-blue-600/35"
               aria-label={`Return to ${userHomeLabel}`}
@@ -1392,7 +1391,6 @@ export default function Layout({ children, currentPageName }) {
               <span className="hidden sm:inline">{userHomeLabel}</span>
               <span className="sm:hidden">HOME</span>
             </Link>
-          )}
           <div className="min-w-0">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white lg:tracking-[0.15em]"><span className="lg:hidden">{pageLabel(currentPageName)}</span><span className="hidden lg:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="lg:hidden">FIELD OPERATIONS</span><span className="hidden lg:inline">UNIFIED OPERATIONS PLATFORM</span></div>
