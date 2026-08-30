@@ -65,8 +65,8 @@ const MASTER_SECTIONS = [
 const ADMIN_SECTIONS = [
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
   { id: 'people', label: 'People & Access', description: 'Users, access, platoons and availability decisions', icon: Users },
-  { id: 'schedule', label: 'Scheduling & Time', description: 'Schedules, planned shifts, bids and support time', icon: Calendar },
-  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, fleet, equipment and post orders', icon: Building2 },
+  { id: 'schedule', label: 'Scheduling & Time', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
+  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, equipment and post orders', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
   { id: 'communications', label: 'Requests & Documents', description: 'Announcements, special requests and documents', icon: MessageCircle },
   { id: 'system', label: 'Patrol & System', description: 'QR patrol administration and portal settings', icon: BarChart3 },
