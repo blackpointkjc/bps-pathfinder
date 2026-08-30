@@ -142,7 +142,7 @@ const ADMIN_SUPERVISOR_TOOLS = {
 
 function AdminSupervisorToolsOnly() {
   return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Supervisor tools" sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="operations" queryParam="admin_supervisor_section" embedded>
-    {section => <CenterToolSection key={section} tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />}
+    {section => <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />}
   </UnifiedCenter>;
 }
 
@@ -157,7 +157,7 @@ function AdministrationToolsOnly() {
       queryParam="admin_ops_section"
       embedded
     >
-      {section => <CenterToolSection key={section} tools={ADMIN_TOOLS[section]} queryParam="admin_ops_tool" />}
+      {section => <CenterToolSection tools={ADMIN_TOOLS[section]} queryParam="admin_ops_tool" />}
     </UnifiedCenter>
   );
 }
