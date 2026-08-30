@@ -1363,6 +1363,63 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
 }
 
+/* Modernize legacy light pages inside the command workspace without replacing
+   their handlers or data logic. This intentionally normalizes old white/gray
+   cards, forms, tabs and headings to the same command-center visual system. */
+.bps-command-page :is(.bg-white, .bg-slate-50, .bg-gray-50, .bg-slate-100, .bg-gray-100) {
+  background-color: #0d1420 !important;
+  background-image: none !important;
+  color: #f8fafc !important;
+}
+
+.bps-command-page :is(.text-slate-900, .text-slate-800, .text-gray-900, .text-gray-800) { color: #f8fafc !important; }
+.bps-command-page :is(.text-slate-700, .text-gray-700) { color: #d5deea !important; }
+.bps-command-page :is(.text-slate-600, .text-gray-600) { color: #a9b5c6 !important; }
+.bps-command-page :is(.text-slate-500, .text-gray-500) { color: #8492a6 !important; }
+.bps-command-page :is(.text-blue-900, .text-blue-800) { color: #bfdbfe !important; }
+.bps-command-page :is(.text-green-900, .text-green-800) { color: #bbf7d0 !important; }
+.bps-command-page :is(.text-purple-900, .text-purple-800) { color: #ddd6fe !important; }
+.bps-command-page :is(.text-amber-900, .text-amber-800, .text-orange-900, .text-orange-800) { color: #fde68a !important; }
+.bps-command-page :is(.text-red-900, .text-red-800) { color: #fecaca !important; }
+
+.bps-command-page :is(input, textarea, select, [role="combobox"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  border-color: #334155 !important;
+  background-color: #09111d !important;
+  color: #f8fafc !important;
+}
+.bps-command-page :is(input, textarea)::placeholder { color: #64748b !important; }
+
+.bps-command-page :is(.border-slate-200, .border-slate-300, .border-gray-200, .border-gray-300, .border-blue-200, .border-green-200, .border-purple-200) {
+  border-color: #334155 !important;
+}
+
+.bps-command-page [class*="from-blue-50"],
+.bps-command-page [class*="from-green-50"],
+.bps-command-page [class*="from-purple-50"],
+.bps-command-page [class*="from-amber-50"],
+.bps-command-page [class*="from-orange-50"],
+.bps-command-page [class*="from-slate-50"] {
+  background-image: linear-gradient(135deg, #101a29, #0b121d) !important;
+  color: #f8fafc !important;
+}
+
+.bps-command-page [data-radix-tabs-list],
+.bps-command-page [role="tablist"] {
+  border: 1px solid #2b394c;
+  background: #09111d !important;
+  border-radius: .9rem;
+  padding: .25rem;
+}
+
+.bps-command-page [role="tab"] { color: #94a3b8 !important; border-radius: .65rem; }
+.bps-command-page [role="tab"][data-state="active"] { background: #173d5a !important; color: white !important; }
+
+.bps-command-page .shadow-lg,
+.bps-command-page .shadow-xl,
+.bps-command-page .shadow-2xl { box-shadow: 0 16px 34px rgba(0,0,0,.24) !important; }
+
+.bps-command-page .border-none[class*="shadow"] { border: 1px solid #2a374a !important; }
+
 /* Shared dashboard KPI cards: keep icon, value, label, and supporting text
    visually centered throughout Pathfinder. These are summary cards, not data
    entry panels, so asymmetric left/right placement makes the dashboards look
