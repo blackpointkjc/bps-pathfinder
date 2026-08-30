@@ -500,16 +500,11 @@ export default function AdminScheduling() {
   }, [schedules]);
 
   const getOfficerScheduleForDateRange = useCallback((officerEmail, startDate, endDate) => {
-    const rangeSchedules = schedules?.filter(s => {
-      const shiftDate = s.shift_date; // This is the START date of the shift
-      const shiftStartDate = parseISO(shiftDate);
-      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
-
-      // Check if the shift's start OR end falls within the print range
-      return s.officer_email === officerEmail &&
-             shiftStartDate <= parseISO(endDate) &&
-             shiftEndDate >= parseISO(startDate);
-    }) || [];
+    const rangeSchedules = schedules?.filter(s =>
+      s.officer_email === officerEmail &&
+      s.shift_date >= startDate &&
+      s.shift_date <= endDate
+    ) || [];
 
     const start = parseISO(startDate);
     const end = parseISO(endDate);
@@ -526,15 +521,9 @@ export default function AdminScheduling() {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
       const weekEndStr = format(weekSegmentEnd, 'yyyy-MM-dd');
       
-      const weekSchedules = rangeSchedules.filter(s => {
-        const sShiftDate = parseISO(s.shift_date);
-        const sEndShiftDate = s.is_split_shift ? addDays(sShiftDate, 1) : sShiftDate;
-        
-        // A shift counts for this week if its start date is in the week, OR
-        // if it's a split shift that ends in this week but started before the week.
-        return (sShiftDate >= parseISO(weekStartStr) && sShiftDate <= parseISO(weekEndStr)) ||
-               (s.is_split_shift && sShiftDate < parseISO(weekStartStr) && sEndShiftDate >= parseISO(weekStartStr));
-      });
+      const weekSchedules = rangeSchedules.filter(s =>
+        s.shift_date >= weekStartStr && s.shift_date <= weekEndStr
+      );
       
       const weekHours = weekSchedules.reduce((sum, s) => {
         return sum + calculateShiftHours(s.start_time, s.end_time);
@@ -893,16 +882,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     const prevWeekStartStr = format(prevWeekStart, 'yyyy-MM-dd');
     const prevWeekEndStr = format(prevWeekEnd, 'yyyy-MM-dd');
 
-    const previousWeekSchedules = schedules.filter(s => {
-      const shiftDate = s.shift_date; // This is the START date of the shift
-      const shiftStartDate = parseISO(shiftDate);
-      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
-
-      // Include shifts if their start date is within the previous week, OR if they are split shifts
-      // that *end* within the previous week but started *before* the previous week.
-      return (shiftStartDate >= parseISO(prevWeekStartStr) && shiftStartDate <= parseISO(prevWeekEndStr)) ||
-             (s.is_split_shift && shiftStartDate < parseISO(prevWeekStartStr) && shiftEndDate >= parseISO(prevWeekStartStr));
-    });
+    const previousWeekSchedules = schedules.filter(s =>
+      s.shift_date >= prevWeekStartStr && s.shift_date <= prevWeekEndStr
+    );
 
     if (previousWeekSchedules.length === 0) {
       alert('No shifts found in the previous week to copy.');
@@ -951,16 +933,11 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
     const selectedOfficersArray = Array.from(selectedOfficersForCopy);
 
-    const previousWeekSchedules = schedules.filter(s => {
-      const shiftDate = s.shift_date;
-      const shiftStartDate = parseISO(shiftDate);
-      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
-
-      const isInPrevWeek = (shiftStartDate >= parseISO(prevWeekStartStr) && shiftStartDate <= parseISO(prevWeekEndStr)) ||
-             (s.is_split_shift && shiftStartDate < parseISO(prevWeekStartStr) && shiftEndDate >= parseISO(prevWeekStartStr));
-
-      return isInPrevWeek && selectedOfficersArray.includes(s.officer_email);
-    });
+    const previousWeekSchedules = schedules.filter(s =>
+      s.shift_date >= prevWeekStartStr &&
+      s.shift_date <= prevWeekEndStr &&
+      selectedOfficersArray.includes(s.officer_email)
+    );
 
     if (previousWeekSchedules.length === 0) {
       alert('No shifts found for selected officers in the previous week.');
@@ -1021,8 +998,8 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     
     const sortedSchedules = officerSchedules.sort((a, b) => {
       // Calculate display date - split shifts show on their END date (shift_date + 1)
-      const displayDateA = a.is_split_shift ? format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') : a.shift_date;
-      const displayDateB = b.is_split_shift ? format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') : b.shift_date;
+      const displayDateA = a.shift_date;
+      const displayDateB = b.shift_date;
       
       const dateCompare = displayDateA.localeCompare(displayDateB);
       if (dateCompare !== 0) return dateCompare;
@@ -1075,13 +1052,13 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     const scheduleHTML = sortedSchedules.map(schedule => {
       const isSplitShift = schedule.is_split_shift === true;
       // For display, split shifts show on their END date
-      const displayDate = isSplitShift ? addDays(parseISO(schedule.shift_date), 1) : parseISO(schedule.shift_date);
+      const displayDate = parseISO(schedule.shift_date);
       const hours = calculateShiftHours(schedule.start_time, schedule.end_time);
       
       return `
         <div class="shift-card ${isSplitShift ? 'split-shift' : ''}">
           <div class="shift-date">${format(displayDate, 'MMM d, yyyy EEEE')}</div>
-          <div class="shift-time">${schedule.start_time} - ${schedule.end_time} at ${schedule.location.split(':')[0]} (${hours.toFixed(2)}h) ${isSplitShift ? '<span class="split-badge">(Overnight Shift)</span>' : ''}</div>
+          <div class="shift-time">${schedule.start_time} - ${schedule.end_time} at ${schedule.location.split(':')[0]} (${hours.toFixed(2)}h) ${isSplitShift ? '<span class="split-badge">(Split Shift)</span>' : ''}</div>
           ${schedule.site_details ? `<div class="shift-details">Site Details: ${schedule.site_details}</div>` : ''}
           ${schedule.special_instructions ? `<div class="shift-instructions">Special Instructions: ${schedule.special_instructions}</div>` : ''}
         </div>
@@ -1714,8 +1691,8 @@ Make sure all dates are in YYYY-MM-DD format.` ,
             .filter(s => s.officer_email === email)
             .sort((a, b) => {
               // Display date: split shifts show on END date (shift_date + 1)
-              const displayDateA = a.is_split_shift ? format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') : a.shift_date;
-              const displayDateB = b.is_split_shift ? format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') : b.shift_date;
+              const displayDateA = a.shift_date;
+              const displayDateB = b.shift_date;
               
               const dateCompare = displayDateA.localeCompare(displayDateB);
               if (dateCompare !== 0) return dateCompare;
@@ -1731,10 +1708,10 @@ Make sure all dates are in YYYY-MM-DD format.` ,
           const shiftsHTML = officerShifts.map(s => {
             const shiftHours = calculateShiftHours(s.start_time, s.end_time);
             // Display date: split shifts show on their END date
-            const displayDate = s.is_split_shift ? addDays(parseISO(s.shift_date), 1) : parseISO(s.shift_date);
+            const displayDate = parseISO(s.shift_date);
             return '<div style="margin:8px 0; padding:8px; background:#fafafa; border:1px solid #ddd; border-radius:6px; ' + (s.is_split_shift ? 'background:#f3e8ff; border-color:#a855f7; border-width:2px;' : '') + '">' +
               '<div style="font-weight:bold; color:#1e40af; font-size:10pt; margin-bottom:4px;">' + format(displayDate, 'MMM d, yyyy (EEEE)') + '</div>' +
-              '<div style="font-size:9pt;">' + s.start_time + ' - ' + s.end_time + ' at ' + s.location.split(':')[0] + ' (' + shiftHours.toFixed(2) + 'h)' + (s.is_split_shift ? ' <span style="color:#7c3aed; font-weight:bold; margin-left:8px;">(Overnight Shift)</span>' : '') + '</div>' +
+              '<div style="font-size:9pt;">' + s.start_time + ' - ' + s.end_time + ' at ' + s.location.split(':')[0] + ' (' + shiftHours.toFixed(2) + 'h)' + (s.is_split_shift ? ' <span style="color:#7c3aed; font-weight:bold; margin-left:8px;">(Split Shift)</span>' : '') + '</div>' +
               (s.site_details ? '<div style="font-size:8pt; color:#666; margin-top:6px; padding:6px; background:#e8f4f8; border-left:3px solid #0ea5e9;">Site Details: ' + s.site_details + '</div>' : '') +
               (s.special_instructions ? '<div style="font-size:8pt; color:#854d0e; margin-top:6px; padding:6px; background:#fef3c7; border-left:3px solid #f59e0b;">Instructions: ' + s.special_instructions + '</div>' : '') +
             '</div>';
@@ -2683,22 +2660,10 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     
                     return daysInRange.map((day) => {
                       const dateStr = format(day, 'yyyy-MM-dd');
-                      // Filter schedules where the shift either starts on this day, or is a split shift ending on this day
+                      // Every segment is shown only on the calendar date it starts.
                       const daySchedules = printOfficerData.schedules
-                        .filter(s => {
-                          const shiftStartDate = parseISO(s.shift_date);
-                          const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
-                          return format(shiftStartDate, 'yyyy-MM-dd') === dateStr || 
-                                 (s.is_split_shift && format(shiftEndDate, 'yyyy-MM-dd') === dateStr);
-                        })
-                        .sort((a,b) => {
-                          // Sort split shifts (starting previous day) before normal shifts on this day
-                          const aIsOvernightEndingToday = a.is_split_shift && format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') === dateStr;
-                          const bIsOvernightEndingToday = b.is_split_shift && format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') === dateStr;
-                          if (aIsOvernightEndingToday && !bIsOvernightEndingToday) return -1;
-                          if (!aIsOvernightEndingToday && bIsOvernightEndingToday) return 1;
-                          return a.start_time.localeCompare(b.start_time);
-                        });
+                        .filter(s => s.shift_date === dateStr)
+                        .sort((a,b) => a.start_time.localeCompare(b.start_time));
                       
                       if (daySchedules.length === 0) {
                         return (
@@ -2919,7 +2884,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <div>
                 <h3 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
                   <Clock className="w-5 h-5" />
-                  Split Shifts (Overnight) ({overlapResults.splitShifts.length})
+                  Split Shifts ({overlapResults.splitShifts.length})
                 </h3>
                 {overlapResults.splitShifts.length > 0 ? (
                   <ScrollArea className="h-48 bg-white rounded-lg border border-purple-200">
@@ -3970,7 +3935,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 className="w-4 h-4"
               />
               <Label htmlFor="edit_is_split_shift" className="text-sm font-medium text-purple-900 cursor-pointer">
-                Split Shift (e.g., overnight shifts)
+                Split Shift (linked segment)
               </Label>
             </div>
 
