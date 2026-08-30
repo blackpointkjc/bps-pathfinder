@@ -1,0 +1,5 @@
+{
+  "name": "manageDutySupervisorSchedule",
+  "entrypoint": "entry.ts",
+  "description": "Allows administrators and authorized supervisors to schedule duty-supervisor coverage without granting broad Schedule write access."
+}
