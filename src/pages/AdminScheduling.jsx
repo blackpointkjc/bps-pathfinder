@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -2373,16 +2375,12 @@ Return ONLY a JSON array of suggestion objects with this structure:
   return (
     <div className="scheduling-page min-h-screen p-3 pb-24 sm:p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-        <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="w-6 h-6 text-amber-600" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Weekly Schedule</h1>
-              <p className="text-sm text-slate-600">Drag and drop shifts to reschedule</p>
-            </div>
+        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl print:hidden md:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-center gap-3"><Shield className="h-7 w-7 text-amber-400"/><div><div className="text-[11px] font-black uppercase tracking-[.24em] text-amber-300">Scheduling Command</div><h1 className="mt-1 text-3xl font-black text-white">Weekly Schedule</h1><p className="mt-1 text-sm text-slate-400">Drag and drop shifts to reschedule. Fleet and duty-supervisor assignments are part of this scheduling workspace.</p></div></div>
+            <div className="flex flex-wrap gap-2"><Link to={createPageUrl('FleetVehicleAssignments')} className="inline-flex min-h-11 items-center rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20"><Car className="mr-2 h-4 w-4"/>FLEET ASSIGNMENTS</Link><Link to={createPageUrl('DutySupervisorScheduling')} className="inline-flex min-h-11 items-center rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20"><UserCheck className="mr-2 h-4 w-4"/>DUTY SUPERVISOR</Link></div>
           </div>
-
-        </div>
+        </section>
 
         {currentPeriod && (
           <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-300 print:hidden">
