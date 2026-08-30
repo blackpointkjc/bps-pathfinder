@@ -485,7 +485,7 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
+        <div className="bps-command-page cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
@@ -573,7 +573,7 @@ export default function DispatchCenter() {
             <ActiveBoloBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="grid flex-none grid-cols-3 border-b border-[#1e2d4a] bg-[#08111d] lg:grid-cols-6">
+            <div className="grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 lg:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
                     { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
@@ -582,7 +582,7 @@ export default function DispatchCenter() {
                     { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
                     { label: 'PROPERTY OLDEST', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
                 ].map(({ label, value, tone, icon: Icon }) => (
-                    <div key={label} className="flex min-w-0 items-center gap-1.5 border-b border-r border-[#17283b] px-2 py-1.5 lg:border-b-0">
+                    <div key={label} className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#26384c] bg-[#0d1420] px-2 py-2 text-center shadow-lg">
                         <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
                         <div className="min-w-0"><div className={`text-sm font-black leading-none ${tone}`}>{value}</div><div className="mt-0.5 truncate text-[7px] font-bold tracking-[0.1em] text-slate-500">{label}</div></div>
                     </div>
