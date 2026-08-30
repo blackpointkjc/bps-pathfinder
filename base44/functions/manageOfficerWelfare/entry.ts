@@ -12,6 +12,19 @@ const commandAccess = (u: any) => {
   return u?.role === 'admin' || u?.role === 'dispatch' || Boolean(u?.dispatch_role) || roles.has('dispatch') || roles.has('cad_access') || roles.has('full_access') || roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
 };
 
+async function closeWelfareNotifications(base44: any, checkId: string, now: string) {
+  const notifications = await base44.asServiceRole.entities.Notification.filter({
+    related_id: checkId,
+    type: 'call_assignment',
+  }, '-created_date', 50).catch(() => []);
+  for (const notification of notifications || []) {
+    await base44.asServiceRole.entities.Notification.update(notification.id, {
+      is_read: true,
+      acknowledged_at: now,
+    }).catch(() => null);
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -108,6 +121,7 @@ Deno.serve(async (req) => {
     if (action === 'ok') {
       if (!isOfficer && !commandAccess(me)) return Response.json({ error: 'Not authorized' }, { status: 403 });
       const updated = await base44.asServiceRole.entities.OfficerWelfareCheck.update(checkId, { status: 'ok', response_at: now, response_by: String(me.id || ''), response_note: String(body.note || 'Welfare OK').slice(0,1000) });
+      await closeWelfareNotifications(base44, checkId, now);
       await base44.asServiceRole.entities.CallStatusLog.create({ call_id: check.call_id, incident_type: call?.incident || '', location: call?.location || '', old_status: call?.status || '', new_status: call?.status || 'Active', unit_id: check.unit_id, unit_name: check.officer_display_name || 'Officer', notes: `WELFARE OK received from ${check.officer_display_name || 'officer'}.`, event_key: `${check.event_key}:ok`, event_type: 'unit_available', announcement_text: `Welfare check clear for ${check.officer_display_name || 'officer'}. CAD ${cad}.`, announcement_priority: 'normal', cad_number: cad, triggering_action: 'manageOfficerWelfare.ok', audio_enabled: true, sensitive: false }).catch(() => null);
       return Response.json({ success: true, check: updated });
     }
@@ -115,6 +129,7 @@ Deno.serve(async (req) => {
     if (action === 'assist' || action === 'unable_to_reach' || action === 'escalate') {
       const status = action === 'unable_to_reach' ? 'unable_to_reach' : 'escalated';
       const updated = await base44.asServiceRole.entities.OfficerWelfareCheck.update(checkId, { status, response_at: isOfficer ? now : check.response_at, response_by: isOfficer ? String(me.id || '') : check.response_by, response_note: String(body.note || (isOfficer ? 'Officer requested assistance' : 'Unable to reach officer')).slice(0,1000), escalated_at: now, escalated_by: String(me.id || '') });
+      await closeWelfareNotifications(base44, checkId, now);
       await base44.asServiceRole.entities.CallStatusLog.create({ call_id: check.call_id, incident_type: call?.incident || '', location: call?.location || '', old_status: call?.status || '', new_status: call?.status || 'Active', unit_id: check.unit_id, unit_name: check.officer_display_name || 'Officer', notes: `WELFARE ESCALATION: ${check.officer_display_name || 'Officer'} — ${String(body.note || (isOfficer ? 'NEED ASSISTANCE response' : 'No welfare response')).slice(0,500)}`, event_key: `${check.event_key}:escalated`, event_type: 'officer_emergency', announcement_text: `Emergency traffic. Welfare assistance required for ${check.officer_display_name || 'officer'}. CAD ${cad}.`, announcement_priority: 'emergency', cad_number: cad, triggering_action: 'manageOfficerWelfare.escalate', audio_enabled: true, sensitive: false }).catch(() => null);
       return Response.json({ success: true, check: updated });
     }
