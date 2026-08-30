@@ -443,29 +443,29 @@ export default function AdminAnalytics() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate != null ? `${companyOnTimeStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">On-Time Rate</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <BarChart3 className="w-6 h-6 text-cyan-500 mb-2" />
               <p className="text-2xl font-bold text-cyan-400">{companyOverallScore != null ? `${companyOverallScore}%` : '—'}</p>
               <p className="text-xs text-slate-400">Overall Performance</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Users className="w-6 h-6 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-blue-600">{filteredUsers.length}</p>
               <p className="text-xs text-slate-400">Active Officers</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
               <p className="text-2xl font-bold text-purple-600">
                 {trainingByOfficer.length}
@@ -473,15 +473,15 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Need Training</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Clock className="w-6 h-6 text-amber-600 mb-2" />
               <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg || 0}m</p>
               <p className="text-xs text-slate-400">Avg Response</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <AlertTriangle className="w-6 h-6 text-red-600 mb-2" />
               <p className="text-2xl font-bold text-red-600">
                 {(hoursBreakdown?.reduce((sum, o) => sum + (o.overtime || 0), 0) || 0).toFixed(1)}h
@@ -489,15 +489,15 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Total OT</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Award className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{commendationStats.total || 0}</p>
               <p className="text-xs text-slate-400">Commendations</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] text-white shadow-xl">
-            <CardContent className="p-4">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <AlertTriangle className="w-6 h-6 text-rose-600 mb-2" />
               <p className="text-2xl font-bold text-rose-600">{complaintStats.total || 0}</p>
               <p className="text-xs text-slate-400">Complaints</p>
