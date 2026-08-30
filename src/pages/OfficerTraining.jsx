@@ -1,6 +1,7 @@
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default function OfficerTraining() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   // Students should use StudentPortal, not OfficerTraining
