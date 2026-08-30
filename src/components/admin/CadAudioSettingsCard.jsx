@@ -19,6 +19,7 @@ const EVENT_TYPES = [
   ['unit_reassigned', 'Unit reassigned'],
   ['backup_requested', 'Backup requested'],
   ['officer_emergency', 'Officer emergency'],
+  ['welfare_requested', 'Welfare requested'],
   ['welfare_overdue', 'Welfare overdue'],
   ['property_alert', 'Property alert'],
   ['priority_upgraded', 'Priority upgraded'],
