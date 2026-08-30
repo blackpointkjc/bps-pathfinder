@@ -57,7 +57,22 @@ export default function HROverview() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] }),
+    onSuccess: (_payload, item) => {
+      queryClient.setQueryData(['hrOverviewSnapshot'], current => {
+        if (!current) return current;
+        const tasks = (current.tasks || []).filter(task => task.id !== item.id);
+        return {
+          ...current,
+          tasks,
+          counts: { ...(current.counts || {}), total: tasks.length },
+          recently_completed: [
+            { id: item.id, task_key: item.id, title: item.title, completed_at: new Date().toISOString() },
+            ...(current.recently_completed || []).filter(task => task.id !== item.id),
+          ],
+        };
+      });
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    },
   });
 
   const { data = {}, isLoading, isFetching, error, refetch } = useQuery({
