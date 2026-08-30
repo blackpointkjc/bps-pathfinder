@@ -93,8 +93,6 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
     pay_period_start: period.start_date,
     pay_period_end: period.end_date,
   }, '-created_date', 100).catch(() => []);
-  if (!payrollRows?.length) return 0;
-
   const users = await base44.asServiceRole.entities.User.list(undefined, 2000);
   const officer = (users || []).find((item: any) => String(item.email || '').trim().toLowerCase() === email);
   if (!officer || Number(officer.hourly_rate || 0) <= 0) return 0;
@@ -152,6 +150,52 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
   const gross = regularPay + overtimePay + holidayPay + ptoPay;
   const reimbursementTotal = officerExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount || 0), 0);
   const recalculatedAt = new Date().toISOString();
+  const calculated = {
+    regular_hours: round(regularHours, 4),
+    overtime_hours: round(overtimeHours, 4),
+    holiday_hours: round(holidayHours, 4),
+    pto_hours: round(ptoHours, 4),
+    hours_worked: round(regularHours + overtimeHours + holidayHours, 4),
+    total_paid_hours: round(regularHours + overtimeHours + holidayHours + ptoHours, 4),
+    hourly_rate: baseRate,
+    overtime_rate: overtimeRate,
+    holiday_rate: holidayRate,
+    regular_pay: round(regularPay),
+    overtime_pay: round(overtimePay),
+    holiday_pay: round(holidayPay),
+    pto_pay: round(ptoPay),
+    gross_pay: round(gross),
+    tax_free_reimbursements: round(reimbursementTotal),
+    total_payment_due: round(gross + reimbursementTotal),
+    last_recalculated_at: recalculatedAt,
+    payroll_source: 'hr_time_adjustment',
+    holidays_worked: JSON.stringify(holidays),
+    pto_detail: JSON.stringify(officerPto.map((usage: any) => ({
+      date: usage.usage_date,
+      hours: Number(usage.hours || 0),
+      reason: usage.reason || '',
+      source_type: usage.source_type || '',
+    }))),
+  };
+
+  if (!payrollRows?.length) {
+    await base44.asServiceRole.entities.PayrollEntry.create({
+      officer_email: email,
+      pay_period_start: period.start_date,
+      pay_period_end: period.end_date,
+      ...(period.deposit_date ? { pay_date: period.deposit_date } : {}),
+      ...calculated,
+      federal_tax: 0,
+      state_tax: 0,
+      social_security: 0,
+      medicare: 0,
+      other_deductions: 0,
+      net_pay: round(gross),
+      status: 'draft',
+      notes: 'Live draft recalculated after an audited HR time-entry decision.',
+    });
+    return 1;
+  }
 
   for (const payrollRow of payrollRows) {
     const deductions = Number(payrollRow.federal_tax || 0)
@@ -159,30 +203,10 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
       + Number(payrollRow.social_security || 0)
       + Number(payrollRow.medicare || 0)
       + Number(payrollRow.other_deductions || 0);
-    const netPay = Math.max(0, gross - deductions) + reimbursementTotal;
     await base44.asServiceRole.entities.PayrollEntry.update(payrollRow.id, {
-      regular_hours: round(regularHours, 4),
-      overtime_hours: round(overtimeHours, 4),
-      holiday_hours: round(holidayHours, 4),
-      pto_hours: round(ptoHours, 4),
-      hours_worked: round(regularHours + overtimeHours + holidayHours, 4),
-      total_paid_hours: round(regularHours + overtimeHours + holidayHours + ptoHours, 4),
-      hourly_rate: baseRate,
-      overtime_rate: overtimeRate,
-      holiday_rate: holidayRate,
-      regular_pay: round(regularPay),
-      overtime_pay: round(overtimePay),
-      holiday_pay: round(holidayPay),
-      pto_pay: round(ptoPay),
-      gross_pay: round(gross),
-      net_pay: round(netPay),
-      holidays_worked: JSON.stringify(holidays),
-      pto_detail: JSON.stringify(officerPto.map((usage: any) => ({
-        date: usage.usage_date,
-        hours: Number(usage.hours || 0),
-        reason: usage.reason || '',
-        source_type: usage.source_type || '',
-      }))),
+      ...calculated,
+      net_pay: round(Math.max(0, gross - deductions)),
+      total_payment_due: round(Math.max(0, gross - deductions) + reimbursementTotal),
     });
   }
 
