@@ -135,7 +135,6 @@ const CENTER_CONFIG = {
       { label: 'Schedule & Availability', items: [
         ['Availability', 'OfficerAvailability', CalendarClock],
         ['Open Shifts', 'OpenShifts', Briefcase],
-        ['Duty Supervisor Schedule', 'DutySupervisorScheduling', ShieldCheck],
         ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
       ]},
       { label: 'Supervisor Operations', items: [
