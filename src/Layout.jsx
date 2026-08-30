@@ -443,7 +443,7 @@ function allowedCenters(user) {
   if (user?.role === 'admin' || fullAccess) return withSupplementalCenters(['admin']);
   if (user?.role === 'dispatch') return withSupplementalCenters(['cad']);
   if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withSupplementalCenters(['supervisor', 'cad']);
-  if (roles.has('officer')) return withSupplementalCenters(['cad', 'officer']);
+  if (roles.has('officer')) return withSupplementalCenters(['officer', 'cad']);
   if (roles.has('hr') || rank === 'human resources') return withSupplementalCenters(['hr']);
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withSupplementalCenters(['support']);
   if (roles.has('accounting')) return withSupplementalCenters(['accounting']);
@@ -1270,13 +1270,14 @@ export default function Layout({ children, currentPageName }) {
     return <Navigate to={createPageUrl(defaultPageForUser(user, !isMobileViewport))} replace />;
   }
 
-  if (!isMobileViewport) {
-    const consolidatedTarget = desktopToolRoute(currentPageName);
-    if (consolidatedTarget) return <Navigate to={consolidatedTarget} replace />;
-  }
-
+  // Keep direct task and tool routes on the page the user opened. Center pages
+  // remain available from the workspace selector, but desktop navigation must not
+  // rewrite an inner-page URL back to a center landing page.
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
+  const primaryCenter = allowedCenters(user)[0] || 'officer';
+  const userHomePage = defaultPageForUser(user, true);
+  const userHomeLabel = `${String(CENTER_CONFIG[primaryCenter]?.label || 'Pathfinder').replace(/\s+Center$/i, '')} Home`;
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
@@ -1351,16 +1352,16 @@ export default function Layout({ children, currentPageName }) {
       <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
-            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] lg:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] lg:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
           {COMMUNICATION_PAGES.has(currentPageName) && (
             <Link
-              to={createPageUrl('CommandDashboard')}
+              to={createPageUrl(userHomePage)}
               className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-blue-500/70 bg-blue-600/20 px-3 text-[10px] font-black uppercase tracking-wider text-blue-100 hover:bg-blue-600/35"
-              aria-label="Return to CAD home"
+              aria-label={`Return to ${userHomeLabel}`}
             >
               <Gauge className="h-4 w-4" />
-              <span>CAD Home</span>
+              <span>{userHomeLabel}</span>
             </Link>
           )}
           <div className="min-w-0">
@@ -1405,7 +1406,12 @@ export default function Layout({ children, currentPageName }) {
         }
       }}
       onReports={() => { const centers = allowedCenters(user); setActiveCenter(centers.includes('supervisor') ? 'supervisor' : 'officer'); setMobileSection('reports'); setMobileOpen(true); }}
-      onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor', 'admin'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
+      onMenu={() => {
+        setMobileSection(null);
+        const centers = allowedCenters(user);
+        if (!centers.includes(activeCenter)) setActiveCenter(centers[0] || 'officer');
+        setMobileOpen(true);
+      }
     />
   </div></MicrosoftMailSetupGate>;
 }
