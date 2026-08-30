@@ -69,7 +69,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Field Tools', items: [
         ['Post Orders', 'PostOrders', BookOpen],
-        ['QR Patrol', 'QRPatrolScan', MapPin],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['VA Trespass', 'VATrespassNotices', UserX],
         ['VA Complaint', 'VACriminalComplaints', Shield],
@@ -82,6 +81,7 @@ const CENTER_CONFIG = {
         ['Open Door', 'OpenDoorReports', DoorOpen],
         ['Confidential', 'ConfidentialReport', ShieldCheck],
         ['Expense Report', 'ExpenseReports', DollarSign],
+        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
         ['Time Request', 'TimeRequests', CalendarClock],
       ]},
       { label: 'Schedule & Availability', items: [
@@ -116,7 +116,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Field Tools', items: [
         ['Post Orders', 'PostOrders', BookOpen],
-        ['QR Patrol', 'QRPatrolScan', MapPin],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
         ['VA Trespass', 'VATrespassNotices', UserX],
@@ -130,6 +129,7 @@ const CENTER_CONFIG = {
         ['Open Door', 'OpenDoorReports', DoorOpen],
         ['Confidential', 'ConfidentialReport', ShieldCheck],
         ['Expense Report', 'ExpenseReports', DollarSign],
+        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
         ['Time Request', 'TimeRequests', CalendarClock],
       ]},
       { label: 'Schedule & Availability', items: [
@@ -198,12 +198,9 @@ const CENTER_CONFIG = {
       { label: 'Communications & Requests', items: [
         ['Announcements', 'AdminAnnouncements', Bell],
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
-        ['Documents', 'AdminDocuments', FileText],
       ]},
       { label: 'QR Patrol', items: [
-        ['QR Checkpoints', 'AdminQRCheckpoints', MapPin],
-        ['QR Print Manager', 'AdminQRPrintManager', FileText],
-        ['QR Patrol Reports', 'AdminQRReports', BarChart3],
+        ['QR Patrol Management', 'AdminQRCenter', MapPin],
       ]},
       { label: 'System', items: [
         ['Portal Settings', 'AdminPortalSettings', Settings],
@@ -216,6 +213,7 @@ const CENTER_CONFIG = {
     groups: [
       { label: 'Training Operations', items: [
         ['Trainer Center', 'TrainerCenter', GraduationCap],
+        ['Training Documents', 'AdminDocuments', FileText],
       ]},
     ],
   },
@@ -332,7 +330,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','sites','locations'], AdminEquipment: ['admin','sites','equipment'], AdminPostOrders: ['admin','sites','postorders'],
   AdminReports: ['admin','reports','allreports'], AdminClientReports: ['admin','reports','clientreports'], AdminSupervisorReports: ['admin','reports','supervisorreports'], AdminConfidentialReports: ['admin','reports','confidential'], AdminComplaints: ['admin','reports','complaints'], AdminCommendations: ['admin','reports','commendations'], AdminClientFeedback: ['admin','reports','feedback'],
   AdminAnnouncements: ['admin','communications','announcements'], AdminSpecialRequests: ['admin','communications','requests'], AdminDocuments: ['admin','communications','documents'],
-  AdminQRCheckpoints: ['admin','system','qrcheckpoints'], AdminQRPrintManager: ['admin','system','qrprint'], AdminQRReports: ['admin','system','qrreports'], AdminPortalSettings: ['admin','system','settings'],
+  AdminQRCenter: ['admin','system','qr'], AdminQRCheckpoints: ['admin','system','qr'], AdminQRPrintManager: ['admin','system','qr'], AdminQRReports: ['admin','system','qr'], AdminPortalSettings: ['admin','system','settings'], AdminDocuments: ['training','documents','documents'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['hr','employees','clients'],
   SupervisorTasks: ['supervisor','command','tasks'], SupervisorFieldOversight: ['supervisor','command','field'], SupervisorShiftHandover: ['supervisor','command','handover'], SupervisorChat: ['supervisor','command','chat'], SupervisorDailyCode: ['supervisor','command','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
   ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],
