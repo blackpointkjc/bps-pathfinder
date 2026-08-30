@@ -14,6 +14,7 @@ import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorOverview from './SupervisorOverview';
+import DutySupervisorScheduling from './DutySupervisorScheduling';
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
@@ -26,6 +27,7 @@ const COMMAND_TOOLS = [
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
+  { id: 'dutyschedule', label: 'Duty Supervisor Schedule', component: DutySupervisorScheduling },
   { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
   { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
   { id: 'rank', label: 'Rank Structure', component: RankStructure },
