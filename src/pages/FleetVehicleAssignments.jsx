@@ -153,9 +153,9 @@ export default function FleetVehicleAssignments() {
     await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
   };
 
-  return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-6">
+  return <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6">
     <div className="mx-auto max-w-[1500px] space-y-4">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 pb-3">
+      <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
         <Car className="h-7 w-7 text-amber-400" />
         <div>
           <h1 className="text-xl font-black tracking-wide">FLEET VEHICLE SCHEDULE</h1>
@@ -167,7 +167,7 @@ export default function FleetVehicleAssignments() {
           <Button variant="outline" size="sm" onClick={() => setDayOffset(0)}>TODAY</Button>
           <Button variant="outline" size="sm" onClick={() => setDayOffset(v => v + 3)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-      </div>
+      </div></section>
 
       {(vehicleError || scheduleError || assignmentError) && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. Refresh the page; if the message remains, verify fleet and scheduling access.</div>}
 
