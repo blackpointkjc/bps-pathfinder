@@ -47,7 +47,6 @@ const TOOLS = {
   ],
   field: [
     { id: 'postorders', label: 'Post Orders', component: PostOrders },
-    { id: 'qr', label: 'QR Patrol', component: QRPatrolScan },
     { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
   ],
   messages: [
@@ -63,6 +62,7 @@ const TOOLS = {
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },
     { id: 'confidential', label: 'Confidential', component: ConfidentialReport },
     { id: 'expense', label: 'Expense Report', component: ExpenseReports },
+    { id: 'qr', label: 'QR Patrol Scan', component: QRPatrolScan },
   ],
   schedule: [
     { id: 'availability', label: 'Availability', component: OfficerAvailability },
