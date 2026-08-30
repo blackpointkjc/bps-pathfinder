@@ -433,9 +433,9 @@ export default function AdminLocationTracker() {
         </div>
 
         {deviceLocationState && ['permission_denied', 'unavailable', 'timeout', 'low_accuracy', 'stale'].includes(deviceLocationState.state) && (
-          <Alert className="border-amber-400 bg-amber-50">
-            <AlertTriangle className="h-4 w-4 text-amber-700" />
-            <AlertDescription className="text-amber-950">
+          <Alert className="border-amber-400/70 bg-amber-950/80 text-amber-50 shadow-lg">
+            <AlertTriangle className="h-4 w-4 text-amber-300" />
+            <AlertDescription className="font-semibold leading-5 text-amber-50">
               {deviceLocationState.state === 'permission_denied'
                 ? 'Location permission is blocked on this device. Allow precise location for Pathfinder in the browser site settings, then select Check All Locations Now.'
                 : deviceLocationState.state === 'low_accuracy'
