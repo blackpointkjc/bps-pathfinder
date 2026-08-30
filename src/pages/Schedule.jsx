@@ -27,16 +27,26 @@ const hourLabel = hour => {
   return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
 };
 
-const timelinePlacement = schedule => {
+const timelinePlacement = (schedule, carryover = false) => {
   const startMinutes = Math.min(1439, minutesFromTime(schedule.start_time));
   const rawEndMinutes = minutesFromTime(schedule.end_time);
   const crossesMidnight = rawEndMinutes <= startMinutes;
+  if (carryover && crossesMidnight) {
+    const visibleMinutes = Math.max(1, rawEndMinutes);
+    return {
+      top: 0,
+      height: Math.max(38, (visibleMinutes / 60) * TIMELINE_HOUR_HEIGHT),
+      crossesMidnight: false,
+      carryover: true,
+    };
+  }
   const visibleEndMinutes = crossesMidnight ? 1440 : Math.min(1440, rawEndMinutes);
   const visibleMinutes = Math.max(1, visibleEndMinutes - startMinutes);
   return {
     top: (startMinutes / 60) * TIMELINE_HOUR_HEIGHT,
     height: Math.max(38, (visibleMinutes / 60) * TIMELINE_HOUR_HEIGHT),
     crossesMidnight,
+    carryover: false,
   };
 };
 
@@ -219,10 +229,15 @@ export default function Schedule() {
   const getScheduleForDate = React.useCallback((date) => {
     if (!visibleSchedules) return [];
     const dateStr = format(date, 'yyyy-MM-dd');
-    const daySchedules = visibleSchedules.filter(s => s.shift_date === dateStr) || [];
-    
-    // Each shift belongs to the date it starts, so sort normally within that day.
-    return daySchedules.sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+    const previousDateStr = format(addDays(date, -1), 'yyyy-MM-dd');
+    const sameDay = visibleSchedules.filter(s => s.shift_date === dateStr).map(s => ({ ...s, _carryover: false }));
+    const carryovers = visibleSchedules
+      .filter(s => s.shift_date === previousDateStr && minutesFromTime(s.end_time) <= minutesFromTime(s.start_time))
+      .map(s => ({ ...s, _carryover: true, _display_date: dateStr }));
+    return [...carryovers, ...sameDay].sort((a, b) => {
+      if (a._carryover !== b._carryover) return a._carryover ? -1 : 1;
+      return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+    });
   }, [visibleSchedules]);
 
   const checkPTOForDate = React.useCallback((date) => {
@@ -456,7 +471,7 @@ export default function Schedule() {
                       )}
 
                       {!ptoEntry && daySchedules.map(schedule => {
-                        const placement = timelinePlacement(schedule);
+                        const placement = timelinePlacement(schedule, schedule._carryover === true);
                         const isSplitShift = schedule.is_split_shift === true || Boolean(schedule.linked_shift_id);
                         const duty = dutySupervisorForShift(schedule);
                         const dedicated = dedicatedSupervisorForShift(schedule);
@@ -467,7 +482,7 @@ export default function Schedule() {
                           (!a.start_time || a.start_time === schedule.start_time)
                         );
                         const detailTitle = [
-                          `${schedule.start_time}–${schedule.end_time}${placement.crossesMidnight ? ' (continues next day)' : ''}`,
+                          `${schedule.start_time}–${schedule.end_time}${placement.crossesMidnight ? ' (continues next day)' : placement.carryover ? ' (continued from previous day)' : ''}`,
                           schedule.location,
                           schedule.partner_officer_email ? `Partner: ${getUserName(schedule.partner_officer_email)}` : '',
                           supervisorName ? `Supervisor: ${supervisorName}` : '',
@@ -484,10 +499,11 @@ export default function Schedule() {
                             style={{ top: placement.top, height: placement.height }}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span className="truncate text-[11px] font-black text-white">{schedule.start_time}–{schedule.end_time}</span>
+                              <span className="truncate text-[11px] font-black text-white">{placement.carryover ? `12:00 AM–${schedule.end_time}` : `${schedule.start_time}–${schedule.end_time}`}</span>
                               {isSplitShift && <span className="rounded bg-purple-400/20 px-1 text-[8px] font-black text-purple-200">SPLIT</span>}
                             </div>
                             {placement.crossesMidnight && <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">Continues next day</div>}
+                            {placement.carryover && <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">Continued from previous day</div>}
                             <button type="button" onClick={() => openInMaps(schedule.location)} className="mt-1 flex w-full items-start gap-1 text-left">
                               <MapPin className={`mt-0.5 h-3 w-3 shrink-0 ${isSplitShift ? 'text-purple-300' : 'text-blue-300'}`} />
                               <span className="line-clamp-2 text-[10px] font-semibold leading-3 text-slate-100">{schedule.location}</span>
