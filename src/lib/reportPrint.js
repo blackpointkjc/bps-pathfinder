@@ -199,7 +199,7 @@ export function openBlackPointReport({
 <body>
   <div class="print-actions no-print">
     <button type="button" onclick="window.print()">Print / Save PDF</button>
-    <button type="button" onclick="window.close()">Back to Pathfinder</button>
+    <button type="button" onclick="returnToPathfinder()">Back to Pathfinder</button>
   </div>
   <table class="page-shell">
     <thead>
@@ -246,6 +246,25 @@ export function openBlackPointReport({
     </tbody>
   </table>
   <script>
+    function returnToPathfinder() {
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.focus();
+          window.close();
+          return;
+        }
+      } catch (error) {}
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }
+    window.addEventListener('afterprint', function () {
+      // Keep the preview open after printing/cancelling so the user can choose
+      // Back to Pathfinder instead of being trapped in a browser print view.
+      document.querySelector('.print-actions')?.scrollIntoView({ block: 'start' });
+    });
     window.addEventListener('load', async function () {
       const images = Array.from(document.images || []);
       await Promise.all(images.map(function (img) {
