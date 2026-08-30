@@ -445,14 +445,17 @@ export default function Schedule() {
                             )}
                             {(() => {
                               const duty = dutySupervisorForShift(schedule);
-                              if (!duty) return null;
+                              const dedicated = dedicatedSupervisorForShift(schedule);
+                              const supervisorName = duty?.supervisor_name || (duty ? getUserName(duty.supervisor_email) : dedicated?.name);
+                              if (!supervisorName) return null;
                               return (
-                                <div className="mt-2 flex items-start gap-2 rounded-lg border border-cyan-700/50 bg-cyan-950/20 px-2.5 py-2">
-                                  <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300" />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">Duty Supervisor</div>
-                                    <div className="truncate text-[12px] font-black text-cyan-100">{duty.supervisor_name || getUserName(duty.supervisor_email)}</div>
-                                    <div className="mt-0.5 truncate text-[9px] text-cyan-300/80">Coverage {duty.start_time}–{duty.end_time}{duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}</div>
+                                <div className="mt-2 flex items-start gap-2 rounded-xl border border-cyan-700/50 bg-cyan-950/20 px-3 py-3">
+                                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                                  <div className="min-w-0 flex-1 break-words">
+                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">{duty ? 'Duty Supervisor' : 'Dedicated Site Supervisor'}</div>
+                                    <div className="mt-0.5 break-words text-[12px] font-black leading-4 text-cyan-100">{supervisorName}</div>
+                                    <div className="mt-1 break-words text-[10px] leading-4 text-cyan-300/90">{duty ? `Coverage ${duty.start_time}–${duty.end_time}${duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}` : `${dedicated.location} dedicated supervisor`}</div>
+                                    <div className="mt-1.5 text-[9px] font-semibold leading-4 text-cyan-200">Contact this supervisor first for site-specific issues, guidance, or escalation while you are assigned here.</div>
                                   </div>
                                 </div>
                               );
