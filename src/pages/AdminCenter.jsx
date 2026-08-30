@@ -69,8 +69,7 @@ const ADMIN_SECTIONS = [
   { id: 'schedule', label: 'Scheduling & Time', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
   { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, automatic dispatch, CAD controls, portal visibility, equipment, post orders and patrol rules', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
-  { id: 'communications', label: 'Requests & Documents', description: 'Announcements, special requests and documents', icon: MessageCircle },
-  { id: 'system', label: 'Patrol & System', description: 'QR patrol administration and portal settings', icon: BarChart3 },
+  { id: 'communications', label: 'Requests & Documents', description: 'Announcements and special requests', icon: MessageCircle },
 ];
 
 const ADMIN_TOOLS = {
@@ -117,7 +116,6 @@ const ADMIN_TOOLS = {
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
   ],
-  system: [],
 };
 
 const ADMIN_SUPERVISOR_SECTIONS = [
