@@ -350,7 +350,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "CommandDashboard",
+    mainPage: "Home",
     Pages: PAGES,
     Layout: __Layout,
 };
