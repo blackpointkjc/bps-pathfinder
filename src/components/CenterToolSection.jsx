@@ -27,11 +27,11 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
   return (
     <div className={`w-full ${fullCanvas ? 'flex h-[calc(100vh-150px)] min-h-[680px] flex-col' : ''}`}>
       {safeTools.length > 1 && (
-        <div className="sticky top-0 z-20 border-b border-slate-800 bg-[#08111e]/95 px-3 py-1.5 backdrop-blur md:px-4">
+        <div className="border-b border-slate-800 bg-[#08111e] px-3 py-1 md:px-4">
           <div className="flex max-w-full gap-1.5 overflow-x-auto">
             {safeTools.map(item => (
               <button key={item.id} type="button" onClick={() => select(item.id)}
-                className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-left text-[11px] font-bold leading-tight transition ${tool === item.id ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white'}`}>
+                className={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] font-bold leading-tight transition ${tool === item.id ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white'}`}>
                 {item.label}
               </button>
             ))}
