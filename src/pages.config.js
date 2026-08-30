@@ -187,6 +187,7 @@ import VACriminalComplaints from './pages/VACriminalComplaints';
 import VATrespassNotices from './pages/VATrespassNotices';
 import VirginiaFieldLawAssistant from './pages/VirginiaFieldLawAssistant';
 import QRPatrolScan from './pages/QRPatrolScan.jsx';
+import AdminQRCenter from './pages/AdminQRCenter';
 import AdminQRCheckpoints from './pages/AdminQRCheckpoints';
 import AdminQRPrintManager from './pages/AdminQRPrintManager';
 import AdminQRReports from './pages/AdminQRReports';
@@ -335,6 +336,7 @@ export const PAGES = {
     "VATrespassNotices": VATrespassNotices,
     "VirginiaFieldLawAssistant": VirginiaFieldLawAssistant,
     "QRPatrolScan": QRPatrolScan,
+    "AdminQRCenter": AdminQRCenter,
     "AdminQRCheckpoints": AdminQRCheckpoints,
     "AdminQRPrintManager": AdminQRPrintManager,
     "AdminQRReports": AdminQRReports,
