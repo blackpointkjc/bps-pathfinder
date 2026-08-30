@@ -49,7 +49,22 @@ export default function AdminDashboard() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] }),
+    onSuccess: (_payload, task) => {
+      queryClient.setQueryData(['adminDashboardWorkQueue'], current => {
+        if (!current) return current;
+        const tasks = (current.tasks || []).filter(item => item.id !== task.id);
+        return {
+          ...current,
+          tasks,
+          counts: { ...(current.counts || {}), total: tasks.length },
+          recently_completed: [
+            { id: task.id, task_key: task.id, title: task.title, completed_at: new Date().toISOString() },
+            ...(current.recently_completed || []).filter(item => item.id !== task.id),
+          ],
+        };
+      });
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    },
   });
 
   const { data: user } = useQuery({
