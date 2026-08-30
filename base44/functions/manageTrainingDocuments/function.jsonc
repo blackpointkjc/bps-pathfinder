@@ -1,0 +1,5 @@
+{
+  "name": "manageTrainingDocuments",
+  "description": "Authorized admin/trainer management of training document records",
+  "runtime": "deno"
+}
