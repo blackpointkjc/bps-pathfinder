@@ -50,29 +50,25 @@ export default function Schedule() {
   const vehicleAssignments = scheduleData.vehicleAssignments || [];
   const dutySupervisorAssignments = scheduleData.dutySupervisorAssignments || [];
 
-  const timeMinutes = value => {
-    const [hours = 0, mins = 0] = String(value || '00:00').split(':').map(Number);
-    return (hours * 60) + mins;
-  };
-  const timeOverlaps = (aStart, aEnd, bStart, bEnd) => {
-    const normalize = (start, end) => {
-      const s = timeMinutes(start);
-      let e = timeMinutes(end);
-      if (e <= s) e += 1440;
-      return [s, e];
-    };
-    const [as, ae] = normalize(aStart, aEnd);
-    const [bs, be] = normalize(bStart, bEnd);
-    return as < be && bs < ae;
+  const intervalFor = (dateValue, startValue, endValue) => {
+    const date = String(dateValue || '').slice(0, 10);
+    const start = new Date(`${date}T${String(startValue || '00:00').slice(0,5)}:00`).getTime();
+    let end = new Date(`${date}T${String(endValue || '00:00').slice(0,5)}:00`).getTime();
+    if (end <= start) end += 24 * 60 * 60 * 1000;
+    return [start, end];
   };
   const normalizeSite = value => String(value || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
-  const dutySupervisorForShift = shift => dutySupervisorAssignments.find(row => {
-    if (String(row.assignment_date || '').slice(0, 10) !== String(shift.shift_date || '').slice(0, 10)) return false;
-    if (String(row.status || '').toLowerCase() === 'cancelled') return false;
-    const coverage = String(row.location || 'ALL');
-    const locationMatches = coverage === 'ALL' || normalizeSite(coverage) === normalizeSite(shift.location);
-    return locationMatches && timeOverlaps(row.start_time, row.end_time, shift.start_time, shift.end_time);
-  });
+  const dutySupervisorForShift = shift => {
+    const [shiftStart, shiftEnd] = intervalFor(shift.shift_date, shift.start_time, shift.end_time);
+    return dutySupervisorAssignments.find(row => {
+      if (String(row.status || '').toLowerCase() === 'cancelled') return false;
+      const coverage = String(row.location || 'ALL');
+      const locationMatches = coverage === 'ALL' || normalizeSite(coverage) === normalizeSite(shift.location);
+      if (!locationMatches) return false;
+      const [dutyStart, dutyEnd] = intervalFor(row.assignment_date, row.start_time, row.end_time);
+      return dutyStart < shiftEnd && shiftStart < dutyEnd;
+    });
+  };
 
   useEffect(() => {
     if (!user?.email) return undefined;
