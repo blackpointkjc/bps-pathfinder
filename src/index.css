@@ -1471,13 +1471,27 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
    entry panels, so asymmetric left/right placement makes the dashboards look
    unbalanced at wide desktop widths. */
 .bps-kpi-card {
-  display: flex;
+  display: flex !important;
   min-width: 0;
   min-height: 150px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.bps-kpi-card > *,
+.bps-kpi-card [class*="CardContent"],
+.bps-kpi-card [class*="CardHeader"] {
+  width: 100%;
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.bps-kpi-card svg {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .bps-kpi-icon {
