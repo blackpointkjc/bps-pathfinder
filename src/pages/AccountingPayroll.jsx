@@ -1150,9 +1150,12 @@ export default function AccountingPayroll() {
                               {officer?.first_name?.charAt(0) || 'O'}
                             </div>
                             <div>
-                              <p className="font-semibold text-slate-900">
-                                {officer ? `${officer.first_name} ${officer.last_name}` : entry.officer_email}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-slate-900">
+                                  {officer ? `${officer.first_name} ${officer.last_name}` : entry.officer_email}
+                                </p>
+                                {entry._inProgress && <span className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-300">In Progress</span>}
+                              </div>
                               <p className="text-sm text-slate-600">
                                 {safeFormatDate(entry.pay_period_start, 'MMM d')} - {safeFormatDate(entry.pay_period_end, 'MMM d, yyyy')}
                               </p>
