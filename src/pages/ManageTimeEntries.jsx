@@ -364,13 +364,13 @@ export default function ManageTimeEntries() {
   const activeOfficers = allUsers.filter(isInternalMember);
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Briefcase className="w-8 h-8 text-indigo-600" />
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Manage Time Entries</h1>
+              <h1 className="text-3xl font-black text-white">Manage Time Entries</h1>
               <p className="text-slate-600">Add, edit, or remove officer time entries</p>
             </div>
           </div>
