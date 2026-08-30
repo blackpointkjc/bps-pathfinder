@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut } from "lucide-react";
+import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut, Settings, Radio, Eye, Hand, Power } from "lucide-react";
 import { differenceInMinutes } from "date-fns";
 import { MapContainer, Marker, Circle, Polygon, Popup } from "react-leaflet";
 import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
@@ -57,6 +57,7 @@ export default function AdminGeofenceAlerts() {
 
   const activeAlerts = alerts?.filter(a => !a.acknowledged) || [];
   const acknowledgedAlerts = alerts?.filter(a => a.acknowledged) || [];
+  const monitoredLocations = (locations || []).filter(location => location.active !== false && location.property_monitoring_enabled === true);
 
   const acknowledgeMutation = useMutation({
     mutationFn: async ({ id, notes }) => {
@@ -81,6 +82,22 @@ export default function AdminGeofenceAlerts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
+    },
+  });
+
+  const autoDispatchMutation = useMutation({
+    mutationFn: async ({ location, mode }) => {
+      const data = mode === 'disabled'
+        ? { auto_dispatch_enabled: false, auto_dispatch_mode: 'disabled' }
+        : { auto_dispatch_enabled: true, auto_dispatch_mode: mode };
+      const result = await base44.functions.invoke('manageLocations', { action: 'update', id: location.id, data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.location;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['directoryLocations', 'geofenceAlerts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
     },
   });
 
@@ -131,15 +148,13 @@ export default function AdminGeofenceAlerts() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Target className="w-8 h-8 text-green-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Geofence Alerts</h1>
-            <p className="text-slate-600">Monitor officers leaving their patrol zones</p>
-          </div>
-        </div>
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
+          <div className="flex items-center gap-3"><Target className="h-8 w-8 text-cyan-300"/><div><div className="text-[11px] font-black uppercase tracking-[.24em] text-cyan-300">Property & Geofence Command</div><h1 className="mt-1 text-3xl font-black">Geofence Alerts & Auto Dispatch</h1><p className="mt-1 text-sm text-slate-400">Monitor patrol-zone exceptions and control each monitored property's automatic dispatch mode from one screen.</p></div></div>
+        </section>
+
+        {isAdmin && <section className="rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl"><div className="flex items-start gap-3"><Settings className="mt-0.5 h-5 w-5 text-amber-300"/><div><div className="text-xs font-black uppercase tracking-[.18em] text-amber-300">Property Automatic Dispatch Controls</div><p className="mt-1 text-xs text-slate-400">LIVE automatically assigns eligible units. SHADOW only recommends. MANUAL REVIEW requires dispatcher action. OFF disables automatic dispatch for that property.</p></div></div><div className="mt-4 grid gap-3 lg:grid-cols-2">{monitoredLocations.map(location=>{const mode=location.auto_dispatch_enabled===true?(location.auto_dispatch_mode||'shadow'):'disabled';return <div key={location.id} className="rounded-2xl border border-slate-700 bg-[#09111d] p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-black text-white">{location.site_name}</div><div className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Current mode: <span className={mode==='live'?'text-emerald-300':mode==='disabled'?'text-red-300':'text-amber-300'}>{mode.replaceAll('_',' ')}</span></div></div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={autoDispatchMutation.isPending} onClick={()=>autoDispatchMutation.mutate({location,mode:'live'})} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${mode==='live'?'border-emerald-500 bg-emerald-500/20 text-emerald-200':'border-slate-700 text-slate-400 hover:text-white'}`}><Radio className="mr-1 inline h-3 w-3"/>LIVE</button><button type="button" disabled={autoDispatchMutation.isPending} onClick={()=>autoDispatchMutation.mutate({location,mode:'shadow'})} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${mode==='shadow'?'border-cyan-500 bg-cyan-500/20 text-cyan-200':'border-slate-700 text-slate-400 hover:text-white'}`}><Eye className="mr-1 inline h-3 w-3"/>SHADOW</button><button type="button" disabled={autoDispatchMutation.isPending} onClick={()=>autoDispatchMutation.mutate({location,mode:'manual_review'})} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${mode==='manual_review'?'border-amber-500 bg-amber-500/20 text-amber-200':'border-slate-700 text-slate-400 hover:text-white'}`}><Hand className="mr-1 inline h-3 w-3"/>MANUAL</button><button type="button" disabled={autoDispatchMutation.isPending} onClick={()=>autoDispatchMutation.mutate({location,mode:'disabled'})} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${mode==='disabled'?'border-red-500 bg-red-500/20 text-red-200':'border-slate-700 text-slate-400 hover:text-white'}`}><Power className="mr-1 inline h-3 w-3"/>OFF</button></div></div>{mode==='live'&&<div className="mt-2 text-[10px] font-bold text-emerald-300">Live automatic assignment enabled and administrator-approved.</div>}{mode==='shadow'&&<div className="mt-2 text-[10px] font-bold text-cyan-300">Shadow alert control is active: recommendations only; no unit status changes.</div>}</div>})}</div>{!monitoredLocations.length&&<div className="mt-4 rounded-xl border border-dashed border-slate-700 p-5 text-center text-xs text-slate-500">No active monitored properties are configured.</div>}</section>}
 
         {activeAlerts.length > 0 && (
           <Card className="border-l-4 border-l-red-500 shadow-lg">
