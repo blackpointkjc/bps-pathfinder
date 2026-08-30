@@ -16,6 +16,8 @@ export default function AdminAutoDispatchControls() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState('');
   const [form, setForm] = useState(null);
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
@@ -23,7 +25,7 @@ export default function AdminAutoDispatchControls() {
   const { data: locations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['autoDispatchManagedLocations'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('manageLocations', { action: 'list' });
+      const response = await base44.functions.invoke('manageAutoDispatchConfig', { action: 'list' });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       return (payload.locations || []).filter(location => location.active !== false && location.property_monitoring_enabled === true);
@@ -43,28 +45,34 @@ export default function AdminAutoDispatchControls() {
 
   const modeMutation = useMutation({
     mutationFn: async ({ location, mode }) => {
-      const data = mode === 'disabled'
-        ? { auto_dispatch_enabled: false, auto_dispatch_mode: 'disabled' }
-        : { auto_dispatch_enabled: true, auto_dispatch_mode: mode };
-      const response = await base44.functions.invoke('manageLocations', { action: 'update', id: location.id, data });
+      setActionMessage('');
+      setActionError('');
+      const response = await base44.functions.invoke('manageAutoDispatchConfig', { action: 'update_mode', id: location.id, mode });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       return payload.location;
     },
     onSuccess: async location => {
       await refreshAll();
+      setActionMessage(`${location?.site_name || 'Property'} is now ${modeLabel(location).replaceAll('_',' ').toUpperCase()}.`);
       toast.success(`${location?.site_name || 'Property'} automatic dispatch updated.`);
     },
-    onError: error => toast.error(error?.response?.data?.error || error?.message || 'Automatic dispatch mode could not be changed.'),
+    onError: error => {
+      const message = error?.response?.data?.error || error?.message || 'Automatic dispatch mode could not be changed.';
+      setActionError(message);
+      toast.error(message);
+    },
   });
 
   const settingsMutation = useMutation({
     mutationFn: async () => {
       if (!editingId || !form) throw new Error('Select a property first.');
-      const response = await base44.functions.invoke('manageLocations', {
-        action: 'update',
+      setActionMessage('');
+      setActionError('');
+      const response = await base44.functions.invoke('manageAutoDispatchConfig', {
+        action: 'update_settings',
         id: editingId,
-        data: {
+        settings: {
           auto_dispatch_response_radius_miles: Number(form.auto_dispatch_response_radius_miles || 5),
           auto_dispatch_required_units: Math.max(1, Number(form.auto_dispatch_required_units || 1)),
           auto_dispatch_backup_required: form.auto_dispatch_backup_required === true,
@@ -79,9 +87,14 @@ export default function AdminAutoDispatchControls() {
     },
     onSuccess: async location => {
       await refreshAll();
+      setActionMessage(`${location?.site_name || 'Property'} dispatch settings saved successfully.`);
       toast.success(`${location?.site_name || 'Property'} automatic-dispatch settings saved.`);
     },
-    onError: error => toast.error(error?.response?.data?.error || error?.message || 'Settings could not be saved.'),
+    onError: error => {
+      const message = error?.response?.data?.error || error?.message || 'Settings could not be saved.';
+      setActionError(message);
+      toast.error(message);
+    },
   });
 
   const editProperty = location => {
@@ -116,6 +129,8 @@ export default function AdminAutoDispatchControls() {
         </section>
 
         {error && <div className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm font-semibold text-red-200"><AlertTriangle className="mr-2 inline h-4 w-4"/>{error.message}</div>}
+        {actionError && <div className="rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-sm font-bold text-red-100"><AlertTriangle className="mr-2 inline h-4 w-4"/>{actionError}</div>}
+        {actionMessage && <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-4 text-sm font-bold text-emerald-100">{actionMessage}</div>}
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className="rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl">
