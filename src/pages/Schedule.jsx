@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
 import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -25,7 +26,7 @@ export default function Schedule() {
   const { data: scheduleData = {}, isLoading: schedulesLoading, error: scheduleError } = useQuery({
     queryKey: ['myScheduleData', user?.email],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getMyScheduleData', {});
+      const result = await base44.functions.invoke('getMyScheduleData', getOfficerPreviewRequest());
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.schedules) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
@@ -192,17 +193,8 @@ export default function Schedule() {
     const dateStr = format(date, 'yyyy-MM-dd');
     const daySchedules = visibleSchedules.filter(s => s.shift_date === dateStr) || [];
     
-    // Sort by time, treating early morning times (00-05) as late night (after 23:59)
-    return daySchedules.sort((a, b) => {
-      const timeA = parseInt(a.start_time.replace(':', ''));
-      const timeB = parseInt(b.start_time.replace(':', ''));
-      
-      // Treat times 0000-0559 as "late night" (add 2400 to sort them after 2300)
-      const sortTimeA = timeA < 600 ? timeA + 2400 : timeA;
-      const sortTimeB = timeB < 600 ? timeB + 2400 : timeB;
-      
-      return sortTimeA - sortTimeB;
-    });
+    // Each shift belongs to the date it starts, so sort normally within that day.
+    return daySchedules.sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
   }, [visibleSchedules]);
 
   const checkPTOForDate = React.useCallback((date) => {
