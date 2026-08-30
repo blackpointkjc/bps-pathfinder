@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export function useDesktopViewport() {
@@ -17,22 +17,15 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   const location = useLocation();
   const navigate = useNavigate();
   const safeSections = Array.isArray(sections) ? sections : [];
-  const initial = useMemo(() => {
-    const requested = new URLSearchParams(location.search).get(queryParam);
-    return safeSections.some(section => section.id === requested) ? requested : defaultSection || safeSections[0]?.id;
-  }, [location.search, safeSections, defaultSection, queryParam]);
-  const [section, setSection] = useState(initial);
-
-  useEffect(() => {
-    if (!safeSections.length) return;
-    const requested = new URLSearchParams(location.search).get(queryParam);
-    const fallback = defaultSection && safeSections.some(item => item.id === defaultSection) ? defaultSection : safeSections[0].id;
-    const next = requested && safeSections.some(item => item.id === requested) ? requested : fallback;
-    if (next !== section) setSection(next);
-  }, [location.search, queryParam, section, defaultSection, safeSections]);
+  const requestedSection = new URLSearchParams(location.search).get(queryParam);
+  const fallbackSection = defaultSection && safeSections.some(item => item.id === defaultSection)
+    ? defaultSection
+    : safeSections[0]?.id;
+  const section = requestedSection && safeSections.some(item => item.id === requestedSection)
+    ? requestedSection
+    : fallbackSection;
 
   const select = next => {
-    setSection(next);
     const params = new URLSearchParams(location.search);
     params.set(queryParam, next);
     ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
