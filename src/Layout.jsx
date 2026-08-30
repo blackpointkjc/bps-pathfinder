@@ -1411,7 +1411,7 @@ export default function Layout({ children, currentPageName }) {
         const centers = allowedCenters(user);
         if (!centers.includes(activeCenter)) setActiveCenter(centers[0] || 'officer');
         setMobileOpen(true);
-      }
+      }}
     />
   </div></MicrosoftMailSetupGate>;
 }
