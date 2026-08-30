@@ -122,6 +122,17 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole }, '-completed_at', 2000)
     );
     const roleStates = states || [];
+    const statesForTaskKey = (taskKey: string) => roleStates.filter((state: any) => String(state.task_key) === taskKey);
+    const preferredStateForTaskKey = (taskKey: string) => {
+      const matches = statesForTaskKey(taskKey);
+      if (!matches.length) return null;
+      return [...matches].sort((a: any, b: any) => {
+        const rank = (state: any) => normalized(state.status) === 'completed' ? 0 : normalized(state.status) === 'open' ? 1 : 2;
+        const rankDiff = rank(a) - rank(b);
+        if (rankDiff) return rankDiff;
+        return String(b.completed_at || b.updated_date || '').localeCompare(String(a.completed_at || a.updated_date || ''));
+      })[0];
+    };
 
     if (normalized(body?.action) === 'complete') {
       const taskKey = String(body?.task_key || '').trim();
@@ -129,7 +140,8 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'A valid task key is required' }, { status: 400 });
       }
       const completedAt = new Date().toISOString();
-      const existing = roleStates.find((state: any) => String(state.task_key) === taskKey);
+      const existingMatches = statesForTaskKey(taskKey);
+      const existing = preferredStateForTaskKey(taskKey);
       const patch = {
         status: 'completed',
         completed_at: completedAt,
@@ -138,8 +150,11 @@ Deno.serve(async (req) => {
         last_seen_at: completedAt,
       };
       let saved;
-      if (existing?.id) {
-        saved = await base44.asServiceRole.entities.WorkQueueState.update(existing.id, patch);
+      if (existingMatches.length) {
+        const updated = await Promise.all(existingMatches.map((state: any) =>
+          base44.asServiceRole.entities.WorkQueueState.update(state.id, patch)
+        ));
+        saved = updated[0] || existing;
       } else {
         saved = await base44.asServiceRole.entities.WorkQueueState.create({
           task_key: taskKey,
@@ -425,7 +440,22 @@ Deno.serve(async (req) => {
     const priorityOrder: Record<string, number> = { critical: 0, high: 1, normal: 2 };
     candidates.sort((a, b) => (priorityOrder[a.priority] ?? 9) - (priorityOrder[b.priority] ?? 9));
 
-    const stateByKey = new Map(roleStates.map((state: any) => [String(state.task_key), state]));
+    // Duplicate state rows can exist from earlier race conditions. Always prefer a
+    // manually completed state for the same stable task key so a task cannot
+    // reappear after refresh just because an older open duplicate was returned.
+    const stateByKey = new Map<string, any>();
+    for (const state of roleStates) {
+      const key = String(state.task_key);
+      const current = stateByKey.get(key);
+      if (!current) {
+        stateByKey.set(key, state);
+        continue;
+      }
+      const currentCompleted = normalized(current.status) === 'completed';
+      const nextCompleted = normalized(state.status) === 'completed';
+      if (nextCompleted && !currentCompleted) stateByKey.set(key, state);
+      else if (nextCompleted === currentCompleted && String(state.completed_at || state.updated_date || '') > String(current.completed_at || current.updated_date || '')) stateByKey.set(key, state);
+    }
     const candidateKeys = new Set(candidates.map(task => String(task.id)));
     const observedAt = new Date().toISOString();
 
