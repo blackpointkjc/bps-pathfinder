@@ -129,15 +129,7 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        className="fixed inset-0 overflow-hidden"
-        initial={{ opacity: 0, x: 24 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -24 }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-      >
+      <div className="fixed inset-0 overflow-hidden">
         <Routes location={location}>
       <Route
         path="/"
@@ -162,8 +154,7 @@ const AuthenticatedApp = () => {
       <Route path="/SupervisorFieldOversight" element={<LayoutWrapper currentPageName="SupervisorFieldOversight"><SupervisorFieldOversight /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
         </Routes>
-      </motion.div>
-    </AnimatePresence>
+      </div>
   );
 };
 
