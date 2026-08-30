@@ -1325,7 +1325,7 @@ export default function Layout({ children, currentPageName }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       >
         <motion.div
           initial={{ scale: 0.94, y: 24, opacity: 0 }}
