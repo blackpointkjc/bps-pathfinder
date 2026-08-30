@@ -89,7 +89,7 @@ Deno.serve(async req => {
     const recipientByPhone = new Map<string, any>();
     const addRecipient = (person: any, scope: string) => {
       if (!person || norm(person.employment_status) === 'terminated') return;
-      const phone = phoneE164(person.mobile_phone || person.phone);
+      const phone = phoneE164(person.mobile_phone);
       if (!phone) return;
       const current = recipientByPhone.get(phone) || { person, phone, scopes: new Set<string>() };
       current.scopes.add(scope);
