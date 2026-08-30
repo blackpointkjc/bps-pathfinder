@@ -345,7 +345,8 @@ export default function Navigation() {
         } catch {}
         const fix = getLiveLocation(30000);
         if (fix) {
-            setGpsQuality(locationQuality(fix));
+            const quality = locationQuality(fix);
+            setGpsQuality(quality);
             const lat = Number(fix.latitude);
             const lng = Number(fix.longitude);
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
