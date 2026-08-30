@@ -19,6 +19,7 @@ import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
+import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -207,7 +208,7 @@ export default function TimeClock() {
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
       if (!user?.email) return [];
-      const result = await base44.functions.invoke('getMyTimeEntries', {});
+      const result = await base44.functions.invoke('getMyTimeEntries', getOfficerPreviewRequest());
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.entries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
