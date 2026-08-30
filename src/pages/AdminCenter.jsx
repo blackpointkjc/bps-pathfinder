@@ -27,9 +27,7 @@ import AdminClientFeedback from './AdminClientFeedback';
 import AdminAnnouncements from './AdminAnnouncements';
 import AdminSpecialRequests from './AdminSpecialRequests';
 import AdminDocuments from './AdminDocuments';
-import AdminQRCheckpoints from './AdminQRCheckpoints';
-import AdminQRPrintManager from './AdminQRPrintManager';
-import AdminQRReports from './AdminQRReports';
+import AdminQRCenter from './AdminQRCenter';
 import AdminPortalSettings from './AdminPortalSettings';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
 import CADCenter from './CADCenter';
@@ -109,12 +107,9 @@ const ADMIN_TOOLS = {
   communications: [
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
-    { id: 'documents', label: 'Documents', component: AdminDocuments },
   ],
   system: [
-    { id: 'qrcheckpoints', label: 'QR Checkpoints', component: AdminQRCheckpoints },
-    { id: 'qrprint', label: 'QR Print Manager', component: AdminQRPrintManager },
-    { id: 'qrreports', label: 'QR Patrol Reports', component: AdminQRReports },
+    { id: 'qr', label: 'QR Patrol Management', component: AdminQRCenter },
     { id: 'settings', label: 'Portal Settings', component: AdminPortalSettings },
   ],
 };
