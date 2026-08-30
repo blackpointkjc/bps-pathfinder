@@ -182,12 +182,12 @@ export default function AdminClientFeedback() {
   );
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-slate-50">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Client Feedback</h1>
+            <h1 className="text-3xl font-black text-white">Client Feedback</h1>
             <p className="text-slate-600">Review and assign client feedback to officers</p>
           </div>
         </div>
