@@ -417,7 +417,12 @@ export default function AdminLocations({ embedded = false }) {
     const locationId = new URLSearchParams(window.location.search).get('location_id');
     if (!locationId) return;
     const target = locations.find(location => String(location.id) === String(locationId));
-    if (target) handleEdit(target);
+    if (target) {
+      handleEdit(target);
+      const params = new URLSearchParams(window.location.search);
+      params.delete('location_id');
+      window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+    }
   }, [locations, showDialog]);
 
   const addBoundaryPoint = (point) => {
