@@ -44,7 +44,7 @@ function createDistressIcon() {
 function AutoCenter({ position }) {
     const map = useMap();
     useEffect(() => {
-        if (position) map.setView(position, Math.max(map.getZoom(), 15), { animate: true });
+        if (position) map.setView(position, Math.max(map.getZoom(), 15), { animate: false });
     }, [position?.[0], position?.[1]]);
     return null;
 }
