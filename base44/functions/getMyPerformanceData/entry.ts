@@ -21,54 +21,106 @@ Deno.serve(async (req) => {
     }
     const email = lower(officer.work_email || officer.pathfinder_email || officer.email);
 
-    const safeList = async (entity: string, sort?: string, limit = 2000) => {
+    const serviceErrors: Record<string, string> = {};
+    let activeReads = 0;
+    const readWaiters: Array<() => void> = [];
+    const acquireReadSlot = async () => {
+      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
+      activeReads += 1;
+    };
+    const releaseReadSlot = () => {
+      activeReads = Math.max(0, activeReads - 1);
+      readWaiters.shift()?.();
+    };
+    const transientReadError = (error:any) => /rate limit|too many requests|\b429\b|timed out|timeout|server selection|temporar/i.test(String(error?.message || error));
+    const pause = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+    const safeRead = async (entity: string, reader: () => Promise<any[]>) => {
+      await acquireReadSlot();
       try {
-        return await (base44.asServiceRole.entities as any)[entity].list(sort, limit) || [];
+        try {
+          return await reader() || [];
+        } catch (error) {
+          if (!transientReadError(error)) throw error;
+          await pause(300);
+          return await reader() || [];
+        }
       } catch (error) {
+        serviceErrors[entity] = error?.message || 'Unable to read data';
         console.warn(`getMyPerformanceData ${entity} unavailable`, error?.message || error);
         return [];
+      } finally {
+        releaseReadSlot();
       }
     };
+    const safeList = (entity: string, sort?: string, limit = 1000) => safeRead(entity, async () => {
+      const service = (base44.asServiceRole.entities as any)[entity];
+      if (!service?.list) throw new Error(`${entity} service is unavailable`);
+      return service.list(sort, limit);
+    });
+    const safeFilter = (entity: string, query: any, sort?: string, limit = 1000) => safeRead(entity, async () => {
+      const service = (base44.asServiceRole.entities as any)[entity];
+      if (!service?.filter) throw new Error(`${entity} filter service is unavailable`);
+      return service.filter(query, sort, limit);
+    });
 
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll, teamsLinksAll, outlookLinksAll] = await Promise.all([
-      safeList('TimeEntry', '-clock_in'),
-      safeList('Schedule', '-shift_date'),
-      safeList('ShiftBid', '-created_date'),
-      safeList('TrainingCompletion', '-completion_date'),
-      safeList('TrainingAssignment', '-assigned_date'),
-      safeList('Notification', '-created_date'),
-      safeList('CallOut', '-call_out_date'),
-      safeList('QRScanEvent', '-scanned_at'),
-      safeList('QRCheckpoint', 'property_site'),
-      safeList('TrainingModule', '-created_date'),
-      safeList('IncidentReport', '-incident_date'),
-      safeList('Commendation', '-commendation_date'),
-      safeList('Complaint', '-complaint_date'),
-      safeList('ClientFeedback', '-feedback_date'),
-      safeList('PerformanceReview', '-review_date'),
-      safeList('DailyActivityReport', '-report_date'),
-      safeList('DispatchCall', '-time_received'),
-      safeList('CallHistory', '-archived_date'),
-      safeList('PropertyAlert', '-created_date'),
-      safeList('JobDutyRule', 'property_site'),
-      safeList('Location', 'site_name'),
-      safeList('MicrosoftTeamsIdentity', '-updated_at', 1000),
-      safeList('OutlookMailboxLink', '-last_verified_at', 1000),
-    ]);
-
-    // A Microsoft 365 sign-in can use a different address from the officer's
-    // Pathfinder work email. Join the records through the immutable User ID and
-    // every active linked alias so a valid account never appears to have zero data.
+    // Resolve linked identities first. This keeps officer records joined correctly
+    // when the Microsoft sign-in address differs from the Pathfinder work email.
     const officerId = String(officer.id || '');
+    const [teamsLinksAll, outlookLinksAll] = await Promise.all([
+      safeFilter('MicrosoftTeamsIdentity', { user_id: officerId }, '-updated_at', 100),
+      safeFilter('OutlookMailboxLink', { user_id: officerId }, '-last_verified_at', 100),
+    ]);
     const aliases = new Set<string>([email, lower(officer.email), lower(officer.work_email), lower(officer.pathfinder_email), lower(officer.microsoft_email), lower(officer.outlook_email)].filter(Boolean));
     for (const link of teamsLinksAll || []) {
-      if (String(link?.user_id || '') !== officerId || link?.active === false) continue;
+      if (link?.active === false) continue;
       [link?.pathfinder_email, link?.microsoft_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
     }
     for (const link of outlookLinksAll || []) {
-      if (String(link?.user_id || '') !== officerId || link?.connected === false) continue;
+      if (link?.connected === false) continue;
       [link?.pathfinder_email, link?.outlook_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
     }
+
+    const aliasValues = [...aliases];
+    const officerEmailQuery = (field = 'officer_email') => ({ [field]: { $in: aliasValues } });
+    const officerRecordQuery = (emailFields = ['officer_email'], idFields = ['officer_id']) => ({
+      $or: [
+        ...emailFields.map(field => officerEmailQuery(field)),
+        ...idFields.map(field => ({ [field]: officerId })),
+      ],
+    });
+    const activityCutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    monthStart.setDate(monthStart.getDate() - 2);
+    const monthDateCutoff = monthStart.toISOString().slice(0, 10);
+
+    // My Performance is a monthly officer view. Query officer-scoped collections
+    // directly and only read recent company-wide operational records needed to
+    // validate partner QR scans and property-call report obligations.
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
+      safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500),
+      safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 1000),
+      safeFilter('ShiftBid', officerEmailQuery(), '-created_date', 1000),
+      safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 1000),
+      safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 1000),
+      safeFilter('Notification', { recipient_email: { $in: aliasValues } }, '-created_date', 500),
+      safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
+      safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 1500),
+      safeList('QRCheckpoint', 'property_site', 1000),
+      safeList('TrainingModule', '-created_date', 1000),
+      safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1000),
+      safeFilter('Commendation', officerRecordQuery(), '-commendation_date', 500),
+      safeFilter('Complaint', officerRecordQuery(), '-complaint_date', 500),
+      safeFilter('ClientFeedback', officerRecordQuery(), '-feedback_date', 500),
+      safeFilter('PerformanceReview', officerRecordQuery(), '-review_date', 500),
+      safeFilter('DailyActivityReport', { $and: [officerRecordQuery(['officer_email'], ['officer_id', 'created_by_id']), { report_date: { $gte: monthDateCutoff } }] }, '-report_date', 1000),
+      safeList('DispatchCall', '-time_received', 500),
+      safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
+      safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1000),
+      safeList('JobDutyRule', 'property_site', 1000),
+      safeList('Location', 'site_name', 1000),
+    ]);
 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) || String(r?.created_by_id || '') === officerId);
     const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
