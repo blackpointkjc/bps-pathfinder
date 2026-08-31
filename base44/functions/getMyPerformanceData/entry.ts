@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
       dispatchCalls: myPropertyCalls,
       jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
       locations: locationsAll,
+      service_errors: serviceErrors,
       meta: {
         timeEntries: myTimeEntries.length,
         schedules: mySchedules.length,
@@ -282,6 +283,7 @@ Deno.serve(async (req) => {
         jobDutyRules: dutyRulesAll.length,
         propertyCalls: myPropertyCalls.length,
         identityAliases: aliases.size,
+        serviceErrors: Object.keys(serviceErrors).length,
       },
     });
   } catch (error) {
