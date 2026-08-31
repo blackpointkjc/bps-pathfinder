@@ -126,7 +126,7 @@ export default function AdminAnalytics() {
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
     }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
-    const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
+    const totalOnTime = byOfficer.reduce((sum, item) => sum + Number(item.compliant ?? (item.onTime + (item.waived || 0))), 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
     const leaderboard = byOfficer.filter(item => {
       const officer = filteredUsers.find(user => emailKey(user.email) === emailKey(item.email));
