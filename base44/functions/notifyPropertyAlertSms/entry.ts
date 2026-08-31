@@ -97,10 +97,10 @@ function sameProperty(value: unknown, propertyNames: string[]) {
 }
 
 async function sendTwilioSms(to: string, message: string) {
-  const accountSid = Deno.env.has('TWILIO_ACCOUNT_SID') ? Deno.env.get('TWILIO_ACCOUNT_SID') : null;
-  const authToken = Deno.env.has('TWILIO_AUTH_TOKEN') ? Deno.env.get('TWILIO_AUTH_TOKEN') : null;
-  const fromNumber = Deno.env.has('TWILIO_FROM_NUMBER') ? Deno.env.get('TWILIO_FROM_NUMBER') : null;
-  const messagingServiceSid = Deno.env.has('TWILIO_MESSAGING_SERVICE_SID') ? Deno.env.get('TWILIO_MESSAGING_SERVICE_SID') : null;
+  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID') || null;
+  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN') || null;
+  const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || null;
+  const messagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID') || null;
 
   if (!accountSid || !authToken || (!fromNumber && !messagingServiceSid)) {
     throw new Error('SMS provider not configured: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID.');
