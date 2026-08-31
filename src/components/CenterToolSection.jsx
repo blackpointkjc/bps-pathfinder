@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool' }) {
+export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool', workspaceClassName = '' }) {
   const location = useLocation();
   const navigate = useNavigate();
   const safeTools = Array.isArray(tools) ? tools : [];
@@ -25,7 +25,7 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
   const fullCanvas = active?.id === 'map';
 
   return (
-    <div className={`w-full ${fullCanvas ? 'flex h-[calc(100vh-150px)] min-h-[680px] flex-col' : ''}`}>
+    <div className={`w-full ${workspaceClassName} ${fullCanvas ? 'flex h-[calc(100vh-150px)] min-h-[680px] flex-col' : ''}`}>
       {safeTools.length > 1 && (
         <div className="border-b border-slate-800 bg-[#08111e] px-3 py-1 md:px-4">
           <div className="flex max-w-full gap-1.5 overflow-x-auto">

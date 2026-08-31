@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ const shiftEndTime = (date, start, end) => {
 
 export default function ShiftHandover(){
   const [showForm,setShowForm]=useState(false); const [form,setForm]=useState(blank); const qc=useQueryClient();
-  const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>base44.auth.me()});
+  const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>getCurrentDirectoryUser()});
   const {data:schedules=[]}=useQuery({queryKey:['handoverSchedules'],queryFn:()=>base44.entities.Schedule.list('shift_date',1000)});
   const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>listDirectoryLocations('site_name')});
   const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>listDirectoryUsers()});

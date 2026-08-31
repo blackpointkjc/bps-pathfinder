@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Megaphone, Download, Eye, AtSign, CheckCircle } from "lucide-react";
@@ -16,7 +17,7 @@ export default function Announcements() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: announcements } = useQuery({

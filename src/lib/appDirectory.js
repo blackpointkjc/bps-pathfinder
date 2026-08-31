@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { getOfficerPreviewProfile } from '@/utils/officerPreview';
 
 let cache = null;
 let cacheAt = 0;
@@ -74,6 +75,23 @@ export async function getAppDirectory(force = false) {
 export async function getCurrentDirectoryUser(force = false) {
   const authenticated = await base44.auth.me();
   if (!authenticated?.id) return authenticated;
+
+  const roles = new Set((authenticated.additional_roles || []).map(role => String(role).toLowerCase()));
+  const preview = (authenticated.role === 'admin' || roles.has('full_access')) ? getOfficerPreviewProfile() : null;
+  if (preview?.id) {
+    return {
+      ...authenticated,
+      ...preview,
+      id: preview.id,
+      auth_id: authenticated.id,
+      auth_email: normalizedIdentity(authenticated.email),
+      email: primaryDirectoryEmail(preview) || normalizedIdentity(preview.email),
+      email_aliases: directoryUserEmails(preview),
+      __officer_preview: true,
+      __auth_admin_id: authenticated.id,
+    };
+  }
+
   try {
     const directory = await getAppDirectory(force);
     const directoryUser = findDirectoryUser(directory?.users, authenticated.id);

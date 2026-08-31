@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ export default function MyPerformanceAnalytics() {
   const { data: performanceData = {}, isLoading: performanceLoading, error: performanceError } = useQuery({
     queryKey: ['myPerformanceData', user?.email],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getMyPerformanceData', {});
+      const result = await base44.functions.invoke('getMyPerformanceData', getOfficerPreviewRequest());
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
