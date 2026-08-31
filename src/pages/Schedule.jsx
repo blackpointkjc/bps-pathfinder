@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
 import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -25,7 +26,7 @@ export default function Schedule() {
   const { data: scheduleData = {}, isLoading: schedulesLoading, error: scheduleError } = useQuery({
     queryKey: ['myScheduleData', user?.email],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getMyScheduleData', {});
+      const result = await base44.functions.invoke('getMyScheduleData', getOfficerPreviewRequest());
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.schedules) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
