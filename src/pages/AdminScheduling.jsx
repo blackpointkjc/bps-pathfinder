@@ -3037,8 +3037,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="hidden overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
-            <table className="w-full table-fixed border-collapse text-[10px] lg:text-[11px]">
+          <div className="hidden overflow-x-auto overflow-y-hidden rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
+            <table className={`border-collapse text-[10px] lg:text-[11px] ${scheduleViewType === 'monthly' ? 'w-max min-w-[3000px] table-auto' : 'w-full table-fixed'}`}>
               <thead>
                 <tr className="bg-[#111827]">
                   <th className="sticky left-0 z-20 w-[22%] border border-slate-700 bg-[#111827] px-2 py-2 text-left">
