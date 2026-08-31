@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
