@@ -63,15 +63,15 @@ Deno.serve(async (req) => {
     }
     if (overviewOnly || fullAccounting) {
       expenseReports = await load('expense reimbursements', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 2000));
+      locations = await load('locations', () => base44.asServiceRole.entities.Location.list('site_name', 1000));
+      schedules = await load('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000));
     }
     if (fullAccounting) {
       invoices = await load('client invoices', () => base44.asServiceRole.entities.Invoice.list('-created_date', 2000));
-      locations = await load('locations', () => base44.asServiceRole.entities.Location.list('site_name', 1000));
       companyExpenses = await load('company expenses', () => base44.asServiceRole.entities.CompanyExpense.list('-expense_date', 2000));
       timeOffRequests = await load('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 2000));
       ptoUsage = await load('PTO usage', () => base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000));
       w2Forms = await load('W-2 forms', () => base44.asServiceRole.entities.W2Form.list('-tax_year', 2000));
-      schedules = await load('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000));
     }
 
     const clients = (users || []).filter((u: any) => {
