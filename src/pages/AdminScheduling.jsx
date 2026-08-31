@@ -500,11 +500,16 @@ export default function AdminScheduling() {
   }, [schedules]);
 
   const getOfficerScheduleForDateRange = useCallback((officerEmail, startDate, endDate) => {
-    const rangeSchedules = schedules?.filter(s =>
-      s.officer_email === officerEmail &&
-      s.shift_date >= startDate &&
-      s.shift_date <= endDate
-    ) || [];
+    const rangeSchedules = schedules?.filter(s => {
+      const shiftDate = s.shift_date; // This is the START date of the shift
+      const shiftStartDate = parseISO(shiftDate);
+      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
+
+      // Check if the shift's start OR end falls within the print range
+      return s.officer_email === officerEmail &&
+             shiftStartDate <= parseISO(endDate) &&
+             shiftEndDate >= parseISO(startDate);
+    }) || [];
 
     const start = parseISO(startDate);
     const end = parseISO(endDate);
@@ -521,9 +526,15 @@ export default function AdminScheduling() {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
       const weekEndStr = format(weekSegmentEnd, 'yyyy-MM-dd');
       
-      const weekSchedules = rangeSchedules.filter(s =>
-        s.shift_date >= weekStartStr && s.shift_date <= weekEndStr
-      );
+      const weekSchedules = rangeSchedules.filter(s => {
+        const sShiftDate = parseISO(s.shift_date);
+        const sEndShiftDate = s.is_split_shift ? addDays(sShiftDate, 1) : sShiftDate;
+        
+        // A shift counts for this week if its start date is in the week, OR
+        // if it's a split shift that ends in this week but started before the week.
+        return (sShiftDate >= parseISO(weekStartStr) && sShiftDate <= parseISO(weekEndStr)) ||
+               (s.is_split_shift && sShiftDate < parseISO(weekStartStr) && sEndShiftDate >= parseISO(weekStartStr));
+      });
       
       const weekHours = weekSchedules.reduce((sum, s) => {
         return sum + calculateShiftHours(s.start_time, s.end_time);
@@ -882,9 +893,16 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     const prevWeekStartStr = format(prevWeekStart, 'yyyy-MM-dd');
     const prevWeekEndStr = format(prevWeekEnd, 'yyyy-MM-dd');
 
-    const previousWeekSchedules = schedules.filter(s =>
-      s.shift_date >= prevWeekStartStr && s.shift_date <= prevWeekEndStr
-    );
+    const previousWeekSchedules = schedules.filter(s => {
+      const shiftDate = s.shift_date; // This is the START date of the shift
+      const shiftStartDate = parseISO(shiftDate);
+      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
+
+      // Include shifts if their start date is within the previous week, OR if they are split shifts
+      // that *end* within the previous week but started *before* the previous week.
+      return (shiftStartDate >= parseISO(prevWeekStartStr) && shiftStartDate <= parseISO(prevWeekEndStr)) ||
+             (s.is_split_shift && shiftStartDate < parseISO(prevWeekStartStr) && shiftEndDate >= parseISO(prevWeekStartStr));
+    });
 
     if (previousWeekSchedules.length === 0) {
       alert('No shifts found in the previous week to copy.');
@@ -933,11 +951,16 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
     const selectedOfficersArray = Array.from(selectedOfficersForCopy);
 
-    const previousWeekSchedules = schedules.filter(s =>
-      s.shift_date >= prevWeekStartStr &&
-      s.shift_date <= prevWeekEndStr &&
-      selectedOfficersArray.includes(s.officer_email)
-    );
+    const previousWeekSchedules = schedules.filter(s => {
+      const shiftDate = s.shift_date;
+      const shiftStartDate = parseISO(shiftDate);
+      const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
+
+      const isInPrevWeek = (shiftStartDate >= parseISO(prevWeekStartStr) && shiftStartDate <= parseISO(prevWeekEndStr)) ||
+             (s.is_split_shift && shiftStartDate < parseISO(prevWeekStartStr) && shiftEndDate >= parseISO(prevWeekStartStr));
+
+      return isInPrevWeek && selectedOfficersArray.includes(s.officer_email);
+    });
 
     if (previousWeekSchedules.length === 0) {
       alert('No shifts found for selected officers in the previous week.');
@@ -997,9 +1020,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     ) || [];
     
     const sortedSchedules = officerSchedules.sort((a, b) => {
-      // Display every shift on the date it starts.
-      const displayDateA = a.shift_date;
-      const displayDateB = b.shift_date;
+      // Calculate display date - split shifts show on their END date (shift_date + 1)
+      const displayDateA = a.is_split_shift ? format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') : a.shift_date;
+      const displayDateB = b.is_split_shift ? format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') : b.shift_date;
       
       const dateCompare = displayDateA.localeCompare(displayDateB);
       if (dateCompare !== 0) return dateCompare;
@@ -1051,14 +1074,14 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
     const scheduleHTML = sortedSchedules.map(schedule => {
       const isSplitShift = schedule.is_split_shift === true;
-      // Display every shift on the date it starts.
-      const displayDate = parseISO(schedule.shift_date);
+      // For display, split shifts show on their END date
+      const displayDate = isSplitShift ? addDays(parseISO(schedule.shift_date), 1) : parseISO(schedule.shift_date);
       const hours = calculateShiftHours(schedule.start_time, schedule.end_time);
       
       return `
         <div class="shift-card ${isSplitShift ? 'split-shift' : ''}">
           <div class="shift-date">${format(displayDate, 'MMM d, yyyy EEEE')}</div>
-          <div class="shift-time">${schedule.start_time} - ${schedule.end_time} at ${schedule.location.split(':')[0]} (${hours.toFixed(2)}h) ${isSplitShift ? '<span class="split-badge">(Split Shift)</span>' : ''}</div>
+          <div class="shift-time">${schedule.start_time} - ${schedule.end_time} at ${schedule.location.split(':')[0]} (${hours.toFixed(2)}h) ${isSplitShift ? '<span class="split-badge">(Overnight Shift)</span>' : ''}</div>
           ${schedule.site_details ? `<div class="shift-details">Site Details: ${schedule.site_details}</div>` : ''}
           ${schedule.special_instructions ? `<div class="shift-instructions">Special Instructions: ${schedule.special_instructions}</div>` : ''}
         </div>
@@ -1690,9 +1713,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
           const officerShifts = payrollWeekSchedules
             .filter(s => s.officer_email === email)
             .sort((a, b) => {
-              // Display date is always the selected shift start date.
-              const displayDateA = a.shift_date;
-              const displayDateB = b.shift_date;
+              // Display date: split shifts show on END date (shift_date + 1)
+              const displayDateA = a.is_split_shift ? format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') : a.shift_date;
+              const displayDateB = b.is_split_shift ? format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') : b.shift_date;
               
               const dateCompare = displayDateA.localeCompare(displayDateB);
               if (dateCompare !== 0) return dateCompare;
@@ -1708,10 +1731,10 @@ Make sure all dates are in YYYY-MM-DD format.` ,
           const shiftsHTML = officerShifts.map(s => {
             const shiftHours = calculateShiftHours(s.start_time, s.end_time);
             // Display date: split shifts show on their END date
-            const displayDate = parseISO(s.shift_date);
+            const displayDate = s.is_split_shift ? addDays(parseISO(s.shift_date), 1) : parseISO(s.shift_date);
             return '<div style="margin:8px 0; padding:8px; background:#fafafa; border:1px solid #ddd; border-radius:6px; ' + (s.is_split_shift ? 'background:#f3e8ff; border-color:#a855f7; border-width:2px;' : '') + '">' +
               '<div style="font-weight:bold; color:#1e40af; font-size:10pt; margin-bottom:4px;">' + format(displayDate, 'MMM d, yyyy (EEEE)') + '</div>' +
-              '<div style="font-size:9pt;">' + s.start_time + ' - ' + s.end_time + ' at ' + s.location.split(':')[0] + ' (' + shiftHours.toFixed(2) + 'h)' + (s.is_split_shift ? ' <span style="color:#7c3aed; font-weight:bold; margin-left:8px;">(Split Shift)</span>' : '') + '</div>' +
+              '<div style="font-size:9pt;">' + s.start_time + ' - ' + s.end_time + ' at ' + s.location.split(':')[0] + ' (' + shiftHours.toFixed(2) + 'h)' + (s.is_split_shift ? ' <span style="color:#7c3aed; font-weight:bold; margin-left:8px;">(Overnight Shift)</span>' : '') + '</div>' +
               (s.site_details ? '<div style="font-size:8pt; color:#666; margin-top:6px; padding:6px; background:#e8f4f8; border-left:3px solid #0ea5e9;">Site Details: ' + s.site_details + '</div>' : '') +
               (s.special_instructions ? '<div style="font-size:8pt; color:#854d0e; margin-top:6px; padding:6px; background:#fef3c7; border-left:3px solid #f59e0b;">Instructions: ' + s.special_instructions + '</div>' : '') +
             '</div>';
@@ -1785,9 +1808,26 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       return;
     }
 
-    // The selected date is always the calendar day this segment starts.
-    // Linking a split segment to an earlier shift must never move its date.
-    const actualShiftDate = editingShift.shift_date;
+    // Determine the actual `shift_date` to store in the database (always the START date)
+    let actualShiftDate = editingShift.shift_date; // This is the date from the form
+
+    // If it's a split shift, we interpret editingShift.shift_date as the "end day" in the form for user convenience
+    if (editingShift.is_split_shift) {
+        if (editingShift.linked_shift_id) {
+            // If linked, use the start date of the linked shift (which must be on the previous day)
+            const linkedShift = schedules?.find(s => s.id === editingShift.linked_shift_id);
+            if (linkedShift) {
+                actualShiftDate = linkedShift.shift_date; // Use the start date of the linked shift
+            } else {
+                // Fallback in case linkedShift not found, assume form date is end day and calculate start
+                actualShiftDate = format(subDays(parseISO(editingShift.shift_date), 1), 'yyyy-MM-dd');
+            }
+        } else {
+            // If not linked, but it's a split shift, the actual start date is the day before the form date
+            actualShiftDate = format(subDays(parseISO(editingShift.shift_date), 1), 'yyyy-MM-dd');
+        }
+    }
+    // If not a split shift, actualShiftDate remains editingShift.shift_date (which should be the start date)
 
     updateScheduleMutation.mutate({
       id: editingShift.id,
@@ -1962,9 +2002,20 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       return;
     }
 
-    // Store the exact date selected in the form. A split-shift link is a
-    // relationship only; it does not change the start date of this segment.
-    const actualShiftDate = newShift.shift_date;
+    let actualShiftDate = newShift.shift_date;
+
+    if (newShift.is_split_shift) {
+        if (newShift.linked_shift_id) {
+            const linkedShift = schedules?.find(s => s.id === newShift.linked_shift_id);
+            if (linkedShift) {
+                actualShiftDate = linkedShift.shift_date;
+            } else {
+                actualShiftDate = format(subDays(parseISO(newShift.shift_date), 1), 'yyyy-MM-dd');
+            }
+        } else {
+            actualShiftDate = format(subDays(parseISO(newShift.shift_date), 1), 'yyyy-MM-dd');
+        }
+    }
     
     const primaryShift = {
        officer_email: officerEmailToStore,
@@ -2660,10 +2711,22 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     
                     return daysInRange.map((day) => {
                       const dateStr = format(day, 'yyyy-MM-dd');
-                      // Every segment is shown only on the calendar date it starts.
+                      // Filter schedules where the shift either starts on this day, or is a split shift ending on this day
                       const daySchedules = printOfficerData.schedules
-                        .filter(s => s.shift_date === dateStr)
-                        .sort((a,b) => a.start_time.localeCompare(b.start_time));
+                        .filter(s => {
+                          const shiftStartDate = parseISO(s.shift_date);
+                          const shiftEndDate = s.is_split_shift ? addDays(shiftStartDate, 1) : shiftStartDate;
+                          return format(shiftStartDate, 'yyyy-MM-dd') === dateStr || 
+                                 (s.is_split_shift && format(shiftEndDate, 'yyyy-MM-dd') === dateStr);
+                        })
+                        .sort((a,b) => {
+                          // Sort split shifts (starting previous day) before normal shifts on this day
+                          const aIsOvernightEndingToday = a.is_split_shift && format(addDays(parseISO(a.shift_date), 1), 'yyyy-MM-dd') === dateStr;
+                          const bIsOvernightEndingToday = b.is_split_shift && format(addDays(parseISO(b.shift_date), 1), 'yyyy-MM-dd') === dateStr;
+                          if (aIsOvernightEndingToday && !bIsOvernightEndingToday) return -1;
+                          if (!aIsOvernightEndingToday && bIsOvernightEndingToday) return 1;
+                          return a.start_time.localeCompare(b.start_time);
+                        });
                       
                       if (daySchedules.length === 0) {
                         return (
@@ -2884,7 +2947,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <div>
                 <h3 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
                   <Clock className="w-5 h-5" />
-                  Split Shifts ({overlapResults.splitShifts.length})
+                  Split Shifts (Overnight) ({overlapResults.splitShifts.length})
                 </h3>
                 {overlapResults.splitShifts.length > 0 ? (
                   <ScrollArea className="h-48 bg-white rounded-lg border border-purple-200">
@@ -3019,7 +3082,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                           {shift.partner_officer_email && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-blue-300"><Users className="h-3.5 w-3.5"/>Partner: {getOfficerName(shift.partner_officer_email)}</p>}
                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
                             <Badge className="border border-blue-700/50 bg-blue-950/40 text-blue-200">{shift.start_time}–{shift.end_time}</Badge>
-                            {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Split Shift</Badge>}
+                            {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Overnight</Badge>}
                             {shift.is_open && <Badge className="border border-cyan-700/50 bg-cyan-950/40 text-cyan-200">Open</Badge>}
                           </div>
                         </div>
@@ -3769,7 +3832,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-purple-600">
-                  If linked, this segment stays on its selected start date and remains connected to the earlier shift
+                  If linked, this shift will be placed on the same day as the linked shift
                 </p>
               </div>
             )}
@@ -3777,7 +3840,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             {newShift.is_split_shift && newShift.start_time && newShift.end_time && newShift.shift_date && (
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                 <p className="text-xs text-purple-900">
-                  <strong>Split Shift Preview:</strong> This shift ({newShift.start_time} - {newShift.end_time}) will appear in purple. {newShift.linked_shift_id ? `It will stay on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')} and remain linked to the earlier segment.` : `It will appear on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')}.`}
+                  <strong>Split Shift Preview:</strong> This shift ({newShift.start_time} - {newShift.end_time}) will appear in purple. {newShift.linked_shift_id ? `It will be placed on ${format(subDays(parseISO(newShift.shift_date), 1), 'MMM d')} with the linked shift.` : `It will appear on ${format(parseISO(newShift.shift_date), 'MMM d, yyyy')}.`}
                 </p>
               </div>
             )}
@@ -3935,7 +3998,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 className="w-4 h-4"
               />
               <Label htmlFor="edit_is_split_shift" className="text-sm font-medium text-purple-900 cursor-pointer">
-                Split Shift (linked segment)
+                Split Shift (e.g., overnight shifts)
               </Label>
             </div>
 
@@ -4048,7 +4111,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-purple-600">
-                  If linked, this segment stays on its selected start date and remains connected to the earlier shift
+                  If linked, this shift will be placed on the same day as the linked shift
                 </p>
               </div>
             )}
@@ -4056,7 +4119,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             {(editingShift?.is_split_shift && editingShift?.start_time && editingShift?.end_time && editingShift?.shift_date) && (
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                 <p className="text-xs text-purple-900">
-                  <strong>Split Shift Preview:</strong> This shift ({editingShift.start_time} - {editingShift.end_time}) will appear in purple. {editingShift.linked_shift_id ? `It will stay on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')} and remain linked to the earlier segment.` : `It will appear on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')}.`}
+                  <strong>Split Shift Preview:</strong> This shift ({editingShift.start_time} - {editingShift.end_time}) will appear in purple. {editingShift.linked_shift_id ? `It will be placed on ${format(subDays(parseISO(editingShift.shift_date), 1), 'MMM d')} with the linked shift.` : `It will appear on ${format(parseISO(editingShift.shift_date), 'MMM d, yyyy')}.`}
                 </p>
               </div>
             )}

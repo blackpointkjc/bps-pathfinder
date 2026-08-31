@@ -71,28 +71,10 @@ export default function FleetVehicleAssignments() {
     }).sort((a, b) => `${a.shift_date} ${a.start_time}`.localeCompare(`${b.shift_date} ${b.start_time}`));
   }, [schedules, dates, isAdmin, user?.email]);
 
-  const sameLocation = (left, right) =>
-    String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase();
-
-  const assignmentMatchesCurrentShift = assignment => assignments && schedules.some(shift =>
-    shift?.archived !== true &&
-    shift?.is_open !== true &&
-    shift?.officer_email &&
-    shift.officer_email !== 'OPEN' &&
-    String(assignment.assignment_date || '').slice(0, 10) === String(shift.shift_date || '').slice(0, 10) &&
-    assignment.start_time === shift.start_time &&
-    assignment.end_time === shift.end_time &&
-    sameLocation(assignment.location, shift.location) &&
-    [assignment.primary_officer_email, assignment.partner_officer_email].filter(Boolean).includes(shift.officer_email)
-  );
-
   const assignmentForShift = shift => assignments.find(a =>
-    String(a.status || '').toLowerCase() !== 'cancelled' &&
-    assignmentMatchesCurrentShift(a) &&
     String(a.assignment_date || '').slice(0, 10) === String(shift.shift_date || '').slice(0, 10) &&
     a.start_time === shift.start_time &&
     a.end_time === shift.end_time &&
-    sameLocation(a.location, shift.location) &&
     (a.primary_officer_email === shift.officer_email || a.partner_officer_email === shift.officer_email)
   );
 
@@ -124,8 +106,7 @@ export default function FleetVehicleAssignments() {
       a.id !== currentAssignment?.id &&
       a.vehicle_id === chosenVehicleId &&
       String(a.assignment_date || '').slice(0, 10) === String(shift.shift_date || '').slice(0, 10) &&
-      String(a.status || '').toLowerCase() !== 'cancelled' &&
-      assignmentMatchesCurrentShift(a) &&
+      a.status !== 'cancelled' &&
       overlaps(a.start_time, a.end_time, shift.start_time, shift.end_time)
     );
     if (conflict) {

@@ -11,15 +11,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const me = await base44.auth.me();
     if (!me?.email) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const body = await req.json().catch(() => ({}));
-    const roles = new Set((me.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
-    let officer = me;
-    if (body.preview_user_id) {
-      if (me.role !== 'admin' && !roles.has('full_access')) return Response.json({ error: 'Preview access denied' }, { status: 403 });
-      officer = await base44.asServiceRole.entities.User.get(String(body.preview_user_id)).catch(() => null);
-      if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
-    }
-    const email = lower(officer.work_email || officer.pathfinder_email || officer.email);
+    const email = lower(me.email);
 
     const safeList = async (entity: string, sort?: string, limit = 2000) => {
       try {
@@ -59,8 +51,8 @@ Deno.serve(async (req) => {
     // A Microsoft 365 sign-in can use a different address from the officer's
     // Pathfinder work email. Join the records through the immutable User ID and
     // every active linked alias so a valid account never appears to have zero data.
-    const officerId = String(officer.id || '');
-    const aliases = new Set<string>([email, lower(officer.email), lower(officer.work_email), lower(officer.pathfinder_email), lower(officer.microsoft_email), lower(officer.outlook_email)].filter(Boolean));
+    const officerId = String(me.id || '');
+    const aliases = new Set<string>([email]);
     for (const link of teamsLinksAll || []) {
       if (String(link?.user_id || '') !== officerId || link?.active === false) continue;
       [link?.pathfinder_email, link?.microsoft_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));

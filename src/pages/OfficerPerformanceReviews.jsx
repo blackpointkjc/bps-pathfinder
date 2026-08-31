@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardCheck, PenLine, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad from '@/components/SignaturePad';
-import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
 const ratingFields = [
   { key: 'punctuality_rating', label: 'Punctuality' },
@@ -67,7 +66,7 @@ export default function OfficerPerformanceReviews() {
   const load = async () => {
     setLoading(true);
     try {
-      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list', ...getOfficerPreviewRequest() });
+      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list' });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       setReviews(payload.reviews || []);

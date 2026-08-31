@@ -1,5 +1,0 @@
-{
-  "name": "sendPropertyCallSms",
-  "description": "Send one SMS for a verified monitored-property call to admins, overlapping duty supervisors, and officers actively clocked in at that property.",
-  "entrypoint": "entry.ts"
-}

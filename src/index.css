@@ -1420,78 +1420,18 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
 
 .bps-command-page .border-none[class*="shadow"] { border: 1px solid #2a374a !important; }
 
-/* Officer tools share one modern workspace and one vertical page scroller. This
-   boundary covers direct role pages and the same pages embedded in Officer Center. */
-.officer-modern-workspace {
-  background:
-    radial-gradient(circle at 90% 0%, rgba(56, 189, 248, .09), transparent 30rem),
-    linear-gradient(180deg, #08111d 0%, #0a1320 100%) !important;
-  color: #f8fafc;
-}
-
-.officer-modern-workspace > :is(div, section, main) {
-  width: 100%;
-  min-height: 100% !important;
-  overflow-y: visible !important;
-}
-
-.officer-modern-workspace :is(h1, h2) {
-  color: #f8fafc !important;
-  font-weight: 900;
-  letter-spacing: -.035em;
-}
-
-.officer-modern-workspace h1 {
-  font-size: clamp(1.65rem, 2.6vw, 2.4rem);
-  line-height: 1.05;
-}
-
-.officer-modern-workspace :is(form, article, section)[class*="rounded"],
-.officer-modern-workspace :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl)[class*="shadow"] {
-  border-color: #2b3c52 !important;
-  background-color: rgba(13, 22, 35, .96);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, .24);
-}
-
-.officer-modern-workspace :is(input, textarea, select, [role="combobox"]) {
-  min-height: 2.75rem;
-  border-radius: .75rem;
-}
-
-.officer-modern-workspace button {
-  transition: border-color .16s ease, background-color .16s ease, color .16s ease, transform .16s ease;
-}
-
-.officer-modern-workspace button:active {
-  transform: translateY(1px);
-}
-
 /* Shared dashboard KPI cards: keep icon, value, label, and supporting text
    visually centered throughout Pathfinder. These are summary cards, not data
    entry panels, so asymmetric left/right placement makes the dashboards look
    unbalanced at wide desktop widths. */
 .bps-kpi-card {
-  display: flex !important;
+  display: flex;
   min-width: 0;
   min-height: 150px;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-}
-
-.bps-kpi-card > *,
-.bps-kpi-card [class*="CardContent"],
-.bps-kpi-card [class*="CardHeader"] {
-  width: 100%;
-  text-align: center !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.bps-kpi-card svg {
-  margin-left: auto;
-  margin-right: auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .bps-kpi-icon {

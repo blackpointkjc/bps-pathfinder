@@ -111,32 +111,37 @@ Deno.serve(async (req) => {
       }
       return results;
     };
-    // Persistent state is only needed for completion history. Dynamic candidates
-    // are open by definition, so storing an open row on every refresh creates races
-    // and can push the real completion record outside a capped query.
-    const [completedStates, autoCompletedStates] = await loadLimited([
-      () => safeList('completed work queue history', () =>
-        base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole, status: 'completed' }, '-completed_at', 5000)
-      ),
-      () => safeList('automatic work queue history', () =>
-        base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole, status: 'auto_completed' }, '-completed_at', 2000)
-      ),
-    ]);
-    const roleStates = [...(completedStates || []), ...(autoCompletedStates || [])];
+    const settleLimited = async (actions: Array<() => Promise<any>>, concurrency = 1) => {
+      for (let index = 0; index < actions.length; index += concurrency) {
+        await Promise.allSettled(actions.slice(index, index + concurrency).map(action => action()));
+        if (index + concurrency < actions.length) await delay(100);
+      }
+    };
+
+    const states = await safeList('work queue completion history', () =>
+      base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole }, '-completed_at', 2000)
+    );
+    const roleStates = states || [];
+    const statesForTaskKey = (taskKey: string) => roleStates.filter((state: any) => String(state.task_key) === taskKey);
+    const preferredStateForTaskKey = (taskKey: string) => {
+      const matches = statesForTaskKey(taskKey);
+      if (!matches.length) return null;
+      return [...matches].sort((a: any, b: any) => {
+        const rank = (state: any) => normalized(state.status) === 'completed' ? 0 : normalized(state.status) === 'open' ? 1 : 2;
+        const rankDiff = rank(a) - rank(b);
+        if (rankDiff) return rankDiff;
+        return String(b.completed_at || b.updated_date || '').localeCompare(String(a.completed_at || a.updated_date || ''));
+      })[0];
+    };
+
     if (normalized(body?.action) === 'complete') {
       const taskKey = String(body?.task_key || '').trim();
       if (!taskKey || taskKey.length > 240) {
         return Response.json({ error: 'A valid task key is required' }, { status: 400 });
       }
       const completedAt = new Date().toISOString();
-      // Query this stable key directly. Older duplicate rows may be far outside the
-      // general history window, but every matching copy must be marked completed.
-      const existingMatches = await safeList('matching work queue task', () =>
-        base44.asServiceRole.entities.WorkQueueState.filter({ queue_role: queueRole, task_key: taskKey }, '-updated_date', 5000)
-      );
-      const existing = [...existingMatches].sort((a: any, b: any) =>
-        String(b.completed_at || b.updated_date || '').localeCompare(String(a.completed_at || a.updated_date || ''))
-      )[0] || null;
+      const existingMatches = statesForTaskKey(taskKey);
+      const existing = preferredStateForTaskKey(taskKey);
       const patch = {
         status: 'completed',
         completed_at: completedAt,
@@ -452,6 +457,43 @@ Deno.serve(async (req) => {
       else if (nextCompleted === currentCompleted && String(state.completed_at || state.updated_date || '') > String(current.completed_at || current.updated_date || '')) stateByKey.set(key, state);
     }
     const candidateKeys = new Set(candidates.map(task => String(task.id)));
+    const observedAt = new Date().toISOString();
+
+    await settleLimited(candidates.filter(task => !stateByKey.has(String(task.id))).map(task => () =>
+      base44.asServiceRole.entities.WorkQueueState.create({
+        task_key: String(task.id),
+        queue_role: queueRole,
+        status: 'open',
+        title: String(task.title || '').slice(0, 250),
+        person: String(task.person || '').slice(0, 250),
+        source_kind: String(task.kind || '').slice(0, 100),
+        source_id: String(task.source_id || '').slice(0, 250),
+        last_seen_at: observedAt,
+      })
+    ));
+
+    await settleLimited(candidates.filter(task =>
+      normalized(stateByKey.get(String(task.id))?.status) === 'auto_completed'
+    ).map(task => () =>
+      base44.asServiceRole.entities.WorkQueueState.update(stateByKey.get(String(task.id)).id, {
+        status: 'open',
+        last_seen_at: observedAt,
+      })
+    ));
+
+    if (loadErrors.length === 0) {
+      await settleLimited(roleStates.filter((state: any) =>
+        normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
+      ).map((state: any) => () =>
+        base44.asServiceRole.entities.WorkQueueState.update(state.id, {
+          status: 'auto_completed',
+          completed_at: observedAt,
+          completed_by: 'system',
+          completion_note: 'Automatically completed because the underlying record no longer requires action.',
+          last_seen_at: observedAt,
+        })
+      ));
+    }
 
     let tasks = candidates.filter(task => {
       const state = stateByKey.get(String(task.id));

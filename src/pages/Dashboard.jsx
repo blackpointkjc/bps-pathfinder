@@ -1,6 +1,4 @@
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
-import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { motion } from "framer-motion";
@@ -76,7 +74,7 @@ export default function Dashboard({ embedded = false }) {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
+    queryFn: () => base44.auth.me(),
   });
 
   const { data: directoryProfile } = useQuery({
@@ -95,7 +93,7 @@ export default function Dashboard({ embedded = false }) {
   const { data: myReviewData = { reviews: [] } } = useQuery({
     queryKey: ['dashboardPerformanceReviews', user?.id],
     queryFn: async () => {
-      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list', ...getOfficerPreviewRequest() });
+      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list' });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       return payload;

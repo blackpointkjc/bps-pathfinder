@@ -93,7 +93,7 @@ export default function OfficerCenter({ embedded = false }) {
       queryParam={embedded ? 'officer_section' : 'section'}
       embedded={embedded}
     >
-      {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} workspaceClassName="officer-modern-workspace" />}
+      {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} />}
     </UnifiedCenter>
   );
 }

@@ -2,7 +2,6 @@ import { uploadInternalFile } from '@/lib/internalUpload';
 // Copy of TrespassingNotices.js renamed to VA Trespass Notices
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -92,7 +91,7 @@ export default function VATrespassNotices() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
+    queryFn: () => base44.auth.me(),
   });
 
   const isAdmin = user?.role === 'admin';

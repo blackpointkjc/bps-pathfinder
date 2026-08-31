@@ -122,14 +122,8 @@ function CommandDashboardInner() {
         let active = true;
         const syncUnitStatus = async () => {
             try {
-                const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
-                const signedInUnits = Array.isArray(payload.units) ? payload.units.map(unit => ({
-                    ...unit,
-                    email: unit.email || unit.officer_email,
-                    full_name: unit.full_name || unit.officer_name || unit.officer_email,
-                    additional_roles: unit.additional_roles?.length ? unit.additional_roles : ['officer'],
-                })) : [];
-                if (active) setCanonicalStatusUsers(signedInUnits);
+                const payload = await getOfficerLocationSnapshot();
+                if (active) setCanonicalStatusUsers(Array.isArray(payload.users) ? payload.users : []);
             } catch {}
         };
         syncUnitStatus();

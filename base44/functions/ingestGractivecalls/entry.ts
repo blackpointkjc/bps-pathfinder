@@ -377,16 +377,6 @@ async function reconcilePropertyAlerts(base44: any) {
           error: error?.message || String(error),
         });
       });
-      await base44.asServiceRole.functions.invoke('sendPropertyCallSms', {
-        property_alert_id: propertyAlert.id,
-        system_trigger: true,
-      }).catch((error: any) => {
-        console.error('Property-call SMS fan-out failed', {
-          call_id: call.id,
-          property_alert_id: propertyAlert.id,
-          error: error?.message || String(error),
-        });
-      });
       existingKeys.add(key);
       existingCallPropertyKeys.add(callPropertyKey);
       propertyAlertsCreated += 1;
