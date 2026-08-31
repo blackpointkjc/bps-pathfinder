@@ -471,13 +471,13 @@ export default function AdminScheduling() {
 
   const shiftCrossesMidnight = useCallback((shift) => {
     if (!shift?.start_time || !shift?.end_time) return false;
-    return timeToMinutes(shift.end_time) <= timeToMinutes(shift.start_time);
+    return timeToMinutes(shift.end_time) < timeToMinutes(shift.start_time);
   }, [timeToMinutes]);
 
   const calculateShiftHours = useCallback((startTime, endTime) => {
     const start = timeToMinutes(startTime);
     let end = timeToMinutes(endTime);
-    if (end <= start) end += 24 * 60;
+    if (end < start) end += 24 * 60;
     return (end - start) / 60;
   }, [timeToMinutes]);
 
