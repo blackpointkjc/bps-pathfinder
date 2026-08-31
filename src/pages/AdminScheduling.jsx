@@ -727,6 +727,72 @@ export default function AdminScheduling() {
     });
   }, [schedules, selectedDivision, locations, weekStart, weekEnd]);
 
+  const timelineSchedules = useMemo(() => {
+    if (!schedules) return [];
+    const rangeStart = format(weekStart, 'yyyy-MM-dd');
+    const rangeEnd = format(weekEnd, 'yyyy-MM-dd');
+
+    return schedules.filter((shift) => {
+      if (!shift?.shift_date || !shift?.start_time || !shift?.end_time) return false;
+      const shiftEndDate = shiftCrossesMidnight(shift)
+        ? format(addDays(parseISO(shift.shift_date), 1), 'yyyy-MM-dd')
+        : shift.shift_date;
+      if (shiftEndDate < rangeStart || shift.shift_date > rangeEnd) return false;
+
+      if (selectedDivision === 'all') return true;
+      const locationSiteName = String(shift.location || '').split(':')[0].trim();
+      const location = locations?.find((item) => item.site_name === locationSiteName);
+      return (location?.subdivision === selectedDivision || location?.division === selectedDivision) || !location;
+    });
+  }, [schedules, weekStart, weekEnd, selectedDivision, locations, shiftCrossesMidnight]);
+
+  const timelineSegmentsByDate = useMemo(() => {
+    const visibleDays = new Set(weekDays.map((day) => format(day, 'yyyy-MM-dd')));
+    const grouped = Object.fromEntries(Array.from(visibleDays).map((date) => [date, []]));
+
+    const addSegment = (date, shift, startMinute, endMinute, continuation) => {
+      if (!visibleDays.has(date) || endMinute <= startMinute) return;
+      grouped[date].push({
+        shift,
+        startMinute,
+        endMinute,
+        continuation,
+      });
+    };
+
+    timelineSchedules.forEach((shift) => {
+      const startMinute = timeToMinutes(shift.start_time);
+      const endMinute = timeToMinutes(shift.end_time);
+      if (shiftCrossesMidnight(shift)) {
+        addSegment(shift.shift_date, shift, startMinute, 1440, false);
+        const nextDate = format(addDays(parseISO(shift.shift_date), 1), 'yyyy-MM-dd');
+        addSegment(nextDate, shift, 0, endMinute, true);
+      } else {
+        addSegment(shift.shift_date, shift, startMinute, endMinute, false);
+      }
+    });
+
+    Object.keys(grouped).forEach((date) => {
+      const laneEnds = [];
+      const laidOut = grouped[date]
+        .sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute)
+        .map((segment) => {
+          let lane = laneEnds.findIndex((end) => end <= segment.startMinute);
+          if (lane === -1) {
+            lane = laneEnds.length;
+            laneEnds.push(segment.endMinute);
+          } else {
+            laneEnds[lane] = segment.endMinute;
+          }
+          return { ...segment, lane };
+        });
+      const laneCount = Math.max(1, laneEnds.length);
+      grouped[date] = laidOut.map((segment) => ({ ...segment, laneCount }));
+    });
+
+    return grouped;
+  }, [timelineSchedules, weekDays, timeToMinutes, shiftCrossesMidnight]);
+
   const locationGroups = useMemo(() => {
     const groups = {};
     weekDivisionalSchedules.forEach(schedule => {
