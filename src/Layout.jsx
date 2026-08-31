@@ -76,6 +76,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Reports & Requests', items: [
         ['Daily Activity', 'DailyActivityReports', ClipboardList],
+        ['Shift Report', 'ShiftReports', FileText],
         ['Incident Report', 'IncidentReports', AlertTriangle],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
@@ -124,6 +125,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Reports & Requests', items: [
         ['Daily Activity', 'DailyActivityReports', ClipboardList],
+        ['Shift Report', 'ShiftReports', FileText],
         ['Incident Report', 'IncidentReports', AlertTriangle],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
