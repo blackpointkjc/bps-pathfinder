@@ -415,7 +415,7 @@ export function calculateJobDutyCompliance({
 } = {}) {
   const officerEmail = emailKey(officer?.email);
   const evaluatedShifts = timeEntries.filter(entry => {
-    if (!entry?.clock_in || entry?.archived === true) return false;
+    if (!entry?.clock_in || entry?.archived === true || entry?.performance_exception === true) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
     const d = easternDateKey(entry.clock_in);
     return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
