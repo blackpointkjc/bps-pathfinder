@@ -25,6 +25,23 @@ function distanceMeters(lat1: unknown, lng1: unknown, lat2: unknown, lng2: unkno
   return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const isTransientHistoryError = (error: any) => /rate limit|too many requests|\b429\b|timed out|timeout|server selection|temporar|connection/i.test(String(error?.message || error));
+
+async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientHistoryError(error) || attempt === 2) break;
+      await delay(300 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('Movement history write failed');
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -172,30 +189,47 @@ Deno.serve(async (req) => {
     // background throttling and client-side RLS cannot silently stop the trail.
     // One row per officer per minute is sufficient for the map and prevents
     // multiple tabs/devices from producing a duplicate history stream.
+    //
+    // History must follow the SAME acceptance rule as the live marker. The live
+    // map intentionally accepts coarse device/network coordinates when that is
+    // all the browser can provide, so history cannot silently reject them with a
+    // separate 5,000m accuracy ceiling. Accuracy is stored for downstream views
+    // that need to distinguish precise from coarse points.
+    //
+    // A transient history read/write must also not turn a successful live GPS
+    // update into a 500 response after ActiveOfficer was already updated. Retry
+    // the history operation independently; the next 15-second GPS push remains a
+    // natural recovery opportunity if the data service is temporarily unavailable.
     let historyRecorded = false;
-    if (acceptedForPosition && acceptedAccuracy <= 5000) {
-      const latestHistory = await base44.asServiceRole.entities.LocationHistory.filter(
-        { officer_email: officerEmail },
-        '-timestamp',
-        1,
-      ).catch(() => []);
-      const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
-      if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= 55000) {
-        await base44.asServiceRole.entities.LocationHistory.create({
-          time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
-          officer_email: officerEmail,
-          officer_name: String(liveData.officer_name),
-          location: String(liveData.current_location),
-          latitude,
-          longitude,
-          timestamp: new Date(deviceFixAt).toISOString(),
-          accuracy: finiteNumber(body.accuracy),
-        });
-        historyRecorded = true;
+    let historyError = '';
+    if (acceptedForPosition && hasCoordinates(latitude, longitude)) {
+      try {
+        const latestHistory = await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
+          { officer_email: officerEmail },
+          '-timestamp',
+          1,
+        ));
+        const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
+        if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= 55000) {
+          await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.create({
+            time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
+            officer_email: officerEmail,
+            officer_name: String(liveData.officer_name),
+            location: String(liveData.current_location),
+            latitude,
+            longitude,
+            timestamp: new Date(deviceFixAt).toISOString(),
+            accuracy: acceptedAccuracy,
+          }));
+          historyRecorded = true;
+        }
+      } catch (error) {
+        historyError = String(error?.message || error || 'Movement history write failed');
+        console.warn(`[logLocation] movement history delayed for ${officerEmail}: ${historyError}`);
       }
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} history=${historyRecorded}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} history=${historyRecorded} history_error=${Boolean(historyError)}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
@@ -206,6 +240,7 @@ Deno.serve(async (req) => {
       gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,
+      history_error: historyError || null,
     });
   } catch (error) {
     console.error('Error logging location:', error);
