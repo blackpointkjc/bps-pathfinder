@@ -168,7 +168,8 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     const lateIncidentException = false;
     const earlyViolation = false;
     const lateClockOutViolation = false;
-    const arrivalViolation = minutesLate > 5;
+    const attendanceWaived = entry.performance_exception === true;
+    const arrivalViolation = minutesLate > 5 && !attendanceWaived;
     const status = arrivalViolation ? 'late' : 'on_time';
 
     if (status === 'on_time') onTime++; else late++;
