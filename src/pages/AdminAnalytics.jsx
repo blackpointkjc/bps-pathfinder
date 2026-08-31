@@ -109,7 +109,6 @@ export default function AdminAnalytics() {
   const allQrScans = analyticsData.qrScans || [];
   const allQrCheckpoints = analyticsData.qrCheckpoints || [];
   const incidentReports = analyticsData.incidentReports || [];
-  const callsForService = analyticsData.callsForService || [];
   const dispatchCalls = analyticsData.dispatchCalls || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
