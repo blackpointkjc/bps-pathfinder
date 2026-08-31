@@ -176,11 +176,12 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     // event. A waived late arrival must become compliant everywhere, not remain a
     // late mark just because the exception originally came from the time-entry review.
     const attendanceWaived = entry.performance_exception === true;
-    if (attendanceWaived && minutesLate > 5) waived++;
+    const waivedArrival = attendanceWaived && minutesLate > 5;
     const arrivalViolation = minutesLate > 5 && !attendanceWaived;
-    const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
+    const status = waivedArrival ? 'waived' : arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
     if (status === 'on_time') onTime++;
+    else if (status === 'waived') waived++;
     else if (status === 'overrun') overrun++;
     else late++;
     details.push({
@@ -206,8 +207,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     });
   }
 
-  const total = onTime + late + missed + overrun;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, waived, total, details };
+  const total = onTime + waived + late + missed + overrun;
+  const compliant = onTime + waived;
+  return { rate: total ? Math.round((compliant / total) * 100) : null, onTime, waived, compliant, late, missed, overrun, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
