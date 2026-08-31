@@ -72,6 +72,34 @@ export async function getAppDirectory(force = false) {
   return pending;
 }
 
+async function resolveAuthenticatedDirectoryUser(authenticated, force = false) {
+  if (!authenticated?.id) return authenticated;
+  try {
+    const directory = await getAppDirectory(force);
+    const directoryUser = findDirectoryUser(directory?.users, authenticated.id);
+    if (!directoryUser) return authenticated;
+    return {
+      ...authenticated,
+      ...directoryUser,
+      id: authenticated.id,
+      auth_email: normalizedIdentity(authenticated.email),
+      email: primaryDirectoryEmail(directoryUser) || normalizedIdentity(authenticated.email),
+      email_aliases: [...new Set([
+        ...directoryUserEmails(directoryUser),
+        normalizedIdentity(authenticated.email),
+      ].filter(Boolean))],
+    };
+  } catch (error) {
+    console.warn('[Directory] Linked identity unavailable; using the authenticated user.', error?.message || error);
+    return authenticated;
+  }
+}
+
+export async function getAuthenticatedDirectoryUser(force = false) {
+  const authenticated = await base44.auth.me();
+  return resolveAuthenticatedDirectoryUser(authenticated, force);
+}
+
 export async function getCurrentDirectoryUser(force = false) {
   const authenticated = await base44.auth.me();
   if (!authenticated?.id) return authenticated;
@@ -92,25 +120,7 @@ export async function getCurrentDirectoryUser(force = false) {
     };
   }
 
-  try {
-    const directory = await getAppDirectory(force);
-    const directoryUser = findDirectoryUser(directory?.users, authenticated.id);
-    if (!directoryUser) return authenticated;
-    return {
-      ...authenticated,
-      ...directoryUser,
-      id: authenticated.id,
-      auth_email: normalizedIdentity(authenticated.email),
-      email: primaryDirectoryEmail(directoryUser) || normalizedIdentity(authenticated.email),
-      email_aliases: [...new Set([
-        ...directoryUserEmails(directoryUser),
-        normalizedIdentity(authenticated.email),
-      ].filter(Boolean))],
-    };
-  } catch (error) {
-    console.warn('[Directory] Linked identity unavailable; using the authenticated user.', error?.message || error);
-    return authenticated;
-  }
+  return resolveAuthenticatedDirectoryUser(authenticated, force);
 }
 
 export function invalidateAppDirectory() {
