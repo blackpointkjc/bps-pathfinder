@@ -184,7 +184,7 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} compliant • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.waived ? ` • ${onTimeStats.waived} waived` : ''}` : 'No elapsed scheduled shifts' },
+    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.compliant ?? (onTimeStats.onTime + (onTimeStats.waived || 0))} compliant • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.waived ? ` • ${onTimeStats.waived} waived` : ''}` : 'No elapsed scheduled shifts' },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Daily Activity Reports', score: jobDuty.dailyActivity.score, detail: jobDuty.dailyActivity.required > 0 ? `${jobDuty.dailyActivity.completed} complete • ${jobDuty.dailyActivity.missed} missing • ${jobDuty.dailyActivity.required} required` : 'No completed worked shifts in period' },
     { label: 'Incident Reports', score: jobDuty.incidentReports.score, detail: jobDuty.incidentReports.required > 0 ? `${jobDuty.incidentReports.completed} complete • ${jobDuty.incidentReports.missed} missing • ${jobDuty.incidentReports.excluded || 0} excluded` : 'No configured incident-report obligation' },
@@ -553,7 +553,7 @@ export default function MyPerformanceAnalytics() {
               <div className="flex justify-around text-sm mt-2">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded" />
-                  <span>Compliant: {onTimeStats.onTime}{onTimeStats.waived ? ` (${onTimeStats.waived} waived)` : ''}</span>
+                  <span>Compliant: {onTimeStats.compliant ?? (onTimeStats.onTime + (onTimeStats.waived || 0))}{onTimeStats.waived ? ` (${onTimeStats.waived} waived)` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded" />
