@@ -103,6 +103,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   let late = 0;
   let missed = 0;
   let overrun = 0;
+  let exempt = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
@@ -143,6 +144,25 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     }
 
     usedEntries.add(String(entry.id || ''));
+    if (entry.performance_exception === true) {
+      exempt++;
+      details.push({
+        status: 'exempt',
+        shift_date: schedule.shift_date,
+        scheduled_start: schedule.start_time,
+        scheduled_end: schedule.end_time,
+        actual_clock_in: easternTimeKey(entry.clock_in),
+        actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+        minutes_late: null,
+        performance_exception: true,
+        performance_overage_counted: false,
+        performance_exception_reason: entry.payroll_adjustment_reason || '',
+        location: schedule.location || '',
+        schedule_id: schedule.id,
+        time_entry_id: entry.id,
+      });
+      continue;
+    }
     const localDate = easternDateKey(entry.clock_in);
     const actual = easternTimeKey(entry.clock_in);
     const actualWall = wallClockMinute(localDate, actual);
@@ -200,7 +220,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   }
 
   const total = onTime + late + missed + overrun;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, total, details };
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, exempt, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
