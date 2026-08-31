@@ -156,15 +156,19 @@ function patchPrintWindow(printWindow) {
     printWindow.print = () => {
       try {
         ensureFooter(printWindow.document);
+        ensureAutoFit(printWindow.document);
       } catch (error) {
-        console.warn('[Print Footer] Could not inject footer into print window:', error);
+        console.warn('[Print] Could not prepare footer/auto-fit for print window:', error);
       }
       return nativePrint();
     };
   }
 
   try {
-    printWindow.addEventListener('beforeprint', () => ensureFooter(printWindow.document));
+    printWindow.addEventListener('beforeprint', () => {
+      ensureFooter(printWindow.document);
+      ensureAutoFit(printWindow.document);
+    });
   } catch {
     // Some browser-created windows may not be ready for listeners immediately.
   }
@@ -192,13 +196,17 @@ export function installRequiredPrintFooter() {
     return patchPrintWindow(opened);
   };
 
-  window.addEventListener('beforeprint', () => ensureFooter(document));
+  window.addEventListener('beforeprint', () => {
+    ensureFooter(document);
+    ensureAutoFit(document);
+  });
 }
 
 export function addRequiredPrintFooter(printWindow) {
   patchPrintWindow(printWindow);
   try {
     ensureFooter(printWindow?.document);
+    ensureAutoFit(printWindow?.document);
   } catch (error) {
     console.warn('[Print Footer] Could not add footer:', error);
   }
