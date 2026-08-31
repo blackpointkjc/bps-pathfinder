@@ -527,6 +527,9 @@ export default function AdminAnalytics() {
                     </Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
+                      On-Time Arrival: <strong>{officer.punctuality.rate != null ? `${officer.punctuality.rate}%` : '—'}</strong>{officer.punctuality.waived ? ` · ${officer.punctuality.waived} waived` : ''}
+                    </span>
                     {officer.overall.categories.map(category => (
                       <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
                         {category.label}: <strong>{category.score}%</strong>
