@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myNotifications = notificationsAll.filter((r:any) => sameEmail(r, 'recipient_email', aliases));
-    const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) && ['called_out','sent_home','reassigned'].includes(lower(r?.call_out_type)));
     const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
     // Return every successful scan that occurred at the officer's property while
