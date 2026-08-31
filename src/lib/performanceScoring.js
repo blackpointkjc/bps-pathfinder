@@ -171,7 +171,11 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     const lateClockOutViolation = lateClockOutMinutes > 5
       && entry.performance_overage_counted === true
       && entry.performance_exception !== true;
-    const arrivalViolation = minutesLate > 5;
+    // Any HR/Admin-approved performance exception applies to the whole attendance
+    // event. A waived late arrival must become compliant everywhere, not remain a
+    // late mark just because the exception originally came from the time-entry review.
+    const attendanceWaived = entry.performance_exception === true;
+    const arrivalViolation = minutesLate > 5 && !attendanceWaived;
     const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
     if (status === 'on_time') onTime++;
@@ -192,6 +196,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       early_incident_exception: earlyIncidentException,
       late_incident_exception: lateIncidentException,
       performance_exception: entry.performance_exception === true,
+      attendance_waived: attendanceWaived,
       performance_overage_counted: entry.performance_overage_counted === true,
       location: schedule.location || '',
       schedule_id: schedule.id,
