@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { getAuthenticatedDirectoryUser } from '@/lib/appDirectory';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,6 +36,7 @@ export default function AdminAnalytics() {
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
   const [summarySending, setSummarySending] = useState(false);
   const [summaryResult, setSummaryResult] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['authenticatedDirectoryUser'],
@@ -79,6 +80,23 @@ export default function AdminAnalytics() {
     retry: 2,
     retryDelay: attempt => Math.min(1500 * (attempt + 1), 5000),
   });
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let timer = null;
+    let unsubscribe = null;
+    const refresh = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 500);
+    };
+    try {
+      unsubscribe = base44.entities.TimeEntry.subscribe(refresh);
+    } catch { /* The scheduled refresh remains available if subscriptions are unavailable. */ }
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [queryClient, user?.id]);
 
   const allUsers = analyticsData.users || [];
   const divisions = analyticsData.divisions || [];
@@ -535,9 +553,12 @@ export default function AdminAnalytics() {
                       <p className="font-semibold text-white">{officer.name}</p>
                       <p className="text-xs text-slate-400">{officer.email}</p>
                     </div>
-                    <Badge className={officer.overall.score == null ? 'bg-slate-600' : officer.overall.score >= 90 ? 'bg-green-600' : officer.overall.score >= 75 ? 'bg-amber-600' : 'bg-red-600'}>
-                      {officer.overall.score != null ? `${officer.overall.score}%` : 'Not scored'}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {officer.punctuality.exempt > 0 && <Badge className="bg-emerald-700 text-white">{officer.punctuality.exempt} Performance Exempt</Badge>}
+                      <Badge className={officer.overall.score == null ? 'bg-slate-600' : officer.overall.score >= 90 ? 'bg-green-600' : officer.overall.score >= 75 ? 'bg-amber-600' : 'bg-red-600'}>
+                        {officer.overall.score != null ? `${officer.overall.score}%` : 'Not scored'}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {officer.overall.categories.map(category => (
