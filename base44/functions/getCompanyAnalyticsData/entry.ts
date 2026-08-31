@@ -30,92 +30,80 @@ Deno.serve(async (req) => {
     }
 
     const errors: Record<string, string> = {};
-    // The analytics page reads many independent datasets. Limit concurrent
-    // entity reads so one large archival collection cannot exhaust the shared
-    // database connection pool and make an otherwise healthy scan time out.
+    // Company Analytics is a current-month operating dashboard. Keep database
+    // concurrency intentionally low and retry transient reads without turning a
+    // short Base44 rate limit into a blank analytics page.
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
       activeReads = Math.max(0, activeReads - 1);
       readWaiters.shift()?.();
     };
-    const list = async (entityName: string, sort?: string, limit = 1000) => {
-      const entity = (base44.asServiceRole.entities as any)[entityName];
-      if (!entity?.list) {
-        errors[entityName] = `${entityName} service is unavailable`;
-        return [];
-      }
+    const transientReadError = (error:any) => /timed out|timeout|server selection|rate limit|too many requests|\b429\b|temporar/i.test(String(error?.message || error));
+    const pause = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+    const safeRead = async (entityName:string, reader:() => Promise<any[]>) => {
       await acquireReadSlot();
       try {
-        return await entity.list(sort, limit);
-      } catch (error) {
-        // Large archival collections can briefly exceed the database connection
-        // window. Retry once with a smaller bounded operational slice rather
-        // than failing the entire company analytics dashboard.
-        if (/timed out|timeout|server selection|rate limit|too many requests|\b429\b/i.test(String(error?.message || error)) && limit > 250) {
-          try {
-            return await entity.list(sort, 250);
-          } catch (retryError) {
-            errors[entityName] = retryError?.message || 'Unable to read data after retry';
-            return [];
-          }
+        try {
+          return await reader() || [];
+        } catch (error) {
+          if (!transientReadError(error)) throw error;
+          await pause(350);
+          return await reader() || [];
         }
+      } catch (error) {
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
       } finally {
         releaseReadSlot();
       }
     };
+    const list = (entityName: string, sort?: string, limit = 1000) => safeRead(entityName, async () => {
+      const entity = (base44.asServiceRole.entities as any)[entityName];
+      if (!entity?.list) throw new Error(`${entityName} service is unavailable`);
+      return entity.list(sort, limit);
+    });
+    const filter = (entityName: string, query:any, sort?: string, limit = 1000) => safeRead(entityName, async () => {
+      const entity = (base44.asServiceRole.entities as any)[entityName];
+      if (!entity?.filter) throw new Error(`${entityName} filter service is unavailable`);
+      return entity.filter(query, sort, limit);
+    });
 
-    const recentHistoryCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const listRecentCallHistory = async () => {
-      const entity = base44.asServiceRole.entities.CallHistory;
-      await acquireReadSlot();
-      try {
-        // CallHistory is a rapidly growing archive. A sorted unfiltered list can
-        // force a collection scan and time out the shared MongoDB connection.
-        return await entity.filter({ archived_date: { $gte: recentHistoryCutoff } }, '-archived_date', 250);
-      } catch (error) {
-        try {
-          const fallbackCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-          return await entity.filter({ archived_date: { $gte: fallbackCutoff } }, '-archived_date', 100);
-        } catch (retryError) {
-          errors.CallHistory = retryError?.message || error?.message || 'Recent call history is temporarily unavailable';
-          return [];
-        }
-      } finally {
-        releaseReadSlot();
-      }
-    };
+    const activityCutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    monthStart.setDate(monthStart.getDate() - 2);
+    const monthDateCutoff = monthStart.toISOString().slice(0, 10);
 
     const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCallsLive, callHistory, propertyAlerts, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
-      list('User', '-updated_date'),
-      list('Division', 'division_name'),
-      list('TimeEntry', '-clock_in'),
-      list('Schedule', '-shift_date'),
-      list('ShiftBid', '-created_date'),
-      list('TrainingCompletion', '-completion_date'),
-      list('TrainingAssignment', '-assigned_date'),
-      list('TrainingModule', '-created_date'),
-      list('QRScanEvent', '-scanned_at'),
-      list('QRCheckpoint', 'property_site'),
-      list('IncidentReport', '-incident_date'),
-      list('DailyActivityReport', '-report_date'),
-      list('CallOut', '-call_out_date'),
-      list('CallForService', '-call_time'),
-      list('DispatchCall', '-time_received'),
-      listRecentCallHistory(),
-      list('PropertyAlert', '-created_date'),
-      list('JobDutyRule', 'property_site'),
-      list('Location', 'site_name'),
-      list('Commendation', '-commendation_date'),
-      list('Complaint', '-complaint_date'),
-      list('ClientFeedback', '-feedback_date'),
-      list('PerformanceReview', '-review_date'),
+      list('User', '-updated_date', 1000),
+      list('Division', 'division_name', 500),
+      filter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 2000),
+      filter('Schedule', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 2000),
+      filter('ShiftBid', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
+      list('TrainingCompletion', '-completion_date', 1500),
+      list('TrainingAssignment', '-assigned_date', 1500),
+      list('TrainingModule', '-created_date', 1000),
+      filter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 2000),
+      list('QRCheckpoint', 'property_site', 1000),
+      filter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1500),
+      filter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 2000),
+      filter('CallOut', { call_out_date: { $gte: monthDateCutoff } }, '-call_out_date', 1000),
+      filter('CallForService', { call_time: { $gte: activityCutoff } }, '-call_time', 1000),
+      list('DispatchCall', '-time_received', 750),
+      filter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
+      filter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
+      list('JobDutyRule', 'property_site', 1000),
+      list('Location', 'site_name', 1000),
+      filter('Commendation', { commendation_date: { $gte: monthDateCutoff } }, '-commendation_date', 1000),
+      filter('Complaint', { complaint_date: { $gte: monthDateCutoff } }, '-complaint_date', 1000),
+      filter('ClientFeedback', { feedback_date: { $gte: monthDateCutoff } }, '-feedback_date', 1000),
+      filter('PerformanceReview', { review_date: { $gte: monthDateCutoff } }, '-review_date', 1000),
     ]);
 
     const alertByCall = new Map<string, any>();
