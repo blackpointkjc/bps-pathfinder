@@ -1,4 +1,4 @@
-import { CalendarClock, ClipboardList, MessageCircle, Shield, UserRound, Wrench } from 'lucide-react';
+import { CalendarClock, ClipboardList, Shield, UserRound, Wrench } from 'lucide-react';
 import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import Dashboard from './Dashboard';
