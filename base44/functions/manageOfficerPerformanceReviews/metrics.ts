@@ -220,7 +220,7 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
     const earlyException = minutesEarly > 10 && incidentExcuses(officerIncidents, officer, aliases, actualStart, scheduledStart);
     const lateException = minutesLateOut > 10 && incidentExcuses(officerIncidents, officer, aliases, scheduledEnd, actualEnd);
     const performanceException = entry.performance_exception === true;
-    const arrivalViolation = minutesLate > 5 && !performanceException;
+    const arrivalViolation = minutesLate > 5;
     const earlyViolation = minutesEarly > 10 && !earlyException;
     const lateOutViolation = minutesLateOut > 10
       && entry.performance_overage_counted === true

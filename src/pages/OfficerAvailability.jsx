@@ -13,7 +13,6 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 export default function OfficerAvailability() {
   const queryClient = useQueryClient();
   const [availability, setAvailability] = useState({});
-  const [saveMessage, setSaveMessage] = useState('');
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -47,8 +46,6 @@ export default function OfficerAvailability() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.email) throw new Error('Your officer account is still loading. Try again in a moment.');
-      setSaveMessage('');
       const snapshot = DAYS.map(day => ({
         day_of_week: day,
         available: availability[day]?.available !== false,
@@ -63,12 +60,9 @@ export default function OfficerAvailability() {
         availability_snapshot: JSON.stringify(snapshot)
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['myAvailabilityRequests'] });
-      setSaveMessage('Availability submitted successfully and is waiting for Admin/HR approval.');
-    },
-    onError: (error) => {
-      setSaveMessage(`Unable to save availability: ${error?.message || 'Unknown error'}`);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myAvailabilityRequests'] });
+      alert('Availability change submitted for admin approval. Your current approved availability remains in effect until it is approved.');
     }
   });
 
@@ -135,7 +129,6 @@ export default function OfficerAvailability() {
               </div>
             ))}
 
-            {saveMessage && <div className={`rounded-lg border p-3 text-sm font-semibold ${saveMessage.startsWith('Unable') ? 'border-red-300 bg-red-50 text-red-700' : 'border-green-300 bg-green-50 text-green-700'}`}>{saveMessage}</div>}
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}

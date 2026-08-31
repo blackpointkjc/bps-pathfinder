@@ -103,7 +103,6 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   let late = 0;
   let missed = 0;
   let overrun = 0;
-  let waived = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
@@ -172,16 +171,10 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     const lateClockOutViolation = lateClockOutMinutes > 5
       && entry.performance_overage_counted === true
       && entry.performance_exception !== true;
-    // Any HR/Admin-approved performance exception applies to the whole attendance
-    // event. A waived late arrival must become compliant everywhere, not remain a
-    // late mark just because the exception originally came from the time-entry review.
-    const attendanceWaived = entry.performance_exception === true;
-    const waivedArrival = attendanceWaived && minutesLate > 5;
-    const arrivalViolation = minutesLate > 5 && !attendanceWaived;
-    const status = waivedArrival ? 'waived' : arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
+    const arrivalViolation = minutesLate > 5;
+    const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
     if (status === 'on_time') onTime++;
-    else if (status === 'waived') waived++;
     else if (status === 'overrun') overrun++;
     else late++;
     details.push({
@@ -199,7 +192,6 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       early_incident_exception: earlyIncidentException,
       late_incident_exception: lateIncidentException,
       performance_exception: entry.performance_exception === true,
-      attendance_waived: attendanceWaived,
       performance_overage_counted: entry.performance_overage_counted === true,
       location: schedule.location || '',
       schedule_id: schedule.id,
@@ -207,9 +199,8 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     });
   }
 
-  const total = onTime + waived + late + missed + overrun;
-  const compliant = onTime + waived;
-  return { rate: total ? Math.round((compliant / total) * 100) : null, onTime, waived, compliant, late, missed, overrun, total, details };
+  const total = onTime + late + missed + overrun;
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {

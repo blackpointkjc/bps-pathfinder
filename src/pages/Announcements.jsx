@@ -50,16 +50,6 @@ export default function Announcements() {
   };
 
   const filteredAnnouncements = announcements?.filter(announcement => {
-    const title = String(announcement?.title || '');
-    const attachment = String(announcement?.attachment_url || '');
-    const imageUrl = String(announcement?.image_url || announcement?.banner_url || '');
-    const fakeSeedTitles = new Set([
-      'Feature Release: Turn-by-Turn Audio Improvements',
-      'Supervisor Roster Adjustment: Weeknight Dispatch',
-      'Planned Map Tile Maintenance — Service Interruption',
-    ]);
-    const fakeInternalLink = [attachment, imageUrl].some(url => /(?:^|\.)bps-pathfinder\.internal|cdn\.bps-pathfinder\.internal|support\.bps-pathfinder\.internal|hr\.bps-pathfinder\.internal/i.test(url));
-    if (fakeSeedTitles.has(title) || fakeInternalLink) return false;
     const isSupervisor = user?.role === 'admin' || user?.additional_roles?.includes('supervisor');
     if (announcement.audience === 'supervisors' && !isSupervisor) return false;
     const createdDate = new Date(announcement.created_date);

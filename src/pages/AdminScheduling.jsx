@@ -3037,20 +3037,20 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="hidden overflow-x-auto overflow-y-hidden rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
-            <table className={`border-collapse text-[10px] lg:text-[11px] ${scheduleViewType === 'monthly' ? 'w-max min-w-[3300px] table-fixed' : 'w-full table-fixed'}`}>
+          <div className="hidden overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
+            <table className="w-full table-fixed border-collapse text-[10px] lg:text-[11px]">
               <thead>
                 <tr className="bg-[#111827]">
-                  <th className={`${scheduleViewType === 'monthly' ? 'w-[280px] min-w-[280px]' : 'w-[22%]'} sticky left-0 z-20 border border-slate-700 bg-[#111827] px-2 py-2 text-left`}>
+                  <th className="sticky left-0 z-20 w-[22%] border border-slate-700 bg-[#111827] px-2 py-2 text-left">
                     <div className="text-xs font-black uppercase tracking-wider text-slate-200">Property / Officer</div>
                   </th>
                   {weekDays.map((day) => (
-                    <th key={day.toString()} className={`${scheduleViewType === 'monthly' ? 'w-[92px] min-w-[92px]' : ''} border border-slate-700 px-1 py-2 text-center`}>
+                    <th key={day.toString()} className="border border-slate-700 px-1 py-2 text-center">
                       <div className="text-sm font-black text-white">{format(day, 'EEE')}</div>
                       <div className="mt-0.5 text-[10px] font-medium text-slate-400">{format(day, 'M/d')}</div>
                     </th>
                   ))}
-                  <th className={`${scheduleViewType === 'monthly' ? 'w-[90px] min-w-[90px]' : 'w-[6%]'} border border-slate-700 bg-[#111827] px-1 py-2 text-center`}>
+                  <th className="w-[6%] border border-slate-700 bg-[#111827] px-1 py-2 text-center">
                     <div className="text-xs font-black uppercase tracking-wider text-slate-200">Total</div>
                   </th>
                 </tr>

@@ -43,7 +43,6 @@ export default function AdminOfficerManagement() {
   const [preferredLocations, setPreferredLocations] = useState([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(normalize));
@@ -137,7 +136,6 @@ export default function AdminOfficerManagement() {
     mutationFn: async () => {
       if (!selectedOfficer) throw new Error('Select an officer first.');
       setSaving(true);
-      setSaveMessage('');
       const existing = allAvailability.filter(a => normalize(a.officer_email) === normalize(selectedOfficer));
       for (const day of DAYS) {
         const dayData = availability[day] || {};
@@ -159,17 +157,8 @@ export default function AdminOfficerManagement() {
         else await base44.entities.OfficerAvailability.create(payload);
       }
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['allAvailability'] }),
-        queryClient.invalidateQueries({ queryKey: ['myAvailability'] }),
-        queryClient.invalidateQueries({ queryKey: ['officerAvailability'] }),
-        queryClient.invalidateQueries({ queryKey: ['availabilityWorkspaceSchedules'] }),
-      ]);
-      setSaving(false);
-      setSaveMessage('Officer availability saved and refreshed.');
-    },
-    onError: error => { setSaving(false); setSaveMessage(`Unable to save availability: ${error?.message || 'Unknown error'}`); },
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['allAvailability'] }); setSaving(false); },
+    onError: error => { setSaving(false); alert(error.message || 'Failed to save.'); },
   });
 
   const updateDay = (day, field, value) => setAvailability(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
@@ -194,7 +183,6 @@ export default function AdminOfficerManagement() {
               {selectedOfficer && <Button onClick={() => saveAvailabilityMutation.mutate()} disabled={saving} className="bg-emerald-600 hover:bg-emerald-500"><Save className="mr-2 h-4 w-4"/>{saving ? 'SAVING…' : 'SAVE OFFICER'}</Button>}
             </div>
           </div>
-          {saveMessage && <div className={`border-t px-5 py-3 text-sm font-bold ${saveMessage.startsWith('Unable') ? 'border-red-800/60 bg-red-950/30 text-red-200' : 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200'}`}>{saveMessage}</div>}
           <div className="grid grid-cols-2 border-t border-slate-800 sm:grid-cols-3 lg:grid-cols-6">
             {[
               ['PENDING APPROVALS', pendingRequests.length, pendingRequests.length ? 'text-amber-300' : 'text-emerald-300'],

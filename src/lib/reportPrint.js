@@ -199,7 +199,7 @@ export function openBlackPointReport({
 <body>
   <div class="print-actions no-print">
     <button type="button" onclick="window.print()">Print / Save PDF</button>
-    <button type="button" onclick="returnToPathfinder()">Back to Pathfinder</button>
+    <button type="button" onclick="window.close()">Back to Pathfinder</button>
   </div>
   <table class="page-shell">
     <thead>
@@ -246,25 +246,6 @@ export function openBlackPointReport({
     </tbody>
   </table>
   <script>
-    function returnToPathfinder() {
-      try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.focus();
-          window.close();
-          return;
-        }
-      } catch (error) {}
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.location.href = '/';
-      }
-    }
-    window.addEventListener('afterprint', function () {
-      // Keep the preview open after printing/cancelling so the user can choose
-      // Back to Pathfinder instead of being trapped in a browser print view.
-      document.querySelector('.print-actions')?.scrollIntoView({ block: 'start' });
-    });
     window.addEventListener('load', async function () {
       const images = Array.from(document.images || []);
       await Promise.all(images.map(function (img) {
@@ -285,8 +266,7 @@ export function openBlackPointReport({
         const scale = oneLetterPage / naturalHeight;
         if (scale >= 0.82) shell.style.zoom = String(Math.min(0.98, scale));
       }
-      // Do not force the browser print dialog immediately. Keep this as a real
-      // preview with visible Print and Back to Pathfinder controls.
+      setTimeout(function () { window.print(); }, 150);
     });
   </script>
 </body>

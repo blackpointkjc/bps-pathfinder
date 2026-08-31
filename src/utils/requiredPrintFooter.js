@@ -3,73 +3,6 @@ export const REQUIRED_CONFIDENTIAL_FOOTER = 'Confidential Document - For Officia
 
 const FOOTER_ID = 'bps-required-print-footer';
 const STYLE_ID = 'bps-required-print-footer-style';
-const AUTOFIT_STYLE_ID = 'bps-global-print-autofit-style';
-const LETTER_PORTRAIT = { width: 816, height: 1056 };
-const LETTER_LANDSCAPE = { width: 1056, height: 816 };
-const PRINT_MARGIN_X = 58;
-const PRINT_MARGIN_Y = 76;
-const MIN_READABLE_SCALE = 0.62;
-
-function printableDocumentSize(targetDocument) {
-  if (!targetDocument?.body || !targetDocument?.documentElement) return { width: 0, height: 0 };
-  const candidates = Array.from(targetDocument.body.children || []).filter(node => {
-    if (!(node instanceof targetDocument.defaultView.HTMLElement)) return false;
-    if (node.id === FOOTER_ID || node.classList.contains('no-print')) return false;
-    const style = targetDocument.defaultView.getComputedStyle(node);
-    return style.display !== 'none' && style.position !== 'fixed';
-  });
-  let width = 0;
-  let height = 0;
-  for (const node of candidates) {
-    width = Math.max(width, node.scrollWidth || node.getBoundingClientRect().width || 0);
-    height = Math.max(height, node.scrollHeight || node.getBoundingClientRect().height || 0);
-  }
-  return {
-    width: Math.max(width, targetDocument.body.scrollWidth || 0, targetDocument.documentElement.scrollWidth || 0),
-    height: Math.max(height, targetDocument.body.scrollHeight || 0),
-  };
-}
-
-function printScaleFor(size, paper) {
-  if (!size.width || !size.height) return 1;
-  const availableWidth = Math.max(1, paper.width - PRINT_MARGIN_X);
-  const availableHeight = Math.max(1, paper.height - PRINT_MARGIN_Y);
-  return Math.min(1, availableWidth / size.width, availableHeight / size.height);
-}
-
-function ensureAutoFit(targetDocument) {
-  if (!targetDocument?.body || !targetDocument?.head) return;
-  const size = printableDocumentSize(targetDocument);
-  const portraitScale = printScaleFor(size, LETTER_PORTRAIT);
-  const landscapeScale = printScaleFor(size, LETTER_LANDSCAPE);
-  const useLandscape = landscapeScale > portraitScale + 0.03;
-  const desiredScale = useLandscape ? landscapeScale : portraitScale;
-  const scale = Math.max(MIN_READABLE_SCALE, Math.min(1, desiredScale));
-  const fitsOnePage = desiredScale >= MIN_READABLE_SCALE;
-
-  targetDocument.documentElement.dataset.bpsPrintOrientation = useLandscape ? 'landscape' : 'portrait';
-  targetDocument.documentElement.dataset.bpsPrintFitsOnePage = fitsOnePage ? 'true' : 'false';
-  targetDocument.documentElement.style.setProperty('--bps-global-print-scale', String(scale));
-
-  let style = targetDocument.getElementById(AUTOFIT_STYLE_ID);
-  if (!style) {
-    style = targetDocument.createElement('style');
-    style.id = AUTOFIT_STYLE_ID;
-    targetDocument.head.appendChild(style);
-  }
-  const orientation = useLandscape ? 'landscape' : 'portrait';
-  style.textContent = `
-    @page { size: Letter ${orientation}; }
-    @media print {
-      html, body { max-width: none !important; }
-      body {
-        zoom: var(--bps-global-print-scale, 1) !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-    }
-  `;
-}
 
 function ensureFooter(targetDocument) {
   if (!targetDocument?.body || !targetDocument?.head) return;
@@ -156,19 +89,15 @@ function patchPrintWindow(printWindow) {
     printWindow.print = () => {
       try {
         ensureFooter(printWindow.document);
-        ensureAutoFit(printWindow.document);
       } catch (error) {
-        console.warn('[Print] Could not prepare footer/auto-fit for print window:', error);
+        console.warn('[Print Footer] Could not inject footer into print window:', error);
       }
       return nativePrint();
     };
   }
 
   try {
-    printWindow.addEventListener('beforeprint', () => {
-      ensureFooter(printWindow.document);
-      ensureAutoFit(printWindow.document);
-    });
+    printWindow.addEventListener('beforeprint', () => ensureFooter(printWindow.document));
   } catch {
     // Some browser-created windows may not be ready for listeners immediately.
   }
@@ -196,17 +125,13 @@ export function installRequiredPrintFooter() {
     return patchPrintWindow(opened);
   };
 
-  window.addEventListener('beforeprint', () => {
-    ensureFooter(document);
-    ensureAutoFit(document);
-  });
+  window.addEventListener('beforeprint', () => ensureFooter(document));
 }
 
 export function addRequiredPrintFooter(printWindow) {
   patchPrintWindow(printWindow);
   try {
     ensureFooter(printWindow?.document);
-    ensureAutoFit(printWindow?.document);
   } catch (error) {
     console.warn('[Print Footer] Could not add footer:', error);
   }

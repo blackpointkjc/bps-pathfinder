@@ -126,7 +126,7 @@ export default function AdminAnalytics() {
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
     }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
-    const totalOnTime = byOfficer.reduce((sum, item) => sum + Number(item.compliant ?? (item.onTime + (item.waived || 0))), 0);
+    const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
     const leaderboard = byOfficer.filter(item => {
       const officer = filteredUsers.find(user => emailKey(user.email) === emailKey(item.email));
@@ -527,9 +527,6 @@ export default function AdminAnalytics() {
                     </Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
-                      On-Time Arrival: <strong>{officer.punctuality.rate != null ? `${officer.punctuality.rate}%` : '—'}</strong>{officer.punctuality.waived ? ` · ${officer.punctuality.waived} waived` : ''}
-                    </span>
                     {officer.overall.categories.map(category => (
                       <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
                         {category.label}: <strong>{category.score}%</strong>

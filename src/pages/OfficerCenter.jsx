@@ -12,7 +12,6 @@ import VATrespassNotices from './VATrespassNotices';
 import VACriminalComplaints from './VACriminalComplaints';
 import Summons from './Summons';
 import DailyActivityReports from './DailyActivityReports';
-import ShiftReports from './ShiftReports';
 import IncidentReports from './IncidentReports';
 import MaintenanceReports from './MaintenanceReports';
 import OpenDoorReports from './OpenDoorReports';
@@ -58,7 +57,6 @@ const TOOLS = {
   ],
   reports: [
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
-    { id: 'shiftreport', label: 'Shift Report', component: ShiftReports },
     { id: 'incident', label: 'Incident Report', component: IncidentReports },
     { id: 'maintenance', label: 'Maintenance', component: MaintenanceReports },
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },

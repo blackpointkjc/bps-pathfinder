@@ -258,7 +258,6 @@ export default function Dashboard({ embedded = false }) {
     { id: "time_requests", title: "Time Off", description: "Request PTO", icon: CalendarClock, color: "from-teal-500 to-cyan-600", url: createPageUrl("TimeRequests"), category: "schedule" },
     { id: "payroll_dates", title: "Payroll", description: "View pay schedule", icon: DollarSign, color: "from-emerald-500 to-green-600", url: createPageUrl("PayrollDates"), category: "schedule" },
     { id: "daily_activity", title: "Daily Activity", description: "Submit report", icon: FileText, color: "from-blue-500 to-indigo-600", url: createPageUrl("DailyActivityReports"), category: "reports" },
-    { id: "shift_report", title: "Shift Report", description: "Submit shift summary", icon: ClipboardList, color: "from-cyan-600 to-blue-700", url: createPageUrl("ShiftReports"), category: "reports" },
     { id: "incident", title: "Incident", description: "Report incident", icon: AlertTriangle, color: "from-red-500 to-rose-600", url: createPageUrl("IncidentReports"), category: "reports" },
     { id: "trespass", title: "Trespass", description: "Issue notice", icon: UserX, color: "from-rose-600 to-red-700", url: createPageUrl("TrespassingNotices"), category: "reports" },
     { id: "maintenance", title: "Maintenance", description: "Report issue", icon: Wrench, color: "from-slate-500 to-slate-600", url: createPageUrl("MaintenanceReports"), category: "reports" },

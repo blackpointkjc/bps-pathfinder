@@ -271,8 +271,6 @@ Deno.serve(async (req) => {
     const lateReviewCutoff = Date.now() - 21 * 86400000;
     const lateClockOuts = queueRole === 'hr' ? (entries || []).flatMap((entry: any) => {
       if (!entry?.id || !entry.clock_in || !entry.clock_out || entry.archived === true || entry.payroll_adjustment_decision) return [];
-      // The HR queue is only for a true late clock-out. Early clock-ins must never
-      // be paired to the wrong schedule and turned into a false late-shift task.
       if (new Date(entry.clock_out).getTime() < lateReviewCutoff) return [];
       const clockIn = easternParts(entry.clock_in);
       const clockOut = easternParts(entry.clock_out);
@@ -282,15 +280,11 @@ Deno.serve(async (req) => {
         && String(shift.shift_date || '').slice(0, 10) === clockIn.date
       );
       if (!sameDaySchedules.length) return [];
-      const entrySite = normalized(String(entry.location || '').split(':')[0]);
-      const sameLocationSchedules = sameDaySchedules.filter((shift: any) => {
-        const shiftSite = normalized(String(shift.location || '').split(':')[0]);
-        return entrySite && shiftSite && entrySite === shiftSite;
-      });
-      // Never fall back to an unrelated property. If the clock record cannot be
-      // matched to the officer's scheduled property, do not manufacture a late task.
-      if (!sameLocationSchedules.length) return [];
-      const scheduled = [...sameLocationSchedules].sort((left: any, right: any) =>
+      const sameLocationSchedules = sameDaySchedules.filter((shift: any) =>
+        normalized(shift.location) && normalized(shift.location) === normalized(entry.location)
+      );
+      const pool = sameLocationSchedules.length ? sameLocationSchedules : sameDaySchedules;
+      const scheduled = [...pool].sort((left: any, right: any) =>
         Math.abs(parseWallMinutes(left.start_time) - clockIn.minutes)
         - Math.abs(parseWallMinutes(right.start_time) - clockIn.minutes)
       )[0];
@@ -300,7 +294,7 @@ Deno.serve(async (req) => {
       const scheduledEndMinutes = endWallMinutes <= startMinutes ? endWallMinutes + 1440 : endWallMinutes;
       const actualEndMinutes = clockOut.minutes + dayOffset(clockIn.date, clockOut.date) * 1440;
       const lateMinutes = Math.round(actualEndMinutes - scheduledEndMinutes);
-      return lateMinutes > 5 ? [{ entry, scheduled, lateMinutes }] : [];
+      return lateMinutes > 0 ? [{ entry, scheduled, lateMinutes }] : [];
     }) : [];
 
     const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
