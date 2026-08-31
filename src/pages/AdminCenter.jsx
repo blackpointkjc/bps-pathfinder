@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
 import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
@@ -186,6 +187,7 @@ function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOffic
 
 export default function AdminCenter() {
   const desktop = useDesktopViewport();
+  const queryClient = useQueryClient();
   const [shadowMode, setShadowMode] = useState('');
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
@@ -232,17 +234,43 @@ export default function AdminCenter() {
     const profile = clients.find(client=>client.id===id);
     setClientPreviewId(id, profile ? {...profile,__auth_admin_id:auth?.id} : null);
   };
-  const chooseOfficer = async id => {
-    setSelectedOfficer(id);
-    const auth = await base44.auth.me().catch(() => null);
+  const chooseOfficer = id => {
     const profile = officers.find(officer => String(officer.id) === String(id));
-    setOfficerPreviewId(id, profile ? { ...profile, __officer_preview: true, __auth_admin_id: auth?.id } : null);
+    if (!id || !profile) {
+      setOfficerPreviewId('');
+      setSelectedOfficer('');
+      queryClient.removeQueries({ queryKey: ['currentUser'] });
+      return;
+    }
+
+    // Persist the selected officer BEFORE mounting Officer Center. Previously the
+    // selectedOfficer state rendered Officer Center first, so its queries ran as
+    // the signed-in administrator and never changed when localStorage was updated.
+    setOfficerPreviewId(id, { ...profile, __officer_preview: true });
+
+    // Clear identity-dependent officer caches so every tool (dashboard, time,
+    // schedule, reports, performance, training, etc.) resolves the selected
+    // officer on its first render instead of reusing the administrator's cache.
+    queryClient.removeQueries({ queryKey: ['currentUser'] });
+    queryClient.removeQueries({ queryKey: ['dashboardDirectoryProfile'] });
+    queryClient.removeQueries({ queryKey: ['dashboardPerformanceReviews'] });
+    queryClient.removeQueries({ queryKey: ['activeTimeEntry'] });
+    queryClient.removeQueries({ queryKey: ['myScheduleData'] });
+    queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
+    queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
+    queryClient.removeQueries({ queryKey: ['officerPerformanceReviews'] });
+
+    setSelectedOfficer(id);
   };
   const exitShadow = () => {
     setClientPreviewId('');
     setSelectedClient('');
     setOfficerPreviewId('');
     setSelectedOfficer('');
+    queryClient.removeQueries({ queryKey: ['currentUser'] });
+    queryClient.removeQueries({ queryKey: ['myScheduleData'] });
+    queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
+    queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
     setShadowMode('');
   };
 
