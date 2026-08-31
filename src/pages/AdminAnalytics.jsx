@@ -449,6 +449,12 @@ export default function AdminAnalytics() {
           </div>
         </div>
 
+        {analyticsServiceErrorNames.length > 0 && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+            Company Analytics loaded with temporary data-source issues in {analyticsServiceErrorNames.join(', ')}. The dashboard will retry automatically; affected metrics are not treated as verified zero activity.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
