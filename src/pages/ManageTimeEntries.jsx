@@ -303,12 +303,6 @@ export default function ManageTimeEntries() {
     return email;
   };
 
-  const payrollDecisionLabel = (decision) => ({
-    relief_delay_approved: 'Relief delay approved — paid, performance exempt',
-    pay_overage_with_performance: 'Overage paid — counted toward performance',
-    deny_overage_pay: 'Payroll hours limited — counted toward performance',
-  }[decision] || 'Payroll decision recorded');
-
   const openPayrollDecision = (entry) => {
     const actualHours = calculatePaidHours(entry);
     setPayrollEntryId(entry.id);
@@ -642,9 +636,6 @@ export default function ManageTimeEntries() {
                             )}
                             {entry.payroll_adjustment_decision && (
                               <div className="mt-3 space-y-1">
-                                <Badge className="border-amber-300 bg-amber-100 text-amber-900">
-                                  {payrollDecisionLabel(entry.payroll_adjustment_decision)}
-                                </Badge>
                                 <p className="text-xs text-slate-600">
                                   Actual {Number(entry.actual_hours_snapshot ?? calculatePaidHours(entry)).toFixed(2)}h · Payroll {Number(entry.approved_hours_snapshot ?? calculatePaidHours(entry)).toFixed(2)}h
                                 </p>
