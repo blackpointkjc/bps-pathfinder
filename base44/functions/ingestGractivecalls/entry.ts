@@ -364,6 +364,18 @@ async function reconcilePropertyAlerts(base44: any) {
           sensitive: false,
         }).catch((error: any) => console.error('Unable to publish property alert announcement event', error?.message || error));
       }
+      // Notify command staff and the on-property team from the saved alert identity.
+      // The SMS function owns per-recipient delivery receipts, so ingestion retries
+      // cannot send duplicate texts for the same property call.
+      await base44.asServiceRole.functions.invoke('notifyPropertyAlertSms', {
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => {
+        console.error('Property-call SMS notification failed', {
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        });
+      });
+
       // Evaluate when the verified alert is created, not only when a dispatcher
       // opens a page. The property's saved mode controls preview, review, or live
       // assignment; the evaluator provides the idempotency receipt.
@@ -398,6 +410,20 @@ async function reconcilePropertyAlerts(base44: any) {
   for (const alert of existingAlerts || []) {
     const lifecycle = String(alert.lifecycle_status || 'active').toLowerCase();
     if (!activeCallIds.has(String(alert.callId)) || ['resolved', 'false_alarm', 'test'].includes(lifecycle)) continue;
+
+    // Give a recent alert a short retry window for temporary carrier/provider
+    // failures. Successful recipients are suppressed by PropertyAlertSmsDelivery.
+    // The age guard prevents old historical alerts from suddenly generating SMS.
+    const alertAt = new Date(alert.callTime || alert.time_received || alert.created_date || 0).getTime();
+    if (Number.isFinite(alertAt) && nowMs - alertAt >= 0 && nowMs - alertAt <= 15 * 60 * 1000) {
+      await base44.asServiceRole.functions.invoke('notifyPropertyAlertSms', {
+        property_alert_id: alert.id,
+      }).catch((error: any) => console.error('Recent property-call SMS retry failed', {
+        property_alert_id: alert.id,
+        error: error?.message || String(error),
+      }));
+    }
+
     const property = propertyById.get(String(alert.propertyId));
     if (!property || property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live') continue;
     const latest = latestEvaluationByAlert.get(String(alert.id));
