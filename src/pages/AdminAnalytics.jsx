@@ -38,7 +38,7 @@ export default function AdminAnalytics() {
   const [summaryResult, setSummaryResult] = useState(null);
 
   const { data: user } = useQuery({
-    queryKey: ['currentUser'],
+    queryKey: ['authenticatedDirectoryUser'],
     queryFn: () => getAuthenticatedDirectoryUser(),
   });
 
@@ -101,6 +101,8 @@ export default function AdminAnalytics() {
   const allLocations = analyticsData.locations || [];
   const allClientFeedback = analyticsData.clientFeedback || [];
   const allPerformanceReviews = analyticsData.performanceReviews || [];
+  const analyticsServiceErrors = analyticsData.service_errors || {};
+  const analyticsServiceErrorNames = Object.keys(analyticsServiceErrors);
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
