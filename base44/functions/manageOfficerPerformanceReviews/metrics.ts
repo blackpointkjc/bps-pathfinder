@@ -220,6 +220,17 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
     const earlyException = minutesEarly > 10 && incidentExcuses(officerIncidents, officer, aliases, actualStart, scheduledStart);
     const lateException = minutesLateOut > 10 && incidentExcuses(officerIncidents, officer, aliases, scheduledEnd, actualEnd);
     const performanceException = entry.performance_exception === true;
+    if (performanceException) {
+      punctualityDetails.push({
+        schedule_id: schedule.id,
+        time_entry_id: entry.id,
+        shift_date: schedule.shift_date,
+        status: 'exempt',
+        performance_exception: true,
+        performance_exception_reason: entry.payroll_adjustment_reason || '',
+      });
+      continue;
+    }
     const arrivalViolation = minutesLate > 5;
     const earlyViolation = minutesEarly > 10 && !earlyException;
     const lateOutViolation = minutesLateOut > 10
