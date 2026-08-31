@@ -112,7 +112,16 @@ Deno.serve(async (req) => {
     // verified property-alert evaluation path as an imported emergency call.
     // Evaluation is attached to the saved PropertyAlert identity, so refreshes
     // and realtime reconnects cannot create a second assignment.
-    await Promise.all(propertyAlerts.map((propertyAlert: any) =>
+    await Promise.all(propertyAlerts.flatMap((propertyAlert: any) => [
+      base44.asServiceRole.functions.invoke('notifyPropertyAlertSms', {
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => {
+        console.error('Property-call SMS notification failed', {
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        });
+        return null;
+      }),
       base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
         call_id: createdCall.id,
         property_alert_id: propertyAlert.id,
@@ -124,7 +133,7 @@ Deno.serve(async (req) => {
         });
         return null;
       })
-    ));
+    ]));
 
     const cadNumber = createdCall.agency_cad_number || createdCall.bps_reference || createdCall.call_id || createdCall.id;
     const priorityEvent = priority === 'critical' || priority === 'high';
