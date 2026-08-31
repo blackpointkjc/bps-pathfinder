@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getAuthenticatedDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ export default function AdminAnalytics() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
+    queryFn: () => getAuthenticatedDirectoryUser(),
   });
 
   const sendCompanySummaryNow = async () => {
@@ -72,7 +72,12 @@ export default function AdminAnalytics() {
       return payload;
     },
     enabled: !!user,
-    refetchInterval: 30000,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchInterval: 120000,
+    refetchIntervalInBackground: false,
+    retry: 2,
+    retryDelay: attempt => Math.min(1500 * (attempt + 1), 5000),
   });
 
   const allUsers = analyticsData.users || [];
