@@ -1,4 +1,3 @@
-import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
