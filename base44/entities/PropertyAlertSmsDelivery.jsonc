@@ -1,0 +1,87 @@
+{
+  "name": "PropertyAlertSmsDelivery",
+  "type": "object",
+  "properties": {
+    "property_alert_id": {
+      "type": "string",
+      "description": "PropertyAlert that triggered this SMS delivery"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "DispatchCall associated with the property alert"
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "Recipient user email used as the stable deduplication key"
+    },
+    "recipient_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "duty_supervisor",
+        "on_property_officer"
+      ],
+      "description": "Why this user received the property-call SMS"
+    },
+    "phone_last4": {
+      "type": "string",
+      "description": "Last four digits only for operational audit without storing a second full phone number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed"
+      ],
+      "default": "failed"
+    },
+    "provider": {
+      "type": "string",
+      "default": "twilio"
+    },
+    "provider_message_id": {
+      "type": "string",
+      "description": "SMS provider message identifier"
+    },
+    "attempted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "property_alert_id",
+    "recipient_email",
+    "recipient_type",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
