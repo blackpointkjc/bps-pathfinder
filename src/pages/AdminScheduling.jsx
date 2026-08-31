@@ -2434,6 +2434,15 @@ Return ONLY a JSON array of suggestion objects with this structure:
     return hours;
   }, [schedules, locations, weekStart, weekEnd, calculateShiftHours]);
 
+  const timelineHourHeight = 46;
+  const timelineTotalHeight = timelineHourHeight * 24;
+  const timelineHours = Array.from({ length: 24 }, (_, hour) => hour);
+  const formatHourLabel = (hour) => {
+    if (hour === 0) return '12 AM';
+    if (hour === 12) return '12 PM';
+    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+  };
+
   if (user?.role !== 'admin') {
     return (
       <div className="p-8 text-center">
