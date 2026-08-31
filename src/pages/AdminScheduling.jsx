@@ -2716,6 +2716,111 @@ Return ONLY a JSON array of suggestion objects with this structure:
           </div>
         )}
 
+        <Card className="overflow-hidden border border-slate-800 bg-[#0b1220] text-white shadow-xl print:hidden">
+          <CardHeader className="border-b border-slate-800 bg-[#101826] p-4 sm:p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg font-black text-white">
+                  <Clock className="h-5 w-5 text-cyan-300" />
+                  24-Hour Shift Timeline
+                </CardTitle>
+                <p className="mt-1 text-xs text-slate-400">12:00 AM through 11:59 PM. Overnight shifts are split visually at midnight so the remaining hours continue into the next calendar day without creating a second shift record.</p>
+              </div>
+              <Badge variant="outline" className="w-fit border-cyan-700/60 bg-cyan-950/30 text-cyan-200">FULL-DAY VIEW</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto overscroll-x-contain">
+              <div style={{ minWidth: `${Math.max(980, 72 + (weekDays.length * 150))}px` }}>
+                <div
+                  className="grid border-b border-slate-700 bg-[#111827]"
+                  style={{ gridTemplateColumns: `72px repeat(${weekDays.length}, minmax(150px, 1fr))` }}
+                >
+                  <div className="border-r border-slate-700 px-2 py-3 text-center text-[9px] font-black uppercase tracking-wider text-slate-500">TIME</div>
+                  {weekDays.map((day) => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+                    return (
+                      <div key={`timeline-head-${dateStr}`} className={`border-r border-slate-700 px-2 py-2 text-center last:border-r-0 ${isToday ? 'bg-blue-950/40' : ''}`}>
+                        <div className={`text-xs font-black ${isToday ? 'text-blue-200' : 'text-white'}`}>{format(day, 'EEE')}</div>
+                        <div className="text-[10px] font-semibold text-slate-400">{format(day, 'MMM d')}</div>
+                        {isToday && <div className="mt-1 text-[8px] font-black uppercase tracking-wider text-blue-300">Today</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div
+                  className="grid bg-[#08111d]"
+                  style={{ gridTemplateColumns: `72px repeat(${weekDays.length}, minmax(150px, 1fr))` }}
+                >
+                  <div className="relative border-r border-slate-700 bg-[#0c1624]" style={{ height: `${timelineTotalHeight}px` }}>
+                    {timelineHours.map((hour) => (
+                      <div
+                        key={`timeline-hour-${hour}`}
+                        className="absolute left-0 right-0 border-t border-slate-800 px-2 pt-1 text-right text-[9px] font-bold tabular-nums text-slate-500"
+                        style={{ top: `${hour * timelineHourHeight}px`, height: `${timelineHourHeight}px` }}
+                      >
+                        {formatHourLabel(hour)}
+                      </div>
+                    ))}
+                    <div className="absolute bottom-1 right-2 text-[8px] font-bold text-slate-600">11:59 PM</div>
+                  </div>
+
+                  {weekDays.map((day) => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const segments = timelineSegmentsByDate[dateStr] || [];
+                    const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+                    return (
+                      <div key={`timeline-day-${dateStr}`} className={`relative border-r border-slate-700 last:border-r-0 ${isToday ? 'bg-blue-950/10' : ''}`} style={{ height: `${timelineTotalHeight}px` }}>
+                        {timelineHours.map((hour) => (
+                          <div key={`${dateStr}-${hour}`} className="pointer-events-none absolute left-0 right-0 border-t border-slate-800/80" style={{ top: `${hour * timelineHourHeight}px` }} />
+                        ))}
+                        {segments.map((segment) => {
+                          const shift = segment.shift;
+                          const top = (segment.startMinute / 60) * timelineHourHeight;
+                          const rawHeight = ((segment.endMinute - segment.startMinute) / 60) * timelineHourHeight;
+                          const height = Math.max(24, rawHeight - 2);
+                          const widthPct = 100 / segment.laneCount;
+                          const leftPct = segment.lane * widthPct;
+                          const locationName = String(shift.location || '').split(':')[0].trim();
+                          const officerName = shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email);
+                          const crossesMidnight = shiftCrossesMidnight(shift);
+                          const segmentTime = segment.continuation
+                            ? `12:00 AM–${shift.end_time}`
+                            : crossesMidnight
+                              ? `${shift.start_time}–MIDNIGHT`
+                              : `${shift.start_time}–${shift.end_time}`;
+                          return (
+                            <button
+                              type="button"
+                              key={`${shift.id}-${dateStr}-${segment.continuation ? 'continuation' : 'start'}`}
+                              onClick={() => handleEditShift(shift)}
+                              className={`absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left shadow-sm transition hover:z-20 hover:ring-1 ${segment.continuation ? 'border-purple-500/70 bg-purple-950/90 text-purple-100 hover:ring-purple-400' : shift.is_open ? 'border-cyan-500/70 bg-cyan-950/90 text-cyan-100 hover:ring-cyan-400' : 'border-blue-500/70 bg-blue-950/90 text-blue-100 hover:ring-blue-400'}`}
+                              style={{
+                                top: `${top}px`,
+                                height: `${height}px`,
+                                left: `calc(${leftPct}% + 2px)`,
+                                width: `calc(${widthPct}% - 4px)`,
+                              }}
+                              title={`${officerName} · ${locationName} · ${shift.start_time}-${shift.end_time}${crossesMidnight ? ' overnight' : ''}`}
+                            >
+                              <div className="truncate text-[9px] font-black leading-tight">{segment.continuation ? '↳ CONT. ' : ''}{officerName}</div>
+                              {height >= 38 && <div className="mt-0.5 truncate text-[8px] font-semibold text-slate-300">{locationName}</div>}
+                              {height >= 52 && <div className="mt-1 text-[8px] font-black tabular-nums text-white">{segmentTime}</div>}
+                              {crossesMidnight && height >= 70 && <div className="mt-1 text-[7px] font-bold uppercase tracking-wide text-purple-300">{segment.continuation ? 'Remaining overnight hours' : 'Continues next day'}</div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* This block is removed as the handlePrintOfficerSchedule now generates its own print window */}
         {/*
         {selectedOfficerForPrint && printOfficerData && printStartDate && printEndDate && (
