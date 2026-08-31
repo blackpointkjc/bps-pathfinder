@@ -188,7 +188,7 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed` : 'No elapsed scheduled shifts' },
+    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} performance exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} performance exempt` : 'No elapsed scheduled shifts') },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Daily Activity Reports', score: jobDuty.dailyActivity.score, detail: jobDuty.dailyActivity.required > 0 ? `${jobDuty.dailyActivity.completed} complete • ${jobDuty.dailyActivity.missed} missing • ${jobDuty.dailyActivity.required} required` : 'No completed worked shifts in period' },
     { label: 'Incident Reports', score: jobDuty.incidentReports.score, detail: jobDuty.incidentReports.required > 0 ? `${jobDuty.incidentReports.completed} complete • ${jobDuty.incidentReports.missed} missing • ${jobDuty.incidentReports.excluded || 0} excluded` : 'No configured incident-report obligation' },
@@ -203,6 +203,19 @@ export default function MyPerformanceAnalytics() {
 
   const performanceFactors = useMemo(() => {
     const factors = [];
+
+    if (onTimeStats.exempt > 0) {
+      const exemptDetails = onTimeStats.details
+        .filter(detail => detail.status === 'exempt')
+        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: performance exempt${detail.performance_exception_reason ? ` — ${detail.performance_exception_reason}` : ''}.`);
+      factors.push({
+        metric: 'Performance Exempt',
+        value: `${onTimeStats.exempt} exempt`,
+        severity: 'neutral',
+        reason: `HR approved ${onTimeStats.exempt} time entr${onTimeStats.exempt === 1 ? 'y' : 'ies'} as performance exempt. The exempt shift${onTimeStats.exempt === 1 ? '' : 's'} remain in payroll/time history but are excluded from punctuality and Job Duty scoring.`,
+        details: exemptDetails,
+      });
+    }
 
     if (onTimeStats.total > 0 && (onTimeStats.late > 0 || onTimeStats.missed > 0)) {
       const problemDetails = onTimeStats.details
