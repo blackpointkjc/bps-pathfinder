@@ -63,7 +63,7 @@ export default function SupervisorCallOuts() {
 
   const { data: callOuts } = useQuery({
     queryKey: ['callOuts'],
-    queryFn: () => base44.entities.CallOut.list('-call_out_date'),
+    queryFn: async () => (await base44.entities.CallOut.list('-call_out_date')).filter(row => ['called_out','sent_home','reassigned'].includes(String(row?.call_out_type || '').toLowerCase())),
     initialData: [],
   });
 
