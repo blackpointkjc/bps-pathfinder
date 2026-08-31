@@ -620,6 +620,11 @@ export default function ManageTimeEntries() {
                                   On Duty
                                 </Badge>
                               )}
+                              {entry.performance_exception === true && (
+                                <Badge className="border-emerald-300 bg-emerald-100 text-emerald-900">
+                                  Performance Exempt
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                               <div className="flex items-center gap-1">
