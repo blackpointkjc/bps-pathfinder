@@ -463,17 +463,23 @@ export default function AdminScheduling() {
     return officer?.unit_number || "";
   }, [allUsers]);
 
-  const calculateShiftHours = useCallback((startTime, endTime) => {
-    const start = parseInt(startTime.replace(':', ''));
-    const end = parseInt(endTime.replace(':', ''));
-    let hours = 0;
-    if (end < start) {
-      hours = ((2400 - start) + end) / 100;
-    } else {
-      hours = (end - start) / 100;
-    }
-    return hours;
+  const timeToMinutes = useCallback((value) => {
+    const [hour = 0, minute = 0] = String(value || '00:00').slice(0, 5).split(':').map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
+    return Math.max(0, Math.min(1439, (hour * 60) + minute));
   }, []);
+
+  const shiftCrossesMidnight = useCallback((shift) => {
+    if (!shift?.start_time || !shift?.end_time) return false;
+    return timeToMinutes(shift.end_time) <= timeToMinutes(shift.start_time);
+  }, [timeToMinutes]);
+
+  const calculateShiftHours = useCallback((startTime, endTime) => {
+    const start = timeToMinutes(startTime);
+    let end = timeToMinutes(endTime);
+    if (end <= start) end += 24 * 60;
+    return (end - start) / 60;
+  }, [timeToMinutes]);
 
   const getScheduleForDateOfficerAndLocation = useCallback((date, officerEmail, locationSiteName) => {
     if (!schedules) return [];
