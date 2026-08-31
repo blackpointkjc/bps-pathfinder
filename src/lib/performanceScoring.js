@@ -103,6 +103,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   let late = 0;
   let missed = 0;
   let overrun = 0;
+  let waived = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
@@ -175,6 +176,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     // event. A waived late arrival must become compliant everywhere, not remain a
     // late mark just because the exception originally came from the time-entry review.
     const attendanceWaived = entry.performance_exception === true;
+    if (attendanceWaived && minutesLate > 5) waived++;
     const arrivalViolation = minutesLate > 5 && !attendanceWaived;
     const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
@@ -205,7 +207,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   }
 
   const total = onTime + late + missed + overrun;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, total, details };
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, waived, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
