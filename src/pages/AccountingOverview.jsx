@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, FileText, Receipt, TrendingUp, ArrowRight, CalendarClock, AlertTriangle } from 'lucide-react';
+import { DollarSign, FileText, Receipt, TrendingUp, ArrowRight, CalendarClock, AlertTriangle, ChartNoAxesCombined } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -53,6 +53,35 @@ export default function AccountingOverview() {
   const currentPeriod = periods.find(row => ['open','current','active'].includes(String(row.status || '').toLowerCase())) || periods[0];
   const totalPaymentDue = payrollEntries.reduce((sum,row) => sum + Number(row.total_payment_due || row.gross_pay || row.net_pay || 0), 0);
   const recentPayroll = payrollEntries.slice(0,5);
+  const locations = payload.locations || [];
+  const schedules = payload.schedules || [];
+  const siteRate = new Map(locations.map(row => [String(row.site_name || '').trim().toLowerCase(), Number(row.site_bill_rate || 0)]));
+  const siteName = value => String(value || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
+  const shiftHours = row => {
+    const [sh, sm] = String(row.start_time || '').split(':').map(Number);
+    const [eh, em] = String(row.end_time || '').split(':').map(Number);
+    if (![sh, sm, eh, em].every(Number.isFinite)) return 0;
+    let minutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (minutes <= 0) minutes += 1440;
+    return minutes / 60;
+  };
+  const workedPattern = schedules.filter(row => row.archived !== true && row.is_open !== true && siteRate.get(siteName(row.location)) > 0);
+  const forecastStart = new Date();
+  const forecastQuarter = offset => {
+    const month = forecastStart.getMonth() + offset * 3;
+    const year = forecastStart.getFullYear() + Math.floor(month / 12);
+    const normalizedMonth = ((month % 12) + 12) % 12;
+    const quarterStartMonth = Math.floor(normalizedMonth / 3) * 3;
+    const quarterStart = new Date(year, quarterStartMonth, 1);
+    const quarterEnd = new Date(year, quarterStartMonth + 3, 0);
+    const days = Math.round((quarterEnd - quarterStart) / 86400000) + 1;
+    const recentStart = new Date(forecastStart); recentStart.setDate(recentStart.getDate() - 28);
+    const recent = workedPattern.filter(row => { const d = new Date(`${row.shift_date}T12:00:00`); return d >= recentStart && d <= forecastStart; });
+    const weeklyRevenue = recent.reduce((sum,row) => sum + shiftHours(row) * (siteRate.get(siteName(row.location)) || 0), 0) / 4;
+    const revenue = weeklyRevenue * (days / 7);
+    return { label: `Q${Math.floor(quarterStartMonth / 3) + 1} ${quarterStart.getFullYear()}`, revenue, weeklyRevenue, days };
+  };
+  const quarterlyForecast = [0,1,2,3].map(forecastQuarter);
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
@@ -63,6 +92,8 @@ export default function AccountingOverview() {
         {!!loadErrors.length && !error && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200"><span>Some finance records are temporarily unavailable: {loadErrors.join(', ')}. All successfully loaded data remains visible.</span><button type="button" onClick={() => refetch()} className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs font-black hover:bg-amber-500/20">RETRY MISSING DATA</button></div>}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Payroll Entries',payrollEntries.length,DollarSign,'Entries loaded for payroll review'],['Current Period',currentPeriod?.period_name || currentPeriod?.name || currentPeriod?.start_date || '—',CalendarClock,'Active/latest payroll period'],['Pending Expenses',pendingExpenses.length,AlertTriangle,'Reimbursements awaiting action'],['Payment Due',`$${totalPaymentDue.toLocaleString(undefined,{maximumFractionDigits:2})}`,Receipt,'Total due across loaded payroll entries']].map(([label,value,Icon,detail]) => <div key={label} className="bps-kpi-card rounded-2xl border border-slate-800 bg-[#0b1624] p-5"><div className="bps-kpi-icon bg-emerald-500/10 text-emerald-300"><Icon className="h-5 w-5"/></div><span className="bps-kpi-value text-2xl font-black">{value}</span><div className="bps-kpi-label text-sm font-black">{label}</div><div className="bps-kpi-detail text-xs text-slate-500">{detail}</div></div>)}</div>
+
+        <section className="rounded-2xl border border-emerald-500/20 bg-[#0a1421] p-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="flex items-center gap-2 text-xs font-black uppercase tracking-[.16em] text-emerald-300"><ChartNoAxesCombined className="h-4 w-4"/>Revenue Forecast</div><h3 className="mt-1 text-xl font-black">Quarterly revenue based on current work pattern</h3><p className="mt-1 text-xs text-slate-500">Projects the most recent 28 days of scheduled billable work at each property's current billing rate. This is a forecast, not booked revenue.</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{quarterlyForecast.map(row => <div key={row.label} className="rounded-xl border border-slate-800 bg-[#0d1a2a] p-4 text-center"><div className="text-xs font-black uppercase tracking-wider text-slate-500">{row.label}</div><div className="mt-2 text-2xl font-black text-emerald-200">${row.revenue.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="mt-1 text-xs text-slate-500">~${row.weeklyRevenue.toLocaleString(undefined,{maximumFractionDigits:0})}/week current work</div></div>)}</div></section>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Payroll Activity</div><h3 className="mt-1 text-xl font-black">Recent payroll entries</h3><div className="mt-4 space-y-2">{recentPayroll.length ? recentPayroll.map((row,index) => <div key={row.id || index} className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3"><div><div className="text-sm font-bold">{operationalName(row, directory, { fallback: 'Employee' })}</div><div className="text-xs text-slate-500">{payrollDateLabel(row)}</div></div><div className="text-sm font-black text-emerald-200">${Number(row.total_payment_due || row.gross_pay || row.net_pay || 0).toLocaleString(undefined,{maximumFractionDigits:2})}</div></div>) : <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No payroll entries loaded.</div>}</div></section><section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Expense Queue</div><h3 className="mt-1 text-xl font-black">Awaiting review</h3><div className="mt-4 space-y-2">{pendingExpenses.slice(0,6).map((row,index) => <div key={row.id || index} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3"><div className="flex items-center justify-between gap-3"><div className="text-sm font-bold">{operationalName(row, directory, { fallback: 'Employee' })}</div><div className="text-sm font-black text-amber-200">${Number(row.amount || 0).toLocaleString(undefined,{maximumFractionDigits:2})}</div></div><div className="text-xs text-slate-500">{row.expense_type || row.category || 'Reimbursement'}</div><Link to={createPageUrl('AccountingExpenses')} className="self-end rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/20">OPEN TASK</Link></div>)}{!pendingExpenses.length && <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No pending expenses.</div>}</div></section></div>
 
