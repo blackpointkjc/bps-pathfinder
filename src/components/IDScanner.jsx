@@ -1,11 +1,12 @@
 import { uploadInternalFile } from '@/lib/internalUpload';
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, Scan, Upload, Video, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 const clean = (value) => (value || "").replace(/\u0000/g, "").trim();
 
@@ -88,18 +89,19 @@ export default function IDScanner({ onDataExtracted, onClose }) {
   const [scannerText, setScannerText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [message, setMessage] = useState("");
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
   const inputRef = useRef(null);
-  const detectorRef = useRef(null);
-  const timerRef = useRef(null);
+  const cameraScannerRef = useRef(null);
+  const processingScanRef = useRef(false);
+  const cameraElementId = `id-pdf417-camera-${useId().replace(/:/g, "")}`;
 
   const stopCamera = () => {
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    timerRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+    const scanner = cameraScannerRef.current;
+    cameraScannerRef.current = null;
+    if (scanner) {
+      Promise.resolve(scanner.stop())
+        .catch(() => {})
+        .finally(() => Promise.resolve(scanner.clear()).catch(() => {}));
+    }
     setCameraActive(false);
   };
 
@@ -122,7 +124,8 @@ export default function IDScanner({ onDataExtracted, onClose }) {
   };
 
   const processBarcode = async (raw, source = "barcode") => {
-    if (!raw || busy) return;
+    if (!raw || processingScanRef.current) return;
+    processingScanRef.current = true;
     setBusy(true);
     try {
       const parsed = parseAamva(raw);
@@ -148,51 +151,41 @@ export default function IDScanner({ onDataExtracted, onClose }) {
       console.error(error);
       setMessage("The barcode could not be read. Try the camera again or take a clear photo of the front of the ID.");
     } finally {
+      processingScanRef.current = false;
       setBusy(false);
-    }
-  };
-
-  const scanVideoFrame = async () => {
-    if (!detectorRef.current || !videoRef.current || videoRef.current.readyState < 2 || busy) return;
-    try {
-      const results = await detectorRef.current.detect(videoRef.current);
-      const hit = results.find((item) => item.rawValue);
-      if (hit) await processBarcode(hit.rawValue, "camera_barcode");
-    } catch (error) {
-      console.debug("Barcode frame not readable yet", error);
     }
   };
 
   const startCamera = async () => {
     setMessage("");
+    setCameraActive(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false,
+      // Wait one paint so the scanner host exists before Html5Qrcode attaches the camera.
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const scanner = new Html5Qrcode(cameraElementId, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.PDF_417],
+        verbose: false,
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCameraActive(true);
-
-      if ("BarcodeDetector" in window) {
-        const supported = await window.BarcodeDetector.getSupportedFormats();
-        const formats = supported.includes("pdf417") ? ["pdf417"] : supported;
-        detectorRef.current = new window.BarcodeDetector({ formats });
-        timerRef.current = window.setInterval(scanVideoFrame, 650);
-        setMessage("Camera is scanning continuously. Hold the PDF417 barcode inside the guide.");
-      } else {
-        setMessage("Automatic barcode detection is not supported on this device. Use Capture & Read below.");
-      }
+      cameraScannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 320, height: 120 },
+          aspectRatio: 16 / 9,
+          disableFlip: false,
+        },
+        (decodedText) => processBarcode(decodedText, "camera_barcode"),
+        () => {},
+      );
+      setMessage("Camera is scanning the PDF417 barcode continuously. Hold the back of the ID steady inside the guide.");
     } catch (error) {
       console.error(error);
-      setMessage("Camera access failed. Allow camera permission in the browser, then try again.");
+      const scanner = cameraScannerRef.current;
+      cameraScannerRef.current = null;
+      if (scanner) Promise.resolve(scanner.clear()).catch(() => {});
+      setCameraActive(false);
+      setMessage("Camera scanner could not start. Allow camera permission, then try again or use Capture/Upload ID Photo.");
     }
   };
 
@@ -225,11 +218,15 @@ export default function IDScanner({ onDataExtracted, onClose }) {
   };
 
   const captureFrame = async () => {
-    if (!videoRef.current) return;
+    const video = document.getElementById(cameraElementId)?.querySelector("video");
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setMessage("The camera is still starting. Hold the ID in view and try Capture & Read again.");
+      return;
+    }
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.95));
     await uploadAndReadImage(new File([blob], "id-camera.jpg", { type: "image/jpeg" }), "camera_photo");
   };
@@ -250,7 +247,7 @@ export default function IDScanner({ onDataExtracted, onClose }) {
           {cameraActive && (
             <div className="space-y-3">
               <div className="relative overflow-hidden rounded-lg bg-black">
-                <video ref={videoRef} autoPlay playsInline muted className="h-72 w-full object-cover" />
+                <div id={cameraElementId} className="min-h-72 w-full [&_video]:h-72 [&_video]:w-full [&_video]:object-cover" />
                 <div className="pointer-events-none absolute inset-x-[8%] top-1/2 h-28 -translate-y-1/2 rounded border-2 border-red-400" />
               </div>
               <Button type="button" variant="outline" className="w-full" onClick={captureFrame} disabled={busy}>
