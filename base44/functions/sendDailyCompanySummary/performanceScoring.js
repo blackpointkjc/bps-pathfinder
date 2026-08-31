@@ -102,6 +102,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   let onTime = 0;
   let late = 0;
   let missed = 0;
+  let exempt = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
@@ -142,6 +143,23 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     }
 
     usedEntries.add(String(entry.id || ''));
+    if (entry.performance_exception === true) {
+      exempt++;
+      details.push({
+        status: 'exempt',
+        shift_date: schedule.shift_date,
+        scheduled_start: schedule.start_time,
+        scheduled_end: schedule.end_time,
+        actual_clock_in: easternTimeKey(entry.clock_in),
+        actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+        performance_exception: true,
+        performance_exception_reason: entry.payroll_adjustment_reason || '',
+        location: schedule.location || '',
+        schedule_id: schedule.id,
+        time_entry_id: entry.id,
+      });
+      continue;
+    }
     const localDate = easternDateKey(entry.clock_in);
     const actual = easternTimeKey(entry.clock_in);
     const actualWall = wallClockMinute(localDate, actual);
@@ -193,7 +211,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   }
 
   const total = onTime + late + missed;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, total, details };
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, exempt, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -380,7 +398,7 @@ export function calculateJobDutyCompliance({
 } = {}) {
   const officerEmail = emailKey(officer?.email);
   const evaluatedShifts = timeEntries.filter(entry => {
-    if (!entry?.clock_in || entry?.archived === true) return false;
+    if (!entry?.clock_in || entry?.archived === true || entry?.performance_exception === true) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
     const d = easternDateKey(entry.clock_in);
     return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
