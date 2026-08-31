@@ -344,6 +344,11 @@ export default function MyPerformanceAnalytics() {
             Loaded {performanceData.meta.timeEntries || 0} time entries, {performanceData.meta.schedules || 0} schedules, {performanceData.meta.trainingAssignments || 0} training assignments, and {performanceData.meta.qrScans || 0} QR scans for your account.
           </div>
         )}
+        {!performanceLoading && !performanceError && performanceServiceErrorNames.length > 0 && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Performance loaded with a temporary data-source issue in {performanceServiceErrorNames.join(', ')}. The page will retry automatically; affected categories are not treated as verified zero activity.
+          </div>
+        )}
 
         <Card className="overflow-hidden border border-blue-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
