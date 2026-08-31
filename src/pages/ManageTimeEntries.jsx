@@ -217,6 +217,8 @@ export default function ManageTimeEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['myPerformanceData'] });
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] });
       queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
