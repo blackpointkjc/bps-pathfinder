@@ -46,13 +46,15 @@ export default function MyPerformanceAnalytics() {
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 0,
+    staleTime: 15000,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: 'always',
-    // HR decisions, approved reviews and edited attendance must become visible
-    // without requiring the officer to leave and reopen the page.
-    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    // Keep the page current without repeatedly hammering 20+ performance data sources.
+    // Entity subscriptions below still refresh immediately when scoring records change.
+    refetchInterval: 120000,
     refetchIntervalInBackground: false,
+    retry: 2,
+    retryDelay: attempt => Math.min(1200 * (attempt + 1), 4000),
   });
 
   React.useEffect(() => {
@@ -79,6 +81,8 @@ export default function MyPerformanceAnalytics() {
   const myCommendations = performanceData.commendations || [];
   const myClientFeedback = performanceData.clientFeedback || [];
   const myPerformanceReviews = performanceData.performanceReviews || [];
+  const performanceServiceErrors = performanceData.service_errors || {};
+  const performanceServiceErrorNames = Object.keys(performanceServiceErrors);
 
   const thisWeekSchedule = React.useMemo(() => {
     if (!schedules) return [];
