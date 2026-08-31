@@ -386,8 +386,10 @@ Deno.serve(async (req) => {
     });
 
     const liveLocations = datasets.ActiveOfficer || [];
-    const movementHistory = datasets.LocationHistory || [];
+    let movementHistory = datasets.LocationHistory || [];
     const now = Date.now();
+    const historyCutoff = now - 15 * 60 * 1000;
+    const emailKey = (input: unknown) => String(input || '').trim().toLowerCase();
     const freshLiveLocations = liveLocations.filter(item => {
       // A heartbeat proves the app session is alive, not that the GPS fix is
       // current. Movement-history health must compare against gps_updated_at.
@@ -395,20 +397,50 @@ Deno.serve(async (req) => {
       return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
         && hasValidCoordinates(item.latitude, item.longitude);
     });
-    const recentMovement = movementHistory.filter(item => {
+    const recentMovementEmails = (rows: any[]) => new Set(rows.filter(item => {
       const stamp = new Date(value(item, 'timestamp', 'created_date') || 0).getTime();
-      return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
+      return Number.isFinite(stamp) && stamp >= historyCutoff
         && hasValidCoordinates(item.latitude, item.longitude);
+    }).map(item => emailKey(item.officer_email)).filter(Boolean));
+
+    let recentEmails = recentMovementEmails(movementHistory);
+    let missingHistoryOfficers = freshLiveLocations.filter(item => {
+      const email = emailKey(item.officer_email);
+      return email && !recentEmails.has(email);
     });
+
+    // ActiveOfficer is updated before its one-minute history companion is written.
+    // During a busy/rate-limited moment a full scan can land in that small window
+    // and falsely report an outage even though the history write is still in
+    // flight. Re-check only the history service before declaring failure. Two
+    // short retries keep the diagnostic accurate without delaying healthy scans.
+    if (missingHistoryOfficers.length) {
+      const historyEntity = base44.asServiceRole.entities.LocationHistory;
+      for (const waitMs of [4000, 6000]) {
+        await delay(waitMs);
+        try {
+          movementHistory = await historyEntity.list('-timestamp', 250);
+          recentEmails = recentMovementEmails(movementHistory);
+          missingHistoryOfficers = missingHistoryOfficers.filter(item => !recentEmails.has(emailKey(item.officer_email)));
+          if (!missingHistoryOfficers.length) break;
+        } catch (error) {
+          const transient = /rate limit|too many requests|429|timed out|timeout/i.test(String(error?.message || error));
+          if (!transient) break;
+        }
+      }
+    }
+
     // No currently fresh officer GPS is not itself a system outage. Officers may
     // simply be signed out, have location permission disabled, or be between fixes.
-    // The live-location functional probe separately verifies that the service works.
-    if (freshLiveLocations.length && !recentMovement.length) add(findings, {
+    // Only officers that STILL have no recent history after the targeted re-check
+    // are treated as a movement-history failure.
+    if (missingHistoryOfficers.length) add(findings, {
       key: 'location:history-not-recording',
       area: 'Movement History',
       severity: 'outage',
       title: 'Historical officer movement is not being recorded',
-      description: 'Fresh live officer locations exist, but LocationHistory has no coordinate records from the last 15 minutes.',
+      description: `${missingHistoryOfficers.length} officer${missingHistoryOfficers.length === 1 ? '' : 's'} have fresh live GPS coordinates but no LocationHistory coordinate record from the last 15 minutes after retry.`,
+      count: missingHistoryOfficers.length,
     });
 
     const payrollPeriods = datasets.PayrollPeriod || [];
