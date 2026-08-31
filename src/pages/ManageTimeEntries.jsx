@@ -54,6 +54,10 @@ export default function ManageTimeEntries() {
     queryClient.invalidateQueries({ queryKey: ['accountingData'] });
     queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
     queryClient.invalidateQueries({ queryKey: ['payrollTimeEntries'] });
+    // Attendance edits and HR/Admin waivers are performance inputs. Never leave
+    // officer or company analytics showing the pre-waiver score from cache.
+    queryClient.invalidateQueries({ queryKey: ['myPerformanceData'] });
+    queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] });
   };
 
   const clearTaskDeepLink = () => {
