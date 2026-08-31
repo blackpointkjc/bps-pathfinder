@@ -184,7 +184,7 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed` : 'No elapsed scheduled shifts' },
+    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} compliant • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.waived ? ` • ${onTimeStats.waived} waived` : ''}` : 'No elapsed scheduled shifts' },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Daily Activity Reports', score: jobDuty.dailyActivity.score, detail: jobDuty.dailyActivity.required > 0 ? `${jobDuty.dailyActivity.completed} complete • ${jobDuty.dailyActivity.missed} missing • ${jobDuty.dailyActivity.required} required` : 'No completed worked shifts in period' },
     { label: 'Incident Reports', score: jobDuty.incidentReports.score, detail: jobDuty.incidentReports.required > 0 ? `${jobDuty.incidentReports.completed} complete • ${jobDuty.incidentReports.missed} missing • ${jobDuty.incidentReports.excluded || 0} excluded` : 'No configured incident-report obligation' },
@@ -222,7 +222,7 @@ export default function MyPerformanceAnalytics() {
         metric: 'On-Time Arrival',
         value: '100%',
         severity: 'positive',
-        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period. Early clock-ins and late clock-outs do not reduce On-Time Arrival.`
+        reason: `All ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'} are compliant for On-Time Arrival${onTimeStats.waived ? `, including ${onTimeStats.waived} HR/Admin-waived late arrival${onTimeStats.waived === 1 ? '' : 's'}` : ''}. A waived late remains in the audit history but does not reduce the officer's score.`
       });
     }
 
@@ -553,7 +553,7 @@ export default function MyPerformanceAnalytics() {
               <div className="flex justify-around text-sm mt-2">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded" />
-                  <span>On Time: {onTimeStats.onTime}</span>
+                  <span>Compliant: {onTimeStats.onTime}{onTimeStats.waived ? ` (${onTimeStats.waived} waived)` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded" />
