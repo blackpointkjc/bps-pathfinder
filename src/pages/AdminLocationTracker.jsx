@@ -147,8 +147,8 @@ export default function AdminLocationTracker() {
       return getOfficerLocationSnapshot({ locationOnly: true });
     },
     // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
-    // 30-second safety poll instead of repeatedly hitting the backend.
-    refetchInterval: 30000,
+    // one-minute safety poll instead of repeatedly hitting the backend.
+    refetchInterval: 60000,
     refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
@@ -347,7 +347,7 @@ export default function AdminLocationTracker() {
   useEffect(() => {
     if (viewMode === 'live' && hasAccess && allUsers) {
       const initialTimer = setTimeout(() => performLocationCheck(), 1500);
-      const interval = setInterval(() => performLocationCheck(), 60000);
+      const interval = setInterval(() => performLocationCheck(), 120000);
       return () => {
         clearTimeout(initialTimer);
         clearInterval(interval);
@@ -409,7 +409,7 @@ export default function AdminLocationTracker() {
             <p className="text-slate-600">Live GPS and one-minute movement history while officers are signed into the app</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
-                Last live check: {format(lastAutoCheck, 'h:mm:ss a')} • Signed-in GPS heartbeat: every 15 seconds
+                Last live check: {format(lastAutoCheck, 'h:mm:ss a')} • GPS saved about once per minute
               </p>
             )}
           </div>
@@ -679,7 +679,7 @@ export default function AdminLocationTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-slate-900">Live</div>
-                   <p className="text-xs text-slate-500 mt-1">Instant entity updates · 15 sec safety refresh · history every 60 sec</p>
+                   <p className="text-xs text-slate-500 mt-1">Instant subscriptions · 60 sec GPS persistence · one-minute movement history</p>
                 </CardContent>
               </Card>
             </div>
@@ -722,20 +722,20 @@ export default function AdminLocationTracker() {
                             fillOpacity: officer.gps_stale ? 0.55 : 0.95,
                           }}
                         >
-                          <Popup autoPan={false}>
-                            <div className="p-2">
-                              <p className="font-bold text-slate-900">{getOfficerName(officer.officer_email)}</p>
-                              <p className="text-sm text-slate-600">{officer.current_location}</p>
-                              <p className="text-xs text-slate-500">
+                          <Popup autoPan={false} className="bps-location-popup">
+                            <div className="min-w-[270px] max-w-[340px] rounded-xl bg-[#08111d] p-4 text-white shadow-2xl">
+                              <p className="text-base font-black text-white">{getOfficerName(officer.officer_email)}</p>
+                              <p className="mt-2 text-sm font-semibold leading-5 text-slate-100">{officer.current_location}</p>
+                              <p className="mt-3 text-xs font-semibold text-slate-300">
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
-                              <p className={`text-xs ${officer.gps_stale || officer.gps_low_accuracy ? 'font-bold text-amber-700' : 'text-green-600'}`}>
+                              <p className={`mt-3 text-xs font-black ${officer.gps_stale || officer.gps_low_accuracy ? 'text-amber-300' : 'text-emerald-300'}`}>
                                 {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
                                   ? format(new Date(officer.gps_updated_at || officer.last_gps_updated_at), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
                               {(officer.gps_stale || officer.gps_low_accuracy) && (
-                                <p className="mt-1 text-[10px] font-bold text-red-700">Not eligible for automatic dispatch until fresh, precise GPS returns.</p>
+                                <p className="mt-2 text-xs font-bold leading-5 text-red-300">Automatic dispatch waits for a fresh precise fix. The officer remains visible using the newest valid device location.</p>
                               )}
                             </div>
                           </Popup>
