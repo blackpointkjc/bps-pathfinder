@@ -48,7 +48,16 @@ Deno.serve(async (req) => {
         'timestamp',
         5000,
       ), 'location history');
-      return Response.json({ success: true, history: (history || []).filter((point: any) => Boolean(point.time_entry_id)) });
+      // Legacy browser/IP fallbacks with multi-kilometer accuracy are retained in
+      // the database for audit history, but they are not valid movement points and
+      // must not distort the historical map or route line.
+      const usableHistory = (history || []).filter((point: any) => {
+        const accuracy = Number(point?.accuracy);
+        return Boolean(point.time_entry_id)
+          && hasValidCoordinates(point?.latitude, point?.longitude)
+          && (!Number.isFinite(accuracy) || accuracy <= 2000);
+      });
+      return Response.json({ success: true, history: usableHistory, filtered_history_count: Math.max(0, (history || []).length - usableHistory.length) });
     }
 
     // Location-only consumers (the live map and its health probe) only need the
@@ -98,10 +107,12 @@ Deno.serve(async (req) => {
             speed: hasGps ? active.speed : 0,
             accuracy: Number.isFinite(accuracy) ? accuracy : null,
             gps_updated_at: hasGps ? active.gps_updated_at : null,
-            last_gps_updated_at: active.reliable_gps_updated_at || (hasGps ? active.gps_updated_at : null),
+            gps_source: hasGps ? (active.gps_source || 'browser_geolocation') : '',
+            last_gps_updated_at: hasReliablePosition ? active.reliable_gps_updated_at : (hasGps ? active.gps_updated_at : null),
             last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasGps ? Number(active.latitude) : null),
             last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasGps ? Number(active.longitude) : null),
             last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasGps ? accuracy : null),
+            last_known_gps_source: hasReliablePosition ? (active.reliable_gps_source || active.gps_source || '') : (hasGps ? (active.gps_source || '') : ''),
             // Show the officer's best available device position even when it isn't
             // precise (Wi-Fi/indoor fixes). The session-key equality check formerly
             // hid officers whose heartbeat desynced gps_session_key; any valid
@@ -199,10 +210,12 @@ Deno.serve(async (req) => {
         speed: hasReliableGps ? active.speed : 0,
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
-        last_gps_updated_at: active.reliable_gps_updated_at || (hasReliableGps ? active.gps_updated_at : null),
+        gps_source: hasReliableGps ? (active.gps_source || 'browser_geolocation') : '',
+        last_gps_updated_at: hasReliablePosition ? active.reliable_gps_updated_at : (hasReliableGps ? active.gps_updated_at : null),
         last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasReliableGps ? Number(active.latitude) : null),
         last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : null),
         last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : null),
+        last_known_gps_source: hasReliablePosition ? (active.reliable_gps_source || active.gps_source || '') : (hasReliableGps ? (active.gps_source || '') : ''),
         // Show the officer's best available device position even when it isn't
         // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the current
         // record renders as a low-accuracy marker rather than hiding the officer.
@@ -316,10 +329,12 @@ Deno.serve(async (req) => {
           speed: hasFreshGps ? active.speed : 0,
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
           gps_updated_at: hasFreshGps ? active.gps_updated_at : null,
-          last_gps_updated_at: active?.reliable_gps_updated_at || (hasFreshGps ? active?.gps_updated_at : null),
+          gps_source: hasFreshGps ? (active?.gps_source || 'browser_geolocation') : '',
+          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (hasFreshGps ? active?.gps_updated_at : null),
           last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps ? Number(active.latitude) : null),
           last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps ? Number(active.longitude) : null),
           last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps ? accuracy : null),
+          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (hasFreshGps ? (active?.gps_source || '') : ''),
           // Show the officer's best available device position even when it isn't
           // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the
           // current record renders as a low-accuracy marker rather than hiding
