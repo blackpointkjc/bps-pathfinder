@@ -197,9 +197,10 @@ export default function BackgroundLocationTracker({ user }) {
       if (!shouldPublish) return;
 
       try {
-        // One canonical push every 15 seconds is fast enough for the live map and
-        // avoids multiplying API traffic across every signed-in device.
-        if (now - lastLivePushRef.current < 15000) return;
+        // Persist one canonical GPS fix per minute. The browser's local GPS watch
+        // still updates continuously, but Base44 writes are rate-limited here so
+        // maps/history stay current without burning requests every 15 seconds.
+        if (now - lastLivePushRef.current < 60000) return;
         lastLivePushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
@@ -314,15 +315,15 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
-  // Independent signed-in heartbeat. Live GPS is refreshed every 15 seconds even
-  // when watchPosition is quiet; movement history remains one-minute.
+  // Independent signed-in heartbeat. GPS persists once per minute when available;
+  // a lighter heartbeat keeps the signed-in session alive when the sensor is quiet.
   useEffect(() => {
     if (!shouldTrack || !user?.email) return undefined;
 
     const heartbeat = async () => {
       const fix = lastPositionRef.current;
       try {
-        if (Date.now() - lastLivePushRef.current >= 15000) {
+        if (Date.now() - lastLivePushRef.current >= 120000) {
           await persistLiveState({
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -357,7 +358,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
 
     heartbeat();
-    const heartbeatId = window.setInterval(heartbeat, 30000);
+    const heartbeatId = window.setInterval(heartbeat, 120000);
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
