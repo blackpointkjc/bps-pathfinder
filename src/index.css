@@ -182,6 +182,36 @@
   }
 }
 
+/* Admin live-map officer popup. Leaflet's default wrapper is white; Pathfinder's
+   night workspace forces utility text to light colors, so the old combination
+   produced nearly invisible text. Keep the entire popup on one dark surface at
+   every viewport size. */
+.cad-app main[data-page="AdminLocationTracker"] .bps-location-popup .leaflet-popup-content-wrapper {
+  overflow: hidden;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  background: #08111d !important;
+  color: #f8fafc !important;
+  padding: 0;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, .5);
+}
+.cad-app main[data-page="AdminLocationTracker"] .bps-location-popup .leaflet-popup-content {
+  width: auto !important;
+  min-width: 270px;
+  max-width: 340px;
+  margin: 0;
+}
+.cad-app main[data-page="AdminLocationTracker"] .bps-location-popup .leaflet-popup-tip {
+  background: #08111d !important;
+}
+.cad-app main[data-page="AdminLocationTracker"] .bps-location-popup .leaflet-popup-close-button {
+  color: #fff !important;
+  font-size: 24px;
+  top: 5px;
+  right: 7px;
+  z-index: 2;
+}
+
 /* Pathfinder CAD/RMS design system */
 :root {
   --bps-command-950: #050b12;
