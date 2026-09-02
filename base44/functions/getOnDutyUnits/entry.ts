@@ -286,7 +286,11 @@ Deno.serve(async (req) => {
         const activeTs = new Date(active?.last_update || active?.updated_date || active?.created_date || 0).getTime();
         const userStatusTs = new Date(user.last_updated || user.status_since || user.updated_date || 0).getTime();
         const signedInFresh = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= freshCutoff);
-        const operationallySignedIn = signedInFresh || Boolean(openEntry);
+        // A TimeEntry can remain open after the officer signs out. Only a fresh,
+        // active ActiveOfficer session represents a live CAD unit. An open time
+        // entry by itself must never make the officer Available or place a marker
+        // on live maps.
+        const operationallySignedIn = signedInFresh;
         // A dedicated status change writes User and ActiveOfficer together. If a
         // duplicate/racing ActiveOfficer row is momentarily older than User, honor
         // the newer User status instead of showing OOS/stale status on the board.
@@ -296,11 +300,7 @@ Deno.serve(async (req) => {
           ? (user.status || active?.status || 'Available')
           : (active?.status || user.status || 'Available');
         const normalizedLiveStatus = lower(newestLiveStatus);
-        const resolvedStatus = signedInFresh
-          ? newestLiveStatus
-          : openEntry
-            ? (normalizedLiveStatus === 'out of service' || !newestLiveStatus ? 'Available' : newestLiveStatus)
-            : 'Out of Service';
+        const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
@@ -339,7 +339,9 @@ Deno.serve(async (req) => {
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
           current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
-          current_location: operationallySignedIn ? (active?.current_location || openEntry?.location || user.assigned_location || '') : (user.assigned_location || ''),
+          current_location: signedInFresh
+            ? (active?.current_location || openEntry?.location || user.assigned_location || '')
+            : (openEntry?.location || user.assigned_location || ''),
           assigned_location: user.assigned_location || '',
           latitude: hasFreshGps ? Number(active.latitude) : null,
           longitude: hasFreshGps ? Number(active.longitude) : null,
@@ -366,7 +368,7 @@ Deno.serve(async (req) => {
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
           session_active: operationallySignedIn,
-          session_source: signedInFresh ? 'active_session' : openEntry ? 'open_time_entry' : 'signed_out',
+          session_source: signedInFresh ? 'active_session' : openEntry ? 'clocked_in_but_signed_out' : 'signed_out',
           clock_in_time: openEntry?.clock_in || active?.clock_in_time || '',
         };
       });
