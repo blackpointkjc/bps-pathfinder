@@ -36,13 +36,11 @@ function isPointInsideBoundary(lat, lng, rawPolygon = []) {
 }
 
 export default function BackgroundLocationTracker({ user }) {
-  const lastSaveRef = useRef(0);
   const lastGpsPushRef = useRef(0);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const activeOfficerRecordRef = useRef(null);
   const uploadChainRef = useRef(Promise.resolve());
-  const lastPositionRef = useRef(null);
   const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
@@ -204,8 +202,6 @@ export default function BackgroundLocationTracker({ user }) {
           detail: { state: 'live', accuracy },
         }));
       }
-
-      lastPositionRef.current = fix;
 
       if (!shouldPublish) return;
 
