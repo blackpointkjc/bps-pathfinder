@@ -20,6 +20,7 @@ import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationSe
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
+import { disconnectExternalGps, getExternalGpsStatus, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -170,6 +171,7 @@ export default function TimeClock() {
   const [endDate, setEndDate] = useState(easternTodayKey);
   const [clockInCoords, setClockInCoords] = useState(null);
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
+  const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
   const queryClient = useQueryClient();
 
   // NEW STATE VARIABLES
@@ -421,6 +423,21 @@ export default function TimeClock() {
       setCurrentLocationCoords({ lat: fix.latitude, lng: fix.longitude });
     });
   }, []);
+
+  useEffect(() => subscribeExternalGpsStatus(setExternalGps), []);
+
+  const handleExternalGps = async () => {
+    setGeoError(null);
+    try {
+      if (externalGps.connected) {
+        await disconnectExternalGps();
+        return;
+      }
+      await requestExternalGpsConnection({ baudRate: externalGps.baudRate || 4800 });
+    } catch (error) {
+      setGeoError(error?.message || 'Unable to connect the external GPS receiver.');
+    }
+  };
 
   const requestLocationPermission = async () => {
 
