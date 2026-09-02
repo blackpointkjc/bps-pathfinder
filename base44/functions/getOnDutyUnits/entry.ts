@@ -5,6 +5,8 @@ function roleSet(user: any) {
 }
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
+const usableGpsAccuracy = (value: unknown) => Number.isFinite(Number(value)) && Number(value) <= MAX_USABLE_GPS_ACCURACY_METERS;
 const hasCoordinateValue = (value: unknown) => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
 const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordinateValue(latitude)
   && hasCoordinateValue(longitude)
@@ -93,7 +95,8 @@ Deno.serve(async (req) => {
             && active.reliable_session_key === active.tracking_session_key;
           const hasGps = Number.isFinite(gpsTs)
             && gpsTs >= gpsFreshCutoff
-            && hasValidCoordinates(active.latitude, active.longitude);
+            && hasValidCoordinates(active.latitude, active.longitude)
+            && usableGpsAccuracy(active.accuracy);
           return {
             id: active.id,
             officer_email: active.officer_email,
@@ -191,9 +194,14 @@ Deno.serve(async (req) => {
       // officer when Windows/Wi-Fi assisted positioning is coarse.
       const hasReliableGps = Number.isFinite(gpsTs)
         && gpsTs >= gpsFreshCutoff
-        && hasValidCoordinates(active.latitude, active.longitude);
+        && hasValidCoordinates(active.latitude, active.longitude)
+        && usableGpsAccuracy(active.accuracy);
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
+      const clockInAccuracy = Number(entry?.clock_in_accuracy);
+      const hasClockInPosition = Boolean(entry)
+        && hasValidCoordinates(entry?.clock_in_latitude, entry?.clock_in_longitude)
+        && (!Number.isFinite(clockInAccuracy) || clockInAccuracy <= MAX_USABLE_GPS_ACCURACY_METERS);
       units.push({
         id: active.id || entry?.id,
         officer_email: active.officer_email || entry?.officer_email,
@@ -211,11 +219,11 @@ Deno.serve(async (req) => {
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
         gps_source: hasReliableGps ? (active.gps_source || 'browser_geolocation') : '',
-        last_gps_updated_at: hasReliablePosition ? active.reliable_gps_updated_at : (hasReliableGps ? active.gps_updated_at : null),
-        last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasReliableGps ? Number(active.latitude) : null),
-        last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : null),
-        last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : null),
-        last_known_gps_source: hasReliablePosition ? (active.reliable_gps_source || active.gps_source || '') : (hasReliableGps ? (active.gps_source || '') : ''),
+        last_gps_updated_at: hasReliablePosition ? active.reliable_gps_updated_at : (hasReliableGps ? active.gps_updated_at : (hasClockInPosition ? entry.clock_in : null)),
+        last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasReliableGps ? Number(active.latitude) : (hasClockInPosition ? Number(entry.clock_in_latitude) : null)),
+        last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasReliableGps ? Number(active.longitude) : (hasClockInPosition ? Number(entry.clock_in_longitude) : null)),
+        last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasReliableGps ? accuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : null)),
+        last_known_gps_source: hasReliablePosition ? (active.reliable_gps_source || active.gps_source || '') : (hasReliableGps ? (active.gps_source || '') : (hasClockInPosition ? 'shift_clock_in' : '')),
         // Show the officer's best available device position even when it isn't
         // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the current
         // record renders as a low-accuracy marker rather than hiding the officer.
@@ -304,7 +312,12 @@ Deno.serve(async (req) => {
         const hasFreshGps = signedInFresh
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
-          && hasValidCoordinates(active?.latitude, active?.longitude);
+          && hasValidCoordinates(active?.latitude, active?.longitude)
+          && usableGpsAccuracy(active?.accuracy);
+        const clockInAccuracy = Number(openEntry?.clock_in_accuracy);
+        const hasClockInPosition = Boolean(openEntry)
+          && hasValidCoordinates(openEntry?.clock_in_latitude, openEntry?.clock_in_longitude)
+          && (!Number.isFinite(clockInAccuracy) || clockInAccuracy <= MAX_USABLE_GPS_ACCURACY_METERS);
         return {
           id: user.id,
           user_id: user.id,
@@ -330,11 +343,11 @@ Deno.serve(async (req) => {
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
           gps_updated_at: hasFreshGps ? active.gps_updated_at : null,
           gps_source: hasFreshGps ? (active?.gps_source || 'browser_geolocation') : '',
-          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (hasFreshGps ? active?.gps_updated_at : null),
-          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps ? Number(active.latitude) : null),
-          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps ? Number(active.longitude) : null),
-          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps ? accuracy : null),
-          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (hasFreshGps ? (active?.gps_source || '') : ''),
+          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (hasFreshGps ? active?.gps_updated_at : (hasClockInPosition ? openEntry.clock_in : null)),
+          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps ? Number(active.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : null)),
+          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps ? Number(active.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : null)),
+          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps ? accuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : null)),
+          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (hasFreshGps ? (active?.gps_source || '') : (hasClockInPosition ? 'shift_clock_in' : '')),
           // Show the officer's best available device position even when it isn't
           // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the
           // current record renders as a low-accuracy marker rather than hiding
