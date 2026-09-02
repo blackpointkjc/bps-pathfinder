@@ -10,6 +10,10 @@ let lifecycleListenersInstalled = false;
 
 export const TACTICAL_GPS_MAX_ACCURACY_METERS = 100;
 export const PRECISION_GPS_TARGET_METERS = 50;
+// Browser/device GPS reads do not consume Base44 credits. Force one fresh device
+// request per minute while the shared watch remains active; the background
+// tracker separately rate-limits server persistence.
+export const DEVICE_GPS_REFRESH_MS = 60_000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
@@ -54,6 +58,7 @@ function normalizePosition(position) {
     // The rest of Pathfinder displays officer speed in miles per hour.
     speed: Number.isFinite(Number(position.coords.speed)) ? Number(position.coords.speed) * 2.236936 : 0,
     timestamp: Number(position.timestamp) || Date.now(),
+    source: 'browser_geolocation',
   };
 }
 
@@ -72,12 +77,16 @@ export function publishLiveLocation(fix) {
     heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
     speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
     timestamp: Number(fix.timestamp) || Date.now(),
+    source: String(fix.source || 'browser_geolocation'),
   };
   // GPS radios often begin with a coarse Wi-Fi/network fix and improve seconds
   // later. Do not replace a recent precise fix with a substantially worse one.
+  // A direct external serial receiver is preferred over a simultaneous coarse
+  // browser/network estimate so a USB antenna cannot be overwritten by Wi-Fi.
   if (latestFix && candidate.timestamp - latestFix.timestamp < 30000
       && Number.isFinite(latestFix.accuracy)
-      && candidate.accuracy > latestFix.accuracy + 25) return;
+      && (candidate.accuracy > latestFix.accuracy + 25
+        || (latestFix.source === 'external_serial' && candidate.source !== 'external_serial' && candidate.accuracy >= latestFix.accuracy))) return;
   latestFix = candidate;
   listeners.forEach(listener => {
     try { listener(latestFix); } catch (_) {}
@@ -195,7 +204,7 @@ function ensureSharedWatch() {
   // Keep the device/sensor watch running continuously, but only force a fresh
   // browser geolocation request once per minute. This keeps GPS current without
   // waking the provider every 15 seconds on rugged Windows tablets.
-  refreshTimer = window.setInterval(requestWhenUsable, 60000);
+  refreshTimer = window.setInterval(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
   requestWhenUsable();
 }
 
