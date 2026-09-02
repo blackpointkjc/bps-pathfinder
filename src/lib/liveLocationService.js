@@ -14,6 +14,8 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 // request per minute while the shared watch remains active; the background
 // tracker separately rate-limits server persistence.
 export const DEVICE_GPS_REFRESH_MS = 60_000;
+export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
+export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
@@ -79,14 +81,27 @@ export function publishLiveLocation(fix) {
     timestamp: Number(fix.timestamp) || Date.now(),
     source: String(fix.source || 'browser_geolocation'),
   };
+  // Windows can fall back to IP/network positioning when the CF-33 GNSS sensor
+  // momentarily disappears. Those readings can be tens of miles away with a
+  // 50,000-100,000m accuracy radius. Never publish that as an officer position.
+  if (candidate.source !== 'external_serial' && candidate.accuracy > BROWSER_GPS_MAX_USABLE_ACCURACY_METERS) {
+    return;
+  }
+  // Once a direct NMEA/USB receiver has a recent fix, it owns the location stream.
+  // Browser/Wi-Fi positioning must not overwrite it until the external receiver
+  // has been silent long enough to be considered unavailable.
+  if (latestFix?.source === 'external_serial'
+      && candidate.source !== 'external_serial'
+      && Date.now() - Number(latestFix.timestamp || 0) <= EXTERNAL_GPS_PRIORITY_MS) {
+    return;
+  }
   // GPS radios often begin with a coarse Wi-Fi/network fix and improve seconds
   // later. Do not replace a recent precise fix with a substantially worse one.
-  // A direct external serial receiver is preferred over a simultaneous coarse
-  // browser/network estimate so a USB antenna cannot be overwritten by Wi-Fi.
+  // GPS radios often improve their fix over several readings. Do not let a much
+  // worse reading replace a recent better one from the same source.
   if (latestFix && candidate.timestamp - latestFix.timestamp < 30000
       && Number.isFinite(latestFix.accuracy)
-      && (candidate.accuracy > latestFix.accuracy + 25
-        || (latestFix.source === 'external_serial' && candidate.source !== 'external_serial' && candidate.accuracy >= latestFix.accuracy))) return;
+      && candidate.accuracy > latestFix.accuracy + 25) return;
   latestFix = candidate;
   listeners.forEach(listener => {
     try { listener(latestFix); } catch (_) {}
