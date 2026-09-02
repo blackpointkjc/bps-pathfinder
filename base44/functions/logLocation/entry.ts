@@ -76,12 +76,12 @@ Deno.serve(async (req) => {
           session_active: false,
           status: 'Out of Service',
           last_update: now,
-          gps_updated_at: null,
-          latitude: null,
-          longitude: null,
+          // Preserve the final accepted coordinate as LAST KNOWN. Clearing these
+          // fields on logout/force-sign-out made maps fall all the way back to the
+          // shift clock-in point even when a much newer usable GPS fix existed.
+          // session_active=false is what prevents this coordinate being treated as live.
           heading: null,
           speed: 0,
-          accuracy: null,
           current_call_info: '',
         }).catch(() => null));
       }
