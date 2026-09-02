@@ -74,6 +74,10 @@
       "type": "string",
       "description": "Tracking session that produced the current raw GPS coordinate"
     },
+    "gps_source": {
+      "type": "string",
+      "description": "Source of the current GPS fix, such as browser_geolocation or external_serial"
+    },
     "reliable_session_key": {
       "type": "string",
       "description": "Session identity that owns the preserved precise tactical GPS fix"
