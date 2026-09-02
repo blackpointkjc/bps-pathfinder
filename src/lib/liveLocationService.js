@@ -192,7 +192,10 @@ function ensureSharedWatch() {
     GPS_OPTIONS,
   );
   installLifecycleListeners();
-  refreshTimer = window.setInterval(requestWhenUsable, 15000);
+  // Keep the device/sensor watch running continuously, but only force a fresh
+  // browser geolocation request once per minute. This keeps GPS current without
+  // waking the provider every 15 seconds on rugged Windows tablets.
+  refreshTimer = window.setInterval(requestWhenUsable, 60000);
   requestWhenUsable();
 }
 
