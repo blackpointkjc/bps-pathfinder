@@ -26,7 +26,7 @@ const LIVE_SESSION_FRESH_MS = 15 * 60 * 1000;
 // Dispatch distance/ETA uses the backend's two-minute GPS freshness window.
 // Keep the admin map label aligned with that rule so an old but geographically
 // close point is never described as current GPS.
-const LIVE_GPS_FRESH_MS = 2 * 60 * 1000;
+const LIVE_GPS_FRESH_MS = 5 * 60 * 1000;
 
 const isOperationallyVisibleUser = isInternalMember;
 
@@ -368,9 +368,9 @@ export default function AdminLocationTracker() {
     .map(o => {
       const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
       const candidates = [];
-      if (valid(o.latitude, o.longitude)) candidates.push({ lat: Number(o.latitude), lng: Number(o.longitude), acc: Number(o.accuracy), ts: toLocTs(o.gps_updated_at), low: false });
-      if (valid(o.last_known_latitude, o.last_known_longitude)) candidates.push({ lat: Number(o.last_known_latitude), lng: Number(o.last_known_longitude), acc: Number(o.last_known_accuracy), ts: toLocTs(o.last_gps_updated_at || o.gps_updated_at), low: false });
-      if (valid(o.coarse_latitude, o.coarse_longitude)) candidates.push({ lat: Number(o.coarse_latitude), lng: Number(o.coarse_longitude), acc: Number(o.coarse_accuracy), ts: toLocTs(o.coarse_gps_updated_at || o.gps_updated_at), low: true });
+      if (valid(o.latitude, o.longitude)) candidates.push({ lat: Number(o.latitude), lng: Number(o.longitude), acc: Number(o.accuracy), ts: toLocTs(o.gps_updated_at), low: false, source: o.gps_source || 'browser_geolocation' });
+      if (valid(o.last_known_latitude, o.last_known_longitude)) candidates.push({ lat: Number(o.last_known_latitude), lng: Number(o.last_known_longitude), acc: Number(o.last_known_accuracy), ts: toLocTs(o.last_gps_updated_at || o.gps_updated_at), low: false, source: o.last_known_gps_source || o.gps_source || '' });
+      if (valid(o.coarse_latitude, o.coarse_longitude)) candidates.push({ lat: Number(o.coarse_latitude), lng: Number(o.coarse_longitude), acc: Number(o.coarse_accuracy), ts: toLocTs(o.coarse_gps_updated_at || o.gps_updated_at), low: true, source: o.gps_source || 'browser_geolocation' });
       if (!candidates.length) return null;
       candidates.sort((a, b) => b.ts - a.ts);
       const best = candidates[0];
@@ -380,6 +380,7 @@ export default function AdminLocationTracker() {
         longitude: best.lng,
         accuracy: Number.isFinite(best.acc) ? best.acc : null,
         gps_timestamp: best.ts || null,
+        gps_display_source: best.source || '',
         gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 100),
         gps_stale: !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
       };
@@ -738,6 +739,9 @@ export default function AdminLocationTracker() {
                                 {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {officer.gps_timestamp
                                   ? format(new Date(officer.gps_timestamp), 'h:mm:ss a')
                                   : 'No GPS data'}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-cyan-300">
+                                Source: {officer.gps_display_source === 'external_serial' ? 'External USB / NMEA GPS' : officer.gps_display_source ? 'Windows / Browser Location' : 'Unknown'}
                               </p>
                               {(officer.gps_stale || officer.gps_low_accuracy) && (
                                 <p className="mt-2 text-xs font-bold leading-5 text-amber-100">
