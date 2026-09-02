@@ -801,15 +801,14 @@ export default function TimeClock() {
           </div>
         )}
 
-        {!isAdmin && (
-          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-cyan-100">External GPS Receiver</p>
                 <p className="mt-1 text-xs leading-5 text-cyan-200/80">
                   {externalGps.supported
                     ? externalGps.connected
-                      ? `Connected${externalGps.lastFixAt ? ` • last fix ${format(new Date(externalGps.lastFixAt), 'h:mm:ss a')}` : ' • waiting for NMEA fix'}`
+                      ? `Connected${externalGps.backgroundReader ? ' • background reader active' : ''}${externalGps.lastFixAt ? ` • last fix ${format(new Date(externalGps.lastFixAt), 'h:mm:ss a')}` : ' • waiting for NMEA fix'}`
                       : 'Optional USB/serial NMEA GPS for CF-33 and other field computers. Chrome or Edge will ask which COM/GPS device to use.'
                     : 'Direct USB/serial GPS is not supported by this browser. Windows Location Services can still supply an external receiver to Pathfinder.'}
                 </p>
@@ -825,7 +824,6 @@ export default function TimeClock() {
               )}
             </div>
           </div>
-        )}
 
         <Card className="overflow-hidden border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-2xl">
           <CardHeader className={`border-b border-[#29445f] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#10263b]'}`}>
