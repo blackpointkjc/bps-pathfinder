@@ -316,7 +316,7 @@ export function subscribeExternalGpsStatus(listener, { emitCurrent = true } = {}
 
 export async function startExternalGpsAutoReconnect() {
   if (!externalGpsSupported()) {
-    emit({ supported: false, connected: false });
+    emit({ supported: false, connected: false, backgroundReader: false });
     return getExternalGpsStatus();
   }
   installSerialEvents();
@@ -325,10 +325,22 @@ export async function startExternalGpsAutoReconnect() {
     .then(async ports => {
       emit({ portGranted: Array.isArray(ports) && ports.length > 0 });
       if (!ports?.length) return getExternalGpsStatus();
+      // Prefer the dedicated-worker reader. Chromium can heavily throttle the page
+      // main thread when a CF-33 window is minimized, while Web Serial is available
+      // directly inside a Dedicated Worker. Previously approved ports can be reopened
+      // there without another device prompt.
+      if (workerSerialSupported()) {
+        try {
+          return await startWorkerPort({ baudRate: storedBaud(), selector: portSelector(ports[0]) });
+        } catch (workerError) {
+          console.warn('External GPS worker reconnect failed, using page reader:', workerError?.message);
+        }
+      }
+      emit({ backgroundReader: false });
       return connectPort(ports[0], storedBaud());
     })
     .catch(error => {
-      emit({ connected: false, connecting: false, error: error?.message || '' });
+      emit({ connected: false, connecting: false, backgroundReader: false, error: error?.message || '' });
       return getExternalGpsStatus();
     })
     .finally(() => { connectPromise = null; });
@@ -340,13 +352,34 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   installSerialEvents();
   if (connectPromise) return connectPromise;
   connectPromise = navigator.serial.requestPort()
-    .then(port => connectPort(port, baudRate))
+    .then(async port => {
+      const selector = portSelector(port);
+      if (workerSerialSupported()) {
+        try {
+          return await startWorkerPort({ baudRate, selector });
+        } catch (workerError) {
+          console.warn('External GPS background reader unavailable, using page reader:', workerError?.message);
+        }
+      }
+      emit({ backgroundReader: false });
+      return connectPort(port, baudRate);
+    })
     .finally(() => { connectPromise = null; });
   return connectPromise;
 }
 
 export async function disconnectExternalGps() {
+  if (serialWorker) {
+    try { serialWorker.postMessage({ type: 'stop' }); } catch (_) {}
+    try { serialWorker.terminate(); } catch (_) {}
+    serialWorker = null;
+  }
+  if (pendingWorkerStart) {
+    window.clearTimeout(pendingWorkerStart.timeoutId);
+    pendingWorkerStart.reject(new Error('External GPS disconnected.'));
+    pendingWorkerStart = null;
+  }
   await closeCurrentPort();
-  emit({ connected: false, connecting: false, lastFixAt: null, satellites: null, hdop: null, error: '' });
+  emit({ connected: false, connecting: false, backgroundReader: false, lastFixAt: null, satellites: null, hdop: null, error: '' });
   return getExternalGpsStatus();
 }
