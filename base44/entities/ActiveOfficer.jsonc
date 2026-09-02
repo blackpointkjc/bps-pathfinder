@@ -47,7 +47,8 @@
     },
     "accuracy": {
       "type": "number",
-      "description": "Most recent device fix accuracy in meters, including coarse network fixes"
+      "maximum": 2000,
+      "description": "Most recent accepted device fix accuracy in meters. Multi-kilometer network/IP estimates are rejected."
     },
     "gps_source": {
       "type": "string",
@@ -63,6 +64,7 @@
     },
     "reliable_accuracy": {
       "type": "number",
+      "maximum": 100,
       "description": "Accuracy in meters for the preserved tactical GPS fix"
     },
     "reliable_gps_updated_at": {
@@ -96,6 +98,7 @@
     },
     "gps_candidate_accuracy": {
       "type": "number",
+      "maximum": 2000,
       "description": "Accuracy of the uncorroborated candidate fix"
     },
     "gps_candidate_updated_at": {
