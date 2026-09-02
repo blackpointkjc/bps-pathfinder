@@ -145,6 +145,7 @@ Deno.serve(async (req) => {
       liveData.speed = finiteNumber(body.speed);
       liveData.accuracy = acceptedAccuracy;
       liveData.gps_session_key = trackingSessionKey;
+      liveData.gps_source = String(body.gps_source || 'browser_geolocation');
       liveData.gps_candidate_latitude = null;
       liveData.gps_candidate_longitude = null;
       liveData.gps_candidate_accuracy = null;
