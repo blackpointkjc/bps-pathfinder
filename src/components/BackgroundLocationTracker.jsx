@@ -41,6 +41,7 @@ export default function BackgroundLocationTracker({ user }) {
   const activeOfficerRecordRef = useRef(null);
   const uploadChainRef = useRef(Promise.resolve());
   const lastPositionRef = useRef(null);
+  const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
 
@@ -105,9 +106,20 @@ export default function BackgroundLocationTracker({ user }) {
     const request = uploadChainRef.current
       .catch(() => null)
       .then(async () => {
-        const payload = await publishOfficerLocation(data);
-        if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
-        return payload.active_officer;
+        if (Date.now() < rateLimitBackoffUntilRef.current) return null;
+        try {
+          const payload = await publishOfficerLocation(data);
+          if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
+          rateLimitBackoffUntilRef.current = 0;
+          return payload.active_officer;
+        } catch (error) {
+          const message = String(error?.message || error || '');
+          if (/rate limit|too many requests|\b429\b/i.test(message)) {
+            // A rate limit should cause fewer requests, never an immediate retry storm.
+            rateLimitBackoffUntilRef.current = Date.now() + 2 * 60 * 1000;
+          }
+          throw error;
+        }
       });
     uploadChainRef.current = request;
     return request;
