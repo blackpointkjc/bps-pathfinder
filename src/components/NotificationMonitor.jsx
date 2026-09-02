@@ -16,7 +16,7 @@ export default function NotificationMonitor({ user }) {
       const requests = await base44.entities.TimeOffRequest.filter({ created_by_id: user?.id }, '-updated_date', 5);
       return requests;
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
     enabled: !!user?.id,
   });
 
@@ -27,7 +27,7 @@ export default function NotificationMonitor({ user }) {
       const entries = await base44.entities.TimeEntry.filter({ officer_email: user?.email }, '-clock_in', 20);
       return entries;
     },
-    refetchInterval: 60000,
+    refetchInterval: 300000,
     enabled: !!user?.email,
   });
 
@@ -102,8 +102,24 @@ export default function NotificationMonitor({ user }) {
       }
     });
 
-    // Alert if approaching 40 hours (at 35+)
-    if (weeklyHours >= 35 && weeklyHours < 40) {
+    // Only show each weekly threshold once per user. The query refreshes in the
+    // background, so without a persisted acknowledgement the same overtime toast
+    // reappears every time fresh TimeEntry data arrives.
+    const weekKey = weekStart.toISOString().slice(0, 10);
+    const userKey = String(user?.email || user?.id || 'user').toLowerCase();
+    const storageKey = `bps-overtime-notice:${userKey}:${weekKey}`;
+    let shown = '';
+    try { shown = window.localStorage.getItem(storageKey) || ''; } catch {}
+
+    if (weeklyHours >= 40 && shown !== 'overtime') {
+      toast({
+        title: '🚨 Overtime Active',
+        description: `You have ${(weeklyHours - 40).toFixed(1)} overtime hours this week`,
+        duration: 8000,
+        className: 'bg-red-50 border-red-300',
+      });
+      try { window.localStorage.setItem(storageKey, 'overtime'); } catch {}
+    } else if (weeklyHours >= 35 && weeklyHours < 40 && !shown) {
       const hoursRemaining = (40 - weeklyHours).toFixed(1);
       toast({
         title: '⚠️ Overtime Alert',
@@ -111,13 +127,7 @@ export default function NotificationMonitor({ user }) {
         duration: 8000,
         className: 'bg-amber-50 border-amber-300',
       });
-    } else if (weeklyHours >= 40) {
-      toast({
-        title: '🚨 Overtime Active',
-        description: `You have ${(weeklyHours - 40).toFixed(1)} overtime hours this week`,
-        duration: 8000,
-        className: 'bg-red-50 border-red-300',
-      });
+      try { window.localStorage.setItem(storageKey, 'approaching'); } catch {}
     }
   }, [timeEntries, toast]);
 
