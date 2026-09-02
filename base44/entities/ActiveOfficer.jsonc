@@ -49,6 +49,10 @@
       "type": "number",
       "description": "Most recent device fix accuracy in meters, including coarse network fixes"
     },
+    "gps_source": {
+      "type": "string",
+      "description": "Source of the current GPS fix, such as browser_geolocation or external_serial"
+    },
     "reliable_latitude": {
       "type": "number",
       "description": "Most recent precise tactical GPS latitude (100 meters accuracy or better)"
@@ -66,6 +70,10 @@
       "format": "date-time",
       "description": "Device timestamp of the most recent precise tactical GPS fix"
     },
+    "reliable_gps_source": {
+      "type": "string",
+      "description": "Source of the preserved precise tactical GPS fix"
+    },
     "tracking_session_key": {
       "type": "string",
       "description": "Current login or clocked-in session identity for GPS isolation"
@@ -73,10 +81,6 @@
     "gps_session_key": {
       "type": "string",
       "description": "Tracking session that produced the current raw GPS coordinate"
-    },
-    "gps_source": {
-      "type": "string",
-      "description": "Source of the current GPS fix, such as browser_geolocation or external_serial"
     },
     "reliable_session_key": {
       "type": "string",
