@@ -353,8 +353,17 @@ export default function BackgroundLocationTracker({ user }) {
       }
     };
 
+    // Window timers can be throttled when a CF-33/Chromium window is minimized.
+    // The location service's Worker-driven watchdog also emits this event every
+    // minute; use it as a background-safe opportunity to send the lightweight
+    // heartbeat only when GPS has not already updated the server recently.
+    const handleBackgroundTick = () => heartbeat();
+    window.addEventListener('bps-background-location-tick', handleBackgroundTick);
     const heartbeatId = window.setInterval(heartbeat, 5 * 60 * 1000);
-    return () => window.clearInterval(heartbeatId);
+    return () => {
+      window.clearInterval(heartbeatId);
+      window.removeEventListener('bps-background-location-tick', handleBackgroundTick);
+    };
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
   // Keep tracking state awareness internal; never invoke the browser's
