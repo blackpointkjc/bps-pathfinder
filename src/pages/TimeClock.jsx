@@ -16,7 +16,7 @@ import { MapContainer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
 import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
@@ -202,8 +202,8 @@ export default function TimeClock() {
       return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
-    staleTime: 15000,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const { data: recentEntries = [] } = useQuery({
@@ -283,7 +283,18 @@ export default function TimeClock() {
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.TimeEntry.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      try {
+        return await base44.entities.TimeEntry.update(id, data);
+      } catch (error) {
+        const message = String(error?.message || error || '');
+        if (!/rate limit|too many requests|\b429\b/i.test(message)) throw error;
+        // A single delayed retry protects an officer's clock-out without creating
+        // another request storm when Base44 is already throttling the app.
+        await new Promise(resolve => window.setTimeout(resolve, 5000));
+        return base44.entities.TimeEntry.update(id, data);
+      }
+    },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
       const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
@@ -294,7 +305,10 @@ export default function TimeClock() {
     },
     onError: (error, variables, context) => {
       console.error('Clock out error:', error);
-      setGeoError('Failed to clock out. Please try again.');
+      const message = String(error?.message || error || '');
+      setGeoError(/rate limit|too many requests|\b429\b/i.test(message)
+        ? 'Clock-out could not be saved because the service is temporarily rate-limited. Wait a few seconds and press Clock Out again; your shift remains open until the save succeeds.'
+        : 'Failed to clock out. Please try again.');
       setVerifyingLocation(false);
       if (context?.previousEntry) {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
@@ -420,7 +434,13 @@ export default function TimeClock() {
 
   useEffect(() => {
     return subscribeLiveLocation((fix) => {
-      setCurrentLocationCoords({ lat: fix.latitude, lng: fix.longitude });
+      setCurrentLocationCoords({
+        lat: fix.latitude,
+        lng: fix.longitude,
+        accuracy: Number.isFinite(Number(fix.accuracy)) ? Number(fix.accuracy) : null,
+        timestamp: Number(fix.timestamp) || Date.now(),
+        source: fix.source || 'browser_geolocation',
+      });
     });
   }, []);
 
@@ -579,18 +599,34 @@ export default function TimeClock() {
     setVerifyingLocation(true);
     setGeoError(null);
 
-    // Try to get location, but always allow clock out
+    // Try to get location, but always allow clock out. Prefer a recent cached
+    // browser/external-GPS fix first so clock-out does not block while Windows is
+    // waiting on another sensor sample. If the cache is older than one minute,
+    // request a fresh sample, then fall back to any usable fix from the last
+    // 10 minutes and record its age/accuracy for supervisor review.
     try {
-      // A clock-out should use the newest valid device/external-GPS fix without
-      // requiring a brand-new reading in the last 10 seconds. Browsers can pause
-      // GPS callbacks indoors or in the background even though the officer still
-      // has a legitimate recent fix.
-      const fix = await waitForLiveLocation({ maxAgeMs: 10 * 60 * 1000, timeoutMs: 12000, maxAccuracyMeters: 2000 });
+      let fix = getLiveLocation(60 * 1000);
+      if (!fix) {
+        try {
+          fix = await waitForLiveLocation({ maxAgeMs: 60 * 1000, timeoutMs: 7000, maxAccuracyMeters: 2000 });
+        } catch (_) {
+          fix = getLiveLocation(10 * 60 * 1000);
+        }
+      }
+      if (!fix) throw new Error('NO_RECENT_DEVICE_FIX');
       const currentLat = fix.latitude;
       const currentLng = fix.longitude;
+      const fixAgeMs = Math.max(0, Date.now() - Number(fix.timestamp || 0));
+      const fixAccuracy = Number(fix.accuracy);
       
       // Check distance for non-special assignments
       let flagNote = '';
+      if (fixAgeMs > 2 * 60 * 1000 || (Number.isFinite(fixAccuracy) && fixAccuracy > 100)) {
+        const ageMinutes = Math.max(1, Math.round(fixAgeMs / 60000));
+        const quality = Number.isFinite(fixAccuracy) ? `±${Math.round(fixAccuracy)}m` : 'accuracy unavailable';
+        const source = fix.source === 'external_serial' ? 'external GPS receiver' : 'device location';
+        flagNote = `\n\n[FLAGGED: Clock-out used last known ${source}; ${ageMinutes} min old; ${quality}]`;
+      }
       if (!isSpecial) {
         const clockInLat = activeEntry.clock_in_latitude || clockInCoords?.latitude;
         const clockInLng = activeEntry.clock_in_longitude || clockInCoords?.longitude;
@@ -601,7 +637,7 @@ export default function TimeClock() {
           const maxDistance = 0.25 * 5280; // 1,320 feet
           
           if (distanceFeet > maxDistance) {
-            flagNote = `\n\n[FLAGGED: Clocked out ${Math.round(distanceFeet)} feet from clock-in location]`;
+            flagNote += `\n\n[FLAGGED: Clocked out ${Math.round(distanceFeet)} feet from clock-in location]`;
           }
         }
       }
@@ -629,7 +665,7 @@ export default function TimeClock() {
         id: activeEntry.id,
         data: {
           clock_out: new Date().toISOString(),
-          notes: `${notes}\n\n[FLAGGED: GPS unavailable at clock-out - ${error.message || 'Location error'}]`,
+          notes: `${notes}\n\n[FLAGGED: No usable GPS fix was available at clock-out; time entry closed successfully for supervisor review.]`,
         },
       });
       
