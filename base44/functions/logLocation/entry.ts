@@ -94,9 +94,34 @@ Deno.serve(async (req) => {
       ? requestedFixAt
       : receivedAt;
     const existingFixAt = new Date(primary?.gps_updated_at || 0).getTime();
+    const gpsSource = String(body.gps_source || 'browser_geolocation');
+    const candidateAccuracy = hasGps ? finiteNumber(body.accuracy, 999999) : 999999;
+    const sessionChanged = Boolean(primary?.tracking_session_key)
+      && String(primary.tracking_session_key) !== trackingSessionKey;
+    const sameSessionPosition = Boolean(primary)
+      && !sessionChanged
+      && primary?.gps_session_key === trackingSessionKey
+      && hasCoordinates(primary?.latitude, primary?.longitude)
+      && Number.isFinite(existingFixAt)
+      && existingFixAt > 0;
+    const jumpDistance = sameSessionPosition
+      ? distanceMeters(primary?.latitude, primary?.longitude, latitude, longitude)
+      : 0;
+    const jumpElapsedSeconds = sameSessionPosition
+      ? Math.max(1, (deviceFixAt - existingFixAt) / 1000)
+      : Infinity;
+    const impossibleBrowserJump = gpsSource !== 'external_serial'
+      && sameSessionPosition
+      && jumpDistance > 5000
+      && jumpDistance / jumpElapsedSeconds > 70;
+    const grosslyImpreciseFix = gpsSource === 'external_serial'
+      ? candidateAccuracy > 1000
+      : candidateAccuracy > 2000;
     const acceptsGps = hasGps
       && deviceFixAt >= receivedAt - 2 * 60 * 1000
-      && (!Number.isFinite(existingFixAt) || deviceFixAt >= existingFixAt);
+      && (!Number.isFinite(existingFixAt) || sessionChanged || deviceFixAt >= existingFixAt)
+      && !grosslyImpreciseFix
+      && !impossibleBrowserJump;
 
     const liveData: Record<string, unknown> = {
       officer_email: officerEmail,
@@ -111,19 +136,37 @@ Deno.serve(async (req) => {
       show_lights: body.show_lights === true,
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
-    if (body.reset_gps === true && !acceptsGps) {
-      // A newly established app session must never inherit a recent coordinate
-      // from the prior browser/login session. Keep the user signed in, but mark
-      // GPS pending until this session publishes its own fresh device fix.
+    if ((body.reset_gps === true || sessionChanged) && !acceptsGps) {
+      // A newly established app/clock session must never inherit coordinates from
+      // a prior session. This was the cause of officers appearing miles away at
+      // the start of a new shift while the map displayed the old GPS timestamp.
       liveData.gps_updated_at = null;
       liveData.latitude = null;
       liveData.longitude = null;
       liveData.heading = null;
       liveData.speed = 0;
       liveData.accuracy = null;
+      liveData.gps_source = '';
+      liveData.gps_session_key = '';
+    }
+    if (sessionChanged) {
+      // Reliable/last-known position is session-scoped too. Clear the previous
+      // session's tactical fix even when the first new-session fix is only coarse.
+      liveData.reliable_latitude = null;
+      liveData.reliable_longitude = null;
+      liveData.reliable_accuracy = null;
+      liveData.reliable_gps_updated_at = null;
+      liveData.reliable_gps_source = '';
+      liveData.reliable_session_key = '';
+      liveData.gps_candidate_latitude = null;
+      liveData.gps_candidate_longitude = null;
+      liveData.gps_candidate_accuracy = null;
+      liveData.gps_candidate_updated_at = null;
+      liveData.gps_candidate_session_key = '';
+      liveData.gps_candidate_count = 0;
     }
 
-    const acceptedAccuracy = acceptsGps ? finiteNumber(body.accuracy, 999999) : 999999;
+    const acceptedAccuracy = acceptsGps ? candidateAccuracy : 999999;
     let acceptedForPosition = false;
     if (acceptsGps) {
       const precise = acceptedAccuracy <= 100;
@@ -145,7 +188,7 @@ Deno.serve(async (req) => {
       liveData.speed = finiteNumber(body.speed);
       liveData.accuracy = acceptedAccuracy;
       liveData.gps_session_key = trackingSessionKey;
-      liveData.gps_source = String(body.gps_source || 'browser_geolocation');
+      liveData.gps_source = gpsSource;
       liveData.gps_candidate_latitude = null;
       liveData.gps_candidate_longitude = null;
       liveData.gps_candidate_accuracy = null;
@@ -161,6 +204,7 @@ Deno.serve(async (req) => {
         liveData.reliable_accuracy = acceptedAccuracy;
         liveData.reliable_gps_updated_at = new Date(deviceFixAt).toISOString();
         liveData.reliable_session_key = trackingSessionKey;
+        liveData.reliable_gps_source = gpsSource;
       }
     }
 
@@ -230,7 +274,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} history=${historyRecorded} history_error=${Boolean(historyError)}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} source=${gpsSource} accuracy=${candidateAccuracy} session_changed=${sessionChanged} jump_m=${Math.round(jumpDistance)} grossly_imprecise=${grosslyImpreciseFix} impossible_jump=${impossibleBrowserJump} history=${historyRecorded} history_error=${Boolean(historyError)}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
@@ -238,6 +282,7 @@ Deno.serve(async (req) => {
       longitude: acceptedForPosition ? longitude : null,
       gps_accepted: acceptedForPosition,
       gps_candidate_only: false,
+      gps_rejected_reason: grosslyImpreciseFix ? 'accuracy_too_low' : impossibleBrowserJump ? 'impossible_jump' : null,
       gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,
