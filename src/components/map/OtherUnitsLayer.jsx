@@ -79,7 +79,14 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     // Keep every officer represented, but merge markers that are physically within
     // 25 feet so overlapping icons never hide one another.
     const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
-    const unitsToShow = units.filter(unit => unit.id !== currentUserId).map(unit => {
+    // Defense in depth: this is the final rendering boundary for officer markers.
+    // A signed-out/OOS officer must never appear on any live map even if a caller
+    // passes stale cached data. Only an explicitly active live session can render.
+    const unitsToShow = units
+      .filter(unit => unit.id !== currentUserId)
+      .filter(unit => unit.session_active === true)
+      .filter(unit => String(unit.status || '').trim().toLowerCase() !== 'out of service')
+      .map(unit => {
         const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
         // The officer's marker must follow the most recent device reading. A
         // precise fix from 30 minutes ago is not "where they are now" if a newer
@@ -234,7 +241,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
-                                            {unit.status || 'Available'}
+                                            {unit.session_active === true ? (unit.status || 'Signed In') : 'Out of Service'}
                                         </Badge>
                                     </div>
 
