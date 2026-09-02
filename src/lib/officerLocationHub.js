@@ -56,11 +56,18 @@ function scrubUnitLocation(unit = {}) {
   return clean;
 }
 
+function isLiveUnit(unit = {}) {
+  return unit?.session_active === true
+    && String(unit?.status || '').trim().toLowerCase() !== 'out of service';
+}
+
 function scrubSnapshot(payload = {}) {
   return {
     ...payload,
-    units: Array.isArray(payload.units) ? payload.units.map(scrubUnitLocation) : payload.units,
-    users: Array.isArray(payload.users) ? payload.users.map(scrubUnitLocation) : payload.users,
+    // The shared client gateway is another hard boundary: stale backend payloads
+    // cannot leak signed-out officers into CAD, Navigation, or supervisor maps.
+    units: Array.isArray(payload.units) ? payload.units.map(scrubUnitLocation).filter(isLiveUnit) : payload.units,
+    users: Array.isArray(payload.users) ? payload.users.map(scrubUnitLocation).filter(isLiveUnit) : payload.users,
   };
 }
 
