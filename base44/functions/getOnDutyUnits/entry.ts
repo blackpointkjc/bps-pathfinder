@@ -241,6 +241,8 @@ Deno.serve(async (req) => {
         last_updated: active.last_update || active.updated_date || active.created_date || entry?.clock_in,
         is_supervisor: roleSet(user).has('supervisor') || String(user.rank || '').toLowerCase().includes('sergeant') || String(user.rank || '').toLowerCase().includes('lieutenant') || String(user.rank || '').toLowerCase().includes('captain') || String(user.rank || '').toLowerCase().includes('major') || String(user.rank || '').toLowerCase().includes('colonel'),
         time_entry_id: entry?.id || '',
+        session_active: true,
+        session_source: 'active_session',
       });
     }
 
@@ -372,11 +374,12 @@ Deno.serve(async (req) => {
           clock_in_time: openEntry?.clock_in || active?.clock_in_time || '',
         };
       });
+    const liveUsers = onDutyUsers.filter((row: any) => row.session_active === true && lower(row.status) !== 'out of service');
 
     return Response.json({
       success: true,
       units,
-      users: onDutyUsers,
+      users: liveUsers,
       open_count: openByEmail.size,
       signed_in_count: units.length,
       clocked_in_without_session: clockedInWithoutSession,
