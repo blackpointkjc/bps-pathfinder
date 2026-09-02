@@ -564,7 +564,11 @@ export default function TimeClock() {
 
     // Try to get location, but always allow clock out
     try {
-      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 8000 });
+      // A clock-out should use the newest valid device/external-GPS fix without
+      // requiring a brand-new reading in the last 10 seconds. Browsers can pause
+      // GPS callbacks indoors or in the background even though the officer still
+      // has a legitimate recent fix.
+      const fix = await waitForLiveLocation({ maxAgeMs: 10 * 60 * 1000, timeoutMs: 12000, maxAccuracyMeters: 2000 });
       const currentLat = fix.latitude;
       const currentLng = fix.longitude;
       
@@ -601,14 +605,14 @@ export default function TimeClock() {
     } catch (error) {
       console.error("Geolocation error during clock-out:", error);
       
-      // Always allow clock out, just flag it
+      // Always allow clock out. Do not write null into numeric GPS fields: Base44
+      // validates those as numbers and a null fallback can reject the entire
+      // TimeEntry update, leaving the officer trapped in an open shift.
       clockOutMutation.mutate({
         id: activeEntry.id,
         data: {
           clock_out: new Date().toISOString(),
           notes: `${notes}\n\n[FLAGGED: GPS unavailable at clock-out - ${error.message || 'Location error'}]`,
-          clock_out_latitude: null,
-          clock_out_longitude: null,
         },
       });
       
