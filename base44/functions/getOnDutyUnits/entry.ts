@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
         'active officer sessions',
       );
       const freshCutoff = Date.now() - 15 * 60 * 1000;
-      const gpsFreshCutoff = Date.now() - 2 * 60 * 1000;
+      const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
         const email = lower(active?.officer_email);
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
     // One freshness window across Pathfinder. A signed-in unit remains available
     // to live maps for 15 minutes after its most recent heartbeat/GPS update.
     const freshCutoff = Date.now() - 15 * 60 * 1000;
-    const gpsFreshCutoff = Date.now() - 2 * 60 * 1000;
+    const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
