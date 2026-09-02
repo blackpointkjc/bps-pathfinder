@@ -197,19 +197,21 @@ function requestWhenUsable() {
   }
 }
 
+function handleVisibilityChange() {
+  // Request immediately both when minimizing and when restoring. The minimize
+  // edge gives Pathfinder one last main-thread request before Chromium applies
+  // deeper background throttling; restore performs an immediate catch-up.
+  requestWhenUsable();
+  nudgeBackgroundLocationScheduler();
+}
+
 function installLifecycleListeners() {
   if (lifecycleListenersInstalled || typeof window === 'undefined') return;
   lifecycleListenersInstalled = true;
   window.addEventListener('bps-request-location', requestWhenUsable);
   window.addEventListener('focus', requestWhenUsable);
   window.addEventListener('online', requestWhenUsable);
-  document.addEventListener('visibilitychange', () => {
-    // Request immediately both when minimizing and when restoring. The minimize
-    // edge gives Pathfinder one last main-thread request before Chromium applies
-    // deeper background throttling; restore performs an immediate catch-up.
-    requestWhenUsable();
-    nudgeBackgroundLocationScheduler();
-  });
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
 function removeLifecycleListeners() {
@@ -218,9 +220,7 @@ function removeLifecycleListeners() {
   window.removeEventListener('bps-request-location', requestWhenUsable);
   window.removeEventListener('focus', requestWhenUsable);
   window.removeEventListener('online', requestWhenUsable);
-  // visibilitychange uses a stable module-level lifecycle installation and is
-  // removed by stopping the shared watch lifecycle as a whole; no per-render
-  // listener is created.
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 }
 
 function ensureSharedWatch() {
