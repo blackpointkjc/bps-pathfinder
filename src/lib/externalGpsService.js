@@ -6,6 +6,8 @@ let activeReader = null;
 let connectPromise = null;
 let readGeneration = 0;
 let serialEventsInstalled = false;
+let serialWorker = null;
+let pendingWorkerStart = null;
 let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
 
@@ -21,6 +23,7 @@ let state = {
   lastFixAt: null,
   satellites: null,
   hdop: null,
+  backgroundReader: false,
   error: '',
 };
 
@@ -42,6 +45,99 @@ function storedBaud() {
 
 function rememberBaud(value) {
   try { localStorage.setItem(STORAGE_BAUD_KEY, String(value)); } catch (_) {}
+}
+
+function workerSerialSupported() {
+  return externalGpsSupported() && typeof Worker !== 'undefined';
+}
+
+function portSelector(port) {
+  try {
+    const info = port?.getInfo?.() || {};
+    return {
+      usbVendorId: Number.isFinite(Number(info.usbVendorId)) ? Number(info.usbVendorId) : null,
+      usbProductId: Number.isFinite(Number(info.usbProductId)) ? Number(info.usbProductId) : null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function ensureSerialWorker() {
+  if (serialWorker || !workerSerialSupported()) return serialWorker;
+  serialWorker = new Worker(new URL('./externalGpsWorker.js', import.meta.url), {
+    type: 'module',
+    name: 'bps-external-gps-reader',
+  });
+  serialWorker.onmessage = event => {
+    const data = event?.data || {};
+    if (data.type === 'fix' && data.fix) {
+      publishLiveLocation(data.fix);
+      emit({
+        connected: true,
+        connecting: false,
+        portGranted: true,
+        backgroundReader: true,
+        lastFixAt: new Date(Number(data.fix.timestamp) || Date.now()).toISOString(),
+        satellites: Number.isFinite(Number(data.satellites)) ? Number(data.satellites) : null,
+        hdop: Number.isFinite(Number(data.hdop)) ? Number(data.hdop) : null,
+        error: '',
+      });
+      return;
+    }
+    if (data.type === 'status') {
+      const patch = {
+        connected: data.connected === true,
+        connecting: false,
+        portGranted: data.portGranted !== false,
+        backgroundReader: data.backgroundReader === true || (data.connected === true && state.backgroundReader),
+        baudRate: Number(data.baudRate) || state.baudRate || storedBaud(),
+        error: data.error || '',
+      };
+      emit(patch);
+      if (pendingWorkerStart) {
+        const pending = pendingWorkerStart;
+        pendingWorkerStart = null;
+        window.clearTimeout(pending.timeoutId);
+        if (data.connected === true) pending.resolve(getExternalGpsStatus());
+        else pending.reject(new Error(data.error || 'Unable to open the GPS/COM port in the background reader.'));
+      }
+    }
+  };
+  serialWorker.onerror = event => {
+    const message = event?.message || 'External GPS background reader failed.';
+    emit({ connected: false, connecting: false, backgroundReader: false, error: message });
+    if (pendingWorkerStart) {
+      const pending = pendingWorkerStart;
+      pendingWorkerStart = null;
+      window.clearTimeout(pending.timeoutId);
+      pending.reject(new Error(message));
+    }
+  };
+  return serialWorker;
+}
+
+function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) {
+  const worker = ensureSerialWorker();
+  if (!worker) return Promise.reject(new Error('Background Web Serial is unavailable.'));
+  const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
+  rememberBaud(baud);
+  emit({ connecting: true, error: '', baudRate: baud, portGranted: true, backgroundReader: true });
+  if (pendingWorkerStart) {
+    window.clearTimeout(pendingWorkerStart.timeoutId);
+    pendingWorkerStart.reject(new Error('External GPS connection restarted.'));
+    pendingWorkerStart = null;
+  }
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      if (!pendingWorkerStart) return;
+      pendingWorkerStart = null;
+      emit({ connected: false, connecting: false, backgroundReader: false, error: 'Timed out opening the GPS/COM port in the background reader.' });
+      reject(new Error('Timed out opening the GPS/COM port in the background reader.'));
+    }, 12000);
+    pendingWorkerStart = { resolve, reject, timeoutId };
+    worker.postMessage({ type: 'start', baudRate: baud, selector });
+  });
 }
 
 function coordinate(value, hemisphere, degreeDigits) {
