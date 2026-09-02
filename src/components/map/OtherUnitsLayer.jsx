@@ -59,6 +59,9 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     });
 };
 
+const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
+const LIVE_GPS_FRESH_MS = 5 * 60 * 1000;
+
 const getStatusColor = (status) => {
     switch (status) {
         case 'Available': return 'bg-gray-100 text-gray-700';
@@ -82,21 +85,29 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         // precise fix from 30 minutes ago is not "where they are now" if a newer
         // (even coarse) fix exists — show the newest coordinate and let the
         // accuracy circle communicate the uncertainty.
+        const now = Date.now();
         const candidates = [
-            { lat: Number(unit.latitude), lng: Number(unit.longitude), acc: Number(unit.accuracy), ts: toLocTs(unit.gps_updated_at), state: 'live' },
-            { lat: Number(unit.coarse_latitude), lng: Number(unit.coarse_longitude), acc: Number(unit.coarse_accuracy), ts: toLocTs(unit.coarse_gps_updated_at), state: 'low_accuracy' },
-            { lat: Number(unit.last_known_latitude), lng: Number(unit.last_known_longitude), acc: Number(unit.last_known_accuracy), ts: toLocTs(unit.last_gps_updated_at), state: 'last_known' },
-        ].filter(c => valid(c.lat, c.lng));
+            { lat: Number(unit.latitude), lng: Number(unit.longitude), acc: Number(unit.accuracy), ts: toLocTs(unit.gps_updated_at), state: 'live', source: unit.gps_source || 'browser_geolocation' },
+            { lat: Number(unit.coarse_latitude), lng: Number(unit.coarse_longitude), acc: Number(unit.coarse_accuracy), ts: toLocTs(unit.coarse_gps_updated_at), state: 'low_accuracy', source: unit.gps_source || 'browser_geolocation' },
+            { lat: Number(unit.last_known_latitude), lng: Number(unit.last_known_longitude), acc: Number(unit.last_known_accuracy), ts: toLocTs(unit.last_gps_updated_at), state: 'last_known', source: unit.last_known_gps_source || unit.gps_source || '' },
+        ].filter(c => valid(c.lat, c.lng))
+          .filter(c => c.state === 'last_known' || (Number.isFinite(c.acc) && c.acc <= MAX_USABLE_GPS_ACCURACY_METERS));
         if (!candidates.length) return null;
         candidates.sort((a, b) => b.ts - a.ts);
         const best = candidates[0];
+        const stale = !best.ts || now - best.ts > LIVE_GPS_FRESH_MS;
+        let locationState = best.state;
+        if (stale) locationState = 'last_known';
+        else if (best.state === 'live' && Number.isFinite(best.acc) && best.acc > 100) locationState = 'low_accuracy';
         return {
             ...unit,
             latitude: best.lat,
             longitude: best.lng,
-            location_state: best.state,
+            location_state: locationState,
             display_accuracy: Number.isFinite(best.acc) ? best.acc : null,
-            coarse_stale: best.state === 'low_accuracy' && unit.coarse_stale === true,
+            display_gps_timestamp: best.ts || null,
+            display_gps_source: best.source || '',
+            coarse_stale: locationState === 'last_known' || (best.state === 'low_accuracy' && unit.coarse_stale === true),
         };
     }).filter(Boolean);
 
@@ -210,8 +221,16 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
                                 <div className="space-y-2">
                                     <div className={`rounded-md px-2 py-1 text-[10px] font-black ${unit.location_state === 'live' ? 'bg-emerald-100 text-emerald-700' : unit.location_state === 'low_accuracy' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
-                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `${unit.coarse_stale ? 'LOW ACCURACY LAST KNOWN' : 'LOW ACCURACY GPS'}${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
+                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY GPS${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
                                     </div>
+                                    <div className="text-[10px] font-bold text-gray-500">
+                                        GPS source: {unit.display_gps_source === 'external_serial' ? 'External USB / NMEA GPS' : unit.display_gps_source === 'shift_clock_in' ? 'Verified shift clock-in' : unit.display_gps_source ? 'Windows / Browser Location' : 'Unknown'}
+                                    </div>
+                                    {unit.display_gps_timestamp && (
+                                        <div className="text-[10px] text-gray-500">
+                                            GPS fix: {new Date(unit.display_gps_timestamp).toLocaleTimeString()}
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
@@ -238,7 +257,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     {unit.last_updated && (
                                         <div className="flex items-center gap-1.5 text-gray-500 pt-2 border-t">
                                             <Clock className="w-3 h-3" />
-                                            <span className="text-xs">Last seen: {new Date(unit.last_updated).toLocaleTimeString()}</span>
+                                            <span className="text-xs">Session heartbeat: {new Date(unit.last_updated).toLocaleTimeString()}</span>
                                         </div>
                                     )}
                                     {onUnitClick && (
