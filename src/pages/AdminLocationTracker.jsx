@@ -23,6 +23,10 @@ const LOGO_URL = "/black-point-shield.webp";
 // 15 minutes after the latest session/GPS heartbeat, matching the system health
 // check and preventing a brief browser/GPS pause from making the unit disappear.
 const LIVE_SESSION_FRESH_MS = 15 * 60 * 1000;
+// Dispatch distance/ETA uses the backend's two-minute GPS freshness window.
+// Keep the admin map label aligned with that rule so an old but geographically
+// close point is never described as current GPS.
+const LIVE_GPS_FRESH_MS = 2 * 60 * 1000;
 
 const isOperationallyVisibleUser = isInternalMember;
 
@@ -135,10 +139,10 @@ export default function AdminLocationTracker() {
 
   const { data: allUsers = [], error: officerDirectoryError } = useQuery({
     queryKey: ['officerDirectory', 'adminLocationTracker'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listOfficerDirectory('last_name', 1000),
     enabled: hasAccess,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
   });
 
   const { data: activeOfficerPayload = {} } = useQuery({
@@ -268,7 +272,7 @@ export default function AdminLocationTracker() {
         const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
         const name = profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.full_name || profile.email);
         const hasFreshGps = hasValidCoordinates(locationData)
-          && gpsAgeMs <= LIVE_SESSION_FRESH_MS;
+          && gpsAgeMs <= LIVE_GPS_FRESH_MS;
         const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
         const item = {
           name,
@@ -347,7 +351,7 @@ export default function AdminLocationTracker() {
   useEffect(() => {
     if (viewMode === 'live' && hasAccess && allUsers) {
       const initialTimer = setTimeout(() => performLocationCheck(), 1500);
-      const interval = setInterval(() => performLocationCheck(), 120000);
+      const interval = setInterval(() => performLocationCheck(), 5 * 60 * 1000);
       return () => {
         clearTimeout(initialTimer);
         clearInterval(interval);
@@ -375,8 +379,9 @@ export default function AdminLocationTracker() {
         latitude: best.lat,
         longitude: best.lng,
         accuracy: Number.isFinite(best.acc) ? best.acc : null,
-        gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 150),
-        gps_stale: best.low && o.coarse_stale === true,
+        gps_timestamp: best.ts || null,
+        gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 100),
+        gps_stale: !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
       };
     })
     .filter(Boolean);
@@ -730,12 +735,16 @@ export default function AdminLocationTracker() {
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
                               <p className={`mt-3 text-xs font-black ${officer.gps_stale || officer.gps_low_accuracy ? 'text-amber-300' : 'text-emerald-300'}`}>
-                                {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {(officer.gps_updated_at || officer.last_gps_updated_at)
-                                  ? format(new Date(officer.gps_updated_at || officer.last_gps_updated_at), 'h:mm:ss a')
+                                {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {officer.gps_timestamp
+                                  ? format(new Date(officer.gps_timestamp), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
                               {(officer.gps_stale || officer.gps_low_accuracy) && (
-                                <p className="mt-2 text-xs font-bold leading-5 text-red-300">Automatic dispatch waits for a fresh precise fix. The officer remains visible using the newest valid device location.</p>
+                                <p className="mt-2 text-xs font-bold leading-5 text-amber-100">
+                                  {officer.gps_stale
+                                    ? 'This is a last-known point, not a current fix. Pathfinder refreshes GPS automatically; the officer remains clocked in and dispatch can still use the clocked-in fallback while distance/ETA waits for fresh GPS.'
+                                    : 'The current fix is outside the 100m precision target. The officer remains clocked in and dispatch can use the clocked-in fallback while precision improves.'}
+                                </p>
                               )}
                             </div>
                           </Popup>
