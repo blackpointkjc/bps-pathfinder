@@ -1,39 +1,17 @@
 // Background-friendly timer used by Pathfinder's web location service.
 // Browser window timers are aggressively throttled when a Chromium window/tab is
-// minimized. A dedicated Web Worker is less dependent on the page timer budget and
-// keeps emitting one-minute wake signals for as long as the document is alive.
+// minimized. A dedicated bundled Web Worker is less dependent on the page timer
+// budget and keeps emitting one-minute wake signals for as long as the document
+// process is alive.
 //
 // This improves minimized-window tracking, but browsers can still freeze an entire
 // web page/process under memory pressure, OS sleep, or aggressive power-saving.
 
-const WORKER_SOURCE = `
-let timer = null;
-let intervalMs = 60000;
-function schedule() {
-  if (timer) clearInterval(timer);
-  timer = setInterval(() => postMessage({ type: 'tick', at: Date.now() }), intervalMs);
-}
-onmessage = (event) => {
-  const data = event.data || {};
-  if (data.type === 'start') {
-    intervalMs = Math.max(30000, Number(data.intervalMs) || 60000);
-    schedule();
-    postMessage({ type: 'tick', at: Date.now(), initial: true });
-  } else if (data.type === 'ping') {
-    postMessage({ type: 'tick', at: Date.now(), manual: true });
-  } else if (data.type === 'stop') {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
-};
-`;
-
 let worker = null;
-let workerUrl = null;
 let callback = null;
 
 function supported() {
-  return typeof window !== 'undefined' && typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined';
+  return typeof window !== 'undefined' && typeof Worker !== 'undefined';
 }
 
 export function startBackgroundLocationScheduler(onTick, intervalMs = 60000) {
@@ -41,9 +19,10 @@ export function startBackgroundLocationScheduler(onTick, intervalMs = 60000) {
   if (!supported()) return () => {};
 
   if (!worker) {
-    const blob = new Blob([WORKER_SOURCE], { type: 'text/javascript' });
-    workerUrl = URL.createObjectURL(blob);
-    worker = new Worker(workerUrl, { name: 'bps-location-watchdog' });
+    worker = new Worker(new URL('./backgroundLocationWorker.js', import.meta.url), {
+      type: 'module',
+      name: 'bps-location-watchdog',
+    });
     worker.onmessage = event => {
       if (event?.data?.type === 'tick') {
         try { callback?.(event.data); } catch (_) {}
