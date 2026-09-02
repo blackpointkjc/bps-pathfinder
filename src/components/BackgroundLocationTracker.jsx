@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
+import { startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -36,6 +37,7 @@ function isPointInsideBoundary(lat, lng, rawPolygon = []) {
 
 export default function BackgroundLocationTracker({ user }) {
   const lastSaveRef = useRef(0);
+  const lastGpsPushRef = useRef(0);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const activeOfficerRecordRef = useRef(null);
@@ -62,7 +64,8 @@ export default function BackgroundLocationTracker({ user }) {
       }
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Get locations for geofencing
@@ -85,6 +88,15 @@ export default function BackgroundLocationTracker({ user }) {
   // context, but it does not control whether live navigation tracking is active.
   const shouldTrack = !!user?.email && isInternalMember(user);
   const shouldPublish = shouldTrack;
+
+  // Re-open a previously approved USB/serial GPS receiver without prompting.
+  // A first-time receiver connection still requires an explicit user click on
+  // Time Clock because browsers require a user gesture for serial permission.
+  useEffect(() => {
+    if (!shouldTrack) return undefined;
+    startExternalGpsAutoReconnect().catch(() => null);
+    return undefined;
+  }, [shouldTrack]);
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -146,6 +158,7 @@ export default function BackgroundLocationTracker({ user }) {
           user_role: user?.role || 'user',
           session_active: true,
         });
+        lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
         console.error('Error establishing live user location record:', error);
@@ -200,8 +213,8 @@ export default function BackgroundLocationTracker({ user }) {
         // Persist one canonical GPS fix per minute. The browser's local GPS watch
         // still updates continuously, but Base44 writes are rate-limited here so
         // maps/history stay current without burning requests every 15 seconds.
-        if (now - lastLivePushRef.current < 60000) return;
-        lastLivePushRef.current = now;
+        if (now - lastGpsPushRef.current < 60000) return;
+        lastGpsPushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
         await persistLiveState({
@@ -218,16 +231,18 @@ export default function BackgroundLocationTracker({ user }) {
           heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
           speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
           accuracy: accuracy,
+          gps_source: fix.source || 'browser_geolocation',
           user_role: user?.role || 'user',
           session_active: true,
         });
+        lastLivePushRef.current = Date.now();
         
         // Invalidate active officers query to refresh map
         queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
 
-        // Check geofence every 30 seconds (only when clocked in at a site)
-        if (activeEntry && now - lastGeofenceCheckRef.current >= 30000 && locations) {
+        // Check geofence at the same one-minute cadence as persisted GPS.
+        if (activeEntry && now - lastGeofenceCheckRef.current >= 60000 && locations) {
           lastGeofenceCheckRef.current = now;
 
           // Find the location for this officer's active site - match by site name
@@ -316,49 +331,33 @@ export default function BackgroundLocationTracker({ user }) {
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
   // Independent signed-in heartbeat. GPS persists once per minute when available;
-  // a lighter heartbeat keeps the signed-in session alive when the sensor is quiet.
+  // a much lighter five-minute heartbeat keeps the signed-in session alive only
+  // when no GPS write has reached the server recently.
   useEffect(() => {
     if (!shouldTrack || !user?.email) return undefined;
 
     const heartbeat = async () => {
-      const fix = lastPositionRef.current;
       try {
-        if (Date.now() - lastLivePushRef.current >= 120000) {
-          await persistLiveState({
-            officer_email: user.email,
-            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-            unit_number: user.unit_number || '',
-            current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
-            clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
-            time_entry_id: activeEntry?.id || '',
-            ...(fix && Date.now() - Number(fix.timestamp || 0) <= 2 * 60 * 1000 ? {
-              latitude: fix.latitude,
-              longitude: fix.longitude,
-              heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
-              speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
-              accuracy: fix.accuracy,
-              device_fix_at: new Date(Number(fix.timestamp)).toISOString(),
-            } : { heartbeat_only: true }),
-            user_role: user?.role || 'user',
-            session_active: true,
-          });
-          lastLivePushRef.current = Date.now();
-        }
-        if (fix && Date.now() - lastSaveRef.current >= 55000) {
-          // logLocation now owns the durable one-minute LocationHistory write.
-          // Keep this timestamp only to refresh history consumers without
-          // creating a competing client-side row.
-          lastSaveRef.current = Date.now();
-          queryClient.invalidateQueries({ queryKey: ['locationHistory'] });
-        }
+        if (Date.now() - lastLivePushRef.current < 4 * 60 * 1000) return;
+        await persistLiveState({
+          heartbeat_only: true,
+          officer_email: user.email,
+          officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+          unit_number: user.unit_number || '',
+          current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
+          clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+          time_entry_id: activeEntry?.id || '',
+          user_role: user?.role || 'user',
+          session_active: true,
+        });
+        lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
         console.warn('Location heartbeat failed:', error?.message);
       }
     };
 
-    heartbeat();
-    const heartbeatId = window.setInterval(heartbeat, 120000);
+    const heartbeatId = window.setInterval(heartbeat, 5 * 60 * 1000);
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
