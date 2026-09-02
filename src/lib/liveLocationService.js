@@ -211,7 +211,10 @@ function installLifecycleListeners() {
   window.addEventListener('bps-request-location', requestWhenUsable);
   window.addEventListener('focus', requestWhenUsable);
   window.addEventListener('online', requestWhenUsable);
+  window.addEventListener('pageshow', handleVisibilityChange);
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener('freeze', handleVisibilityChange);
+  document.addEventListener('resume', handleVisibilityChange);
 }
 
 function removeLifecycleListeners() {
@@ -220,7 +223,10 @@ function removeLifecycleListeners() {
   window.removeEventListener('bps-request-location', requestWhenUsable);
   window.removeEventListener('focus', requestWhenUsable);
   window.removeEventListener('online', requestWhenUsable);
+  window.removeEventListener('pageshow', handleVisibilityChange);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
+  document.removeEventListener('freeze', handleVisibilityChange);
+  document.removeEventListener('resume', handleVisibilityChange);
 }
 
 function ensureSharedWatch() {
