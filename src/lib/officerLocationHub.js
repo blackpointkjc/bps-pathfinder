@@ -4,7 +4,10 @@ import { base44 } from '@/api/base44Client';
 // No page/component should read/write ActiveOfficer or invoke getOnDutyUnits/logLocation directly.
 // All consumers share the same in-memory snapshot/in-flight request so opening
 // several CAD/map panels does not multiply live-location backend reads.
-const SNAPSHOT_TTL_MS = 5000;
+// Realtime ActiveOfficer subscriptions clear this cache immediately on an actual
+// location/status change. A 15-second read cache therefore reduces duplicate map,
+// health-check, and CAD fetches without delaying genuine live updates.
+const SNAPSHOT_TTL_MS = 15000;
 const snapshotCache = new Map();
 const inflight = new Map();
 
