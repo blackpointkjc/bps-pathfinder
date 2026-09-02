@@ -1,9 +1,12 @@
+import { startBackgroundLocationScheduler, nudgeBackgroundLocationScheduler } from '@/lib/backgroundLocationScheduler';
+
 let latestFix = null;
 const listeners = new Set();
 const errorListeners = new Set();
 
 let watchId = null;
 let refreshTimer = null;
+let releaseBackgroundScheduler = null;
 let retainCount = 0;
 let freshRequest = null;
 let lifecycleListenersInstalled = false;
@@ -183,8 +186,15 @@ export function requestBestLiveLocation({ timeoutMs = 15000, targetAccuracyMeter
 }
 
 function requestWhenUsable() {
-  if (typeof document !== 'undefined' && document.hidden) return;
+  // Do NOT stop simply because the app is minimized/hidden. That was causing the
+  // CF-33 to rely only on Chromium's throttled watchPosition stream. A fresh
+  // high-accuracy request is intentionally attempted in the background as well.
   requestFreshLiveLocation().catch(() => null);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bps-background-location-tick', {
+      detail: { at: Date.now(), hidden: typeof document !== 'undefined' ? document.hidden : false },
+    }));
+  }
 }
 
 function installLifecycleListeners() {
@@ -193,7 +203,13 @@ function installLifecycleListeners() {
   window.addEventListener('bps-request-location', requestWhenUsable);
   window.addEventListener('focus', requestWhenUsable);
   window.addEventListener('online', requestWhenUsable);
-  document.addEventListener('visibilitychange', requestWhenUsable);
+  document.addEventListener('visibilitychange', () => {
+    // Request immediately both when minimizing and when restoring. The minimize
+    // edge gives Pathfinder one last main-thread request before Chromium applies
+    // deeper background throttling; restore performs an immediate catch-up.
+    requestWhenUsable();
+    nudgeBackgroundLocationScheduler();
+  });
 }
 
 function removeLifecycleListeners() {
@@ -202,7 +218,9 @@ function removeLifecycleListeners() {
   window.removeEventListener('bps-request-location', requestWhenUsable);
   window.removeEventListener('focus', requestWhenUsable);
   window.removeEventListener('online', requestWhenUsable);
-  document.removeEventListener('visibilitychange', requestWhenUsable);
+  // visibilitychange uses a stable module-level lifecycle installation and is
+  // removed by stopping the shared watch lifecycle as a whole; no per-render
+  // listener is created.
 }
 
 function ensureSharedWatch() {
@@ -216,9 +234,11 @@ function ensureSharedWatch() {
     GPS_OPTIONS,
   );
   installLifecycleListeners();
-  // Keep the device/sensor watch running continuously, but only force a fresh
-  // browser geolocation request once per minute. This keeps GPS current without
-  // waking the provider every 15 seconds on rugged Windows tablets.
+  // Keep the device/sensor watch running continuously. Use both a Worker-driven
+  // one-minute scheduler (more resilient to minimized-window timer throttling)
+  // and a normal window timer as a fallback. freshRequest de-duplicates overlaps,
+  // so these do not create duplicate geolocation requests or Base44 writes.
+  releaseBackgroundScheduler = startBackgroundLocationScheduler(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
   refreshTimer = window.setInterval(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
   requestWhenUsable();
 }
@@ -231,6 +251,10 @@ function stopSharedWatch() {
   if (refreshTimer !== null) {
     window.clearInterval(refreshTimer);
     refreshTimer = null;
+  }
+  if (releaseBackgroundScheduler) {
+    releaseBackgroundScheduler();
+    releaseBackgroundScheduler = null;
   }
   removeLifecycleListeners();
 }
