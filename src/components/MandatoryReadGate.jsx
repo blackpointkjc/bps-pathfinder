@@ -2,12 +2,18 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { MessageCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function MandatoryReadGate({ user }) {
   const qc = useQueryClient();
   const [working, setWorking] = useState(false);
-  const enabled = !!user?.id && user?.role !== 'admin';
-  const scheduleAlertsEnabled = !!user?.email;
+  const roles = new Set([
+    String(user?.role || '').toLowerCase(),
+    ...(Array.isArray(user?.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : []),
+  ]);
+  const isAdmin = roles.has('admin') || roles.has('full_access');
+  const enabled = !!user?.id && !isAdmin;
+  const scheduleAlertsEnabled = enabled && !!user?.email;
 
   const { data: mentions = [] } = useQuery({
     queryKey: ['mandatoryChatMentions', user?.email],
@@ -46,14 +52,27 @@ export default function MandatoryReadGate({ user }) {
     try {
       if (current.type === 'mention') {
         await base44.entities.ChatMention.update(current.id, { read: true, read_at: new Date().toISOString() });
+        qc.setQueryData(['mandatoryChatMentions', user?.email], records =>
+          (records || []).filter(record => record.id !== current.id)
+        );
       } else {
-        await base44.entities.Notification.update(current.id, { is_read: true, acknowledged_at: new Date().toISOString() });
+        const response = await base44.functions.invoke('acknowledgeScheduleNotification', {
+          notification_id: current.id,
+        });
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        qc.setQueryData(['mandatoryScheduleAlerts', user?.email], records =>
+          (records || []).filter(record => record.id !== current.id)
+        );
       }
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['mandatoryChatMentions', user?.email] }),
-        qc.invalidateQueries({ queryKey: ['mandatoryScheduleAlerts', user?.email] }),
-      ]);
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ['mandatoryChatMentions', user?.email] }),
+        qc.refetchQueries({ queryKey: ['mandatoryScheduleAlerts', user?.email] }),
+      ]);
+    } catch (error) {
+      console.error('Unable to acknowledge required notice:', error);
+      toast.error(error?.response?.data?.error || error?.message || 'The notice could not be acknowledged.');
     } finally {
       setWorking(false);
     }
