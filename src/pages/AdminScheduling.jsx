@@ -896,17 +896,8 @@ export default function AdminScheduling() {
         reader.onerror = () => reject(new Error('The PDF could not be read from this device.'));
         reader.readAsDataURL(schedulePdf);
       });
-      const officerDirectory = activeOfficers.map(officer => ({
-        email: officer.email,
-        name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email,
-        rank: officer.rank || '',
-        unit_number: officer.unit_number || '',
-      }));
-      const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
       const response = await base44.functions.invoke('parse-schedule-pdf', {
         pdf_base64: pdfDataUrl,
-        officers: officerDirectory,
-        locations: locationDirectory,
       });
       const extracted = response?.data || response || {};
       if (extracted?.error) throw new Error(extracted.error);
