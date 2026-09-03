@@ -111,10 +111,15 @@ export default function AdminDashboard() {
       const result = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'admin' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      const currentTasks = (payload.tasks || []).filter(task => ADMIN_QUEUE_KINDS.has(task.kind));
+      const completedTaskKeys = new Set((payload.recently_completed || []).map(item => String(item.task_key || item.id)));
+      const currentTasks = (payload.tasks || []).filter(task =>
+        ADMIN_QUEUE_KINDS.has(task.kind) && !completedTaskKeys.has(String(task.id))
+      );
       const previous = queryClient.getQueryData(['adminDashboardWorkQueue']) || {};
       if (payload.load_errors?.length && previous.tasks?.length) {
-        const retainedTasks = (previous.tasks || []).filter(task => ADMIN_QUEUE_KINDS.has(task.kind));
+        const retainedTasks = (previous.tasks || []).filter(task =>
+          ADMIN_QUEUE_KINDS.has(task.kind) && !completedTaskKeys.has(String(task.id))
+        );
         const mergedTasks = [...currentTasks, ...retainedTasks]
           .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
         return {
