@@ -29,6 +29,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { uploadInternalFile } from '@/lib/internalUpload';
 import { toast } from 'sonner';
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -888,12 +889,7 @@ export default function AdminScheduling() {
     setPdfImportRows([]);
     setPdfImportIssues([]);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: schedulePdf });
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri,
-        expires_in: 900,
-      });
-
+      const { file_url } = await uploadInternalFile(schedulePdf);
       const officerDirectory = activeOfficers.map(officer => ({
         email: officer.email,
         name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email,
@@ -901,47 +897,13 @@ export default function AdminScheduling() {
         unit_number: officer.unit_number || '',
       }));
       const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
-
-      const extracted = await base44.integrations.Core.InvokeLLM({
-        prompt: `Extract every work shift from the attached PDF exactly as displayed.
-
-Match each named officer to ONE entry in the supplied officer directory and return that entry's exact email. Use "OPEN" only when the PDF explicitly shows an open or unassigned shift. Never invent an officer, email, date, time, or location.
-
-Normalize dates to YYYY-MM-DD and times to 24-hour HH:mm. For an overnight shift, keep the date on which the shift starts and set is_split_shift=true. Use the closest exact location from the location directory when the wording clearly matches; otherwise preserve the PDF's location text and explain it in issues. Put anything ambiguous, unreadable, unmatched, or omitted into issues instead of guessing.
-
-OFFICER DIRECTORY:
-${JSON.stringify(officerDirectory)}
-
-LOCATION DIRECTORY:
-${JSON.stringify(locationDirectory)}`,
-        file_urls: [signed_url],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            shifts: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  officer_email: { type: 'string' },
-                  officer_name_from_pdf: { type: 'string' },
-                  shift_date: { type: 'string' },
-                  start_time: { type: 'string' },
-                  end_time: { type: 'string' },
-                  location: { type: 'string' },
-                  site_details: { type: 'string' },
-                  special_instructions: { type: 'string' },
-                  is_open: { type: 'boolean' },
-                  is_split_shift: { type: 'boolean' },
-                },
-                required: ['officer_email', 'shift_date', 'start_time', 'end_time', 'location'],
-              },
-            },
-            issues: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['shifts', 'issues'],
-        },
+      const response = await base44.functions.invoke('parseSchedulePdf', {
+        file_url,
+        officers: officerDirectory,
+        locations: locationDirectory,
       });
+      const extracted = response?.data || response || {};
+      if (extracted?.error) throw new Error(extracted.error);
 
       const knownEmails = new Set(activeOfficers.map(officer => String(officer.email).toLowerCase()));
       const issues = [...(Array.isArray(extracted?.issues) ? extracted.issues : [])];
