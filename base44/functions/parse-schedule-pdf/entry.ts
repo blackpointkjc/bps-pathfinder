@@ -89,8 +89,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'The selected file is not a readable PDF.' }, { status: 400 });
     }
 
+    // PDF.js still initializes a "fake worker" when disableWorker is used in
+    // server runtimes. Register the packaged worker module explicitly so Deno
+    // never tries to resolve a missing relative pdf.worker.mjs file.
+    (globalThis as any).pdfjsWorker = await import(
+      'npm:pdfjs-dist@4.10.38/legacy/build/pdf.worker.mjs'
+    );
     const pdfjs = await import('npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs');
-    const document = await pdfjs.getDocument({ data: bytes, disableWorker: true, useSystemFonts: true }).promise;
+    const document = await pdfjs.getDocument({
+      data: bytes,
+      disableWorker: true,
+      useSystemFonts: true,
+    }).promise;
     const shifts: any[] = [];
     const issues: string[] = [];
 
