@@ -185,7 +185,10 @@ Deno.serve(async (req) => {
           return next ? Math.abs(midnight.y - next.y) : 74;
         })();
         const rawStart = ((gridTop - (box.y + box.height)) / pixelsPerHour) * 60;
-        const rawEnd = ((gridTop - box.y) / pixelsPerHour) * 60;
+        // Kendo draws the event rectangle one PDF point inside its closing
+        // grid line. Include that border point so 02:00 and 24:00 do not become
+        // 01:59 and 23:59 after coordinate conversion.
+        const rawEnd = ((gridTop - box.y + 1) / pixelsPerHour) * 60;
         if (rawEnd < -2 || rawStart > 1442) continue;
         const startMinutes = Math.max(0, Math.min(1440, Math.round(rawStart)));
         const endMinutes = Math.max(0, Math.min(1440, Math.round(rawEnd)));
