@@ -38,7 +38,7 @@ export default function MandatoryReadGate({ user }) {
 
   const queue = useMemo(() => {
     const scheduleItems = scheduleAlerts.map(n => ({ type: 'schedule', id: n.id, sort: n.created_date, record: n }));
-    if (!enabled) return scheduleItems;
+    if (!enabled) return [];
     const mentionItems = mentions.map(m => ({ type: 'mention', id: m.id, sort: m.created_date, record: m }));
     return [...scheduleItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
   }, [enabled, mentions, scheduleAlerts]);
