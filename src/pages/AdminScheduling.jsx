@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users, Car, UserCheck } from "lucide-react";
+import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users, Car, UserCheck, FileUp, Loader2 } from "lucide-react";
 import { format, addDays, subDays, startOfWeek, addWeeks, parseISO } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +73,12 @@ export default function AdminScheduling() {
   ]);
   const [officerPublicationOverrides, setOfficerPublicationOverrides] = useState([]);
   const [confirmation, setConfirmation] = useState(null);
+  const [showPdfImportDialog, setShowPdfImportDialog] = useState(false);
+  const [schedulePdf, setSchedulePdf] = useState(null);
+  const [pdfImportRows, setPdfImportRows] = useState([]);
+  const [pdfImportIssues, setPdfImportIssues] = useState([]);
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [isImportingPdf, setIsImportingPdf] = useState(false);
 
 
   const queryClient = useQueryClient();
@@ -853,6 +859,173 @@ export default function AdminScheduling() {
     if (['client', 'student', 'human resources', 'support staff'].includes(rank)) return false;
     return roles.has('officer') || roles.has('cad_access') || ['officer','unarmed officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','colonel','supervisor'].includes(rank);
   }), [allUsers]);
+
+  const resetPdfImport = () => {
+    setSchedulePdf(null);
+    setPdfImportRows([]);
+    setPdfImportIssues([]);
+    setIsParsingPdf(false);
+    setIsImportingPdf(false);
+  };
+
+  const closePdfImport = () => {
+    if (isParsingPdf || isImportingPdf) return;
+    setShowPdfImportDialog(false);
+    resetPdfImport();
+  };
+
+  const parseSchedulePdf = async () => {
+    if (!schedulePdf) {
+      toast.error('Choose a PDF schedule first.');
+      return;
+    }
+    if (schedulePdf.type !== 'application/pdf' && !schedulePdf.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Only PDF schedule files are supported.');
+      return;
+    }
+
+    setIsParsingPdf(true);
+    setPdfImportRows([]);
+    setPdfImportIssues([]);
+    try {
+      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: schedulePdf });
+      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
+        file_uri,
+        expires_in: 900,
+      });
+
+      const officerDirectory = activeOfficers.map(officer => ({
+        email: officer.email,
+        name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email,
+        rank: officer.rank || '',
+        unit_number: officer.unit_number || '',
+      }));
+      const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
+
+      const extracted = await base44.integrations.Core.InvokeLLM({
+        prompt: `Extract every work shift from the attached PDF exactly as displayed.
+
+Match each named officer to ONE entry in the supplied officer directory and return that entry's exact email. Use "OPEN" only when the PDF explicitly shows an open or unassigned shift. Never invent an officer, email, date, time, or location.
+
+Normalize dates to YYYY-MM-DD and times to 24-hour HH:mm. For an overnight shift, keep the date on which the shift starts and set is_split_shift=true. Use the closest exact location from the location directory when the wording clearly matches; otherwise preserve the PDF's location text and explain it in issues. Put anything ambiguous, unreadable, unmatched, or omitted into issues instead of guessing.
+
+OFFICER DIRECTORY:
+${JSON.stringify(officerDirectory)}
+
+LOCATION DIRECTORY:
+${JSON.stringify(locationDirectory)}`,
+        file_urls: [signed_url],
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            shifts: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  officer_email: { type: 'string' },
+                  officer_name_from_pdf: { type: 'string' },
+                  shift_date: { type: 'string' },
+                  start_time: { type: 'string' },
+                  end_time: { type: 'string' },
+                  location: { type: 'string' },
+                  site_details: { type: 'string' },
+                  special_instructions: { type: 'string' },
+                  is_open: { type: 'boolean' },
+                  is_split_shift: { type: 'boolean' },
+                },
+                required: ['officer_email', 'shift_date', 'start_time', 'end_time', 'location'],
+              },
+            },
+            issues: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['shifts', 'issues'],
+        },
+      });
+
+      const knownEmails = new Set(activeOfficers.map(officer => String(officer.email).toLowerCase()));
+      const issues = [...(Array.isArray(extracted?.issues) ? extracted.issues : [])];
+      const validRows = [];
+
+      (Array.isArray(extracted?.shifts) ? extracted.shifts : []).forEach((row, index) => {
+        const officerEmail = String(row?.officer_email || '').trim();
+        const shiftDate = String(row?.shift_date || '').trim();
+        const startTime = String(row?.start_time || '').trim();
+        const endTime = String(row?.end_time || '').trim();
+        const location = String(row?.location || '').trim();
+        const rowLabel = `PDF row ${index + 1}`;
+        if (officerEmail !== 'OPEN' && !knownEmails.has(officerEmail.toLowerCase())) {
+          issues.push(`${rowLabel}: officer "${row?.officer_name_from_pdf || officerEmail || 'unknown'}" was not matched to the active officer directory.`);
+          return;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(shiftDate) || Number.isNaN(new Date(`${shiftDate}T00:00:00`).getTime())) {
+          issues.push(`${rowLabel}: invalid or missing date.`);
+          return;
+        }
+        if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+          issues.push(`${rowLabel}: invalid or missing start/end time.`);
+          return;
+        }
+        if (!location) {
+          issues.push(`${rowLabel}: missing location.`);
+          return;
+        }
+        const duplicate = schedules.some(existing =>
+          String(existing.officer_email).toLowerCase() === officerEmail.toLowerCase()
+          && existing.shift_date === shiftDate
+          && existing.start_time === startTime
+          && existing.end_time === endTime
+          && String(existing.location).trim().toLowerCase() === location.toLowerCase()
+        );
+        if (duplicate) {
+          issues.push(`${rowLabel}: duplicate shift already exists for ${officerEmail} on ${shiftDate}; it was excluded.`);
+          return;
+        }
+        validRows.push({
+          _importKey: `${index}-${officerEmail}-${shiftDate}-${startTime}`,
+          officer_email: officerEmail,
+          shift_date: shiftDate,
+          start_time: startTime,
+          end_time: endTime,
+          location,
+          site_details: String(row?.site_details || '').trim(),
+          special_instructions: String(row?.special_instructions || '').trim(),
+          shift_type: 'normal',
+          is_open: officerEmail === 'OPEN' || row?.is_open === true,
+          is_split_shift: row?.is_split_shift === true || endTime <= startTime,
+          linked_shift_id: '',
+        });
+      });
+
+      setPdfImportRows(validRows);
+      setPdfImportIssues(issues);
+      if (!validRows.length) toast.error('No valid, non-duplicate shifts could be extracted. Review the issues shown.');
+      else toast.success(`Extracted ${validRows.length} shift${validRows.length === 1 ? '' : 's'} for review.`);
+    } catch (error) {
+      console.error('Schedule PDF extraction failed:', error);
+      setPdfImportIssues([error?.message || 'The PDF could not be read.']);
+      toast.error('The schedule PDF could not be processed.');
+    } finally {
+      setIsParsingPdf(false);
+    }
+  };
+
+  const importPdfSchedule = async () => {
+    if (!pdfImportRows.length) return;
+    setIsImportingPdf(true);
+    try {
+      const rows = pdfImportRows.map(({ _importKey, ...row }) => row);
+      await bulkCreateShiftsMutation.mutateAsync(rows);
+      toast.success(`Imported ${rows.length} schedule shift${rows.length === 1 ? '' : 's'} from the PDF.`);
+      setShowPdfImportDialog(false);
+      resetPdfImport();
+    } catch (error) {
+      console.error('Schedule PDF import failed:', error);
+      toast.error(error?.message || 'The extracted schedule could not be imported.');
+    } finally {
+      setIsImportingPdf(false);
+    }
+  };
 
   useEffect(() => {
     const generatePayrollPeriods = async () => {
@@ -2655,6 +2828,14 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </Button>
 
               <Button
+                onClick={() => setShowPdfImportDialog(true)}
+                variant="outline"
+                className="w-full border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 sm:w-auto"
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Import PDF
+              </Button>
+              <Button
                 onClick={() => setShowAddDialog(true)}
                 className="w-full bg-green-600 hover:bg-green-700 sm:w-auto"
               >
@@ -3579,6 +3760,102 @@ Return ONLY a JSON array of suggestion objects with this structure:
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showPdfImportDialog} onOpenChange={(open) => open ? setShowPdfImportDialog(true) : closePdfImport()}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import Schedule from PDF</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                The PDF is uploaded privately and read through a temporary link. Review every extracted shift before importing; ambiguous rows are excluded instead of guessed.
+              </AlertDescription>
+            </Alert>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <Label htmlFor="schedule-pdf" className="font-bold text-slate-900">Schedule PDF</Label>
+              <Input
+                id="schedule-pdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                className="mt-2 bg-white"
+                disabled={isParsingPdf || isImportingPdf}
+                onChange={(event) => {
+                  setSchedulePdf(event.target.files?.[0] || null);
+                  setPdfImportRows([]);
+                  setPdfImportIssues([]);
+                }}
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" onClick={parseSchedulePdf} disabled={!schedulePdf || isParsingPdf || isImportingPdf}>
+                  {isParsingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                  {isParsingPdf ? 'Reading PDF…' : 'Extract Schedule'}
+                </Button>
+                {(pdfImportRows.length > 0 || pdfImportIssues.length > 0) && (
+                  <Button type="button" variant="outline" onClick={resetPdfImport} disabled={isParsingPdf || isImportingPdf}>Start Over</Button>
+                )}
+              </div>
+            </div>
+
+            {pdfImportIssues.length > 0 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+                <div className="font-black">Needs attention ({pdfImportIssues.length})</div>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                  {pdfImportIssues.map((issue, index) => <li key={`${index}-${issue}`}>{issue}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {pdfImportRows.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-black text-slate-950">Ready to import</div>
+                    <div className="text-sm text-slate-600">{pdfImportRows.length} validated, non-duplicate shift{pdfImportRows.length === 1 ? '' : 's'}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={importPdfSchedule}
+                    disabled={isImportingPdf}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {isImportingPdf && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Import {pdfImportRows.length} Shift{pdfImportRows.length === 1 ? '' : 's'}
+                  </Button>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
+                      <tr><th className="p-3">Officer</th><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Location</th><th className="w-12 p-3"><span className="sr-only">Remove</span></th></tr>
+                    </thead>
+                    <tbody>
+                      {pdfImportRows.map(row => (
+                        <tr key={row._importKey} className="border-t border-slate-200 bg-white text-slate-900">
+                          <td className="p-3 font-semibold">{row.officer_email === 'OPEN' ? 'Open shift' : getOfficerName(row.officer_email)}</td>
+                          <td className="whitespace-nowrap p-3">{row.shift_date}</td>
+                          <td className="whitespace-nowrap p-3">{row.start_time}–{row.end_time}</td>
+                          <td className="p-3">{row.location}</td>
+                          <td className="p-3">
+                            <Button type="button" size="icon" variant="ghost" aria-label="Remove extracted shift" onClick={() => setPdfImportRows(current => current.filter(item => item._importKey !== row._importKey))}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={closePdfImport} disabled={isParsingPdf || isImportingPdf}>Close</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
         <DialogContent className="max-w-md">
