@@ -41,10 +41,10 @@ Deno.serve(async (req) => {
     const officers = Array.isArray(body.officers) ? body.officers.slice(0, 2000) : [];
     const locations = Array.isArray(body.locations) ? body.locations.slice(0, 2000) : [];
 
-    if (!fileUrl.startsWith('data:application/pdf')) {
-      return Response.json({ error: 'A valid PDF file is required.' }, { status: 400 });
+    if (!/^https:\/\//i.test(fileUrl) && !fileUrl.startsWith('data:application/pdf')) {
+      return Response.json({ error: 'A valid PDF file URL is required.' }, { status: 400 });
     }
-    if (fileUrl.length > 7_500_000) {
+    if (fileUrl.startsWith('data:') && fileUrl.length > 7_500_000) {
       return Response.json({ error: 'The PDF must be smaller than 5 MB.' }, { status: 413 });
     }
     if (!officers.length) {
