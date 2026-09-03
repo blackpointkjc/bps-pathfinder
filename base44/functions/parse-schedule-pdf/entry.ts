@@ -272,35 +272,40 @@ Deno.serve(async (req) => {
           return distance < best.distance ? { label, distance } : best;
         }, { label: null as TextItem | null, distance: Number.POSITIVE_INFINITY }).label;
         if (!resource) continue;
-        const officer = matchOfficer(resource.text, officers);
-        if (!officer?.email) {
-          issues.push(`Page ${pageNumber}: officer "${resource.text}" was not matched to the active directory.`);
-          continue;
-        }
 
         const inside = textItems.filter(item =>
           item.x >= box.x - 1 && item.x <= box.x + box.width + 1
           && item.y >= box.y - 2 && item.y <= box.y + box.height + 2
         ).sort((a, b) => b.y - a.y || a.x - b.x);
         const eventText = inside.map(item => item.text).join(' ');
-        const location = matchLocation(eventText, locations);
-        if (!location) {
-          issues.push(`Page ${pageNumber}, ${dates[column.index]}: no site was found for ${resource.text}.`);
+        const locationMatch = matchLocation(eventText, locations);
+        if (!locationMatch.site_name) {
+          issues.push(`Page ${pageNumber}, ${dates[column.index]}: site "${locationMatch.printed_site || 'unknown'}" did not match an active system location.`);
           continue;
         }
 
-        shifts.push({
-          officer_email: String(officer.email),
-          officer_name_from_pdf: resource.text,
-          shift_date: dates[column.index],
-          start_time: timeText(startMinutes),
-          end_time: timeText(endMinutes),
-          location,
-          site_details: eventText,
-          special_instructions: '',
-          is_open: false,
-          is_split_shift: endMinutes >= 1440 || endMinutes <= startMinutes,
-        });
+        const assignedOfficers = officersInEvent(eventText, resource.text, officers);
+        if (!assignedOfficers.length) {
+          issues.push(`Page ${pageNumber}: no officer printed in "${eventText}" matched the active directory.`);
+          continue;
+        }
+
+        for (const officer of assignedOfficers) {
+          shifts.push({
+            officer_email: String(officer.email),
+            officer_name_from_pdf: String(officer.name || resource.text),
+            shift_date: dates[column.index],
+            start_time: timeText(startMinutes),
+            end_time: timeText(endMinutes),
+            location: locationMatch.site_name,
+            site_details: locationMatch.printed_site === locationMatch.site_name
+              ? ''
+              : `PDF site: ${locationMatch.printed_site}`,
+            special_instructions: '',
+            is_open: false,
+            is_split_shift: endMinutes >= 1440 || endMinutes <= startMinutes,
+          });
+        }
       }
     }
 
@@ -320,7 +325,13 @@ Deno.serve(async (req) => {
         issues: [...issues, 'No schedule event blocks could be read. Export the schedule using the Kendo Scheduler PDF format.'],
       });
     }
-    return Response.json({ shifts: deduplicated, issues, parser: 'deterministic-pdf-geometry-v1' });
+    return Response.json({
+      shifts: deduplicated,
+      issues,
+      parser: 'deterministic-pdf-geometry-v2',
+      matched_sites: [...new Set(deduplicated.map(shift => shift.location))],
+      matched_officers: [...new Set(deduplicated.map(shift => shift.officer_email))],
+    });
   } catch (error) {
     console.error('parseSchedulePdf failed', error);
     return Response.json({ error: error?.message || 'Unable to extract the schedule PDF.' }, { status: 500 });
