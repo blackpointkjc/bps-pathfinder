@@ -897,7 +897,7 @@ export default function AdminScheduling() {
         unit_number: officer.unit_number || '',
       }));
       const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
-      const response = await base44.functions.invoke('parseSchedulePdf', {
+      const response = await base44.functions.invoke('parse-schedule-pdf', {
         file_url,
         officers: officerDirectory,
         locations: locationDirectory,
