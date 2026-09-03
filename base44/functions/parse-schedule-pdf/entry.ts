@@ -4,6 +4,7 @@ type Matrix = [number, number, number, number, number, number];
 type Box = { x: number; y: number; width: number; height: number };
 type TextItem = Box & { text: string };
 type Officer = { email?: string; name?: string; rank?: string; unit_number?: string };
+type Site = { site_name?: string; address?: string };
 
 const normalized = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const multiply = (left: Matrix, right: Matrix): Matrix => [
@@ -57,13 +58,51 @@ const matchOfficer = (label: string, officers: Officer[]) => {
   }).sort((a, b) => b.score - a.score);
   return scored[0]?.score >= 10 ? scored[0].officer : null;
 };
-const matchLocation = (eventText: string, locations: string[]) => {
-  const haystack = normalized(eventText);
-  const exact = [...locations].filter(Boolean).sort((a, b) => b.length - a.length)
-    .find(location => haystack.includes(normalized(location)));
-  if (exact) return exact;
+const siteWords = (value: unknown) => normalized(value)
+  .split(' ')
+  .filter(word => word.length > 1 && !['the', 'at', 'of', 'site', 'sites'].includes(word));
+
+const matchLocation = (eventText: string, locations: Site[]) => {
   const siteMatch = eventText.match(/Sites?\s*:\s*([\s\S]*?)(?:Officers?\s*:|$)/i);
-  return String(siteMatch?.[1] || '').replace(/\s+/g, ' ').trim();
+  const printedSite = String(siteMatch?.[1] || '').replace(/\s+/g, ' ').trim();
+  if (!printedSite) return { site_name: '', printed_site: '', score: 0 };
+
+  const printedNormalized = normalized(printedSite);
+  const printedWords = new Set(siteWords(printedSite));
+  const ranked = locations.map(site => {
+    const canonical = String(site?.site_name || '').trim();
+    const canonicalNormalized = normalized(canonical);
+    const canonicalWords = siteWords(canonical);
+    const overlap = canonicalWords.filter(word => printedWords.has(word)).length;
+    const union = new Set([...canonicalWords, ...printedWords]).size || 1;
+    let score = overlap / union;
+    if (canonicalNormalized === printedNormalized) score = 10;
+    else if (canonicalNormalized.includes(printedNormalized) || printedNormalized.includes(canonicalNormalized)) score += 2;
+    return { site_name: canonical, printed_site: printedSite, score };
+  }).filter(item => item.site_name).sort((a, b) => b.score - a.score);
+
+  const best = ranked[0];
+  return best && (best.score >= 0.45 || best.score >= 2)
+    ? best
+    : { site_name: '', printed_site: printedSite, score: best?.score || 0 };
+};
+
+const officersInEvent = (eventText: string, resourceLabel: string, officers: Officer[]) => {
+  const officerSection = eventText.match(/Officers?\s*:\s*([\s\S]*)$/i)?.[1] || '';
+  const haystack = normalized(officerSection);
+  const found = officers.filter(officer => {
+    const name = String(officer.name || '');
+    const forward = normalized(name);
+    const reversed = normalized(name.split(' ').reverse().join(' '));
+    return !!forward && (haystack.includes(forward) || haystack.includes(reversed));
+  });
+  const resourceOfficer = matchOfficer(resourceLabel, officers);
+  if (resourceOfficer?.email && !found.some(officer => normalized(officer.email) === normalized(resourceOfficer.email))) {
+    found.push(resourceOfficer);
+  }
+  return found.filter((officer, index, rows) =>
+    officer?.email && rows.findIndex(item => normalized(item.email) === normalized(officer.email)) === index
+  );
 };
 
 Deno.serve(async (req) => {
