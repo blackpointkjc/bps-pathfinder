@@ -1022,6 +1022,19 @@ export default function AdminScheduling() {
     try {
       const updates = pdfImportRows.filter(row => row._action === 'update' && row._existingId);
       const creates = pdfImportRows.filter(row => row._action !== 'update');
+      const staleContinuationIds = new Set();
+      for (const row of pdfImportRows.filter(item => item.is_split_shift && item.end_time <= item.start_time)) {
+        const nextDate = format(addDays(parseISO(row.shift_date), 1), 'yyyy-MM-dd');
+        schedules.filter(existing =>
+          existing.shift_date === nextDate
+          && existing.start_time === '00:00'
+          && String(existing.officer_email || '').toLowerCase() === String(row.officer_email || '').toLowerCase()
+          && String(existing.location || '').trim().toLowerCase() === String(row.location || '').trim().toLowerCase()
+        ).forEach(existing => staleContinuationIds.add(existing.id));
+      }
+      for (const staleId of staleContinuationIds) {
+        await base44.entities.Schedule.delete(staleId);
+      }
       for (const { _importKey, _existingId, _action, ...row } of updates) {
         await base44.entities.Schedule.update(_existingId, row);
       }
@@ -1032,7 +1045,7 @@ export default function AdminScheduling() {
       } else {
         await queryClient.refetchQueries({ queryKey: ['allSchedules'] });
       }
-      toast.success(`Schedule reconciled: ${updates.length} updated, ${creates.length} added, no duplicates created.`);
+      toast.success(`Schedule reconciled: ${updates.length} updated, ${creates.length} added, ${staleContinuationIds.size} duplicate continuation${staleContinuationIds.size === 1 ? '' : 's'} removed.`);
       setShowPdfImportDialog(false);
       resetPdfImport();
     } catch (error) {
