@@ -88,6 +88,25 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, session_ended: true, records_updated: ended.filter(Boolean).length });
     }
 
+    // A GPS/heartbeat request that was already queued in the browser can arrive
+    // after clock-out/logout retired the session. Never allow that trailing
+    // request to reactivate an officer who is already Out of Service.
+    if (String(user.status || '').trim().toLowerCase() === 'out of service' && !body.status) {
+      const retired = [];
+      for (const record of records || []) {
+        if (record.session_active === false && String(record.status || '').toLowerCase() === 'out of service') continue;
+        retired.push(await base44.asServiceRole.entities.ActiveOfficer.update(record.id, {
+          session_active: false,
+          status: 'Out of Service',
+          last_update: now,
+          heading: null,
+          speed: 0,
+          current_call_info: '',
+        }).catch(() => null));
+      }
+      return Response.json({ success: true, ignored_after_duty_end: true, active_officer: null, records_retired: retired.filter(Boolean).length });
+    }
+
     const primary = records?.[0] || null;
     const requestedFixAt = new Date(body.device_fix_at || now).getTime();
     const deviceFixAt = Number.isFinite(requestedFixAt) && requestedFixAt <= receivedAt + 30000
