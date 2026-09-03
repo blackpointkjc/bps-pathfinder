@@ -83,10 +83,15 @@ export default function HROverview() {
       const queueResult = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr' });
       const queue = queueResult?.data || queueResult || {};
       if (queue.error) throw new Error(queue.error);
-      const currentTasks = (queue.tasks || []).filter(task => HR_QUEUE_KINDS.has(task.kind));
+      const completedTaskKeys = new Set((queue.recently_completed || []).map(item => String(item.task_key || item.id)));
+      const currentTasks = (queue.tasks || []).filter(task =>
+        HR_QUEUE_KINDS.has(task.kind) && !completedTaskKeys.has(String(task.id))
+      );
       const previous = queryClient.getQueryData(['hrOverviewSnapshot']) || {};
       if (queue.load_errors?.length && previous.tasks?.length) {
-        const retainedTasks = (previous.tasks || []).filter(task => HR_QUEUE_KINDS.has(task.kind));
+        const retainedTasks = (previous.tasks || []).filter(task =>
+          HR_QUEUE_KINDS.has(task.kind) && !completedTaskKeys.has(String(task.id))
+        );
         const mergedTasks = [...currentTasks, ...retainedTasks]
           .filter((task, index, rows) => rows.findIndex(item => item.id === task.id) === index);
         return {
