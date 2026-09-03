@@ -3829,8 +3829,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="font-black text-slate-950">Ready to import</div>
-                    <div className="text-sm text-slate-600">{pdfImportRows.length} validated, non-duplicate shift{pdfImportRows.length === 1 ? '' : 's'}</div>
+                    <div className="font-black text-slate-950">Ready to reconcile</div>
+                    <div className="text-sm text-slate-600">{pdfImportRows.filter(row => row._action === 'update').length} update existing · {pdfImportRows.filter(row => row._action === 'create').length} create new</div>
                   </div>
                   <Button
                     type="button"
@@ -3839,17 +3839,18 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     {isImportingPdf && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Import {pdfImportRows.length} Shift{pdfImportRows.length === 1 ? '' : 's'}
+                    Apply {pdfImportRows.length} Change{pdfImportRows.length === 1 ? '' : 's'}
                   </Button>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-100 text-left text-xs uppercase text-slate-600">
-                      <tr><th className="p-3">Officer</th><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Location</th><th className="w-12 p-3"><span className="sr-only">Remove</span></th></tr>
+                      <tr><th className="p-3">Action</th><th className="p-3">Officer</th><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Location</th><th className="w-12 p-3"><span className="sr-only">Remove</span></th></tr>
                     </thead>
                     <tbody>
                       {pdfImportRows.map(row => (
                         <tr key={row._importKey} className="border-t border-slate-200 bg-white text-slate-900">
+                          <td className="p-3"><Badge className={row._action === 'update' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}>{row._action === 'update' ? 'Update existing' : 'Create new'}</Badge></td>
                           <td className="p-3 font-semibold">{row.officer_email === 'OPEN' ? 'Open shift' : getOfficerName(row.officer_email)}</td>
                           <td className="whitespace-nowrap p-3">{row.shift_date}</td>
                           <td className="whitespace-nowrap p-3">{row.start_time}–{row.end_time}</td>
