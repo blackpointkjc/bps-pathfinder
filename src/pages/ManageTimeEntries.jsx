@@ -320,6 +320,10 @@ export default function ManageTimeEntries() {
       return;
     }
     if (!Array.isArray(timeEntries)) return;
+    // A queue/deep-link should be handled once. Previously every 30-second
+    // time-entry refresh re-ran this effect and forced an HR user's officer
+    // filter back to "All Officers".
+    if (openedEntryRef.current.startsWith(`${location.search}:`)) return;
     if (selectedOfficer !== 'all') {
       setSelectedOfficer('all');
       return;
