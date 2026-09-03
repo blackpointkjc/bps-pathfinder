@@ -110,17 +110,41 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (String(user.role || '').toLowerCase() !== 'admin') {
+    const userRoles = new Set([
+      normalized(user.role),
+      ...(Array.isArray(user.additional_roles) ? user.additional_roles.map(normalized) : []),
+    ]);
+    if (!userRoles.has('admin') && !userRoles.has('full access')) {
       return Response.json({ error: 'Admin access is required to import a schedule.' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
     const pdfBase64 = String(body.pdf_base64 || '').replace(/^data:application\/pdf(?:;[^,]*)?;base64,/i, '');
-    const officers: Officer[] = Array.isArray(body.officers) ? body.officers.slice(0, 2000) : [];
-    const locations: string[] = Array.isArray(body.locations) ? body.locations.slice(0, 2000).map(String) : [];
     if (!pdfBase64) return Response.json({ error: 'PDF data is required.' }, { status: 400 });
     if (pdfBase64.length > 10_000_000) return Response.json({ error: 'The PDF must be smaller than 7 MB.' }, { status: 413 });
+
+    // Always match against the live system directories. The client cannot supply
+    // stale or renamed officer/site values to the parser.
+    const [directoryUsers, systemLocations] = await Promise.all([
+      base44.asServiceRole.entities.User.list('-updated_date', 2000),
+      base44.asServiceRole.entities.Location.list('site_name', 2000),
+    ]);
+    const officers: Officer[] = (directoryUsers || []).filter((person: any) =>
+      person?.email && !person?.termination_date && normalized(person.employment_status) !== 'terminated'
+    ).map((person: any) => ({
+      email: String(person.email),
+      name: [person.first_name, person.last_name].filter(Boolean).join(' ') || person.full_name || person.email,
+      rank: person.rank || '',
+      unit_number: person.unit_number || '',
+    }));
+    const locations: Site[] = (systemLocations || []).filter((site: any) =>
+      site?.site_name && site.active !== false
+    ).map((site: any) => ({
+      site_name: String(site.site_name),
+      address: String(site.address || ''),
+    }));
     if (!officers.length) return Response.json({ error: 'The active officer directory is empty.' }, { status: 400 });
+    if (!locations.length) return Response.json({ error: 'The active site directory is empty.' }, { status: 400 });
 
     const binary = atob(pdfBase64);
     const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
