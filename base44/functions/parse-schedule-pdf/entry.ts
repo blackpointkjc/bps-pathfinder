@@ -1,30 +1,69 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    shifts: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          officer_email: { type: 'string' },
-          officer_name_from_pdf: { type: 'string' },
-          shift_date: { type: 'string' },
-          start_time: { type: 'string' },
-          end_time: { type: 'string' },
-          location: { type: 'string' },
-          site_details: { type: 'string' },
-          special_instructions: { type: 'string' },
-          is_open: { type: 'boolean' },
-          is_split_shift: { type: 'boolean' },
-        },
-        required: ['officer_email', 'shift_date', 'start_time', 'end_time', 'location'],
-      },
-    },
-    issues: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['shifts', 'issues'],
+type Matrix = [number, number, number, number, number, number];
+type Box = { x: number; y: number; width: number; height: number };
+type TextItem = Box & { text: string };
+type Officer = { email?: string; name?: string; rank?: string; unit_number?: string };
+
+const normalized = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const multiply = (left: Matrix, right: Matrix): Matrix => [
+  left[0] * right[0] + left[2] * right[1],
+  left[1] * right[0] + left[3] * right[1],
+  left[0] * right[2] + left[2] * right[3],
+  left[1] * right[2] + left[3] * right[3],
+  left[0] * right[4] + left[2] * right[5] + left[4],
+  left[1] * right[4] + left[3] * right[5] + left[5],
+];
+const point = (matrix: Matrix, x: number, y: number) => ({
+  x: matrix[0] * x + matrix[2] * y + matrix[4],
+  y: matrix[1] * x + matrix[3] * y + matrix[5],
+});
+const pad = (value: number) => String(value).padStart(2, '0');
+const timeText = (minutes: number) => {
+  const wrapped = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  return `${pad(Math.floor(wrapped / 60))}:${pad(wrapped % 60)}`;
+};
+const addDays = (date: string, amount: number) => {
+  const parsed = new Date(`${date}T12:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + amount);
+  return parsed.toISOString().slice(0, 10);
+};
+const closestYearDate = (month: number, day: number, anchor = new Date()) => {
+  const candidates = [anchor.getUTCFullYear() - 1, anchor.getUTCFullYear(), anchor.getUTCFullYear() + 1]
+    .map(year => ({ year, distance: Math.abs(Date.UTC(year, month - 1, day) - anchor.getTime()) }))
+    .sort((a, b) => a.distance - b.distance);
+  return `${candidates[0].year}-${pad(month)}-${pad(day)}`;
+};
+const uniqueBoxes = (boxes: Box[]) => {
+  const seen = new Set<string>();
+  return boxes.filter(box => {
+    const key = [box.x, box.y, box.width, box.height].map(value => Math.round(value * 10)).join(':');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+const matchOfficer = (label: string, officers: Officer[]) => {
+  const target = normalized(label);
+  const reversed = normalized(label.split(',').reverse().join(' '));
+  const scored = officers.map(officer => {
+    const name = normalized(officer.name);
+    if (!name) return { officer, score: 0 };
+    if (name === target || name === reversed) return { officer, score: 100 };
+    const targetParts = new Set((reversed || target).split(' ').filter(Boolean));
+    const nameParts = name.split(' ').filter(Boolean);
+    const overlap = nameParts.filter(part => targetParts.has(part)).length;
+    return { officer, score: overlap * 10 - Math.abs(nameParts.length - targetParts.size) };
+  }).sort((a, b) => b.score - a.score);
+  return scored[0]?.score >= 10 ? scored[0].officer : null;
+};
+const matchLocation = (eventText: string, locations: string[]) => {
+  const haystack = normalized(eventText);
+  const exact = [...locations].filter(Boolean).sort((a, b) => b.length - a.length)
+    .find(location => haystack.includes(normalized(location)));
+  if (exact) return exact;
+  const siteMatch = eventText.match(/Sites?\s*:\s*([\s\S]*?)(?:Officers?\s*:|$)/i);
+  return String(siteMatch?.[1] || '').replace(/\s+/g, ' ').trim();
 };
 
 Deno.serve(async (req) => {
@@ -37,44 +76,175 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const fileUrl = String(body.file_url || '');
-    const officers = Array.isArray(body.officers) ? body.officers.slice(0, 2000) : [];
-    const locations = Array.isArray(body.locations) ? body.locations.slice(0, 2000) : [];
+    const pdfBase64 = String(body.pdf_base64 || '').replace(/^data:application\/pdf(?:;[^,]*)?;base64,/i, '');
+    const officers: Officer[] = Array.isArray(body.officers) ? body.officers.slice(0, 2000) : [];
+    const locations: string[] = Array.isArray(body.locations) ? body.locations.slice(0, 2000).map(String) : [];
+    if (!pdfBase64) return Response.json({ error: 'PDF data is required.' }, { status: 400 });
+    if (pdfBase64.length > 10_000_000) return Response.json({ error: 'The PDF must be smaller than 7 MB.' }, { status: 413 });
+    if (!officers.length) return Response.json({ error: 'The active officer directory is empty.' }, { status: 400 });
 
-    if (!/^https:\/\//i.test(fileUrl) && !fileUrl.startsWith('data:application/pdf')) {
-      return Response.json({ error: 'A valid PDF file URL is required.' }, { status: 400 });
+    const binary = atob(pdfBase64);
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') {
+      return Response.json({ error: 'The selected file is not a readable PDF.' }, { status: 400 });
     }
-    if (fileUrl.startsWith('data:') && fileUrl.length > 7_500_000) {
-      return Response.json({ error: 'The PDF must be smaller than 5 MB.' }, { status: 413 });
+
+    const pdfjs = await import('npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs');
+    const document = await pdfjs.getDocument({ data: bytes, disableWorker: true, useSystemFonts: true }).promise;
+    const shifts: any[] = [];
+    const issues: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const textContent = await page.getTextContent();
+      const textItems: TextItem[] = textContent.items
+        .filter((item: any) => String(item.str || '').trim())
+        .map((item: any) => ({
+          text: String(item.str).trim(),
+          x: Number(item.transform?.[4] || 0),
+          y: Number(item.transform?.[5] || 0),
+          width: Math.abs(Number(item.width || 0)),
+          height: Math.abs(Number(item.height || item.transform?.[3] || 0)),
+        }));
+
+      const dayHeaders = textItems.filter(item => /^(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),?\s+\d{1,2}\/\d{1,2}$/i.test(item.text))
+        .sort((a, b) => a.x - b.x);
+      if (!dayHeaders.length) {
+        issues.push(`Page ${pageNumber}: no calendar day headings were found.`);
+        continue;
+      }
+      const dates = dayHeaders.map(item => {
+        const match = item.text.match(/(\d{1,2})\/(\d{1,2})/)!;
+        return closestYearDate(Number(match[1]), Number(match[2]));
+      });
+      for (let index = 1; index < dates.length; index += 1) {
+        const expected = addDays(dates[index - 1], 1);
+        if (dates[index] !== expected) {
+          const [, month, day] = dates[index].match(/^(\d{4})-(\d{2})-(\d{2})$/)!;
+          dates[index] = `${expected.slice(0, 4)}-${month}-${day}`;
+        }
+      }
+
+      const midnightLabels = textItems.filter(item => /^12:00\s*AM$/i.test(item.text) && item.x < 230)
+        .sort((a, b) => b.y - a.y);
+      const resourceLabels = textItems.filter(item =>
+        item.x < 160 && /^[^,]{2,},\s*[^,]{2,}$/.test(item.text)
+      ).sort((a, b) => b.y - a.y);
+      if (!midnightLabels.length || !resourceLabels.length) {
+        issues.push(`Page ${pageNumber}: the officer rows or hourly grid could not be found.`);
+        continue;
+      }
+
+      const operationList = await page.getOperatorList();
+      let current: Matrix = [1, 0, 0, 1, 0, 0];
+      const stack: Matrix[] = [];
+      const boxes: Box[] = [];
+      for (let index = 0; index < operationList.fnArray.length; index += 1) {
+        const fn = operationList.fnArray[index];
+        const args = operationList.argsArray[index];
+        if (fn === pdfjs.OPS.save) stack.push([...current] as Matrix);
+        else if (fn === pdfjs.OPS.restore) current = stack.pop() || current;
+        else if (fn === pdfjs.OPS.transform && Array.isArray(args) && args.length >= 6) {
+          current = multiply(current, args.slice(0, 6) as Matrix);
+        } else if (fn === pdfjs.OPS.constructPath) {
+          const bounds = args?.[2];
+          if (!bounds || bounds.length < 4) continue;
+          const first = point(current, Number(bounds[0]), Number(bounds[1]));
+          const second = point(current, Number(bounds[2]), Number(bounds[3]));
+          const box = {
+            x: Math.min(first.x, second.x),
+            y: Math.min(first.y, second.y),
+            width: Math.abs(second.x - first.x),
+            height: Math.abs(second.y - first.y),
+          };
+          // Kendo scheduler event rectangles are slightly narrower than a day
+          // column and taller than a single text line.
+          if (box.width >= 90 && box.width <= 120 && box.height >= 25) boxes.push(box);
+        }
+      }
+
+      const eventBoxes = uniqueBoxes(boxes);
+      for (const box of eventBoxes) {
+        const column = dayHeaders.reduce((best, header, index) => {
+          const distance = Math.abs((header.x - 25) - box.x);
+          return distance < best.distance ? { index, distance } : best;
+        }, { index: -1, distance: Number.POSITIVE_INFINITY });
+        if (column.index < 0 || column.distance > 45) continue;
+
+        const segmentIndex = midnightLabels.findIndex((midnight, index) => {
+          const top = midnight.y + 23.5;
+          const nextTop = midnightLabels[index + 1]?.y + 23.5;
+          return box.y < top + 2 && (!nextTop || box.y + box.height > nextTop - 2);
+        });
+        if (segmentIndex < 0) continue;
+        const midnight = midnightLabels[segmentIndex];
+        const gridTop = midnight.y + 23.5;
+        const pixelsPerHour = (() => {
+          const nextHours = textItems.filter(item => /^1:00\s*AM$/i.test(item.text) && item.x < 230);
+          const next = nextHours.sort((a, b) => Math.abs(a.y - midnight.y) - Math.abs(b.y - midnight.y))[0];
+          return next ? Math.abs(midnight.y - next.y) : 74;
+        })();
+        const rawStart = ((gridTop - (box.y + box.height)) / pixelsPerHour) * 60;
+        const rawEnd = ((gridTop - box.y) / pixelsPerHour) * 60;
+        if (rawEnd < -2 || rawStart > 1442) continue;
+        const startMinutes = Math.max(0, Math.min(1440, Math.round(rawStart)));
+        const endMinutes = Math.max(0, Math.min(1440, Math.round(rawEnd)));
+        if (endMinutes - startMinutes < 10) continue;
+
+        const resource = resourceLabels.reduce((best, label) => {
+          const distance = Math.abs(label.y - (gridTop + 38));
+          return distance < best.distance ? { label, distance } : best;
+        }, { label: null as TextItem | null, distance: Number.POSITIVE_INFINITY }).label;
+        if (!resource) continue;
+        const officer = matchOfficer(resource.text, officers);
+        if (!officer?.email) {
+          issues.push(`Page ${pageNumber}: officer "${resource.text}" was not matched to the active directory.`);
+          continue;
+        }
+
+        const inside = textItems.filter(item =>
+          item.x >= box.x - 1 && item.x <= box.x + box.width + 1
+          && item.y >= box.y - 2 && item.y <= box.y + box.height + 2
+        ).sort((a, b) => b.y - a.y || a.x - b.x);
+        const eventText = inside.map(item => item.text).join(' ');
+        const location = matchLocation(eventText, locations);
+        if (!location) {
+          issues.push(`Page ${pageNumber}, ${dates[column.index]}: no site was found for ${resource.text}.`);
+          continue;
+        }
+
+        shifts.push({
+          officer_email: String(officer.email),
+          officer_name_from_pdf: resource.text,
+          shift_date: dates[column.index],
+          start_time: timeText(startMinutes),
+          end_time: timeText(endMinutes),
+          location,
+          site_details: eventText,
+          special_instructions: '',
+          is_open: false,
+          is_split_shift: endMinutes >= 1440 || endMinutes <= startMinutes,
+        });
+      }
     }
-    if (!officers.length) {
-      return Response.json({ error: 'The active officer directory is empty.' }, { status: 400 });
+
+    const deduplicated = shifts.filter((shift, index, rows) =>
+      rows.findIndex(item =>
+        item.officer_email === shift.officer_email
+        && item.shift_date === shift.shift_date
+        && item.start_time === shift.start_time
+        && item.end_time === shift.end_time
+        && normalized(item.location) === normalized(shift.location)
+      ) === index
+    );
+
+    if (!deduplicated.length) {
+      return Response.json({
+        shifts: [],
+        issues: [...issues, 'No schedule event blocks could be read. Export the schedule using the Kendo Scheduler PDF format.'],
+      });
     }
-
-    const prompt = `Extract every work shift from the attached PDF exactly as displayed.
-
-Match each named officer to ONE entry in the supplied officer directory and return that entry's exact email. Use "OPEN" only when the PDF explicitly shows an open or unassigned shift. Never invent an officer, email, date, time, or location.
-
-This PDF is a vertical calendar/scheduler export. Derive each start and end time from the event block's exact vertical position against the hour grid; do not treat the date column boundary as the end of a shift. Preserve minute precision shown by the block position (for example 20:04, not 20:00). A block continuing after midnight in the next date column is the SAME shift, not a new midnight shift. Return exactly one row for that event, using the original start date, the original evening start time, and the final next-morning end time. Never emit separate 00:00-02:00 or 00:00-04:00 continuation rows when they belong to an evening shift from the prior date.
-
-Normalize dates to YYYY-MM-DD and times to 24-hour HH:mm. For an overnight shift, keep the date on which the shift starts, return the next-morning end time, and set is_split_shift=true. Use the closest exact location from the location directory when the wording clearly matches; otherwise preserve the PDF's location text and explain it in issues. Put anything ambiguous, unreadable, unmatched, or omitted into issues instead of guessing. Before returning, verify each event's duration and ensure the sum of its pre-midnight and after-midnight portions is represented once.
-
-OFFICER DIRECTORY:
-${JSON.stringify(officers)}
-
-LOCATION DIRECTORY:
-${JSON.stringify(locations)}`;
-
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      file_urls: [fileUrl],
-      response_json_schema: RESPONSE_SCHEMA,
-    });
-
-    return Response.json({
-      shifts: Array.isArray(result?.shifts) ? result.shifts : [],
-      issues: Array.isArray(result?.issues) ? result.issues : [],
-    });
+    return Response.json({ shifts: deduplicated, issues, parser: 'deterministic-pdf-geometry-v1' });
   } catch (error) {
     console.error('parseSchedulePdf failed', error);
     return Response.json({ error: error?.message || 'Unable to extract the schedule PDF.' }, { status: 500 });
