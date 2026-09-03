@@ -171,10 +171,10 @@ Deno.serve(async (req) => {
         }, { index: -1, distance: Number.POSITIVE_INFINITY });
         if (column.index < 0 || column.distance > 45) continue;
 
-        const segmentIndex = midnightLabels.findIndex((midnight, index) => {
+        const segmentIndex = midnightLabels.findIndex(midnight => {
           const top = midnight.y + 23.5;
-          const nextTop = midnightLabels[index + 1]?.y + 23.5;
-          return box.y < top + 2 && (!nextTop || box.y + box.height > nextTop - 2);
+          const bottom = top - (24 * 74);
+          return box.y >= bottom - 2 && box.y + box.height <= top + 2;
         });
         if (segmentIndex < 0) continue;
         const midnight = midnightLabels[segmentIndex];
