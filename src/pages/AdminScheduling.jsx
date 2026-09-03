@@ -29,7 +29,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import { uploadInternalFile } from '@/lib/internalUpload';
 import { toast } from 'sonner';
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -889,7 +888,11 @@ export default function AdminScheduling() {
     setPdfImportRows([]);
     setPdfImportIssues([]);
     try {
-      const { file_url } = await uploadInternalFile(schedulePdf);
+      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: schedulePdf });
+      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
+        file_uri,
+        expires_in: 900,
+      });
       const officerDirectory = activeOfficers.map(officer => ({
         email: officer.email,
         name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email,
@@ -898,7 +901,7 @@ export default function AdminScheduling() {
       }));
       const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
       const response = await base44.functions.invoke('parse-schedule-pdf', {
-        file_url,
+        file_url: signed_url,
         officers: officerDirectory,
         locations: locationDirectory,
       });
@@ -965,8 +968,9 @@ export default function AdminScheduling() {
       else toast.success(`Extracted ${validRows.length} shift${validRows.length === 1 ? '' : 's'} for review.`);
     } catch (error) {
       console.error('Schedule PDF extraction failed:', error);
-      setPdfImportIssues([error?.message || 'The PDF could not be read.']);
-      toast.error('The schedule PDF could not be processed.');
+      const detail = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'The PDF could not be read.';
+      setPdfImportIssues([detail]);
+      toast.error(detail);
     } finally {
       setIsParsingPdf(false);
     }
