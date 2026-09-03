@@ -55,7 +55,9 @@ Deno.serve(async (req) => {
 
 Match each named officer to ONE entry in the supplied officer directory and return that entry's exact email. Use "OPEN" only when the PDF explicitly shows an open or unassigned shift. Never invent an officer, email, date, time, or location.
 
-Normalize dates to YYYY-MM-DD and times to 24-hour HH:mm. For an overnight shift, keep the date on which the shift starts and set is_split_shift=true. Use the closest exact location from the location directory when the wording clearly matches; otherwise preserve the PDF's location text and explain it in issues. Put anything ambiguous, unreadable, unmatched, or omitted into issues instead of guessing.
+This PDF is a vertical calendar/scheduler export. Derive each start and end time from the event block's exact vertical position against the hour grid; do not treat the date column boundary as the end of a shift. Preserve minute precision shown by the block position (for example 20:04, not 20:00). A block continuing after midnight in the next date column is the SAME shift, not a new midnight shift. Return exactly one row for that event, using the original start date, the original evening start time, and the final next-morning end time. Never emit separate 00:00-02:00 or 00:00-04:00 continuation rows when they belong to an evening shift from the prior date.
+
+Normalize dates to YYYY-MM-DD and times to 24-hour HH:mm. For an overnight shift, keep the date on which the shift starts, return the next-morning end time, and set is_split_shift=true. Use the closest exact location from the location directory when the wording clearly matches; otherwise preserve the PDF's location text and explain it in issues. Put anything ambiguous, unreadable, unmatched, or omitted into issues instead of guessing. Before returning, verify each event's duration and ensure the sum of its pre-midnight and after-midnight portions is represented once.
 
 OFFICER DIRECTORY:
 ${JSON.stringify(officers)}
