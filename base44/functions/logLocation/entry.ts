@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     // A GPS/heartbeat request that was already queued in the browser can arrive
     // after clock-out/logout retired the session. Never allow that trailing
     // request to reactivate an officer who is already Out of Service.
-    if (String(user.status || '').trim().toLowerCase() === 'out of service' && !body.status) {
+    if (String(user.status || '').trim().toLowerCase() === 'out of service') {
       const retired = [];
       for (const record of records || []) {
         if (record.session_active === false && String(record.status || '').toLowerCase() === 'out of service') continue;
