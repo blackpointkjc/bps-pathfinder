@@ -888,10 +888,13 @@ export default function AdminScheduling() {
     setPdfImportRows([]);
     setPdfImportIssues([]);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file: schedulePdf });
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri,
-        expires_in: 900,
+      // Read the PDF locally and send its bytes to our deterministic backend
+      // parser. This deliberately avoids Base44 UploadFile and AI integrations.
+      const pdfDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('The PDF could not be read from this device.'));
+        reader.readAsDataURL(schedulePdf);
       });
       const officerDirectory = activeOfficers.map(officer => ({
         email: officer.email,
@@ -901,7 +904,7 @@ export default function AdminScheduling() {
       }));
       const locationDirectory = (locations || []).map(location => location.site_name).filter(Boolean);
       const response = await base44.functions.invoke('parse-schedule-pdf', {
-        file_url: signed_url,
+        pdf_base64: pdfDataUrl,
         officers: officerDirectory,
         locations: locationDirectory,
       });
