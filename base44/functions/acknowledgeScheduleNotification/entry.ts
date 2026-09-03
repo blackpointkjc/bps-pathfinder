@@ -31,16 +31,32 @@ Deno.serve(async (req) => {
     }
 
     const acknowledgedAt = new Date().toISOString();
-    await base44.asServiceRole.entities.Notification.update(notificationId, {
-      is_read: true,
-      acknowledged_at: acknowledgedAt,
-      requires_acknowledgment: false,
-    });
+    const unreadForRecipient = await base44.asServiceRole.entities.Notification.filter({
+      recipient_email: notification.recipient_email,
+      is_read: false,
+    }, '-created_date', 500);
+    const duplicateIds = (unreadForRecipient || []).filter((record: any) =>
+      String(record.id) === notificationId
+      || (
+        notification.related_id
+        && String(record.related_id || '') === String(notification.related_id)
+        && String(record.type || '') === String(notification.type || '')
+      )
+    ).map((record: any) => String(record.id));
+
+    await Promise.all([...new Set([notificationId, ...duplicateIds])].map(id =>
+      base44.asServiceRole.entities.Notification.update(id, {
+        is_read: true,
+        acknowledged_at: acknowledgedAt,
+        requires_acknowledgment: false,
+      })
+    ));
 
     return Response.json({
       success: true,
       notification_id: notificationId,
       acknowledged_at: acknowledgedAt,
+      cleared_count: new Set([notificationId, ...duplicateIds]).size,
     });
   } catch (error) {
     console.error('acknowledgeScheduleNotification failed', error);
