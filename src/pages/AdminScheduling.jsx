@@ -911,8 +911,40 @@ export default function AdminScheduling() {
       const knownEmails = new Set(activeOfficers.map(officer => String(officer.email).toLowerCase()));
       const issues = [...(Array.isArray(extracted?.issues) ? extracted.issues : [])];
       const validRows = [];
+      const extractedRows = (Array.isArray(extracted?.shifts) ? extracted.shifts : []).map(row => ({ ...row }));
+      const canonicalRows = [];
 
-      (Array.isArray(extracted?.shifts) ? extracted.shifts : []).forEach((row, index) => {
+      // Calendar PDFs often render the after-midnight part of one event as a
+      // second block in the next date column. Merge that continuation back into
+      // its original evening shift so hours are counted once.
+      extractedRows.forEach(row => {
+        const officerKey = String(row?.officer_email || '').trim().toLowerCase();
+        const locationKey = String(row?.location || '').trim().toLowerCase();
+        const startTime = String(row?.start_time || '').trim();
+        const rowDate = String(row?.shift_date || '').trim();
+        const continuation = startTime === '00:00'
+          ? [...canonicalRows].reverse().find(previous => {
+              const previousDate = String(previous?.shift_date || '');
+              const nextDate = /^\d{4}-\d{2}-\d{2}$/.test(previousDate)
+                ? format(addDays(parseISO(previousDate), 1), 'yyyy-MM-dd')
+                : '';
+              return String(previous?.officer_email || '').trim().toLowerCase() === officerKey
+                && String(previous?.location || '').trim().toLowerCase() === locationKey
+                && nextDate === rowDate
+                && ['00:00', '23:59', '24:00'].includes(String(previous?.end_time || '').trim());
+            })
+          : null;
+        if (continuation) {
+          continuation.end_time = String(row?.end_time || continuation.end_time).trim();
+          continuation.is_split_shift = true;
+          continuation.site_details = [continuation.site_details, row?.site_details].filter(Boolean).join(' / ');
+          continuation.special_instructions = [continuation.special_instructions, row?.special_instructions].filter(Boolean).join(' / ');
+        } else {
+          canonicalRows.push(row);
+        }
+      });
+
+      canonicalRows.forEach((row, index) => {
         const officerEmail = String(row?.officer_email || '').trim();
         const shiftDate = String(row?.shift_date || '').trim();
         const startTime = String(row?.start_time || '').trim();
@@ -935,19 +967,27 @@ export default function AdminScheduling() {
           issues.push(`${rowLabel}: missing location.`);
           return;
         }
-        const duplicate = schedules.some(existing =>
+        const sameSlot = schedules.filter(existing =>
           String(existing.officer_email).toLowerCase() === officerEmail.toLowerCase()
           && existing.shift_date === shiftDate
-          && existing.start_time === startTime
-          && existing.end_time === endTime
           && String(existing.location).trim().toLowerCase() === location.toLowerCase()
         );
-        if (duplicate) {
-          issues.push(`${rowLabel}: duplicate shift already exists for ${officerEmail} on ${shiftDate}; it was excluded.`);
+        const exactDuplicate = sameSlot.find(existing =>
+          existing.start_time === startTime && existing.end_time === endTime
+        );
+        if (exactDuplicate) {
+          issues.push(`${rowLabel}: this exact shift is already on the schedule and will not be added again.`);
           return;
         }
+        if (sameSlot.length > 1) {
+          issues.push(`${rowLabel}: more than one existing shift matches ${officerEmail}, ${shiftDate}, and ${location}; review those shifts manually instead of creating another.`);
+          return;
+        }
+        const existingShift = sameSlot[0] || null;
         validRows.push({
           _importKey: `${index}-${officerEmail}-${shiftDate}-${startTime}`,
+          _existingId: existingShift?.id || '',
+          _action: existingShift ? 'update' : 'create',
           officer_email: officerEmail,
           shift_date: shiftDate,
           start_time: startTime,
@@ -980,14 +1020,25 @@ export default function AdminScheduling() {
     if (!pdfImportRows.length) return;
     setIsImportingPdf(true);
     try {
-      const rows = pdfImportRows.map(({ _importKey, ...row }) => row);
-      await bulkCreateShiftsMutation.mutateAsync(rows);
-      toast.success(`Imported ${rows.length} schedule shift${rows.length === 1 ? '' : 's'} from the PDF.`);
+      const updates = pdfImportRows.filter(row => row._action === 'update' && row._existingId);
+      const creates = pdfImportRows.filter(row => row._action !== 'update');
+      for (const { _importKey, _existingId, _action, ...row } of updates) {
+        await base44.entities.Schedule.update(_existingId, row);
+      }
+      if (creates.length) {
+        await bulkCreateShiftsMutation.mutateAsync(
+          creates.map(({ _importKey, _existingId, _action, ...row }) => row)
+        );
+      } else {
+        await queryClient.refetchQueries({ queryKey: ['allSchedules'] });
+      }
+      toast.success(`Schedule reconciled: ${updates.length} updated, ${creates.length} added, no duplicates created.`);
       setShowPdfImportDialog(false);
       resetPdfImport();
     } catch (error) {
       console.error('Schedule PDF import failed:', error);
-      toast.error(error?.message || 'The extracted schedule could not be imported.');
+      const detail = error?.response?.data?.error || error?.message || 'The extracted schedule could not be imported.';
+      toast.error(detail);
     } finally {
       setIsImportingPdf(false);
     }
