@@ -26,7 +26,7 @@ export default function DutySupervisorScheduling() {
   const [editing,setEditing] = useState(null);
   const [saving,setSaving] = useState(false);
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
-  const { data:user } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
+  const { data:user, isLoading:userLoading } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
   const canManage = user?.role === 'admin';
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
@@ -103,6 +103,9 @@ export default function DutySupervisorScheduling() {
   };
   const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; const results=await Promise.all((group.rows||[group]).map(row=>base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}))); const failed=results.map(response=>response?.data||response||{}).find(payload=>payload.error); if(failed?.error)return toast.error(failed.error); await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); };
   const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
+
+  if (userLoading) return <div className="min-h-screen bg-[#080d16] p-8 text-center text-slate-300">Checking administrator access…</div>;
+  if (!canManage) return <div className="min-h-screen bg-[#080d16] p-8 text-white"><div className="mx-auto max-w-xl rounded-2xl border border-red-700/50 bg-red-950/20 p-6 text-center"><h1 className="text-xl font-black">Administrator access required</h1><p className="mt-2 text-sm text-slate-400">Only administrators can view or manage the Duty Supervisor Schedule.</p></div></div>;
 
   return <div className="bps-command-page min-h-full bg-[#080d16] p-4 text-white md:p-6">
     <div className="mx-auto max-w-[1700px] space-y-5">
