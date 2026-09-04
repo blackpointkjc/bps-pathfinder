@@ -25,7 +25,6 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
         isOperationalUnit(u) &&
         !assignedUnitIds.includes(u.id) &&
         (u.status === 'Available' || u.status === 'On Patrol') &&
-        u.show_on_map !== false &&
         (searchTerm === '' || 
             u.unit_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
