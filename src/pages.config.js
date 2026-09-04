@@ -169,6 +169,7 @@ import ShiftReports from './pages/ShiftReports';
 import ShiftHandover from './pages/ShiftHandover';
 import Summons from './pages/Summons';
 import SupervisorCenter from './pages/SupervisorCenter';
+import SupervisorDutyTimeline from './pages/SupervisorDutyTimeline';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
 import SupervisorDailyCode from './pages/SupervisorDailyCode';
@@ -318,6 +319,7 @@ export const PAGES = {
     "ShiftHandover": ShiftHandover,
     "Summons": Summons,
     "SupervisorCenter": SupervisorCenter,
+    "SupervisorDutyTimeline": SupervisorDutyTimeline,
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
     "SupervisorDailyCode": SupervisorDailyCode,
