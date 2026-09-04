@@ -90,7 +90,7 @@ export default function SupervisorFieldOversight() {
   }, [locationPayload.users, locationPayload.clocked_in_without_session]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
-  const mappedUnits = useMemo(() => liveUnits.filter(hasUsablePosition), [liveUnits]);
+  const mappedUnits = useMemo(() => liveUnits.filter(unit => unit?.show_on_map !== false && hasUsablePosition(unit)), [liveUnits]);
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
   const attentionCount = attention.length + supervisorRequests.length + welfareChecks.filter(check => lower(check.status) === 'pending').length;
   const pendingWelfare = useMemo(() => welfareChecks.filter(check => lower(check.status) === 'pending'), [welfareChecks]);
@@ -154,7 +154,19 @@ export default function SupervisorFieldOversight() {
   };
 
   return <div className="min-h-screen bg-[#07111d] text-slate-100">
-    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7"><div className="mx-auto flex max-w-[1700px] flex-wrap items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div><div className="flex flex-wrap gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme}/><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div></div></div>
+    <div className="border-b border-slate-800 bg-[#0a1421] px-4 py-5 md:px-7">
+      <div className="mx-auto max-w-[1700px]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div>
+          <div className="flex flex-wrap gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme}/><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div>
+        </div>
+        <nav aria-label="Supervisor operations tabs" className="mt-5 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
+          <button type="button" aria-current="page" className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-black text-slate-950">Live Field Oversight</button>
+          <button type="button" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=dutytimeline`)} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-400 hover:text-cyan-300">Daily Duty Timeline</button>
+          <button type="button" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=command&tool=dutyschedule`)} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-400 hover:text-cyan-300">Duty Supervisor Schedule</button>
+        </nav>
+      </div>
+    </div>
 
     <main className="mx-auto max-w-[1700px] space-y-5 p-4 md:p-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
