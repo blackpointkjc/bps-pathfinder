@@ -10,7 +10,8 @@
       "type": "string",
       "enum": [
         "hr",
-        "admin"
+        "admin",
+        "supervisor"
       ],
       "description": "Team that owns this work item"
     },
