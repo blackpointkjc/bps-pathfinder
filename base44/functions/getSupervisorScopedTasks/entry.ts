@@ -64,6 +64,85 @@ Deno.serve(async (req) => {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
+    const supervisorStates = await base44.asServiceRole.entities.WorkQueueState
+      .filter({ queue_role:'supervisor' }, '-completed_at', 2000)
+      .catch(() => []);
+    const completedSupervisorKeys = new Set(
+      (supervisorStates || [])
+        .filter((state:any) => ['completed','auto_completed'].includes(normalized(state.status)))
+        .map((state:any) => String(state.task_key || ''))
+    );
+
+    if (normalized(request?.action) === 'finish') {
+      const taskKey = String(request?.task_key || '').trim();
+      if (!taskKey || taskKey.length > 240) return Response.json({ error:'A valid task key is required' }, { status:400 });
+      const completedAt = new Date().toISOString();
+      const title = String(request?.title || 'Supervisor follow-up').slice(0, 250);
+      const person = String(request?.person || '').slice(0, 250);
+      const sourceKind = String(request?.kind || '').slice(0, 100);
+      const sourceId = String(request?.source_id || '').slice(0, 250);
+      const supervisorPatch = {
+        status:'completed',
+        completed_at:completedAt,
+        completed_by:me.email || String(me.id),
+        completion_note:'Supervisor contacted officer',
+        last_seen_at:completedAt,
+      };
+      const existingSupervisor = (supervisorStates || []).filter((state:any) => String(state.task_key) === taskKey);
+      if (existingSupervisor.length) {
+        await Promise.all(existingSupervisor.map((state:any) =>
+          base44.asServiceRole.entities.WorkQueueState.update(state.id, supervisorPatch)
+        ));
+      } else {
+        await base44.asServiceRole.entities.WorkQueueState.create({
+          task_key:taskKey, queue_role:'supervisor', title, person,
+          source_kind:sourceKind, source_id:sourceId, ...supervisorPatch,
+        });
+      }
+
+      // Supervisors clear the operational queue everywhere they work, while
+      // administrators retain a permanent, clearly worded completion record.
+      const adminTaskKey = `supervisor-contacted-${taskKey}`;
+      const adminStates = await base44.asServiceRole.entities.WorkQueueState
+        .filter({ queue_role:'admin', task_key:adminTaskKey }, '-completed_at', 20)
+        .catch(() => []);
+      const adminRecord = {
+        status:'completed',
+        completed_at:completedAt,
+        completed_by:me.email || String(me.id),
+        completion_note:`Supervisor contacted officer regarding: ${title}`.slice(0, 1000),
+        last_seen_at:completedAt,
+      };
+      if (adminStates.length) {
+        await Promise.all(adminStates.map((state:any) =>
+          base44.asServiceRole.entities.WorkQueueState.update(state.id, adminRecord)
+        ));
+      } else {
+        await base44.asServiceRole.entities.WorkQueueState.create({
+          task_key:adminTaskKey,
+          queue_role:'admin',
+          title:'Supervisor contacted officer',
+          person,
+          source_kind:sourceKind,
+          source_id:sourceId,
+          ...adminRecord,
+        });
+      }
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type:'WorkQueueState',
+        entity_id:taskKey,
+        action:'status_change',
+        actor_id:String(me.id || me.email),
+        actor_name:[me.first_name, me.last_name].filter(Boolean).join(' ') || me.email,
+        before_value:JSON.stringify({ status:'open' }),
+        after_value:JSON.stringify({ status:'completed', note:'Supervisor contacted officer' }),
+        field_changed:'status',
+        timestamp:completedAt,
+        description:`Supervisor contacted officer and finished work item: ${title}`,
+      }).catch(() => null);
+      return Response.json({ success:true, task_key:taskKey, status:'completed', wording:'Supervisor contacted officer' });
+    }
+
     const [allUsers, teamsLinks, outlookLinks] = await Promise.all([
       base44.asServiceRole.entities.User.list(undefined, 1000),
       base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000).catch(() => []),
@@ -170,12 +249,21 @@ Deno.serve(async (req) => {
       return !reportLegacyKeys.has(key);
     });
 
+    const visibleMissedClockIns = missedClockIns.filter((row:any) => !completedSupervisorKeys.has(`missed-clock-${row.id}`));
+    const visibleMissingReports = missingReports.filter((row:any) => !completedSupervisorKeys.has(`missing-report-${row.id}`));
+    const visibleComplaints = (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status))
+      .filter((row:any) => !completedSupervisorKeys.has(`complaint-${row.id}`));
+    const visibleWriteups = (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval')
+      .filter((row:any) => !completedSupervisorKeys.has(`writeup-${row.id}`));
+    const visibleInspections = (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed)
+      .filter((row:any) => !completedSupervisorKeys.has(`inspection-${row.id}`));
+
     return Response.json({
       assignedPeople,
-      missedClockIns,
-      missingReports,
-      complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
-      writeups: (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval'),
+      missedClockIns:visibleMissedClockIns,
+      missingReports:visibleMissingReports,
+      complaints: visibleComplaints,
+      writeups: visibleWriteups,
       reviews: (reviews || []).filter((r:any) => {
         const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
         if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
@@ -189,7 +277,7 @@ Deno.serve(async (req) => {
         if (!officer || !reviewerOutranks(me, officer)) return false;
         return String(r.assigned_supervisor_id || '') === String(me.id || '');
       }),
-      inspections: (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed),
+      inspections: visibleInspections,
     });
   } catch (error) {
     console.error('getSupervisorScopedTasks failed', error);
