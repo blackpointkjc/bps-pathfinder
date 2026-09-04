@@ -60,16 +60,45 @@ export default function Schedule() {
     return [start, end];
   };
   const normalizeSite = value => String(value || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
-  const dutySupervisorForShift = shift => {
+  const formatWindowTime = timestamp => {
+    const value = new Date(timestamp);
+    return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+  };
+  const dutySupervisorsForShift = shift => {
     const [shiftStart, shiftEnd] = intervalFor(shift.shift_date, shift.start_time, shift.end_time);
-    return dutySupervisorAssignments.find(row => {
-      if (String(row.status || '').toLowerCase() === 'cancelled') return false;
-      const coverage = String(row.location || 'ALL');
-      const locationMatches = coverage === 'ALL' || normalizeSite(coverage) === normalizeSite(shift.location);
-      if (!locationMatches) return false;
-      const [dutyStart, dutyEnd] = intervalFor(row.assignment_date, row.start_time, row.end_time);
-      return dutyStart < shiftEnd && shiftStart < dutyEnd;
+    const matches = dutySupervisorAssignments
+      .filter(row => {
+        if (String(row.status || '').toLowerCase() === 'cancelled') return false;
+        const coverage = String(row.location || 'ALL');
+        const locationMatches = coverage === 'ALL' || normalizeSite(coverage) === normalizeSite(shift.location);
+        if (!locationMatches) return false;
+        const [dutyStart, dutyEnd] = intervalFor(row.assignment_date, row.start_time, row.end_time);
+        return dutyStart < shiftEnd && shiftStart < dutyEnd;
+      })
+      .map(row => {
+        const [dutyStart, dutyEnd] = intervalFor(row.assignment_date, row.start_time, row.end_time);
+        const overlapStart = Math.max(shiftStart, dutyStart);
+        const overlapEnd = Math.min(shiftEnd, dutyEnd);
+        return {
+          ...row,
+          overlapStart,
+          overlapEnd,
+          shift_window: `${formatWindowTime(overlapStart)}–${formatWindowTime(overlapEnd)}`,
+        };
+      })
+      .sort((a, b) => a.overlapStart - b.overlapStart || a.overlapEnd - b.overlapEnd);
+
+    // Scheduling one supervisor for both ALL and the exact site can create two
+    // records for the same time block. Show that supervisor once, preferring the
+    // site-specific record, while preserving genuinely different supervisors.
+    const unique = new Map();
+    matches.forEach(row => {
+      const identity = String(row.supervisor_email || row.supervisor_name || row.id || '').toLowerCase();
+      const key = `${identity}|${row.overlapStart}|${row.overlapEnd}`;
+      const existing = unique.get(key);
+      if (!existing || (String(existing.location || 'ALL') === 'ALL' && String(row.location || 'ALL') !== 'ALL')) unique.set(key, row);
     });
+    return [...unique.values()];
   };
   const dedicatedSupervisorForShift = shift => {
     const location = scheduleLocations.find(row => normalizeSite(row.site_name) === normalizeSite(shift.location));
@@ -445,18 +474,37 @@ export default function Schedule() {
                               </div>
                             )}
                             {(() => {
-                              const duty = dutySupervisorForShift(schedule);
-                              const dedicated = dedicatedSupervisorForShift(schedule);
-                              const supervisorName = duty?.supervisor_name || (duty ? getUserName(duty.supervisor_email) : dedicated?.name);
-                              if (!supervisorName) return null;
+                              const duties = dutySupervisorsForShift(schedule);
+                              const dedicated = duties.length === 0 ? dedicatedSupervisorForShift(schedule) : null;
+                              if (duties.length === 0 && !dedicated?.name) return null;
                               return (
                                 <div className="mt-2 flex items-start gap-2 rounded-xl border border-cyan-700/50 bg-cyan-950/20 px-3 py-3">
                                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
                                   <div className="min-w-0 flex-1 break-words">
-                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">{duty ? 'Duty Supervisor' : 'Dedicated Site Supervisor'}</div>
-                                    <div className="mt-0.5 break-words text-[12px] font-black leading-4 text-cyan-100">{supervisorName}</div>
-                                    <div className="mt-1 break-words text-[10px] leading-4 text-cyan-300/90">{duty ? `Coverage ${duty.start_time}–${duty.end_time}${duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}` : `${dedicated.location} dedicated supervisor`}</div>
-                                    <div className="mt-1.5 text-[9px] font-semibold leading-4 text-cyan-200">Contact this supervisor first for site-specific issues, guidance, or escalation while you are assigned here.</div>
+                                    <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">
+                                      {duties.length > 1 ? `Duty Supervisors (${duties.length})` : duties.length === 1 ? 'Duty Supervisor' : 'Dedicated Site Supervisor'}
+                                    </div>
+                                    {duties.length > 0 ? (
+                                      <div className="mt-1.5 space-y-2">
+                                        {duties.map((duty, index) => {
+                                          const supervisorName = duty.supervisor_name || getUserName(duty.supervisor_email);
+                                          return (
+                                            <div key={duty.id || `${duty.supervisor_email}-${duty.overlapStart}-${index}`} className={index ? 'border-t border-cyan-800/50 pt-2' : ''}>
+                                              <div className="break-words text-[12px] font-black leading-4 text-cyan-100">{supervisorName}</div>
+                                              <div className="mt-1 break-words text-[10px] leading-4 text-cyan-300/90">
+                                                Covers your shift {duty.shift_window}{duty.location && duty.location !== 'ALL' ? ` · ${duty.location}` : ' · All sites'}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="mt-0.5 break-words text-[12px] font-black leading-4 text-cyan-100">{dedicated.name}</div>
+                                        <div className="mt-1 break-words text-[10px] leading-4 text-cyan-300/90">{dedicated.location} dedicated supervisor</div>
+                                      </>
+                                    )}
+                                    <div className="mt-1.5 text-[9px] font-semibold leading-4 text-cyan-200">Contact the supervisor covering the current portion of your shift for site-specific issues, guidance, or escalation.</div>
                                   </div>
                                 </div>
                               );
