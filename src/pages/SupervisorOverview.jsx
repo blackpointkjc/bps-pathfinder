@@ -75,7 +75,8 @@ export default function SupervisorOverview() {
   const board = data.board || {};
   const complaints = tasks.complaints || [];
   const writeups = tasks.writeups || [];
-  const reviews = [...(tasks.reviews || []), ...(tasks.reviewFollowUps || [])];
+  const reviews = tasks.reviews || [];
+  const reviewFollowUps = tasks.reviewFollowUps || [];
   const inspections = tasks.inspections || [];
   const missedClockIns = tasks.missedClockIns || [];
   const missingReports = tasks.missingReports || [];
@@ -95,12 +96,13 @@ export default function SupervisorOverview() {
     ...missedClockIns.slice(0,6).map(row => ({ id:`missed-clock-${row.id}`, source_id:row.id, kind:'missed_clock_in', title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}` })),
     ...missingReports.slice(0,6).map(row => ({ id:`missing-report-${row.id}`, source_id:row.id, kind:'missing_report', title:'Required Daily Report Missing', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${String(row.clock_in || '').slice(0,10)} · ${row.location || 'Location not listed'}` })),
     ...reviews.slice(0,4).map(row => ({ id:`review-${row.id}`, source_id:row.id, kind:'review', title:'Performance Review', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Supervisor review/signature workflow requires action' })),
+    ...reviewFollowUps.slice(0,4).map(row => ({ id:`review-followup-${row.id}`, source_id:row.id, kind:'review_follow_up', title:'Performance Review Follow-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Officer acknowledgement follow-up requires action' })),
     ...inspections.slice(0,4).map(row => ({ id:`inspection-${row.id}`, source_id:row.id, kind:'inspection', title:'Officer Inspection', person:operationalName(row,directory,{fallback:'Officer'}), detail:row.location || 'Inspection follow-up required' })),
     ...writeups.slice(0,4).map(row => ({ id:`writeup-${row.id}`, source_id:row.id, kind:'writeup', title:'Write-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Disciplinary review requires supervisor action' })),
     ...complaints.slice(0,4).map(row => ({ id:`complaint-${row.id}`, source_id:row.id, kind:'complaint', title:'Complaint Investigation', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Complaint investigation/follow-up required' })),
   ].slice(0,10);
 
-  const totalTasks = complaints.length + writeups.length + reviews.length + inspections.length + missedClockIns.length + missingReports.length;
+  const totalTasks = complaints.length + writeups.length + reviews.length + reviewFollowUps.length + inspections.length + missedClockIns.length + missingReports.length;
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
