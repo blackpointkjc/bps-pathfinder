@@ -84,6 +84,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     // passes stale cached data. Only an explicitly active live session can render.
     const unitsToShow = units
       .filter(unit => unit.id !== currentUserId)
+      .filter(unit => unit.show_on_map !== false)
       .filter(unit => unit.session_active === true)
       .filter(unit => String(unit.status || '').trim().toLowerCase() !== 'out of service')
       .map(unit => {
