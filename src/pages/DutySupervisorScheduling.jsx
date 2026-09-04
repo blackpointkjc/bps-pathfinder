@@ -27,8 +27,7 @@ export default function DutySupervisorScheduling() {
   const [saving,setSaving] = useState(false);
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
   const { data:user } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
-  const roles = new Set((user?.additional_roles || []).map(lower));
-  const canManage = user?.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || user?.is_supervisor === true;
+  const canManage = user?.role === 'admin';
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
   const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:()=>base44.entities.DutySupervisorAssignment.list('-assignment_date',1000), refetchInterval:30000 });
