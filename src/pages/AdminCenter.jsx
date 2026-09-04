@@ -39,7 +39,6 @@ import OfficerCenter from './OfficerCenter';
 import SupervisorCenter from './SupervisorCenter';
 import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorOverview from './SupervisorOverview';
-import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorDailyCode from './SupervisorDailyCode';
@@ -124,7 +123,6 @@ const ADMIN_TOOLS = {
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
-  { id: 'dutytimeline', label: 'Daily Duty Timeline', description: 'See every duty supervisor across a complete 24-hour day', icon: Calendar },
   { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },
 ];
@@ -134,7 +132,8 @@ const ADMIN_SUPERVISOR_TOOLS = {
     { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
     { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
-    { id: 'dutyschedule', label: 'Duty Supervisor Schedule', component: DutySupervisorScheduling },
+    { id: 'dutytimeline', label: 'Daily Duty Timeline', page: 'SupervisorDutyTimeline' },
+    { id: 'dutyschedule', label: 'Duty Supervisor Schedule', page: 'DutySupervisorScheduling' },
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
     { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
@@ -152,7 +151,6 @@ function AdminSupervisorToolsOnly() {
   return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Complete supervisor tools for administrators, without the personal Officer Workspace." sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="overview" queryParam="admin_supervisor_section" embedded>
     {section => {
       if (section === 'overview') return <SupervisorOverview />;
-      if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
       return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />;
     }}
   </UnifiedCenter>;
