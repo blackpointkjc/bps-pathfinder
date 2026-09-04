@@ -321,6 +321,26 @@ Deno.serve(async (req) => {
           && gpsTs > 0
           && hasValidCoordinates(active?.latitude, active?.longitude)
           && usableGpsAccuracy(active?.accuracy);
+        const userGpsTimestamp = user.gps_updated_at || user.last_gps_updated_at || user.last_updated || user.updated_date || '';
+        const userGpsTs = new Date(userGpsTimestamp || 0).getTime();
+        const userAccuracy = Number(user.accuracy);
+        const hasFreshUserGps = signedInFresh
+          && Number.isFinite(userGpsTs)
+          && userGpsTs >= gpsFreshCutoff
+          && hasValidCoordinates(user.latitude, user.longitude)
+          && usableGpsAccuracy(user.accuracy);
+        const hasStoredUsableUserPosition = Number.isFinite(userGpsTs)
+          && userGpsTs > 0
+          && hasValidCoordinates(user.latitude, user.longitude)
+          && usableGpsAccuracy(user.accuracy);
+        // Some existing sessions still write their accepted device fix to User
+        // while ActiveOfficer only carries presence/status. Treat User as the
+        // current-session location fallback so those officers do not disappear
+        // from supervisor/CAD maps while the migration completes.
+        const freshPosition = hasFreshGps ? active : (hasFreshUserGps ? user : null);
+        const storedPosition = hasStoredUsablePosition ? active : (hasStoredUsableUserPosition ? user : null);
+        const storedGpsTimestamp = hasStoredUsablePosition ? active?.gps_updated_at : userGpsTimestamp;
+        const storedAccuracy = hasStoredUsablePosition ? accuracy : userAccuracy;
         const clockInAccuracy = Number(openEntry?.clock_in_accuracy);
         const hasClockInPosition = Boolean(openEntry)
           && hasValidCoordinates(openEntry?.clock_in_latitude, openEntry?.clock_in_longitude)
@@ -345,28 +365,29 @@ Deno.serve(async (req) => {
             ? (active?.current_location || openEntry?.location || user.assigned_location || '')
             : (openEntry?.location || user.assigned_location || ''),
           assigned_location: user.assigned_location || '',
-          latitude: hasFreshGps ? Number(active.latitude) : null,
-          longitude: hasFreshGps ? Number(active.longitude) : null,
-          heading: hasFreshGps ? active.heading : null,
-          speed: hasFreshGps ? active.speed : 0,
-          accuracy: Number.isFinite(accuracy) ? accuracy : null,
-          gps_updated_at: hasFreshGps ? active.gps_updated_at : null,
-          gps_source: hasFreshGps ? (active?.gps_source || 'browser_geolocation') : '',
-          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (hasFreshGps || hasStoredUsablePosition ? active?.gps_updated_at : (hasClockInPosition ? openEntry.clock_in : null)),
-          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasFreshGps || hasStoredUsablePosition ? Number(active.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : null)),
-          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasFreshGps || hasStoredUsablePosition ? Number(active.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : null)),
-          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasFreshGps || hasStoredUsablePosition ? accuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : null)),
-          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (hasFreshGps || hasStoredUsablePosition ? (active?.gps_source || '') : (hasClockInPosition ? 'shift_clock_in' : '')),
+          show_on_map: user.show_on_map !== false,
+          latitude: freshPosition ? Number(freshPosition.latitude) : null,
+          longitude: freshPosition ? Number(freshPosition.longitude) : null,
+          heading: freshPosition?.heading ?? null,
+          speed: freshPosition?.speed ?? 0,
+          accuracy: freshPosition && Number.isFinite(Number(freshPosition.accuracy)) ? Number(freshPosition.accuracy) : null,
+          gps_updated_at: freshPosition ? (freshPosition.gps_updated_at || userGpsTimestamp) : null,
+          gps_source: freshPosition ? (freshPosition.gps_source || (freshPosition === user ? 'user_location_fallback' : 'browser_geolocation')) : '',
+          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (storedPosition ? storedGpsTimestamp : (hasClockInPosition ? openEntry.clock_in : null)),
+          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (storedPosition ? Number(storedPosition.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : null)),
+          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (storedPosition ? Number(storedPosition.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : null)),
+          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (storedPosition ? storedAccuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : null)),
+          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (storedPosition ? (storedPosition.gps_source || (storedPosition === user ? 'user_location_fallback' : '')) : (hasClockInPosition ? 'shift_clock_in' : '')),
           // Show the officer's best available device position even when it isn't
           // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the
           // current record renders as a low-accuracy marker rather than hiding
           // the officer.
-          coarse_latitude: !hasFreshGps && hasStoredUsablePosition ? Number(active.latitude) : null,
-          coarse_longitude: !hasFreshGps && hasStoredUsablePosition ? Number(active.longitude) : null,
-          coarse_accuracy: !hasFreshGps && hasStoredUsablePosition ? accuracy : null,
-          coarse_gps_updated_at: !hasFreshGps ? active?.gps_updated_at || null : null,
-          coarse_stale: !hasFreshGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
-          gps_pending: operationallySignedIn && !hasFreshGps,
+          coarse_latitude: !freshPosition && storedPosition ? Number(storedPosition.latitude) : null,
+          coarse_longitude: !freshPosition && storedPosition ? Number(storedPosition.longitude) : null,
+          coarse_accuracy: !freshPosition && storedPosition ? storedAccuracy : null,
+          coarse_gps_updated_at: !freshPosition && storedPosition ? storedGpsTimestamp : null,
+          coarse_stale: !freshPosition && Boolean(storedPosition),
+          gps_pending: operationallySignedIn && !freshPosition,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
           session_active: operationallySignedIn,
