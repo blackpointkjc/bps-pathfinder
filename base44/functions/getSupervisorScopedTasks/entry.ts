@@ -257,6 +257,19 @@ Deno.serve(async (req) => {
       .filter((row:any) => !completedSupervisorKeys.has(`writeup-${row.id}`));
     const visibleInspections = (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed)
       .filter((row:any) => !completedSupervisorKeys.has(`inspection-${row.id}`));
+    const visibleReviews = (reviews || []).filter((r:any) => {
+      const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
+      if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
+      const officer = officerForReview(r);
+      if (!officer || !reviewerOutranks(me, officer)) return false;
+      return String(r.assigned_supervisor_id || '') === String(me.id || '');
+    }).filter((row:any) => !completedSupervisorKeys.has(`review-${row.id}`));
+    const visibleReviewFollowUps = (reviews || []).filter((r:any) => {
+      if (String(r.workflow_stage || '') !== 'officer_pending' || r.officer_acknowledged) return false;
+      const officer = officerForReview(r);
+      if (!officer || !reviewerOutranks(me, officer)) return false;
+      return String(r.assigned_supervisor_id || '') === String(me.id || '');
+    }).filter((row:any) => !completedSupervisorKeys.has(`review-followup-${row.id}`));
 
     return Response.json({
       assignedPeople,
@@ -264,19 +277,8 @@ Deno.serve(async (req) => {
       missingReports:visibleMissingReports,
       complaints: visibleComplaints,
       writeups: visibleWriteups,
-      reviews: (reviews || []).filter((r:any) => {
-        const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
-        if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
-        const officer = officerForReview(r);
-        if (!officer || !reviewerOutranks(me, officer)) return false;
-        return String(r.assigned_supervisor_id || '') === String(me.id || '');
-      }),
-      reviewFollowUps: (reviews || []).filter((r:any) => {
-        if (String(r.workflow_stage || '') !== 'officer_pending' || r.officer_acknowledged) return false;
-        const officer = officerForReview(r);
-        if (!officer || !reviewerOutranks(me, officer)) return false;
-        return String(r.assigned_supervisor_id || '') === String(me.id || '');
-      }),
+      reviews: visibleReviews,
+      reviewFollowUps: visibleReviewFollowUps,
       inspections: visibleInspections,
     });
   } catch (error) {
