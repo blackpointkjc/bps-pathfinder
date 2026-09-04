@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool', workspaceClassName = '' }) {
   const location = useLocation();
@@ -13,6 +14,11 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
     : fallbackTool;
 
   const select = next => {
+    const selected = safeTools.find(item => item.id === next);
+    if (selected?.page) {
+      navigate(createPageUrl(selected.page));
+      return;
+    }
     const params = new URLSearchParams(location.search);
     params.set(queryParam, next);
     ['entry_id', 'record_id', 'queue_task', 'queue_kind'].forEach(param => params.delete(param));
