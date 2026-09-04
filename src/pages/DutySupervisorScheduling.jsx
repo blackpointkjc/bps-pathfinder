@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, ChevronLeft, ChevronRight, CalendarClock, MapPin, Trash2, CheckCircle2, Check } from 'lucide-react';
+import { ShieldCheck, ChevronLeft, ChevronRight, CalendarClock, MapPin, Trash2, CheckCircle2, Check, Printer } from 'lucide-react';
+import { openBlackPointReport } from '@/lib/reportPrint';
 import { toast } from 'sonner';
 import { confirmInApp } from '@/lib/inAppDialog';
 
@@ -41,9 +42,20 @@ export default function DutySupervisorScheduling() {
   const dates=Array.from({length:7},(_,i)=>format(addDays(windowStart,i),'yyyy-MM-dd'));
   const visible=assignments.filter(row=>dates.includes(String(row.assignment_date||'').slice(0,10))&&lower(row.status)!=='cancelled');
   const personLabel=email=>{ const p=users.find(row=>lower(row.email)===lower(email)); return p ? [p.rank,p.last_name||p.first_name].filter(Boolean).join(' ') : email; };
+  const groupedVisible = useMemo(() => {
+    const groups = new Map();
+    visible.forEach(row => {
+      const key = [row.assignment_date, row.start_time, row.end_time, lower(row.supervisor_email || row.supervisor_name)].join('|');
+      const current = groups.get(key) || { ...row, rows: [], locations: [] };
+      current.rows.push(row);
+      if (!current.locations.includes(row.location || 'ALL')) current.locations.push(row.location || 'ALL');
+      groups.set(key, current);
+    });
+    return [...groups.values()].sort((a,b) => String(a.assignment_date).localeCompare(String(b.assignment_date)) || minutes(a.start_time)-minutes(b.start_time) || personLabel(a.supervisor_email).localeCompare(personLabel(b.supervisor_email)));
+  }, [visible, users]);
 
   const reset = date => { setEditing(null); setForm({ assignment_date:date||format(windowStart,'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' }); };
-  const startEdit = row => { setEditing(row); setForm({ assignment_date:row.assignment_date,start_time:row.start_time,end_time:row.end_time,locations:[row.location||'ALL'],supervisor_emails:[row.supervisor_email],notes:row.notes||'' }); };
+  const startEdit = group => { setEditing(group); setForm({ assignment_date:group.assignment_date,start_time:group.start_time,end_time:group.end_time,locations:group.locations?.length?group.locations:['ALL'],supervisor_emails:[group.supervisor_email],notes:group.notes||'' }); };
   const toggleSupervisor = email => setForm(current => {
     const selected = Array.isArray(current.supervisor_emails) ? current.supervisor_emails : [];
     const next = selected.includes(email) ? selected.filter(value => value !== email) : [...selected, email];
@@ -61,15 +73,24 @@ export default function DutySupervisorScheduling() {
     const requestedSupervisors = Array.isArray(form.supervisor_emails) ? form.supervisor_emails.filter(Boolean) : [];
     if(!requestedSupervisors.length) return toast.error('Select at least one duty supervisor.');
     const requestedAreas = Array.isArray(form.locations) && form.locations.length ? form.locations : ['ALL'];
-    const duplicate=assignments.find(row=>row.id!==editing?.id&&row.assignment_date===form.assignment_date&&lower(row.status)!=='cancelled'&&overlaps(row.start_time,row.end_time,form.start_time,form.end_time)&&requestedAreas.some(area => lower(row.location||'ALL')===lower(area))&&requestedSupervisors.some(email => lower(row.supervisor_email)===lower(email)));
+    const editingIds = new Set((editing?.rows || []).map(row => row.id));
+    const duplicate=assignments.find(row=>!editingIds.has(row.id)&&row.assignment_date===form.assignment_date&&lower(row.status)!=='cancelled'&&overlaps(row.start_time,row.end_time,form.start_time,form.end_time)&&requestedAreas.some(area => lower(row.location||'ALL')===lower(area))&&requestedSupervisors.some(email => lower(row.supervisor_email)===lower(email)));
     if(duplicate) return toast.error(`${duplicate.supervisor_name||personLabel(duplicate.supervisor_email)} is already assigned to ${duplicate.location==='ALL'?'All Sites':duplicate.location} during this time.`);
     setSaving(true);
     try {
       if (editing) {
-        const area = requestedAreas[0] || 'ALL';
         const supervisor_email = requestedSupervisors[0];
-        const response=await base44.functions.invoke('manageDutySupervisorSchedule',{ action:'save', assignment:{...form,supervisor_email,location:area,id:editing.id,status:'scheduled'} });
-        const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error);
+        const existingByArea = new Map((editing.rows || []).map(row => [lower(row.location || 'ALL'), row]));
+        const results = [];
+        for (const location of requestedAreas) {
+          const existing = existingByArea.get(lower(location));
+          results.push(await base44.functions.invoke('manageDutySupervisorSchedule',{ action:'save', assignment:{...form,supervisor_email,location,id:existing?.id,status:'scheduled'} }));
+        }
+        for (const row of (editing.rows || []).filter(row => !requestedAreas.some(area => lower(area) === lower(row.location || 'ALL')))) {
+          results.push(await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}));
+        }
+        const failed = results.map(response => response?.data||response||{}).find(payload => payload.error);
+        if(failed?.error) throw new Error(failed.error);
       } else {
         const combinations = requestedSupervisors.flatMap(supervisor_email => requestedAreas.map(location => ({ supervisor_email, location })));
         const results = await Promise.all(combinations.map(({supervisor_email,location}) => base44.functions.invoke('manageDutySupervisorSchedule',{ action:'save', assignment:{...form,supervisor_email,location,status:'scheduled'} })));
@@ -81,7 +102,8 @@ export default function DutySupervisorScheduling() {
       toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
     } catch(e){ toast.error(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
   };
-  const remove=async row=>{ if(!canManage||!await confirmInApp(`Remove ${row.supervisor_name||personLabel(row.supervisor_email)} from duty supervisor coverage?`)) return; const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error)return toast.error(payload.error); await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); toast.success('Duty supervisor assignment removed.'); };
+  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; const results=await Promise.all((group.rows||[group]).map(row=>base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}))); const failed=results.map(response=>response?.data||response||{}).find(payload=>payload.error); if(failed?.error)return toast.error(failed.error); await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); };
+  const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
 
   return <div className="bps-command-page min-h-full bg-[#080d16] p-4 text-white md:p-6">
     <div className="mx-auto max-w-[1700px] space-y-5">
