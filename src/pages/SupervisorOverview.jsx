@@ -52,6 +52,7 @@ export default function SupervisorOverview() {
       });
       toast.success('Finished — Supervisor contacted officer.');
       queryClient.invalidateQueries({ queryKey:['adminDashboardWorkQueue'] });
+      queryClient.invalidateQueries({ queryKey:['supervisorOverviewSnapshot'] });
     },
     onError: error => toast.error(error?.message || 'Unable to finish this task'),
   });
@@ -62,9 +63,13 @@ export default function SupervisorOverview() {
       const users = await listDirectoryUsers('-last_updated', 500).catch(() => []);
       const taskResult = await base44.functions.invoke('getSupervisorScopedTasks', {}).catch(() => ({}));
       const taskPayload = taskResult?.data || taskResult || {};
-      const boardResult = await base44.functions.invoke('getSupervisorWelfareBoard', {}).catch(() => ({}));
+      const [boardResult, reportResult] = await Promise.all([
+        base44.functions.invoke('getSupervisorWelfareBoard', {}).catch(() => ({})),
+        base44.functions.invoke('getRoleWorkQueue', { queue_role:'supervisor_reports' }).catch(() => ({})),
+      ]);
       const board = boardResult?.data || boardResult || {};
-      return { users, tasks: taskPayload, board };
+      const reportWork = reportResult?.data || reportResult || {};
+      return { users, tasks: taskPayload, board, reportWork };
     },
     staleTime: 30000,
     refetchInterval: 60000,
@@ -73,6 +78,7 @@ export default function SupervisorOverview() {
   const directory = buildDirectoryIndex(data.users || []);
   const tasks = data.tasks || {};
   const board = data.board || {};
+  const reportTasks = (data.reportWork?.tasks || []).filter(task => task.kind === 'report_review');
   const complaints = tasks.complaints || [];
   const writeups = tasks.writeups || [];
   const reviews = tasks.reviews || [];
@@ -95,6 +101,7 @@ export default function SupervisorOverview() {
   const taskQueue = [
     ...missedClockIns.slice(0,6).map(row => ({ id:`missed-clock-${row.id}`, source_id:row.id, kind:'missed_clock_in', title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}` })),
     ...missingReports.slice(0,6).map(row => ({ id:`missing-report-${row.id}`, source_id:row.id, kind:'missing_report', title:'Required Daily Report Missing', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${String(row.clock_in || '').slice(0,10)} · ${row.location || 'Location not listed'}` })),
+    ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:'report_review', title:row.title || 'Report Awaiting Review', person:row.person || 'Officer', detail:row.detail || 'Submitted report requires supervisor review' })),
     ...reviews.slice(0,4).map(row => ({ id:`review-${row.id}`, source_id:row.id, kind:'review', title:'Performance Review', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Supervisor review/signature workflow requires action' })),
     ...reviewFollowUps.slice(0,4).map(row => ({ id:`review-followup-${row.id}`, source_id:row.id, kind:'review_follow_up', title:'Performance Review Follow-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Officer acknowledgement follow-up requires action' })),
     ...inspections.slice(0,4).map(row => ({ id:`inspection-${row.id}`, source_id:row.id, kind:'inspection', title:'Officer Inspection', person:operationalName(row,directory,{fallback:'Officer'}), detail:row.location || 'Inspection follow-up required' })),
@@ -102,7 +109,7 @@ export default function SupervisorOverview() {
     ...complaints.slice(0,4).map(row => ({ id:`complaint-${row.id}`, source_id:row.id, kind:'complaint', title:'Complaint Investigation', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Complaint investigation/follow-up required' })),
   ].slice(0,10);
 
-  const totalTasks = complaints.length + writeups.length + reviews.length + reviewFollowUps.length + inspections.length + missedClockIns.length + missingReports.length;
+  const totalTasks = complaints.length + writeups.length + reviews.length + reviewFollowUps.length + inspections.length + missedClockIns.length + missingReports.length + reportTasks.length;
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
