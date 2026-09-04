@@ -634,7 +634,7 @@ export default function Navigation() {
                     heading: Number(unit.heading) || 0,
                     isUnionLead: unit.is_union_lead === true || unit.isUnionLead === true,
                     unionMembers: Number(unit.union_member_count || unit.unionMembers) || 1,
-                    show_on_map: true,
+                    show_on_map: unit.show_on_map !== false,
                 }));
             setOtherUnits(units);
         } catch (e) {
