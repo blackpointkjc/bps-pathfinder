@@ -74,7 +74,9 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
   }, []);
 
   const sourceUnits = canonicalUnits.length ? canonicalUnits : units;
-  const statusUnits = useMemo(() => (sourceUnits || []).filter(u => u?.status), [sourceUnits]);
+  // Dispatch is a control-room presence, not a field-officer status. Keep the
+  // dispatcher available to Dispatch Center while removing them from this board.
+  const statusUnits = useMemo(() => (sourceUnits || []).filter(u => u?.status && u.status !== 'Dispatch'), [sourceUnits]);
   const counts = useMemo(() => Object.fromEntries(STATUS_ORDER.slice(1).map(status => [status, statusUnits.filter(u => u.status === status).length])), [statusUnits]);
   const filtered = filter === 'All' ? statusUnits : statusUnits.filter(u => u.status === filter);
   const canManageDistress = isDispatchOrAdmin(currentUser);
