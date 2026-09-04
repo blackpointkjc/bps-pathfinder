@@ -163,7 +163,6 @@ export default function SupervisorFieldOversight() {
         <nav aria-label="Supervisor operations tabs" className="mt-5 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
           <button type="button" aria-current="page" className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-black text-slate-950">Live Field Oversight</button>
           <button type="button" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=dutytimeline`)} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-400 hover:text-cyan-300">Daily Duty Timeline</button>
-          <button type="button" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=command&tool=dutyschedule`)} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-400 hover:text-cyan-300">Duty Supervisor Schedule</button>
         </nav>
       </div>
     </div>
