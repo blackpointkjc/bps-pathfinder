@@ -73,18 +73,22 @@ Deno.serve(async (req) => {
     const roles = rolesOf(me);
     const canUseAdminQueue = me.role === 'admin' || roles.has('full_access');
     const canUseHrQueue = canUseAdminQueue || roles.has('hr') || normalized(me.rank) === 'human resources';
-    if (!canUseHrQueue) return Response.json({ error: 'HR or administrator access required' }, { status: 403 });
-
+    const canUseSupervisorReports = canUseAdminQueue || roles.has('supervisor') || me.is_supervisor === true;
     const body = await req.json().catch(() => ({}));
     const requestedQueueRole = normalized(body?.queue_role);
+    if (!canUseHrQueue && !(requestedQueueRole === 'supervisor_reports' && canUseSupervisorReports)) {
+      return Response.json({ error: 'HR, supervisor, or administrator access required' }, { status: 403 });
+    }
     if (requestedQueueRole === 'admin' && !canUseAdminQueue) {
       return Response.json({ error: 'Administrator access required' }, { status: 403 });
     }
-    const queueRole = requestedQueueRole === 'hr'
-      ? 'hr'
-      : requestedQueueRole === 'admin'
-        ? 'admin'
-        : canUseAdminQueue ? 'admin' : 'hr';
+    const queueRole = requestedQueueRole === 'supervisor_reports'
+      ? 'supervisor'
+      : requestedQueueRole === 'hr'
+        ? 'hr'
+        : requestedQueueRole === 'admin'
+          ? 'admin'
+          : canUseAdminQueue ? 'admin' : 'hr';
     const loadErrors: string[] = [];
     const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
     const safeList = async (label: string, loader: () => Promise<any[]>) => {
@@ -307,7 +311,7 @@ Deno.serve(async (req) => {
       `${normalized(report.officer_email || report.created_by)}|${String(report.report_date || '')}|${normalized(report.location)}`
     ));
     const recentCutoff = Date.now() - 21 * 86400000;
-    const missingReports = queueRole === 'admin' ? (entries || []).filter((entry: any) => {
+    const missingReports = queueRole !== 'hr' ? (entries || []).filter((entry: any) => {
       if (!entry.clock_in || !entry.clock_out || entry.archived === true) return false;
       if (new Date(entry.clock_out).getTime() < recentCutoff) return false;
       if (reportByShift.has(String(entry.id))) return false;
@@ -328,7 +332,7 @@ Deno.serve(async (req) => {
       ['Maintenance Report', maintenanceReports, ['reported', 'in_progress']],
       ['Open Door Report', openDoorReports, ['open', 'referred']],
     ];
-    const pendingReports = queueRole === 'admin' ? reportSources.flatMap(([label, rows, statuses]: any[]) =>
+    const pendingReports = queueRole !== 'hr' ? reportSources.flatMap(([label, rows, statuses]: any[]) =>
       (rows || []).filter((row: any) => statuses.includes(normalized(row.status)))
         .map((row: any) => ({ ...row, queue_label: label }))
     ) : [];
@@ -432,7 +436,9 @@ Deno.serve(async (req) => {
 
     const allowedKinds = queueRole === 'hr'
       ? new Set(['missed_clock_in', 'late_clock_out', 'pto', 'performance_review', 'annual_review_due'])
-      : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
+      : queueRole === 'supervisor'
+        ? new Set(['missing_report', 'report_review'])
+        : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
       if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
     }
@@ -543,7 +549,7 @@ Deno.serve(async (req) => {
       success: true,
       generated_at: observedAt,
       role: queueRole,
-      queue_name: queueRole === 'hr' ? 'HR workforce queue' : 'Administrative site and access queue',
+      queue_name: queueRole === 'hr' ? 'HR workforce queue' : queueRole === 'supervisor' ? 'Supervisor report queue' : 'Administrative site and access queue',
       load_errors: loadErrors,
       tasks,
       recently_completed: recentCompleted,
