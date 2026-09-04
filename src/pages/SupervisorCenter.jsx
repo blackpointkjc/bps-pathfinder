@@ -20,6 +20,7 @@ import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
+  { id: 'dutytimeline', label: 'Daily Duty Timeline', description: 'See every duty supervisor across a complete 24-hour day', icon: ShieldCheck },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
 ];
@@ -28,7 +29,6 @@ const COMMAND_TOOLS = [
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
-  { id: 'dutytimeline', label: 'Daily Duty Timeline', component: SupervisorDutyTimeline },
   { id: 'dutyschedule', label: 'Duty Supervisor Schedule', component: DutySupervisorScheduling },
   { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
   { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
@@ -57,6 +57,7 @@ export default function SupervisorCenter({ embedded = false }) {
       {section => {
         if (section === 'overview') return <SupervisorOverview />;
         if (section === 'officer') return <OfficerCenter embedded />;
+        if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
         if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
         return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
       }}
