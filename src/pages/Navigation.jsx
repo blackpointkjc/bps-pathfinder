@@ -156,7 +156,7 @@ export default function Navigation() {
         // publishing GPS at once cannot trigger a full roster read for each event.
         const fallback = setInterval(() => {
             if (document.visibilityState === 'visible') fetchOtherUnits();
-        }, 30000);
+        }, 20000);
         return () => {
             unsubscribe?.();
             clearInterval(fallback);
@@ -176,7 +176,7 @@ export default function Navigation() {
         const unsubscribe = base44.entities.DispatchCall.subscribe(scheduleCallRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
-        }, 60000);
+        }, 20000);
         return () => {
             unsubscribe?.();
             clearInterval(localInterval);
@@ -614,8 +614,8 @@ export default function Navigation() {
             // Navigation consumes the same canonical unit snapshot as CAD and the
             // admin tracker. Never fall back to raw ActiveOfficer rows, because a
             // stale stored coordinate must not become a live map marker.
-            const payload = await getOfficerLocationSnapshot();
-            const sourceUnits = (Array.isArray(payload.users) ? payload.users : payload.units || [])
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
+            const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
                 .filter(unit => unit.session_active !== false);
             const currentEmail = currentUser?.email?.toLowerCase();
             const units = sourceUnits
@@ -639,7 +639,7 @@ export default function Navigation() {
             setOtherUnits(units);
         } catch (e) {
             console.warn('[NAV] on-duty unit fetch failed:', e?.message);
-            setOtherUnits([]);
+            // Preserve the last confirmed map positions during a transient refresh failure.
         }
     };
 
@@ -682,8 +682,12 @@ export default function Navigation() {
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const active = [...uniqueCalls.values()].filter(c => {
-                const receivedAt = parseServerTimestamp(c.time_received || c.created_date)?.getTime() || 0;
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
+                const createdAt = parseServerTimestamp(c.created_date)?.getTime() || 0;
+                const upstreamAt = parseServerTimestamp(c.time_received)?.getTime() || 0;
+                const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
+                    ? upstreamAt
+                    : (createdAt || upstreamAt);
+                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000;
                 return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
             });
             const { unmapped } = splitCallsByCoords(active);
