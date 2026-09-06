@@ -206,10 +206,10 @@ export default function BackgroundLocationTracker({ user }) {
       if (!shouldPublish) return;
 
       try {
-        // Persist one canonical GPS fix per minute. The browser's local GPS watch
+        // Persist one canonical GPS fix every 30 seconds. The browser's local GPS watch
         // still updates continuously, but Base44 writes are rate-limited here so
         // maps/history stay current without burning requests every 15 seconds.
-        if (now - lastGpsPushRef.current < 60000) return;
+        if (now - lastGpsPushRef.current < 30000) return;
         lastGpsPushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
@@ -237,7 +237,7 @@ export default function BackgroundLocationTracker({ user }) {
         queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
 
-        // Check geofence at the same one-minute cadence as persisted GPS.
+        // Keep geofence evaluation at one minute even though live GPS persists faster.
         if (activeEntry && now - lastGeofenceCheckRef.current >= 60000 && locations) {
           lastGeofenceCheckRef.current = now;
 
