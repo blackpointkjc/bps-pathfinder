@@ -204,9 +204,14 @@ export default function DispatchCenter() {
             // may be assignable as Available/Enroute/On Scene/Busy/Distress.
             const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
             const eligibleUnits = (payload.units || payload.users || [])
-                .filter(isOperationalOfficer)
+                // location_only is already restricted by the backend to fresh,
+                // signed-in operational sessions and intentionally omits directory roles.
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
-                .map(unit => ({ ...unit, label: unit.unit_number || unit.full_name || unit.email }))
+                .map(unit => ({
+                    ...unit,
+                    email: unit.email || unit.officer_email,
+                    label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
+                }))
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
             setUnits(eligibleUnits);
         } catch (error) {
