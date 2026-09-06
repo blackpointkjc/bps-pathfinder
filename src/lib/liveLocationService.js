@@ -124,6 +124,11 @@ export function subscribeLiveLocation(listener, { emitCurrent = true } = {}) {
 }
 
 export function requestFreshLiveLocation({ timeoutMs = 15000 } = {}) {
+  // The shared live stream is authoritative app-wide. If the USB/NMEA receiver
+  // has a current fix, every caller (clock, maps, reports, distress and CAD)
+  // receives it directly and must not start a competing browser/Wi-Fi lookup.
+  const externalFix = getLiveLocation(EXTERNAL_GPS_PRIORITY_MS);
+  if (externalFix?.source === 'external_serial') return Promise.resolve(externalFix);
   if (!geolocationSupported()) {
     const error = new Error('GEOLOCATION_NOT_SUPPORTED');
     error.code = 0;
