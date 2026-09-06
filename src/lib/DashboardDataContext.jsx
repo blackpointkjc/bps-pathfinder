@@ -10,10 +10,10 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 60_000;        // Realtime subscriptions handle most updates; this is only a fallback
-const GRAC_SYNC_INTERVAL_MS = 120_000;  // One shared sync per browser, no page-level duplicate loops
+const POLL_INTERVAL_MS = 20_000;        // Realtime subscriptions handle most updates; this is only a fallback
+const GRAC_SYNC_INTERVAL_MS = 60_000;  // One shared sync per browser, no page-level duplicate loops
 const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
-const MIN_REFRESH_MS = 30_000;          // Prevent subscription bursts from causing repeated list calls
+const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 
 function parseServerTimestamp(value) {
