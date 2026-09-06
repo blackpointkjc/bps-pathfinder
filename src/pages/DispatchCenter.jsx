@@ -70,6 +70,8 @@ export default function DispatchCenter() {
         return [rank, last].filter(Boolean).join(' ') || match.full_name || raw;
     };
     const knownCallIdsRef = React.useRef(null);
+    const activeCallsLoadingRef = React.useRef(false);
+    const lastActiveCallsLoadRef = React.useRef(0);
 
     useEffect(() => {
         const clockInterval = setInterval(() => setSystemTime(new Date()), 1000);
@@ -213,7 +215,10 @@ export default function DispatchCenter() {
         }
     };
 
-    const loadActiveCalls = async () => {
+    const loadActiveCalls = async (force = false) => {
+       const now = Date.now();
+       if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
+       activeCallsLoadingRef.current = true;
        try {
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
@@ -230,8 +235,12 @@ export default function DispatchCenter() {
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const recentCalls = [...uniqueCalls.values()].filter(call => {
-                const receivedAt = parseServerTimestamp(call.time_received || call.created_date)?.getTime() || 0;
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
+                const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
+                const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
+                const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
+                    ? upstreamAt
+                    : (createdAt || upstreamAt);
+                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000;
                 // Keep Pathfinder CAD lifecycle authoritative for the live queue. The
                 // upstream agency may publish time_closed before our assigned officer
                 // clears the Pathfinder assignment, so time_closed alone must not hide it.
@@ -261,8 +270,11 @@ export default function DispatchCenter() {
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
+            lastActiveCallsLoadRef.current = Date.now();
          } catch (error) {
              console.error('Error loading active calls:', error);
+         } finally {
+             activeCallsLoadingRef.current = false;
          }
     };
 
