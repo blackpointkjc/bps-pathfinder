@@ -13,7 +13,7 @@ const DashboardDataContext = createContext(null);
 const POLL_INTERVAL_MS = 60_000;        // Realtime subscriptions handle most updates; this is only a fallback
 const GRAC_SYNC_INTERVAL_MS = 120_000;  // One shared sync per browser, no page-level duplicate loops
 const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
-const MIN_REFRESH_MS = 10_000;          // Prevent subscription bursts from causing repeated list calls
+const MIN_REFRESH_MS = 30_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 
 function parseServerTimestamp(value) {
@@ -68,7 +68,9 @@ export function DashboardDataProvider({ children }) {
             return;
         }
 
-        if (refreshingRef.current && !force) return;
+        // Never allow a forced/manual refresh to overlap an in-flight load.
+        // Overlap was multiplying list requests whenever a popup/subscription fired.
+        if (refreshingRef.current) return;
         refreshingRef.current = true;
 
         const nowET = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
@@ -184,9 +186,9 @@ export function DashboardDataProvider({ children }) {
             } else {
                 console.warn('[CAD] GRAC sync failed:', error?.message);
             }
-            // Even if ingestion fails, refresh persisted DispatchCall rows so the
-            // dashboard never falsely falls to zero just because the feed is delayed.
-            await loadData(true).catch(() => null);
+            // On a non-rate-limit ingestion failure, refresh persisted rows once.
+            // A 429 must not immediately trigger another request against the same API.
+            if (!isRateLimitError(error)) await loadData(true).catch(() => null);
         } finally {
             syncingGracRef.current = false;
         }
