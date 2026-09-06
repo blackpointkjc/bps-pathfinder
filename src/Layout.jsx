@@ -1095,7 +1095,11 @@ export default function Layout({ children, currentPageName }) {
     if (!user?.id || isNonOperational) return undefined;
     let cancelled = false;
 
+    let monitorInFlight = false;
+    let rateLimitBackoffUntil = 0;
     const monitor = async () => {
+      if (cancelled || monitorInFlight || document.visibilityState !== 'visible' || Date.now() < rateLimitBackoffUntil) return;
+      monitorInFlight = true;
       try {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
@@ -1177,7 +1181,14 @@ export default function Layout({ children, currentPageName }) {
         // subscription and speech path as BOLO announcements. This effect only
         // owns the persistent property-call popup and acknowledgement state.
       } catch (error) {
-        console.warn('Property alert display check failed:', error?.message);
+        const message = String(error?.message || error || '');
+        if (/rate limit|too many requests|\b429\b/i.test(message)) {
+          rateLimitBackoffUntil = Date.now() + 2 * 60 * 1000;
+        } else {
+          console.warn('Property alert display check failed:', error?.message);
+        }
+      } finally {
+        monitorInFlight = false;
       }
     };
 
@@ -1193,7 +1204,7 @@ export default function Layout({ children, currentPageName }) {
     };
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') monitor();
-    }, 60000);
+    }, 120000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
@@ -1206,7 +1217,7 @@ export default function Layout({ children, currentPageName }) {
       unsubscribeAlerts?.();
       document.removeEventListener('visibilitychange', refreshOnVisibility);
     };
-  }, [user?.id, user?.email, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
+  }, [user?.id, user?.email, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || [])]);
 
   const dismissPropertyAlert = async (action = 'acknowledged') => {
     if (!propertyAlert) return false;
