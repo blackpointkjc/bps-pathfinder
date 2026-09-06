@@ -113,9 +113,11 @@ export default function DispatchCenter() {
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
-            loadActiveCalls();
-        }, 60000);
-        const unitsInterval = setInterval(loadUnits, 60000);
+            if (document.visibilityState === 'visible') loadActiveCalls();
+        }, 20000);
+        const unitsInterval = setInterval(() => {
+            if (document.visibilityState === 'visible') loadUnits();
+        }, 20000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onStatusChanged = () => loadUnits();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
@@ -200,8 +202,8 @@ export default function DispatchCenter() {
             // One canonical status feed is shared by Dispatch Center, Command, and
             // the Unit Status Board. Only officers with a fresh signed-in CAD session
             // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const payload = await getOfficerLocationSnapshot();
-            const eligibleUnits = (payload.users || [])
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
+            const eligibleUnits = (payload.units || payload.users || [])
                 .filter(isOperationalOfficer)
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
                 .map(unit => ({ ...unit, label: unit.unit_number || unit.full_name || unit.email }))
