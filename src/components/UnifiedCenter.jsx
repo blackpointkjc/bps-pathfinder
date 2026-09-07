@@ -46,7 +46,13 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
               <p className="min-w-0 flex-1 truncate text-xs text-slate-400">{description}</p>
             </div>
           </>}
-          <div className={`${embedded ? '' : 'mt-1.5'} flex max-w-full gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#07101c] p-0.5`}>
+          <label className="my-2 block xl:hidden">
+            <span className="mb-1 block text-xs font-semibold text-slate-400">{embedded ? 'Section' : `${title} section`}</span>
+            <select aria-label={`${title} section`} value={section || ''} onChange={event => select(event.target.value)} className="h-11 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-base text-white">
+              {safeSections.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
+          </label>
+          <div className={`${embedded ? '' : 'mt-1.5'} hidden xl:flex max-w-full gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#07101c] p-0.5`}>
             {safeSections.map(({ id, label, icon: Icon }) => {
               const active = section === id;
               return (

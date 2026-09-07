@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, History } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
+import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
@@ -32,11 +32,9 @@ const TOOLS = {
 };
 
 export default function CADCenter({ embedded = false }) {
-  const desktop = useDesktopViewport();
   useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const sections = BASE_SECTIONS;
 
-  if (!desktop && !embedded) return <CommandDashboard />;
 
   return (
     <UnifiedCenter

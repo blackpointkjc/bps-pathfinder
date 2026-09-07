@@ -523,14 +523,14 @@ function pageLabel(pageName) {
 function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, activeCenter, centerDestinations = {}, onTabNavigate, user }) {
   const centers = allowedCenters(user);
   const roleWorkspace = centers.includes('admin')
-    ? ['Admin', centerDestinations.admin || 'AdminDashboard', Settings]
+    ? ['Admin', 'AdminCenter', Settings]
     : centers.includes('supervisor')
-      ? ['Supervisor', centerDestinations.supervisor || 'SupervisorCenter', ClipboardCheck]
+      ? ['Supervisor', 'SupervisorCenter', ClipboardCheck]
       : centers.includes('officer')
-        ? ['Officer', centerDestinations.officer || 'Dashboard', Shield]
+        ? ['Officer', 'OfficerCenter', Shield]
         : null;
   const tabs = [
-    ['CAD', centerDestinations.cad || 'CommandDashboard', Radio],
+    ['CAD', 'CADCenter', Radio],
     ...(roleWorkspace ? [roleWorkspace] : []),
     ['Inbox', 'OfficerInbox', MessageCircle],
   ];
@@ -563,13 +563,21 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   const mobileTitle = mobileSection === 'reports' ? 'REPORTS' : 'ALL TOOLS';
   const query = search.trim().toLowerCase();
   const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
-  const sourceGroups = desktopCenterPage ? [] : center.groups;
+  const mobileCenters = availableCenters.includes('admin')
+    ? [...new Set([...availableCenters, 'cad', 'officer', 'supervisor', 'hr', 'client'])]
+    : availableCenters.includes('supervisor')
+      ? [...new Set([...availableCenters, 'officer'])] : availableCenters;
+  const sourceGroups = mobile
+    ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || []).map(group => ({
+        ...group, label: `${CENTER_CONFIG[key].label} / ${group.label}`,
+      })))
+    : desktopCenterPage ? [] : center.groups;
   const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
-    .filter(group => !mobileSection || (mobileSection === 'reports' && ['officer','supervisor'].includes(activeCenter) && group.label.toLowerCase().includes('reports')))
+    .filter(group => !mobileSection || (mobileSection === 'reports' && group.label.toLowerCase().includes('report')))
     .map(group => ({
       ...group,
-      items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
+      items: group.items.filter(([label, page]) => canAccessPage(user, page) && (!query || `${label} ${group.label}`.toLowerCase().includes(query))),
     }))
     .filter(group => group.items.length > 0);
 
@@ -676,11 +684,14 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       {(!collapsed || mobile) && (!desktopCenterPage || mobile) && <div className="px-3 pt-3">
         <div className="flex items-center gap-2 rounded-lg border border-[#24435f] bg-[#07131f] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
           <Search className="h-3.5 w-3.5 text-[#65819d]" />
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
+          <input value={search} onChange={event => setSearch(event.target.value)} aria-label={mobile ? 'Search all authorized pages' : `Search ${center.label}`} placeholder={mobile ? 'Search all pages…' : `Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
         </div>
       </div>}
 
       <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y px-2 py-2">
+        {mobile && !mobileSection && <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Full workspaces">
+          {mobileCenters.map(key => <Link key={key} to={createPageUrl(DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key))} onClick={onCloseMobile} className="flex min-h-12 items-center rounded-lg border border-cyan-800 bg-cyan-950/40 px-3 py-2 text-xs font-bold text-cyan-100">{CENTER_CONFIG[key].label}</Link>)}
+        </div>}
         {collapsed && !mobile && (
           <div className="mb-2 space-y-1 border-b border-[#1b3048] pb-2">
             {availableCenters.map(key => {
@@ -1304,6 +1315,7 @@ export default function Layout({ children, currentPageName }) {
 
   const openMobileToolsMenu = () => {
     setMobileSection(null);
+    setSearch('');
     const centers = allowedCenters(user);
     if (!centers.includes(activeCenter)) setActiveCenter(centers[0] || 'officer');
     setMobileOpen(true);

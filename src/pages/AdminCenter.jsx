@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
-import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
+import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import AdminDashboard from './AdminDashboard';
 import AdminAnalytics from './AdminAnalytics';
@@ -193,7 +193,6 @@ function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOffic
 }
 
 export default function AdminCenter() {
-  const desktop = useDesktopViewport();
   const queryClient = useQueryClient();
   const [shadowMode, setShadowMode] = useState('');
   const [clients, setClients] = useState([]);
@@ -292,7 +291,6 @@ export default function AdminCenter() {
     return null;
   }, [shadowMode, selectedClient, selectedOfficer]);
 
-  if (!desktop) return <AdminDashboard />;
   if (shadowMode) return <div className="min-h-full bg-[#070d17]"><AdminShadowBar mode={shadowMode} clients={clients} selectedClient={selectedClient} officers={officers} selectedOfficer={selectedOfficer} onMode={enterShadow} onClient={chooseClient} onOfficer={chooseOfficer} onExit={exitShadow}/>{shadowContent}</div>;
 
   return (

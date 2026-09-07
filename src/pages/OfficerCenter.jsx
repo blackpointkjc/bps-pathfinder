@@ -1,5 +1,5 @@
 import { CalendarClock, ClipboardList, Shield, UserRound, Wrench } from 'lucide-react';
-import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
+import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import Dashboard from './Dashboard';
 import TimeClock from './TimeClock';
@@ -81,8 +81,6 @@ const TOOLS = {
 };
 
 export default function OfficerCenter({ embedded = false }) {
-  const desktop = useDesktopViewport();
-  if (!desktop && !embedded) return <Dashboard />;
   return (
     <UnifiedCenter
       eyebrow="Officer Operations"
