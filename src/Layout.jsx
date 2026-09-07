@@ -535,17 +535,17 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
     ['Inbox', 'OfficerInbox', MessageCircle],
   ];
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur lg:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
+    <nav aria-label="Primary navigation" className="pathfinder-field-nav fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur xl:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
       {tabs.map(([label, page, Icon]) => {
         const active = currentPageName === page;
         const count = Number(unreadCounts[page]) || 0;
-        return <Link key={`${label}-${page}`} to={createPageUrl(page)} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
+        return <Link key={`${label}-${page}`} to={createPageUrl(page)} aria-current={active ? "page" : undefined} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
           <Icon className="h-5 w-5" /><span className="text-[9px] font-black">{label}</span>
           {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
         </Link>;
       })}
       {(centers.includes('officer') || centers.includes('supervisor')) && <button type="button" onClick={onReports} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><ClipboardList className="h-5 w-5" /><span className="text-[8px] font-black">REPORTS</span></button>}
-      <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[8px] font-black">ALL</span></button>
+      <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[8px] font-black">Tools</span></button>
     </nav>
   );
 }
@@ -937,8 +937,27 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     if (!mobileOpen) return undefined;
     const previous = document.body.style.overflow;
+    const opener = document.activeElement;
+    const drawer = document.querySelector('.pathfinder-mobile-drawer');
+    const focusable = () => [...(drawer?.querySelectorAll('button:not([disabled]), a[href], input, select, [tabindex="0"]') || [])].filter(el => el.getClientRects().length);
+    focusable()[0]?.focus();
+    const onKeyDown = event => {
+      if (event.key === 'Escape') { setMobileOpen(false); setMobileSection(null); }
+      if (event.key === 'Tab') {
+        const items = focusable();
+        const first = items[0], last = items[items.length - 1];
+        if (!first) return;
+        if (event.shiftKey && (document.activeElement === first || !drawer?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !drawer?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      }
+    };
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', onKeyDown);
+      opener?.focus?.();
+    };
   }, [mobileOpen]);
 
   useEffect(() => {
@@ -1306,11 +1325,11 @@ export default function Layout({ children, currentPageName }) {
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
   return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><AdminHourlySystemScan user={user} /><OperationalReliabilityRunner user={user} /><PerformanceReviewTaskGate user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
-    <aside className="relative hidden flex-col border-r border-[#1c3049] lg:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
+    <aside className="shrink-0 relative hidden flex-col border-r border-[#1c3049] xl:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
     </aside>
 
-    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-[2px] lg:hidden" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-[2px] xl:hidden" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
       <motion.section initial={{ x: '-100%', opacity: 0.7 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0.7 }} transition={{ type: 'spring', damping: 28, stiffness: 280 }} className="pathfinder-mobile-drawer h-[100dvh] overflow-hidden border-r border-[#25445f] bg-[#06101b]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'All tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
       </motion.section>
@@ -1373,10 +1392,10 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
-            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] lg:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] xl:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
           {COMMUNICATION_PAGES.has(currentPageName) && (
             <Link
@@ -1385,17 +1404,17 @@ export default function Layout({ children, currentPageName }) {
               aria-label={`Return to ${userHomeLabel}`}
             >
               <Gauge className="h-4 w-4" />
-              <span>{userHomeLabel}</span>
+              <span className="hidden sm:inline">{userHomeLabel}</span>
             </Link>
           )}
           <div className="min-w-0">
-            <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white lg:tracking-[0.15em]"><span className="lg:hidden">{pageLabel(currentPageName)}</span><span className="hidden lg:inline">{centerLabel}</span></div>
-            <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="lg:hidden">FIELD OPERATIONS</span><span className="hidden lg:inline">UNIFIED OPERATIONS PLATFORM</span></div>
+            <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
+            <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-[#7791aa]">
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
-          <div className="text-right font-mono leading-tight text-[#9fb6cc]">
+          <div className="pathfinder-header-clock shrink-0 text-right font-mono leading-tight text-[#9fb6cc]">
             <div className="text-[11px] font-black tracking-wider text-white">{clock.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
             <div className="text-[8px] font-bold tracking-[0.12em] text-[#7894af]">{clock.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} ET</div>
           </div>
