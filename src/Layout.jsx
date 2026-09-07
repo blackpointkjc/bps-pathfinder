@@ -858,7 +858,7 @@ export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches);
   const [activeAlert, setActiveAlert] = useState(null);
   const [propertyAlert, setPropertyAlert] = useState(null);
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
@@ -900,7 +900,7 @@ export default function Layout({ children, currentPageName }) {
 
     const remembered = centerLastPagesRef.current?.[center];
     const rememberedCenters = remembered ? (PAGE_TO_CENTERS[remembered] || []) : [];
-    const desktopDefault = !isMobileViewport ? DESKTOP_CENTER_PAGE[center] : null;
+    const desktopDefault = DESKTOP_CENTER_PAGE[center];
     const target = desktopDefault || (remembered && rememberedCenters.includes(center) && canAccessPage(user, remembered)
       ? remembered
       : defaultPageForCenter(center));
@@ -911,7 +911,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1023px)');
+    const media = window.matchMedia('(max-width: 1279px)');
     const updateViewport = event => setIsMobileViewport(event.matches);
     setIsMobileViewport(media.matches);
     media.addEventListener?.('change', updateViewport);
