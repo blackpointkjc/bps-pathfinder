@@ -630,29 +630,9 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             {mobile ? (
               <div className="relative">
                 {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
-                <Select value={activeCenter} onValueChange={setActiveCenter}>
-                  <SelectTrigger
-                    id="mobile-workspace-select"
-                    className="h-11 w-full min-w-0 border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 pr-3 text-left text-white shadow-inner focus:ring-cyan-900/40"
-                    aria-label={`Select workspace. Current workspace: ${center.label}${activeUnreadSummary ? `, ${activeUnreadSummary}` : ''}`}
-                  >
-                    <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                      <span className="min-w-0 flex-1 truncate text-[12px] font-black">{center.label}</span>
-                      {activeUnreadSummary && <span className="max-w-[42%] shrink-0 truncate rounded-full border border-cyan-700/50 bg-cyan-950/70 px-2 py-1 text-[9px] font-bold text-cyan-200">{activeUnreadSummary}</span>}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
-                    {availableCenters.map(key => {
-                      const item = CENTER_CONFIG[key];
-                      const unreadSummary = centerUnreadSummary(key, unreadCounts);
-                      return (
-                        <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">
-                          {item.label}{unreadSummary ? ` — ${unreadSummary}` : ''}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                <select id="mobile-workspace-select" value={activeCenter} onChange={event => setActiveCenter(event.target.value)} aria-label="Open workspace" className="h-11 w-full min-w-0 rounded-lg border border-slate-600 bg-slate-900 pl-10 pr-3 text-base text-white">
+                  {availableCenters.map(key => <option key={key} value={key}>{CENTER_CONFIG[key].label}</option>)}
+                </select>
               </div>
             ) : (
               <div className="rounded-xl border border-[#203a52] bg-[#07131f]/70 p-2.5 shadow-inner">
