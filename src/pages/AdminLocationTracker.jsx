@@ -14,8 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
-import { getOfficerLocationHistory, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
+
+import GPSAuditReport from '@/components/GPSAuditReport';
+import { auditDay } from '@/lib/locationAudit';
 
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -121,7 +124,7 @@ export default function AdminLocationTracker() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState('live');
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState('');
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState(() => auditDay());
   const [checkingLocations, setCheckingLocations] = useState(false);
   const [locationCheckResults, setLocationCheckResults] = useState(null);
   const [lastAutoCheck, setLastAutoCheck] = useState(null);
@@ -216,33 +219,18 @@ export default function AdminLocationTracker() {
     }).filter(Boolean);
   }, [newestLocationByEmail, allUsers]);
 
-  // Historical movement is session-based, not shift-based. Any authenticated user
-  // can be reviewed for any date, including admins and users who never clocked in.
-  const { data: locationHistory } = useQuery({
-    queryKey: ['locationHistory', selectedOfficerEmail, selectedDate],
+  const { data: auditData, isLoading: auditLoading, error: auditError, refetch: retryAudit } = useQuery({
+    queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate],
     queryFn: async () => {
-      if (!selectedOfficerEmail || !selectedDate) return [];
-      const allHistory = await getOfficerLocationHistory(selectedOfficerEmail);
-      const start = new Date(`${selectedDate}T00:00:00`);
-      const end = new Date(`${selectedDate}T23:59:59.999`);
-      return (allHistory || []).filter(h => {
-        const timestamp = new Date(h.timestamp);
-        return timestamp >= start && timestamp <= end && hasValidCoordinates(h);
-      }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const response = await base44.functions.invoke('getLocationAuditReport', { officer_email: selectedOfficerEmail, date: selectedDate });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,
-    refetchInterval: viewMode === 'history' ? 60000 : false,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
   });
-
-  const selectedSessionSummary = React.useMemo(() => {
-    if (!locationHistory?.length) return null;
-    return {
-      first: locationHistory[0],
-      last: locationHistory[locationHistory.length - 1],
-      firstTime: locationHistory[0]?.timestamp,
-      lastTime: locationHistory[locationHistory.length - 1]?.timestamp,
-    };
-  }, [locationHistory]);
 
   const getOfficerName = (email) => {
     const officer = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
@@ -838,152 +826,14 @@ export default function AdminLocationTracker() {
           </>
         )}
 
-        {viewMode === 'history' && selectedOfficerEmail && locationHistory?.length > 0 && selectedSessionSummary && (
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-blue-600" />
-                Movement History for {getOfficerName(selectedOfficerEmail)} on {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="p-4 bg-blue-50 border-b">
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-blue-700 font-semibold">First Ping</p>
-                    <p className="text-lg font-bold text-blue-900">
-                      {format(new Date(selectedSessionSummary.firstTime), 'h:mm a')}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-blue-700 font-semibold">Last Ping</p>
-                    <p className="text-lg font-bold text-blue-900">
-                      {format(new Date(selectedSessionSummary.lastTime), 'h:mm a')}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-blue-700 font-semibold">Location Points</p>
-                    <p className="text-lg font-bold text-blue-900">
-                      {locationHistory?.length || 0} recorded
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {locationHistory && locationHistory.length > 0 ? (
-                <>
-                  {mapUnavailable && (
-                    <Alert className="m-4 border-amber-400 bg-amber-50">
-                      <AlertTriangle className="h-4 w-4 text-amber-700" />
-                      <AlertDescription className="text-amber-950">
-                        The historical map background could not load. Recorded GPS points and timestamps remain available.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
-                  <MapContainer
-                    center={[37.5407, -77.4360]}
-                    zoom={12}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <MapReadyHandler />
-                    <PathfinderTileLayer theme={mapTheme} />
-                    <MapUpdater 
-                      officers={[]} 
-                      historicalPath={locationHistory}
-                      clockInLocation={locationHistory[0]}
-                      clockOutLocation={locationHistory[locationHistory.length - 1]}
-                    />
-                    
-                    {/* Draw the path line */}
-                    <Polyline
-                      positions={locationHistory.map(h => [Number(h.latitude), Number(h.longitude)])}
-                      color="#3b82f6"
-                      weight={4}
-                      opacity={0.8}
-                    />
-
-                    {/* Every one-minute historical ping is visible and individually inspectable. */}
-                    {locationHistory.map((ping, index) => (
-                      <CircleMarker
-                        key={`${ping.id || ping.timestamp}-${index}`}
-                        center={[Number(ping.latitude), Number(ping.longitude)]}
-                        radius={5}
-                        pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.9, weight: 2 }}
-                      >
-                        <Popup autoPan={false}>
-                          <div className="p-2">
-                            <p className="font-bold text-slate-900">PING #{index + 1}</p>
-                            <p className="text-sm font-semibold">{format(new Date(ping.timestamp), 'h:mm:ss a')}</p>
-                            <p className="text-xs text-slate-600 mt-1">{ping.location || 'Signed In'}</p>
-                            <p className="text-xs text-slate-500">GPS ±{Math.round(Number(ping.accuracy || 0))}m</p>
-                            <p className="text-xs text-slate-500 font-mono">{Number(ping.latitude).toFixed(6)}, {Number(ping.longitude).toFixed(6)}</p>
-                          </div>
-                        </Popup>
-                      </CircleMarker>
-                    ))}
-                    
-                    {/* First ping marker (green) */}
-                    <Marker 
-                      position={[Number(locationHistory[0].latitude), Number(locationHistory[0].longitude)]}
-                      icon={clockInIcon}
-                    >
-                      <Popup autoPan={false}>
-                        <div className="p-2">
-                          <p className="font-bold text-green-700 text-lg">🟢 FIRST PING</p>
-                          <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.firstTime), 'h:mm:ss a')}</p>
-                          <p className="text-xs text-slate-600 mt-1">{selectedSessionSummary.first?.location || 'Signed In'}</p>
-                          <p className="text-xs text-slate-500">
-                            {locationHistory[0].latitude.toFixed(6)}, {locationHistory[0].longitude.toFixed(6)}
-                          </p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                    
-                    {/* Clock Out marker (red) - only if different from clock in */}
-                    {locationHistory.length > 1 && (
-                      <Marker 
-                        position={[
-                          Number(locationHistory[locationHistory.length - 1].latitude), 
-                          Number(locationHistory[locationHistory.length - 1].longitude)
-                        ]}
-                        icon={clockOutIcon}
-                      >
-                        <Popup autoPan={false}>
-                          <div className="p-2">
-                            <p className="font-bold text-red-700 text-lg">🔴 LATEST PING</p>
-                            <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.lastTime), 'h:mm:ss a')}</p>
-                            <p className="text-xs text-slate-600 mt-1">{selectedSessionSummary.last?.location || 'Signed In'}</p>
-                            <p className="text-xs text-slate-500">
-                              {locationHistory[locationHistory.length - 1].latitude.toFixed(6)}, 
-                              {locationHistory[locationHistory.length - 1].longitude.toFixed(6)}
-                            </p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    )}
-                  </MapContainer>
-                  </div>
-                </>
-              ) : (
-                <div className="p-12 text-center">
-                  <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-slate-500">No location points recorded for this user on this date</p>
-                  <p className="text-xs text-slate-400 mt-2">The user may not have signed in, may have denied location permission, or may have had the app fully closed.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {viewMode === 'history' && selectedOfficerEmail && (!locationHistory || locationHistory.length === 0) && (
-          <Card className="border-none shadow-lg">
-            <CardContent className="p-12 text-center">
-              <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <p className="text-slate-500">No GPS history found for {getOfficerName(selectedOfficerEmail)} on {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')}</p>
-              <p className="text-xs text-slate-400 mt-2">History is recorded once per minute while the user is signed into Pathfinder and location permission is available.</p>
-            </CardContent>
-          </Card>
+        {viewMode === 'history' && selectedOfficerEmail && (
+          auditLoading ? <div role="status" className="p-8 text-center">Loading complete GPS audit report…</div>
+          : auditError ? <div role="alert" className="rounded-lg border border-red-600 p-4">
+            <p>Unable to load the complete report. No partial report has been displayed.</p>
+            <Button onClick={() => retryAudit()} className="mt-3">Retry report</Button>
+          </div>
+          : auditData ? <GPSAuditReport key={selectedOfficerEmail + selectedDate} data={auditData} officerName={getOfficerName(selectedOfficerEmail)} />
+          : null
         )}
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -994,7 +844,7 @@ export default function AdminLocationTracker() {
             <strong>Check All Locations Now:</strong> Checks all recent signed-in session records and separates users with current GPS, users signed in with GPS unavailable, and recently stale sessions.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Historical Tracking:</strong> Select any user and date to view the one-minute movement trail recorded while they were signed in. The green marker is the first recorded ping and the red marker is the latest recorded ping for that date.
+            <strong>Historical Tracking:</strong> Select a user and Eastern Time date to view the complete GPS audit trail, route map, time entries, geofence alerts, estimated stops, and ping log. Use Print / Save PDF to print the same report.
           </p>
           <p className="text-sm text-blue-900 mt-2">
             <strong>Tracking Scope:</strong> Location tracking is active for every authenticated app session, regardless of duty role or clock-in status, and ends when the app session is no longer active. Location history is recorded at one-minute intervals when GPS permission is available.
