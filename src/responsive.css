@@ -1,0 +1,112 @@
+/* Shared responsive layout. Loaded after legacy themes to keep breakpoints consistent. */
+@media (max-width: 1279px) {
+  .cad-app { height: 100dvh; width: 100%; min-width: 0; }
+  .cad-app > section { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .cad-app .mobile-field-content {
+    padding-bottom: 20px;
+    scrollbar-gutter: auto;
+    scroll-padding-block: 16px;
+    touch-action: pan-x pan-y;
+    scroll-behavior: auto;
+  }
+  .pathfinder-header { gap: 12px; padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+  .pathfinder-header > :first-child { flex: 1; }
+  .pathfinder-header > :last-child { flex-shrink: 0; }
+  .pathfinder-header button { min-height: 44px; min-width: 44px; }
+  .pathfinder-header > :first-child .truncate:first-child { font-size: 13px; letter-spacing: .025em; }
+  .pathfinder-field-nav {
+    height: calc(68px + env(safe-area-inset-bottom));
+    padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+    align-items: center; gap: 4px; background: #081321;
+  }
+  .pathfinder-field-nav > :is(a, button) { min-width: 0; min-height: 54px; border-radius: 12px; }
+  .pathfinder-field-nav > :is(a, button) > span:not(.absolute) { font-size: 11px; line-height: 16px; font-weight: 700; }
+  .pathfinder-field-nav [aria-current="page"] { background: #143550; color: #c7ecff; box-shadow: inset 0 2px #70cef7; }
+  .pathfinder-mobile-drawer {
+    width: min(92vw, 420px) !important; max-width: 420px !important; height: 100dvh;
+    padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mobile-tool-library { min-height: 0; }
+  .mobile-tool-library nav { min-height: 0; overflow-y: auto; }
+  .mobile-tool-library nav a { min-height: 48px; }
+  .mobile-tool-library nav a span { font-size: 12px; line-height: 1.4; }
+  .cad-app .mobile-field-content :is(input, select, textarea, [role="combobox"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    min-height: 44px; font-size: 16px !important; max-width: 100%;
+  }
+  .cad-app .mobile-field-content :is(button, a[role="button"]) { min-height: 44px; }
+  .cad-app .mobile-field-content [role="tablist"] {
+    display: flex; width: 100%; max-width: 100%; height: auto; overflow-x: auto;
+    justify-content: flex-start; touch-action: pan-x pan-y;
+  }
+  .cad-app .mobile-field-content [role="tab"] { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
+  .cad-app .mobile-field-content .bps-table-scroll,
+  .cad-app .mobile-field-content .overflow-x-auto { max-width: 100%; overflow-x: auto !important; touch-action: pan-x pan-y; }
+  .cad-app .mobile-field-content table { table-layout: auto; min-width: 640px; max-width: none !important; }
+  .cad-app .mobile-field-content :is(th,td) { padding: 12px; overflow-wrap: normal; }
+  .cad-app .mobile-field-content form { width: 100%; max-width: 100% !important; }
+  .bps-dialog[role="dialog"] { width: calc(100vw - 32px) !important; max-width: min(680px, calc(100vw - 32px)) !important; max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important; }
+  .bps-dialog > :first-child { padding-right: 28px; }
+  .command-dashboard { min-height: 100%; }
+  .command-dashboard-system-bar { padding: 12px !important; }
+  .command-dashboard-actions { display: flex !important; flex-wrap: wrap; gap: 8px !important; width: 100%; }
+  .command-dashboard-sync { flex: 1 0 100%; height: 28px; min-height: 28px; justify-content: flex-start; border: 0; background: transparent; }
+  .command-dashboard-action, .command-dashboard-distress { flex: 1 1 100px; width: auto; }
+  .command-dashboard .command-dashboard-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px; padding: 12px; }
+  .command-dashboard .command-dashboard-kpi { min-height: 76px; padding: 10px 4px; box-shadow: none; border-radius: 12px; }
+  .command-dashboard-kpi > span:first-child { font-size: 24px; }
+  .command-dashboard-kpi > span:last-child { font-size: 9px; letter-spacing: .025em !important; line-height: 1.4; }
+  .command-status-bar { flex-wrap: wrap; overflow: visible; gap: 8px; padding: 12px; }
+  .command-status-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; min-width: 0; gap: 8px; }
+  .command-status-options button { padding: 6px; white-space: normal; font-size: 11px; }
+  .command-queue-header { flex-wrap: wrap; }
+  .command-queue-header > :first-child { min-width: 0; flex-wrap: wrap; }
+  .command-queue-header select { flex: 1 1 140px; }
+  .command-column-headings { display: none !important; }
+  .command-dashboard .cad-call-row {
+    display: grid !important; grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto auto; gap: 8px;
+    margin: 10px 12px; padding: 12px; border-radius: 12px;
+    border: 1px solid #293b50; border-left-width: 3px;
+  }
+  .command-dashboard .cad-call-priority { grid-area: 1 / 1; width: auto; }
+  .command-dashboard .cad-call-incident { grid-area: 1 / 2 / 2 / 4; padding: 0; }
+  .command-dashboard .cad-call-incident > :first-child { font-size: 14px; line-height: 1.45; }
+  .command-dashboard .cad-call-incident > :last-child { font-size: 12px; line-height: 1.5; margin-top: 4px; }
+  .command-dashboard .cad-call-time { grid-area: 2 / 2 / 3 / 4; display: flex; flex-wrap: wrap; width: auto !important; gap: 4px 12px; font-size: 11px; }
+  .command-dashboard .cad-call-status { grid-area: 3 / 2; width: auto !important; max-width: none; text-align: left; }
+  .command-dashboard .cad-call-status span { display: inline-block; font-size: 10px; }
+  .command-dashboard .cad-call-units { grid-area: 3 / 3; width: auto !important; align-self: center; }
+  .command-dashboard .cad-call-clear { grid-area: 4 / 2 / 5 / 4; width: auto !important; justify-content: flex-end; }
+  .command-dashboard .cad-call-clear button { padding-inline: 14px; }
+  .command-dashboard .cad-call-elapsed, .command-dashboard .cad-call-agency { display: none !important; }
+  .cad-app main[data-page="DispatchCenter"] { padding-bottom: 0; overflow: hidden !important; }
+  .cad-command-workstation { height: 100% !important; min-height: 0; }
+  .cad-command-workstation > :last-child { flex-wrap: wrap; white-space: normal; }
+}
+@media (max-width: 639px) {
+  .pathfinder-header-clock > :last-child { display: none; }
+  .pathfinder-header-clock > :first-child { font-size: 12px; letter-spacing: 0; }
+  .cad-app .mobile-field-content > :is(div,section) { padding-left: 12px; padding-right: 12px; }
+  .cad-app .mobile-field-content > :is(.command-dashboard,.cad-command-workstation) { padding-left: 0; padding-right: 0; }
+  .cad-app .mobile-field-content h1 { font-size: 24px !important; line-height: 1.2 !important; overflow-wrap: anywhere; }
+  .cad-app .mobile-field-content .bps-kpi-card { min-height: 116px; padding: 12px; }
+  .cad-app .mobile-field-content .bps-kpi-icon { height: 32px; width: 32px; margin-bottom: 8px; }
+  .cad-app .mobile-field-content .bps-kpi-label { margin-top: 8px; letter-spacing: .025em; }
+  .bps-dialog[role="dialog"] { padding: 20px 16px; border-radius: 16px; }
+}
+@media (min-width: 640px) and (max-width: 1279px) {
+  /* A narrow navigation rail keeps tablet height available for the workspace. */
+  .cad-app > section { padding-bottom: 0; padding-left: calc(88px + env(safe-area-inset-left)); }
+  .cad-app .pathfinder-field-nav {
+    top: 0; bottom: 0; right: auto; left: 0; width: calc(88px + env(safe-area-inset-left)); height: 100dvh;
+    flex-direction: column; justify-content: center; gap: 12px; border-top: 0; border-right: 1px solid #29445f;
+    padding: max(12px, env(safe-area-inset-top)) 8px max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+  .pathfinder-field-nav > :is(a,button) { flex: 0 0 auto; width: 100%; min-height: 64px; }
+  .cad-app .mobile-field-content form [class*="grid-cols-"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .command-status-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .command-dashboard-sync { flex: 1 1 150px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cad-app *, .pathfinder-mobile-drawer { scroll-behavior: auto !important; }
+}
