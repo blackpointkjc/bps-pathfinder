@@ -3,7 +3,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  <div className="bps-table-scroll relative min-w-0 w-full overflow-auto" tabIndex={0} role="region" aria-label="Scrollable table">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
