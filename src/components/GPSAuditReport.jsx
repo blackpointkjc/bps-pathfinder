@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { buildAuditModel, buildRouteMap, auditTime, durationLabel, signalQuality, validAuditPoint } from '@/lib/locationAudit';
 import { addRequiredPrintFooter } from '@/utils/requiredPrintFooter';
 import auditStyles from './GPSAuditReport.css?inline';

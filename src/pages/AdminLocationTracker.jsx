@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity, Users, History, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { Circle, MapContainer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
+import { Circle, MapContainer, Popup, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
