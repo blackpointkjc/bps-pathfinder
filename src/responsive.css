@@ -103,7 +103,7 @@
     padding: max(12px, env(safe-area-inset-top)) 8px max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   }
   .pathfinder-field-nav > :is(a,button) { flex: 0 0 auto; width: 100%; min-height: 64px; }
-  .cad-app .mobile-field-content form [class*="grid-cols-"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .cad-app .mobile-field-content form :is(.sm\:grid-cols-2, .md\:grid-cols-2) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .command-status-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .command-dashboard-sync { flex: 1 1 150px; }
 }
