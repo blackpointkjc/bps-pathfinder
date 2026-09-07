@@ -342,7 +342,7 @@ function CommandDashboardInner() {
 
             {/* ── MY STATUS BAR ── */}
             {currentUser && (
-                <div className="flex-none flex items-center gap-2 px-3 py-2 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
+                <div className="command-status-bar flex-none flex items-center gap-2 px-3 py-2 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
                     {currentUser.profile_photo_url ? (
                         <img src={currentUser.profile_photo_url} alt="" className="h-8 w-8 flex-shrink-0 rounded-full border border-gold/50 object-cover" />
                     ) : (
@@ -357,7 +357,7 @@ function CommandDashboardInner() {
                             ? `UNIT-${currentUser.unit_number}`
                             : currentUser.full_name?.toUpperCase()} STATUS:
                     </span>
-                    <div className="flex min-w-max items-center gap-1.5">
+                    <div className="command-status-options flex min-w-max items-center gap-1.5">
                         {myStatuses.map(s => {
                             const cfg = UNIT_STATUS_COLORS[s];
                             const isActive = currentUser.status === s;
@@ -392,18 +392,18 @@ function CommandDashboardInner() {
             )}
 
             {/* ── MAIN GRID ── */}
-            <div className="flex-1 grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_350px]">
+            <div className="flex-1 grid min-h-0 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_350px]">
 
                 {/* ── CALL QUEUE (3 cols) ── */}
                 <div className="flex min-h-0 min-w-0 flex-col border-r border-slate-800">
-                    <div className="flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
+                    <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span></div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
                             <option value="ALL">ALL AGENCIES</option><option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
                         </select>
                     </div>
 
-                    <div className="hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
+                    <div className="command-column-headings hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
                         <div className="w-8 flex-shrink-0">PRI</div>
                         <div className="w-36 flex-shrink-0">CAD / REF · TIME (ET)</div>
                         <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
@@ -450,7 +450,7 @@ function CommandDashboardInner() {
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
 
-                                    <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block pt-0.5">
+                                    <div className="cad-call-elapsed w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block pt-0.5">
                                         {elapsed(call)}
                                     </div>
 
@@ -467,7 +467,7 @@ function CommandDashboardInner() {
                                         </div>
                                     </div>
 
-                                    <div className="w-24 flex-shrink-0 hidden lg:block pt-0.5">
+                                    <div className="cad-call-agency w-24 flex-shrink-0 hidden lg:block pt-0.5">
                                         <span className="text-slate-500 font-mono text-[10px] break-words">{call.agency || '—'}</span>
                                     </div>
 
@@ -511,7 +511,7 @@ function CommandDashboardInner() {
                 {/* ── RIGHT COLUMN ── */}
                 <div className="flex min-h-0 flex-col border-t border-slate-800 bg-[#07101b] lg:border-l lg:border-t-0">
 
-                    <div className="flex min-h-[260px] flex-col lg:max-h-[54%]">
+                    <div className="flex min-h-[260px] flex-col xl:max-h-[54%]">
                         <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
                     </div>
 
