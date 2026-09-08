@@ -22,7 +22,6 @@ import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
-import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
