@@ -16,7 +16,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
-import { getLiveLocation, startLiveLocationTracking, isTacticalLocationFix, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation, TACTICAL_GPS_MAX_ACCURACY_METERS } from '@/lib/liveLocationService';
+import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
