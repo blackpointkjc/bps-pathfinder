@@ -16,11 +16,13 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
-import { getLiveLocation, isTacticalLocationFix, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation, TACTICAL_GPS_MAX_ACCURACY_METERS } from '@/lib/liveLocationService';
+import { getLiveLocation, startLiveLocationTracking, isTacticalLocationFix, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation, TACTICAL_GPS_MAX_ACCURACY_METERS } from '@/lib/liveLocationService';
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+
+const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -114,13 +116,19 @@ export default function Navigation() {
     const focusCallId = new URLSearchParams(window.location.search).get('callId');
 
     useEffect(() => {
+        const stopTracking = startLiveLocationTracking({ onError: error => {
+            if (!getLiveLocation(30000)) {
+                setIsLiveTracking(false);
+                setGpsQuality({ state: error?.code === 1 ? 'denied' : 'unavailable', accuracy: null });
+            }
+        }});
         init();
         const unsubscribe = subscribeLiveLocation((fix) => {
             const quality = locationQuality(fix);
             setGpsQuality(quality);
             const lat = Number(fix?.latitude);
             const lng = Number(fix?.longitude);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            if (!validPosition(fix?.latitude, fix?.longitude)) {
                 setIsLiveTracking(false);
                 return;
             }
@@ -136,7 +144,7 @@ export default function Navigation() {
             setLocationHistory(prev => [...prev, coords].slice(-30));
             setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
         });
-        return unsubscribe;
+        return () => { unsubscribe(); stopTracking(); };
     }, []);
 
     // Credit-free live officer refresh. ActiveOfficer is the source written by
@@ -339,8 +347,8 @@ export default function Navigation() {
     const init = async () => {
         try {
             const user = await base44.auth.me();
-            const partneredUser = await syncScheduledCadPartnership(user);
-            setCurrentUser(partneredUser);
+            setCurrentUser(user);
+            syncScheduledCadPartnership(user).then(setCurrentUser).catch(() => null);
             if (user.status) setUnitStatus(user.status);
         } catch {}
         const fix = getLiveLocation(30000);
@@ -614,16 +622,28 @@ export default function Navigation() {
             // Navigation consumes the same canonical unit snapshot as CAD and the
             // admin tracker. Never fall back to raw ActiveOfficer rows, because a
             // stale stored coordinate must not become a live map marker.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true });
             const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
                 .filter(unit => unit.session_active !== false);
             const currentEmail = currentUser?.email?.toLowerCase();
+            const self = sourceUnits.find(unit => String(unit.officer_email || unit.email || '').toLowerCase() === currentEmail);
+            // Server positions are a labelled fallback while this device acquires GPS.
+            if (!getLiveLocation(30000) && self) {
+                const live = validPosition(self.latitude, self.longitude);
+                const lat = live ? self.latitude : self.last_known_latitude;
+                const lng = live ? self.longitude : self.last_known_longitude;
+                if (validPosition(lat, lng)) {
+                    setCurrentLocation([Number(lat), Number(lng)]);
+                    setGpsQuality({ state: 'last_known', accuracy: live ? self.accuracy : self.last_known_accuracy });
+                    setIsLiveTracking(false);
+                }
+            }
             const units = sourceUnits
                 .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
                 .filter(unit => {
-                    const hasLive = Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude));
-                    const hasLast = Number.isFinite(Number(unit.last_known_latitude)) && Number.isFinite(Number(unit.last_known_longitude));
-                    const hasCoarse = Number.isFinite(Number(unit.coarse_latitude)) && Number.isFinite(Number(unit.coarse_longitude));
+                    const hasLive = validPosition(unit.latitude, unit.longitude);
+                    const hasLast = validPosition(unit.last_known_latitude, unit.last_known_longitude);
+                    const hasCoarse = validPosition(unit.coarse_latitude, unit.coarse_longitude);
                     return hasLive || hasLast || hasCoarse;
                 })
                 .map(unit => ({
@@ -801,7 +821,7 @@ export default function Navigation() {
                             isLiveTracking ? 'bg-green-500/10 border-green-500/30 text-green-400' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-800 border-slate-700 text-slate-500'
                         }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isLiveTracking ? 'bg-green-400 animate-pulse' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
-                            {isLiveTracking ? `GPS${Number.isFinite(Number(gpsQuality?.accuracy)) ? ` ±${Math.round(Number(gpsQuality.accuracy))}m` : ''}` : gpsQuality?.state === 'low_accuracy' ? `GPS LOW ±${Math.round(Number(gpsQuality?.accuracy || 0))}m` : gpsQuality?.state === 'acquiring' ? 'GPS ACQUIRING' : 'GPS UNAVAILABLE'}
+                            {isLiveTracking ? `GPS${Number.isFinite(Number(gpsQuality?.accuracy)) ? ` ±${Math.round(Number(gpsQuality.accuracy))}m` : ''}` : gpsQuality?.state === 'low_accuracy' ? `GPS LOW ±${Math.round(Number(gpsQuality?.accuracy || 0))}m` : gpsQuality?.state === 'last_known' ? 'LAST KNOWN GPS' : gpsQuality?.state === 'denied' ? 'ALLOW LOCATION ACCESS' : gpsQuality?.state === 'acquiring' ? 'GPS ACQUIRING' : 'GPS UNAVAILABLE'}
                         </button>
                         <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono ${
                             isOnline ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-red-500/10 border-red-500/30 text-red-400'

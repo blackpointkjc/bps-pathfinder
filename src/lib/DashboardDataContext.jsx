@@ -9,6 +9,8 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 
 const DashboardDataContext = createContext(null);
+let lastSharedIngestion = 0;
+let lastSharedArchive = 0;
 
 const POLL_INTERVAL_MS = 20_000;        // Realtime subscriptions handle most updates; this is only a fallback
 const GRAC_SYNC_INTERVAL_MS = 60_000;  // One shared sync per browser, no page-level duplicate loops
@@ -82,8 +84,16 @@ export function DashboardDataProvider({ children }) {
 
             // Calls are the critical payload. Fetch and paint them first so a slower
             // officer-roster request can never hold the Active Calls queue behind the spinner.
+            const rosterTask = (async () => {
+                if (Date.now() - lastUsersRefreshTime.current < USER_REFRESH_MS && usersCacheRef.current.length) return;
+                try {
+                    const payload = await getOfficerLocationSnapshot();
+                    usersCacheRef.current = payload.users || [];
+                    lastUsersRefreshTime.current = Date.now();
+                    setUsers(usersCacheRef.current);
+                } catch (error) { console.warn('[CAD] Roster refresh failed', error?.message); }
+            })();
             let callsData = [];
-            let usersData = usersCacheRef.current;
             try {
                 callsData = await base44.entities.DispatchCall.list('-created_date', 200);
             } catch (callsErr) {
@@ -137,21 +147,7 @@ export function DashboardDataProvider({ children }) {
             const richmondNow = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
             console.log(`[CAD ${nowET}] Current Richmond time: ${richmondNow}`);
 
-            // Refresh the roster after calls are already visible. Cached units render
-            // immediately; fresh on-duty data replaces them when available.
-            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
-                try {
-                    const payload = await getOfficerLocationSnapshot();
-                    usersData = payload.users || [];
-                    usersCacheRef.current = usersData;
-                    lastUsersRefreshTime.current = Date.now();
-                } catch (usersErr) {
-                    console.warn(`[CAD ${nowET}] on-duty roster fetch failed — continuing with cached users`, usersErr);
-                    usersData = usersCacheRef.current;
-                }
-            }
-            setUsers(usersData || []);
-            console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Active: ${active.length} | Users: ${usersData?.length ?? 0}`);
+            await rosterTask;
 
         } catch (err) {
             if (isRateLimitError(err)) {
@@ -171,7 +167,8 @@ export function DashboardDataProvider({ children }) {
     // This uses direct HTTP/server code and does not consume integration credits.
     const syncGrac = useCallback(async () => {
         const now = Date.now();
-        if (syncingGracRef.current || document.hidden || now < rateLimitedUntil.current) return;
+        if (syncingGracRef.current || document.hidden || now < rateLimitedUntil.current || now - lastSharedIngestion < GRAC_SYNC_INTERVAL_MS) return;
+        lastSharedIngestion = now;
         syncingGracRef.current = true;
         try {
             await base44.functions.invoke('ingestGractivecalls', {});
@@ -209,6 +206,8 @@ export function DashboardDataProvider({ children }) {
     // page spinner open. The UI already filters calls at one hour immediately.
     useEffect(() => {
         const runArchive = async () => {
+            if (Date.now() - lastSharedArchive < 10 * 60_000) return;
+            lastSharedArchive = Date.now();
             await base44.functions.invoke('archiveOldCalls', {}).catch(error => {
                 console.warn('[CAD] automatic old-call archive pass failed:', error?.message);
             });
