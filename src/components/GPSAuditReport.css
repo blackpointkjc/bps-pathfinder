@@ -15,7 +15,7 @@ html body .gps-audit .gps-stat strong { display:block; color:#8c480d; font-size:
 html body .gps-audit .gps-stat span { font-size:10px; font-weight:700; letter-spacing:.05em; color:#6b6470; }
 html body .gps-audit h2 { font:800 11px/1.4 Arial,sans-serif; color:#ad5700 !important; letter-spacing:.12em; margin:20px 0 8px; padding-bottom:5px; border-bottom:1px solid #e7cb86; break-after:avoid; }
 html body .gps-audit .gps-legend { display:flex; flex-wrap:wrap; gap:12px; margin:6px 0; font-size:11px; color:#665b4a; }
-html body .gps-audit .gps-map { width:100%; aspect-ratio:760/360; position:relative; overflow:hidden; background:#eee9df; border:1px solid #dbc99d; border-radius:8px; break-inside:avoid; }
+html body .gps-audit .gps-map { width:100%; aspect-ratio:760/480; position:relative; overflow:hidden; background:#eee9df; border:1px solid #dbc99d; border-radius:8px; break-inside:avoid; }
 html body .gps-audit .gps-map img { position:absolute; max-width:none !important; max-height:none; border:0; }
 html body .gps-audit .gps-map svg { position:absolute; inset:0; width:100%; height:100%; max-width:none; }
 html body .gps-audit .gps-attribution { position:absolute; right:0; bottom:0; background:#fffdf4e8; color:#333; padding:2px 5px; font-size:9px; }
@@ -45,7 +45,7 @@ html body .gps-audit .gps-footer { display:flex; flex-wrap:wrap; justify-content
  html body .gps-audit .gps-banner-meta { text-align:left; }
  html body .gps-audit .gps-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
  html body .gps-audit .gps-name { font-size:18px; }
- html body .gps-audit .gps-map { aspect-ratio:760/360; }
+ html body .gps-audit .gps-map { aspect-ratio:760/480; }
 }
 @media print {
  @page { size:letter; margin:12mm 10mm 20mm; }
@@ -56,7 +56,7 @@ html body .gps-audit .gps-footer { display:flex; flex-wrap:wrap; justify-content
  html body .gps-audit .gps-banner-meta { text-align:right; }
  html body .gps-audit .gps-summary { grid-template-columns:repeat(4,minmax(0,1fr)); }
  html body .gps-audit .gps-stat strong { font-size:12pt; }
- html body .gps-audit .gps-map { aspect-ratio:760/360; }
+ html body .gps-audit .gps-map { aspect-ratio:760/480; }
  html body .gps-audit .gps-map svg { height:100%; top:0; }
  html body .gps-audit .gps-table-wrap { overflow:visible; }
  html body .gps-audit table.gps-table { min-width:0; font-size:8pt; }
@@ -96,3 +96,9 @@ html body .gps-audit .gps-brand small { display:block; font-size:10px; }
  html body .gps-audit .gps-report-card { padding:12px; }
  html body .gps-audit .gps-brand { font-size:22px; }
 }
+
+.gps-map-controls { display:flex; flex-wrap:wrap; align-items:end; gap:8px; margin:12px 0; }
+.gps-map-controls button,.gps-map-controls select { min-height:44px; border:1px solid #94a3b8; border-radius:8px; background:white; color:#172033; padding:8px 12px; font-size:13px; }
+.gps-map-controls label { display:flex; flex-direction:column; gap:4px; color:#475569; font-size:12px; min-width:0; }
+.gps-map-controls select { max-width:100%; }
+@media print { .gps-map-controls { display:none !important; } }

@@ -65,27 +65,25 @@ export function buildAuditModel(history = []) {
   flush();
   return {pings,points:pings.filter(usable),segments,stops,distanceMiles:distance/1609.344,gaps,excluded:pings.filter(p=>!usable(p)).length};
 }
-export function buildRouteMap(points, segments, width=760, height=360) {
+export function buildRouteMap(points, segments, width=760, height=480, view={}) {
   if (!points.length) return null;
   const project=(p,z)=>{
     const lat=Math.max(-85.0511,Math.min(85.0511,Number(p.latitude)))*Math.PI/180;
     const scale=256*2**z;
     return [(Number(p.longitude)+180)/360*scale,(1-Math.log(Math.tan(lat)+1/Math.cos(lat))/Math.PI)/2*scale];
   };
-  let zoom=18, coordinates;
-  while (zoom>=1) {
-    coordinates=points.map(p=>project(p,zoom));
-    const xs=coordinates.map(p=>p[0]),ys=coordinates.map(p=>p[1]);
-    if (Math.max(...xs)-Math.min(...xs)<width-64 && Math.max(...ys)-Math.min(...ys)<height-64) break;
-    zoom--;
-  }
-  const xs=coordinates.map(p=>p[0]),ys=coordinates.map(p=>p[1]);
-  const left=(Math.min(...xs)+Math.max(...xs)-width)/2,top=(Math.min(...ys)+Math.max(...ys)-height)/2;
+  const normalized=points.map(p=>project(p,0));
+  const bounds=normalized.reduce((b,p)=>[Math.min(b[0],p[0]),Math.min(b[1],p[1]),Math.max(b[2],p[0]),Math.max(b[3],p[1])],[Infinity,Infinity,-Infinity,-Infinity]);
+  const fit=Math.min(18,Math.log2(Math.min((width-48)/Math.max(bounds[2]-bounds[0],.000001),(height-48)/Math.max(bounds[3]-bounds[1],.000001))));
+  const zoom=Math.max(1,Math.min(19,(view.centerPoint ? 17 : fit)+(view.zoomOffset||0)));
+  const tileZoom=Math.min(19,Math.ceil(zoom)), tileScale=2**(zoom-tileZoom),tileSize=256*tileScale;
+  const center=view.centerPoint ? project(view.centerPoint,zoom) : [(bounds[0]+bounds[2])/2*2**zoom,(bounds[1]+bounds[3])/2*2**zoom];
+  const left=center[0]-width/2,top=center[1]-height/2;
   const toXY=p=>{const [x,y]=project(p,zoom);return [x-left,y-top];};
   const tiles=[];
-  for(let x=Math.floor(left/256);x<=Math.floor((left+width)/256);x++) for(let y=Math.floor(top/256);y<=Math.floor((top+height)/256);y++) {
-    if(y<0||y>=2**zoom)continue;
-    tiles.push({key:x+':'+y,url:'https://a.tile.openstreetmap.org/'+zoom+'/'+((x%2**zoom+2**zoom)%2**zoom)+'/'+y+'.png',left:(x*256-left)/width*100,top:(y*256-top)/height*100,width:256/width*100,height:256/height*100});
+  for(let x=Math.floor(left/tileSize);x<=Math.floor((left+width)/tileSize);x++) for(let y=Math.floor(top/tileSize);y<=Math.floor((top+height)/tileSize);y++) {
+    if(y<0||y>=2**tileZoom)continue;
+    tiles.push({key:tileZoom+':'+x+':'+y,url:'https://a.tile.openstreetmap.org/'+tileZoom+'/'+((x%2**tileZoom+2**tileZoom)%2**tileZoom)+'/'+y+'.png',left:(x*tileSize-left)/width*100,top:(y*tileSize-top)/height*100,width:tileSize/width*100,height:tileSize/height*100});
   }
-  return {width,height,tiles,points:points.map(toXY),lines:segments.map(segment=>segment.map(p=>toXY(p).join(',')).join(' '))};
+  return {width,height,zoom,tiles,points:points.map(toXY),lines:segments.map(segment=>segment.map(p=>toXY(p).join(',')).join(' '))};
 }

@@ -12,7 +12,9 @@ export default function GPSAuditReport({ data, officerName }) {
   const [printError,setPrintError]=useState('');
   const [tileError,setTileError]=useState(false);
   const model=useMemo(()=>buildAuditModel(data.history),[data.history]);
-  const route=useMemo(()=>buildRouteMap(model.points,model.segments),[model]);
+  const [mapZoom,setMapZoom]=useState(0);
+  const [focusedPing,setFocusedPing]=useState('');
+  const route=useMemo(()=>buildRouteMap(model.points,model.segments,760,480,{zoomOffset:mapZoom,centerPoint:focusedPing === '' ? null : model.points[Number(focusedPing)]}),[model,mapZoom,focusedPing]);
   const entries=data.entries||[],alerts=data.geofenceAlerts||[];
   const timeline = [...model.pings.map((ping,index)=>({kind:'ping',record:ping,index,time:auditTimestamp(ping.timestamp)})), ...alerts.map(alert=>({kind:'alert',record:alert,time:auditTimestamp(alert.created_date)}))].sort((a,b)=>a.time-b.time);
   const firstEntry=entries[0],lastEntry=entries[entries.length-1];
@@ -62,6 +64,13 @@ export default function GPSAuditReport({ data, officerName }) {
         <p className="gps-note">First ping: {auditTime(model.pings[0]?.timestamp)} · Last ping: {auditTime(model.pings[model.pings.length-1]?.timestamp)}. Clock times come from time entries, not GPS pings.</p>
         </section><section className="gps-report-card"><h2>Route Map</h2>
         <div className="gps-legend"><span>🟢 Start</span><span>● Recorded pings</span><span>🔴 End</span><span>{model.points.length} mapped points</span></div>
+        {route && <div className="gps-map-controls">
+          <button type="button" onClick={()=>{setMapZoom(value=>Math.min(8,value+1));setTileError(false);}} aria-label="Zoom in on report map">+ Zoom in</button>
+          <button type="button" onClick={()=>{setMapZoom(value=>Math.max(-4,value-1));setTileError(false);}} aria-label="Zoom out on report map">− Zoom out</button>
+          <button type="button" onClick={()=>{setMapZoom(0);setFocusedPing('');setTileError(false);}}>Fit entire route</button>
+          <label>Focus location <select value={focusedPing} onChange={event=>{setFocusedPing(event.target.value);setMapZoom(0);setTileError(false);}}><option value="">Entire route</option>{model.points.map((point,index)=><option key={point.id||index} value={index}>Ping {index+1} · {auditTime(point.timestamp)} ET</option>)}</select></label>
+        </div>}
+        {route && <p className="gps-note">{focusedPing !== '' || mapZoom > 0 ? 'Map detail view — some pings may be outside this view. The full log below retains every ping.' : 'Entire recorded route.'} Printing uses the map view shown here.</p>}
         {route?<div className="gps-map" aria-label="Recorded GPS route map">
           {route.tiles.map(tile=><img key={tile.key} src={tile.url} alt="" onError={()=>setTileError(true)} style={{left:tile.left+'%',top:tile.top+'%',width:tile.width+'%',height:tile.height+'%'}}/>)}
           <svg viewBox={'0 0 '+route.width+' '+route.height} role="img" aria-label="GPS route from first recorded ping to last recorded ping">
