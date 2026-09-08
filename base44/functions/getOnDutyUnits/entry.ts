@@ -142,20 +142,14 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, units, signed_in_count: units.length, location_only: true });
     }
 
-    // Full CAD/unit-status consumers need all three datasets. Read sequentially so
-    // one function call does not hit the entity API with a simultaneous burst.
-    const timeEntries = await readWithRetry(
-      () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
-      'time entries',
-    );
-    const activeOfficers = await readWithRetry(
-      () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
-      'active officer sessions',
-    );
-    const users = await readWithRetry(
-      () => base44.asServiceRole.entities.User.list('-updated_date', 1000),
-      'officer directory',
-    );
+    // Fetch independent roster inputs together; completed shifts are not needed.
+    const [timeEntries, activeOfficers, users] = await Promise.all([
+      readWithRetry(() => base44.asServiceRole.entities.TimeEntry.filter({
+        archived: { $ne: true }, $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
+      }, '-clock_in', 3000), 'open time entries'),
+      readWithRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000), 'active officer sessions'),
+      readWithRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 1000), 'officer directory'),
+    ]);
 
     const openByEmail = new Map<string, any>();
     for (const entry of timeEntries || []) {
