@@ -519,7 +519,7 @@ export default function DispatchCenter() {
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="dispatch-actions flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex h-7 items-center gap-1 rounded-md border border-red-500 bg-red-700 px-2.5 text-[9px] font-bold text-white hover:bg-red-600">
                         <Plus className="w-3 h-3" /> NEW CALL
@@ -592,7 +592,7 @@ export default function DispatchCenter() {
             <ActiveBoloBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
+            <div className="dispatch-kpis grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
                     { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
@@ -647,7 +647,7 @@ export default function DispatchCenter() {
                     <PriorCallsView currentUser={currentUser} units={units} />
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
+                <div className="dispatch-main flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col border-b border-[#1e2d4a] xl:flex xl:min-h-0 xl:w-[320px] xl:flex-none xl:border-b-0 xl:border-r 2xl:w-[380px]`}> 
@@ -658,7 +658,7 @@ export default function DispatchCenter() {
                             <span className="ml-auto text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
                         {/* Table header */}
-                        <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
+                        <div className="dispatch-call-headings flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
                             <div className="col-span-2">PRI</div>
                             <div className="col-span-5">INCIDENT</div>
                             <div className="col-span-5">TIME</div>
@@ -668,7 +668,7 @@ export default function DispatchCenter() {
                                 <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE CALLS</div>
                             ) : allCalls.map(call => (
                                 <div key={call.id} onClick={() => handleSelectCall(call)}
-                                    className={`group grid grid-cols-12 cursor-pointer border-b border-[#172536] px-2 py-2.5 transition-all ${
+                                    className={`dispatch-call-card group grid grid-cols-12 cursor-pointer border-b border-[#172536] px-2 py-2.5 transition-all ${
                                         selectedCall?.id === call.id
                                             ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
                                             : 'hover:bg-[#111827]'
@@ -811,7 +811,7 @@ export default function DispatchCenter() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
                                 </div>
-                                <div className="flex-1" style={{minHeight: '200px', position: 'relative', zIndex: 0}}>
+                                <div className="flex-1" style={{height: '55dvh', minHeight: '320px', position: 'relative', zIndex: 0}}>
                                     <MapContainer
                                         center={[37.5407, -77.4360]}
                                         zoom={11}

@@ -183,7 +183,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     return null;
 }
 
-const validCoordPair = value => Array.isArray(value) && value.length >= 2 && Number.isFinite(Number(value[0])) && Number.isFinite(Number(value[1]));
+const validCoordPair = value => Array.isArray(value) && value.length >= 2 && value.slice(0,2).every(v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v))) && Math.abs(Number(value[0])) <= 90 && Math.abs(Number(value[1])) <= 180;
 
 const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
@@ -302,7 +302,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
 
             {safeCurrentLocation && (
                 <Marker
-                    key={`self-${safeCurrentLocation[0].toFixed(6)}-${safeCurrentLocation[1].toFixed(6)}`}
+                    key="self-location"
                     position={safeCurrentLocation}
                     icon={heading !== null ? createLocationWithHeading(heading, showLights, unitName) : createCurrentLocationIcon(showLights, unitName)}
                 />
