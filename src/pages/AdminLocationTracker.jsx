@@ -25,7 +25,6 @@ const LOGO_URL = "/black-point-shield.webp";
 // Use one app-wide live-location window. A signed-in officer stays visible for up to
 // 15 minutes after the latest session/GPS heartbeat, matching the system health
 // check and preventing a brief browser/GPS pause from making the unit disappear.
-const LIVE_SESSION_FRESH_MS = 15 * 60 * 1000;
 // Dispatch distance/ETA uses the backend's two-minute GPS freshness window.
 // Keep the admin map label aligned with that rule so an old but geographically
 // close point is never described as current GPS.
@@ -217,7 +216,7 @@ export default function AdminLocationTracker() {
   // The live feed is restricted server-side to signed-in officers with a fresh
   // ActiveOfficer ping. This client-side freshness check is
   // only a final display safeguard.
-  const currentlyActiveOfficers = React.useMemo(() => {
+  const trackedOfficers = React.useMemo(() => {
     return [...newestLocationByEmail.values()].map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
       if (profile && !isOperationallyVisibleUser(profile)) return null;
@@ -274,7 +273,7 @@ export default function AdminLocationTracker() {
         const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
         const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
         const name = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : (profile?.full_name || locationData.officer_name || locationData.officer_email);
-        const hasFreshGps = hasValidCoordinates(locationData)
+        const hasFreshGps = locationData.session_active === true && hasValidCoordinates(locationData)
           && gpsAgeMs <= LIVE_GPS_FRESH_MS;
         const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
         const item = {
@@ -367,7 +366,7 @@ export default function AdminLocationTracker() {
   // (even coarse) fix exists — pick the newest valid coordinate and let the
   // accuracy circle communicate the uncertainty.
   const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
-  const officersForMap = (currentlyActiveOfficers || [])
+  const officersForMap = (trackedOfficers || [])
     .map(o => {
       const valid = (latitude, longitude) => hasValidCoordinates({ latitude, longitude });
       const candidates = [];
@@ -661,7 +660,7 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-5xl font-bold text-slate-900">{currentlyActiveOfficers?.length || 0}</div>
+                  <div className="text-5xl font-bold text-slate-900">{trackedOfficers.filter(officer => officer.session_active === true).length}</div>
                   <p className="text-xs text-slate-900 mt-1">Active app sessions</p>
                 </CardContent>
               </Card>
@@ -772,7 +771,7 @@ export default function AdminLocationTracker() {
               </Card>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {currentlyActiveOfficers?.map((officer) => (
+              {trackedOfficers?.map((officer) => (
                 <Card key={officer.id} className="border-none shadow-xl hover:shadow-2xl transition-shadow">
                   <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
                     <CardTitle className="flex items-center justify-between">
@@ -833,11 +832,11 @@ export default function AdminLocationTracker() {
               ))}
             </div>
 
-            {!currentlyActiveOfficers?.length && (
+            {!trackedOfficers?.length && (
               <Card className="border-none shadow-lg">
                 <CardContent className="p-12 text-center">
                   <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-slate-500">No signed-in users are currently reporting a session heartbeat</p>
+                  <p className="text-slate-500">No officer location records are available yet</p>
                 </CardContent>
               </Card>
             )}
@@ -856,7 +855,7 @@ export default function AdminLocationTracker() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Live Tracking:</strong> Shows operational signed-in users such as admins, supervisors, dispatchers, support staff, and officers. Client, student, and pending accounts are intentionally hidden from this operational display even though session tracking remains internal. GPS uses the single app-wide location service.
+            <strong>Live Tracking:</strong> Shows operational users with recent GPS and retains their available last-known positions when offline. Gray markers are historical positions, not live fixes. Client, student, and pending accounts are intentionally hidden from this operational display even though session tracking remains internal. GPS uses the single app-wide location service.
           </p>
           <p className="text-sm text-blue-900 mt-2">
             <strong>Check All Locations Now:</strong> Checks all recent signed-in session records and separates users with current GPS, users signed in with GPS unavailable, and recently stale sessions.
