@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
     // refresh; the old three-read burst was a major source of 429s and occasional
     // 500 responses from the live tracker.
     if (input?.location_only === true) {
+      const adminMap = input?.include_last_known === true;
+      if (adminMap && me.role !== 'admin') return Response.json({ error: 'Administrator access required' }, { status: 403 });
       const activeOfficers = await readWithRetry(
         () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
         'active officer sessions',
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
       const units = [...newestByEmail.values()]
         .filter((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          return active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= freshCutoff;
+          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= freshCutoff);
         })
         .map((active: any) => {
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
@@ -95,8 +97,7 @@ Deno.serve(async (req) => {
           const hasReliablePosition = hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
             && Number.isFinite(reliableAccuracy)
             && reliableAccuracy <= 100
-            && Boolean(active.tracking_session_key)
-            && active.reliable_session_key === active.tracking_session_key;
+            && (adminMap || (Boolean(active.tracking_session_key) && active.reliable_session_key === active.tracking_session_key));
           const hasGps = Number.isFinite(gpsTs)
             && gpsTs >= gpsFreshCutoff
             && hasValidCoordinates(active.latitude, active.longitude)
@@ -136,10 +137,10 @@ Deno.serve(async (req) => {
             clock_in_time: active.clock_in_time || '',
             last_update: active.last_update || active.updated_date || active.created_date || '',
             last_updated: active.last_update || active.updated_date || active.created_date || '',
-            session_active: true,
+            session_active: active.session_active !== false && new Date(active.last_update || active.updated_date || 0).getTime() >= freshCutoff,
           };
         });
-      return Response.json({ success: true, units, signed_in_count: units.length, location_only: true });
+      return Response.json({ success: true, units, signed_in_count: units.filter(unit => unit.session_active).length, location_only: true, includes_last_known: adminMap });
     }
 
     // Fetch independent roster inputs together; completed shifts are not needed.

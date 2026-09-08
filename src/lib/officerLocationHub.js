@@ -12,7 +12,7 @@ const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const snapshotCache = new Map();
 const inflight = new Map();
 
-function cacheKey(locationOnly) { return locationOnly ? 'location' : 'full'; }
+function cacheKey(locationOnly, includeLastKnown) { if (includeLastKnown) return 'admin-location'; return locationOnly ? 'location' : 'full'; }
 function clearSnapshotCache() { snapshotCache.clear(); }
 
 function validCoords(lat, lng) {
@@ -66,8 +66,8 @@ function scrubSnapshot(payload = {}) {
     ...payload,
     // The shared client gateway is another hard boundary: stale backend payloads
     // cannot leak signed-out officers into CAD, Navigation, or supervisor maps.
-    units: Array.isArray(payload.units) ? payload.units.map(scrubUnitLocation).filter(isLiveUnit) : payload.units,
-    users: Array.isArray(payload.users) ? payload.users.map(scrubUnitLocation).filter(isLiveUnit) : payload.users,
+    units: Array.isArray(payload.units) ? payload.units.map(scrubUnitLocation).filter(unit => payload.includes_last_known === true || isLiveUnit(unit)) : payload.units,
+    users: Array.isArray(payload.users) ? payload.users.map(scrubUnitLocation).filter(unit => payload.includes_last_known === true || isLiveUnit(unit)) : payload.users,
   };
 }
 
@@ -87,13 +87,13 @@ export async function endOfficerLocationSession() {
   return payload;
 }
 
-export async function getOfficerLocationSnapshot({ locationOnly = false, force = false } = {}) {
-  const key = cacheKey(locationOnly);
+export async function getOfficerLocationSnapshot({ locationOnly = false, force = false, includeLastKnown = false } = {}) {
+  const key = cacheKey(locationOnly, includeLastKnown);
   const cached = snapshotCache.get(key);
   if (!force && cached && Date.now() - cached.at < SNAPSHOT_TTL_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
 
-  const request = base44.functions.invoke('getOnDutyUnits', locationOnly ? { location_only: true } : {})
+  const request = base44.functions.invoke('getOnDutyUnits', locationOnly ? { location_only: true, include_last_known: includeLastKnown } : {})
     .then(response => {
       const rawPayload = response?.data || response || {};
       if (rawPayload.error) throw new Error(rawPayload.error);

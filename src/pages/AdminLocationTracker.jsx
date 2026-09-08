@@ -148,10 +148,10 @@ export default function AdminLocationTracker() {
     refetchOnMount: true,
   });
 
-  const { data: activeOfficerPayload = {} } = useQuery({
+  const { data: activeOfficerPayload = {}, error: activeOfficerError, isLoading: activeOfficerLoading } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
-      return getOfficerLocationSnapshot({ locationOnly: true, force: true });
+      return getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true });
     },
     // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
     // one-minute safety poll instead of repeatedly hitting the backend.
@@ -200,11 +200,7 @@ export default function AdminLocationTracker() {
   // ActiveOfficer ping. This client-side freshness check is
   // only a final display safeguard.
   const currentlyActiveOfficers = React.useMemo(() => {
-    const now = Date.now();
-    return [...newestLocationByEmail.values()].filter(locationData => {
-      const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
-      return Number.isFinite(stamp) && now - stamp <= LIVE_SESSION_FRESH_MS;
-    }).map(locationData => {
+    return [...newestLocationByEmail.values()].map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
       if (profile && !isOperationallyVisibleUser(profile)) return null;
       return {
@@ -236,13 +232,13 @@ export default function AdminLocationTracker() {
   const getOfficerName = (email) => {
     const officer = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
     if (officer?.last_name) return [officer.rank, officer.last_name].filter(Boolean).join(' ');
-    return officer?.unit_number ? `Unit ${officer.unit_number}` : 'Officer';
+    return officer?.full_name || newestLocationByEmail.get(String(email || '').toLowerCase())?.officer_name || email || 'Officer';
   };
 
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
-      const freshPayload = await getOfficerLocationSnapshot({ locationOnly: true });
+      const freshPayload = await getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true });
       const freshLocations = freshPayload.units || [];
       const freshClockedInWithoutSession = freshPayload.clocked_in_without_session || [];
       const freshUsers = allUsers || [];
@@ -256,18 +252,18 @@ export default function AdminLocationTracker() {
       const now = Date.now();
       for (const locationData of latestByEmail.values()) {
         const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
-        if (!isOperationallyVisibleUser(profile)) continue;
+        if (profile && !isOperationallyVisibleUser(profile)) continue;
         const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
         const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
-        const name = profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.full_name || profile.email);
+        const name = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : (profile?.full_name || locationData.officer_name || locationData.officer_email);
         const hasFreshGps = hasValidCoordinates(locationData)
           && gpsAgeMs <= LIVE_GPS_FRESH_MS;
         const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
         const item = {
           name,
-          email: profile.email,
+          email: profile?.email || locationData.officer_email,
           location: locationData.current_location || 'Signed in - GPS pending',
-          role: profile.rank || profile.role || 'officer',
+          role: profile?.rank || profile?.role || 'officer',
           lastUpdate: hadGps ? new Date(gpsStamp).toISOString() : null,
           minutesSinceUpdate: hadGps ? Math.max(0, Math.floor(gpsAgeMs / 60000)) : null,
           trackingState: hasFreshGps ? 'Live' : hadGps ? 'Last known' : 'Signed in - GPS unavailable',
@@ -355,7 +351,7 @@ export default function AdminLocationTracker() {
   const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
   const officersForMap = (currentlyActiveOfficers || [])
     .map(o => {
-      const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
+      const valid = (latitude, longitude) => hasValidCoordinates({ latitude, longitude });
       const candidates = [];
       if (valid(o.latitude, o.longitude)) candidates.push({ lat: Number(o.latitude), lng: Number(o.longitude), acc: Number(o.accuracy), ts: toLocTs(o.gps_updated_at), low: false, source: o.gps_source || 'browser_geolocation' });
       if (valid(o.last_known_latitude, o.last_known_longitude)) candidates.push({ lat: Number(o.last_known_latitude), lng: Number(o.last_known_longitude), acc: Number(o.last_known_accuracy), ts: toLocTs(o.last_gps_updated_at || o.gps_updated_at), low: false, source: o.last_known_gps_source || o.gps_source || '' });
@@ -371,7 +367,7 @@ export default function AdminLocationTracker() {
         gps_timestamp: best.ts || null,
         gps_display_source: best.source || '',
         gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 100),
-        gps_stale: !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
+        gps_stale: o.session_active === false || !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
       };
     })
     .filter(Boolean);
@@ -683,7 +679,7 @@ export default function AdminLocationTracker() {
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
-                    Live and Last-Known Map - Signed-In Users
+                    Officer Locations · Live and Last Known
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -695,6 +691,8 @@ export default function AdminLocationTracker() {
                       </AlertDescription>
                     </Alert>
                   )}
+                  {activeOfficerError && <Alert className="m-4" variant="destructive"><AlertDescription>Officer locations could not load. {activeOfficerError.message}</AlertDescription></Alert>}
+                  <p className="px-4 py-3 text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} officers on map. Blue: recent GPS. Gray: last known; the officer may be offline.`}</p>
                   <div className="relative h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     <MapContainer
                       center={[37.5407, -77.4360]}
