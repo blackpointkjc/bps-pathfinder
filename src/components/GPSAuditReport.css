@@ -68,3 +68,31 @@ html body .gps-audit .gps-footer { display:flex; flex-wrap:wrap; justify-content
  html body .gps-audit .gps-banner, html body .gps-audit .gps-identity, html body .gps-audit .gps-summary { break-inside:avoid; }
  .gps-print-controls { display:none !important; }
 }
+
+@media screen {
+ html body .gps-audit { background:#f8fafc; color:#172033; border-color:#e2e8f0; border-radius:16px; }
+ html body .gps-audit .gps-banner { background:white; color:#172033; border-bottom:1px solid #e2e8f0; }
+ html body .gps-audit .gps-brand { font-size:26px; }
+ html body .gps-audit .gps-brand small { display:block; font-size:10px; letter-spacing:.13em; color:#4f46e5; margin-bottom:8px; }
+ html body .gps-audit .gps-banner-meta strong { color:#475569; }
+ html body .gps-audit .gps-identity { background:white; border-color:#e2e8f0; }
+ html body .gps-audit .gps-name, html body .gps-audit .gps-stat strong { color:#172033; }
+ html body .gps-audit .gps-report-card { background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:18px; min-width:0; }
+ html body .gps-audit h2 { color:#172033 !important; font-size:16px; letter-spacing:0; text-transform:none; border:0; margin:0 0 16px; }
+ html body .gps-audit .gps-stat { border:0; border-right:1px solid #e2e8f0; border-radius:0; padding:8px; }
+ html body .gps-audit .gps-stat:last-child { border:0; }
+ html body .gps-audit .gps-note, html body .gps-audit .gps-subtitle { color:#64748b; }
+ html body .gps-audit .gps-table thead { background:#f8fafc !important; color:#64748b; }
+ html body .gps-audit .gps-table th { color:#64748b; }
+ html body .gps-audit .gps-table td { color:#172033; border-color:#e2e8f0; }
+ html body .gps-audit .gps-table tbody tr, html body .gps-audit .gps-table tbody tr:nth-child(even) { background:white; }
+ html body .gps-audit .gps-table tbody .gps-event { background:#fff1f2; }
+ html body .gps-audit .gps-map { border-color:#e2e8f0; }
+ html body .gps-audit .gps-footer { background:white; color:#64748b; border-top:1px solid #e2e8f0; }
+ .gps-audit-print { background:white; color:#172033; border-color:#cbd5e1; }
+}
+html body .gps-audit .gps-brand small { display:block; font-size:10px; }
+@media screen and (max-width:639px) {
+ html body .gps-audit .gps-report-card { padding:12px; }
+ html body .gps-audit .gps-brand { font-size:22px; }
+}
