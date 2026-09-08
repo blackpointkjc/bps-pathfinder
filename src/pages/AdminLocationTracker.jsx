@@ -206,7 +206,7 @@ export default function AdminLocationTracker() {
       return Number.isFinite(stamp) && now - stamp <= LIVE_SESSION_FRESH_MS;
     }).map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
-      if (!isOperationallyVisibleUser(profile)) return null;
+      if (profile && !isOperationallyVisibleUser(profile)) return null;
       return {
         ...locationData,
         id: locationData.id,
@@ -223,8 +223,9 @@ export default function AdminLocationTracker() {
     queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate],
     queryFn: async () => {
       const response = await base44.functions.invoke('getLocationAuditReport', { officer_email: selectedOfficerEmail, date: selectedDate });
-      const payload = response?.data || response || {};
+      const payload = response?.data?.data || response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
+      if (!Array.isArray(payload.history)) throw new Error("The GPS report response was incomplete. Please retry.");
       return payload;
     },
     enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,

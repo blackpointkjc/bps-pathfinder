@@ -52,7 +52,7 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
       )}
       <div className={fullCanvas
         ? 'min-h-0 min-w-0 flex-1 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!p-0'
-        : 'min-w-0 overflow-x-hidden'}>{Component ? <Component embedded /> : null}</div>
+        : 'min-w-0 overflow-x-clip'}>{Component ? <Component embedded /> : null}</div>
     </div>
   );
 }

@@ -110,3 +110,22 @@
 @media (prefers-reduced-motion: reduce) {
   .cad-app *, .pathfinder-mobile-drawer { scroll-behavior: auto !important; }
 }
+
+/* Keep the shell as the single page scroller; embedded tools grow with content. */
+.cad-app main.mobile-field-content { flex-basis: 0; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 639px) {
+  .command-dashboard .command-dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .command-dashboard .command-dashboard-kpi { padding: 14px; min-height: 88px; }
+  .command-dashboard-kpi > span:last-child { font-size: 11px; }
+  .command-dashboard-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .command-dashboard-sync { grid-column: 1 / -1; }
+  .command-dashboard-action, .command-dashboard-distress { width: 100%; min-width: 0; }
+  .command-status-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .command-status-options button { font-size: 12px; }
+  .command-dashboard .cad-call-row { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+  .command-dashboard .cad-call-incident { grid-area: 1 / 2; }
+  .command-dashboard .cad-call-time { grid-area: 2 / 1 / 3 / 3; }
+  .command-dashboard .cad-call-status { grid-area: 3 / 1 / 4 / 3; }
+  .command-dashboard .cad-call-units { grid-area: 4 / 1 / 5 / 3; justify-content: flex-start; }
+  .command-dashboard .cad-call-clear { grid-area: 5 / 1 / 6 / 3; }
+}

@@ -45,18 +45,22 @@ Deno.serve(async (req) => {
       if (me.role !== 'admin' && !roles.has('full_access') && !roles.has('supervisor')) {
         return Response.json({ error: 'Location history access required' }, { status: 403 });
       }
-      const history = await readWithRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
-        { officer_email: String(input.history_email) },
-        'timestamp',
-        5000,
-      ), 'location history');
+      const history: any[] = [];
+      for (let skip = 0; ; skip += 1000) {
+        const page = await readWithRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
+          { officer_email: String(input.history_email) }, '-timestamp', 1000, skip,
+        ), 'location history');
+        history.push(...page);
+        if (page.length < 1000) break;
+        if (history.length >= 100000) throw new Error('History is too large; select a daily audit report.');
+      }
+      history.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       // Legacy browser/IP fallbacks with multi-kilometer accuracy are retained in
       // the database for audit history, but they are not valid movement points and
       // must not distort the historical map or route line.
       const usableHistory = (history || []).filter((point: any) => {
         const accuracy = Number(point?.accuracy);
-        return Boolean(point.time_entry_id)
-          && hasValidCoordinates(point?.latitude, point?.longitude)
+        return hasValidCoordinates(point?.latitude, point?.longitude)
           && (!Number.isFinite(accuracy) || accuracy <= 2000);
       });
       return Response.json({ success: true, history: usableHistory, filtered_history_count: Math.max(0, (history || []).length - usableHistory.length) });
