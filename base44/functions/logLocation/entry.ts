@@ -88,24 +88,16 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, session_ended: true, records_updated: ended.filter(Boolean).length });
     }
 
-    // A GPS/heartbeat request that was already queued in the browser can arrive
-    // after clock-out/logout retired the session. Never allow that trailing
-    // request to reactivate an officer who is already Out of Service.
-    if (String(user.status || '').trim().toLowerCase() === 'out of service') {
-      const retired = [];
-      for (const record of records || []) {
-        if (record.session_active === false && String(record.status || '').toLowerCase() === 'out of service') continue;
-        retired.push(await base44.asServiceRole.entities.ActiveOfficer.update(record.id, {
-          session_active: false,
-          status: 'Out of Service',
-          last_update: now,
-          heading: null,
-          speed: 0,
-          current_call_info: '',
-        }).catch(() => null));
-      }
-      return Response.json({ success: true, ignored_after_duty_end: true, active_officer: null, records_retired: retired.filter(Boolean).length });
-    }
+    // Duty status and app-session tracking are separate concerns. Going Out of
+    // Service (clock-out, supervisor action, or the officer's own toggle) does
+    // not end the signed-in app session, so it must not stop GPS publishing or
+    // the one-minute movement history either — the documented tracking scope
+    // covers every authenticated session regardless of duty role or clock-in
+    // status, and ends only when the app session itself ends (sign-out, or the
+    // auth token failing). The record's status is pinned to the officer's real
+    // duty status below, so no board ever shows an Out of Service officer as
+    // available and no queued request can resurrect a stale Available flag.
+    const dutyOutOfService = String(user.status || '').trim().toLowerCase() === 'out of service';
 
     const primary = records?.[0] || null;
     const requestedFixAt = new Date(body.device_fix_at || now).getTime();
@@ -228,12 +220,16 @@ Deno.serve(async (req) => {
     }
 
     // Location heartbeats must never own CAD status. Only set status when the
-    // caller explicitly supplies one (initial session creation) or when creating
-    // a new record. When updating an existing record, do NOT include status —
+    // caller explicitly supplies one (initial session creation), when creating
+    // a new record, or when the officer's authoritative duty status is Out of
+    // Service (pin it so tracking writes can never resurrect a stale Available
+    // flag). When updating an existing record, do NOT include status —
     // a heartbeat that reads primary.status before updateOfficerStatus writes
     // and then writes after it creates a race that flips the officer back to
-    // the old status (e.g., Out of Service) on the board.
-    if (body.status) {
+    // the old status on the board.
+    if (dutyOutOfService) {
+      liveData.status = 'Out of Service';
+    } else if (body.status) {
       liveData.status = String(body.status);
     } else if (!primary) {
       liveData.status = String(user.status || 'Signed In');

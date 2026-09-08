@@ -98,7 +98,11 @@ Deno.serve(async (req) => {
             ...linkedActive.map((active: any) => base44.asServiceRole.entities.ActiveOfficer.update(active.id, {
                 status,
                 last_update: now,
-                session_active: status !== 'Out of Service',
+                // session_active reflects the signed-in app session and is owned
+                // by the tracker (logLocation). A duty-status toggle must not end
+                // live tracking: an Out of Service officer who is still signed in
+                // keeps GPS and movement history flowing, with the OOS status
+                // displayed, until they actually sign out.
                 ...(status === 'Available' || status === 'Out of Service' ? { current_call_info: '' } : {}),
             }).catch(() => null)),
         ]);
