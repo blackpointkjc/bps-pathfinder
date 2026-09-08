@@ -32,9 +32,10 @@ const DropdownMenuSubTrigger = React.forwardRef(({ className, inset, children, .
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName
 
-const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) => (
+const DropdownMenuSubContent = React.forwardRef(({ className, style, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
+    style={{ ...style, maxHeight: "var(--radix-dropdown-menu-content-available-height, calc(100dvh - 96px))", overflowY: "auto", touchAction: "pan-y" }}
     className={cn(
       "z-[2147483000] min-w-[8rem] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y rounded-md border bg-popover p-1 text-popover-foreground shadow-lg pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
@@ -44,12 +45,13 @@ const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) =
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
-const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, collisionPadding = { top: 8, bottom: 80, left: 8, right: 8 }, ...props }, ref) => (
+const DropdownMenuContent = React.forwardRef(({ className, style, sideOffset = 4, collisionPadding = { top: 8, bottom: 80, left: 8, right: 8 }, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
+      style={{ ...style, maxHeight: "var(--radix-dropdown-menu-content-available-height, calc(100dvh - 96px))", overflowY: "auto", touchAction: "pan-y" }}
       className={cn(
         "z-[2147483000] min-w-[8rem] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y rounded-md border bg-popover p-1 text-popover-foreground shadow-md pointer-events-auto",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
