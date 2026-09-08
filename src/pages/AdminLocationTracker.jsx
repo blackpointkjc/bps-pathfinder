@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity, Users, History, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { Circle, MapContainer, Popup, CircleMarker, useMap } from 'react-leaflet';
+import { Circle, MapContainer, Popup, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,7 @@ import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/l
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 
 import GPSAuditReport from '@/components/GPSAuditReport';
-import { auditDay } from '@/lib/locationAudit';
+import { auditDay, auditTime, buildAuditModel } from '@/lib/locationAudit';
 
 const LOGO_URL = "/black-point-shield.webp";
 
@@ -79,6 +79,24 @@ function MapReadyHandler() {
     };
   }, [map]);
   return null;
+}
+
+function HistoricalOfficerMap({ data, officerName, theme }) {
+  const model = React.useMemo(() => buildAuditModel(data.history || []), [data.history]);
+  if (!model.points.length) return <p className="rounded-lg border border-slate-600 p-4">No usable GPS positions recorded for {officerName} on {data.date}. Any other recorded pings remain in the report below.</p>;
+  return <Card className="my-4 overflow-hidden">
+    <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date} · {model.points.length} mapped pings · Eastern Time. Select a point for its recorded time and location.</p></CardHeader>
+    <CardContent className="p-0"><div className="h-[420px] w-full sm:h-[540px]">
+      <MapContainer key={data.date + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
+        <MapReadyHandler /><PathfinderTileLayer theme={theme} /><MapUpdater officers={[]} historicalPath={model.points} />
+        {model.segments.filter(segment=>segment.length>1).map((segment,index)=><Polyline key={index} positions={segment.map(point=>[Number(point.latitude),Number(point.longitude)])} pathOptions={{color:'#4f46e5',weight:4}} />)}
+        {model.points.map((point,index)=><CircleMarker key={point.id || index} center={[Number(point.latitude),Number(point.longitude)]} radius={index===0 || index===model.points.length-1 ? 8 : 4} pathOptions={{color:'white',weight:1,fillColor:index===0?'#16a34a':index===model.points.length-1?'#dc2626':'#4f46e5',fillOpacity:.9}}>
+          <Tooltip>{officerName} · {auditTime(point.timestamp)} ET</Tooltip>
+          <Popup><strong>{officerName}</strong><p>{index===0?'Start · ':index===model.points.length-1?'End · ':''}{auditTime(point.timestamp)} ET</p><p>{point.location || 'Address not recorded'}</p><p>{Number(point.latitude).toFixed(6)}, {Number(point.longitude).toFixed(6)}</p><p>Accuracy: {point.accuracy == null ? 'Not recorded' : `±${Math.round(Number(point.accuracy))}m`}</p></Popup>
+        </CircleMarker>)}
+      </MapContainer>
+    </div></CardContent>
+  </Card>;
 }
 
 function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocation }) {
@@ -715,6 +733,7 @@ export default function AdminLocationTracker() {
                             fillOpacity: officer.gps_stale ? 0.55 : 0.95,
                           }}
                         >
+                          <Tooltip permanent direction="top">{getOfficerName(officer.officer_email)}{officer.gps_stale ? " · Last known" : ""}</Tooltip>
                           <Popup autoPan={false} className="bps-location-popup">
                             <div className="min-w-[270px] max-w-[340px] rounded-xl bg-[#08111d] p-4 text-white shadow-2xl">
                               <p className="text-base font-black text-white">{getOfficerName(officer.officer_email)}</p>
@@ -828,10 +847,10 @@ export default function AdminLocationTracker() {
         {viewMode === 'history' && selectedOfficerEmail && (
           auditLoading ? <div role="status" className="p-8 text-center">Loading complete GPS audit report…</div>
           : auditError ? <div role="alert" className="rounded-lg border border-red-600 p-4">
-            <p>Unable to load the complete report. No partial report has been displayed.</p>
+            <p>Unable to load officer history: {auditError.message}</p>
             <Button onClick={() => retryAudit()} className="mt-3">Retry report</Button>
           </div>
-          : auditData ? <GPSAuditReport key={selectedOfficerEmail + selectedDate} data={auditData} officerName={getOfficerName(selectedOfficerEmail)} />
+          : auditData ? <><HistoricalOfficerMap data={auditData} officerName={getOfficerName(selectedOfficerEmail)} theme={mapTheme} /><GPSAuditReport key={selectedOfficerEmail + selectedDate} data={auditData} officerName={getOfficerName(selectedOfficerEmail)} /></>
           : null
         )}
 
