@@ -1,13 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
 import { buildAuditModel, buildRouteMap, auditTimestamp, auditTime, durationLabel, signalQuality, validAuditPoint } from '@/lib/locationAudit';
-import { addRequiredPrintFooter } from '@/utils/requiredPrintFooter';
 import auditStyles from './GPSAuditReport.css?inline';
 import './GPSAuditReport.css';
 
 function AuditTable({ headings, children, label }) {
   return <div className="gps-table-wrap" tabIndex={0} role="region" aria-label={label}><table className="gps-table"><thead><tr>{headings.map(title=><th key={title} scope="col">{title}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;
 }
-export default function GPSAuditReport({ data, officerName }) {
+export default function GPSAuditReport({ data, officerName, onBack }) {
   const reportRef=useRef(null);
   const [printError,setPrintError]=useState('');
   const [tileError,setTileError]=useState(false);
@@ -23,11 +22,11 @@ export default function GPSAuditReport({ data, officerName }) {
   const printReport=()=>{
     setPrintError('');
     const popup=window.open('', '_blank');
-    if (!popup) { setPrintError('Your browser blocked the print window. Allow pop-ups for Pathfinder, then select Print / Save PDF again.'); return; }
+    if (!popup) { setPrintError('Your browser blocked the print window. Allow pop-ups for this app, then select Print / Save PDF again.'); return; }
     popup.document.open();
-    popup.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Black Point GPS Audit Report</title><style>'+auditStyles+'</style></head><body><div class="gps-print-controls" style="padding:12px;font:14px Arial"><button id="gps-print-button" style="padding:12px">Print / Save PDF</button><span id="gps-print-status" style="margin-left:12px">Preparing route map…</span></div>'+reportRef.current.outerHTML+'</body></html>');
+    popup.document.write('<!doctype html><html data-no-company-footer="true"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GPS Tracking Report</title><style>'+auditStyles+'</style></head><body data-no-company-footer="true"><div class="gps-print-controls" style="padding:12px;font:14px Arial"><button id="gps-back-button" style="padding:12px;margin-right:8px">Back to report</button><button id="gps-print-button" style="padding:12px">Print / Save PDF</button><span id="gps-print-status" style="margin-left:12px">Preparing route map…</span></div>'+reportRef.current.outerHTML+'</body></html>');
     popup.document.close();
-    addRequiredPrintFooter(popup);
+    popup.document.getElementById('gps-back-button').onclick=()=>{ window.focus(); popup.close(); };
     popup.document.getElementById('gps-print-button').onclick=()=>popup.print();
     const images=[...popup.document.images];
     const ready=image=>image.complete ? Promise.resolve(image.naturalWidth>0) : new Promise(resolve=>{
@@ -48,11 +47,11 @@ export default function GPSAuditReport({ data, officerName }) {
     });
   };
   return <section aria-label="GPS audit report">
-    <div className="gps-audit-toolbar"><div><strong>GPS tracking report</strong><div style={{fontSize:12}}>Full report for {dateLabel} · Eastern Time</div></div><button className="gps-audit-print" onClick={printReport}>Print / Save PDF</button></div>
+    <div className="gps-audit-toolbar">{onBack && <button type="button" className="gps-audit-print" onClick={onBack}>← Back to locations</button>}<div><strong>GPS tracking report</strong><div style={{fontSize:12}}>Full report for {dateLabel} · Eastern Time</div></div><button className="gps-audit-print" onClick={printReport}>Print / Save PDF</button></div>
     {printError && <p role="alert" className="gps-audit-error">{printError}</p>}
     {(data.warnings || []).map(warning=><p key={warning} role="alert" className="gps-audit-error">{warning}</p>)}
     <article className="gps-audit" ref={reportRef}>
-      <header className="gps-banner"><div className="gps-brand"><small>SHIFT INTELLIGENCE · BLACK POINT PROTECTION</small>GPS tracking report</div><div className="gps-banner-meta"><strong>GPS AUDIT TRAIL</strong>{dateLabel} · Generated {auditTime(data.generatedAt)} ET</div></header>
+      <header className="gps-banner"><div className="gps-brand">GPS tracking report</div><div className="gps-banner-meta"><strong>GPS AUDIT TRAIL</strong>{dateLabel} · Generated {auditTime(data.generatedAt)} ET</div></header>
       <div className="gps-body">
         <div className="gps-identity"><div><div className="gps-name">{officerName}</div><div className="gps-subtitle">{dateLabel} · All recorded sessions</div></div><div><strong>{hasOpenEntry?'Open time entry':'Historical record'}</strong><div className="gps-subtitle">All times shown in Eastern Time</div></div></div>
         <section className="gps-report-card"><h2>Report Summary</h2><div className="gps-summary">
@@ -97,7 +96,8 @@ export default function GPSAuditReport({ data, officerName }) {
         })}</AuditTable>:<p className="gps-note">No GPS pings recorded for this date.</p>}
         <p className="gps-note">Signal: Good ≤25m · Medium ≤50m · Poor &gt;50m · Unknown when accuracy was not recorded. Locations are shown as saved; a street address is not inferred.</p></section>
       </div>
-      <footer className="gps-footer"><span>Black Point Protection · GPS Audit Record</span><span>{dateLabel} · {model.pings.length} pings</span><span>Confidential · Official use only</span></footer>
+      <footer className="gps-footer"><span>GPS Audit Record</span><span>{dateLabel} · {model.pings.length} pings</span><span>Confidential · Official use only</span></footer>
     </article>
+    {onBack && <div className="gps-audit-toolbar"><button type="button" className="gps-audit-print" onClick={onBack}>← Back to locations</button></div>}
   </section>;
 }

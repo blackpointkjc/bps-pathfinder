@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,6 @@ import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/co
 import GPSAuditReport from '@/components/GPSAuditReport';
 import { auditDay, auditTime, buildAuditModel } from '@/lib/locationAudit';
 
-const LOGO_URL = "/black-point-shield.webp";
 
 // Use one app-wide live-location window. A signed-in officer stays visible for up to
 // 15 minutes after the latest session/GPS heartbeat, matching the system health
@@ -138,6 +138,15 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
 }
 
 export default function AdminLocationTracker() {
+  const navigate = useNavigate();
+  const backToLocations = () => {
+    setViewMode('live');
+    document.querySelector('main.mobile-field-content')?.scrollTo({top:0,behavior:'auto'});
+  };
+  const backToPreviousPage = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/AdminCenter');
+  };
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState('live');
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState('');
@@ -407,8 +416,12 @@ export default function AdminLocationTracker() {
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8">
       <div className="mx-auto max-w-[1400px] space-y-5 sm:space-y-8">
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button variant="outline" onClick={backToPreviousPage}>← Previous page</Button>
+          {viewMode === 'history' && <Button variant="outline" onClick={backToLocations}>← Back to locations</Button>}
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
+
           <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-2 text-3xl font-black text-white">
               <Activity className="w-8 h-8 text-green-600" />
@@ -849,7 +862,7 @@ export default function AdminLocationTracker() {
             <p>Unable to load officer history: {auditError.message}</p>
             <Button onClick={() => retryAudit()} className="mt-3">Retry report</Button>
           </div>
-          : auditData ? <><HistoricalOfficerMap data={auditData} officerName={getOfficerName(selectedOfficerEmail)} theme={mapTheme} /><GPSAuditReport key={selectedOfficerEmail + selectedDate} data={auditData} officerName={getOfficerName(selectedOfficerEmail)} /></>
+          : auditData ? <><HistoricalOfficerMap data={auditData} officerName={getOfficerName(selectedOfficerEmail)} theme={mapTheme} /><GPSAuditReport onBack={backToLocations} key={selectedOfficerEmail + selectedDate} data={auditData} officerName={getOfficerName(selectedOfficerEmail)} /></>
           : null
         )}
 
