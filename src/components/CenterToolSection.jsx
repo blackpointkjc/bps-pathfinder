@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import AdaptiveSelector from '@/components/AdaptiveSelector';
 
 export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool', workspaceClassName = '' }) {
   const location = useLocation();
@@ -33,21 +34,14 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
   return (
     <div className={`w-full ${workspaceClassName} ${fullCanvas ? 'flex h-[65dvh] min-h-[320px] xl:h-[calc(100vh-150px)] xl:min-h-[680px] flex-col' : ''}`}>
       {safeTools.length > 1 && (
-        <div className="border-b border-slate-800 bg-[#08111e] px-3 py-1 md:px-4">
-          <label className="block py-2 xl:hidden">
-            <span className="mb-1 block text-xs font-semibold text-slate-400">Page</span>
-            <select aria-label="Workspace page" value={tool || ''} onChange={event => select(event.target.value)} className="h-11 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-base text-white">
-              {safeTools.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </label>
-          <div className="hidden xl:flex max-w-full gap-1.5 overflow-x-auto">
-            {safeTools.map(item => (
-              <button key={item.id} type="button" onClick={() => select(item.id)}
-                className={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 text-left text-[11px] font-bold leading-tight transition ${tool === item.id ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white'}`}>
-                {item.label}
-              </button>
-            ))}
-          </div>
+        <div className="border-b border-slate-800 bg-[#08111e] px-3 py-2 md:px-4">
+          <AdaptiveSelector
+            label="Page"
+            options={safeTools}
+            value={tool || ''}
+            onChange={select}
+            accent="blue"
+          />
         </div>
       )}
       <div className={fullCanvas
