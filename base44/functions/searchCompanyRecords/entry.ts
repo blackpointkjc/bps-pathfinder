@@ -107,6 +107,21 @@ function matchesTerms(haystack: string, terms: string[]) {
   return terms.every(term => haystack.includes(term));
 }
 
+const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function listWithRetry(entity: any, entityName: string) {
+  let lastError: any;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await entity.list('-created_date', 1000);
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await wait(400);
+    }
+  }
+  throw new Error(`${entityName} unavailable: ${lastError?.message || lastError || 'unknown error'}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -140,47 +155,58 @@ Deno.serve(async (req) => {
     const restrictedEntities = new Set(['ConfidentialReport', 'Complaint', 'WriteUpReport', 'InspectionReport', 'UseOfForceReport']);
     const searchableSources = privileged ? SOURCES : SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
 
-    const settled = await Promise.allSettled(searchableSources.map(async ([entityName, sourceLabel, page]) => {
-      const entity = (entityClient as any)[entityName];
-      if (!entity?.list) return [];
-      const rows = await entity.list('-created_date', 1000);
-      return (rows || []).filter((record: any) => {
-        const allText = normalizeSearchText(JSON.stringify(record));
-        // Structured fields are preferred for display, but searches must not miss a
-        // real person/vehicle merely because an older report stored the value in a
-        // narrative, legacy field, or differently named nested object.
-        const scoped = searchType === 'person'
-          ? normalizeSearchText(`${personText(record)} ${allText}`)
-          : searchType === 'vehicle'
-            ? normalizeSearchText(`${vehicleText(record)} ${allText}`)
-            : allText;
-        return scoped && matchesTerms(scoped, terms);
-      }).slice(0, 100).map((record: any) => {
-        const vehicle = vehicleDisplay(record);
-        const isWarrant = entityName === 'CriminalComplaint' && (record.warrant_issued === true || record.status === 'warrant_issued' || Boolean(record.warrant_number));
-        return {
-          id: record.id,
-          entity: entityName,
-          source: sourceLabel,
-          page,
-          label: labelFor(record),
-          date: record.incident_date || record.notice_date || record.report_date || record.shift_date || record.violation_date || record.offense_date || record.created_date,
-          location: record.location || record.site_name || record.property_name || record.address || record.last_known_location || record.offense_place || record.location_of_offense || '',
-          person: personName(record),
-          vehicle_plate: vehicle.plate,
-          vehicle_state: vehicle.state,
-          vehicle_description: vehicle.description,
-          vehicle_vin: vehicle.vin,
-          record_kind: personText(record) && vehicleText(record) ? 'person_vehicle' : personText(record) ? 'person' : vehicleText(record) ? 'vehicle' : 'record',
-          warrant_issued: isWarrant,
-          warrant_number: record.warrant_number || '',
-          status: record.status || record.approval_status || '',
-          summary: record.description || record.narrative || record.reason || record.notes || record.summary || record.details || record.statement_of_facts || record.ai_summary || record.violation_description || record.facts_basis || '',
-          linked_call_number: record.linked_call_number || record.call_number || record.call_id || '',
-        };
-      });
-    }));
+    // Loading every source at once caused API throttling and then silently returned
+    // an empty search. Process a few sources at a time and retry transient failures.
+    const settled: PromiseSettledResult<any[]>[] = [];
+    const batchSize = 5;
+    for (let index = 0; index < searchableSources.length; index += batchSize) {
+      const batch = searchableSources.slice(index, index + batchSize);
+      const batchResults = await Promise.allSettled(batch.map(async ([entityName, sourceLabel, page]) => {
+        const entity = (entityClient as any)[entityName];
+        if (!entity?.list) return [];
+        const rows = await listWithRetry(entity, entityName);
+        return (rows || []).filter((record: any) => {
+          const allText = normalizeSearchText(JSON.stringify(record));
+          // Structured fields are preferred for display, but searches must not miss a
+          // real person/vehicle merely because an older report stored the value in a
+          // narrative, legacy field, or differently named nested object.
+          const scoped = searchType === 'person'
+            ? normalizeSearchText(`${personText(record)} ${allText}`)
+            : searchType === 'vehicle'
+              ? normalizeSearchText(`${vehicleText(record)} ${allText}`)
+              : allText;
+          return scoped && matchesTerms(scoped, terms);
+        }).slice(0, 100).map((record: any) => {
+          const vehicle = vehicleDisplay(record);
+          const isWarrant = entityName === 'CriminalComplaint' && (record.warrant_issued === true || record.status === 'warrant_issued' || Boolean(record.warrant_number));
+          return {
+            id: record.id,
+            entity: entityName,
+            source: sourceLabel,
+            page,
+            label: labelFor(record),
+            date: record.incident_date || record.notice_date || record.report_date || record.shift_date || record.violation_date || record.offense_date || record.created_date,
+            location: record.location || record.site_name || record.property_name || record.address || record.last_known_location || record.offense_place || record.location_of_offense || '',
+            person: personName(record),
+            vehicle_plate: vehicle.plate,
+            vehicle_state: vehicle.state,
+            vehicle_description: vehicle.description,
+            vehicle_vin: vehicle.vin,
+            record_kind: personText(record) && vehicleText(record) ? 'person_vehicle' : personText(record) ? 'person' : vehicleText(record) ? 'vehicle' : 'record',
+            warrant_issued: isWarrant,
+            warrant_number: record.warrant_number || '',
+            status: record.status || record.approval_status || '',
+            summary: record.description || record.narrative || record.reason || record.notes || record.summary || record.details || record.statement_of_facts || record.ai_summary || record.violation_description || record.facts_basis || '',
+            linked_call_number: record.linked_call_number || record.call_number || record.call_id || '',
+          };
+        });
+      }));
+      settled.push(...batchResults);
+    }
 
+    const successfulSources = settled.filter(result => result.status === 'fulfilled').length;
+    const failedSources = settled.length - successfulSources;
+    if (successfulSources === 0) throw new Error('The records index is temporarily unavailable. Please retry the search.');
     const results: any[] = settled.flatMap(result => result.status === 'fulfilled' ? result.value : []);
     const linkedNumbers = [...new Set(results.map(item => item.linked_call_number).filter(Boolean).map(String))];
     if (linkedNumbers.length) {
@@ -202,7 +228,9 @@ Deno.serve(async (req) => {
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
       results: results.slice(0, 250),
-      searched_sources: settled.filter(result => result.status === 'fulfilled').length,
+      searched_sources: successfulSources,
+      failed_sources: failedSources,
+      partial: failedSources > 0,
       total_matches: results.length,
       search_type: searchType,
       warrant_matches: warrantMatches,
