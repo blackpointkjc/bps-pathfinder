@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import AdaptiveSelector from '@/components/AdaptiveSelector';
 
 export function useDesktopViewport() {
   const [desktop, setDesktop] = useState(() => typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches);
@@ -46,23 +47,14 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
               <p className="min-w-0 flex-1 truncate text-xs text-slate-400">{description}</p>
             </div>
           </>}
-          <label className="my-2 block xl:hidden">
-            <span className="mb-1 block text-xs font-semibold text-slate-400">{embedded ? 'Section' : `${title} section`}</span>
-            <select aria-label={`${title} section`} value={section || ''} onChange={event => select(event.target.value)} className="h-11 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-base text-white">
-              {safeSections.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </label>
-          <div className={`${embedded ? '' : 'mt-1.5'} hidden xl:flex max-w-full gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#07101c] p-0.5`}>
-            {safeSections.map(({ id, label, icon: Icon }) => {
-              const active = section === id;
-              return (
-                <button key={id} type="button" onClick={() => select(id)} aria-pressed={active}
-                  className={`flex h-8 shrink-0 items-center gap-2 rounded-md border px-2.5 py-1 text-left transition ${active ? 'border-cyan-400/50 bg-[#17466a] text-white shadow-sm' : 'border-transparent bg-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}>
-                  {Icon && <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-slate-500'}`} />}
-                  <span className="min-w-0 truncate text-[11px] font-black sm:text-xs">{label}</span>
-                </button>
-              );
-            })}
+          <div className={`${embedded ? 'my-1.5' : 'my-2.5'}`}>
+            <AdaptiveSelector
+              label={embedded ? 'Section' : `${title} section`}
+              options={safeSections}
+              value={section || ''}
+              onChange={select}
+              accent="cyan"
+            />
           </div>
         </div>
       </header>
