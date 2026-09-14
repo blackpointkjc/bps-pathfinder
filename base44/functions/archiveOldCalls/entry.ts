@@ -15,12 +15,19 @@ Deno.serve(async (req) => {
         const authorized = user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-        const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
+        // Keep each scheduled run below the function timeout. Remaining calls are
+        // picked up by the next 15-minute cycle instead of losing the whole batch.
+        const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 150);
 
         const now = new Date();
         let archivedCount = 0;
 
-        for (const call of activeCalls) {
+        const archiveCandidates = activeCalls.filter(call => {
+            const callTime = new Date(call.time_received || call.created_date);
+            return !Number.isNaN(callTime.getTime()) && now.getTime() - callTime.getTime() >= oneHourMs;
+        }).slice(0, 30);
+
+        for (const call of archiveCandidates) {
             const callTime = new Date(call.time_received || call.created_date);
             const ageMs = now - callTime;
 
