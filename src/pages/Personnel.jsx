@@ -13,7 +13,6 @@ const STATUS_CFG = {
     Enroute:          { dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
     'On Scene':       { dot: 'bg-blue-400',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
     Busy:             { dot: 'bg-orange-400', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
-    'On Patrol':      { dot: 'bg-cyan-400',   badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
     Supervisor:       { dot: 'bg-purple-400', badge: 'bg-purple-900/40 text-purple-300 border-purple-600/50' },
     'Out of Service': { dot: 'bg-gray-500',   badge: 'bg-gray-800 text-gray-500 border-gray-600/50' },
 };
