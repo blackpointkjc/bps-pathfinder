@@ -147,9 +147,9 @@ Deno.serve(async (req) => {
     const [timeEntries, activeOfficers, users] = await Promise.all([
       readWithRetry(() => base44.asServiceRole.entities.TimeEntry.filter({
         archived: { $ne: true }, $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
-      }, '-clock_in', 3000), 'open time entries'),
-      readWithRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000), 'active officer sessions'),
-      readWithRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 1000), 'officer directory'),
+      }, '-clock_in', 500), 'open time entries'),
+      readWithRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 500), 'active officer sessions'),
+      readWithRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 500), 'officer directory'),
     ]);
 
     const openByEmail = new Map<string, any>();
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     const operational = (user:any) => {
       const roles = roleSet(user);
       const rank = lower(user?.rank);
-      if (!user?.email || user?.termination_date) return false;
+      if (!user?.email || user?.termination_date || ['terminated', 'on_leave'].includes(lower(user?.employment_status))) return false;
       if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
       return roles.has('officer') || roles.has('cad_access') || ['officer','corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(rank);
     };
