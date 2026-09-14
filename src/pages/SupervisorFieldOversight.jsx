@@ -68,8 +68,8 @@ export default function SupervisorFieldOversight() {
   const supervisorRequests = welfarePayload.supervisor_requests || [];
   const displayByEmail = welfarePayload.display_by_email || {};
   const liveUnits = useMemo(() => {
-    const signedIn = (locationPayload.users || []).filter(unit => unit.session_active === true);
-    const openPunchFallbacks = locationPayload.clocked_in_without_session || [];
+    const signedIn = (locationPayload.users || []).filter(unit => unit.session_active === true && lower(unit.status) !== 'out of service');
+    const openPunchFallbacks = (locationPayload.clocked_in_without_session || []).filter(unit => lower(unit.status) !== 'out of service');
     const byOfficer = new Map();
     for (const unit of [...signedIn, ...openPunchFallbacks]) {
       const key = lower(unit?.officer_email || unit?.email || unit?.id);
@@ -80,13 +80,11 @@ export default function SupervisorFieldOversight() {
         ...current,
         session_active: true,
         session_source: current.session_source || unit.session_source || 'open_time_entry',
-        status: (current.status && current.status !== 'Out of Service')
-          ? current.status
-          : (unit.status && unit.status !== 'Out of Service' ? unit.status : 'Available'),
+        status: current.status || unit.status || 'Out of Service',
         gps_pending: !validPosition(current) && !validPosition(unit),
       });
     }
-    return [...byOfficer.values()];
+    return [...byOfficer.values()].filter(unit => lower(unit.status) !== 'out of service');
   }, [locationPayload.users, locationPayload.clocked_in_without_session]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
