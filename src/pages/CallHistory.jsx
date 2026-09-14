@@ -58,10 +58,13 @@ export default function CallHistory() {
     const [expandedId, setExpandedId] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const intervalRef = useRef(null);
+    const loadInFlightRef = useRef(false);
 
     useEffect(() => {
         init();
-        intervalRef.current = setInterval(loadAll, 30000);
+        intervalRef.current = setInterval(() => {
+            if (document.visibilityState === 'visible') loadAll();
+        }, 60000);
         return () => clearInterval(intervalRef.current);
     }, []);
 
@@ -79,10 +82,12 @@ export default function CallHistory() {
     };
 
     const loadAll = async () => {
+        if (loadInFlightRef.current) return;
+        loadInFlightRef.current = true;
         try {
-            await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[HISTORY] archive pass failed:', error?.message));
             const result = await base44.functions.invoke('getCallHistoryFeed', {});
-            const payload = result?.data || result || {};
+            let payload = result?.data || result || {};
+            if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
             const feedRows = payload.rows || [];
             const activeRows = feedRows.filter(row => row._source === 'active');
@@ -94,8 +99,10 @@ export default function CallHistory() {
         } catch (e) {
             console.error('[HISTORY] feed load failed:', e);
             toast.error(`Call history could not be loaded: ${e?.message || 'Unknown error'}`);
-            setRows([]);
+            // Preserve the last confirmed feed during a transient timeout instead of
+            // replacing valid call history with an empty screen.
         } finally {
+            loadInFlightRef.current = false;
             setLoading(false);
             setRefreshing(false);
         }
