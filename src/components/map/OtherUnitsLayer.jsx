@@ -23,7 +23,6 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     let statusColor = '#64748B';
     if (status === 'Dispatched' || status === 'Enroute') statusColor = '#EF4444';
     else if (status === 'On Scene') statusColor = '#22C55E';
-    else if (status === 'On Patrol') statusColor = '#3B82F6';
     else if (status === 'Busy') statusColor = '#F59E0B';
     else if (status === 'Out of Service') statusColor = '#475569';
     if (isSupervisor) statusColor = '#EAB308';
