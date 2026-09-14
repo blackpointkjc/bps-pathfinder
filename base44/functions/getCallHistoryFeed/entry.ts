@@ -1,6 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function readWithRetry<T>(label: string, loader: () => Promise<T>): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await loader();
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await wait(500);
+    }
+  }
+  throw new Error(`${label} unavailable: ${lastError?.message || lastError || 'unknown error'}`);
+}
 
 Deno.serve(async (req) => {
   try {
@@ -12,10 +26,13 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('full_access') || roles.has('dispatch') || roles.has('supervisor');
     if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
+    // Keep the feed bounded and fail visibly if a source is unavailable. The old
+    // implementation silently converted timeouts into empty arrays, making valid
+    // property history appear to have vanished.
     const [active, archived, alerts] = await Promise.all([
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.CallHistory.list('-archived_date', 2000).catch(() => []),
-      base44.asServiceRole.entities.PropertyAlert.list('-created_date', 3000).catch(() => []),
+      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500)),
+      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000)),
+      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1500)),
     ]);
 
     const activeById = new Map((active || []).map((row: any) => [String(row.id), row]));
