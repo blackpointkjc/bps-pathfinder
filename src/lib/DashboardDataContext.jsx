@@ -17,6 +17,19 @@ const GRAC_SYNC_INTERVAL_MS = 60_000;  // One shared sync per browser, no page-l
 const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
 const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
+const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
+const ACTIVE_CALL_CACHE_MAX_AGE_MS = 5 * 60_000;
+
+function readCachedActiveCalls() {
+    try {
+        const cached = JSON.parse(window.localStorage.getItem(ACTIVE_CALL_CACHE_KEY) || 'null');
+        if (!cached || Date.now() - Number(cached.savedAt || 0) > ACTIVE_CALL_CACHE_MAX_AGE_MS || !Array.isArray(cached.calls)) return [];
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
+        return cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= oneHourAgo);
+    } catch {
+        return [];
+    }
+}
 
 function parseServerTimestamp(value) {
     if (!value) return null;
@@ -45,9 +58,11 @@ function isRateLimitError(err) {
 }
 
 export function DashboardDataProvider({ children }) {
-    const [calls, setCalls]           = useState([]);
+    const initialCallsRef = useRef(null);
+    if (initialCallsRef.current === null) initialCallsRef.current = readCachedActiveCalls();
+    const [calls, setCalls]           = useState(initialCallsRef.current);
     const [users, setUsers]           = useState([]);
-    const [loading, setLoading]       = useState(true);
+    const [loading, setLoading]       = useState(initialCallsRef.current.length === 0);
     const [lastRefresh, setLastRefresh] = useState(null);
     const [rateLimited, setRateLimited] = useState(false);
     const [requestCount, setRequestCount] = useState(0);
@@ -80,22 +95,14 @@ export function DashboardDataProvider({ children }) {
         console.log(`[CAD ${nowET}] Dashboard load started`);
 
         try {
-            setRequestCount(c => c + 2);
+            setRequestCount(c => c + 1);
 
-            // Calls are the critical payload. Fetch and paint them first so a slower
-            // officer-roster request can never hold the Active Calls queue behind the spinner.
-            const rosterTask = (async () => {
-                if (Date.now() - lastUsersRefreshTime.current < USER_REFRESH_MS && usersCacheRef.current.length) return;
-                try {
-                    const payload = await getOfficerLocationSnapshot();
-                    usersCacheRef.current = payload.users || [];
-                    lastUsersRefreshTime.current = Date.now();
-                    setUsers(usersCacheRef.current);
-                } catch (error) { console.warn('[CAD] Roster refresh failed', error?.message); }
-            })();
+            // Active Calls owns the first startup request. The officer-location
+            // snapshot is intentionally not started until calls have painted; on a
+            // busy/rate-limited session, launching both together delayed the queue.
             let callsData = [];
             try {
-                callsData = await base44.entities.DispatchCall.list('-created_date', 200);
+                callsData = await base44.entities.DispatchCall.list('-created_date', 75);
             } catch (callsErr) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
                 throw callsErr;
@@ -128,6 +135,11 @@ export function DashboardDataProvider({ children }) {
             // Paint calls immediately. This makes Active Calls independent of the
             // slower roster request while still allowing units to populate moments later.
             setCalls(active);
+            try {
+                window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: active }));
+            } catch {
+                // Cache is only a fast first paint; the live entity query remains authoritative.
+            }
             setLastRefresh(new Date());
             setRateLimited(false);
             lastRefreshTime.current = Date.now();
@@ -147,7 +159,16 @@ export function DashboardDataProvider({ children }) {
             const richmondNow = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
             console.log(`[CAD ${nowET}] Current Richmond time: ${richmondNow}`);
 
-            await rosterTask;
+            // Roster is secondary and must never keep the Active Calls request or
+            // dashboard spinner open.
+            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || !usersCacheRef.current.length) {
+                setRequestCount(c => c + 1);
+                getOfficerLocationSnapshot().then(payload => {
+                    usersCacheRef.current = payload.users || [];
+                    lastUsersRefreshTime.current = Date.now();
+                    setUsers(usersCacheRef.current);
+                }).catch(error => console.warn('[CAD] Roster refresh failed', error?.message));
+            }
 
         } catch (err) {
             if (isRateLimitError(err)) {
