@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
 
         // Regular users see active field units only
         // Admin/Dispatch also see Supervisor status units and Out of Service
-        const REGULAR_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Busy']);
-        const PRIVILEGED_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
+        const REGULAR_STATUSES = new Set(['Available', 'On Scene', 'Enroute', 'Busy']);
+        const PRIVILEGED_STATUSES = new Set(['Available', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
         const allowedStatuses = isPrivileged ? PRIVILEGED_STATUSES : REGULAR_STATUSES;
 
         const cutoff = Date.now() - 12 * 60 * 60 * 1000; // 12 hours - full shift window
