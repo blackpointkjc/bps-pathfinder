@@ -24,7 +24,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const availableUnits = units.filter(u => 
         isOperationalUnit(u) &&
         !assignedUnitIds.includes(u.id) &&
-        (u.status === 'Available' || u.status === 'On Patrol') &&
+        u.status === 'Available' &&
         (searchTerm === '' || 
             u.unit_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
