@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
         // used by the canonical unit board, so leaving it stale would immediately
         // overwrite an officer's self-selected status with an older value.
         const [units, activeOfficers] = await Promise.all([
-            base44.asServiceRole.entities.Unit.list(undefined, 500).catch(() => []),
-            base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []),
+            base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 10).catch(() => []),
+            base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []),
         ]);
         const linkedUnitsRaw = (units || []).filter((unit: any) =>
             unit.user_id === user.id || String(unit.user_email || '').toLowerCase() === String(user.email || '').toLowerCase()
