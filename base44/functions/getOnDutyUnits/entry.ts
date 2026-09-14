@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
         last_name: user.last_name || '',
         rank: user.rank || '',
         unit_number: active.unit_number || user.unit_number || '',
-        status: active.status || user.status || 'Available',
+        status: active.status || user.status || 'Out of Service',
         latitude: hasReliableGps ? active.latitude : null,
         longitude: hasReliableGps ? active.longitude : null,
         heading: hasReliableGps ? active.heading : null,
@@ -298,8 +298,8 @@ Deno.serve(async (req) => {
         // Signed-out users still resolve OOS because logout writes OOS and closes the
         // live session.
         const newestLiveStatus = Number.isFinite(userStatusTs) && userStatusTs > activeTs
-          ? (user.status || active?.status || 'Available')
-          : (active?.status || user.status || 'Available');
+          ? (user.status || active?.status || 'Out of Service')
+          : (active?.status || user.status || 'Out of Service');
         const normalizedLiveStatus = lower(newestLiveStatus);
         const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
