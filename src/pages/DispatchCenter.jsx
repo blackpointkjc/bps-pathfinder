@@ -113,10 +113,10 @@ export default function DispatchCenter() {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadActiveCalls();
-        }, 20000);
+        }, 30000);
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
-        }, 20000);
+        }, 30000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onStatusChanged = () => loadUnits();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
@@ -185,9 +185,9 @@ export default function DispatchCenter() {
                 return;
             }
 
-            // Initialize sequentially so opening CAD does not create a request burst.
-            await loadActiveCalls();
-            await loadUnits();
+            // Calls and unit status are independent. Load them together so a slow
+            // unit-location request cannot hold the entire Dispatch Center spinner.
+            await Promise.allSettled([loadActiveCalls(true), loadUnits()]);
         } catch (error) {
             console.error('Error initializing:', error);
             toast.error('Failed to load dispatch center');
