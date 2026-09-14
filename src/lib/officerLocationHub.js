@@ -64,9 +64,12 @@ function isLiveUnit(unit = {}) {
 function scrubSnapshot(payload = {}) {
   return {
     ...payload,
-    // The shared client gateway is another hard boundary: stale backend payloads
-    // cannot leak signed-out officers into CAD, Navigation, or supervisor maps.
-    units: Array.isArray(payload.units) ? payload.units.map(scrubUnitLocation).filter(unit => payload.includes_last_known === true || isLiveUnit(unit)) : payload.units,
+    // Full snapshots expose an enriched `units` roster for the status board,
+    // including signed-out/OOS officers and profile photos. Location-only snapshots
+    // remain live-only unless an administrator explicitly requests last-known data.
+    units: Array.isArray(payload.units)
+      ? payload.units.map(scrubUnitLocation).filter(unit => payload.location_only !== true || payload.includes_last_known === true || isLiveUnit(unit))
+      : payload.units,
     users: Array.isArray(payload.users) ? payload.users.map(scrubUnitLocation).filter(unit => payload.includes_last_known === true || isLiveUnit(unit)) : payload.users,
   };
 }
