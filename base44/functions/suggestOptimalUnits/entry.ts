@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
         // Filter to available units with location
         const availableUnits = allUnits.filter(unit => 
-            (unit.status === 'Available' || unit.status === 'On Patrol') &&
+            unit.status === 'Available' &&
             unit.latitude && unit.longitude
         );
 
@@ -53,11 +53,6 @@ Deno.serve(async (req) => {
             // Bonus for supervisors
             if (unit.is_supervisor) {
                 score *= 0.8; // 20% priority boost
-            }
-
-            // Bonus for units on patrol (they're actively moving)
-            if (unit.status === 'On Patrol') {
-                score *= 0.9; // 10% priority boost
             }
 
             // Incident type matching (future enhancement)
