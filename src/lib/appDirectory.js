@@ -10,7 +10,10 @@ let officerPending = null;
 let supervisorOfficerCache = null;
 let supervisorOfficerCacheAt = 0;
 let supervisorOfficerPending = null;
-const TTL_MS = 15_000;
+// Directory data changes infrequently and every management mutation explicitly
+// invalidates this cache. A longer TTL prevents each page transition from reloading
+// five large directory entities and competing with CAD/time-clock requests.
+const TTL_MS = 5 * 60_000;
 
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
 
