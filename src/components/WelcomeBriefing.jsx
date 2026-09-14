@@ -271,6 +271,8 @@ export default function WelcomeBriefing({ user }) {
       if (person && !isCadOfficer(person)) return null;
       seen.add(email);
       const unitRow = unitByEmail.get(email);
+      const effectiveStatus = normalized(unitRow?.status || person?.status);
+      if (!unitRow || unitRow.session_active === false || effectiveStatus === 'out of service') return null;
       const vehicleRow = vehicleByEmail.get(email);
       return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
     }).filter(Boolean).sort((a,b) => String(a.person?.last_name || a.email).localeCompare(String(b.person?.last_name || b.email)));
