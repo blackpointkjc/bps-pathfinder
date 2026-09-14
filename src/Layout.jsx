@@ -1114,10 +1114,10 @@ export default function Layout({ children, currentPageName }) {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
         const [alerts, receipts, calls, locations] = await Promise.all([
-          base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
-          user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 300).catch(() => []) : Promise.resolve([]),
-          base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
-          base44.entities.Location.list('site_name', 300).catch(() => []),
+          base44.entities.PropertyAlert.list('-created_date', 50).catch(() => []),
+          user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 100).catch(() => []) : Promise.resolve([]),
+          base44.entities.DispatchCall.list('-created_date', 75).catch(() => []),
+          base44.entities.Location.list('site_name', 100).catch(() => []),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
@@ -1202,7 +1202,10 @@ export default function Layout({ children, currentPageName }) {
       }
     };
 
-    monitor();
+    // Let the dashboard's Active Calls request own the startup lane. Realtime is
+    // already connected below, so delaying this history reconciliation does not
+    // prevent newly-created property alerts from being observed.
+    const initialMonitorTimer = window.setTimeout(monitor, 5000);
     // Realtime owns fast delivery. Use one slow fallback poll and debounce entity
     // events so a burst of alert writes cannot fan out into four list requests per event.
     let refreshTimer;
@@ -1223,6 +1226,7 @@ export default function Layout({ children, currentPageName }) {
     return () => {
       cancelled = true;
       clearInterval(id);
+      window.clearTimeout(initialMonitorTimer);
       window.clearTimeout(refreshTimer);
       unsubscribeAlerts?.();
       document.removeEventListener('visibilitychange', refreshOnVisibility);
