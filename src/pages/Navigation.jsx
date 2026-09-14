@@ -306,7 +306,8 @@ export default function Navigation() {
             const unitPayload = {
                 unit_id: user.unit_number || user.id,
                 label: `${user.rank || 'Officer'} ${user.last_name || user.first_name || ''}`.trim(),
-                status: user.status || 'Available',
+                // Never promote a missing/stale duty status to Available.
+                status: user.status || 'Out of Service',
                 user_id: user.id,
                 union_id: unionId,
                 partner_user_id: partner?.id || '',
