@@ -198,7 +198,7 @@ export default function TimeClock() {
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in');
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 50);
       return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
@@ -210,7 +210,11 @@ export default function TimeClock() {
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
       if (!user?.email) return [];
-      const result = await base44.functions.invoke('getMyTimeEntries', getOfficerPreviewRequest());
+      const result = await base44.functions.invoke('getMyTimeEntries', {
+        ...getOfficerPreviewRequest(),
+        start_date: startDate,
+        end_date: endDate,
+      });
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.entries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
