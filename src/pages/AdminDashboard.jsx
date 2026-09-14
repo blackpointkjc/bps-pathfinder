@@ -79,31 +79,33 @@ export default function AdminDashboard() {
     },
     enabled: user?.role === 'admin',
     initialData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: todayEntries = [] } = useQuery({
-    queryKey: ['todayTimeEntries'],
-    queryFn: async () => {
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      const today = format(new Date(), 'yyyy-MM-dd');
-      return (Array.isArray(entries) ? entries : []).filter(e => 
-        format(new Date(e.clock_in), 'yyyy-MM-dd') === today
-      );
-    },
+  // One shared TimeEntry read powers both today's activity and the active-duty
+  // count. The previous duplicate startup queries were identical and could push
+  // the Admin main page into a Base44 429 during the global monitor startup burst.
+  const { data: dashboardTimeEntries = [] } = useQuery({
+    queryKey: ['adminDashboardTimeEntries'],
+    queryFn: () => base44.entities.TimeEntry.list('-created_date', 500),
     enabled: user?.role === 'admin',
     initialData: [],
+    staleTime: 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
-
-  const { data: activeOfficers = 0 } = useQuery({
-    queryKey: ['activeOfficers'],
-    queryFn: async () => {
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      const active = (Array.isArray(entries) ? entries : []).filter(e => !e?.clock_out);
-      return active.length;
-    },
-    enabled: user?.role === 'admin',
-    initialData: 0,
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayEntries = (dashboardTimeEntries || []).filter(entry => {
+    if (!entry?.clock_in) return false;
+    try {
+      return format(new Date(entry.clock_in), 'yyyy-MM-dd') === today;
+    } catch {
+      return false;
+    }
   });
+  const activeOfficers = (dashboardTimeEntries || []).filter(entry => !entry?.clock_out && entry?.archived !== true).length;
 
   const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError, isFetching: adminWorkRefreshing, refetch: refetchAdminWork } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
@@ -132,9 +134,9 @@ export default function AdminDashboard() {
       return { ...payload, tasks: currentTasks, counts: { ...(payload.counts || {}), total: currentTasks.length } };
     },
     enabled: user?.role === 'admin',
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     refetchInterval: 60 * 60 * 1000,
   });
 
