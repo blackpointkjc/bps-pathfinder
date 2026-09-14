@@ -30,9 +30,9 @@ Deno.serve(async (req) => {
     // implementation silently converted timeouts into empty arrays, making valid
     // property history appear to have vanished.
     const [active, archived, alerts] = await Promise.all([
-      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500)),
-      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000)),
-      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1500)),
+      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 250)),
+      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 750)),
+      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 750)),
     ]);
 
     const activeById = new Map((active || []).map((row: any) => [String(row.id), row]));
