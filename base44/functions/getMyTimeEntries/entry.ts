@@ -14,10 +14,19 @@ Deno.serve(async (req) => {
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
     const officerEmail = String(officer.work_email || officer.pathfinder_email || officer.email || '').trim().toLowerCase();
+    const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date || '')) ? String(body.start_date) : '';
+    const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : '';
+    const query: Record<string, any> = { officer_email: officerEmail };
+    if (startDate || endDate) {
+      query.clock_in = {
+        ...(startDate ? { $gte: `${startDate}T00:00:00.000Z` } : {}),
+        ...(endDate ? { $lte: `${endDate}T23:59:59.999Z` } : {}),
+      };
+    }
     const entries = await base44.asServiceRole.entities.TimeEntry.filter(
-      { officer_email: officerEmail },
+      query,
       '-clock_in',
-      2000,
+      500,
     );
     return Response.json({ success: true, entries: (entries || []).filter((entry: any) => entry.archived !== true) });
   } catch (error) {
