@@ -398,10 +398,14 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      units,
+      // The status board needs the enriched directory roster so signed-out/OOS
+      // officers and profile fields (including photos) remain visible. Live maps
+      // continue to consume `users`, which contains signed-in non-OOS units only.
+      units: onDutyUsers,
       users: liveUsers,
       open_count: openByEmail.size,
-      signed_in_count: units.length,
+      signed_in_count: liveUsers.length,
+      roster_count: onDutyUsers.length,
       clocked_in_without_session: clockedInWithoutSession,
       clocked_in_without_session_count: clockedInWithoutSession.length,
     });
