@@ -129,8 +129,8 @@ export default function WelcomeBriefing({ user }) {
           messages = [], mentions = [], announcements = [], receipts = [],
           notifications = [], propertyAlerts = [], propertyAlertReceipts = [],
           units = [], assignedTasks = [], schedules = [], vehicleAssignments = [],
-          overrides = [], allUsers = [], allUnits = [], allSchedules = [],
-          timeEntries = [], dispatchCalls = []
+          overrides = [], recentUserTimeEntries = [], liveOfficers = [],
+          allUsers = [], allUnits = [], allSchedules = [], timeEntries = [], dispatchCalls = []
         } = snapshot;
         if (!active) return;
         const receiptIds = getLocalReadAnnouncementIds(user.email);
@@ -138,10 +138,15 @@ export default function WelcomeBriefing({ user }) {
           if (receipt?.announcement_id) receiptIds.add(String(receipt.announcement_id));
         });
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
-        // "Since you were away" must be based on when this user was last active,
-        // not merely on an unread flag. On a first briefing for this device, keep
-        // the window to the last 24 hours so old records cannot flood the popup.
-        const briefingCutoff = offlineSince || Math.max(accountCreated || 0, now - 86400000);
+        // Prefer the newest verified server activity over an old browser-only value.
+        // This prevents a different device or cleared local storage from reporting
+        // that an officer was away for weeks despite recent time entries.
+        const serverLastActivity = Math.max(0, ...(recentUserTimeEntries || []).map(entry =>
+          parseServerTimestamp(entry.clock_out || entry.clock_in)?.getTime() || 0
+        ));
+        const effectiveOfflineSince = Math.max(offlineSince || 0, serverLastActivity || 0) || null;
+        setOfflineSince(effectiveOfflineSince);
+        const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
         const createdAfterCutoff = item => {
           const created = parseServerTimestamp(item?.created_date)?.getTime() || 0;
           return created > briefingCutoff;
@@ -175,7 +180,8 @@ export default function WelcomeBriefing({ user }) {
           return created > offlineSince;
         });
         const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
-        const unit = units?.[0] || null;
+        const liveOfficer = (liveOfficers || []).find(item => item.session_active === true) || null;
+        const unit = liveOfficer || units?.[0] || null;
         const briefingMinutes = easternMinutesNow();
         const relevantUserSchedules = (schedules || []).filter(item => shiftHasNotEnded(item, briefingMinutes));
         const relevantCompanySchedules = (allSchedules || []).filter(item => shiftHasNotEnded(item, briefingMinutes));
@@ -198,10 +204,10 @@ export default function WelcomeBriefing({ user }) {
     loadRef.current = load;
     load();
     return () => { active = false; };
-  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
+  }, [user?.id, user?.email, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {
-    if (!user?.id) return undefined;
+    if (!user?.id || !open || loading) return undefined;
     let refreshTimer = null;
     const refreshBriefing = event => {
       const task = event?.data;
@@ -210,14 +216,14 @@ export default function WelcomeBriefing({ user }) {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
         loadRef.current?.();
-      }, 300);
+      }, 3000);
     };
     const unsubscribeTasks = base44.entities.Task.subscribe(refreshBriefing);
     return () => {
       window.clearTimeout(refreshTimer);
       unsubscribeTasks?.();
     };
-  }, [user?.id]);
+  }, [user?.id, open, loading]);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -312,7 +318,15 @@ export default function WelcomeBriefing({ user }) {
         || roles.has('cad_access')
         || roles.has('dispatch');
       if (operational) {
-        const response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
+        let response;
+        try {
+          response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
+        } catch (firstError) {
+          const firstMessage = String(firstError?.response?.data?.error || firstError?.message || firstError || '');
+          if (!/rate limit|too many requests|\b429\b/i.test(firstMessage)) throw firstError;
+          await new Promise(resolve => window.setTimeout(resolve, 3500));
+          response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
+        }
         const payload = response?.data || response || {};
         if (payload?.error) throw new Error(payload.error);
         localStorage.setItem(lastStatusKey, payload.status || 'Available');
