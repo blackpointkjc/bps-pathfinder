@@ -5,11 +5,10 @@ import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
-const STATUS_ORDER = ['All','Available','Dispatched','On Patrol','Enroute','On Scene','Busy','Distress','Out of Service'];
+const STATUS_ORDER = ['All','Available','Dispatched','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
   Available: { short: 'AVAIL', dot: 'bg-green-400', badge: 'bg-green-900/40 text-green-300 border-green-700/50' },
   Dispatched: { short: 'DISP', dot: 'bg-cyan-400', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/50' },
-  'On Patrol': { short: 'PTR', dot: 'bg-indigo-400', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/50' },
   Enroute: { short: 'ENRT', dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/50' },
   'On Scene': { short: 'SCNE', dot: 'bg-blue-400', badge: 'bg-blue-900/40 text-blue-300 border-blue-700/50' },
   Busy: { short: 'BUSY', dot: 'bg-orange-400', badge: 'bg-orange-900/40 text-orange-300 border-orange-700/50' },
@@ -94,8 +93,8 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
   ])), [rosterUnits, activeUnits]);
   const filtered = filter === 'Out of Service'
     ? rosterUnits.filter(u => u.status === 'Out of Service' || u.session_active !== true)
-    : filter === 'All' ? activeUnits : activeUnits.filter(u => u.status === filter);
-  const statusUnits = activeUnits;
+    : filter === 'All' ? rosterUnits : activeUnits.filter(u => u.status === filter);
+  const statusUnits = rosterUnits;
   const canManageDistress = isDispatchOrAdmin(currentUser);
 
   const triggerDistress = async (unit) => {
@@ -151,7 +150,6 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
               className={`min-w-[58px] flex-1 border-r border-[#1e2d4a] px-1.5 py-2.5 last:border-r-0 ${filter === status ? 'bg-blue-950/40 ring-inset ring-1 ring-blue-700/40' : 'hover:bg-slate-900/70'}`}>
               <div className={`text-base font-black ${
                 status === 'Available' ? 'text-green-400' :
-                status === 'On Patrol' ? 'text-indigo-400' :
                 status === 'Enroute' ? 'text-yellow-400' :
                 status === 'On Scene' ? 'text-blue-400' :
                 status === 'Busy' ? 'text-orange-400' :
