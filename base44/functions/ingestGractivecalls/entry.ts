@@ -284,8 +284,8 @@ async function reconcilePropertyAlerts(base44: any) {
     // Read ALL alerts, not only unacknowledged alerts. An acknowledged alert is
     // still the authoritative record for that call/property pair and must not be
     // recreated every ingestion cycle.
-    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 3000).catch(() => []),
-    base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 3000).catch(() => []),
+    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+    base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 1000).catch(() => []),
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
@@ -479,7 +479,7 @@ async function reserveCadNumbers(base44: any, count: number) {
   const counterKey = `bps_dispatch_call:${period}`;
   const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: counterKey });
   let counter = counters?.[0];
-  const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+  const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
   const highest = (calls || []).reduce((max: number, call: any) => {
     const match = String(call.bps_reference || call.call_id || '').match(/^BPS-(\d{6})-(\d{1,8})$/i);
     return Math.max(max, match && match[1] === period ? Number(match[2]) : 0);
@@ -518,7 +518,7 @@ async function acquireIngestionLease(base44: any) {
   let counter = counters?.[0];
 
   if (!counter) {
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const highest = (calls || []).reduce((max: number, call: any) => {
       const match = String(call.call_id || '').match(/^B(\d+)$/i);
       return Math.max(max, match ? Number(match[1]) : 0);
@@ -584,7 +584,7 @@ Deno.serve(async (req) => {
     }
 
     try {
-    const response = await fetch(GRAC_API_URL, { headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.0' }, signal: AbortSignal.timeout(20_000) });
+    const response = await fetch(GRAC_API_URL, { headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.0' }, signal: AbortSignal.timeout(12_000) });
     if (!response.ok) return Response.json({ success: false, error: `GRAC API returned HTTP ${response.status}` }, { status: 502 });
     const payload = await response.json();
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
@@ -594,7 +594,7 @@ Deno.serve(async (req) => {
     // a call merely because it has been open longer than one hour.
     incoming = await enrichOfficialIdentifiers(incoming);
 
-    let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const incomingByLegacy = new Map(incoming.map(call => [legacyKey(call), call]));
     const groups = new Map<string, any[]>();
     for (const record of existingCalls || []) {
@@ -618,7 +618,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const byExternal = new Map<string, any>();
     const byLegacy = new Map<string, any>();
     for (const record of existingCalls || []) {
@@ -632,7 +632,7 @@ Deno.serve(async (req) => {
     // CallHistory. GRAC can continue publishing an old call while it remains active;
     // without this tombstone check ingestion would recreate it on every sync and the
     // property-monitoring system would generate a new alert for the same call.
-    const archivedHistory = await base44.asServiceRole.entities.CallHistory.list('-archived_date', 5000).catch(() => []);
+    const archivedHistory = await base44.asServiceRole.entities.CallHistory.list('-archived_date', 2000).catch(() => []);
     const archivedByExternal = new Set((archivedHistory || []).map((row: any) => externalKey(row)).filter(Boolean));
     const archivedByLegacy = new Set((archivedHistory || []).map((row: any) => legacyKey(row)).filter(Boolean));
 
@@ -735,7 +735,7 @@ Deno.serve(async (req) => {
     }
 
     // Final reconciliation closes any race caused by simultaneous browser sync requests.
-    const finalCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    const finalCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const finalGroups = new Map<string, any[]>();
     for (const record of finalCalls || []) {
       const key = legacyKey(record) || externalKey(record);
