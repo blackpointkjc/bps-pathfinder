@@ -257,14 +257,15 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: async (createdEntry, submittedEntry) => {
+    onSuccess: (createdEntry, submittedEntry) => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
 
-      // A successful clock-in immediately establishes the same canonical live
-      // session used by every map. Do not wait for the background query's next
-      // 30-second refresh before the officer appears to dispatch.
+      // The TimeEntry save is the clock-in transaction. Status/GPS publication
+      // continues in the background so a slow secondary service cannot leave the
+      // button spinning or make a successful punch look like a timeout.
+      void (async () => {
       const statusResult = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' }).catch(error => ({ error }));
       const statusPayload = statusResult?.data || statusResult || {};
       if (statusPayload?.error) {
@@ -283,6 +284,7 @@ export default function TimeClock() {
         session_active: true,
       }).catch(error => console.warn('Clock-in saved, but live map synchronization is retrying:', error?.message));
       window.dispatchEvent(new Event('bps-officer-status-changed'));
+      })();
     },
   });
 
@@ -469,10 +471,13 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      // Rugged Windows tablets such as the CF-33 may use Wi-Fi positioning and
-      // report a broader accuracy radius than a phone. Accept that fix, then keep
-      // enforcing the site's actual polygon/radius with verifyAgainstLocationBoundary.
-      const fix = await waitForLiveLocation({ maxAgeMs: 60000, timeoutMs: 25000, maxAccuracyMeters: 1500 });
+      // Rugged Windows tablets such as the CF-33 may delay a new sensor response
+      // even though Pathfinder already has a recent valid fix. Reuse that shared
+      // fix for up to ten minutes, while still enforcing the site's boundary.
+      let fix = getLiveLocation(10 * 60 * 1000);
+      if (!fix) {
+        fix = await waitForLiveLocation({ maxAgeMs: 10 * 60 * 1000, timeoutMs: 10000, maxAccuracyMeters: 2000 });
+      }
       const userLat = fix.latitude;
       const userLng = fix.longitude;
       const position = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
