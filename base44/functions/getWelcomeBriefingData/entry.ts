@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       operational ? safe(() => base44.asServiceRole.entities.User.list('last_name', 250)) : [],
       operational ? safe(() => base44.asServiceRole.entities.Unit.list('-last_update_at', 100)) : [],
       operational ? safe(() => base44.asServiceRole.entities.Schedule.filter({ shift_date: today }, '-shift_date', 150)) : [],
-      operational ? safe(() => base44.asServiceRole.entities.TimeEntry.filter({ clock_out: null }, '-clock_in', 150)) : [],
+      operational ? safe(() => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 150)) : [],
       operational ? safe(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 150)) : [],
     ]);
 
