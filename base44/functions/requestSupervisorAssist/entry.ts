@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       const status = lower(session?.status || u.status);
       if (!session || session.session_active === false || gpsAt < freshCutoff || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       // A signed-in supervisor who is not committed to another active call is eligible
-      // while Available, On Patrol, or another non-OOS idle state. GPS accuracy is kept
+      // while Available or another non-OOS idle state. GPS accuracy is kept
       // as metadata but does not make the request fail outright.
       if (['out of service','out_of_service','oos','distress','emergency'].includes(status)) continue;
       candidates.push({ user:u, session, distance:distanceMiles(originLat,originLon,lat,lon) });
