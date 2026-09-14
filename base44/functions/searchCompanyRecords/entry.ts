@@ -111,9 +111,12 @@ const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve
 
 async function listWithRetry(entity: any, entityName: string) {
   let lastError: any;
+  // A company search spans more than twenty entities. Pulling 1,000 rows from
+  // every source caused the function to time out before it could return matches.
+  const limit = entityName === 'CallHistory' ? 750 : entityName === 'DispatchCall' ? 250 : 300;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await entity.list('-created_date', 1000);
+      return await entity.list('-created_date', limit);
     } catch (error) {
       lastError = error;
       if (attempt === 0) await wait(400);
