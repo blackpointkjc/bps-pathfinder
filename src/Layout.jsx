@@ -6,7 +6,7 @@ import {
   Building2, Calendar, CalendarClock, Car, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
-  Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
+  Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, GitBranch
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -1312,7 +1312,9 @@ export default function Layout({ children, currentPageName }) {
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
   const primaryCenter = allowedCenters(user)[0] || 'officer';
   const userHomePage = defaultPageForUser(user, true);
-  const userHomeLabel = `${String(CENTER_CONFIG[primaryCenter]?.label || 'Pathfinder').replace(/\s+Center$/i, '')} Home`;
+  const userHomeLabel = userHomePage === 'AdminCenter'
+    ? 'Admin Main'
+    : `${String(CENTER_CONFIG[primaryCenter]?.label || 'Pathfinder').replace(/\s+Center$/i, '')} Main`;
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
@@ -1389,16 +1391,16 @@ export default function Layout({ children, currentPageName }) {
           {!ROOT_PAGES.has(currentPageName) && (
             <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] xl:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
-          {COMMUNICATION_PAGES.has(currentPageName) && (
-            <Link
-              to={createPageUrl(userHomePage)}
-              className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-blue-500/70 bg-blue-600/20 px-3 text-[10px] font-black uppercase tracking-wider text-blue-100 hover:bg-blue-600/35"
-              aria-label={`Return to ${userHomeLabel}`}
-            >
-              <Gauge className="h-4 w-4" />
-              <span className="hidden sm:inline">{userHomeLabel}</span>
-            </Link>
-          )}
+          <Link
+            to={createPageUrl(userHomePage)}
+            className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-blue-400/80 bg-blue-600/25 px-2.5 text-[10px] font-black uppercase tracking-wider text-blue-50 shadow-sm hover:bg-blue-600/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:gap-2 sm:px-3"
+            aria-label={`Return to ${userHomeLabel}`}
+            title={`Return to ${userHomeLabel}`}
+          >
+            <Home className="h-4 w-4" />
+            <span className="sm:hidden">Main</span>
+            <span className="hidden sm:inline">{userHomeLabel}</span>
+          </Link>
           <div className="min-w-0">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
