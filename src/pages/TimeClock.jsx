@@ -198,7 +198,7 @@ export default function TimeClock() {
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 50);
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 10);
       return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
