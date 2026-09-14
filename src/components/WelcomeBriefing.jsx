@@ -175,9 +175,9 @@ export default function WelcomeBriefing({ user }) {
           if (!linkedCall || HIDDEN_CALL_STATUSES.has(normalized(linkedCall.status))) return false;
           if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
           seenPropertyPairs.add(pair);
-          if (!offlineSince) return true;
+          if (!effectiveOfflineSince) return true;
           const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
-          return created > offlineSince;
+          return created > effectiveOfflineSince;
         });
         const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
         const liveOfficer = (liveOfficers || []).find(item => item.session_active === true) || null;
