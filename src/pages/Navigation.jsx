@@ -33,7 +33,6 @@ const PRIORITY_COLORS = {
 const STATUS_DOT = {
     'Available': 'bg-slate-400',
     'Dispatched': 'bg-cyan-400',
-    'On Patrol': 'bg-indigo-400',
     'Enroute': 'bg-red-500',
     'On Scene': 'bg-green-400',
     'Busy': 'bg-yellow-400',
@@ -42,7 +41,6 @@ const STATUS_DOT = {
 };
 const MY_STATUSES = [
     { label: 'Available', dot: 'bg-slate-400', shortcode: '10-8' },
-    { label: 'On Patrol', dot: 'bg-indigo-400', shortcode: '10-98' },
     { label: 'Enroute', dot: 'bg-red-500', shortcode: '10-76' },
     { label: 'On Scene', dot: 'bg-green-400', shortcode: '10-23' },
     { label: 'Busy', dot: 'bg-yellow-400', shortcode: '10-6' },
@@ -350,7 +348,7 @@ export default function Navigation() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             syncScheduledCadPartnership(user).then(setCurrentUser).catch(() => null);
-            if (user.status) setUnitStatus(user.status);
+            if (user.status) setUnitStatus(user.status === 'On Patrol' ? 'Available' : user.status);
         } catch {}
         const fix = getLiveLocation(30000);
         if (fix) {
@@ -950,7 +948,7 @@ export default function Navigation() {
                             {/* UNITS TAB */}
                             {leftTab === 'units' && (
                                 <div className="flex-1 overflow-y-auto">
-                                    {['Available','On Patrol','Enroute','On Scene','Busy','Supervisor','Out of Service']
+                                    {['Available','Enroute','On Scene','Busy','Supervisor','Out of Service']
                                         .filter(s => (s !== 'Supervisor' && s !== 'Out of Service') || isSupervisorUser)
                                         .map(status => {
                                             const units = onlineUnits.filter(u => u.status === status);
