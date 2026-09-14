@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
-const STATUS_ORDER = ['All','Available','Dispatched','On Patrol','Enroute','On Scene','Busy','Distress','Out of Service'];
+const STATUS_ORDER = ['All','Available','Dispatched','On Patrol','Enroute','On Scene','Busy','Distress'];
 const STATUS_META = {
   Available: { short: 'AVAIL', dot: 'bg-green-400', badge: 'bg-green-900/40 text-green-300 border-green-700/50' },
   Dispatched: { short: 'DISP', dot: 'bg-cyan-400', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/50' },
@@ -43,6 +43,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
   const [filter, setFilter] = useState('All');
   const [pendingId, setPendingId] = useState(null);
   const [canonicalUnits, setCanonicalUnits] = useState([]);
+  const [canonicalLoaded, setCanonicalLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +52,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
         const payload = await getOfficerLocationSnapshot();
         if (!active) return;
         setCanonicalUnits(Array.isArray(payload.users) ? payload.users : []);
+        setCanonicalLoaded(true);
       } catch {
         // Keep rendering the parent feed if the canonical refresh is temporarily unavailable.
       }
@@ -73,10 +75,14 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     };
   }, []);
 
-  const sourceUnits = canonicalUnits.length ? canonicalUnits : units;
-  // Dispatch is a control-room presence, not a field-officer status. Keep the
-  // dispatcher available to Dispatch Center while removing them from this board.
-  const statusUnits = useMemo(() => (sourceUnits || []).filter(u => u?.status && u.status !== 'Dispatch'), [sourceUnits]);
+  // An empty canonical response means there are no active officers. It must not
+  // fall back to the parent's stale roster and resurrect signed-out/OOS units.
+  const sourceUnits = canonicalLoaded ? canonicalUnits : units;
+  const statusUnits = useMemo(() => (sourceUnits || []).filter(u =>
+    u?.session_active === true
+    && u?.status
+    && !['Dispatch', 'Out of Service'].includes(u.status)
+  ), [sourceUnits]);
   const counts = useMemo(() => Object.fromEntries(STATUS_ORDER.slice(1).map(status => [status, statusUnits.filter(u => u.status === status).length])), [statusUnits]);
   const filtered = filter === 'All' ? statusUnits : statusUnits.filter(u => u.status === filter);
   const canManageDistress = isDispatchOrAdmin(currentUser);
