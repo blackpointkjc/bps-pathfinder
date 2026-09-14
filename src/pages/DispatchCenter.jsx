@@ -185,9 +185,12 @@ export default function DispatchCenter() {
                 return;
             }
 
-            // Calls and unit status are independent. Load them together so a slow
-            // unit-location request cannot hold the entire Dispatch Center spinner.
-            await Promise.allSettled([loadActiveCalls(true), loadUnits()]);
+            // Active calls are the first-render payload. Paint the queue before
+            // starting the heavier live-unit snapshot so GPS/roster latency can
+            // never hold Dispatch Center behind its full-page spinner.
+            await loadActiveCalls(true);
+            setLoading(false);
+            loadUnits();
         } catch (error) {
             console.error('Error initializing:', error);
             toast.error('Failed to load dispatch center');
@@ -226,7 +229,7 @@ export default function DispatchCenter() {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            const calls = await base44.entities.DispatchCall.list('-created_date', 200);
+            const calls = await base44.entities.DispatchCall.list('-created_date', 75);
 
             // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
             const uniqueCalls = new Map();
