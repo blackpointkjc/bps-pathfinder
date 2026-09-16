@@ -351,9 +351,14 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   if (!externalGpsSupported()) throw new Error('This browser does not support direct USB/serial GPS. Use Chrome or Edge, or let Windows Location Services supply the receiver to the browser.');
   installSerialEvents();
   if (connectPromise) return connectPromise;
+  // requestPort must happen immediately from the user's click. After the user has
+  // chosen a receiver, it is safe to close any main-thread port and move the new
+  // selection into the background worker. This makes the global "Change Antenna"
+  // control reliable even when another receiver is already connected.
   connectPromise = navigator.serial.requestPort()
     .then(async port => {
       const selector = portSelector(port);
+      await closeCurrentPort();
       if (workerSerialSupported()) {
         try {
           return await startWorkerPort({ baudRate, selector });
