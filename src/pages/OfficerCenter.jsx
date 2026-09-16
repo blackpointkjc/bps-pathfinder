@@ -12,6 +12,7 @@ import ShiftHandover from './ShiftHandover';
 import VATrespassNotices from './VATrespassNotices';
 import VACriminalComplaints from './VACriminalComplaints';
 import Summons from './Summons';
+import WitnessSubpoenaRequest from './WitnessSubpoenaRequest';
 import DailyActivityReports from './DailyActivityReports';
 import IncidentReports from './IncidentReports';
 import MaintenanceReports from './MaintenanceReports';
@@ -33,7 +34,7 @@ import RankDuties from './RankDuties';
 const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Dashboard, announcements, clock and schedule', icon: CalendarClock },
   { id: 'field', label: 'Patrol & Post', description: 'Post orders, QR patrol and shift handover', icon: Wrench },
-  { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints and summons', icon: Shield },
+  { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints, summons and witness subpoenas', icon: Shield },
   { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and confidential reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Pay', description: 'Availability, requests, open shifts and payroll dates', icon: CalendarClock },
   { id: 'profile', label: 'Career & Training', description: 'Profile, performance, reviews, training and rank', icon: UserRound },
@@ -55,6 +56,7 @@ const TOOLS = {
     { id: 'trespass', label: 'VA Trespass', component: VATrespassNotices },
     { id: 'complaint', label: 'VA Complaint', component: VACriminalComplaints },
     { id: 'summons', label: 'VA Summons', component: Summons },
+    { id: 'subpoena', label: 'Witness Subpoena', component: WitnessSubpoenaRequest },
   ],
   reports: [
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
