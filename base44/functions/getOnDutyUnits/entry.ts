@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
         'active officer sessions',
       );
       const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
-      const sessionRetentionCutoff = Date.now() - 60 * 60 * 1000;
+      const sessionRetentionCutoff = Date.now() - 12 * 60 * 60 * 1000;
       const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
@@ -178,10 +178,11 @@ Deno.serve(async (req) => {
     // ActiveOfficer is the signed-in live GPS source. TimeEntry is optional context;
     // it must never gate whether a logged-in officer appears on the live map.
     // Treat the first 15 minutes as a healthy connection, but retain a signed-in
-    // session for up to one hour so Chromium background throttling does not make an
-    // officer vanish. Retained sessions are explicitly marked connection_stale.
+    // session for up to a 12-hour operational shift so Chromium/background idle
+    // behavior does not make an officer vanish. Retained sessions are explicitly
+    // marked connection_stale and are not app-dispatch eligible until recovered.
     const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
-    const sessionRetentionCutoff = Date.now() - 60 * 60 * 1000;
+    const sessionRetentionCutoff = Date.now() - 12 * 60 * 60 * 1000;
     const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
