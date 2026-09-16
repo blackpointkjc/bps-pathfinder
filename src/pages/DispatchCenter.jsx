@@ -235,13 +235,13 @@ export default function DispatchCenter() {
 
     const loadUnits = async (force = false) => {
         try {
-            // One canonical status feed is shared by Dispatch Center, Command, and
-            // the Unit Status Board. Only officers with a fresh signed-in CAD session
-            // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
+            // Dispatch actions must use the user-backed canonical roster. The
+            // lightweight location-only feed is appropriate for maps, but its row ID
+            // is an ActiveOfficer session ID; CallAssignment and the officer queue
+            // require the immutable User id. The full snapshot returns live status,
+            // GPS, profile fields, and user IDs together.
+            const payload = await getOfficerLocationSnapshot({ force });
             const eligibleUnits = (payload.units || payload.users || [])
-                // location_only is already restricted by the backend to fresh,
-                // signed-in operational sessions and intentionally omits directory roles.
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
                 .map(unit => ({
                     ...unit,
