@@ -190,13 +190,23 @@ export default function Navigation() {
             refreshTimer = window.setTimeout(() => fetchCalls(), 900);
         };
         const unsubscribe = base44.entities.DispatchCall.subscribe(scheduleCallRefresh);
+        const recoverCalls = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => fetchCalls(), 200);
+        };
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
         }, 20000);
+        window.addEventListener('bps-operational-resume', recoverCalls);
+        window.addEventListener('online', recoverCalls);
+        window.addEventListener('pageshow', recoverCalls);
         return () => {
             unsubscribe?.();
             clearInterval(localInterval);
             window.clearTimeout(refreshTimer);
+            window.removeEventListener('bps-operational-resume', recoverCalls);
+            window.removeEventListener('online', recoverCalls);
+            window.removeEventListener('pageshow', recoverCalls);
         };
     }, []);
 
@@ -626,12 +636,12 @@ export default function Navigation() {
         toast.success(`Fitting ${coords.length} unit${coords.length === 1 ? '' : 's'} on map`);
     };
 
-    const fetchOtherUnits = async () => {
+    const fetchOtherUnits = async (force = false) => {
         try {
             // Navigation consumes the same canonical unit snapshot as CAD and the
             // admin tracker. Never fall back to raw ActiveOfficer rows, because a
             // stale stored coordinate must not become a live map marker.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true });
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
             const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
                 .filter(unit => unit.session_active !== false);
             const currentEmail = currentUser?.email?.toLowerCase();
