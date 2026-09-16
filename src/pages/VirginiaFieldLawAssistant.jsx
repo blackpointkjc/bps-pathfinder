@@ -124,7 +124,6 @@ export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearch
       setAiSummary(`Potential Virginia references matched from the facts you entered. Review the listed elements and open the current statute before taking enforcement action.`);
     }
     try {
-    try {
       const allowed = VIRGINIA_FIELD_CODES.map(x => ({ code:x.code,name:x.name,category:x.category,elements:x.elements })).map(x=>JSON.stringify(x)).join('\n');
       const result = await base44.integrations.Core.InvokeLLM({
         prompt:`You are a Virginia field-law reference assistant for security officers. Analyze the incident description and identify only potentially relevant references from the APPROVED LIST below. Do not invent statutes, do not decide probable cause, do not direct an arrest, do not give tactical or weapon-use instructions, and do not state that a person is guilty. Emphasize missing facts and documentation needed. Return up to 5 exact code strings from the approved list.\n\nINCIDENT:\n${situation}\n\nAPPROVED LIST:\n${allowed}`,
