@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { MessageCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -19,7 +19,7 @@ export default function MandatoryReadGate({ user }) {
     queryKey: ['mandatoryChatMentions', user?.email],
     queryFn: () => base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
     enabled: enabled && !!user?.email,
-    refetchInterval: 60000,
+    refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
   });
@@ -31,10 +31,34 @@ export default function MandatoryReadGate({ user }) {
       return (records || []).filter(item => item.requires_acknowledgment === true && ['shift_posted', 'schedule_changed'].includes(item.type));
     },
     enabled: scheduleAlertsEnabled,
-    refetchInterval: 60000,
+    refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
   });
+
+  useEffect(() => {
+    if (!enabled || !user?.email) return undefined;
+    let mentionUnsubscribe;
+    let notificationUnsubscribe;
+    try {
+      mentionUnsubscribe = base44.entities.ChatMention.subscribe(event => {
+        if (String(event?.data?.recipient_email || '').toLowerCase() === String(user.email).toLowerCase()) {
+          qc.invalidateQueries({ queryKey: ['mandatoryChatMentions', user.email] });
+        }
+      });
+    } catch (_) {}
+    try {
+      notificationUnsubscribe = base44.entities.Notification.subscribe(event => {
+        if (String(event?.data?.recipient_email || '').toLowerCase() === String(user.email).toLowerCase()) {
+          qc.invalidateQueries({ queryKey: ['mandatoryScheduleAlerts', user.email] });
+        }
+      });
+    } catch (_) {}
+    return () => {
+      if (typeof mentionUnsubscribe === 'function') mentionUnsubscribe();
+      if (typeof notificationUnsubscribe === 'function') notificationUnsubscribe();
+    };
+  }, [enabled, user?.email, qc]);
 
   const queue = useMemo(() => {
     const scheduleItems = scheduleAlerts.map(n => ({ type: 'schedule', id: n.id, sort: n.created_date, record: n }));
