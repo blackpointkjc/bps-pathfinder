@@ -130,7 +130,7 @@ export default function WelcomeBriefing({ user }) {
           notifications = [], propertyAlerts = [], propertyAlertReceipts = [],
           units = [], assignedTasks = [], schedules = [], vehicleAssignments = [],
           overrides = [], recentUserTimeEntries = [], liveOfficers = [],
-          allUsers = [], allUnits = [], allSchedules = [], timeEntries = [], dispatchCalls = []
+          allUsers = [], allUnits = [], allLiveOfficers = [], allSchedules = [], timeEntries = [], dispatchCalls = [], sourceErrors = []
         } = snapshot;
         if (!active) return;
         const receiptIds = getLocalReadAnnouncementIds(user.email);
@@ -189,8 +189,8 @@ export default function WelcomeBriefing({ user }) {
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
-        setDataErrors(failedSources);
+        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], allLiveOfficers: allLiveOfficers || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
+        setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
         setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary'])));
@@ -251,7 +251,22 @@ export default function WelcomeBriefing({ user }) {
   const canOpenSupervisorTasks = isAdmin || (user?.additional_roles || []).map(normalized).includes('supervisor');
   const userByEmail = useMemo(() => new Map((brief.allUsers || []).map(person => [normalized(person.email), person])), [brief.allUsers]);
   const userById = useMemo(() => new Map((brief.allUsers || []).map(person => [String(person.id || ''), person])), [brief.allUsers]);
-  const unitByEmail = useMemo(() => new Map((brief.allUnits || []).map(unitRow => [normalized(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email), unitRow])), [brief.allUnits, userById]);
+  const unitByEmail = useMemo(() => {
+    const map = new Map();
+    (brief.allUnits || []).forEach(unitRow => {
+      const email = normalized(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email);
+      if (email) map.set(email, unitRow);
+    });
+    // ActiveOfficer is the live CAD/device session and may exist even when a separate
+    // Unit row has not been provisioned. Prefer a live session for status/location.
+    (brief.allLiveOfficers || []).forEach(session => {
+      const email = normalized(session.officer_email);
+      if (!email || session.session_active === false) return;
+      const current = map.get(email) || {};
+      map.set(email, { ...current, ...session, id: current.id || session.id });
+    });
+    return map;
+  }, [brief.allUnits, brief.allLiveOfficers, userById]);
   const isCadOfficer = isOperationalOfficer;
   const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [normalized(entry.officer_email), entry])), [brief.activeTimeEntries]);
   const vehicleByEmail = useMemo(() => {
@@ -270,9 +285,9 @@ export default function WelcomeBriefing({ user }) {
       const person = userByEmail.get(email);
       if (person && !isCadOfficer(person)) return null;
       seen.add(email);
-      const unitRow = unitByEmail.get(email);
-      const effectiveStatus = normalized(unitRow?.status || person?.status);
-      if (!unitRow || unitRow.session_active === false || effectiveStatus === 'out of service') return null;
+      const unitRow = unitByEmail.get(email) || null;
+      // An open TimeEntry is the authoritative clocked-in state. Missing/stale Unit
+      // provisioning must never erase a real clock-in from the staffing count.
       const vehicleRow = vehicleByEmail.get(email);
       return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
     }).filter(Boolean).sort((a,b) => String(a.person?.last_name || a.email).localeCompare(String(b.person?.last_name || b.email)));
