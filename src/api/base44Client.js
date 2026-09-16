@@ -196,7 +196,22 @@ const authProxy = new Proxy(rawBase44.auth, {
         return authInflight;
       };
     }
-    if (typeof value === 'function') return value.bind(target);
+    if (typeof value === 'function') {
+      const method = String(prop);
+      if (['logout', 'loginViaEmailPassword', 'loginWithProvider', 'register', 'redirectToLogin'].includes(method)) {
+        return async (...args) => {
+          clearBase44ReadCache();
+          authInflight = null;
+          try {
+            return await value.apply(target, args);
+          } finally {
+            clearBase44ReadCache();
+            authInflight = null;
+          }
+        };
+      }
+      return value.bind(target);
+    }
     return value;
   },
 });
