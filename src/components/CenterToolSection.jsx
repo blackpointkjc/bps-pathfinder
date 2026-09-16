@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import AdaptiveSelector from '@/components/AdaptiveSelector';
 
-export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool', workspaceClassName = '' }) {
+export default function CenterToolSection({ tools, defaultTool, queryParam = 'tool', workspaceClassName = '', componentProps = {} }) {
   const location = useLocation();
   const navigate = useNavigate();
   const safeTools = Array.isArray(tools) ? tools : [];
@@ -46,7 +46,7 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
       )}
       <div className={fullCanvas
         ? 'min-h-0 min-w-0 flex-1 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!p-0'
-        : 'min-w-0 overflow-x-clip'}>{Component ? <Component embedded /> : null}</div>
+        : 'min-w-0 overflow-x-clip'}>{Component ? <Component embedded {...componentProps} /> : null}</div>
     </div>
   );
 }
