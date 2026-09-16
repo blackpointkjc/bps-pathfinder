@@ -84,7 +84,7 @@ export default function WelcomeBriefing({ user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
+  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], allLiveOfficers: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const [dataErrors, setDataErrors] = useState([]);
   const [startingSession, setStartingSession] = useState(false);
   const [startSessionError, setStartSessionError] = useState('');
