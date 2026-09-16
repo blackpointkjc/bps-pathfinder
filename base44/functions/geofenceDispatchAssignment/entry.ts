@@ -176,6 +176,7 @@ Deno.serve(async (req) => {
     const requiredRanks = list(property.auto_dispatch_required_ranks);
     const now = Date.now();
     const freshCutoff = now - 2 * 60 * 1000;
+    const heartbeatCutoff = now - 15 * 60 * 1000;
 
     const activeByEmail = new Map<string, any>();
     for (const active of activeOfficers || []) {
@@ -211,13 +212,19 @@ Deno.serve(async (req) => {
       const email = lower(officer.email);
       const session = activeByEmail.get(email);
       const openEntry = openEntryByEmail.get(email);
-      const clockedIn = Boolean(openEntry || (session && session.session_active !== false));
-      const status = lower(session?.status || officer.status || (openEntry ? 'Available' : ''));
+      const sessionAt = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
+      const liveSessionFresh = Boolean(session && session.session_active !== false
+        && Number.isFinite(sessionAt) && sessionAt >= heartbeatCutoff);
+      // A retained browser session may stay visible to CAD while Chromium is
+      // minimized, but it must not by itself make a unit dispatch-eligible after
+      // the app heartbeat is stale. A real open TimeEntry remains the fallback.
+      const clockedIn = Boolean(openEntry || liveSessionFresh);
+      const status = lower((liveSessionFresh ? session?.status : '') || officer.status || (openEntry ? 'Available' : ''));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
       const lat = Number(session?.latitude);
       const lon = Number(session?.longitude);
-      const reliableGps = Boolean(session && session.session_active !== false
+      const reliableGps = Boolean(liveSessionFresh
         && Number.isFinite(gpsAt) && gpsAt >= freshCutoff
         && Number.isFinite(lat) && Number.isFinite(lon)
         && Number.isFinite(accuracy) && accuracy <= 100);
