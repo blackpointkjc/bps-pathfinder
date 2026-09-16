@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
+import { recoverLiveLocationTracking, requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
@@ -358,11 +358,31 @@ export default function BackgroundLocationTracker({ user }) {
     // minute; use it as a background-safe opportunity to send the lightweight
     // heartbeat only when GPS has not already updated the server recently.
     const handleBackgroundTick = () => heartbeat();
+    let recoveryTimer;
+    const handleOperationalResume = event => {
+      window.clearTimeout(recoveryTimer);
+      recoveryTimer = window.setTimeout(async () => {
+        const inactiveMs = Number(event?.detail?.inactive_ms || 0);
+        if (inactiveMs >= 90_000) lastGpsPushRef.current = 0;
+        // A frozen Chromium geolocation watch can survive in JS without producing
+        // fixes. Re-register it, reconnect an approved USB GPS, and immediately
+        // renew the signed-in presence heartbeat when Pathfinder wakes.
+        lastLivePushRef.current = 0;
+        startExternalGpsAutoReconnect().catch(() => null);
+        recoverLiveLocationTracking(event?.detail?.reason || 'operational_resume').catch(() => null);
+        await heartbeat();
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+        queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
+      }, 300);
+    };
     window.addEventListener('bps-background-location-tick', handleBackgroundTick);
+    window.addEventListener('bps-operational-resume', handleOperationalResume);
     const heartbeatId = window.setInterval(heartbeat, 5 * 60 * 1000);
     return () => {
+      window.clearTimeout(recoveryTimer);
       window.clearInterval(heartbeatId);
       window.removeEventListener('bps-background-location-tick', handleBackgroundTick);
+      window.removeEventListener('bps-operational-resume', handleOperationalResume);
     };
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
