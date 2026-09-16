@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
-import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const STATUS_ORDER = ['All','Available','Dispatched','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
@@ -46,9 +46,9 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
 
   useEffect(() => {
     let active = true;
-    const sync = async () => {
+    const sync = async (force = false) => {
       try {
-        const payload = await getOfficerLocationSnapshot();
+        const payload = await getOfficerLocationSnapshot({ force });
         if (!active) return;
         // The canonical `units` feed is built from Manage Users and includes
         // signed-out personnel resolved as Out of Service. `users` is live-only.
@@ -62,6 +62,12 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') sync();
     }, 60000);
+    let realtimeTimer;
+    const unsubscribeLocations = subscribeOfficerLocationChanges(() => {
+      window.clearTimeout(realtimeTimer);
+      realtimeTimer = window.setTimeout(() => sync(), 500);
+    });
+    const onOperationalResume = () => sync(true);
     const onStatusChanged = (event) => {
       const detail = event?.detail || {};
       if (detail.email && detail.status) {
@@ -69,10 +75,14 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
       }
     };
     window.addEventListener('bps-officer-status-changed', onStatusChanged);
+    window.addEventListener('bps-operational-resume', onOperationalResume);
     return () => {
       active = false;
       clearInterval(timer);
+      window.clearTimeout(realtimeTimer);
+      unsubscribeLocations?.();
       window.removeEventListener('bps-officer-status-changed', onStatusChanged);
+      window.removeEventListener('bps-operational-resume', onOperationalResume);
     };
   }, []);
 
@@ -186,6 +196,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5"><span className={`h-1.5 w-1.5 flex-none rounded-full ${meta.dot} ${isDistress ? 'animate-pulse' : ''}`} /><div className="truncate text-[10px] font-black text-white" title={displayName(unit)}>{displayName(unit)}</div></div>
                 {(unit.unit_number || unit.current_call_info) && <div className="mt-0.5 truncate text-[8px] text-slate-500">{unit.unit_number ? `UNIT-${unit.unit_number}` : ''}{unit.unit_number && unit.current_call_info ? ' · ' : ''}{unit.current_call_info || ''}</div>}
+                {unit.connection_stale && <div className="mt-0.5 flex items-center gap-1 text-[8px] font-black text-amber-300" title="The officer is still signed in, but the browser heartbeat is stale. Pathfinder will recover the session when the device wakes."><AlertTriangle className="h-2.5 w-2.5" /> CONNECTION STALE</div>}
               </div>
               <span className={`flex-none rounded border px-1.5 py-0.5 text-[8px] font-bold ${meta.badge}`}>{meta.short}</span>
               {canManageDistress && (
