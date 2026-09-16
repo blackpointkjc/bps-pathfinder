@@ -17,6 +17,7 @@ import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
+import { disconnectExternalGps, getExternalGpsStatus, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
@@ -844,6 +845,10 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [refreshingApp, setRefreshingApp] = useState(false);
+  const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
+  const [gpsChanging, setGpsChanging] = useState(false);
+  const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
+  const gpsMenuRef = useRef(null);
   const [search, setSearch] = useState('');
   // The user's primary role owns the initial workspace. Do not bootstrap from a
   // stale browser-wide CAD selection left by a previous page or role.
@@ -866,6 +871,60 @@ export default function Layout({ children, currentPageName }) {
     setActiveCenterState(center);
     setSearch('');
     localStorage.setItem('bps-active-center', center);
+  };
+
+  useEffect(() => subscribeExternalGpsStatus(setExternalGps), []);
+
+  useEffect(() => {
+    if (!gpsMenuOpen) return undefined;
+    const closeIfOutside = event => {
+      if (!gpsMenuRef.current?.contains(event.target)) setGpsMenuOpen(false);
+    };
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setGpsMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeIfOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [gpsMenuOpen]);
+
+  const useDeviceGps = async () => {
+    if (gpsChanging) return;
+    setGpsChanging(true);
+    try {
+      await disconnectExternalGps();
+      toast.success('GPS source changed to Windows / device location.');
+      setGpsMenuOpen(false);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to disconnect the external GPS receiver.');
+    } finally {
+      setGpsChanging(false);
+    }
+  };
+
+  const connectExternalAntenna = async (baudRate = externalGps.baudRate || 4800) => {
+    if (gpsChanging) return;
+    setGpsChanging(true);
+    try {
+      await requestExternalGpsConnection({ baudRate: Number(baudRate) || 4800 });
+      toast.success('External GPS antenna connected.');
+      setGpsMenuOpen(false);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to connect the external GPS antenna.');
+    } finally {
+      setGpsChanging(false);
+    }
+  };
+
+  const changeExternalGpsBaud = async value => {
+    const baudRate = Number(value);
+    if (!Number.isFinite(baudRate) || gpsChanging) return;
+    // requestPort is intentionally initiated from this user gesture. The chooser
+    // lets the officer confirm/change the receiver while applying the new speed.
+    await connectExternalAntenna(baudRate);
   };
 
   const refreshApplication = async () => {
