@@ -12,6 +12,7 @@ import VehicleManagement from '@/components/admin/VehicleManagement';
 
 import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -38,7 +39,7 @@ export default function AdminPortal() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Admin portal authentication');
             setCurrentUser(user);
 
             if (user.role !== 'admin') {
@@ -60,9 +61,9 @@ export default function AdminPortal() {
         try {
             // Fetch both active calls and archived history for accurate 7-day volume
             const [calls, history, outages] = await Promise.all([
-                base44.entities.DispatchCall.list('-created_date', 500),
-                base44.entities.CallHistory.list('-created_date', 500),
-                base44.entities.SystemOutage.list('-created_date', 50)
+                withRequestTimeout(base44.entities.DispatchCall.list('-created_date', 500), 15000, 'Admin active calls'),
+                withRequestTimeout(base44.entities.CallHistory.list('-created_date', 500), 15000, 'Admin call history'),
+                withRequestTimeout(base44.entities.SystemOutage.list('-created_date', 50), 12000, 'System outage history')
             ]);
             const allCalls = [...calls, ...history];
 
