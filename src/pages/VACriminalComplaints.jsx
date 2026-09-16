@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Plus, Clock, Printer, AlertTriangle, Camera } from "lucide-react";
+import { Shield, Plus, Clock, Printer, AlertTriangle, Camera, Gavel } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,6 +28,17 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
   const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [showIDScanner, setShowIDScanner] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [dispositionComplaintId, setDispositionComplaintId] = useState(null);
+  const [magistrateForm, setMagistrateForm] = useState({
+    magistrate_disposition: 'pending',
+    magistrate_decision_date: '',
+    magistrate_name: '',
+    granted_charge_code: '',
+    granted_charge_description: '',
+    magistrate_process_type: 'summons',
+    magistrate_case_number: '',
+    magistrate_notes: '',
+  });
   const [formData, setFormData] = useState({
     complaint_date: new Date().toISOString(),
     offense_date: format(new Date(), 'yyyy-MM-dd'),
@@ -231,6 +242,44 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
       alert('❌ Failed to file complaint. Please try again. Error: ' + error.message);
     },
   });
+
+  const magistrateMutation = useMutation({
+    mutationFn: async ({ complaintId, values }) => {
+      const decisionDate = values.magistrate_decision_date ? new Date(values.magistrate_decision_date).toISOString() : new Date().toISOString();
+      const payload = {
+        ...values,
+        magistrate_decision_date: decisionDate,
+        filed_at_court: true,
+        court_filing_date: decisionDate.split('T')[0],
+        warrant_issued: values.magistrate_disposition === 'granted' && values.magistrate_process_type === 'warrant',
+        warrant_number: values.magistrate_disposition === 'granted' && values.magistrate_process_type === 'warrant' ? values.magistrate_case_number : '',
+      };
+      return base44.entities.CriminalComplaint.update(complaintId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allCriminalComplaints'] });
+      queryClient.invalidateQueries({ queryKey: ['legalCaseHistory'] });
+      setDispositionComplaintId(null);
+      alert('Magistrate result saved.');
+    },
+    onError: error => alert('Unable to save magistrate result: ' + (error?.message || 'Unknown error')),
+  });
+
+  const openMagistrateResult = complaint => {
+    const value = complaint.magistrate_decision_date ? new Date(complaint.magistrate_decision_date) : new Date();
+    const localDate = Number.isNaN(value.getTime()) ? '' : format(value, "yyyy-MM-dd'T'HH:mm");
+    setMagistrateForm({
+      magistrate_disposition: complaint.magistrate_disposition || 'pending',
+      magistrate_decision_date: localDate,
+      magistrate_name: complaint.magistrate_name || '',
+      granted_charge_code: complaint.granted_charge_code || complaint.violation_code || '',
+      granted_charge_description: complaint.granted_charge_description || complaint.violation_section || '',
+      magistrate_process_type: complaint.magistrate_process_type || 'summons',
+      magistrate_case_number: complaint.magistrate_case_number || complaint.warrant_number || '',
+      magistrate_notes: complaint.magistrate_notes || '',
+    });
+    setDispositionComplaintId(complaint.id);
+  };
 
   const resetForm = () => {
     setShowForm(false);
@@ -838,6 +887,11 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                         <Badge variant="outline" className="bg-red-100 text-red-800">
                           CRIMINAL COMPLAINT
                         </Badge>
+                        {complaint.magistrate_disposition && (
+                          <Badge className={complaint.magistrate_disposition === 'granted' ? 'bg-emerald-600' : complaint.magistrate_disposition === 'denied' ? 'bg-red-700' : 'bg-amber-600'}>
+                            <Gavel className="mr-1 h-3 w-3" />MAGISTRATE {complaint.magistrate_disposition.replace(/_/g, ' ').toUpperCase()}
+                          </Badge>
+                        )}
                       </div>
                       <p className="font-semibold text-slate-900 mb-1">
                         Accused: {complaint.accused_first_name} {complaint.accused_last_name}
@@ -854,6 +908,31 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                     </div>
                   </div>
                   <p className="text-sm text-slate-700 mb-3 line-clamp-2">{complaint.facts_basis}</p>
+                  {complaint.magistrate_disposition && (
+                    <div className="mb-4 rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-700">
+                      <div className="font-bold text-slate-900">Magistrate disposition</div>
+                      <div>{complaint.magistrate_name ? `Reviewed by ${complaint.magistrate_name}` : 'Magistrate name not entered'}{complaint.magistrate_decision_date ? ` · ${format(new Date(complaint.magistrate_decision_date), 'MMM d, yyyy h:mm a')}` : ''}</div>
+                      {complaint.magistrate_disposition === 'granted' && <div className="mt-1 font-semibold text-emerald-700">Granted: {[complaint.granted_charge_code, complaint.granted_charge_description].filter(Boolean).join(' — ') || 'Charge not entered'}{complaint.magistrate_process_type ? ` · ${complaint.magistrate_process_type.toUpperCase()}` : ''}</div>}
+                      {complaint.magistrate_case_number && <div>Court/process number: {complaint.magistrate_case_number}</div>}
+                      {complaint.magistrate_notes && <div className="mt-1 whitespace-pre-wrap text-slate-600">{complaint.magistrate_notes}</div>}
+                    </div>
+                  )}
+                  {dispositionComplaintId === complaint.id && (
+                    <div className="mb-4 space-y-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-slate-900">
+                      <div className="flex items-center gap-2 font-bold"><Gavel className="h-5 w-5 text-amber-700" />Record Magistrate Result</div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div><Label>Decision</Label><Select value={magistrateForm.magistrate_disposition} onValueChange={value => setMagistrateForm(current => ({ ...current, magistrate_disposition:value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="granted">Granted</SelectItem><SelectItem value="denied">Denied</SelectItem><SelectItem value="withdrawn">Withdrawn</SelectItem></SelectContent></Select></div>
+                        <div><Label>Decision date and time</Label><Input type="datetime-local" value={magistrateForm.magistrate_decision_date} onChange={event => setMagistrateForm(current => ({ ...current, magistrate_decision_date:event.target.value }))} /></div>
+                        <div><Label>Magistrate name</Label><Input value={magistrateForm.magistrate_name} onChange={event => setMagistrateForm(current => ({ ...current, magistrate_name:event.target.value }))} /></div>
+                        <div><Label>Process granted</Label><Select value={magistrateForm.magistrate_process_type} onValueChange={value => setMagistrateForm(current => ({ ...current, magistrate_process_type:value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="summons">Summons</SelectItem><SelectItem value="warrant">Warrant</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div>
+                        <div><Label>Granted charge code</Label><Input value={magistrateForm.granted_charge_code} onChange={event => setMagistrateForm(current => ({ ...current, granted_charge_code:event.target.value }))} /></div>
+                        <div><Label>Granted charge description</Label><Input value={magistrateForm.granted_charge_description} onChange={event => setMagistrateForm(current => ({ ...current, granted_charge_description:event.target.value }))} /></div>
+                        <div className="md:col-span-2"><Label>Court, warrant or summons number</Label><Input value={magistrateForm.magistrate_case_number} onChange={event => setMagistrateForm(current => ({ ...current, magistrate_case_number:event.target.value }))} /></div>
+                        <div className="md:col-span-2"><Label>Notes</Label><Textarea value={magistrateForm.magistrate_notes} onChange={event => setMagistrateForm(current => ({ ...current, magistrate_notes:event.target.value }))} rows={3} /></div>
+                      </div>
+                      <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setDispositionComplaintId(null)}>Cancel</Button><Button type="button" className="bg-amber-700 hover:bg-amber-800" disabled={magistrateMutation.isPending} onClick={() => magistrateMutation.mutate({ complaintId:complaint.id, values:magistrateForm })}>{magistrateMutation.isPending ? 'Saving…' : 'Save Magistrate Result'}</Button></div>
+                    </div>
+                  )}
                   <div className="mt-4 pt-4 border-t-2 border-slate-300">
                     <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                     <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
@@ -865,7 +944,10 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <Button type="button" size="sm" className="bg-amber-700 hover:bg-amber-800" onClick={() => openMagistrateResult(complaint)}>
+                      <Gavel className="w-4 h-4 mr-2" />Record Magistrate Result
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
