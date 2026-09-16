@@ -168,6 +168,7 @@ import Schedule from './pages/Schedule';
 import ShiftReports from './pages/ShiftReports';
 import ShiftHandover from './pages/ShiftHandover';
 import Summons from './pages/Summons';
+import WitnessSubpoenaRequest from './pages/WitnessSubpoenaRequest';
 import SupervisorCenter from './pages/SupervisorCenter';
 import SupervisorDutyTimeline from './pages/SupervisorDutyTimeline';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
@@ -318,6 +319,7 @@ export const PAGES = {
     "ShiftReports": ShiftReports,
     "ShiftHandover": ShiftHandover,
     "Summons": Summons,
+    "WitnessSubpoenaRequest": WitnessSubpoenaRequest,
     "SupervisorCenter": SupervisorCenter,
     "SupervisorDutyTimeline": SupervisorDutyTimeline,
     "SupervisorCallOuts": SupervisorCallOuts,
