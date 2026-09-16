@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import SignaturePad from '@/components/SignaturePad';
 import { FilePlus2, FolderOpen, PenTool, Plus, Printer, Save, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { printDc325 } from '@/lib/dc325Print';
 
 const blankWitness = () => ({
   last_name: '', first_name: '', middle_name: '', street_address: '', city_state_zip: '',
@@ -424,7 +425,7 @@ export default function WitnessSubpoenaRequest() {
           <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={addWitness}><Plus size={16} className="mr-2" /><span className="btn-label">Add witness</span></Button>
           <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSignature(true)}><PenTool size={16} className="mr-2" /><span className="btn-label">{form.requested_by_signature_url ? 'Replace signature' : 'Sign'}</span></Button>
           <Button type="button" className="dc-toolbar-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save size={16} className="mr-2" /><span className="btn-label">{saveMutation.isPending ? 'Saving…' : 'Save draft'}</span></Button>
-          <Button type="button" className="dc-toolbar-primary" onClick={() => window.print()}><Printer size={16} className="mr-2" /><span className="btn-label">Print DC-325</span></Button>
+          <Button type="button" className="dc-toolbar-primary" onClick={() => { try { printDc325(form); } catch (error) { toast.error(error?.message || 'Unable to open the DC-325 print document.'); } }}><Printer size={16} className="mr-2" /><span className="btn-label">Print Official DC-325</span></Button>
         </div>
 
         {showSaved && (
