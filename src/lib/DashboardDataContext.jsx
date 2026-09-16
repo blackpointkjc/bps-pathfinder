@@ -9,8 +9,6 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 
 const DashboardDataContext = createContext(null);
-let lastSharedArchive = 0;
-
 const POLL_INTERVAL_MS = 60_000;       // Realtime subscriptions handle most updates; this is only a fallback
 const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
 const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
@@ -188,23 +186,8 @@ export function DashboardDataProvider({ children }) {
         loadData(true);
     }, [loadData]);
 
-    // Archive cleanup is deliberately outside the startup path so it cannot hold the
-    // page spinner open. The UI already filters calls at one hour immediately.
-    useEffect(() => {
-        const runArchive = async () => {
-            if (Date.now() - lastSharedArchive < 10 * 60_000) return;
-            lastSharedArchive = Date.now();
-            await base44.functions.invoke('archiveOldCalls', {}).catch(error => {
-                console.warn('[CAD] automatic old-call archive pass failed:', error?.message);
-            });
-        };
-        const first = window.setTimeout(runArchive, 15000);
-        const interval = window.setInterval(runArchive, 10 * 60_000);
-        return () => {
-            window.clearTimeout(first);
-            window.clearInterval(interval);
-        };
-    }, []);
+    // Old-call archival is owned by the scheduled Base44 workflow. Browsers do not
+    // run maintenance jobs; this keeps operational reads separate from housekeeping.
 
     // Fallback local CAD refresh. Real-time entity subscriptions handle faster updates.
     useEffect(() => {
