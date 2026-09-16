@@ -505,7 +505,7 @@ export default function GlobalMessageBanner({ user }) {
       if (typeof statusLogUnsubscribe === 'function') unsubscribers.push(statusLogUnsubscribe);
 
       // Seed existing rows as known. Refresh/reconnect must not replay history.
-      base44.entities.CallStatusLog.list('-created_date', 500).then(records => {
+      base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).forEach(record => {
           if (record?.event_key) knownIds.current.add(`CallStatusLog:${record.event_key}`);
         });
@@ -613,7 +613,7 @@ export default function GlobalMessageBanner({ user }) {
     const announcementSource = SOURCES.find(source => source.kind === 'announcement');
     Promise.all([
       base44.entities.Announcement.list('-created_date', 100),
-      base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
+      base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
     ]).then(([announcements, receipts]) => {
       const seen = getLocalReadAnnouncementIds(user.email);
       (receipts || []).forEach(receipt => {
