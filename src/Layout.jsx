@@ -336,7 +336,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AccountingPayroll: ['accounting','payroll','payroll'], PayrollDates: ['accounting','payroll','dates'], AccountingInvoices: ['accounting','billing','invoices'], AccountingExpenses: ['accounting','billing','expenses'], AccountingProfit: ['accounting','overview','profit'], AccountingTaxLiability: ['accounting','overview','tax'],
 };
 
-function desktopToolRoute(pageName) {
+function _desktopToolRoute(pageName) {
   const route = DESKTOP_LEGACY_TOOL_ROUTES[pageName];
   if (!route) return null;
   const [center, section, tool] = route;
@@ -385,7 +385,7 @@ function centerUnreadSummary(centerKey, unreadCounts = {}) {
 }
 
 const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'OfficerChat', 'SupervisorChat']);
-const COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
+const _COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
 
 function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
@@ -519,7 +519,7 @@ function pageLabel(pageName) {
   return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
 }
 
-function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, activeCenter, centerDestinations = {}, onTabNavigate, user }) {
+function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, onTabNavigate, user }) {
   const centers = allowedCenters(user);
   const roleWorkspace = centers.includes('admin')
     ? ['Admin', 'AdminCenter', Settings]
@@ -558,7 +558,6 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   const availableCenters = allAllowedCenters
     .filter(center => center !== 'support' || allAllowedCenters.length === 1);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
-  const activeUnreadSummary = centerUnreadSummary(activeCenter, unreadCounts);
   const mobileTitle = mobileSection === 'reports' ? 'REPORTS' : 'PATHFINDER TOOLS';
   const query = search.trim().toLowerCase();
   const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
@@ -834,7 +833,6 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches);
