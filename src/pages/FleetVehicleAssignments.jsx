@@ -1,5 +1,5 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -37,9 +37,23 @@ export default function FleetVehicleAssignments() {
   const normalizedRoles = (user?.additional_roles || []).map(role => String(role).toLowerCase());
   const isAdmin = user?.role === 'admin' || normalizedRoles.includes('full_access') || normalizedRoles.includes('fleet_manager');
   const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers() });
-  const { data: vehicles = [], error: vehicleError } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id', 500), refetchInterval: 30000 });
-  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 5000), refetchInterval: 30000 });
-  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 5000), refetchInterval: 30000 });
+  const { data: vehicles = [], error: vehicleError } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id', 500), refetchInterval: 5 * 60 * 1000 });
+  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 1500), refetchInterval: 5 * 60 * 1000 });
+  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 1500), refetchInterval: 5 * 60 * 1000 });
+
+  useEffect(() => {
+    const subscriptions = [];
+    const watch = (entity, queryKey) => {
+      try {
+        const unsubscribe = entity.subscribe(() => qc.invalidateQueries({ queryKey: [queryKey] }));
+        if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
+      } catch {}
+    };
+    watch(base44.entities.Vehicle, 'fleetVehicles');
+    watch(base44.entities.Schedule, 'fleetSchedules');
+    watch(base44.entities.VehicleAssignment, 'fleetAssignments');
+    return () => subscriptions.forEach(unsubscribe => unsubscribe());
+  }, [qc]);
 
   const windowStart = addDays(startOfDay(new Date()), dayOffset);
   const dates = Array.from({ length: 3 }, (_, i) => format(addDays(windowStart, i), 'yyyy-MM-dd'));
