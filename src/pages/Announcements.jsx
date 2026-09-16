@@ -28,7 +28,7 @@ export default function Announcements() {
 
   const { data: announcementReceipts = [], isSuccess: receiptsLoaded } = useQuery({
     queryKey: ['announcementReceipts', user?.email],
-    queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
+    queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
     enabled: !!user?.email,
     staleTime: 60000,
     refetchOnWindowFocus: true,
