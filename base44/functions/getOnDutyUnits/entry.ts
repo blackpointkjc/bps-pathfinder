@@ -177,14 +177,17 @@ Deno.serve(async (req) => {
 
     // ActiveOfficer is the signed-in live GPS source. TimeEntry is optional context;
     // it must never gate whether a logged-in officer appears on the live map.
-    // One freshness window across Pathfinder. A signed-in unit remains available
-    // to live maps for 15 minutes after its most recent heartbeat/GPS update.
-    const freshCutoff = Date.now() - 15 * 60 * 1000;
+    // Treat the first 15 minutes as a healthy connection, but retain a signed-in
+    // session for up to one hour so Chromium background throttling does not make an
+    // officer vanish. Retained sessions are explicitly marked connection_stale.
+    const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
+    const sessionRetentionCutoff = Date.now() - 60 * 60 * 1000;
     const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
+      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < sessionRetentionCutoff) continue;
+      const connectionStale = activeTs < sessionHealthyCutoff;
       const gpsTs = new Date(active.gps_updated_at || 0).getTime();
       const accuracy = Number(active.accuracy);
       const reliableAccuracy = Number(active.reliable_accuracy);
@@ -246,7 +249,9 @@ Deno.serve(async (req) => {
         is_supervisor: roleSet(user).has('supervisor') || String(user.rank || '').toLowerCase().includes('sergeant') || String(user.rank || '').toLowerCase().includes('lieutenant') || String(user.rank || '').toLowerCase().includes('captain') || String(user.rank || '').toLowerCase().includes('major') || String(user.rank || '').toLowerCase().includes('colonel'),
         time_entry_id: entry?.id || '',
         session_active: true,
-        session_source: 'active_session',
+        session_source: connectionStale ? 'retained_stale_session' : 'active_session',
+        connection_stale: connectionStale,
+        connection_age_seconds: Math.max(0, Math.floor((Date.now() - activeTs) / 1000)),
       });
     }
 
@@ -291,12 +296,13 @@ Deno.serve(async (req) => {
         const openEntry = openByEmail.get(email) || null;
         const activeTs = new Date(active?.last_update || active?.updated_date || active?.created_date || 0).getTime();
         const userStatusTs = new Date(user.last_updated || user.status_since || user.updated_date || 0).getTime();
-        const signedInFresh = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= freshCutoff);
+        const signedInRetained = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= sessionRetentionCutoff);
+        const connectionStale = signedInRetained && activeTs < sessionHealthyCutoff;
         // A TimeEntry can remain open after the officer signs out. Only a fresh,
         // active ActiveOfficer session represents a live CAD unit. An open time
         // entry by itself must never make the officer Available or place a marker
         // on live maps.
-        const operationallySignedIn = signedInFresh;
+        const operationallySignedIn = signedInRetained;
         // A dedicated status change writes User and ActiveOfficer together. If a
         // duplicate/racing ActiveOfficer row is momentarily older than User, honor
         // the newer User status instead of showing OOS/stale status on the board.
@@ -306,7 +312,7 @@ Deno.serve(async (req) => {
           ? (user.status || active?.status || 'Out of Service')
           : (active?.status || user.status || 'Out of Service');
         const normalizedLiveStatus = lower(newestLiveStatus);
-        const resolvedStatus = signedInFresh ? newestLiveStatus : 'Out of Service';
+        const resolvedStatus = signedInRetained ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
@@ -315,7 +321,7 @@ Deno.serve(async (req) => {
           && reliableAccuracy <= 100
           && Boolean(active?.tracking_session_key)
           && active?.reliable_session_key === active?.tracking_session_key;
-        const hasFreshGps = signedInFresh
+        const hasFreshGps = signedInRetained
           && Number.isFinite(gpsTs)
           && gpsTs >= gpsFreshCutoff
           && hasValidCoordinates(active?.latitude, active?.longitude)
@@ -328,7 +334,7 @@ Deno.serve(async (req) => {
         const userGpsTimestamp = user.gps_updated_at || user.last_gps_updated_at || user.last_updated || user.updated_date || '';
         const userGpsTs = new Date(userGpsTimestamp || 0).getTime();
         const userAccuracy = Number(user.accuracy);
-        const hasFreshUserGps = signedInFresh
+        const hasFreshUserGps = signedInRetained
           && Number.isFinite(userGpsTs)
           && userGpsTs >= gpsFreshCutoff
           && hasValidCoordinates(user.latitude, user.longitude)
@@ -364,8 +370,8 @@ Deno.serve(async (req) => {
           unit_number: active?.unit_number || user.unit_number || '',
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
-          current_call_info: signedInFresh ? (active?.current_call_info || user.current_call_info || '') : '',
-          current_location: signedInFresh
+          current_call_info: signedInRetained ? (active?.current_call_info || user.current_call_info || '') : '',
+          current_location: signedInRetained
             ? (active?.current_location || openEntry?.location || user.assigned_location || '')
             : (openEntry?.location || user.assigned_location || ''),
           assigned_location: user.assigned_location || '',
@@ -395,7 +401,9 @@ Deno.serve(async (req) => {
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
           session_active: operationallySignedIn,
-          session_source: signedInFresh ? 'active_session' : openEntry ? 'clocked_in_but_signed_out' : 'signed_out',
+          session_source: signedInRetained ? (connectionStale ? 'retained_stale_session' : 'active_session') : openEntry ? 'clocked_in_but_signed_out' : 'signed_out',
+          connection_stale: connectionStale,
+          connection_age_seconds: Number.isFinite(activeTs) && activeTs > 0 ? Math.max(0, Math.floor((Date.now() - activeTs) / 1000)) : null,
           clock_in_time: openEntry?.clock_in || active?.clock_in_time || '',
         };
       });
