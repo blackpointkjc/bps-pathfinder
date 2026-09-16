@@ -119,16 +119,32 @@ export default function DispatchCenter() {
         }, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
         const onStatusChanged = () => loadUnits();
+        let wakeRefreshTimer;
+        const onOperationalResume = () => {
+            window.clearTimeout(wakeRefreshTimer);
+            wakeRefreshTimer = window.setTimeout(() => {
+                lastActiveCallsLoadRef.current = 0;
+                loadActiveCalls(true);
+                loadUnits(true);
+            }, 300);
+        };
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
+        window.addEventListener('bps-operational-resume', onOperationalResume);
+        window.addEventListener('online', onOperationalResume);
+        window.addEventListener('pageshow', onOperationalResume);
 
         return () => {
             unsubscribeCalls?.();
             unsubscribeUnits?.();
             window.clearTimeout(unitRefreshTimer);
+            window.clearTimeout(wakeRefreshTimer);
             clearInterval(localInterval);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
+            window.removeEventListener('bps-operational-resume', onOperationalResume);
+            window.removeEventListener('online', onOperationalResume);
+            window.removeEventListener('pageshow', onOperationalResume);
         };
     }, []);
 
@@ -199,12 +215,12 @@ export default function DispatchCenter() {
         }
     };
 
-    const loadUnits = async () => {
+    const loadUnits = async (force = false) => {
         try {
             // One canonical status feed is shared by Dispatch Center, Command, and
             // the Unit Status Board. Only officers with a fresh signed-in CAD session
             // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true });
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
             const eligibleUnits = (payload.units || payload.users || [])
                 // location_only is already restricted by the backend to fresh,
                 // signed-in operational sessions and intentionally omits directory roles.
