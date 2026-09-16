@@ -258,7 +258,8 @@ export const AuthProvider = ({ children }) => {
     try {
       unsubscribe = base44.entities.UserSessionControl.subscribe(() => checkForcedSignOut());
     } catch (_) {}
-    const interval = window.setInterval(checkForcedSignOut, 10000);
+    // Realtime is the primary path; this is only a dropped-subscription fallback.
+    const interval = window.setInterval(checkForcedSignOut, 2 * 60 * 1000);
     window.addEventListener('focus', checkForcedSignOut);
 
     return () => {
@@ -283,6 +284,7 @@ export const AuthProvider = ({ children }) => {
     if (!isAuthenticated || !user?.id || !user?.email || forcedLogoutInProgress.current || isAdmin) return;
 
     let active = true;
+    let unsubscribe;
     const checkForcedOOS = async () => {
       try {
         const overrides = await base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }, '-forced_at', 1);
@@ -308,13 +310,19 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkForcedOOS();
-    // Forced-OOS remains responsive without querying every signed-in officer every 3 seconds.
-    const interval = window.setInterval(checkForcedOOS, 30000);
+    try {
+      unsubscribe = base44.entities.OfficerStatusOverride.subscribe(event => {
+        if (String(event?.data?.officer_id || '') === String(user.id)) checkForcedOOS();
+      });
+    } catch (_) {}
+    // Realtime provides immediate delivery. Poll slowly only as a safety fallback.
+    const interval = window.setInterval(checkForcedOOS, 2 * 60 * 1000);
     // When the officer acknowledges the forced-OOS notice, complete the sign-out.
     const onAck = () => logout(true);
     window.addEventListener('bps:forced-oos-acknowledged', onAck);
     return () => {
       active = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
       window.clearInterval(interval);
       window.removeEventListener('bps:forced-oos-acknowledged', onAck);
     };
