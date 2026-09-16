@@ -10,6 +10,8 @@ let releaseBackgroundScheduler = null;
 let retainCount = 0;
 let freshRequest = null;
 let lifecycleListenersInstalled = false;
+let lastSchedulerTickAt = Date.now();
+let lastOperationalResumeAt = 0;
 
 export const TACTICAL_GPS_MAX_ACCURACY_METERS = 100;
 export const PRECISION_GPS_TARGET_METERS = 50;
@@ -19,6 +21,7 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 export const DEVICE_GPS_REFRESH_MS = 30_000;
 export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
 export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
+export const GPS_WATCH_STALE_MS = 90_000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
@@ -202,20 +205,99 @@ function requestWhenUsable() {
   }
 }
 
+function emitOperationalResume(reason = 'resume', previousActivityAt = lastSchedulerTickAt) {
+  if (typeof window === 'undefined') return;
+  const now = Date.now();
+  // focus + visibilitychange + pageshow commonly fire together. One recovery
+  // event is enough to wake CAD, roster, and location persistence.
+  if (now - lastOperationalResumeAt < 1500) return;
+  lastOperationalResumeAt = now;
+  window.dispatchEvent(new CustomEvent('bps-operational-resume', {
+    detail: {
+      reason,
+      at: now,
+      inactive_ms: Math.max(0, now - Number(previousActivityAt || now)),
+      hidden: typeof document !== 'undefined' ? document.hidden : false,
+    },
+  }));
+}
+
+function restartBrowserWatchIfStale(force = false) {
+  if (retainCount <= 0 || !geolocationSupported()) return false;
+  const fixAge = latestFix?.timestamp ? Date.now() - Number(latestFix.timestamp) : Infinity;
+  if (!force && fixAge < GPS_WATCH_STALE_MS) return false;
+
+  if (watchId !== null) {
+    try { navigator.geolocation.clearWatch(watchId); } catch (_) {}
+    watchId = null;
+  }
+  watchId = navigator.geolocation.watchPosition(
+    position => {
+      const fix = normalizePosition(position);
+      if (fix) publishLiveLocation(fix);
+    },
+    publishLocationError,
+    GPS_OPTIONS,
+  );
+  return true;
+}
+
+export function recoverLiveLocationTracking(reason = 'operational_resume') {
+  if (retainCount <= 0) return Promise.resolve(getLiveLocation(EXTERNAL_GPS_PRIORITY_MS));
+  restartBrowserWatchIfStale(true);
+  lastSchedulerTickAt = Date.now();
+  nudgeBackgroundLocationScheduler();
+  requestWhenUsable();
+  return requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => getLiveLocation(EXTERNAL_GPS_PRIORITY_MS));
+}
+
+function handleBackgroundSchedulerTick(data = {}) {
+  const now = Date.now();
+  const previous = lastSchedulerTickAt;
+  lastSchedulerTickAt = now;
+  // A long gap means the browser/OS suspended the page or worker. Recover the
+  // geolocation watch and tell operational data owners to catch up immediately.
+  if (previous && now - previous > GPS_WATCH_STALE_MS) {
+    restartBrowserWatchIfStale(true);
+    emitOperationalResume('background_watchdog_gap', previous);
+  }
+  requestWhenUsable(data);
+}
+
 function handleVisibilityChange() {
   // Request immediately both when minimizing and when restoring. The minimize
   // edge gives Pathfinder one last main-thread request before Chromium applies
   // deeper background throttling; restore performs an immediate catch-up.
+  const previous = lastSchedulerTickAt;
   requestWhenUsable();
   nudgeBackgroundLocationScheduler();
+  if (typeof document === 'undefined' || !document.hidden) {
+    restartBrowserWatchIfStale();
+    emitOperationalResume('visibility_resume', previous);
+  }
+}
+
+function handleFocus() {
+  const previous = lastSchedulerTickAt;
+  restartBrowserWatchIfStale();
+  requestWhenUsable();
+  nudgeBackgroundLocationScheduler();
+  emitOperationalResume('focus', previous);
+}
+
+function handleOnline() {
+  const previous = lastSchedulerTickAt;
+  restartBrowserWatchIfStale();
+  requestWhenUsable();
+  emitOperationalResume('online', previous);
 }
 
 function installLifecycleListeners() {
   if (lifecycleListenersInstalled || typeof window === 'undefined') return;
   lifecycleListenersInstalled = true;
   window.addEventListener('bps-request-location', requestWhenUsable);
-  window.addEventListener('focus', requestWhenUsable);
-  window.addEventListener('online', requestWhenUsable);
+  window.addEventListener('focus', handleFocus);
+  window.addEventListener('online', handleOnline);
   window.addEventListener('pageshow', handleVisibilityChange);
   document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener('freeze', handleVisibilityChange);
@@ -226,8 +308,8 @@ function removeLifecycleListeners() {
   if (!lifecycleListenersInstalled || typeof window === 'undefined') return;
   lifecycleListenersInstalled = false;
   window.removeEventListener('bps-request-location', requestWhenUsable);
-  window.removeEventListener('focus', requestWhenUsable);
-  window.removeEventListener('online', requestWhenUsable);
+  window.removeEventListener('focus', handleFocus);
+  window.removeEventListener('online', handleOnline);
   window.removeEventListener('pageshow', handleVisibilityChange);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   document.removeEventListener('freeze', handleVisibilityChange);
@@ -235,22 +317,17 @@ function removeLifecycleListeners() {
 }
 
 function ensureSharedWatch() {
-  if (watchId !== null || !geolocationSupported()) return;
-  watchId = navigator.geolocation.watchPosition(
-    position => {
-      const fix = normalizePosition(position);
-      if (fix) publishLiveLocation(fix);
-    },
-    publishLocationError,
-    GPS_OPTIONS,
-  );
+  if (!geolocationSupported()) return;
+  restartBrowserWatchIfStale(watchId === null);
   installLifecycleListeners();
   // Keep the device/sensor watch running continuously. Use both a Worker-driven
   // one-minute scheduler (more resilient to minimized-window timer throttling)
   // and a normal window timer as a fallback. freshRequest de-duplicates overlaps,
   // so these do not create duplicate geolocation requests or Base44 writes.
-  releaseBackgroundScheduler = startBackgroundLocationScheduler(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
-  refreshTimer = window.setInterval(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
+  if (!releaseBackgroundScheduler) {
+    releaseBackgroundScheduler = startBackgroundLocationScheduler(handleBackgroundSchedulerTick, DEVICE_GPS_REFRESH_MS);
+  }
+  if (refreshTimer === null) refreshTimer = window.setInterval(requestWhenUsable, DEVICE_GPS_REFRESH_MS);
   requestWhenUsable();
 }
 
