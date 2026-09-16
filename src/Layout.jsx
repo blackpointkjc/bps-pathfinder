@@ -1260,7 +1260,16 @@ export default function Layout({ children, currentPageName }) {
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
     };
+    const recoverPropertyAlerts = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        if (!cancelled) monitor();
+      }, 250);
+    };
     document.addEventListener('visibilitychange', refreshOnVisibility);
+    window.addEventListener('bps-operational-resume', recoverPropertyAlerts);
+    window.addEventListener('online', recoverPropertyAlerts);
+    window.addEventListener('pageshow', recoverPropertyAlerts);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -1268,6 +1277,9 @@ export default function Layout({ children, currentPageName }) {
       window.clearTimeout(refreshTimer);
       unsubscribeAlerts?.();
       document.removeEventListener('visibilitychange', refreshOnVisibility);
+      window.removeEventListener('bps-operational-resume', recoverPropertyAlerts);
+      window.removeEventListener('online', recoverPropertyAlerts);
+      window.removeEventListener('pageshow', recoverPropertyAlerts);
     };
   }, [user?.id, user?.email, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || [])]);
 
