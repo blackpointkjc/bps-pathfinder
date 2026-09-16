@@ -33,12 +33,14 @@ import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
 import { createReportCallLink } from '@/lib/reportCallLinking';
 
-export default function VATrespassNotices() {
+export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }) {
   // Same implementation as TrespassingNotices.js but with VA-specific title
   const [showForm, setShowForm] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
+  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [editingNotice, setEditingNotice] = useState(null);
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [formData, setFormData] = useState({
@@ -678,31 +680,30 @@ export default function VATrespassNotices() {
     printWindow.focus();
   };
 
-  const filteredActiveNotices = noticesToDisplay.active?.filter(notice => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      notice.subject_name?.toLowerCase().includes(query) ||
-      notice.location?.toLowerCase().includes(query) ||
-      notice.subject_id?.toLowerCase().includes(query) ||
-      notice.vehicle_info?.toLowerCase().includes(query) ||
-      notice.police_report_number?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by_id).toLowerCase().includes(query)
-    );
-  }) || [];
+  const noticeMatchesSearch = notice => {
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return true;
+    const searchable = [
+      JSON.stringify(notice || {}),
+      getOfficerIdentifier(notice.created_by_id),
+      notice.subject_name,
+      notice.subject_first_name,
+      notice.subject_middle_name,
+      notice.subject_last_name,
+      notice.location,
+      notice.subject_id,
+      notice.subject_dob,
+      notice.subject_address,
+      notice.vehicle_info,
+      notice.reason,
+      notice.police_report_number,
+      notice.linked_call_number,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return query.split(/\s+/).filter(Boolean).every(term => searchable.includes(term));
+  };
 
-  const filteredInactiveNotices = noticesToDisplay.inactive?.filter(notice => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      notice.subject_name?.toLowerCase().includes(query) ||
-      notice.location?.toLowerCase().includes(query) ||
-      notice.subject_id?.toLowerCase().includes(query) ||
-      notice.vehicle_info?.toLowerCase().includes(query) ||
-      notice.police_report_number?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by_id).toLowerCase().includes(query)
-    );
-  }) || [];
+  const filteredActiveNotices = noticesToDisplay.active?.filter(noticeMatchesSearch) || [];
+  const filteredInactiveNotices = noticesToDisplay.inactive?.filter(noticeMatchesSearch) || [];
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
@@ -1040,9 +1041,9 @@ export default function VATrespassNotices() {
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <Search className="w-4 h-4 text-slate-500" />
                 <Input
-                  placeholder="Search by name, ID, vehicle, report #"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search any trespass field: name, DOB, ID, address, vehicle, reason, report or CAD #"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                   className="flex-1"
                 />
               </div>
