@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { invalidateAppDirectory, listDirectoryUsers } from '@/lib/appDirectory';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STATUS_CFG = {
     Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
@@ -66,7 +67,7 @@ export default function Personnel() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Personnel authentication');
             setCurrentUser(user);
             await Promise.all([loadPersonnel(), loadOverrides(user), loadAccountLocks(user)]);
         } catch (error) { console.error(error); }
@@ -81,7 +82,7 @@ export default function Personnel() {
     const loadOverrides = async (actor = currentUser) => {
         if (!canForceStatus(actor)) return setForcedOverrides([]);
         try {
-            const response = await base44.functions.invoke('forceOfficerStatus', { action: 'list' });
+            const response = await withRequestTimeout(base44.functions.invoke('forceOfficerStatus', { action: 'list' }), 12000, 'Status override request');
             const payload = response?.data || response || {};
             setForcedOverrides(payload.overrides || []);
         } catch (error) {
@@ -101,7 +102,7 @@ export default function Personnel() {
     const loadAccountLocks = async (actor = currentUser) => {
         if (actor?.role !== 'admin') return setAccountLocks([]);
         try {
-            const response = await base44.entities.AccountLock.list('-locked_at', 500);
+            const response = await withRequestTimeout(base44.entities.AccountLock.list('-locked_at', 500), 12000, 'Account lock request');
             setAccountLocks(response || []);
         } catch (error) {
             console.warn('Unable to load account locks:', error?.message);
