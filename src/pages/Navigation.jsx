@@ -158,15 +158,25 @@ export default function Navigation() {
             }, 1000);
         };
         const unsubscribe = subscribeOfficerLocationChanges(scheduleUnitRefresh);
+        const recoverUnits = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => fetchOtherUnits(true), 200);
+        };
         // Realtime handles movement; use a slow safety poll so several officers
         // publishing GPS at once cannot trigger a full roster read for each event.
         const fallback = setInterval(() => {
             if (document.visibilityState === 'visible') fetchOtherUnits();
         }, 20000);
+        window.addEventListener('bps-operational-resume', recoverUnits);
+        window.addEventListener('online', recoverUnits);
+        window.addEventListener('pageshow', recoverUnits);
         return () => {
             unsubscribe?.();
             clearInterval(fallback);
             window.clearTimeout(refreshTimer);
+            window.removeEventListener('bps-operational-resume', recoverUnits);
+            window.removeEventListener('online', recoverUnits);
+            window.removeEventListener('pageshow', recoverUnits);
         };
     }, [currentUser?.id]);
 
