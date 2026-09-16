@@ -102,8 +102,8 @@ export default function DispatchCenter() {
         init();
         loadMonitoredProperties();
 
-        // GRAC ingestion is owned app-wide by DashboardDataProvider. Dispatch Center
-        // listens for persisted call changes instead of launching a second sync loop.
+        // GRAC ingestion is owned by the scheduled backend automation. Dispatch
+        // Center only reads persisted calls and reacts to realtime entity changes.
         const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
         let unitRefreshTimer;
         const scheduleUnitRefresh = () => {
@@ -113,11 +113,11 @@ export default function DispatchCenter() {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadActiveCalls();
-        }, 30000);
+        }, 120000);
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
-        }, 30000);
-        const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
+        }, 60000);
+        const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
         const onStatusChanged = () => loadUnits();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
 
@@ -204,7 +204,7 @@ export default function DispatchCenter() {
             // One canonical status feed is shared by Dispatch Center, Command, and
             // the Unit Status Board. Only officers with a fresh signed-in CAD session
             // may be assignable as Available/Enroute/On Scene/Busy/Distress.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force: true });
+            const payload = await getOfficerLocationSnapshot({ locationOnly: true });
             const eligibleUnits = (payload.units || payload.users || [])
                 // location_only is already restricted by the backend to fresh,
                 // signed-in operational sessions and intentionally omits directory roles.
