@@ -56,6 +56,34 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Incident type and location are required' }, { status: 400 });
     }
 
+    // Manual call creation can include immediate unit assignments. Retained stale
+    // sessions remain visible on CAD, but they cannot receive an app assignment
+    // until their Pathfinder heartbeat has recovered.
+    for (const unitId of selectedUnits) {
+      const selectedOfficer = await base44.asServiceRole.entities.User.get(unitId).catch(() => null);
+      if (!selectedOfficer?.email) continue; // Spare/non-user unit records remain supported.
+      const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter(
+        { officer_email: String(selectedOfficer.email).trim().toLowerCase() },
+        '-last_update',
+        5,
+      ).catch(() => []);
+      const newestSession = (sessions || []).sort((a: any, b: any) =>
+        new Date(b.last_update || b.updated_date || b.created_date || 0).getTime()
+        - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime()
+      )[0];
+      const sessionAt = new Date(newestSession?.last_update || newestSession?.updated_date || newestSession?.created_date || 0).getTime();
+      const heartbeatFresh = newestSession?.session_active !== false
+        && Number.isFinite(sessionAt)
+        && sessionAt >= Date.now() - 15 * 60 * 1000;
+      if (!heartbeatFresh) {
+        return Response.json({
+          error: `${selectedOfficer.unit_number ? `Unit ${selectedOfficer.unit_number}` : selectedOfficer.full_name || selectedOfficer.email} has a stale Pathfinder connection and cannot be app-dispatched until the device heartbeat recovers.`,
+          code: 'UNIT_CONNECTION_STALE',
+          officer_email: selectedOfficer.email,
+        }, { status: 409 });
+      }
+    }
+
     const allowedPriorities = new Set(['low', 'medium', 'high', 'critical']);
     const priority = allowedPriorities.has(data.priority) ? data.priority : 'medium';
     const now = new Date().toISOString();
