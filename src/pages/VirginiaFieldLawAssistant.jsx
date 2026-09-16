@@ -36,10 +36,67 @@ const CHECKLIST = [
   'Use law enforcement or a magistrate when offense severity, jurisdiction, evidence, transport, or policy requires it.',
 ];
 
+const STOP_WORDS = new Set(['a','an','and','are','as','at','be','been','but','by','for','from','had','has','have','he','her','him','his','i','in','is','it','of','on','or','our','she','that','the','their','them','they','this','to','was','we','were','with','who','you']);
+
+const SITUATION_RULES = [
+  { code: 'Va. Code § 18.2-119', boost: 30, patterns: [/\b(trespass|barred|banned|no trespassing)\b/i, /\b(refus\w* to leave|told .* (?:to leave|not to return)|came back|returned)\b/i] },
+  { code: 'Va. Code § 18.2-121', boost: 22, patterns: [/\b(entered|came onto|went onto).*(damage|interfere|destroy|vandal)/i] },
+  { code: 'Va. Code § 18.2-57', boost: 26, patterns: [/\b(hit|punch\w*|slap\w*|struck|fight\w*|assault\w*|battery|attacked)\b/i] },
+  { code: 'Va. Code § 18.2-57.2', boost: 30, patterns: [/\b(spouse|husband|wife|boyfriend|girlfriend|family|household|cohabitant)\b.*\b(hit|punch\w*|slap\w*|struck|fight\w*|assault\w*|attacked)\b/i, /\b(domestic violence|domestic assault)\b/i] },
+  { code: 'Va. Code § 18.2-51', boost: 34, patterns: [/\b(stab\w*|shot|shoot\w*|maim\w*|serious bodily injury|serious injury|wound\w*)\b/i] },
+  { code: 'Va. Code § 18.2-60.3', boost: 28, patterns: [/\b(stalk\w*|follow\w* repeatedly|keeps follow\w*|multiple times.*fear|repeated.*fear)\b/i] },
+  { code: 'Va. Code § 18.2-427', boost: 27, patterns: [/\b(threat\w*|harass\w*).*(text|message|phone|call|facebook|instagram|social media|electronic)/i, /\b(text|message|phone|call).*(threat\w*|harass\w*)/i] },
+  { code: 'Va. Code § 18.2-96', boost: 24, patterns: [/\b(stole|stolen|steal\w*|theft|shoplift\w*|took .* property|missing property)\b/i] },
+  { code: 'Va. Code § 18.2-95', boost: 28, patterns: [/\b(grand larceny|high value theft|stole .* firearm|stolen firearm|firearm theft)\b/i] },
+  { code: 'Va. Code § 18.2-137', boost: 26, patterns: [/\b(vandali[sz]\w*|property damage|damaged|destroyed|broke .* window|keyed .* car)\b/i] },
+  { code: 'Va. Code § 18.2-102', boost: 30, patterns: [/\b(took|used|drove).*(car|vehicle|truck).*(without permission|without consent|unauthori[sz]ed)/i, /\b(joyride|unauthori[sz]ed use .* vehicle)\b/i] },
+  { code: 'Va. Code § 18.2-415', boost: 23, patterns: [/\b(disorderly|public disturbance|causing a scene|large crowd|fighting in public|disturbing the peace)\b/i] },
+  { code: 'Va. Code § 18.2-388', boost: 28, patterns: [/\b(drunk|intoxicated|under the influence).*(public|outside|street|parking lot|common area)/i, /\bpublic intoxication\b/i] },
+  { code: 'Va. Code § 18.2-460', boost: 24, patterns: [/\b(obstruct\w*|interfer\w* with .* officer|resist\w* .* officer)\b/i] },
+  { code: 'Va. Code § 19.2-18', boost: 30, patterns: [/\b(scop|special conservator|conservator).*(authority|power|arrest|jurisdiction)/i, /\bwhat authority.*conservator\b/i] },
+  { code: 'Va. Code § 19.2-74', boost: 28, patterns: [/\b(summons|release on summons|issue .* summons|misdemeanor summons)\b/i] },
+  { code: 'Va. Code § 19.2-81', boost: 28, patterns: [/\b(arrest without warrant|warrantless arrest|can .* arrest .* without .* warrant)\b/i] },
+];
+
+function normalizedWords(value) {
+  return String(value || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9§.]+/g, ' ').trim();
+}
+
+export function rankVirginiaFieldCodes(text, limit = 8) {
+  const raw = String(text || '').trim();
+  if (raw.length < 2) return [];
+  const normalized = normalizedWords(raw);
+  const terms = normalized.split(/\s+/).filter(term => term.length >= 3 && !STOP_WORDS.has(term));
+
+  return VIRGINIA_FIELD_CODES.map(item => {
+    const corpusRaw = [item.name, item.code, item.category, item.level, item.elements, ...(item.keywords || [])].join(' ').toLowerCase();
+    const corpus = normalizedWords(corpusRaw);
+    let score = 0;
+
+    if (corpusRaw.includes(raw.toLowerCase())) score += 45;
+    for (const keyword of item.keywords || []) {
+      const key = String(keyword).toLowerCase();
+      if (raw.toLowerCase().includes(key)) score += key.includes(' ') ? 15 : 9;
+    }
+    for (const term of terms) {
+      if (corpus.includes(term)) score += 2;
+    }
+    for (const rule of SITUATION_RULES) {
+      if (rule.code !== item.code) continue;
+      const hits = rule.patterns.filter(pattern => pattern.test(raw)).length;
+      if (hits) score += rule.boost + ((hits - 1) * 8);
+    }
+
+    return { item, score };
+  })
+    .filter(match => match.score > 0)
+    .sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name))
+    .slice(0, Math.max(1, limit))
+    .map(match => match.item);
+}
+
 function localMatch(text) {
-  const hay = String(text || '').toLowerCase();
-  return VIRGINIA_FIELD_CODES.map(item => ({ item, score: item.keywords.reduce((n,k) => n + (hay.includes(k) ? 2 : 0), 0) + (hay.includes(item.name.toLowerCase()) ? 3 : 0) }))
-    .filter(x => x.score > 0).sort((a,b)=>b.score-a.score).slice(0,5).map(x=>x.item);
+  return rankVirginiaFieldCodes(text, 5);
 }
 
 export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearchChange }) {
@@ -51,27 +108,40 @@ export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearch
   const [aiSummary, setAiSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const filtered = useMemo(() => {
-    const q = searchValue.trim().toLowerCase();
+    const q = searchValue.trim();
     if (!q) return VIRGINIA_FIELD_CODES;
-    return VIRGINIA_FIELD_CODES.filter(x => [x.name,x.code,x.category,x.level,x.elements,...(x.keywords || [])].join(' ').toLowerCase().includes(q));
+    const ranked = rankVirginiaFieldCodes(q, VIRGINIA_FIELD_CODES.length);
+    return ranked.length ? ranked : [];
   }, [searchValue]);
 
   const analyzeIssue = async () => {
-    if (!issue.trim()) return;
+    const situation = issue.trim() || searchValue.trim();
+    if (!situation) return;
     setLoading(true);
-    const fallback = localMatch(issue);
+    const fallback = localMatch(situation);
+    if (fallback.length) {
+      setAiResults(fallback);
+      setAiSummary(`Potential Virginia references matched from the facts you entered. Review the listed elements and open the current statute before taking enforcement action.`);
+    }
+    try {
     try {
       const allowed = VIRGINIA_FIELD_CODES.map(x => ({ code:x.code,name:x.name,category:x.category,elements:x.elements })).map(x=>JSON.stringify(x)).join('\n');
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt:`You are a Virginia field-law reference assistant for security officers. Analyze the incident description and identify only potentially relevant references from the APPROVED LIST below. Do not invent statutes, do not decide probable cause, do not direct an arrest, do not give tactical or weapon-use instructions, and do not state that a person is guilty. Emphasize missing facts and documentation needed. Return up to 5 exact code strings from the approved list.\n\nINCIDENT:\n${issue}\n\nAPPROVED LIST:\n${allowed}`,
+        prompt:`You are a Virginia field-law reference assistant for security officers. Analyze the incident description and identify only potentially relevant references from the APPROVED LIST below. Do not invent statutes, do not decide probable cause, do not direct an arrest, do not give tactical or weapon-use instructions, and do not state that a person is guilty. Emphasize missing facts and documentation needed. Return up to 5 exact code strings from the approved list.\n\nINCIDENT:\n${situation}\n\nAPPROVED LIST:\n${allowed}`,
         response_json_schema:{type:'object',properties:{summary:{type:'string'},codes:{type:'array',items:{type:'string'}},missing_facts:{type:'array',items:{type:'string'}}},required:['summary','codes','missing_facts']}
       });
       const selected = (result?.codes || []).map(code => VIRGINIA_FIELD_CODES.find(x=>x.code===code)).filter(Boolean);
-      setAiResults(selected.length ? selected : fallback);
-      setAiSummary([result?.summary, result?.missing_facts?.length ? `Missing facts to verify: ${result.missing_facts.join('; ')}` : ''].filter(Boolean).join('\n'));
+      const finalResults = selected.length ? selected : fallback;
+      setAiResults(finalResults);
+      const usefulSummary = selected.length && result?.summary
+        ? result.summary
+        : finalResults.length
+          ? 'Potential Virginia references matched from the facts you entered. Verify the elements and current statutory text before relying on a section.'
+          : 'No clear code match was found from the current field-reference library.';
+      setAiSummary([usefulSummary, result?.missing_facts?.length ? `Facts to verify: ${result.missing_facts.join('; ')}` : ''].filter(Boolean).join('\n'));
     } catch {
       setAiResults(fallback);
-      setAiSummary(fallback.length ? 'AI service was unavailable, so the app used its local Virginia field-reference matcher. Verify every suggested section against the current official statute.' : 'No clear code match was found. Gather more facts and consult a supervisor, magistrate, or law enforcement as appropriate.');
+      setAiSummary(fallback.length ? 'Potential Virginia references matched from the facts you entered. Verify every suggested section against the current official statute.' : 'No clear code match was found. Gather more facts and consult a supervisor, magistrate, or law enforcement as appropriate.');
     } finally { setLoading(false); }
   };
 
@@ -83,10 +153,11 @@ export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearch
 
       <div className="grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-          <div className="flex items-center gap-2 text-lg font-bold"><Bot className="h-5 w-5 text-violet-300"/>AI Issue-to-Code Assistant</div>
-          <p className="mt-1 text-xs text-slate-400">Describe observable facts. The AI is restricted to the approved Virginia references on this page.</p>
-          <Textarea className="mt-4 min-h-36 bg-slate-950 border-slate-700" value={issue} onChange={e=>setIssue(e.target.value)} placeholder="Example: A person who was previously told by the property manager not to return came back and refused to leave..."/>
-          <Button className="mt-3" onClick={analyzeIssue} disabled={loading || !issue.trim()}>{loading ? 'Checking references…' : 'Find Potential Code References'}</Button>
+          <div className="flex items-center gap-2 text-lg font-bold"><Bot className="h-5 w-5 text-violet-300"/>Situation-to-Code Assistant</div>
+          <p className="mt-1 text-xs text-slate-400">Describe what happened in normal language. Pathfinder matches the facts to likely Virginia references; you do not need to know the offense name first.</p>
+          <Textarea className="mt-4 min-h-36 bg-slate-950 border-slate-700" value={issue} onChange={e=>setIssue(e.target.value)} placeholder="Example: The property manager barred a visitor last week. He came back tonight and refused to leave after being told again to leave."/>
+          <Button className="mt-3" onClick={analyzeIssue} disabled={loading || !(issue.trim() || searchValue.trim())}>{loading ? 'Checking situation…' : 'Find Laws for This Situation'}</Button>
+          {!issue.trim() && searchValue.trim() && <div className="mt-2 text-[10px] text-violet-300">Using the Enforcement & Legal search above as the situation description.</div>}
           {(aiSummary || aiResults.length>0) && <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-950/20 p-4"><div className="whitespace-pre-wrap text-sm text-slate-200">{aiSummary}</div><div className="mt-3 space-y-2">{aiResults.map(x=><div key={x.code} className="rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="font-bold text-violet-200">{x.name} · {x.code}</div><div className="mt-1 text-xs text-slate-400">{x.elements}</div></div>)}</div></div>}
         </section>
 
