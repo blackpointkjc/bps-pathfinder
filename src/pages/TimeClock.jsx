@@ -601,7 +601,7 @@ export default function TimeClock() {
       if (!fix) {
         try {
           fix = await waitForLiveLocation({ maxAgeMs: 60 * 1000, timeoutMs: 7000, maxAccuracyMeters: 2000 });
-        } catch (_) {
+        } catch {
           fix = getLiveLocation(10 * 60 * 1000);
         }
       }
