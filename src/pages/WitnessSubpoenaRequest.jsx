@@ -304,7 +304,11 @@ export default function WitnessSubpoenaRequest() {
         .dc-toolbar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:.55rem; align-items:center; padding:1rem; background:rgba(248,250,252,.97); border-bottom:1px solid #cbd5e1; backdrop-filter:blur(8px); }
         .dc-toolbar-copy { margin-right:auto; min-width:240px; }
         .dc-toolbar-copy h1 { margin:0; font-size:1.15rem; font-weight:800; color:#0f172a !important; letter-spacing:normal !important; }
-        .dc-toolbar-copy p { margin:.15rem 0 0; font-size:.78rem; color:#64748b; }
+        .dc-toolbar-copy p { margin:.15rem 0 0; font-size:.78rem; color:#64748b !important; }
+        .dc-toolbar .dc-toolbar-secondary { background:#fff !important; color:#0f172a !important; border-color:#cbd5e1 !important; }
+        .dc-toolbar .dc-toolbar-secondary:hover { background:#f1f5f9 !important; color:#0f172a !important; border-color:#94a3b8 !important; }
+        .dc-toolbar .dc-toolbar-primary { background:#0f172a !important; color:#fff !important; border-color:#0f172a !important; }
+        .dc-toolbar .dc-toolbar-primary:hover { background:#1e293b !important; color:#fff !important; }
         .dc-saved { margin:1rem; padding:1rem; border:1px solid #cbd5e1; border-radius:.8rem; background:white; }
         .dc-saved-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.65rem; }
         .dc-saved-card { text-align:left; border:1px solid #dbe3ee; border-radius:.6rem; padding:.75rem; background:#f8fafc; }
@@ -395,12 +399,12 @@ export default function WitnessSubpoenaRequest() {
             <h1>Virginia DC-325 · Request for Witness Subpoena</h1>
             <p>{recordId ? 'Editing saved request' : 'New request'} · {form.witnesses.length} witness{form.witnesses.length === 1 ? '' : 'es'} · continuation pages are automatic</p>
           </div>
-          <Button type="button" variant="outline" onClick={newRequest}><FilePlus2 size={16} className="mr-2" /><span className="btn-label">New</span></Button>
-          <Button type="button" variant="outline" onClick={() => setShowSaved((value) => !value)}><FolderOpen size={16} className="mr-2" /><span className="btn-label">Saved ({visibleRecords.length})</span></Button>
-          <Button type="button" variant="outline" onClick={addWitness}><Plus size={16} className="mr-2" /><span className="btn-label">Add witness</span></Button>
-          <Button type="button" variant="outline" onClick={() => setShowSignature(true)}><PenTool size={16} className="mr-2" /><span className="btn-label">{form.requested_by_signature_url ? 'Replace signature' : 'Sign'}</span></Button>
-          <Button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save size={16} className="mr-2" /><span className="btn-label">{saveMutation.isPending ? 'Saving…' : 'Save draft'}</span></Button>
-          <Button type="button" className="bg-slate-900 hover:bg-slate-800" onClick={() => window.print()}><Printer size={16} className="mr-2" /><span className="btn-label">Print DC-325</span></Button>
+          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={newRequest}><FilePlus2 size={16} className="mr-2" /><span className="btn-label">New</span></Button>
+          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSaved((value) => !value)}><FolderOpen size={16} className="mr-2" /><span className="btn-label">Saved ({visibleRecords.length})</span></Button>
+          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={addWitness}><Plus size={16} className="mr-2" /><span className="btn-label">Add witness</span></Button>
+          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSignature(true)}><PenTool size={16} className="mr-2" /><span className="btn-label">{form.requested_by_signature_url ? 'Replace signature' : 'Sign'}</span></Button>
+          <Button type="button" className="dc-toolbar-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save size={16} className="mr-2" /><span className="btn-label">{saveMutation.isPending ? 'Saving…' : 'Save draft'}</span></Button>
+          <Button type="button" className="dc-toolbar-primary" onClick={() => window.print()}><Printer size={16} className="mr-2" /><span className="btn-label">Print DC-325</span></Button>
         </div>
 
         {showSaved && (
