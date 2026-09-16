@@ -135,12 +135,36 @@ export default function IncidentReports() {
   const canSubmit = isAdmin || isDispatcher || !!activeEntry;
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
 
-  const { data: allReports, isLoading: reportsLoading } = useQuery({
+  const { data: allReports = [], isLoading: reportsLoading, error: reportsError, refetch: refetchReports } = useQuery({
     queryKey: ['allIncidentReports'],
     queryFn: () => base44.entities.IncidentReport.list('-created_date'),
     enabled: !!user,
-    initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let refreshTimer;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => refetchReports(), 300);
+    };
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.IncidentReport.subscribe(scheduleRefresh);
+    } catch {
+      // Manual refresh and mutation invalidation remain available.
+    }
+    window.addEventListener('online', scheduleRefresh);
+    window.addEventListener('pageshow', scheduleRefresh);
+    return () => {
+      window.clearTimeout(refreshTimer);
+      if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('online', scheduleRefresh);
+      window.removeEventListener('pageshow', scheduleRefresh);
+    };
+  }, [user?.id, refetchReports]);
 
   // Safely filter reports based on user's role and active entry for display
   const reportsPotentiallyVisible = React.useMemo(() => {
@@ -170,15 +194,13 @@ export default function IncidentReports() {
   const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && (
     String(r.created_by_id || '') === String(user?.id || '') || directoryUserMatches(user, r.created_by || r.officer_email)
   )) || [];
-  const submittedReports = React.useMemo(() => {
-    const submitted = (reportsPotentiallyVisible || []).filter(r => r.status !== 'draft');
-    if (isAdmin || !currentSiteName) return submitted;
-    const activeSite = String(currentSiteName).split(':')[0].split(' - ')[0].trim().toLowerCase();
-    return submitted.filter(report => {
-      const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
-      return reportSite === activeSite;
-    });
-  }, [reportsPotentiallyVisible, isAdmin, currentSiteName]);
+  // Once a report is authored or otherwise visible to the officer, keep it in
+  // history after submission. Changing properties or clocking out must not erase
+  // the officer's past-report list.
+  const submittedReports = React.useMemo(
+    () => (reportsPotentiallyVisible || []).filter(report => report.status !== 'draft'),
+    [reportsPotentiallyVisible],
+  );
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
