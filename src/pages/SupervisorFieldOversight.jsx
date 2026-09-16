@@ -106,6 +106,13 @@ export default function SupervisorFieldOversight() {
       scheduleRefresh();
       refetchLocations();
     };
+    const recoverOversight = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        refetchWelfare();
+        refetchLocations();
+      }, 200);
+    };
     const unsubscribers = [subscribeOfficerLocationChanges(onLocationChanged)];
     for (const entity of ['CallAssignment','OfficerWelfareCheck','CallStatusLog','DispatchCall']) {
       try {
@@ -113,9 +120,15 @@ export default function SupervisorFieldOversight() {
         if (typeof unsub === 'function') unsubscribers.push(unsub);
       } catch {}
     }
+    window.addEventListener('bps-operational-resume', recoverOversight);
+    window.addEventListener('online', recoverOversight);
+    window.addEventListener('pageshow', recoverOversight);
     return () => {
       window.clearTimeout(timer);
       unsubscribers.forEach(fn => fn());
+      window.removeEventListener('bps-operational-resume', recoverOversight);
+      window.removeEventListener('online', recoverOversight);
+      window.removeEventListener('pageshow', recoverOversight);
     };
   }, [refetchWelfare, refetchLocations]);
 
