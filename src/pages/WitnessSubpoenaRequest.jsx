@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import SignaturePad from '@/components/SignaturePad';
 import { FilePlus2, FolderOpen, PenTool, Plus, Printer, Save, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -195,7 +194,7 @@ function FirstPage({ form, setField, onWitnessChange, onRemove }) {
         </p>
         <div className="dc-witness-grid">
           {form.witnesses.slice(0, 4).map((witness, index) => (
-            <WitnessBox key={index} witness={witness} index={index} onChange={onWitnessChange} onRemove={onRemove} canRemove={form.witnesses.length > 1} />
+            <WitnessBox key={index} witness={witness} index={index} onChange={onWitnessChange} onRemove={onRemove} canRemove={false} />
           ))}
         </div>
         <footer><span>FORM DC-325</span><span>REVISED 10/08</span></footer>
@@ -319,8 +318,8 @@ export default function WitnessSubpoenaRequest() {
         .dc-please { text-align:center; font-size:8px; margin:1px 0 2px; }
         .dc-line-input { width:100%; min-width:0; height:20px; padding:2px 3px 0; border:0; border-bottom:1px solid #000; border-radius:0; outline:none; background:transparent; color:#000; font:inherit; font-size:10px; box-sizing:border-box; }
         .dc-line-input:focus, textarea:focus, select:focus { background:#fffbe6; outline:1px solid #d97706; outline-offset:-1px; }
-        label { min-width:0; }
-        label small { display:block; font-size:6.8px; line-height:1.05; text-align:center; margin-top:1px; font-weight:400; }
+        .dc325-page label { min-width:0; }
+        .dc325-page label small { display:block; font-size:6.8px; line-height:1.05; text-align:center; margin-top:1px; font-weight:400; }
         .dc-court-location { display:block; width:68%; margin:0 auto 3px; }
         .dc-court-types { display:grid; grid-template-columns:1.2fr 1fr; gap:2px 8px; border:1px solid #000; padding:3px 5px; }
         .dc-court-types > .dc-choice:last-child { grid-column:1 / -1; }
