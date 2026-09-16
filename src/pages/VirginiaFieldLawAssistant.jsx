@@ -58,7 +58,7 @@ const SITUATION_RULES = [
   { code: 'Va. Code § 18.2-427', boost: 27, patterns: [/\b(threat\w*|harass\w*).*(text|message|phone|call|facebook|instagram|social media|electronic)/i, /\b(text|message|phone|call).*(threat\w*|harass\w*)/i] },
   { code: 'Va. Code § 18.2-96', boost: 24, patterns: [/\b(stole|stolen|steal\w*|theft|shoplift\w*|took .* property|missing property)\b/i] },
   { code: 'Va. Code § 18.2-95', boost: 28, patterns: [/\b(grand larceny|high value theft|stole .* firearm|stolen firearm|firearm theft)\b/i] },
-  { code: 'Va. Code § 18.2-137', boost: 26, patterns: [/\b(vandali[sz]\w*|property damage|damaged|destroyed|broke .* window|keyed .* car)\b/i] },
+  { code: 'Va. Code § 18.2-137', boost: 26, patterns: [/\b(vandali[sz]\w*|property damage|damag\w*|destroy\w*|broke .* window|keyed .* car)\b/i] },
   { code: 'Va. Code § 18.2-102', boost: 30, patterns: [/\b(took|used|drove).*(car|vehicle|truck).*(without permission|without consent|unauthori[sz]ed)/i, /\b(joyride|unauthori[sz]ed use .* vehicle)\b/i] },
   { code: 'Va. Code § 18.2-147', boost: 40, patterns: [/\b(entered|went into|got into|climbed into|rummaged through|broke into).*(car|vehicle|truck|van|suv)\b/i, /\b(car|vehicle|truck|van|suv).*(entered|broken into|break-in|break in|rummaged|unlocked).*(?:steal|stole|stolen|took|removed|damage|crime|property|item)/i, /\b(stole|took|removed).*(?:from|out of).*(car|vehicle|truck|van|suv)\b/i] },
   { code: 'Va. Code § 18.2-89', boost: 36, patterns: [/\b(burglary|broke into|break-in|break in).*(?:house|home|dwelling|residence|apartment).*(?:night|overnight)\b/i] },
