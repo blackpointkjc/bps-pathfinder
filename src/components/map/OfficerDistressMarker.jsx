@@ -56,14 +56,6 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
     const icon = createDistressIcon();
 
     useEffect(() => {
-        const loadAlerts = () => {
-            base44.entities.OfficerDistress.list('-activated_at', 10)
-                .then(all => setActiveAlerts(all.filter(a =>
-                    ['active', 'acknowledged', 'responders_enroute'].includes(a.status)
-                    && a.current_latitude && a.current_longitude
-                )))
-                .catch(() => {});
-        };
         const fetchAndGeocode = () => {
             base44.entities.OfficerDistress.list('-activated_at', 10)
                 .then(all => {
@@ -86,9 +78,24 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
                 .catch(() => {});
         };
         fetchAndGeocode();
-        const interval = setInterval(fetchAndGeocode, 8000);
-        window.addEventListener('officer-distress-activated', fetchAndGeocode);
-        return () => { clearInterval(interval); window.removeEventListener('officer-distress-activated', fetchAndGeocode); };
+        let refreshTimer;
+        const scheduleRefresh = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(fetchAndGeocode, 250);
+        };
+        let unsubscribe;
+        try { unsubscribe = base44.entities.OfficerDistress.subscribe(scheduleRefresh); } catch {}
+        // Distress events arrive over realtime; polling is only a connection fallback.
+        const interval = setInterval(fetchAndGeocode, 60_000);
+        window.addEventListener('officer-distress-activated', scheduleRefresh);
+        window.addEventListener('officer-distress-cleared', scheduleRefresh);
+        return () => {
+            clearInterval(interval);
+            window.clearTimeout(refreshTimer);
+            if (typeof unsubscribe === 'function') unsubscribe();
+            window.removeEventListener('officer-distress-activated', scheduleRefresh);
+            window.removeEventListener('officer-distress-cleared', scheduleRefresh);
+        };
     }, []);
 
     if (activeAlerts.length === 0) return null;
