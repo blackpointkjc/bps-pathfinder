@@ -151,6 +151,50 @@
         }
       }
     },
+    "linked_call_id": {
+      "type": "string",
+      "description": "Linked dispatch call record ID"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "Linked CAD call number"
+    },
+    "linked_call_type": {
+      "type": "string",
+      "description": "Linked CAD incident type"
+    },
+    "linked_call_location": {
+      "type": "string",
+      "description": "Linked CAD call location"
+    },
+    "linked_legal_record_type": {
+      "type": "string",
+      "enum": [
+        "criminal_complaint",
+        "summons"
+      ],
+      "description": "Type of complaint or summons requiring the witnesses"
+    },
+    "linked_legal_record_id": {
+      "type": "string",
+      "description": "Linked CriminalComplaint or Summons record ID"
+    },
+    "linked_legal_record_number": {
+      "type": "string",
+      "description": "Human-readable complaint or summons number"
+    },
+    "linked_legal_record_charge": {
+      "type": "string",
+      "description": "Charge copied from the linked legal record"
+    },
+    "linked_legal_record_subject": {
+      "type": "string",
+      "description": "Accused or defendant copied from the linked legal record"
+    },
+    "linked_location": {
+      "type": "string",
+      "description": "Property or offense location used for client visibility"
+    },
     "status": {
       "type": "string",
       "enum": [
