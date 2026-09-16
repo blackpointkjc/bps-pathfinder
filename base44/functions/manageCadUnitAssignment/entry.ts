@@ -21,28 +21,36 @@ Deno.serve(async (req) => {
     // actually being assigned/unassigned can be notified. Units are not
     // always linked to a signed-in officer (e.g. a spare unit record), so
     // this is best-effort and never blocks the assignment itself.
-    const resolveUnitOfficer = async () => {
-      // Live CAD roster rows use the User id. Older/spare-unit workflows may pass
-      // a Unit id. Support both so assignment notifications and voice alerts are
-      // never lost just because the caller used the live roster identifier.
-      const directUser = await base44.asServiceRole.entities.User.get(unit_id).catch(() => null);
+    const resolveUnitOfficer = async (rawUnitId: string) => {
+      // Dispatch should ultimately store the immutable User id. Support all IDs a
+      // UI may legitimately send: User, Unit, or an older ActiveOfficer session.
+      const directUser = await base44.asServiceRole.entities.User.get(rawUnitId).catch(() => null);
       if (directUser?.email) return directUser;
-      const unitRecord = await base44.asServiceRole.entities.Unit.get(unit_id).catch(() => null);
-      if (!unitRecord) return null;
-      if (unitRecord.user_id) {
+
+      const unitRecord = await base44.asServiceRole.entities.Unit.get(rawUnitId).catch(() => null);
+      if (unitRecord?.user_id) {
         const officer = await base44.asServiceRole.entities.User.get(unitRecord.user_id).catch(() => null);
         if (officer?.email) return officer;
       }
-      if (unitRecord.user_email) {
+      if (unitRecord?.user_email) {
         const matches = await base44.asServiceRole.entities.User.filter({ email: unitRecord.user_email }, '-updated_date', 1).catch(() => []);
+        if (matches?.[0]?.email) return matches[0];
+      }
+
+      const liveSession = await base44.asServiceRole.entities.ActiveOfficer.get(rawUnitId).catch(() => null);
+      if (liveSession?.officer_email) {
+        const matches = await base44.asServiceRole.entities.User.filter({ email: liveSession.officer_email }, '-updated_date', 1).catch(() => []);
         if (matches?.[0]?.email) return matches[0];
       }
       return null;
     };
 
+    const resolvedOfficer = await resolveUnitOfficer(String(unit_id));
+    const canonicalUnitId = resolvedOfficer?.id || unit_id;
+
     if (action === 'assign') {
-      if (!assigned.includes(unit_id)) {
-        const assignedOfficer = await resolveUnitOfficer();
+      if (!assigned.map((id: any) => String(id)).includes(String(canonicalUnitId))) {
+        const assignedOfficer = resolvedOfficer;
         if (assignedOfficer?.email) {
           const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter(
             { officer_email: String(assignedOfficer.email).trim().toLowerCase() },
@@ -69,13 +77,13 @@ Deno.serve(async (req) => {
         const activeAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id });
         await base44.asServiceRole.entities.CallAssignment.create({
           call_id,
-          unit_id,
+          unit_id: canonicalUnitId,
           role: (activeAssignments || []).some((a: any) => a.status !== 'cleared') ? 'backup' : 'primary',
           assigned_at: new Date().toISOString(),
           status: 'pending'
         });
         await base44.asServiceRole.entities.DispatchCall.update(call_id, {
-          assigned_units: [...assigned, unit_id],
+          assigned_units: [...assigned.map((id: any) => String(id)).filter((id: string) => id !== String(unit_id)), String(canonicalUnitId)],
           status: call.status === 'New' ? 'Dispatched' : call.status,
           time_dispatched: call.time_dispatched || new Date().toISOString(),
         });
@@ -89,12 +97,12 @@ Deno.serve(async (req) => {
           location: call.location || '',
           old_status: call.status || '',
           new_status: call.status === 'New' ? 'Dispatched' : call.status,
-          unit_id,
-          unit_name: unit_id,
+          unit_id: canonicalUnitId,
+          unit_name: assignedOfficer?.unit_number ? `Unit ${assignedOfficer.unit_number}` : (assignedOfficer?.full_name || String(canonicalUnitId)),
           notes: isBackup ? 'Additional unit assigned' : 'Primary unit assigned',
           latitude: call.latitude,
           longitude: call.longitude,
-          event_key: `call:${call_id}:assignment:${unit_id}:${now}`,
+          event_key: `call:${call_id}:assignment:${canonicalUnitId}:${now}`,
           event_type: isBackup ? 'additional_unit' : 'unit_dispatched',
           announcement_text: `${isBackup ? 'Additional unit assigned' : 'Unit dispatched'}. ${call.incident || 'Call for service'}. CAD number ${cadNumber}.`,
           announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
@@ -127,9 +135,12 @@ Deno.serve(async (req) => {
         }
       }
     } else {
-      await base44.asServiceRole.entities.DispatchCall.update(call_id, { assigned_units: assigned.filter((id: string) => id !== unit_id) });
-      const records = await base44.asServiceRole.entities.CallAssignment.filter({ call_id, unit_id });
-      for (const record of records || []) {
+      const removableIds = new Set([String(unit_id), String(canonicalUnitId)]);
+      await base44.asServiceRole.entities.DispatchCall.update(call_id, {
+        assigned_units: assigned.map((id: any) => String(id)).filter((id: string) => !removableIds.has(id)),
+      });
+      const records = await base44.asServiceRole.entities.CallAssignment.filter({ call_id });
+      for (const record of (records || []).filter((item: any) => removableIds.has(String(item.unit_id)))) {
         if (record.status !== 'cleared') await base44.asServiceRole.entities.CallAssignment.update(record.id, { status: 'cleared', cleared_at: new Date().toISOString() });
       }
 
@@ -141,10 +152,10 @@ Deno.serve(async (req) => {
         location: call.location || '',
         old_status: call.status || '',
         new_status: call.status || '',
-        unit_id,
-        unit_name: unit_id,
+        unit_id: canonicalUnitId,
+        unit_name: resolvedOfficer?.unit_number ? `Unit ${resolvedOfficer.unit_number}` : (resolvedOfficer?.full_name || String(canonicalUnitId)),
         notes: 'Unit removed from assignment by authorized dispatcher',
-        event_key: `call:${call_id}:unassignment:${unit_id}:${now}`,
+        event_key: `call:${call_id}:unassignment:${canonicalUnitId}:${now}`,
         event_type: 'unit_reassigned',
         announcement_text: `Unit reassigned. CAD number ${cadNumber}.`,
         announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
@@ -154,7 +165,7 @@ Deno.serve(async (req) => {
         sensitive: false,
       });
 
-      const officer = await resolveUnitOfficer();
+      const officer = resolvedOfficer;
       if (officer?.email) {
         const incident = call.incident || 'Call for service';
         const location = call.location || 'Address unavailable';
