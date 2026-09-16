@@ -17,6 +17,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -108,7 +109,7 @@ function CommandDashboardInner() {
     }, []);
 
     useEffect(() => {
-        base44.auth.me().then(user => {
+        withRequestTimeout(base44.auth.me(), 12000, 'Command user request').then(user => {
             setCurrentUser(user?.status === 'On Patrol' ? { ...user, status: 'Available' } : user);
             const val = !isDispatchAlertMuted();
             setSoundEnabled(val);
