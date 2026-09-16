@@ -11,7 +11,7 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const DashboardDataContext = createContext(null);
 const POLL_INTERVAL_MS = 60_000;       // Realtime subscriptions handle most updates; this is only a fallback
-const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
+const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
 const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
@@ -74,6 +74,7 @@ export function DashboardDataProvider({ children }) {
 
     const loadData = useCallback(async (force = false) => {
         const now = Date.now();
+        if (force) rateLimitedUntil.current = 0;
 
         // A rate limit must never hide already-persisted CAD data. Continue reading
         // DispatchCall while ingestion is backed off; only syncGrac is paused.
@@ -209,7 +210,6 @@ export function DashboardDataProvider({ children }) {
         const recoverOperationalData = () => {
             window.clearTimeout(wakeTimer);
             wakeTimer = window.setTimeout(() => {
-                if (Date.now() < rateLimitedUntil.current) return;
                 lastUsersRefreshTime.current = 0;
                 loadData(true);
             }, 250);
