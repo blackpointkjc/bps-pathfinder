@@ -5,6 +5,7 @@ import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const AGENCY_COLORS = {
     RPD: 'bg-blue-800 text-blue-200 border-blue-700',
@@ -70,7 +71,7 @@ export default function CallHistory() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Call history authentication');
             const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
             if (user.role !== 'admin' && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access')) {
                 toast.error('Access required');
@@ -85,7 +86,11 @@ export default function CallHistory() {
         if (loadInFlightRef.current) return;
         loadInFlightRef.current = true;
         try {
-            const result = await base44.functions.invoke('getCallHistoryFeed', {});
+            const result = await withRequestTimeout(
+                base44.functions.invoke('getCallHistoryFeed', {}),
+                15000,
+                'Call history request'
+            );
             let payload = result?.data || result || {};
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
