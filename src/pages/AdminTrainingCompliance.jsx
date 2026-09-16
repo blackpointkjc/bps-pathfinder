@@ -100,17 +100,17 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   const { data: requirements = [] } = useQuery({
     queryKey: ['trainingRequirements'],
     queryFn: () => base44.entities.TrainingRequirement.list('-created_date'),
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
   });
   const { data: assignments = [] } = useQuery({
     queryKey: ['allTrainingAssignments'],
     queryFn: () => base44.entities.TrainingAssignment.list('-assigned_date'),
-    refetchInterval: 30000,
+    refetchInterval: false,
   });
   const { data: submissions = [] } = useQuery({
     queryKey: ['allTrainingSubmissions'],
     queryFn: () => base44.entities.TrainingSubmission.list('-submission_date'),
-    refetchInterval: 30000,
+    refetchInterval: false,
   });
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
@@ -125,7 +125,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   const { data: trainingModules = [] } = useQuery({
     queryKey: ['trainingModules'],
     queryFn: () => base44.entities.TrainingModule.list('-created_date'),
-    refetchInterval: 60000,
+    refetchInterval: 5 * 60 * 1000,
   });
   const { data: trainingCompletions = [] } = useQuery({
     queryKey: ['allTrainingCompletions'],
