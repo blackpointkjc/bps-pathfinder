@@ -9,8 +9,8 @@
       "schedule_mode": "recurring",
       "schedule_type": "simple",
       "repeat_unit": "minutes",
-      "repeat_interval": 2,
-      "is_active": false,
+      "repeat_interval": 1,
+      "is_active": true,
       "function_args": {}
     }
   ]
