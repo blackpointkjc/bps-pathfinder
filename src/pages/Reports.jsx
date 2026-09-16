@@ -12,6 +12,7 @@ import PredictiveAnalyticsPanel from '@/components/reports/PredictiveAnalyticsPa
 import { createPageUrl } from '../utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 export default function Reports() {
     const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function Reports() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Reports authentication');
             setCurrentUser(user);
             if (user.role !== 'admin') {
                 toast.error('Admin access required');
@@ -48,7 +49,7 @@ export default function Reports() {
             const toDate = new Date(dateTo + 'T23:59:59');
 
             if (reportType === 'call_volume') {
-                const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
+                const calls = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', 5000), 20000, 'Report call data');
                 const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
                 const byAgency = {};
                 filtered.forEach(call => {
@@ -61,7 +62,7 @@ export default function Reports() {
                 setReportData({ type: 'call_volume', data: byAgency, total: filtered.length, dateRange: { from: dateFrom, to: dateTo } });
 
             } else if (reportType === 'response_time') {
-                const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
+                const calls = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', 5000), 20000, 'Report call data');
                 const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
                 const withTimes = filtered.filter(c => c.time_received && c.time_on_scene);
                 const responseTimes = withTimes.map(call => {
@@ -85,7 +86,7 @@ export default function Reports() {
                 });
 
             } else if (reportType === 'predictive_analytics') {
-                const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
+                const calls = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', 5000), 20000, 'Report call data');
                 const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
                 const hourlyMap = Array.from({ length: 24 }, (_, h) => ({
                     hour: h,
@@ -136,7 +137,7 @@ export default function Reports() {
                 });
 
             } else if (reportType === 'unit_activity') {
-                const logs = await base44.entities.UnitStatusLog.list('-created_date', 5000);
+                const logs = await withRequestTimeout(base44.entities.UnitStatusLog.list('-created_date', 5000), 20000, 'Report unit data');
                 const filtered = logs.filter(log => { const d = new Date(log.created_date); return d >= fromDate && d <= toDate; });
                 const byUnit = {};
                 filtered.forEach(log => {
