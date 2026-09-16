@@ -1,5 +1,5 @@
 import { uploadInternalFile } from '@/lib/internalUpload';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,29 @@ export default function AdminAnnouncements() {
 
   const { data: announcementReceipts = [] } = useQuery({
     queryKey: ['allAnnouncementReceipts'],
-    queryFn: () => base44.entities.AnnouncementReceipt.list('-read_at', 5000),
+    queryFn: () => base44.entities.AnnouncementReceipt.list('-read_at', 1000),
     enabled: user?.role === 'admin',
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return undefined;
+    const unsubscribers = [];
+    try {
+      const unsubscribe = base44.entities.AnnouncementReceipt.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ['allAnnouncementReceipts'] });
+      });
+      if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    } catch {}
+    try {
+      const unsubscribe = base44.entities.Announcement.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      });
+      if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    } catch {}
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [user?.role, queryClient]);
 
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data) => {
