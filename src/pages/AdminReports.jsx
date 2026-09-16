@@ -31,6 +31,7 @@ import {
   reportTimeZoneLabel,
   resolveReportTimeZone,
 } from '@/lib/reportPrint';
+import LegalCaseHistoryPanel from '@/components/reports/LegalCaseHistoryPanel';
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
@@ -1191,6 +1192,8 @@ export default function AdminReports() {
             </div>
           </div>
         </div>
+
+        <LegalCaseHistoryPanel audience="admin" title="Enforcement Legal History" limit={150} />
 
         <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
           <CardContent className="p-4 md:p-5">
