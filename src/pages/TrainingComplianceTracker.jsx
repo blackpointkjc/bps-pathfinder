@@ -42,13 +42,13 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
     queryKey: ['allTrainingAssignments'],
     queryFn: () => base44.entities.TrainingAssignment.list('-assigned_date'),
     enabled: hasTrainingAccess,
-    refetchInterval: 30000,
+    refetchInterval: false,
   });
   const { data: submissions = [] } = useQuery({
     queryKey: ['allTrainingSubmissions'],
     queryFn: () => base44.entities.TrainingSubmission.list('-submission_date'),
     enabled: hasTrainingAccess,
-    refetchInterval: 30000,
+    refetchInterval: false,
   });
   const { data: allUsers = [] } = useQuery({
     queryKey: ['trainingUsers'],
