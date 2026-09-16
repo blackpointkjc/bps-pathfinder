@@ -29,13 +29,31 @@ import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/l
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
 
+const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
+const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
 
+function readCachedDispatchCalls() {
+    try {
+        const cached = JSON.parse(window.localStorage.getItem(DISPATCH_CALL_CACHE_KEY) || 'null');
+        if (!cached || !Array.isArray(cached.calls) || Date.now() - Number(cached.savedAt || 0) > DISPATCH_CALL_CACHE_MAX_AGE_MS) return [];
+        return cached.calls.filter(call => {
+            const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
+            const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
+            const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000 ? upstreamAt : (createdAt || upstreamAt);
+            return receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000
+                && !['Cleared', 'Cancelled'].includes(call.status)
+                && call.manual_dismissed !== true;
+        });
+    } catch {
+        return [];
+    }
+}
 
 export default function DispatchCenter() {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
-    const [activeCalls, setActiveCalls] = useState([]);
+    const [activeCalls, setActiveCalls] = useState(() => readCachedDispatchCalls());
     const [callDistrict, setCallDistrict] = useState(null);
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -295,6 +313,11 @@ export default function DispatchCenter() {
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
+            try {
+                window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: recentCalls }));
+            } catch {
+                // Last-good cache is only a recovery aid; live Base44 data remains authoritative.
+            }
             lastActiveCallsLoadRef.current = Date.now();
          } catch (error) {
              console.error('Error loading active calls:', error);
