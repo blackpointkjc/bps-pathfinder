@@ -14,8 +14,25 @@ let lastMotion = { speed: 0, heading: null };
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
 const DEFAULT_BAUD = 4800;
 
+function serialPolicyAllowed() {
+  if (typeof document === 'undefined') return true;
+  const policy = document.permissionsPolicy || document.featurePolicy;
+  if (!policy?.allowsFeature) return true;
+  try {
+    return policy.allowsFeature('serial');
+  } catch {
+    return true;
+  }
+}
+
+function serialApiAvailable() {
+  return typeof navigator !== 'undefined' && !!navigator.serial;
+}
+
 let state = {
-  supported: typeof navigator !== 'undefined' && !!navigator.serial,
+  supported: serialApiAvailable() && serialPolicyAllowed(),
+  serialApiAvailable: serialApiAvailable(),
+  policyAllowed: serialPolicyAllowed(),
   connected: false,
   connecting: false,
   portGranted: false,
@@ -28,7 +45,13 @@ let state = {
 };
 
 function emit(patch = {}) {
-  state = { ...state, ...patch, supported: typeof navigator !== 'undefined' && !!navigator.serial };
+  state = {
+    ...state,
+    ...patch,
+    supported: serialApiAvailable() && serialPolicyAllowed(),
+    serialApiAvailable: serialApiAvailable(),
+    policyAllowed: serialPolicyAllowed(),
+  };
   listeners.forEach(listener => {
     try { listener(state); } catch (_) {}
   });
@@ -300,11 +323,17 @@ function installSerialEvents() {
 }
 
 export function externalGpsSupported() {
-  return typeof navigator !== 'undefined' && !!navigator.serial;
+  return serialApiAvailable() && serialPolicyAllowed();
 }
 
 export function getExternalGpsStatus() {
-  return { ...state, supported: externalGpsSupported(), baudRate: state.baudRate || storedBaud() };
+  return {
+    ...state,
+    supported: externalGpsSupported(),
+    serialApiAvailable: serialApiAvailable(),
+    policyAllowed: serialPolicyAllowed(),
+    baudRate: state.baudRate || storedBaud(),
+  };
 }
 
 export function subscribeExternalGpsStatus(listener, { emitCurrent = true } = {}) {
@@ -348,7 +377,12 @@ export async function startExternalGpsAutoReconnect() {
 }
 
 export async function requestExternalGpsConnection({ baudRate = storedBaud() } = {}) {
-  if (!externalGpsSupported()) throw new Error('This browser does not support direct USB/serial GPS. Use Chrome or Edge, or let Windows Location Services supply the receiver to the browser.');
+  if (!serialApiAvailable()) {
+    throw new Error('Direct USB/serial GPS is not available in this browser. Use Pathfinder Desktop, Chrome/Edge with Serial enabled, or Windows Location Services.');
+  }
+  if (!serialPolicyAllowed()) {
+    throw new Error('This hosted Pathfinder page is blocked from direct Serial access by its Permissions Policy. Use Pathfinder Desktop for direct USB/NMEA antenna selection, or configure the receiver through Windows Location Services.');
+  }
   installSerialEvents();
   if (connectPromise) return connectPromise;
   // requestPort must happen immediately from the user's click. After the user has
