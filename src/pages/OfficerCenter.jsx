@@ -1,6 +1,7 @@
 import { CalendarClock, ClipboardList, Shield, UserRound, Wrench } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
+import EnforcementLegalWorkspace from '@/components/EnforcementLegalWorkspace';
 import Dashboard from './Dashboard';
 import TimeClock from './TimeClock';
 import Schedule from './Schedule';
@@ -91,7 +92,10 @@ export default function OfficerCenter({ embedded = false }) {
       queryParam={embedded ? 'officer_section' : 'section'}
       embedded={embedded}
     >
-      {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} workspaceClassName="officer-modern-workspace" />}
+      {section => section === 'messages'
+        ? <EnforcementLegalWorkspace tools={TOOLS.messages} queryParam={embedded ? 'officer_tool' : 'tool'} workspaceClassName="officer-modern-workspace" />
+        : <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'officer_tool' : 'tool'} workspaceClassName="officer-modern-workspace" />
+      }
     </UnifiedCenter>
   );
 }
