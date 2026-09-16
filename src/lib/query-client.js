@@ -22,10 +22,11 @@ export const queryClientInstance = new QueryClient({
 			// Base44 request budget and starving the CAD/GRAC call feed.
 			refetchInterval: false,
 			refetchIntervalInBackground: false,
-			// Many legacy pages provide initialData: [] only to keep rendering safe.
-			// Treat that placeholder as stale immediately so the page performs its
-			// first real fetch on mount instead of looking empty for 30 seconds.
-			staleTime: 0,
+			// Keep recently-loaded data warm while users move between centers. The
+			// previous staleTime: 0 caused every remount/navigation to immediately hit
+			// Base44 again, even when the same query had completed seconds earlier.
+			// Critical pages still use subscriptions or explicit polling where needed.
+			staleTime: 30_000,
 			// Never automatically retry a rate-limit response. Retrying a 429 from
 			// dozens of mounted queries multiplies the problem. Other transient query
 			// failures get one delayed retry.
