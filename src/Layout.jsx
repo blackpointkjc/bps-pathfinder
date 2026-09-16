@@ -1521,6 +1521,81 @@ export default function Layout({ children, currentPageName }) {
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-[#7791aa]">
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
+          <div ref={gpsMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setGpsMenuOpen(open => !open)}
+              className={`flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 font-black uppercase tracking-[0.08em] transition sm:px-3 ${externalGps.connected ? 'border-cyan-500/70 bg-cyan-950/35 text-cyan-100 hover:bg-cyan-900/45' : 'border-slate-600 bg-slate-900/70 text-slate-200 hover:border-slate-500 hover:bg-slate-800'}`}
+              title="Change GPS / external antenna source"
+              aria-label="Change GPS or external antenna source"
+              aria-expanded={gpsMenuOpen}
+            >
+              <Radio className={`h-3.5 w-3.5 ${externalGps.connecting ? 'animate-pulse' : ''}`} />
+              <span className="hidden md:inline">GPS {externalGps.connecting ? 'CONNECTING' : externalGps.connected ? 'EXTERNAL' : 'DEVICE'}</span>
+              <span className="md:hidden">GPS</span>
+              <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {gpsMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-[180] w-[min(92vw,330px)] overflow-hidden rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.65)]">
+                <div className="border-b border-[#233b55] bg-[#0b1c2b] px-3 py-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">GPS / External Antenna</div>
+                  <div className="mt-1 text-[11px] font-bold text-white">
+                    {externalGps.connecting ? 'Connecting to receiver…' : externalGps.connected ? 'External USB / NMEA receiver active' : 'Windows / device location active'}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-400">
+                    {externalGps.connected && <span>Baud {externalGps.baudRate || 4800}</span>}
+                    {externalGps.satellites != null && <span>{externalGps.satellites} satellites</span>}
+                    {externalGps.backgroundReader && <span className="text-emerald-300">Background reader active</span>}
+                  </div>
+                  {externalGps.error && <div className="mt-2 rounded-md border border-red-800/60 bg-red-950/40 px-2 py-1.5 text-[9px] font-bold text-red-200">{externalGps.error}</div>}
+                </div>
+
+                <div className="space-y-2 p-3">
+                  <button
+                    type="button"
+                    onClick={useDeviceGps}
+                    disabled={gpsChanging}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:opacity-50 ${!externalGps.connected ? 'border-emerald-600/60 bg-emerald-950/30' : 'border-slate-700 bg-[#0b1725] hover:border-slate-500'}`}
+                  >
+                    <div className="text-[10px] font-black uppercase text-white">Windows / Device GPS</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">Use the computer, tablet, or Windows Location Services source.</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => connectExternalAntenna(externalGps.baudRate || 4800)}
+                    disabled={!externalGps.supported || gpsChanging}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.connected ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-blue-700 bg-blue-950/25 hover:border-blue-500'}`}
+                  >
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : 'Connect External GPS Antenna'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">Choose an approved USB / serial NMEA receiver or COM device.</div>
+                  </button>
+
+                  <div className="rounded-lg border border-slate-700 bg-[#0b1725] p-2.5">
+                    <label htmlFor="pathfinder-gps-baud" className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Receiver baud rate</label>
+                    <select
+                      id="pathfinder-gps-baud"
+                      value={String(externalGps.baudRate || 4800)}
+                      onChange={event => changeExternalGpsBaud(event.target.value)}
+                      disabled={!externalGps.supported || gpsChanging}
+                      className="mt-1.5 h-9 w-full rounded-md border border-slate-600 bg-slate-950 px-2 text-[11px] font-bold text-white outline-none focus:border-cyan-500"
+                    >
+                      <option value="4800">4800 baud</option>
+                      <option value="9600">9600 baud</option>
+                      <option value="38400">38400 baud</option>
+                    </select>
+                    <div className="mt-1 text-[8px] leading-4 text-slate-500">Changing the baud rate will reopen the external receiver chooser so Pathfinder connects using the selected speed.</div>
+                  </div>
+
+                  {!externalGps.supported && (
+                    <div className="rounded-lg border border-amber-700/50 bg-amber-950/25 px-3 py-2 text-[9px] leading-4 text-amber-200">
+                      Direct external GPS selection is unavailable in this browser. Use Pathfinder Desktop, Chrome, or Edge; Windows/device GPS will continue working.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={refreshApplication}
