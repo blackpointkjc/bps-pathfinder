@@ -1,0 +1,16 @@
+{
+  "name": "bps-pathfinder-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop runtime for BPS Pathfinder CAD with minimized-window GPS and CAD reliability.",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.cjs && node --check preload.cjs",
+    "package:win": "electron-packager . \"BPS Pathfinder\" --platform=win32 --arch=x64 --out=release --overwrite --prune=true --asar"
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.0.2",
+    "electron": "^44.4.1"
+  }
+}
