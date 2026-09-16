@@ -1057,6 +1057,19 @@ Provide:
     );
   }
 
+  if (reportsError) {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <AlertTriangle className="w-10 h-10 mx-auto text-red-600" />
+        <div>
+          <p className="font-semibold text-slate-900">Incident reports could not be loaded.</p>
+          <p className="text-sm text-slate-600">Your submitted records are still stored. Retry the connection to display them.</p>
+        </div>
+        <Button onClick={() => refetchReports()} variant="outline">Retry reports</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -1512,17 +1525,17 @@ Provide:
         <Card className="border-none shadow-lg">
           <CardHeader>
             <CardTitle>
-              {currentSiteName
-                ? `Incident History at ${currentSiteName} (${submittedReports.length})`
-                : (isAdmin ? `All Incident History (${submittedReports.length})` : 'Incident History (Clock in to view site reports)')}
+              {isAdmin
+                ? `All Incident History (${submittedReports.length})`
+                : `My & Current Site Incident History (${submittedReports.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {!currentSiteName && !isAdmin && submittedReports.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                <p className="text-slate-600 text-lg">Clock in to a site to view incident reports</p>
-                <p className="text-slate-500 text-sm mt-2">You'll see all reports filed at your current site</p>
+                <p className="text-slate-600 text-lg">No submitted incident reports are available yet</p>
+                <p className="text-slate-500 text-sm mt-2">Reports you author will remain here after you clock out or change sites.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1641,7 +1654,7 @@ Provide:
                 ))}
                 {submittedReports.length === 0 && draftReports.length === 0 && (
                   <p className="text-center text-slate-500 py-8">
-                    {currentSiteName ? `No submitted incident reports for ${currentSiteName} yet` : 'No submitted incident reports yet'}
+                    No submitted incident reports yet
                   </p>
                 )}
               </div>
