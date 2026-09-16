@@ -3,7 +3,12 @@ import { appParams } from '@/lib/app-params';
 
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
-const rawBase44 = createClient({
+// Use Base44's SDK directly. Do not globally proxy, queue, cache, or back off
+// application reads here: this client is shared by authentication, CAD, schedules,
+// inbox, staffing, reports, and every other Pathfinder workspace. A global request
+// governor can make one failing/rate-limited area appear to take the entire app
+// offline. Polling/realtime cadence is controlled by the individual features.
+export const base44 = createClient({
   appId,
   serverUrl,
   token,
@@ -11,189 +16,18 @@ const rawBase44 = createClient({
   requiresAuth: false,
 });
 
-// ---------------------------------------------------------------------------
-// Lightweight duplicate-read protection
-// ---------------------------------------------------------------------------
-// Important: never globally pause Pathfinder reads after a 429. A previous
-// implementation used one app-wide 60-second queue backoff; one rate-limited
-// request could then block authentication, CAD calls, maps, and every other entity
-// read. We only coalesce identical reads that happen at the same time and keep a
-// very short successful-read cache. Page-level polling/subscription controls are
-// responsible for request cadence.
-const READ_CACHE_TTL_MS = 1_500;
-const AUTH_CACHE_TTL_MS = 5_000;
-
-const readCache = new Map();
-const readInflight = new Map();
-const entityProxyCache = new Map();
-let authCache = null;
-let authInflight = null;
-let activeReads = 0;
-let recentRateLimitAt = 0;
-
-const isRateLimitError = error => /rate limit|too many requests|\b429\b/i.test(String(
-  error?.message || error?.response?.data?.message || error?.data?.message || error || ''
-));
-
-function noteRateLimit(error) {
-  if (!isRateLimitError(error)) return;
-  recentRateLimitAt = Date.now();
-  try {
-    window.dispatchEvent(new CustomEvent('bps:api-rate-limited', {
-      detail: { at: recentRateLimitAt },
-    }));
-  } catch {}
-}
-
-function safeKey(value) {
-  try { return JSON.stringify(value); } catch { return String(value); }
-}
-
-function sharedRead(key, executor, ttlMs = READ_CACHE_TTL_MS) {
-  const cached = readCache.get(key);
-  if (cached && Date.now() - cached.at < ttlMs) return Promise.resolve(cached.value);
-  if (readInflight.has(key)) return readInflight.get(key);
-
-  activeReads += 1;
-  const request = Promise.resolve()
-    .then(executor)
-    .then(value => {
-      readCache.set(key, { at: Date.now(), value });
-      return value;
-    })
-    .catch(error => {
-      noteRateLimit(error);
-      throw error;
-    })
-    .finally(() => {
-      activeReads = Math.max(0, activeReads - 1);
-      readInflight.delete(key);
-    });
-  readInflight.set(key, request);
-  return request;
-}
-
-export function clearBase44ReadCache() {
-  readCache.clear();
-  authCache = null;
-}
+// Kept for callers such as Layout's "Refresh App" button. The raw SDK has no
+// application-wide read cache to clear, so this intentionally does nothing.
+export function clearBase44ReadCache() {}
 
 export function getBase44RequestHealth() {
   return {
     queuedReads: 0,
-    activeReads,
+    activeReads: 0,
     rateLimitedUntil: null,
-    recentRateLimitAt: recentRateLimitAt || null,
+    recentRateLimitAt: null,
   };
 }
-
-const READ_METHODS = new Set(['list', 'filter', 'get']);
-const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'bulkUpdate', 'bulkDelete', 'importEntities']);
-
-function wrappedEntity(entityName, entity) {
-  if (!entity || (typeof entity !== 'object' && typeof entity !== 'function')) return entity;
-  if (entityProxyCache.has(entityName)) return entityProxyCache.get(entityName);
-
-  const proxy = new Proxy(entity, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value !== 'function') return value;
-      const method = String(prop);
-
-      if (READ_METHODS.has(method)) {
-        return (...args) => sharedRead(
-          `entity:${entityName}:${method}:${safeKey(args)}`,
-          () => value.apply(target, args),
-        );
-      }
-
-      if (WRITE_METHODS.has(method)) {
-        return async (...args) => {
-          const result = await value.apply(target, args);
-          // Keep the cache simple and correct. Writes are much less frequent than
-          // reads, so clearing the tiny five-second cache is inexpensive.
-          clearBase44ReadCache();
-          return result;
-        };
-      }
-
-      return value.bind(target);
-    },
-  });
-  entityProxyCache.set(entityName, proxy);
-  return proxy;
-}
-
-const entitiesProxy = new Proxy(rawBase44.entities, {
-  get(target, prop, receiver) {
-    const entity = Reflect.get(target, prop, receiver);
-    if (typeof prop === 'symbol') return entity;
-    return wrappedEntity(String(prop), entity);
-  },
-});
-
-const authProxy = new Proxy(rawBase44.auth, {
-  get(target, prop, receiver) {
-    const value = Reflect.get(target, prop, receiver);
-    if (prop === 'me' && typeof value === 'function') {
-      return () => {
-        if (authCache && Date.now() - authCache.at < AUTH_CACHE_TTL_MS) return Promise.resolve(authCache.value);
-        if (authInflight) return authInflight;
-        authInflight = sharedRead('auth:me', () => value.call(target), AUTH_CACHE_TTL_MS)
-          .then(user => {
-            authCache = { at: Date.now(), value: user };
-            return user;
-          })
-          .finally(() => { authInflight = null; });
-        return authInflight;
-      };
-    }
-    if (typeof value === 'function') {
-      const method = String(prop);
-      if (['logout', 'loginViaEmailPassword', 'loginWithProvider', 'register', 'redirectToLogin'].includes(method)) {
-        return async (...args) => {
-          clearBase44ReadCache();
-          authInflight = null;
-          try {
-            return await value.apply(target, args);
-          } finally {
-            clearBase44ReadCache();
-            authInflight = null;
-          }
-        };
-      }
-      return value.bind(target);
-    }
-    return value;
-  },
-});
-
-const functionsProxy = new Proxy(rawBase44.functions, {
-  get(target, prop, receiver) {
-    const value = Reflect.get(target, prop, receiver);
-    if (prop === 'invoke' && typeof value === 'function') {
-      return async (...args) => {
-        try {
-          return await value.apply(target, args);
-        } catch (error) {
-          noteRateLimit(error);
-          throw error;
-        }
-      };
-    }
-    if (typeof value === 'function') return value.bind(target);
-    return value;
-  },
-});
-
-export const base44 = new Proxy(rawBase44, {
-  get(target, prop, receiver) {
-    if (prop === 'entities') return entitiesProxy;
-    if (prop === 'auth') return authProxy;
-    if (prop === 'functions') return functionsProxy;
-    return Reflect.get(target, prop, receiver);
-  },
-});
 
 // Browser-side AI is routed through the app's own backend function so legacy call
 // sites cannot accidentally create a second external integration path.
