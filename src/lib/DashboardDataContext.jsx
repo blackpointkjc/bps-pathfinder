@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 
 
 const DashboardDataContext = createContext(null);
@@ -104,6 +105,16 @@ export function DashboardDataProvider({ children }) {
             let callsData = [];
             try {
                 callsData = await base44.entities.DispatchCall.list('-created_date', 75);
+                if (cadCallFeedIsStale(callsData)) {
+                    try {
+                        const recovery = await refreshCadIngestionIfStale(callsData);
+                        if (recovery?.reason !== 'feed_fresh') {
+                            callsData = await base44.entities.DispatchCall.list('-created_date', 75);
+                        }
+                    } catch (recoveryError) {
+                        console.warn('[CAD] Stale-feed recovery did not complete', recoveryError?.message || recoveryError);
+                    }
+                }
             } catch (callsErr) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
                 throw callsErr;
