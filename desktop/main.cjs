@@ -43,6 +43,29 @@ function permissionOrigin(webContents, requestingOrigin, details = {}) {
 
 function configurePermissions(win) {
   const ses = win.webContents.session;
+
+  // Base44's hosted response may omit or restrict the Web Serial feature in its
+  // Permissions-Policy header. Chromium enforces that policy before Electron's
+  // permission handlers run, so a normal setPermissionRequestHandler alone is not
+  // enough. For the trusted Pathfinder origin only, replace the document policy
+  // with a narrow same-origin policy that explicitly allows Serial + Geolocation.
+  // This does not grant a device automatically; the user still chooses the GPS
+  // receiver through Electron's select-serial-port flow below.
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    if (!isTrustedPathfinderOrigin(details.url || '')) {
+      callback({ cancel: false, responseHeaders: details.responseHeaders });
+      return;
+    }
+
+    const responseHeaders = { ...(details.responseHeaders || {}) };
+    for (const key of Object.keys(responseHeaders)) {
+      if (key.toLowerCase() === 'permissions-policy') delete responseHeaders[key];
+    }
+    responseHeaders['Permissions-Policy'] = [
+      'camera=(self), microphone=(self), geolocation=(self), payment=(self), usb=(self), serial=(self), magnetometer=(), gyroscope=()'
+    ];
+    callback({ cancel: false, responseHeaders });
+  });
   const allowedPermissions = new Set([
     'geolocation',
     'geolocation-approximate',
