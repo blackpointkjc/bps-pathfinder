@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
-const CODES = [
+export const VIRGINIA_FIELD_CODES = [
   { category:'Confrontation / Assault', name:'Assault & Battery', code:'Va. Code § 18.2-57', level:'Class 1 misdemeanor (basic offense)', elements:'Simple assault or assault and battery. Document observable acts, statements, contact, injuries, witnesses, and evidence.', keywords:['assault','battery','hit','punch','fight','struck'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-57/' },
   { category:'Confrontation / Assault', name:'Domestic Assault', code:'Va. Code § 18.2-57.2', level:'Class 1 misdemeanor (basic offense)', elements:'Assault and battery involving a qualifying family or household member. Relationship and prior qualifying convictions can matter.', keywords:['domestic','family','household','spouse'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-57.2/' },
   { category:'Confrontation / Assault', name:'Malicious / Unlawful Wounding', code:'Va. Code § 18.2-51', level:'Felony; classification depends on facts', elements:'Serious bodily-injury offense requiring the statutory intent and circumstances. Preserve injury, witness, video, and statement evidence and involve law enforcement.', keywords:['wounding','serious injury','stabbed','shot','maim'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-51/' },
@@ -38,33 +38,35 @@ const CHECKLIST = [
 
 function localMatch(text) {
   const hay = String(text || '').toLowerCase();
-  return CODES.map(item => ({ item, score: item.keywords.reduce((n,k) => n + (hay.includes(k) ? 2 : 0), 0) + (hay.includes(item.name.toLowerCase()) ? 3 : 0) }))
+  return VIRGINIA_FIELD_CODES.map(item => ({ item, score: item.keywords.reduce((n,k) => n + (hay.includes(k) ? 2 : 0), 0) + (hay.includes(item.name.toLowerCase()) ? 3 : 0) }))
     .filter(x => x.score > 0).sort((a,b)=>b.score-a.score).slice(0,5).map(x=>x.item);
 }
 
-export default function VirginiaFieldLawAssistant() {
+export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearchChange }) {
   const [search, setSearch] = useState('');
+  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : search;
+  const setSearchValue = onSharedSearchChange || setSearch;
   const [issue, setIssue] = useState('');
   const [aiResults, setAiResults] = useState([]);
   const [aiSummary, setAiSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return CODES;
-    return CODES.filter(x => [x.name,x.code,x.category,x.level,x.elements].join(' ').toLowerCase().includes(q));
-  }, [search]);
+    const q = searchValue.trim().toLowerCase();
+    if (!q) return VIRGINIA_FIELD_CODES;
+    return VIRGINIA_FIELD_CODES.filter(x => [x.name,x.code,x.category,x.level,x.elements,...(x.keywords || [])].join(' ').toLowerCase().includes(q));
+  }, [searchValue]);
 
   const analyzeIssue = async () => {
     if (!issue.trim()) return;
     setLoading(true);
     const fallback = localMatch(issue);
     try {
-      const allowed = CODES.map(x => ({ code:x.code,name:x.name,category:x.category,elements:x.elements })).map(x=>JSON.stringify(x)).join('\n');
+      const allowed = VIRGINIA_FIELD_CODES.map(x => ({ code:x.code,name:x.name,category:x.category,elements:x.elements })).map(x=>JSON.stringify(x)).join('\n');
       const result = await base44.integrations.Core.InvokeLLM({
         prompt:`You are a Virginia field-law reference assistant for security officers. Analyze the incident description and identify only potentially relevant references from the APPROVED LIST below. Do not invent statutes, do not decide probable cause, do not direct an arrest, do not give tactical or weapon-use instructions, and do not state that a person is guilty. Emphasize missing facts and documentation needed. Return up to 5 exact code strings from the approved list.\n\nINCIDENT:\n${issue}\n\nAPPROVED LIST:\n${allowed}`,
         response_json_schema:{type:'object',properties:{summary:{type:'string'},codes:{type:'array',items:{type:'string'}},missing_facts:{type:'array',items:{type:'string'}}},required:['summary','codes','missing_facts']}
       });
-      const selected = (result?.codes || []).map(code => CODES.find(x=>x.code===code)).filter(Boolean);
+      const selected = (result?.codes || []).map(code => VIRGINIA_FIELD_CODES.find(x=>x.code===code)).filter(Boolean);
       setAiResults(selected.length ? selected : fallback);
       setAiSummary([result?.summary, result?.missing_facts?.length ? `Missing facts to verify: ${result.missing_facts.join('; ')}` : ''].filter(Boolean).join('\n'));
     } catch {
@@ -96,7 +98,7 @@ export default function VirginiaFieldLawAssistant() {
       </div>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><div className="flex items-center gap-2 text-lg font-bold"><BookOpen className="h-5 w-5 text-blue-300"/>Virginia Criminal Code Field Reference</div><p className="text-xs text-slate-400">Common field references. Always open the current official statute before relying on a section.</p></div><div className="relative w-full md:w-96"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500"/><Input className="pl-9 bg-slate-950 border-slate-700" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search code, offense, category…"/></div></div>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><div className="flex items-center gap-2 text-lg font-bold"><BookOpen className="h-5 w-5 text-blue-300"/>Virginia Criminal Code Field Reference</div><p className="text-xs text-slate-400">Common field references. Always open the current official statute before relying on a section.</p></div><div className="relative w-full md:w-96"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500"/><Input className="pl-9 bg-slate-950 border-slate-700" value={searchValue} onChange={e=>setSearchValue(e.target.value)} placeholder="Search code, offense, category, keywords…"/></div></div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{filtered.map(x=><article key={x.code} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">{x.category}</div><div className="mt-1 font-bold">{x.name}</div><div className="mt-1 font-mono text-sm text-amber-200">{x.code}</div><div className="mt-2 text-xs font-semibold text-slate-300">{x.level}</div><p className="mt-2 text-xs leading-relaxed text-slate-400">{x.elements}</p><button className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-blue-300 hover:text-blue-200" onClick={()=>window.open(x.url,'_blank','noopener,noreferrer')}>Current Virginia statute <ExternalLink className="h-3 w-3"/></button></article>)}</div>
       </section>
     </div>
