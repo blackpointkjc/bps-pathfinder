@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
       ? await loadSource('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 250), { required: true })
       : [];
 
+    const allLiveOfficers = operational
+      ? await loadSource('live officer sessions', () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 250), { required: true })
+      : [];
+
     const vehicleAssignments = officerLike
       ? await loadSource('vehicle assignments', () => base44.asServiceRole.entities.VehicleAssignment.filter({ assignment_date: today }, '-created_date', 100))
       : [];
@@ -120,6 +124,7 @@ Deno.serve(async (req) => {
       overrides,
       allUsers,
       allUnits,
+      allLiveOfficers,
       allSchedules,
       timeEntries,
       dispatchCalls,
