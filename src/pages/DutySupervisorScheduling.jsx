@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay } from 'date-fns';
 import { base44 } from '@/api/base44Client';
@@ -30,7 +30,17 @@ export default function DutySupervisorScheduling() {
   const canManage = user?.role === 'admin';
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
-  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:()=>base44.entities.DutySupervisorAssignment.list('-assignment_date',1000), refetchInterval:30000 });
+  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:()=>base44.entities.DutySupervisorAssignment.list('-assignment_date',1000), refetchInterval:5 * 60 * 1000 });
+
+  useEffect(() => {
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.DutySupervisorAssignment.subscribe(() => {
+        qc.invalidateQueries({ queryKey:['dutySupervisorAssignments'] });
+      });
+    } catch {}
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
+  }, [qc]);
 
   const supervisors = useMemo(()=>users.filter(person=>{
     const r=new Set((person.additional_roles||[]).map(lower));
