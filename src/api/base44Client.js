@@ -12,41 +12,35 @@ const rawBase44 = createClient({
 });
 
 // ---------------------------------------------------------------------------
-// Shared browser request governor
+// Lightweight duplicate-read protection
 // ---------------------------------------------------------------------------
-// Pathfinder has many independent workspaces and realtime monitors. Historically,
-// each one could start its own list/filter/auth request at the same instant. That
-// produced bursts large enough to trigger Base44 429 responses even though the
-// individual components looked reasonable in isolation. All reads now pass through
-// one small queue, identical reads share one promise/result briefly, and a 429 in
-// any area slows the entire browser instead of allowing other panels to retry-storm.
-const READ_CACHE_TTL_MS = 5_000;
-const AUTH_CACHE_TTL_MS = 30_000;
-const RATE_LIMIT_BACKOFF_MS = 60_000;
-const MAX_CONCURRENT_READS = 3;
-const MIN_READ_START_GAP_MS = 90;
+// Important: never globally pause Pathfinder reads after a 429. A previous
+// implementation used one app-wide 60-second queue backoff; one rate-limited
+// request could then block authentication, CAD calls, maps, and every other entity
+// read. We only coalesce identical reads that happen at the same time and keep a
+// very short successful-read cache. Page-level polling/subscription controls are
+// responsible for request cadence.
+const READ_CACHE_TTL_MS = 1_500;
+const AUTH_CACHE_TTL_MS = 5_000;
 
 const readCache = new Map();
 const readInflight = new Map();
 const entityProxyCache = new Map();
-const readQueue = [];
-let activeReads = 0;
-let lastReadStartAt = 0;
-let rateLimitBackoffUntil = 0;
-let queueTimer = null;
 let authCache = null;
 let authInflight = null;
+let activeReads = 0;
+let recentRateLimitAt = 0;
 
 const isRateLimitError = error => /rate limit|too many requests|\b429\b/i.test(String(
   error?.message || error?.response?.data?.message || error?.data?.message || error || ''
 ));
 
-function markRateLimited(error) {
+function noteRateLimit(error) {
   if (!isRateLimitError(error)) return;
-  rateLimitBackoffUntil = Math.max(rateLimitBackoffUntil, Date.now() + RATE_LIMIT_BACKOFF_MS);
+  recentRateLimitAt = Date.now();
   try {
     window.dispatchEvent(new CustomEvent('bps:api-rate-limited', {
-      detail: { until: rateLimitBackoffUntil },
+      detail: { at: recentRateLimitAt },
     }));
   } catch {}
 }
@@ -55,69 +49,26 @@ function safeKey(value) {
   try { return JSON.stringify(value); } catch { return String(value); }
 }
 
-function scheduleQueue() {
-  if (queueTimer || !readQueue.length) return;
-  const now = Date.now();
-  const backoffDelay = Math.max(0, rateLimitBackoffUntil - now);
-  const spacingDelay = Math.max(0, MIN_READ_START_GAP_MS - (now - lastReadStartAt));
-  const delay = Math.max(backoffDelay, spacingDelay);
-  if (delay > 0) {
-    queueTimer = window.setTimeout(() => {
-      queueTimer = null;
-      pumpQueue();
-    }, delay);
-    return;
-  }
-  queueMicrotask(pumpQueue);
-}
-
-function pumpQueue() {
-  if (queueTimer) return;
-  if (!readQueue.length || activeReads >= MAX_CONCURRENT_READS) return;
-  const now = Date.now();
-  if (now < rateLimitBackoffUntil || now - lastReadStartAt < MIN_READ_START_GAP_MS) {
-    scheduleQueue();
-    return;
-  }
-
-  const job = readQueue.shift();
-  if (!job) return;
-  activeReads += 1;
-  lastReadStartAt = Date.now();
-
-  Promise.resolve()
-    .then(job.executor)
-    .then(job.resolve, error => {
-      markRateLimited(error);
-      job.reject(error);
-    })
-    .finally(() => {
-      activeReads = Math.max(0, activeReads - 1);
-      scheduleQueue();
-    });
-
-  // Start additional reads gradually rather than as one mount-time burst.
-  scheduleQueue();
-}
-
-function queuedRead(executor) {
-  return new Promise((resolve, reject) => {
-    readQueue.push({ executor, resolve, reject });
-    scheduleQueue();
-  });
-}
-
 function sharedRead(key, executor, ttlMs = READ_CACHE_TTL_MS) {
   const cached = readCache.get(key);
   if (cached && Date.now() - cached.at < ttlMs) return Promise.resolve(cached.value);
   if (readInflight.has(key)) return readInflight.get(key);
 
-  const request = queuedRead(executor)
+  activeReads += 1;
+  const request = Promise.resolve()
+    .then(executor)
     .then(value => {
       readCache.set(key, { at: Date.now(), value });
       return value;
     })
-    .finally(() => readInflight.delete(key));
+    .catch(error => {
+      noteRateLimit(error);
+      throw error;
+    })
+    .finally(() => {
+      activeReads = Math.max(0, activeReads - 1);
+      readInflight.delete(key);
+    });
   readInflight.set(key, request);
   return request;
 }
@@ -129,9 +80,10 @@ export function clearBase44ReadCache() {
 
 export function getBase44RequestHealth() {
   return {
-    queuedReads: readQueue.length,
+    queuedReads: 0,
     activeReads,
-    rateLimitedUntil: rateLimitBackoffUntil || null,
+    rateLimitedUntil: null,
+    recentRateLimitAt: recentRateLimitAt || null,
   };
 }
 
@@ -224,7 +176,7 @@ const functionsProxy = new Proxy(rawBase44.functions, {
         try {
           return await value.apply(target, args);
         } catch (error) {
-          markRateLimited(error);
+          noteRateLimit(error);
           throw error;
         }
       };
