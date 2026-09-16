@@ -276,8 +276,10 @@ export default function WitnessSubpoenaRequest() {
   }));
 
   const openRecord = (record) => {
+    const loadedWitnesses = Array.isArray(record.witnesses) ? record.witnesses.map((witness) => ({ ...blankWitness(), ...witness })) : [];
+    while (loadedWitnesses.length < 4) loadedWitnesses.push(blankWitness());
     setRecordId(record.id);
-    setForm({ ...initialForm(), ...record, witnesses: Array.isArray(record.witnesses) && record.witnesses.length ? record.witnesses : [blankWitness()] });
+    setForm({ ...initialForm(), ...record, witnesses: loadedWitnesses });
     setShowSaved(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
