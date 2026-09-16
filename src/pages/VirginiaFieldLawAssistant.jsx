@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { BookOpen, Bot, ExternalLink, Search, ShieldCheck, Scale, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,9 @@ export const VIRGINIA_FIELD_CODES = [
   { category:'Confrontation / Assault', name:'Assault & Battery', code:'Va. Code § 18.2-57', level:'Class 1 misdemeanor (basic offense)', elements:'Simple assault or assault and battery. Document observable acts, statements, contact, injuries, witnesses, and evidence.', keywords:['assault','battery','hit','punch','fight','struck'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-57/' },
   { category:'Confrontation / Assault', name:'Domestic Assault', code:'Va. Code § 18.2-57.2', level:'Class 1 misdemeanor (basic offense)', elements:'Assault and battery involving a qualifying family or household member. Relationship and prior qualifying convictions can matter.', keywords:['domestic','family','household','spouse'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-57.2/' },
   { category:'Confrontation / Assault', name:'Malicious / Unlawful Wounding', code:'Va. Code § 18.2-51', level:'Felony; classification depends on facts', elements:'Serious bodily-injury offense requiring the statutory intent and circumstances. Preserve injury, witness, video, and statement evidence and involve law enforcement.', keywords:['wounding','serious injury','stabbed','shot','maim'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-51/' },
+  { category:'Confrontation / Assault', name:'Strangulation or Suffocation', code:'Va. Code § 18.2-51.6', level:'Class 6 felony', elements:'Knowingly, intentionally, and unlawfully impeding another person’s blood circulation or breathing without consent by pressure to the neck or obstruction of the airway, resulting in wounding or bodily injury.', keywords:['strangle','strangled','strangulation','choke','choked','choking','suffocate','suffocation','pressure on neck'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-51.6/' },
+  { category:'Theft / Violence', name:'Robbery', code:'Va. Code § 18.2-58', level:'Felony; classification depends on force, injury, threat, and weapon facts', elements:'Taking property by robbery involving serious bodily injury, a displayed firearm or other deadly weapon, physical force, threat, intimidation, or another qualifying means. Document the taking and the force, threat, weapon, or injury.', keywords:['robbery','robbed','mugged','took property by force','snatched with force','gunpoint'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-58/' },
+  { category:'Threats / Harassment', name:'Threats of Death or Bodily Injury', code:'Va. Code § 18.2-60', level:'Classification depends on the communication and circumstances', elements:'Certain communicated threats to kill or cause bodily injury, including qualifying written or electronic threats that cause reasonable apprehension. Preserve the exact words, medium, sender, recipient, context, and reported fear.', keywords:['threat to kill','death threat','threat bodily injury','threaten to shoot','threaten to hurt','written threat'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-60/' },
   { category:'Threats / Harassment', name:'Stalking', code:'Va. Code § 18.2-60.3', level:'Class 1 misdemeanor (basic offense)', elements:'Repeated directed conduct and the statutory fear requirement. Document each known occasion, dates, communications, witnesses, and reported fear.', keywords:['stalking','followed','following','repeated','fear'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter4/section18.2-60.3/' },
   { category:'Threats / Harassment', name:'Threatening / Harassing Communications', code:'Va. Code § 18.2-427', level:'Class 1 misdemeanor', elements:'Certain communications made with the intent required by the statute. Preserve exact messages, sender information, dates, and platform/device evidence.', keywords:['threatening message','harassing message','phone threat','text threat','electronic threat'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter9/section18.2-427/' },
   { category:'Property / Trespass', name:'Trespass After Forbidden', code:'Va. Code § 18.2-119', level:'Class 1 misdemeanor', elements:'Entering or remaining after qualifying notice from an authorized person, posted notice, or qualifying court order. Record exactly who gave notice, how, where, and when.', keywords:['trespass','refused to leave','banned','no trespassing','returned after warning'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-119/' },
@@ -17,6 +19,11 @@ export const VIRGINIA_FIELD_CODES = [
   { category:'Theft / Property', name:'Grand Larceny', code:'Va. Code § 18.2-95', level:'Felony', elements:'Larceny meeting a statutory grand-larceny category or threshold. Confirm current threshold and document value and supporting evidence.', keywords:['grand larceny','theft','stole','high value','firearm theft'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-95/' },
   { category:'Property Damage', name:'Property Destruction / Damage', code:'Va. Code § 18.2-137', level:'Classification varies by intent and value', elements:'Unlawful or intentional damage to property. Photograph damage and document ownership, repair/replacement value, witnesses, video, and statements.', keywords:['property damage','destruction','vandalism','broke window','damaged car'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-137/' },
   { category:'Vehicle / Property', name:'Unauthorized Use of Vehicle', code:'Va. Code § 18.2-102', level:'Classification depends on value and facts', elements:'Use of another’s vehicle without consent under the statutory intent. Document ownership, lack of consent, possession/use, statements, and vehicle value.', keywords:['unauthorized vehicle','took car','used car without permission','joyride'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-102/' },
+  { category:'Vehicle / Property', name:'Entering a Vehicle With Intent to Commit a Crime', code:'Va. Code § 18.2-147', level:'Class 1 misdemeanor', elements:'Climbing into or upon a vehicle without the owner’s or person-in-charge’s consent and with intent to commit a crime, malicious mischief, or injury to the vehicle. An unlocked vehicle can still qualify; document entry, lack of consent, and evidence of intent.', keywords:['entered vehicle','entered car','went into car','car break in','vehicle break in','unlocked car','rummaged through car','stole from car'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-147/' },
+  { category:'Property / Burglary', name:'Burglary', code:'Va. Code § 18.2-89', level:'Class 3 felony; Class 2 if armed with a deadly weapon', elements:'Breaking and entering another person’s dwelling at night with intent to commit a felony or larceny inside. The time, type of structure, manner of entry, intent, and weapon facts matter.', keywords:['burglary','broke into house at night','home break in','dwelling break in'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-89/' },
+  { category:'Property / Burglary', name:'Statutory Burglary', code:'Va. Code § 18.2-91', level:'Felony; enhanced if armed with a deadly weapon', elements:'Qualifying entry into a dwelling or other place described by the incorporated burglary statutes with intent to commit larceny, assault and battery, or another covered felony. Exact entry method, location, intent, and weapon facts control.', keywords:['statutory burglary','broke into apartment','entered apartment to steal','entered building to steal','business break in'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter5/section18.2-91/' },
+  { category:'Theft / Fraud', name:'Credit Card or Gift Card Theft', code:'Va. Code § 18.2-192', level:'Grand larceny', elements:'Taking, obtaining, or withholding a credit card or card number without the cardholder’s consent with the intent required by the statute, and certain receipt, retention, purchase, sale, or transfer conduct. Gift-card theft is also covered.', keywords:['stole credit card','credit card stolen','debit card stolen','wallet with cards','gift card stolen','card theft'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter6/section18.2-192/' },
+  { category:'Weapons', name:'Brandishing a Firearm or Similar Weapon', code:'Va. Code § 18.2-282', level:'Class 1 misdemeanor; school-area enhancement may apply', elements:'Pointing, holding, or brandishing a firearm, qualifying air or gas weapon, or similar-looking object in a manner that reasonably induces fear, subject to the statutory self-defense exception.', keywords:['brandished gun','pointed gun','pulled a gun','displayed firearm','threatened with gun','gun caused fear'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter7/section18.2-282/' },
   { category:'Public Order', name:'Disorderly Conduct', code:'Va. Code § 18.2-415', level:'Class 1 misdemeanor', elements:'Apply the actual statutory public-conduct elements. Loud, annoying, or unpopular conduct alone is not automatically disorderly conduct.', keywords:['disorderly','disturbance','public disturbance','causing scene'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter9/section18.2-415/' },
   { category:'Public Order', name:'Intoxicated in Public', code:'Va. Code § 18.2-388', level:'Class 4 misdemeanor', elements:'Public intoxication under the statute. Document objective observations and request law-enforcement/medical assistance when appropriate.', keywords:['intoxicated','drunk in public','public intoxication'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter7/section18.2-388/' },
   { category:'Public Order', name:'Obstruction of Justice', code:'Va. Code § 18.2-460', level:'Subsection controls', elements:'Do not treat refusal to cooperate or flight from private security as automatic obstruction. Match the conduct to the current statutory subsection and covered official.', keywords:['obstruction','interfere with officer','resisting'], url:'https://law.lis.virginia.gov/vacode/title18.2/chapter10/section18.2-460/' },
@@ -44,12 +51,20 @@ const SITUATION_RULES = [
   { code: 'Va. Code § 18.2-57', boost: 26, patterns: [/\b(hit|punch\w*|slap\w*|struck|fight\w*|assault\w*|battery|attacked)\b/i] },
   { code: 'Va. Code § 18.2-57.2', boost: 30, patterns: [/\b(spouse|husband|wife|boyfriend|girlfriend|family|household|cohabitant)\b.*\b(hit|punch\w*|slap\w*|struck|fight\w*|assault\w*|attacked)\b/i, /\b(domestic violence|domestic assault)\b/i] },
   { code: 'Va. Code § 18.2-51', boost: 34, patterns: [/\b(stab\w*|shot|shoot\w*|maim\w*|serious bodily injury|serious injury|wound\w*)\b/i] },
+  { code: 'Va. Code § 18.2-51.6', boost: 38, patterns: [/\b(strangl\w*|chok\w*|suffocat\w*|pressure (?:on|to) (?:the )?neck|blocked? (?:his|her|their|the) airway)\b/i] },
+  { code: 'Va. Code § 18.2-58', boost: 38, patterns: [/\b(robbery|robbed|mugged|gunpoint)\b/i, /\b(took|stole|snatched).*(?:force|threat|intimidat|weapon|gun|knife)/i] },
+  { code: 'Va. Code § 18.2-60', boost: 34, patterns: [/\b(threat\w*).*(?:kill|shoot|stab|hurt|bodily injury|death)/i, /\b(?:kill|shoot|stab|hurt).*(?:threat|message|text|email|post)/i] },
   { code: 'Va. Code § 18.2-60.3', boost: 28, patterns: [/\b(stalk\w*|follow\w* repeatedly|keeps follow\w*|multiple times.*fear|repeated.*fear)\b/i] },
   { code: 'Va. Code § 18.2-427', boost: 27, patterns: [/\b(threat\w*|harass\w*).*(text|message|phone|call|facebook|instagram|social media|electronic)/i, /\b(text|message|phone|call).*(threat\w*|harass\w*)/i] },
   { code: 'Va. Code § 18.2-96', boost: 24, patterns: [/\b(stole|stolen|steal\w*|theft|shoplift\w*|took .* property|missing property)\b/i] },
   { code: 'Va. Code § 18.2-95', boost: 28, patterns: [/\b(grand larceny|high value theft|stole .* firearm|stolen firearm|firearm theft)\b/i] },
   { code: 'Va. Code § 18.2-137', boost: 26, patterns: [/\b(vandali[sz]\w*|property damage|damaged|destroyed|broke .* window|keyed .* car)\b/i] },
   { code: 'Va. Code § 18.2-102', boost: 30, patterns: [/\b(took|used|drove).*(car|vehicle|truck).*(without permission|without consent|unauthori[sz]ed)/i, /\b(joyride|unauthori[sz]ed use .* vehicle)\b/i] },
+  { code: 'Va. Code § 18.2-147', boost: 40, patterns: [/\b(entered|went into|got into|climbed into|rummaged through|broke into).*(car|vehicle|truck|van|suv)\b/i, /\b(car|vehicle|truck|van|suv).*(entered|broken into|break-in|break in|rummaged|unlocked).*(?:steal|stole|stolen|took|removed|damage|crime|property|item)/i, /\b(stole|took|removed).*(?:from|out of).*(car|vehicle|truck|van|suv)\b/i] },
+  { code: 'Va. Code § 18.2-89', boost: 36, patterns: [/\b(burglary|broke into|break-in|break in).*(?:house|home|dwelling|residence|apartment).*(?:night|overnight)\b/i] },
+  { code: 'Va. Code § 18.2-91', boost: 34, patterns: [/\b(broke into|break-in|break in|entered).*(?:house|home|dwelling|residence|apartment|building|business).*(?:steal|stole|larceny|assault|felony)\b/i, /\bstatutory burglary\b/i] },
+  { code: 'Va. Code § 18.2-192', boost: 38, patterns: [/\b(stole|stolen|took|removed|withheld).*(?:credit card|debit card|gift card|card number)\b/i, /\bwallet\b.*\b(?:credit|debit|gift) card\b/i] },
+  { code: 'Va. Code § 18.2-282', boost: 38, patterns: [/\b(brandish\w*|pointed|pulled|displayed|held).*(?:gun|firearm|pistol|rifle|weapon)\b/i, /\b(?:gun|firearm|pistol|rifle).*(?:fear|threat|pointed|brandish\w*)\b/i] },
   { code: 'Va. Code § 18.2-415', boost: 23, patterns: [/\b(disorderly|public disturbance|causing a scene|large crowd|fighting in public|disturbing the peace)\b/i] },
   { code: 'Va. Code § 18.2-388', boost: 28, patterns: [/\b(drunk|intoxicated|under the influence).*(public|outside|street|parking lot|common area)/i, /\bpublic intoxication\b/i] },
   { code: 'Va. Code § 18.2-460', boost: 24, patterns: [/\b(obstruct\w*|interfer\w* with .* officer|resist\w* .* officer)\b/i] },
@@ -62,7 +77,7 @@ function normalizedWords(value) {
   return String(value || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9§.]+/g, ' ').trim();
 }
 
-export function rankVirginiaFieldCodes(text, limit = 8) {
+export function rankVirginiaFieldCodes(text, limit = VIRGINIA_FIELD_CODES.length) {
   const raw = String(text || '').trim();
   if (raw.length < 2) return [];
   const normalized = normalizedWords(raw);
@@ -96,7 +111,29 @@ export function rankVirginiaFieldCodes(text, limit = 8) {
 }
 
 function localMatch(text) {
-  return rankVirginiaFieldCodes(text, 5);
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  const matchedCodes = new Set();
+
+  for (const rule of SITUATION_RULES) {
+    if (rule.patterns.some(pattern => pattern.test(raw))) matchedCodes.add(rule.code);
+  }
+
+  for (const item of VIRGINIA_FIELD_CODES) {
+    const directCode = raw.toLowerCase().includes(item.code.toLowerCase().replace('va. code ', '')) || raw.toLowerCase().includes(item.code.toLowerCase());
+    const directName = raw.toLowerCase().includes(item.name.toLowerCase());
+    const directKeyword = (item.keywords || []).some(keyword => String(keyword).includes(' ') && raw.toLowerCase().includes(String(keyword).toLowerCase()));
+    if (directCode || directName || directKeyword) matchedCodes.add(item.code);
+  }
+
+  const theftFacts = /\b(stole|stolen|steal\w*|theft|larceny|shoplift\w*|took|removed)\b.*\b(property|item|items|belongings|bookbag|backpack|wallet|headset|speaker|phone|money|merchandise|goods|firearm|gun)\b/i.test(raw)
+    || /\b(property|item|items|belongings|bookbag|backpack|wallet|headset|speaker|phone|money|merchandise|goods|firearm|gun)\b.*\b(stole|stolen|taken|removed|missing)\b/i.test(raw);
+  if (theftFacts) {
+    matchedCodes.add('Va. Code § 18.2-95');
+    matchedCodes.add('Va. Code § 18.2-96');
+  }
+
+  return rankVirginiaFieldCodes(raw, VIRGINIA_FIELD_CODES.length).filter(item => matchedCodes.has(item.code));
 }
 
 export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearchChange }) {
@@ -114,34 +151,16 @@ export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearch
     return ranked.length ? ranked : [];
   }, [searchValue]);
 
-  const analyzeIssue = async () => {
+  const analyzeIssue = () => {
     const situation = issue.trim() || searchValue.trim();
     if (!situation) return;
     setLoading(true);
-    const fallback = localMatch(situation);
-    if (fallback.length) {
-      setAiResults(fallback);
-      setAiSummary(`Potential Virginia references matched from the facts you entered. Review the listed elements and open the current statute before taking enforcement action.`);
-    }
-    try {
-      const allowed = VIRGINIA_FIELD_CODES.map(x => ({ code:x.code,name:x.name,category:x.category,elements:x.elements })).map(x=>JSON.stringify(x)).join('\n');
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt:`You are a Virginia field-law reference assistant for security officers. Analyze the incident description and identify only potentially relevant references from the APPROVED LIST below. Do not invent statutes, do not decide probable cause, do not direct an arrest, do not give tactical or weapon-use instructions, and do not state that a person is guilty. Emphasize missing facts and documentation needed. Return up to 5 exact code strings from the approved list.\n\nINCIDENT:\n${situation}\n\nAPPROVED LIST:\n${allowed}`,
-        response_json_schema:{type:'object',properties:{summary:{type:'string'},codes:{type:'array',items:{type:'string'}},missing_facts:{type:'array',items:{type:'string'}}},required:['summary','codes','missing_facts']}
-      });
-      const selected = (result?.codes || []).map(code => VIRGINIA_FIELD_CODES.find(x=>x.code===code)).filter(Boolean);
-      const finalResults = selected.length ? selected : fallback;
-      setAiResults(finalResults);
-      const usefulSummary = selected.length && result?.summary
-        ? result.summary
-        : finalResults.length
-          ? 'Potential Virginia references matched from the facts you entered. Verify the elements and current statutory text before relying on a section.'
-          : 'No clear code match was found from the current field-reference library.';
-      setAiSummary([usefulSummary, result?.missing_facts?.length ? `Facts to verify: ${result.missing_facts.join('; ')}` : ''].filter(Boolean).join('\n'));
-    } catch {
-      setAiResults(fallback);
-      setAiSummary(fallback.length ? 'Potential Virginia references matched from the facts you entered. Verify every suggested section against the current official statute.' : 'No clear code match was found. Gather more facts and consult a supervisor, magistrate, or law enforcement as appropriate.');
-    } finally { setLoading(false); }
+    const matches = localMatch(situation);
+    setAiResults(matches);
+    setAiSummary(matches.length
+      ? `${matches.length} potentially applicable Virginia law${matches.length === 1 ? '' : 's'} matched. Review every result below; facts such as value, intent, relationship, injury, notice, location, and weapon involvement determine which section actually applies.`
+      : 'No clear code match was found in the current field-reference library. Add more specific facts or consult a supervisor, magistrate, or law-enforcement officer as appropriate.');
+    setLoading(false);
   };
 
   return <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-7">
@@ -157,7 +176,7 @@ export default function VirginiaFieldLawAssistant({ sharedSearch, onSharedSearch
           <Textarea className="mt-4 min-h-36 bg-slate-950 border-slate-700" value={issue} onChange={e=>setIssue(e.target.value)} placeholder="Example: The property manager barred a visitor last week. He came back tonight and refused to leave after being told again to leave."/>
           <Button className="mt-3" onClick={analyzeIssue} disabled={loading || !(issue.trim() || searchValue.trim())}>{loading ? 'Checking situation…' : 'Find Laws for This Situation'}</Button>
           {!issue.trim() && searchValue.trim() && <div className="mt-2 text-[10px] text-violet-300">Using the Enforcement & Legal search above as the situation description.</div>}
-          {(aiSummary || aiResults.length>0) && <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-950/20 p-4"><div className="whitespace-pre-wrap text-sm text-slate-200">{aiSummary}</div><div className="mt-3 space-y-2">{aiResults.map(x=><div key={x.code} className="rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="font-bold text-violet-200">{x.name} · {x.code}</div><div className="mt-1 text-xs text-slate-400">{x.elements}</div></div>)}</div></div>}
+          {(aiSummary || aiResults.length>0) && <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-950/20 p-4"><div className="whitespace-pre-wrap text-sm font-semibold text-slate-200">{aiSummary}</div><div className="mt-3 space-y-3">{aiResults.map(x=><article key={x.code} className="rounded-lg border border-slate-700 bg-slate-950/70 p-4"><div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">{x.category}</div><div className="mt-1 font-bold text-violet-200">{x.name}</div><div className="mt-1 font-mono text-sm text-amber-200">{x.code}</div><div className="mt-2 text-xs font-semibold text-slate-300">{x.level}</div><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">What the law covers</div><p className="mt-1 text-xs leading-relaxed text-slate-300">{x.elements}</p><a className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-blue-300 hover:text-blue-200" href={x.url} target="_blank" rel="noopener noreferrer">Read the full official Virginia law <ExternalLink className="h-3 w-3"/></a></article>)}</div></div>}
         </section>
 
         <section className="rounded-2xl border border-amber-500/25 bg-amber-950/10 p-5">
