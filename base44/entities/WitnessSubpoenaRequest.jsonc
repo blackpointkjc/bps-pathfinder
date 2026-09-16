@@ -1,0 +1,203 @@
+{
+  "name": "WitnessSubpoenaRequest",
+  "type": "object",
+  "properties": {
+    "court_location": {
+      "type": "string",
+      "description": "City or county court location"
+    },
+    "court_type": {
+      "type": "string",
+      "enum": [
+        "general_district",
+        "juvenile_domestic"
+      ],
+      "default": "general_district"
+    },
+    "general_case_type": {
+      "type": "string",
+      "enum": [
+        "civil",
+        "criminal",
+        "traffic",
+        "none"
+      ],
+      "default": "criminal"
+    },
+    "case_number": {
+      "type": "string"
+    },
+    "jurisdiction_type": {
+      "type": "string",
+      "enum": [
+        "commonwealth",
+        "locality"
+      ],
+      "default": "commonwealth"
+    },
+    "locality_type": {
+      "type": "string",
+      "enum": [
+        "city",
+        "county",
+        "town"
+      ],
+      "default": "city"
+    },
+    "locality_name": {
+      "type": "string"
+    },
+    "plaintiff_petitioner_name": {
+      "type": "string"
+    },
+    "case_caption_type": {
+      "type": "string",
+      "enum": [
+        "versus",
+        "in_re"
+      ],
+      "default": "versus"
+    },
+    "defendant_child_name": {
+      "type": "string"
+    },
+    "charge": {
+      "type": "string"
+    },
+    "court_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "court_time": {
+      "type": "string"
+    },
+    "court_time_period": {
+      "type": "string",
+      "enum": [
+        "AM",
+        "PM"
+      ],
+      "default": "AM"
+    },
+    "requested_on_behalf_of": {
+      "type": "string",
+      "enum": [
+        "commonwealth",
+        "locality",
+        "plaintiff",
+        "defendant",
+        "juvenile",
+        "petitioner",
+        "respondent"
+      ],
+      "default": "commonwealth"
+    },
+    "requested_by_name": {
+      "type": "string"
+    },
+    "requested_by_signature_url": {
+      "type": "string"
+    },
+    "requested_by_phone_area": {
+      "type": "string"
+    },
+    "requested_by_phone_number": {
+      "type": "string"
+    },
+    "date_received": {
+      "type": "string",
+      "format": "date"
+    },
+    "date_issued": {
+      "type": "string",
+      "format": "date"
+    },
+    "witnesses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "last_name": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "middle_name": {
+            "type": "string"
+          },
+          "street_address": {
+            "type": "string"
+          },
+          "city_state_zip": {
+            "type": "string"
+          },
+          "locality_type": {
+            "type": "string",
+            "enum": [
+              "city",
+              "county"
+            ]
+          },
+          "locality_name": {
+            "type": "string"
+          },
+          "phone_area": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready",
+        "issued"
+      ],
+      "default": "draft"
+    }
+  },
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
