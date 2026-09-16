@@ -1,7 +1,7 @@
 import { base44 } from '@/api/base44Client';
 
-const STALE_AFTER_MS = 3 * 60 * 1000;
-const MIN_KICK_GAP_MS = 60 * 1000;
+const STALE_AFTER_MS = 5 * 60 * 1000;
+const MIN_KICK_GAP_MS = 5 * 60 * 1000;
 let lastKickAt = 0;
 let inFlight = null;
 
