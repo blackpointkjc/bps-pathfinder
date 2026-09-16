@@ -46,14 +46,14 @@ export default function MandatoryReadGate({ user }) {
           qc.invalidateQueries({ queryKey: ['mandatoryChatMentions', user.email] });
         }
       });
-    } catch (_) {}
+    } catch {}
     try {
       notificationUnsubscribe = base44.entities.Notification.subscribe(event => {
         if (String(event?.data?.recipient_email || '').toLowerCase() === String(user.email).toLowerCase()) {
           qc.invalidateQueries({ queryKey: ['mandatoryScheduleAlerts', user.email] });
         }
       });
-    } catch (_) {}
+    } catch {}
     return () => {
       if (typeof mentionUnsubscribe === 'function') mentionUnsubscribe();
       if (typeof notificationUnsubscribe === 'function') notificationUnsubscribe();
