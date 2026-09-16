@@ -9,11 +9,9 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 
 const DashboardDataContext = createContext(null);
-let lastSharedIngestion = 0;
 let lastSharedArchive = 0;
 
-const POLL_INTERVAL_MS = 20_000;        // Realtime subscriptions handle most updates; this is only a fallback
-const GRAC_SYNC_INTERVAL_MS = 60_000;  // One shared sync per browser, no page-level duplicate loops
+const POLL_INTERVAL_MS = 60_000;       // Realtime subscriptions handle most updates; this is only a fallback
 const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 429 instead of retry-storming
 const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
@@ -68,7 +66,6 @@ export function DashboardDataProvider({ children }) {
     const [requestCount, setRequestCount] = useState(0);
 
     const refreshingRef   = useRef(false);
-    const syncingGracRef  = useRef(false);
     const rateLimitedUntil = useRef(0);
     const lastRefreshTime  = useRef(0);
     const lastUsersRefreshTime = useRef(0);
@@ -184,44 +181,12 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // Pull GRAC into DispatchCall with the local backend function, then refresh the CAD.
-    // This uses direct HTTP/server code and does not consume integration credits.
-    const syncGrac = useCallback(async () => {
-        const now = Date.now();
-        if (syncingGracRef.current || document.hidden || now < rateLimitedUntil.current || now - lastSharedIngestion < GRAC_SYNC_INTERVAL_MS) return;
-        lastSharedIngestion = now;
-        syncingGracRef.current = true;
-        try {
-            await base44.functions.invoke('ingestGractivecalls', {});
-            rateLimitedUntil.current = 0;
-            setRateLimited(false);
-            await loadData(true);
-        } catch (error) {
-            if (isRateLimitError(error)) {
-                rateLimitedUntil.current = Date.now() + RATE_LIMIT_BACKOFF_MS;
-                setRateLimited(true);
-                console.warn(`[CAD] Ingestion rate limited. Backing off ${RATE_LIMIT_BACKOFF_MS / 1000}s while continuing to display saved calls.`);
-            } else {
-                console.warn('[CAD] GRAC sync failed:', error?.message);
-            }
-            // On a non-rate-limit ingestion failure, refresh persisted rows once.
-            // A 429 must not immediately trigger another request against the same API.
-            if (!isRateLimitError(error)) await loadData(true).catch(() => null);
-        } finally {
-            syncingGracRef.current = false;
-        }
-    }, [loadData]);
-
-    // Initial paint should never wait on the public-feed request. Show the saved CAD
-    // queue first, then synchronize GRAC in the background and refresh again.
+    // GRAC ingestion is owned by one scheduled backend automation. Browsers only
+    // read persisted DispatchCall rows and receive realtime updates. This prevents
+    // every open dashboard from invoking the same ingestion job concurrently.
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            await loadData(true);
-            if (!cancelled) syncGrac();
-        })();
-        return () => { cancelled = true; };
-    }, [loadData, syncGrac]);
+        loadData(true);
+    }, [loadData]);
 
     // Archive cleanup is deliberately outside the startup path so it cannot hold the
     // page spinner open. The UI already filters calls at one hour immediately.
@@ -246,14 +211,6 @@ export function DashboardDataProvider({ children }) {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
     }, [loadData]);
-
-    // Near-real-time synchronization. Browsers naturally throttle timers in hidden
-    // tabs; do not force an extra sync when the window/tab becomes visible again.
-    // That return-to-window burst was causing visible jumps and unnecessary reloads.
-    useEffect(() => {
-        const id = setInterval(syncGrac, GRAC_SYNC_INTERVAL_MS);
-        return () => clearInterval(id);
-    }, [syncGrac]);
 
     // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
     useEffect(() => {
