@@ -21,6 +21,7 @@ import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -708,7 +709,17 @@ export default function Navigation() {
 
     const fetchCalls = async () => {
         try {
-            const all = await base44.entities.DispatchCall.list('-created_date', 500);
+            let all = await base44.entities.DispatchCall.list('-created_date', 500);
+            if (cadCallFeedIsStale(all)) {
+                try {
+                    const recovery = await refreshCadIngestionIfStale(all);
+                    if (recovery?.reason !== 'feed_fresh') {
+                        all = await base44.entities.DispatchCall.list('-created_date', 500);
+                    }
+                } catch (recoveryError) {
+                    console.warn('[NAV] stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
+                }
+            }
             const uniqueCalls = new Map();
             for (const call of all || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
