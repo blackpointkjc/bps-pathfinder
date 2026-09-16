@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,8 +46,20 @@ export default function AdminGeofenceAlerts() {
       return payload.alerts || [];
     },
     enabled: isAdmin || isSupervisor,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (!isAdmin && !isSupervisor) return undefined;
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.GeofenceAlert.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
+      });
+    } catch {}
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
+  }, [isAdmin, isSupervisor, queryClient]);
 
   const { data: locations } = useQuery({
     queryKey: ['directoryLocations', 'geofenceAlerts'],
