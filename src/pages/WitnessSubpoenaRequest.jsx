@@ -7,6 +7,9 @@ import SignaturePad from '@/components/SignaturePad';
 import { FilePlus2, FolderOpen, PenTool, Plus, Printer, Save, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { printDc325 } from '@/lib/dc325Print';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import LinkedLegalRecordField from '@/components/reports/LinkedLegalRecordField';
+import LegalCaseHistoryPanel from '@/components/reports/LegalCaseHistoryPanel';
 
 const blankWitness = () => ({
   last_name: '', first_name: '', middle_name: '', street_address: '', city_state_zip: '',
@@ -35,6 +38,16 @@ const initialForm = () => ({
   requested_by_phone_number: '',
   date_received: '',
   date_issued: '',
+  linked_call_id: '',
+  linked_call_number: '',
+  linked_call_type: '',
+  linked_call_location: '',
+  linked_legal_record_type: '',
+  linked_legal_record_id: '',
+  linked_legal_record_number: '',
+  linked_legal_record_charge: '',
+  linked_legal_record_subject: '',
+  linked_location: '',
   witnesses: Array.from({ length: 4 }, blankWitness),
   status: 'draft',
 });
@@ -428,6 +441,11 @@ export default function WitnessSubpoenaRequest() {
           <Button type="button" className="dc-toolbar-primary" onClick={() => { try { printDc325(form); } catch (error) { toast.error(error?.message || 'Unable to open the DC-325 print document.'); } }}><Printer size={16} className="mr-2" /><span className="btn-label">Print Official DC-325</span></Button>
         </div>
 
+        <section className="no-print mx-auto grid max-w-6xl gap-4 px-4 pt-4 lg:grid-cols-2">
+          <ActiveCallLinkField formData={form} setFormData={setForm} label="Link witness subpoena to Call for Service" />
+          <LinkedLegalRecordField formData={form} setFormData={setForm} />
+        </section>
+
         {showSaved && (
           <section className="dc-saved no-print">
             <div className="flex items-center gap-2 mb-3"><Users size={18} /><strong>Saved witness subpoena requests</strong></div>
@@ -438,6 +456,8 @@ export default function WitnessSubpoenaRequest() {
                     <strong className="block">{record.case_number || 'No case number'}</strong>
                     <span className="block text-sm text-slate-600 truncate">{record.defendant_child_name || record.plaintiff_petitioner_name || 'Untitled request'}</span>
                     <span className="block text-xs text-slate-500 mt-1">{record.witnesses?.length || 0} witness{record.witnesses?.length === 1 ? '' : 'es'} · {record.status || 'draft'}</span>
+                    {record.linked_legal_record_number && <span className="block text-xs text-violet-300 mt-1">Linked: {record.linked_legal_record_number}</span>}
+                    {record.linked_call_number && <span className="block text-xs text-cyan-300 mt-1">CAD: {record.linked_call_number}</span>}
                   </button>
                 ))}
               </div>
@@ -454,6 +474,10 @@ export default function WitnessSubpoenaRequest() {
             />
           </div>
         )}
+
+        <section className="no-print mx-auto max-w-6xl px-4 pt-4">
+          <LegalCaseHistoryPanel audience={user?.role === 'admin' ? 'admin' : 'officer'} title={user?.role === 'admin' ? 'All Enforcement Case History' : 'My Enforcement Case History'} limit={75} />
+        </section>
 
         <div className="dc-paper-scroll">
           <main id="dc325-form" className="subpoena-print-root">
