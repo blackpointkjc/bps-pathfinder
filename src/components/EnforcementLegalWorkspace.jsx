@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, FileText, Loader2, Scale, Search, ShieldAler
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import CenterToolSection from '@/components/CenterToolSection';
-import { VIRGINIA_FIELD_CODES } from '@/pages/VirginiaFieldLawAssistant';
+import { rankVirginiaFieldCodes } from '@/pages/VirginiaFieldLawAssistant';
 
 const LEGAL_ENTITIES = ['TrespassingNotice', 'CriminalComplaint', 'Summons'];
 const ENTITY_TOOL = {
@@ -29,14 +29,7 @@ function matchesAll(text, query) {
 function lawMatches(query) {
   const q = normalize(query);
   if (q.length < 2) return [];
-  return VIRGINIA_FIELD_CODES.filter(item => matchesAll([
-    item.name,
-    item.code,
-    item.category,
-    item.level,
-    item.elements,
-    ...(item.keywords || []),
-  ].join(' '), q)).map(item => ({
+  return rankVirginiaFieldCodes(query, 8).map(item => ({
     id: `law:${item.code}`,
     entity: 'VirginiaLaw',
     source: 'Virginia Law',
@@ -119,7 +112,7 @@ export default function EnforcementLegalWorkspace({ tools, queryParam = 'tool', 
               <Input
                 value={search}
                 onChange={event => setSearch(event.target.value)}
-                placeholder="Search name, DOB, SSN/ID, address, vehicle, code, charge, facts, warrant, report or CAD #…"
+                placeholder="Describe a situation or search name, DOB, ID, vehicle, Virginia code, warrant, report or CAD #…"
                 className="h-11 border-[#315879] bg-[#050c14] pl-10 pr-10 text-sm text-white placeholder:text-slate-600 focus-visible:ring-cyan-500"
                 aria-label="Search all Enforcement and Legal records"
               />
