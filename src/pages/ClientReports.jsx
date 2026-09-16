@@ -23,6 +23,7 @@ import {
   reportTimeZoneLabel,
   resolveReportTimeZone,
 } from '@/lib/reportPrint';
+import LegalCaseHistoryPanel from '@/components/reports/LegalCaseHistoryPanel';
 import {
   Dialog,
   DialogContent,
@@ -861,6 +862,8 @@ export default function ClientReports() {
             {clientLocations.length > 1 && <div className="flex flex-wrap gap-2">{clientLocations.map(site => <Badge key={site} className="border border-slate-600 bg-slate-800 text-slate-200">{site}</Badge>)}</div>}
           </div>
         </div>
+
+        <LegalCaseHistoryPanel audience="client" clientLocations={clientLocations} title="Enforcement Legal History" limit={100} />
 
         <Card className="border border-slate-700 bg-slate-900 shadow-lg">
           <CardContent className="p-4 sm:p-5">
