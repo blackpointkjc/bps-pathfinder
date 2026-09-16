@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
         () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
         'active officer sessions',
       );
-      const freshCutoff = Date.now() - 15 * 60 * 1000;
+      const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
+      const sessionRetentionCutoff = Date.now() - 60 * 60 * 1000;
       const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
@@ -88,9 +89,11 @@ Deno.serve(async (req) => {
       const units = [...newestByEmail.values()]
         .filter((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= freshCutoff);
+          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff);
         })
         .map((active: any) => {
+          const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+          const connectionStale = !Number.isFinite(sessionTs) || sessionTs < sessionHealthyCutoff;
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
           const accuracy = Number(active.accuracy);
           const reliableAccuracy = Number(active.reliable_accuracy);
@@ -137,7 +140,9 @@ Deno.serve(async (req) => {
             clock_in_time: active.clock_in_time || '',
             last_update: active.last_update || active.updated_date || active.created_date || '',
             last_updated: active.last_update || active.updated_date || active.created_date || '',
-            session_active: active.session_active !== false && new Date(active.last_update || active.updated_date || 0).getTime() >= freshCutoff,
+            session_active: active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff,
+            connection_stale: connectionStale,
+            connection_age_seconds: Number.isFinite(sessionTs) ? Math.max(0, Math.floor((Date.now() - sessionTs) / 1000)) : null,
           };
         });
       return Response.json({ success: true, units, signed_in_count: units.filter(unit => unit.session_active).length, location_only: true, includes_last_known: adminMap });
