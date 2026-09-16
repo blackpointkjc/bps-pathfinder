@@ -17,9 +17,11 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
-export default function Summons() {
+export default function Summons({ sharedSearch, onSharedSearchChange }) {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
+  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [formData, setFormData] = useState({
     summons_date: new Date().toISOString(),
     linked_call_id: "",
@@ -130,17 +132,30 @@ export default function Summons() {
       ? allSummons 
       : allSummons.filter(summons => String(summons.created_by_id || '') === String(user.id));
     
-    if (!searchQuery.trim()) return userSummons;
-    
-    const query = searchQuery.toLowerCase();
-    return userSummons.filter(summons => 
-      summons.defendant_name_first?.toLowerCase().includes(query) ||
-      summons.defendant_name_last?.toLowerCase().includes(query) ||
-      summons.defendant_dob?.includes(query) ||
-      summons.case_number?.toLowerCase().includes(query) ||
-      summons.summons_number?.toLowerCase().includes(query)
-    );
-  }, [allSummons, user, isAdmin, searchQuery]);
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return userSummons;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return userSummons.filter(summons => {
+      const searchable = [
+        JSON.stringify(summons || {}),
+        summons.defendant_name_first,
+        summons.defendant_name_middle,
+        summons.defendant_name_last,
+        summons.defendant_dob,
+        summons.defendant_license_no,
+        summons.defendant_address,
+        summons.case_number,
+        summons.summons_number,
+        summons.violation_code,
+        summons.violation_law_section,
+        summons.violation_charge_description,
+        summons.location_of_offense,
+        summons.offense_county_city,
+        summons.linked_call_number,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return terms.every(term => searchable.includes(term));
+    });
+  }, [allSummons, user, isAdmin, searchValue]);
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
@@ -1113,9 +1128,9 @@ export default function Summons() {
               <span>My Summons ({summonsToDisplay.length})</span>
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Search by name, DOB, or case #..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search any summons field: name, DOB, license, case, code, charge, location or CAD #"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                   className="w-full md:w-80"
                 />
               </div>
