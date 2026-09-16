@@ -1572,11 +1572,11 @@ export default function Layout({ children, currentPageName }) {
                   <button
                     type="button"
                     onClick={() => connectExternalAntenna(externalGps.baudRate || 4800)}
-                    disabled={!externalGps.supported || gpsChanging}
+                    disabled={gpsChanging}
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.connected ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-blue-700 bg-blue-950/25 hover:border-blue-500'}`}
                   >
-                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : 'Connect External GPS Antenna'}</div>
-                    <div className="mt-0.5 text-[9px] text-slate-400">Choose an approved USB / serial NMEA receiver or COM device.</div>
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : externalGps.policyAllowed === false ? 'External GPS · Desktop Required' : 'Connect External GPS Antenna'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.policyAllowed === false ? 'The hosted web page blocks Serial. Pathfinder Desktop removes that host restriction for the trusted app.' : 'Choose an approved USB / serial NMEA receiver or COM device.'}</div>
                   </button>
 
                   <div className="rounded-lg border border-slate-700 bg-[#0b1725] p-2.5">
@@ -1585,7 +1585,7 @@ export default function Layout({ children, currentPageName }) {
                       id="pathfinder-gps-baud"
                       value={String(externalGps.baudRate || 4800)}
                       onChange={event => changeExternalGpsBaud(event.target.value)}
-                      disabled={!externalGps.supported || gpsChanging}
+                      disabled={!externalGps.serialApiAvailable || externalGps.policyAllowed === false || gpsChanging}
                       className="mt-1.5 h-9 w-full rounded-md border border-slate-600 bg-slate-950 px-2 text-[11px] font-bold text-white outline-none focus:border-cyan-500"
                     >
                       <option value="4800">4800 baud</option>
@@ -1595,9 +1595,14 @@ export default function Layout({ children, currentPageName }) {
                     <div className="mt-1 text-[8px] leading-4 text-slate-500">Changing the baud rate will reopen the external receiver chooser so Pathfinder connects using the selected speed.</div>
                   </div>
 
-                  {!externalGps.supported && (
+                  {!externalGps.serialApiAvailable && (
                     <div className="rounded-lg border border-amber-700/50 bg-amber-950/25 px-3 py-2 text-[9px] leading-4 text-amber-200">
-                      Direct external GPS selection is unavailable in this browser. Use Pathfinder Desktop, Chrome, or Edge; Windows/device GPS will continue working.
+                      This browser does not expose direct Serial access. Use Pathfinder Desktop or Windows/device GPS.
+                    </div>
+                  )}
+                  {externalGps.serialApiAvailable && externalGps.policyAllowed === false && (
+                    <div className="rounded-lg border border-amber-600/60 bg-amber-950/30 px-3 py-2 text-[9px] leading-4 text-amber-100">
+                      <span className="font-black">WEB HOST RESTRICTION:</span> Base44 blocks direct Serial access on the hosted page. Direct USB/NMEA antenna selection is enabled in Pathfinder Desktop. Windows Location Services remains available in the browser.
                     </div>
                   )}
                 </div>
