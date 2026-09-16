@@ -118,8 +118,26 @@ export default function ManageTimeEntries() {
       return entries.filter(e => e.officer_email === selectedOfficer);
     },
     enabled: isAdmin || isHR,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (!isAdmin && !isHR) return undefined;
+    let refreshTimer;
+    let unsubscribe;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      }, 500);
+    };
+    try { unsubscribe = base44.entities.TimeEntry.subscribe(scheduleRefresh); } catch {}
+    return () => {
+      window.clearTimeout(refreshTimer);
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [isAdmin, isHR, queryClient]);
 
   const createEntryMutation = useMutation({
     mutationFn: async (data) => {
