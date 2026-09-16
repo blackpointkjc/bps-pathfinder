@@ -39,7 +39,7 @@ export default function PerformanceReviewTaskGate({ user }) {
       unsubscribe = base44.entities.PerformanceReview.subscribe(event => {
         if (event?.type === 'create' || event?.type === 'update') refetch();
       });
-    } catch (_) {}
+    } catch {}
     window.addEventListener('pathfinder:performance-review-updated', updated);
     window.addEventListener('pathfinder:performance-review-response-open', opened);
     window.addEventListener('pathfinder:performance-review-response-closed', closed);
