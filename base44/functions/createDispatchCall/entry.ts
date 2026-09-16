@@ -51,17 +51,37 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const data = body.data || {};
-    const selectedUnits = Array.isArray(body.selected_units) ? [...new Set(body.selected_units.filter(Boolean))] : [];
+    const requestedUnits = Array.isArray(body.selected_units) ? [...new Set(body.selected_units.filter(Boolean).map(String))] : [];
     if (!String(data.incident || '').trim() || !String(data.location || '').trim()) {
       return Response.json({ error: 'Incident type and location are required' }, { status: 400 });
     }
 
-    // Manual call creation can include immediate unit assignments. Retained stale
-    // sessions remain visible on CAD, but they cannot receive an app assignment
-    // until their Pathfinder heartbeat has recovered.
-    for (const unitId of selectedUnits) {
-      const selectedOfficer = await base44.asServiceRole.entities.User.get(unitId).catch(() => null);
+    // Normalize every selected unit to the immutable User id when a person is
+    // behind it. Older CAD screens may send a Unit id or ActiveOfficer session id;
+    // storing that transient id would make the officer queue unable to see the call.
+    const selectedUnits: string[] = [];
+    for (const rawUnitId of requestedUnits) {
+      let selectedOfficer = await base44.asServiceRole.entities.User.get(rawUnitId).catch(() => null);
+      if (!selectedOfficer?.email) {
+        const unitRecord = await base44.asServiceRole.entities.Unit.get(rawUnitId).catch(() => null);
+        if (unitRecord?.user_id) selectedOfficer = await base44.asServiceRole.entities.User.get(unitRecord.user_id).catch(() => null);
+        if (!selectedOfficer?.email && unitRecord?.user_email) {
+          const matches = await base44.asServiceRole.entities.User.filter({ email: unitRecord.user_email }, '-updated_date', 1).catch(() => []);
+          selectedOfficer = matches?.[0] || null;
+        }
+      }
+      if (!selectedOfficer?.email) {
+        const liveSession = await base44.asServiceRole.entities.ActiveOfficer.get(rawUnitId).catch(() => null);
+        if (liveSession?.officer_email) {
+          const matches = await base44.asServiceRole.entities.User.filter({ email: liveSession.officer_email }, '-updated_date', 1).catch(() => []);
+          selectedOfficer = matches?.[0] || null;
+        }
+      }
+
+      const canonicalUnitId = String(selectedOfficer?.id || rawUnitId);
+      if (!selectedUnits.includes(canonicalUnitId)) selectedUnits.push(canonicalUnitId);
       if (!selectedOfficer?.email) continue; // Spare/non-user unit records remain supported.
+
       const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter(
         { officer_email: String(selectedOfficer.email).trim().toLowerCase() },
         '-last_update',
