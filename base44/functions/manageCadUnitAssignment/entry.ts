@@ -42,6 +42,30 @@ Deno.serve(async (req) => {
 
     if (action === 'assign') {
       if (!assigned.includes(unit_id)) {
+        const assignedOfficer = await resolveUnitOfficer();
+        if (assignedOfficer?.email) {
+          const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter(
+            { officer_email: String(assignedOfficer.email).trim().toLowerCase() },
+            '-last_update',
+            5,
+          ).catch(() => []);
+          const newestSession = (sessions || []).sort((a: any, b: any) =>
+            new Date(b.last_update || b.updated_date || b.created_date || 0).getTime()
+            - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime()
+          )[0];
+          const sessionAt = new Date(newestSession?.last_update || newestSession?.updated_date || newestSession?.created_date || 0).getTime();
+          const heartbeatFresh = newestSession?.session_active !== false
+            && Number.isFinite(sessionAt)
+            && sessionAt >= Date.now() - 15 * 60 * 1000;
+          if (!heartbeatFresh) {
+            return Response.json({
+              error: 'This unit is still shown on the CAD roster, but its Pathfinder connection is stale. Wait for the device heartbeat to recover or contact the officer before assigning through Pathfinder.',
+              code: 'UNIT_CONNECTION_STALE',
+              officer_email: assignedOfficer.email,
+            }, { status: 409 });
+          }
+        }
+
         const activeAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id });
         await base44.asServiceRole.entities.CallAssignment.create({
           call_id,
@@ -84,15 +108,14 @@ Deno.serve(async (req) => {
         // been put on a call -- this Notification (read by GlobalMessageBanner,
         // which also speaks it aloud the same way property-monitoring alerts
         // are announced) is how they now find out.
-        const officer = await resolveUnitOfficer();
-        if (officer?.email) {
+        if (assignedOfficer?.email) {
           const incident = call.incident || 'Call for service';
           const location = call.location || 'Address unavailable';
           const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'reference pending';
           const priorityText = call.priority ? ` Priority ${call.priority}.` : '';
-          const unitLabel = officer.unit_number ? `Unit ${officer.unit_number}. ` : '';
+          const unitLabel = assignedOfficer.unit_number ? `Unit ${assignedOfficer.unit_number}. ` : '';
           await base44.asServiceRole.entities.Notification.create({
-            recipient_email: String(officer.email).trim().toLowerCase(),
+            recipient_email: String(assignedOfficer.email).trim().toLowerCase(),
             type: 'call_assignment',
             title: `Dispatch Assignment · ${callNumber}`,
             message: `${unitLabel}Assigned to ${callNumber}. ${incident} at ${location}.${priorityText}`,
