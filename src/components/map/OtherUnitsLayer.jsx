@@ -230,6 +230,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     <div className={`rounded-md px-2 py-1 text-[10px] font-black ${unit.location_state === 'live' ? 'bg-emerald-100 text-emerald-700' : unit.location_state === 'low_accuracy' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
                                         {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY GPS${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
                                     </div>
+                                    {unit.connection_stale && <div className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">APP CONNECTION STALE — WAITING FOR DEVICE WAKE/HEARTBEAT</div>}
                                     <div className="text-[10px] font-bold text-gray-500">
                                         GPS source: {unit.display_gps_source === 'external_serial' ? 'External USB / NMEA GPS' : unit.display_gps_source === 'shift_clock_in' ? 'Verified shift clock-in' : unit.display_gps_source ? 'Windows / Browser Location' : 'Unknown'}
                                     </div>
