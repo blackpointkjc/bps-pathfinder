@@ -24,7 +24,7 @@ export default function TimeRequests() {
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function TimeRequests() {
       return payload.requests || [];
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
     initialData: [],
   });
 
@@ -53,8 +53,33 @@ export default function TimeRequests() {
     queryFn: () => base44.entities.PTOAdjustment.filter({ officer_email: String(user?.email || '').toLowerCase(), active: true }, '-granted_at', 500),
     enabled: !!user?.email,
     initialData: [],
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const email = String(user.email).toLowerCase();
+    let requestUnsubscribe;
+    let adjustmentUnsubscribe;
+    try {
+      requestUnsubscribe = base44.entities.TimeOffRequest.subscribe(event => {
+        const recipient = String(event?.data?.officer_email || event?.data?.created_by || '').toLowerCase();
+        if (!recipient || recipient === email) queryClient.invalidateQueries({ queryKey: ['timeOffRequests', user.email] });
+      });
+    } catch {}
+    try {
+      adjustmentUnsubscribe = base44.entities.PTOAdjustment.subscribe(event => {
+        if (String(event?.data?.officer_email || '').toLowerCase() === email) {
+          queryClient.invalidateQueries({ queryKey: ['ptoAdjustments', user.email] });
+          queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+        }
+      });
+    } catch {}
+    return () => {
+      if (typeof requestUnsubscribe === 'function') requestUnsubscribe();
+      if (typeof adjustmentUnsubscribe === 'function') adjustmentUnsubscribe();
+    };
+  }, [user?.email, queryClient]);
 
   const calculateBusinessDays = (start, end) => {
     if (!start || !end) return 0;
