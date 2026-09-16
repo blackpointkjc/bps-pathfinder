@@ -8,6 +8,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { base44 } from '@/api/base44Client';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 
 const DashboardDataContext = createContext(null);
@@ -104,16 +105,24 @@ export function DashboardDataProvider({ children }) {
             // busy/rate-limited session, launching both together delayed the queue.
             let callsData = [];
             try {
-                callsData = await base44.entities.DispatchCall.list('-created_date', 75);
+                callsData = await withRequestTimeout(
+                    base44.entities.DispatchCall.list('-created_date', 75),
+                    12000,
+                    'Active calls request'
+                );
                 if (cadCallFeedIsStale(callsData)) {
-                    try {
-                        const recovery = await refreshCadIngestionIfStale(callsData);
-                        if (recovery?.reason !== 'feed_fresh') {
-                            callsData = await base44.entities.DispatchCall.list('-created_date', 75);
-                        }
-                    } catch (recoveryError) {
-                        console.warn('[CAD] Stale-feed recovery did not complete', recoveryError?.message || recoveryError);
-                    }
+                    // Recovery can involve a full upstream ingestion and must never
+                    // block the current queue from painting. Keep the rows we already
+                    // have on screen, recover in the background, then refresh once.
+                    void refreshCadIngestionIfStale(callsData).then(recovery => {
+                        if (recovery?.reason === 'feed_fresh' || recovery?.reason === 'recent_attempt') return;
+                        window.setTimeout(() => {
+                            lastRefreshTime.current = 0;
+                            loadData(true);
+                        }, 1500);
+                    }).catch(recoveryError => {
+                        console.warn('[CAD] Background stale-feed recovery did not complete', recoveryError?.message || recoveryError);
+                    });
                 }
             } catch (callsErr) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
