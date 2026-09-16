@@ -18,9 +18,12 @@ export default function PerformanceReviewTaskGate({ user }) {
       return payload;
     },
     enabled: !!user?.id,
-    refetchInterval: responseInProgress ? false : 15000,
-    refetchOnWindowFocus: !responseInProgress,
-    staleTime: 0,
+    // PerformanceReview realtime events handle fast delivery. The five-minute
+    // poll is only a fallback for a dropped subscription; 15-second function
+    // polling from every signed-in user was a major source of request pressure.
+    refetchInterval: responseInProgress ? false : 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -31,10 +34,17 @@ export default function PerformanceReviewTaskGate({ user }) {
       setResponseInProgress(false);
       window.setTimeout(() => refetch(), 250);
     };
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.PerformanceReview.subscribe(event => {
+        if (event?.type === 'create' || event?.type === 'update') refetch();
+      });
+    } catch (_) {}
     window.addEventListener('pathfinder:performance-review-updated', updated);
     window.addEventListener('pathfinder:performance-review-response-open', opened);
     window.addEventListener('pathfinder:performance-review-response-closed', closed);
     return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
       window.removeEventListener('pathfinder:performance-review-updated', updated);
       window.removeEventListener('pathfinder:performance-review-response-open', opened);
       window.removeEventListener('pathfinder:performance-review-response-closed', closed);
