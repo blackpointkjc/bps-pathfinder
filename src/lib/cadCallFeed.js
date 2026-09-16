@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STALE_AFTER_MS = 5 * 60 * 1000;
 const MIN_KICK_GAP_MS = 5 * 60 * 1000;
@@ -44,7 +45,11 @@ export async function refreshCadIngestionIfStale(calls = [], { maxAgeMs = STALE_
   lastKickAt = now;
   inFlight = (async () => {
     try {
-      const response = await base44.functions.invoke('ingestGractivecalls', {});
+      const response = await withRequestTimeout(
+        base44.functions.invoke('ingestGractivecalls', {}),
+        20000,
+        'CAD feed recovery'
+      );
       const payload = response?.data || response || {};
       if (payload?.error) throw new Error(payload.error);
       return payload;
