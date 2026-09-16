@@ -25,6 +25,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
         isOperationalUnit(u) &&
         !assignedUnitIds.includes(u.id) &&
         u.status === 'Available' &&
+        u.connection_stale !== true &&
         (searchTerm === '' || 
             u.unit_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
