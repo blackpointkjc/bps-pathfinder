@@ -323,7 +323,7 @@ export default function WitnessSubpoenaRequest() {
         html.bps-night-mode .cad-app main.night-workspace .dc325-page input::-webkit-calendar-picker-indicator { filter:none !important; }
         .dc-left { padding:.2in .14in .12in .18in; border-right:2px solid #000; display:flex; flex-direction:column; min-width:0; }
         .dc-header { display:grid; grid-template-columns:1fr auto; align-items:start; text-align:center; }
-        .dc-header h1,.dc-continuation h1 { margin:0; font-size:20px; letter-spacing:.02em; }
+        .dc-header h1,.dc-continuation h1 { margin:0; font-size:20px !important; line-height:1.1 !important; letter-spacing:.02em !important; }
         .dc-header p,.dc-continuation header p { margin:2px 0; font-size:11px; font-weight:700; }
         .dc-code { text-align:right; font-size:8px; line-height:1.25; }
         .dc-please { text-align:center; font-size:8px; margin:1px 0 2px; }
@@ -372,6 +372,12 @@ export default function WitnessSubpoenaRequest() {
         .dc-continuation > p { font-size:10px; margin:7px 0; }
         .dc-continuation .dc-witness-grid { min-height:0; }
         .dc-signature-panel { max-width:700px; margin:1rem auto; padding:0 1rem; }
+        @media (max-width:1279px) {
+          #dc325-form .dc-line-input { min-height:0 !important; height:20px !important; font-size:10px !important; }
+          #dc325-form .dc-caption-name textarea { min-height:48px !important; height:48px !important; font-size:10px !important; }
+          #dc325-form .dc-caption-name textarea.dc-charge { min-height:38px !important; height:38px !important; }
+          #dc325-form select { min-height:0 !important; height:20px !important; font-size:10px !important; }
+        }
         @media (max-width:700px) {
           .dc-toolbar { position:relative; }
           .dc-toolbar .btn-label { display:none; }
@@ -435,7 +441,7 @@ export default function WitnessSubpoenaRequest() {
         )}
 
         <div className="dc-paper-scroll">
-          <main className="subpoena-print-root">
+          <main id="dc325-form" className="subpoena-print-root">
             <FirstPage form={form} setField={setField} onWitnessChange={updateWitness} onRemove={removeWitness} />
             {continuationGroups.map((group) => (
               <ContinuationPage key={group.startIndex} form={form} witnesses={group.witnesses} startIndex={group.startIndex} onWitnessChange={updateWitness} onRemove={removeWitness} />
