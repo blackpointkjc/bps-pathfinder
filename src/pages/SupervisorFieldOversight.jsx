@@ -48,19 +48,19 @@ export default function SupervisorFieldOversight() {
     },
     // One supervisor snapshot replaces three competing polling loops. Keep the
     // last good snapshot on screen while a refresh is in flight.
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: false,
-    staleTime: 20000,
-    retry: 2,
-    retryDelay: attempt => Math.min(2000 * (attempt + 1), 6000),
+    staleTime: 30000,
+    retry: (failureCount, error) => failureCount < 1 && !/rate limit|too many requests|\b429\b/i.test(String(error?.message || error || '')),
+    retryDelay: 3000,
   });
 
   const { data: locationPayload = {}, refetch: refetchLocations } = useQuery({
     queryKey: ['supervisorCanonicalLocations'],
     queryFn: () => getOfficerLocationSnapshot(),
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
-    staleTime: 5000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    staleTime: 15000,
   });
 
   const board = welfarePayload.board || [];
