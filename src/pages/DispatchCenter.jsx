@@ -29,6 +29,7 @@ import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/l
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -57,7 +58,7 @@ export default function DispatchCenter() {
     const [activeCalls, setActiveCalls] = useState(() => readCachedDispatchCalls());
     const [callDistrict, setCallDistrict] = useState(null);
     const [selectedCall, setSelectedCall] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(activeCalls.length === 0);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showDispatchLog, setShowDispatchLog] = useState(false);
@@ -201,7 +202,7 @@ export default function DispatchCenter() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Dispatch authentication');
             setCurrentUser(user);
             
             // Check every supported dispatch/CAD access path consistently.
@@ -264,16 +265,23 @@ export default function DispatchCenter() {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            let calls = await base44.entities.DispatchCall.list('-created_date', 75);
+            let calls = await withRequestTimeout(
+                base44.entities.DispatchCall.list('-created_date', 75),
+                12000,
+                'Dispatch active calls request'
+            );
             if (cadCallFeedIsStale(calls)) {
-                try {
-                    const recovery = await refreshCadIngestionIfStale(calls);
-                    if (recovery?.reason !== 'feed_fresh') {
-                        calls = await base44.entities.DispatchCall.list('-created_date', 75);
-                    }
-                } catch (recoveryError) {
-                    console.warn('CAD stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
-                }
+                // Never hold the Dispatch Center loading screen open while the
+                // upstream recovery job runs. Paint cached/persisted rows first.
+                void refreshCadIngestionIfStale(calls).then(recovery => {
+                    if (recovery?.reason === 'feed_fresh' || recovery?.reason === 'recent_attempt') return;
+                    window.setTimeout(() => {
+                        lastActiveCallsLoadRef.current = 0;
+                        loadActiveCalls(true);
+                    }, 1500);
+                }).catch(recoveryError => {
+                    console.warn('Background CAD stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
+                });
             }
 
             // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
