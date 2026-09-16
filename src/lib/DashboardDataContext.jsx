@@ -8,7 +8,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { base44 } from '@/api/base44Client';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
-import { withRequestTimeout } from '@/lib/requestTimeout';
+import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 
 
 const DashboardDataContext = createContext(null);
@@ -105,11 +105,7 @@ export function DashboardDataProvider({ children }) {
             // busy/rate-limited session, launching both together delayed the queue.
             let callsData = [];
             try {
-                callsData = await withRequestTimeout(
-                    base44.entities.DispatchCall.list('-created_date', 75),
-                    12000,
-                    'Active calls request'
-                );
+                callsData = await loadActiveDispatchCallRows(100);
                 if (cadCallFeedIsStale(callsData)) {
                     // Recovery can involve a full upstream ingestion and must never
                     // block the current queue from painting. Keep the rows we already
