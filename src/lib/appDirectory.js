@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { getOfficerPreviewProfile } from '@/utils/officerPreview';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 let cache = null;
 let cacheAt = 0;
@@ -55,7 +56,7 @@ export async function getAppDirectory(force = false) {
   const now = Date.now();
   if (!force && cache && now - cacheAt < TTL_MS) return cache;
   if (pending) return pending;
-  pending = base44.functions.invoke('getAppDirectory', {}).then(result => {
+  pending = withRequestTimeout(base44.functions.invoke('getAppDirectory', {}), 15000, 'App directory request').then(result => {
     let payload = result?.data || result || {};
     // Base44 function responses can be wrapped once more by different SDK builds.
     // Unwrap that envelope so directory joins never silently become an empty list.
@@ -99,12 +100,12 @@ async function resolveAuthenticatedDirectoryUser(authenticated, force = false) {
 }
 
 export async function getAuthenticatedDirectoryUser(force = false) {
-  const authenticated = await base44.auth.me();
+  const authenticated = await withRequestTimeout(base44.auth.me(), 12000, 'Directory authentication');
   return resolveAuthenticatedDirectoryUser(authenticated, force);
 }
 
 export async function getCurrentDirectoryUser(force = false) {
-  const authenticated = await base44.auth.me();
+  const authenticated = await withRequestTimeout(base44.auth.me(), 12000, 'Directory authentication');
   if (!authenticated?.id) return authenticated;
 
   const roles = new Set((authenticated.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -141,7 +142,7 @@ export async function listOfficerDirectory(sort = 'last_name', limit = 1000, for
     return sortRows(officerCache, sort).slice(0, Number(limit) || 1000);
   }
   if (!officerPending) {
-    officerPending = base44.functions.invoke('getOfficerDirectory', {}).then(result => {
+    officerPending = withRequestTimeout(base44.functions.invoke('getOfficerDirectory', {}), 15000, 'Officer directory request').then(result => {
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       officerCache = Array.isArray(payload.officers) ? payload.officers : [];
@@ -159,7 +160,7 @@ export async function listSupervisorDirectoryOfficers(sort = 'last_name', limit 
     return sortRows(supervisorOfficerCache, sort).slice(0, Number(limit) || 1000);
   }
   if (!supervisorOfficerPending) {
-    supervisorOfficerPending = base44.functions.invoke('getSupervisorScopedTasks', { peopleOnly: true }).then(result => {
+    supervisorOfficerPending = withRequestTimeout(base44.functions.invoke('getSupervisorScopedTasks', { peopleOnly: true }), 15000, 'Supervisor directory request').then(result => {
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.assignedPeople) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
@@ -226,7 +227,7 @@ export const listDirectoryUsers = async (sort, limit, strict = false) => {
   // Management screens pass strict=true so a failed directory request is shown as
   // an error instead of falsely making every other employee disappear.
   try {
-    const me = await base44.auth.me();
+    const me = await withRequestTimeout(base44.auth.me(), 12000, 'Directory user request');
     if (me?.id && !rows.some(row => String(row?.id) === String(me.id))) rows = [...rows, me];
   } catch {}
 
