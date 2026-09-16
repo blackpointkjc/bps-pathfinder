@@ -56,13 +56,23 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
 
     useEffect(() => {
         fetchAlerts();
-        const interval = setInterval(fetchAlerts, 30000);
-        // Also listen for immediate local events
-        const handler = () => fetchAlerts();
+        let refreshTimer;
+        const handler = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(fetchAlerts, 200);
+        };
+        let unsubscribe;
+        try { unsubscribe = base44.entities.OfficerDistress.subscribe(handler); } catch {}
+        // Realtime events are primary; this poll only repairs a dropped subscription.
+        const interval = setInterval(fetchAlerts, 60_000);
         window.addEventListener('officer-distress-activated', handler);
+        window.addEventListener('officer-distress-cleared', handler);
         return () => {
             clearInterval(interval);
+            window.clearTimeout(refreshTimer);
+            if (typeof unsubscribe === 'function') unsubscribe();
             window.removeEventListener('officer-distress-activated', handler);
+            window.removeEventListener('officer-distress-cleared', handler);
         };
     }, []);
 
