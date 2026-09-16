@@ -28,6 +28,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -263,7 +264,17 @@ export default function DispatchCenter() {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            const calls = await base44.entities.DispatchCall.list('-created_date', 75);
+            let calls = await base44.entities.DispatchCall.list('-created_date', 75);
+            if (cadCallFeedIsStale(calls)) {
+                try {
+                    const recovery = await refreshCadIngestionIfStale(calls);
+                    if (recovery?.reason !== 'feed_fresh') {
+                        calls = await base44.entities.DispatchCall.list('-created_date', 75);
+                    }
+                } catch (recoveryError) {
+                    console.warn('CAD stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
+                }
+            }
 
             // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
             const uniqueCalls = new Map();
