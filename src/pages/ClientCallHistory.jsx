@@ -5,6 +5,7 @@ import { Search, RefreshCw, MapPin, FileText, MessageSquare, ChevronDown, Chevro
 import { calculateDistance } from '@/utils/alertUtils';
 import { EASTERN_TIME_ZONE, formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations } from '@/lib/appDirectory';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const norm = value => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 const fmt = value => formatEasternDateTime(value, { year: 'numeric' });
@@ -61,17 +62,17 @@ export default function ClientCallHistory() {
 
   const load = async () => {
     try {
-      const me = user || await getClientPortalUser();
+      const me = user || await withRequestTimeout(getClientPortalUser(), 12000, 'Client authentication');
       if (!user) setUser(me);
       const assignedNames = [...new Set([...(Array.isArray(me?.assigned_locations) ? me.assigned_locations : []), ...(Array.isArray(me?.assigned_sites) ? me.assigned_sites : []), ...(me?.assigned_location ? [me.assigned_location] : [])].filter(Boolean))];
       // Load sequentially to avoid the Base44 per-user burst limit that was
       // previously hit by six simultaneous list requests on this page.
       const allLocations = await listDirectoryLocations('site_name', 500);
-      const active = await base44.entities.DispatchCall.list('-time_received', 500);
-      const archived = await base44.entities.CallHistory.list('-archived_date', 500);
-      const notes = await base44.entities.CallNote.list('-created_date', 300);
-      const reports = await base44.entities.IncidentReport.list('-created_date', 300);
-      const propertyAlerts = await base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []);
+      const active = await withRequestTimeout(base44.entities.DispatchCall.list('-time_received', 500), 15000, 'Client active calls');
+      const archived = await withRequestTimeout(base44.entities.CallHistory.list('-archived_date', 500), 15000, 'Client call history');
+      const notes = await withRequestTimeout(base44.entities.CallNote.list('-created_date', 300), 12000, 'Client call notes');
+      const reports = await withRequestTimeout(base44.entities.IncidentReport.list('-created_date', 300), 12000, 'Client incident reports');
+      const propertyAlerts = await withRequestTimeout(base44.entities.PropertyAlert.list('-created_date', 1000), 15000, 'Client property alerts').catch(() => []);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
 
