@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryUsers } from '@/lib/appDirectory';
 
 const STATUS_CFG = {
     Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
@@ -39,8 +39,29 @@ export default function Personnel() {
 
     useEffect(() => {
         init();
-        const interval = setInterval(() => loadPersonnel(), 10000);
-        return () => clearInterval(interval);
+        let refreshTimer;
+        const refreshRoster = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(() => {
+                invalidateAppDirectory();
+                loadPersonnel();
+            }, 750);
+        };
+        let userUnsubscribe;
+        let activeOfficerUnsubscribe;
+        try { userUnsubscribe = base44.entities.User.subscribe(refreshRoster); } catch {}
+        try { activeOfficerUnsubscribe = base44.entities.ActiveOfficer.subscribe(refreshRoster); } catch {}
+        // Realtime changes own normal updates. This is only a dropped-subscription fallback.
+        const interval = setInterval(() => {
+            invalidateAppDirectory();
+            loadPersonnel();
+        }, 2 * 60 * 1000);
+        return () => {
+            window.clearTimeout(refreshTimer);
+            clearInterval(interval);
+            if (typeof userUnsubscribe === 'function') userUnsubscribe();
+            if (typeof activeOfficerUnsubscribe === 'function') activeOfficerUnsubscribe();
+        };
     }, []);
 
     const init = async () => {
