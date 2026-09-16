@@ -21,9 +21,11 @@ import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
 
-export default function VACriminalComplaints() {
+export default function VACriminalComplaints({ sharedSearch, onSharedSearchChange }) {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
+  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [showIDScanner, setShowIDScanner] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [formData, setFormData] = useState({
@@ -114,17 +116,31 @@ export default function VACriminalComplaints() {
       ? allComplaints 
       : allComplaints.filter(complaint => String(complaint.created_by_id || '') === String(user.id));
     
-    if (!searchQuery.trim()) return userComplaints;
-    
-    const query = searchQuery.toLowerCase();
-    return userComplaints.filter(complaint => 
-      complaint.accused_first_name?.toLowerCase().includes(query) ||
-      complaint.accused_last_name?.toLowerCase().includes(query) ||
-      complaint.accused_dob?.includes(query) ||
-      complaint.accused_ssn?.includes(query) ||
-      complaint.complaint_number?.toLowerCase().includes(query)
-    );
-  }, [allComplaints, user, isAdmin, searchQuery]);
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return userComplaints;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return userComplaints.filter(complaint => {
+      const searchable = [
+        JSON.stringify(complaint || {}),
+        complaint.accused_first_name,
+        complaint.accused_middle_name,
+        complaint.accused_last_name,
+        complaint.accused_dob,
+        complaint.accused_ssn,
+        complaint.accused_id_number,
+        complaint.accused_address,
+        complaint.complaint_number,
+        complaint.call_number,
+        complaint.violation_code,
+        complaint.violation_section,
+        complaint.facts_basis,
+        complaint.location,
+        complaint.linked_call_number,
+        complaint.warrant_number,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return terms.every(term => searchable.includes(term));
+    });
+  }, [allComplaints, user, isAdmin, searchValue]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations', 'vaCriminalComplaints', user?.division || 'all'],
@@ -799,9 +815,9 @@ export default function VACriminalComplaints() {
               <span>My Complaints ({complaintsToDisplay.length})</span>
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Search by name, DOB, SSN, or complaint #"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search any complaint field: name, DOB, SSN, ID, code, facts, complaint, warrant or CAD #"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                   className="w-full md:w-80"
                 />
               </div>
