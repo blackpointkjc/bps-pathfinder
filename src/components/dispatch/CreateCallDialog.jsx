@@ -316,7 +316,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                     ) : (
                                         <div className="space-y-2">
                                             {units
-                                                .filter(unit => unit.status !== 'Out of Service')
+                                                .filter(unit => unit.status !== 'Out of Service' && unit.connection_stale !== true)
                                                 .map(unit => (
                                                     <div
                                                         key={unit.id}
