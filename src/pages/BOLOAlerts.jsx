@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import BOLOModal from '@/components/bolo/BOLOModal';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/lib/boloConfig';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 const titleCase = value => String(value || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
@@ -26,7 +27,7 @@ export default function BOLOAlerts() {
 
   useEffect(() => {
     const init = async () => {
-      const me = await base44.auth.me().catch(() => null);
+      const me = await withRequestTimeout(base44.auth.me(), 12000, 'BOLO authentication').catch(() => null);
       setUser(me);
       const loadedBolos = await load();
       const params = new URLSearchParams(window.location.search);
@@ -50,7 +51,7 @@ export default function BOLOAlerts() {
   const load = async (attempt = 0) => {
     if (attempt === 0) setLoading(true);
     try {
-      const data = await base44.entities.BOLOAlert.list('-created_date', 500);
+      const data = await withRequestTimeout(base44.entities.BOLOAlert.list('-created_date', 500), 15000, 'BOLO records request');
       setBolos(data || []);
       setPageError('');
       return data || [];
