@@ -298,37 +298,35 @@ export default function WitnessSubpoenaRequest() {
   }
 
   return (
-    <div className="w-full bg-slate-100 min-h-screen pb-10">
+    <div className="dc325-page-shell w-full min-h-screen pb-10">
       <style>{`
-        .dc325-workspace { --ink:#111; color:var(--ink); }
-        .dc-toolbar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:.55rem; align-items:center; padding:1rem; background:rgba(248,250,252,.97); border-bottom:1px solid #cbd5e1; backdrop-filter:blur(8px); }
+        .dc325-page-shell { background:radial-gradient(circle at 18% 0%,#132a42 0,#0b1420 42%,#08111d 100%) !important; }
+        .dc325-workspace { --ink:#eaf2f9; color:var(--ink); }
+        .dc-toolbar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:.55rem; align-items:center; padding:1rem; background:rgba(8,17,29,.94) !important; border-bottom:1px solid #29465f !important; box-shadow:0 12px 34px rgba(0,0,0,.28); backdrop-filter:blur(14px); }
         .dc-toolbar-copy { margin-right:auto; min-width:240px; }
-        .dc-toolbar-copy h1 { margin:0; font-size:1.15rem; font-weight:800; color:#0f172a !important; letter-spacing:normal !important; }
-        .dc-toolbar-copy p { margin:.15rem 0 0; font-size:.78rem; color:#64748b !important; }
-        .dc-toolbar .dc-toolbar-secondary { background:#fff !important; color:#0f172a !important; border-color:#cbd5e1 !important; }
-        .dc-toolbar .dc-toolbar-secondary:hover { background:#f1f5f9 !important; color:#0f172a !important; border-color:#94a3b8 !important; }
-        .dc-toolbar .dc-toolbar-primary { background:#0f172a !important; color:#fff !important; border-color:#0f172a !important; }
-        .dc-toolbar .dc-toolbar-primary:hover { background:#1e293b !important; color:#fff !important; }
-        .dc-saved { margin:1rem; padding:1rem; border:1px solid #cbd5e1; border-radius:.8rem; background:white; }
+        .dc-toolbar-copy h1 { margin:0; font-size:1.15rem; font-weight:800; color:#f8fafc !important; letter-spacing:normal !important; }
+        .dc-toolbar-copy p { margin:.15rem 0 0; font-size:.78rem; color:#9fb5c9 !important; }
+        .dc-toolbar .dc-toolbar-secondary { background:#111d2b !important; color:#dcecff !important; border-color:#334c64 !important; }
+        .dc-toolbar .dc-toolbar-secondary:hover { background:#173d5a !important; color:#fff !important; border-color:#4d7799 !important; }
+        .dc-toolbar .dc-toolbar-primary { background:linear-gradient(135deg,#1676ad,#0d4f7a) !important; color:#fff !important; border-color:#2d8fc4 !important; box-shadow:0 8px 18px rgba(14,116,173,.24); }
+        .dc-toolbar .dc-toolbar-primary:hover { background:linear-gradient(135deg,#2090cf,#12618f) !important; color:#fff !important; }
+        .dc-saved { margin:1rem; padding:1rem; border:1px solid #2b4158; border-radius:.8rem; background:#0d1825 !important; color:#eaf2f9 !important; box-shadow:0 14px 34px rgba(0,0,0,.22); }
         .dc-saved-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.65rem; }
-        .dc-saved-card { text-align:left; border:1px solid #dbe3ee; border-radius:.6rem; padding:.75rem; background:#f8fafc; }
-        .dc-saved-card:hover { border-color:#2563eb; background:#eff6ff; }
+        .dc-saved-card { text-align:left; border:1px solid #2f4962 !important; border-radius:.6rem; padding:.75rem; background:#111d2b !important; color:#eaf2f9 !important; }
+        .dc-saved-card :is(strong,span) { color:inherit !important; }
+        .dc-saved-card:hover { border-color:#3b9bce !important; background:#15314a !important; }
         .dc-paper-scroll { overflow-x:auto; padding:1rem; }
         .subpoena-print-root { width:max-content; margin:0 auto; }
-        .dc325-page { width:10.55in; height:8.05in; box-sizing:border-box; display:grid; grid-template-columns:66.2% 33.8%; background:#fff !important; color:#000 !important; color-scheme:light !important; font-family:Arial,Helvetica,sans-serif; font-size:9.6px; line-height:1.15; border:1px solid #94a3b8; box-shadow:0 16px 40px rgba(15,23,42,.18); margin:0 auto 1rem; overflow:hidden; }
-        html.bps-night-mode .cad-app main.night-workspace .dc325-page,
-        html.bps-night-mode .cad-app main.night-workspace .dc325-page :is(h1,h2,h3,p,span,strong,small,label,footer) { color:#000 !important; }
-        html.bps-night-mode .cad-app main.night-workspace .dc325-page { background:#fff !important; border-color:#94a3b8 !important; }
-        html.bps-night-mode .cad-app main.night-workspace .dc325-page :is(input,textarea,select) { color-scheme:light !important; color:#000 !important; background:transparent !important; border-color:#000 !important; border-radius:0 !important; box-shadow:none !important; }
-        html.bps-night-mode .cad-app main.night-workspace .dc325-page input::-webkit-calendar-picker-indicator { filter:none !important; }
+        .dc325-page { width:10.55in; height:8.05in; box-sizing:border-box; display:grid; grid-template-columns:66.2% 33.8%; background:#0d1825 !important; color:#eaf2f9 !important; color-scheme:dark !important; font-family:Arial,Helvetica,sans-serif; font-size:9.6px; line-height:1.15; border:1px solid #334c64 !important; border-top:3px solid #2b8fc3 !important; box-shadow:0 20px 52px rgba(0,0,0,.38),0 0 0 1px rgba(56,137,181,.12); margin:0 auto 1rem; overflow:hidden; }
+        .dc325-page :is(h1,h2,h3,p,span,strong,small,label,footer) { color:#eaf2f9 !important; }
         .dc-left { padding:.2in .14in .12in .18in; border-right:2px solid #000; display:flex; flex-direction:column; min-width:0; }
         .dc-header { display:grid; grid-template-columns:1fr auto; align-items:start; text-align:center; }
         .dc-header h1,.dc-continuation h1 { margin:0; font-size:20px !important; line-height:1.1 !important; letter-spacing:.02em !important; }
         .dc-header p,.dc-continuation header p { margin:2px 0; font-size:11px; font-weight:700; }
         .dc-code { text-align:right; font-size:8px; line-height:1.25; }
         .dc-please { text-align:center; font-size:8px; margin:1px 0 2px; }
-        .dc325-page .dc-line-input { width:100%; min-width:0; min-height:0 !important; height:20px !important; padding:2px 3px 0; border:0 !important; border-bottom:1px solid #000 !important; border-radius:0 !important; outline:none; background:transparent !important; color:#000 !important; font:inherit; font-size:10px !important; box-sizing:border-box; box-shadow:none !important; }
-        .dc325-page .dc-line-input:focus, .dc325-page textarea:focus, .dc325-page select:focus { background:#fffbe6 !important; outline:1px solid #d97706 !important; outline-offset:-1px; }
+        .dc325-page .dc-line-input { width:100%; min-width:0; min-height:0 !important; height:20px !important; padding:2px 3px 0; border:0 !important; border-bottom:1px solid #4d7294 !important; border-radius:0 !important; outline:none; background:rgba(4,12,21,.34) !important; color:#f8fafc !important; font:inherit; font-size:10px !important; box-sizing:border-box; box-shadow:none !important; }
+        .dc325-page .dc-line-input:focus, .dc325-page textarea:focus, .dc325-page select:focus { background:#122c42 !important; outline:1px solid #38a0d4 !important; outline-offset:-1px; }
         .dc325-page label { min-width:0; }
         .dc325-page label small { display:block; font-size:6.8px; line-height:1.05; text-align:center; margin-top:1px; font-weight:400; }
         .dc-court-location { display:block; width:68%; margin:0 auto 3px; }
@@ -336,7 +334,7 @@ export default function WitnessSubpoenaRequest() {
         .dc-court-types > .dc-choice:last-child { grid-column:1 / -1; }
         .dc-case-types { display:flex; justify-content:space-between; gap:4px; }
         .dc-choice { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; cursor:pointer; }
-        .dc325-page .dc-choice input { width:11px !important; height:11px !important; min-height:0 !important; margin:0; padding:0 !important; border-radius:50% !important; background:#fff !important; accent-color:#000; box-shadow:none !important; }
+        .dc325-page .dc-choice input { width:11px !important; height:11px !important; min-height:0 !important; margin:0; padding:0 !important; border-radius:50% !important; background:#0b1420 !important; accent-color:#38a0d4; box-shadow:none !important; }
         .dc-instructions { margin:3px 0; font-size:7.5px; text-align:justify; }
         .dc-witness-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; border-top:1px solid #000; border-left:1px solid #000; min-height:0; }
         .dc-witness { min-width:0; padding:3px 5px; border-right:1px solid #000; border-bottom:1px solid #000; display:flex; flex-direction:column; justify-content:space-between; }
@@ -354,8 +352,8 @@ export default function WitnessSubpoenaRequest() {
         .dc-caption h2 { font-size:14px; margin:2px 0; text-align:center; }
         .dc-rule { border-top:2px solid #000; }
         .dc-locality-request { display:flex; align-items:end; gap:3px; }
-        .dc325-page .dc-locality-request select,.dc325-page .dc-caption select { min-height:0 !important; border:0 !important; border-bottom:1px solid #000 !important; border-radius:0 !important; background:transparent !important; color:#000 !important; font:inherit; font-size:10px !important; height:20px !important; padding:0 2px !important; box-shadow:none !important; }
-        .dc325-page .dc-caption-name textarea { width:100%; min-height:48px !important; height:48px !important; resize:none; padding:2px; border:1px solid #000 !important; border-radius:0 !important; background:transparent !important; color:#000 !important; font:inherit; font-size:10px !important; box-sizing:border-box; box-shadow:none !important; }
+        .dc325-page .dc-locality-request select,.dc325-page .dc-caption select { min-height:0 !important; border:0 !important; border-bottom:1px solid #4d7294 !important; border-radius:0 !important; background:#101f2e !important; color:#f8fafc !important; font:inherit; font-size:10px !important; height:20px !important; padding:0 2px !important; box-shadow:none !important; }
+        .dc325-page .dc-caption-name textarea { width:100%; min-height:48px !important; height:48px !important; resize:none; padding:4px; border:1px solid #3f617f !important; border-radius:4px !important; background:#101f2e !important; color:#f8fafc !important; font:inherit; font-size:10px !important; box-sizing:border-box; box-shadow:inset 0 1px 0 rgba(255,255,255,.03) !important; }
         .dc325-page .dc-caption-name textarea.dc-charge { min-height:38px !important; height:38px !important; }
         .dc-center-choices { display:flex; gap:24px; justify-content:center; }
         .dc-court-date { display:grid; grid-template-columns:1.25fr 1fr auto; gap:4px; align-items:start; }
@@ -372,6 +370,16 @@ export default function WitnessSubpoenaRequest() {
         .dc-continuation > p { font-size:10px; margin:7px 0; }
         .dc-continuation .dc-witness-grid { min-height:0; }
         .dc-signature-panel { max-width:700px; margin:1rem auto; padding:0 1rem; }
+        @media screen {
+          .dc-left { border-right-color:#3a526b !important; }
+          .dc-court-types,.dc-witness-grid,.dc-witness,.dc-rule,.dc-signature-line,.dc-court-use,.dc-continuation header { border-color:#3a526b !important; }
+          .dc-witness:nth-child(odd) { background:rgba(17,29,43,.38); }
+          .dc-caption { background:linear-gradient(180deg,rgba(20,40,59,.46),rgba(9,20,32,.25)); }
+          .dc-header h1,.dc-caption h2,.dc-witness-heading strong { color:#8bd7ff !important; }
+          .dc-code,.dc-please,.dc325-page label small,.dc-caption h3 { color:#9fb5c9 !important; }
+          .dc-instructions { color:#c7d6e5 !important; }
+          .dc325-page input::-webkit-calendar-picker-indicator { filter:invert(1) brightness(1.45) !important; }
+        }
         @media (max-width:1279px) {
           #dc325-form .dc-line-input { min-height:0 !important; height:20px !important; font-size:10px !important; }
           #dc325-form .dc-caption-name textarea { min-height:48px !important; height:48px !important; font-size:10px !important; }
@@ -391,11 +399,17 @@ export default function WitnessSubpoenaRequest() {
           .subpoena-print-root { position:absolute; left:0; top:0; width:100%; margin:0; }
           .no-print { display:none !important; }
           .dc-paper-scroll { overflow:visible; padding:0; }
-          .dc325-page { width:10.55in; height:8.05in; margin:0; border:0; box-shadow:none; break-after:page; page-break-after:always; }
-          .dc325-page:last-child { break-after:auto; page-break-after:auto; }
-          .dc-line-input,textarea,select { color:#000 !important; background:transparent !important; outline:none !important; }
+          #dc325-form .dc325-page { width:10.55in; height:8.05in; margin:0; border:0 !important; border-top:0 !important; box-shadow:none !important; break-after:page; page-break-after:always; background:#fff !important; color:#000 !important; color-scheme:light !important; -webkit-print-color-adjust:economy !important; print-color-adjust:economy !important; }
+          #dc325-form .dc325-page:last-child { break-after:auto; page-break-after:auto; }
+          #dc325-form .dc325-page, #dc325-form .dc325-page * { color:#000 !important; background-color:transparent !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color-scheme:light !important; }
+          #dc325-form .dc325-page { background:#fff !important; }
+          #dc325-form .dc-left,#dc325-form .dc-court-types,#dc325-form .dc-witness-grid,#dc325-form .dc-witness,#dc325-form .dc-rule,#dc325-form .dc-signature-line,#dc325-form .dc-court-use,#dc325-form .dc-continuation header { border-color:#000 !important; }
+          #dc325-form .dc325-page .dc-line-input { background:transparent !important; border:0 !important; border-bottom:1px solid #000 !important; border-radius:0 !important; }
+          #dc325-form .dc325-page textarea { background:transparent !important; border:1px solid #000 !important; border-radius:0 !important; }
+          #dc325-form .dc325-page select { background:transparent !important; border:0 !important; border-bottom:1px solid #000 !important; border-radius:0 !important; appearance:none !important; -webkit-appearance:none !important; }
+          #dc325-form .dc325-page input[type="radio"],#dc325-form .dc325-page input[type="checkbox"] { appearance:auto !important; -webkit-appearance:auto !important; background:#fff !important; accent-color:#000 !important; }
+          #dc325-form .dc325-page input::-webkit-calendar-picker-indicator { filter:none !important; }
           input::placeholder,textarea::placeholder { color:transparent !important; }
-          select { appearance:none; -webkit-appearance:none; }
         }
       `}</style>
 
