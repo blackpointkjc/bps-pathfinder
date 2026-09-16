@@ -328,9 +328,17 @@ export default function DispatchCenter() {
         const refreshWelfare = () => loadWelfareChecks(selectedCall.id);
         let unsubscribe;
         let welfareUnsubscribe;
-        try { unsubscribe = base44.entities.CallNote.subscribe(refreshNotes); } catch { /* polling below is fallback */ }
-        try { welfareUnsubscribe = base44.entities.OfficerWelfareCheck.subscribe(refreshWelfare); } catch { /* polling below is fallback */ }
-        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 30000);
+        try {
+            unsubscribe = base44.entities.CallNote.subscribe(event => {
+                if (String(event?.data?.call_id || '') === String(selectedCall.id)) refreshNotes();
+            });
+        } catch { /* polling below is fallback */ }
+        try {
+            welfareUnsubscribe = base44.entities.OfficerWelfareCheck.subscribe(event => {
+                if (String(event?.data?.call_id || '') === String(selectedCall.id)) refreshWelfare();
+            });
+        } catch { /* polling below is fallback */ }
+        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 2 * 60 * 1000);
         return () => {
             if (typeof unsubscribe === 'function') unsubscribe();
             if (typeof welfareUnsubscribe === 'function') welfareUnsubscribe();
