@@ -21,11 +21,6 @@ const ENTITY_ICON = {
 
 const normalize = value => String(value || '').trim().toLowerCase();
 
-function matchesAll(text, query) {
-  const haystack = normalize(text);
-  return normalize(query).split(/\s+/).filter(Boolean).every(term => haystack.includes(term));
-}
-
 function lawMatches(query) {
   const q = normalize(query);
   if (q.length < 2) return [];
