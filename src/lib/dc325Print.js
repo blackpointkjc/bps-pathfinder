@@ -6,7 +6,7 @@ const esc = (value) => String(value ?? '')
   .replaceAll("'", '&#039;');
 
 const marked = (condition) => `<span class="box">${condition ? 'X' : ''}</span>`;
-const valueOrBlank = (value) => esc(value || '&nbsp;');
+const valueOrBlank = (value) => value ? esc(value) : '&nbsp;';
 
 function field(value, label, className = '') {
   return `<div class="field ${className}"><div class="field-value">${valueOrBlank(value)}</div>${label ? `<div class="field-label">${label}</div>` : ''}</div>`;
@@ -240,10 +240,11 @@ ${extraPages.join('')}
 }
 
 export function printDc325(form) {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  const printWindow = window.open('', '_blank', 'width=1200,height=900');
   if (!printWindow) {
     throw new Error('The print window was blocked. Allow pop-ups for Pathfinder and try again.');
   }
+  printWindow.opener = null;
   printWindow.document.open();
   printWindow.document.write(buildDc325PrintHtml(form));
   printWindow.document.close();
