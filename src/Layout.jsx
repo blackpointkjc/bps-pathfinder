@@ -907,10 +907,18 @@ export default function Layout({ children, currentPageName }) {
 
   const connectExternalAntenna = async (baudRate = externalGps.baudRate || 4800) => {
     if (gpsChanging) return;
+    if (!externalGps.serialApiAvailable) {
+      toast.error('Direct external GPS is not available in this browser. Use Pathfinder Desktop or Windows Location Services.');
+      return;
+    }
+    if (externalGps.policyAllowed === false) {
+      toast.error('The Base44 web portal blocks direct Serial access. Open this same Pathfinder app in Pathfinder Desktop for USB/NMEA antenna selection, or use the receiver through Windows Location Services.');
+      return;
+    }
     setGpsChanging(true);
     try {
       await requestExternalGpsConnection({ baudRate: Number(baudRate) || 4800 });
-      toast.success('External GPS antenna connected.');
+      toast.success('External GPS antenna connected. Pathfinder is now using the receiver as the preferred live GPS source.');
       setGpsMenuOpen(false);
     } catch (error) {
       toast.error(error?.message || 'Unable to connect the external GPS antenna.');
