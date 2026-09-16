@@ -156,7 +156,13 @@ Deno.serve(async (req) => {
     const terms = query.split(/\s+/).filter(Boolean);
 
     const restrictedEntities = new Set(['ConfidentialReport', 'Complaint', 'WriteUpReport', 'InspectionReport', 'UseOfForceReport']);
-    const searchableSources = privileged ? SOURCES : SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
+    const requestedEntities = Array.isArray(body?.entities)
+      ? new Set(body.entities.map((value: unknown) => String(value || '').trim()).filter(Boolean))
+      : null;
+    const permittedSources = privileged ? SOURCES : SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
+    const searchableSources = requestedEntities?.size
+      ? permittedSources.filter(([entityName]) => requestedEntities.has(entityName))
+      : permittedSources;
 
     // Loading every source at once caused API throttling and then silently returned
     // an empty search. Process a few sources at a time and retry transient failures.
