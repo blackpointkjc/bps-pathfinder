@@ -29,7 +29,7 @@ export default function AccountingTaxLiability() {
       return payload;
     },
     enabled: isAccountingRole,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
   });
   const payrollEntries = accountingData.payrollEntries || [];
   const config = accountingData.config || null;

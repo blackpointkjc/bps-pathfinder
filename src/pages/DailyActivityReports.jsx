@@ -85,7 +85,7 @@ export default function DailyActivityReports() {
       return entries.find(e => !e.clock_out && String(e.officer_email || '').trim().toLowerCase() === email) || null;
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0].trim() : '';

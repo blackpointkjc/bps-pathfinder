@@ -23,7 +23,7 @@ export default function NotificationCenter({ user }) {
       );
     },
     enabled: !!user?.email,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 2 * 60 * 1000, // Slow fallback; realtime monitors own fast updates
   });
 
   const markAsReadMutation = useMutation({

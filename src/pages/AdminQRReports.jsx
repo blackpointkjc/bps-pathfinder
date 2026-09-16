@@ -42,7 +42,7 @@ export default function AdminQRReports() {
       return await base44.entities.QRScanEvent.filter(params, '-scanned_at', 500);
     },
     enabled: user?.role === 'admin',
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
     staleTime: 20000,
     placeholderData: (prev) => prev,
   });
@@ -59,7 +59,7 @@ export default function AdminQRReports() {
     queryKey: ['jobDutyRules', 'adminQRReports'],
     queryFn: () => base44.entities.JobDutyRule.list('property_site', 1000),
     enabled: user?.role === 'admin',
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
     staleTime: 0,
   });
 

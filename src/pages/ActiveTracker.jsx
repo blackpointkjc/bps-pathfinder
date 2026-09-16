@@ -24,7 +24,7 @@ export default function ActiveTracker() {
       return rows.filter(row => row.session_active !== false && row.status !== 'Out of Service');
     },
     enabled: !!user?.id,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
     retry: 1,
   });

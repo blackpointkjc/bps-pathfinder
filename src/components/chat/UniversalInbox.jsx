@@ -169,7 +169,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       if (!stopped) await loadChatMessages(selectedChatId, { showLoading });
     };
     refreshMessages(true);
-    const interval = window.setInterval(() => refreshMessages(false), 30000);
+    const interval = window.setInterval(() => refreshMessages(false), 60000);
     const onFocus = () => refreshMessages();
     window.addEventListener('focus', onFocus);
     return () => {

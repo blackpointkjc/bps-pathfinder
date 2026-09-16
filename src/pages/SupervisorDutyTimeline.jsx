@@ -29,7 +29,7 @@ export default function SupervisorDutyTimeline() {
   const { data: assignments = [], isLoading, error } = useQuery({
     queryKey: ['supervisorDutyTimeline'],
     queryFn: () => base44.entities.DutySupervisorAssignment.list('-assignment_date', 1000),
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const personLabel = email => {

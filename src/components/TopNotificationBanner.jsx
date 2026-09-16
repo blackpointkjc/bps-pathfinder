@@ -23,7 +23,7 @@ export default function TopNotificationBanner({ user }) {
       }
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const markReadMutation = useMutation({

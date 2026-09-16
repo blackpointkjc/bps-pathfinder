@@ -58,7 +58,7 @@ export default function ClientQRReports() {
       return all.filter((s) => clientLocations.includes(s.property_site));
     },
     enabled: clientLocations.length > 0,
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
     staleTime: 20000,
     placeholderData: (prev) => prev,
   });
@@ -78,7 +78,7 @@ export default function ClientQRReports() {
       return rules.filter(rule => rule.active !== false && clientLocations.includes(rule.property_site));
     },
     enabled: clientLocations.length > 0,
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
     staleTime: 0,
   });
 

@@ -46,7 +46,7 @@ export default function AdminMessages() {
       );
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
   const activeUsers = allUsers?.filter(u => {

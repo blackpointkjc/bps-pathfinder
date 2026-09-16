@@ -211,7 +211,7 @@ export default function QRPatrolScan() {
     },
     enabled: !!activeSiteName,
     staleTime: 0,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
   const { data: siteCheckpoints = [] } = useQuery({
@@ -266,7 +266,7 @@ export default function QRPatrolScan() {
       });
     },
     enabled: !!activeSiteName,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     staleTime: 0,
     placeholderData: (prev) => prev ?? [],
   });

@@ -82,7 +82,7 @@ export default function OfficerProfile() {
       const rows = await base44.entities.User.filter({ email: authUser.email }).catch(() => []);
       return rows?.[0] ? { ...authUser, ...rows[0] } : authUser;
     },
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const certificationRows = profileCertifications(user);

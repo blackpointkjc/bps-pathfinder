@@ -31,7 +31,7 @@ export default function AccountingW2Generator() {
       return payload;
     },
     enabled: isAccountingRole,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
   });
   const payrollEntries = accountingData.payrollEntries || [];
   const officers = accountingData.users || [];

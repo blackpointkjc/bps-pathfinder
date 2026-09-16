@@ -138,7 +138,7 @@ export default function Dashboard({ embedded = false }) {
       ) || null;
     },
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
   const { data: pendingRequests } = useQuery({

@@ -35,7 +35,7 @@ export default function AdminSupportStaffClock() {
       return records || [];
     },
     enabled: hasAccess && !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     initialData: [],
   });
 
