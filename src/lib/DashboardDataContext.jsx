@@ -1,7 +1,8 @@
 /**
  * Centralized data provider for the dashboard.
  * All components pull from here instead of making their own API calls.
- * Keeps DispatchCall synchronized with GRAC every 10s while the dashboard is open.
+ * Keeps the persisted DispatchCall queue synchronized through realtime events,
+ * a background watchdog fallback, and explicit wake/recovery refreshes.
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -14,7 +15,9 @@ const RATE_LIMIT_BACKOFF_MS = 120_000;  // Give Base44 room to recover after a 4
 const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
-const ACTIVE_CALL_CACHE_MAX_AGE_MS = 5 * 60_000;
+// Keep the last good queue through a long minimized/idle period. Individual calls
+// are still filtered to the one-hour operational window before they are rendered.
+const ACTIVE_CALL_CACHE_MAX_AGE_MS = 65 * 60_000;
 
 function readCachedActiveCalls() {
     try {
@@ -75,8 +78,10 @@ export function DashboardDataProvider({ children }) {
         // A rate limit must never hide already-persisted CAD data. Continue reading
         // DispatchCall while ingestion is backed off; only syncGrac is paused.
 
-        // Throttle local reads — but always honor a forced/manual refresh
-        if (!force && now - lastRefreshTime.current < MIN_REFRESH_MS) {
+        // Throttle local reads — but always honor a forced/manual refresh. During
+        // a known 429 window, background fallbacks stay quiet and preserve the last
+        // good queue instead of repeatedly replacing reliability with retries.
+        if (!force && (now < rateLimitedUntil.current || now - lastRefreshTime.current < MIN_REFRESH_MS)) {
             return;
         }
 
@@ -193,6 +198,36 @@ export function DashboardDataProvider({ children }) {
     useEffect(() => {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
+    }, [loadData]);
+
+    // Chromium can freeze a minimized/idle page, including subscriptions and
+    // window timers. The GPS Worker emits background ticks while the process is
+    // still allowed to run, and liveLocationService emits one recovery event when
+    // a frozen page wakes. Catch up the queue and roster immediately in both cases.
+    useEffect(() => {
+        let wakeTimer;
+        const recoverOperationalData = () => {
+            window.clearTimeout(wakeTimer);
+            wakeTimer = window.setTimeout(() => {
+                if (Date.now() < rateLimitedUntil.current) return;
+                lastUsersRefreshTime.current = 0;
+                loadData(true);
+            }, 250);
+        };
+        const backgroundTick = () => {
+            if (Date.now() - lastRefreshTime.current >= POLL_INTERVAL_MS) loadData(false);
+        };
+        window.addEventListener('bps-operational-resume', recoverOperationalData);
+        window.addEventListener('bps-background-location-tick', backgroundTick);
+        window.addEventListener('online', recoverOperationalData);
+        window.addEventListener('pageshow', recoverOperationalData);
+        return () => {
+            window.clearTimeout(wakeTimer);
+            window.removeEventListener('bps-operational-resume', recoverOperationalData);
+            window.removeEventListener('bps-background-location-tick', backgroundTick);
+            window.removeEventListener('online', recoverOperationalData);
+            window.removeEventListener('pageshow', recoverOperationalData);
+        };
     }, [loadData]);
 
     // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
