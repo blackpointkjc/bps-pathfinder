@@ -20,7 +20,6 @@ import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/l
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
-import { disconnectExternalGps, getExternalGpsStatus, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -171,7 +170,6 @@ export default function TimeClock() {
   const [endDate, setEndDate] = useState(easternTodayKey);
   const [clockInCoords, setClockInCoords] = useState(null);
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
-  const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
   const queryClient = useQueryClient();
 
   // NEW STATE VARIABLES
@@ -449,21 +447,6 @@ export default function TimeClock() {
       });
     });
   }, []);
-
-  useEffect(() => subscribeExternalGpsStatus(setExternalGps), []);
-
-  const handleExternalGps = async () => {
-    setGeoError(null);
-    try {
-      if (externalGps.connected) {
-        await disconnectExternalGps();
-        return;
-      }
-      await requestExternalGpsConnection({ baudRate: externalGps.baudRate || 4800 });
-    } catch (error) {
-      setGeoError(error?.message || 'Unable to connect the external GPS receiver.');
-    }
-  };
 
   const requestLocationPermission = async () => {
 
@@ -809,30 +792,6 @@ export default function TimeClock() {
             </div>
           </div>
         )}
-
-        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-black text-cyan-100">External GPS Receiver</p>
-                <p className="mt-1 text-xs leading-5 text-cyan-200/80">
-                  {externalGps.supported
-                    ? externalGps.connected
-                      ? `Connected${externalGps.backgroundReader ? ' • background reader active' : ''}${externalGps.lastFixAt ? ` • last fix ${format(new Date(externalGps.lastFixAt), 'h:mm:ss a')}` : ' • waiting for NMEA fix'}`
-                      : 'Optional USB/serial NMEA GPS for CF-33 and other field computers. Chrome or Edge will ask which COM/GPS device to use.'
-                    : 'Direct USB/serial GPS is not supported by this browser. Windows Location Services can still supply an external receiver to Pathfinder.'}
-                </p>
-                {externalGps.connected && (externalGps.satellites || externalGps.hdop) && (
-                  <p className="mt-1 text-[11px] font-semibold text-cyan-300">Satellites: {externalGps.satellites ?? '—'} • HDOP: {externalGps.hdop ?? '—'}</p>
-                )}
-              </div>
-              {externalGps.supported && (
-                <Button type="button" variant="outline" onClick={handleExternalGps} disabled={externalGps.connecting} className="border-cyan-400/50 bg-[#08111d] text-cyan-100 hover:bg-cyan-950">
-                  <Navigation className="mr-2 h-4 w-4" />
-                  {externalGps.connecting ? 'Connecting…' : externalGps.connected ? 'Disconnect GPS' : 'Connect External GPS'}
-                </Button>
-              )}
-            </div>
-          </div>
 
         <Card className="overflow-hidden border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-2xl">
           <CardHeader className={`border-b border-[#29445f] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#10263b]'}`}>
