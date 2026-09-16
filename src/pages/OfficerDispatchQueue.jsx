@@ -44,15 +44,25 @@ export default function OfficerDispatchQueue() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => refetch(), 750);
     };
+    const recoverQueue = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => refetch(), 200);
+    };
     for (const entity of ['CallAssignment','CallNote','DispatchCall','OfficerWelfareCheck']) {
       try {
         const unsub = base44.entities[entity].subscribe(scheduleRefresh);
         if (typeof unsub === 'function') unsubs.push(unsub);
       } catch {}
     }
+    window.addEventListener('bps-operational-resume', recoverQueue);
+    window.addEventListener('online', recoverQueue);
+    window.addEventListener('pageshow', recoverQueue);
     return () => {
       window.clearTimeout(timer);
       unsubs.forEach(fn => fn());
+      window.removeEventListener('bps-operational-resume', recoverQueue);
+      window.removeEventListener('online', recoverQueue);
+      window.removeEventListener('pageshow', recoverQueue);
     };
   }, [refetch]);
 
