@@ -11,7 +11,7 @@
       "repeat_unit": "minutes",
       "repeat_interval": 1,
       "is_active": true,
-      "function_args": {}
+      "function_args": { "scheduled": true }
     }
   ]
 }
