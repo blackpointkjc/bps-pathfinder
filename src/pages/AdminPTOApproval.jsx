@@ -1,6 +1,6 @@
 import { confirmInApp } from '@/lib/inAppDialog';
 import { listDirectoryUsers } from '@/lib/appDirectory';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -54,8 +54,20 @@ export default function AdminPTOApproval() {
     },
     enabled: hasHRAccess,
     initialData: [],
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (!hasHRAccess) return undefined;
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.TimeOffRequest.subscribe(() => {
+        queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
+      });
+    } catch {}
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
+  }, [hasHRAccess, queryClient]);
 
   const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
   const reviewedRequests = allPTORequests
