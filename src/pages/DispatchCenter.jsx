@@ -30,6 +30,7 @@ import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/co
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -265,11 +266,7 @@ export default function DispatchCenter() {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            let calls = await withRequestTimeout(
-                base44.entities.DispatchCall.list('-created_date', 75),
-                12000,
-                'Dispatch active calls request'
-            );
+            let calls = await loadActiveDispatchCallRows(100);
             if (cadCallFeedIsStale(calls)) {
                 // Never hold the Dispatch Center loading screen open while the
                 // upstream recovery job runs. Paint cached/persisted rows first.
