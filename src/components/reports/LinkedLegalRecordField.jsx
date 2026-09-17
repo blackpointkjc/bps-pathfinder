@@ -121,16 +121,16 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
       linked_legal_record_charge: row.charge,
       linked_legal_record_subject: row.subject,
       linked_location: row.location,
-      linked_call_id: current.linked_call_id || row.callId,
-      linked_call_number: current.linked_call_number || row.callNumber,
-      linked_call_type: current.linked_call_type || row.callType,
-      linked_call_location: current.linked_call_location || row.location,
-      case_number: current.case_number || row.caseNumber || '',
-      defendant_child_name: current.defendant_child_name || row.subject,
-      charge: current.charge || row.charge,
-      court_date: current.court_date || row.courtDate,
-      court_time: current.court_time || row.courtTime,
-      court_type: current.court_type || row.courtType,
+      linked_call_id: row.callId || current.linked_call_id,
+      linked_call_number: row.callNumber || current.linked_call_number,
+      linked_call_type: row.callType || current.linked_call_type,
+      linked_call_location: row.location || current.linked_call_location,
+      case_number: row.caseNumber || current.case_number || '',
+      defendant_child_name: row.subject || current.defendant_child_name,
+      charge: row.charge || current.charge,
+      court_date: row.courtDate || current.court_date,
+      court_time: row.courtTime || current.court_time,
+      court_type: row.courtType || current.court_type,
     }));
   };
 
@@ -160,7 +160,7 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
         className="h-10 w-full rounded-md border border-slate-700 bg-[#101f2e] px-3 text-sm text-slate-100"
         aria-label="Linked criminal complaint or summons"
       >
-        <option value="">{complaintsLoading || summonsLoading ? 'Loading legal records…' : 'Select a criminal complaint or summons'}</option>
+        <option value="">{complaintsLoading || summonsLoading ? 'Loading legal records…' : `Select a criminal complaint or summons (${options.length} available)`}</option>
         {options.map(option => <option key={`${option.type}:${option.id}`} value={`${option.type}:${option.id}`}>{option.label}</option>)}
       </select>
       {formData?.linked_legal_record_id && (
