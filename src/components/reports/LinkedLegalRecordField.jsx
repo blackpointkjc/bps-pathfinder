@@ -1,69 +1,107 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { FileText, Link2, Scale, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const officerOwns = (record, user) => String(record?.created_by_id || record?.created_by || '').toLowerCase() === String(user?.id || user?.email || '').toLowerCase();
-
 const makeOption = (type, record) => {
   if (type === 'criminal_complaint') {
     const subject = [record.accused_first_name, record.accused_middle_name, record.accused_last_name].filter(Boolean).join(' ');
-    const charge = [record.violation_code, record.violation_section].filter(Boolean).join(' — ');
+    const chargeCode = record.granted_charge_code || record.violation_code || '';
+    const chargeDescription = record.granted_charge_description || record.violation_section || '';
+    const charge = [chargeCode, chargeDescription].filter(Boolean).join(' — ');
+    const caseNumber = record.magistrate_case_number || record.warrant_number || record.complaint_number || record.call_number || record.id;
     return {
       type,
       id: record.id,
-      number: record.complaint_number || record.call_number || record.id,
+      number: caseNumber,
+      caseNumber,
       subject,
       charge,
       location: record.linked_call_location || record.location || '',
       callId: record.linked_call_id || '',
       callNumber: record.linked_call_number || '',
       callType: record.linked_call_type || '',
-      label: `Complaint · ${record.complaint_number || 'No number'} · ${subject || 'No accused'}`,
+      courtDate: record.court_filing_date || '',
+      courtTime: '',
+      courtType: record.court_type || 'general_district',
+      label: `Complaint · ${caseNumber || 'No number'} · ${subject || 'No accused'}`,
       record,
     };
   }
   const subject = [record.defendant_name_first, record.defendant_name_middle, record.defendant_name_last].filter(Boolean).join(' ');
   const charge = [record.violation_law_section || record.violation_code, record.violation_charge_description].filter(Boolean).join(' — ');
+  const caseNumber = record.case_number || record.summons_number || record.id;
   return {
     type,
     id: record.id,
-    number: record.summons_number || record.case_number || record.id,
+    number: caseNumber,
+    caseNumber,
     subject,
     charge,
     location: record.linked_call_location || record.location_of_offense || record.offense_county_city || '',
     callId: record.linked_call_id || '',
     callNumber: record.linked_call_number || '',
     callType: record.linked_call_type || '',
-    label: `Summons · ${record.summons_number || record.case_number || 'No number'} · ${subject || 'No defendant'}`,
+    courtDate: record.hearing_date || '',
+    courtTime: record.hearing_time || '',
+    courtType: record.court_type === 'juvenile_domestic' ? 'juvenile_domestic' : 'general_district',
+    label: `Summons · ${caseNumber || 'No number'} · ${subject || 'No defendant'}`,
     record,
   };
 };
 
 export default function LinkedLegalRecordField({ formData, setFormData }) {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: getCurrentDirectoryUser });
-  const { data: complaints = [], isLoading: complaintsLoading } = useQuery({
+  const { data: complaints = [], isPending: complaintsLoading, error: complaintsError } = useQuery({
     queryKey: ['legalLinkComplaints'],
-    queryFn: () => base44.entities.CriminalComplaint.list('-created_date', 500),
+    queryFn: () => base44.entities.CriminalComplaint.list('-created_date', 1000),
     enabled: !!user,
-    initialData: [],
+    staleTime: 0,
+    retry: false,
   });
-  const { data: summonses = [], isLoading: summonsLoading } = useQuery({
+  const { data: summonses = [], isPending: summonsLoading, error: summonsError } = useQuery({
     queryKey: ['legalLinkSummonses'],
-    queryFn: () => base44.entities.Summons.list('-created_date', 500),
+    queryFn: () => base44.entities.Summons.list('-created_date', 1000),
     enabled: !!user,
-    initialData: [],
+    staleTime: 0,
+    retry: false,
   });
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let timer = null;
+    const refresh = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['legalLinkComplaints'] });
+        queryClient.invalidateQueries({ queryKey: ['legalLinkSummonses'] });
+      }, 500);
+    };
+    const unsubscribers = [];
+    for (const entity of ['CriminalComplaint', 'Summons']) {
+      try {
+        const stop = base44.entities[entity].subscribe(refresh);
+        if (typeof stop === 'function') unsubscribers.push(stop);
+      } catch { /* The selector still refreshes whenever it mounts. */ }
+    }
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      unsubscribers.forEach(stop => stop());
+    };
+  }, [queryClient, user?.id]);
+
   const options = useMemo(() => {
-    const allowed = (records) => user?.role === 'admin' ? records : records.filter(record => officerOwns(record, user));
+    // Entity read permissions are authoritative. Do not re-filter returned legal
+    // records by one fragile creator field; older records legitimately use either
+    // creator IDs or linked officer emails.
     const rows = [
-      ...allowed(complaints).map(record => makeOption('criminal_complaint', record)),
-      ...allowed(summonses).map(record => makeOption('summons', record)),
+      ...complaints.map(record => makeOption('criminal_complaint', record)),
+      ...summonses.map(record => makeOption('summons', record)),
     ];
     const query = search.trim().toLowerCase();
     if (!query) return rows;
@@ -87,9 +125,12 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
       linked_call_number: current.linked_call_number || row.callNumber,
       linked_call_type: current.linked_call_type || row.callType,
       linked_call_location: current.linked_call_location || row.location,
-      case_number: current.case_number || row.record.case_number || '',
+      case_number: current.case_number || row.caseNumber || '',
       defendant_child_name: current.defendant_child_name || row.subject,
       charge: current.charge || row.charge,
+      court_date: current.court_date || row.courtDate,
+      court_time: current.court_time || row.courtTime,
+      court_type: current.court_type || row.courtType,
     }));
   };
 
@@ -133,7 +174,18 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
           <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7 text-slate-400 hover:text-red-300"><X className="mr-1 h-3 w-3" />Clear</Button>
         </div>
       )}
-      {!complaintsLoading && !summonsLoading && options.length === 0 && <div className="text-xs text-slate-500"><FileText className="mr-1 inline h-3 w-3" />No matching complaints or summonses were found.</div>}
+      {(complaintsError || summonsError) && (
+        <div className="rounded-md border border-red-500/30 bg-red-950/20 px-3 py-2 text-xs text-red-200">
+          Legal records could not be loaded. Please use Retry instead of creating a duplicate case.
+          <Button type="button" variant="ghost" size="sm" className="ml-2 h-7 text-red-100" onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['legalLinkComplaints'] });
+            queryClient.invalidateQueries({ queryKey: ['legalLinkSummonses'] });
+          }}>Retry</Button>
+        </div>
+      )}
+      {!complaintsLoading && !summonsLoading && !complaintsError && !summonsError && options.length === 0 && (
+        <div className="text-xs text-slate-500"><FileText className="mr-1 inline h-3 w-3" />{search.trim() ? 'No legal records match this search.' : 'No criminal complaints or summonses are available to link.'}</div>
+      )}
     </div>
   );
 }
