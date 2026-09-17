@@ -137,10 +137,14 @@ const entities = new Proxy(rawBase44.entities, {
 const isReadOnlyFunction = (name, payload = {}) => {
   const functionName = String(name || '');
   const action = String(payload?.action || '').toLowerCase();
+  const readActions = new Set(['list', 'get', 'search', 'status', 'messages', 'folders', 'preview', 'check']);
+  // Some legacy functions begin with "get" but also accept approve/update/delete
+  // actions. Any explicit non-read action must retain write priority.
+  if (action && !readActions.has(action)) return false;
   if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
   if (functionName === 'runSystemAudit') return true;
   if (functionName === 'manageOfficerPerformanceReviews' && action === 'list') return true;
-  if (functionName === 'companyImapMail' && ['status', 'messages', 'folders'].includes(action)) return true;
+  if (functionName === 'companyImapMail' && readActions.has(action)) return true;
   return false;
 };
 const functions = new Proxy(rawBase44.functions, {
