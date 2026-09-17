@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,18 +15,29 @@ const normalizedStatus = value => String(value || '').trim().toLowerCase();
 export default function PropertyAlertsBanner() {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const loadingRef = useRef(false);
 
     useEffect(() => {
         loadAlerts();
-        const interval = setInterval(loadAlerts, 60000);
-        const unsubscribe = base44.entities.PropertyAlert.subscribe(() => loadAlerts());
+        let refreshTimer;
+        const scheduleLoad = () => {
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(loadAlerts, 750);
+        };
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') loadAlerts();
+        }, 180000);
+        const unsubscribe = base44.entities.PropertyAlert.subscribe(scheduleLoad);
         return () => {
             clearInterval(interval);
+            window.clearTimeout(refreshTimer);
             unsubscribe?.();
         };
     }, []);
 
     const loadAlerts = async () => {
+        if (loadingRef.current) return;
+        loadingRef.current = true;
         try {
             const me = await base44.auth.me();
             const email = String(me?.email || '').trim().toLowerCase();
@@ -72,6 +83,7 @@ export default function PropertyAlertsBanner() {
         } catch (error) {
             console.error('Error loading property alerts:', error);
         } finally {
+            loadingRef.current = false;
             setLoading(false);
         }
     };
