@@ -26,7 +26,8 @@ export default function OfficerDispatchQueue() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 60000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     staleTime: 15000,
   });
