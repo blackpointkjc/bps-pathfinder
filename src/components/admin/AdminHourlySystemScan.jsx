@@ -41,11 +41,13 @@ export default function AdminHourlySystemScan({ user }) {
       if (!active || runningRef.current || document.hidden) return;
       runningRef.current = true;
       try {
-        const latest = await base44.entities.SystemScanRun.list('-scanned_at', 1).catch(() => []);
-        const lastScanAt = new Date(latest?.[0]?.scanned_at || 0).getTime();
-        if (Number.isFinite(lastScanAt) && Date.now() - lastScanAt < ONE_HOUR_MS) return;
-
         const execute = async () => {
+          // Recheck after acquiring the cross-tab lock. Previously every open admin
+          // tab checked first, queued for the lock, and then each ran a full audit.
+          const latest = await base44.entities.SystemScanRun.list('-scanned_at', 1).catch(() => []);
+          const lastScanAt = new Date(latest?.[0]?.scanned_at || 0).getTime();
+          if (Number.isFinite(lastScanAt) && Date.now() - lastScanAt < ONE_HOUR_MS) return;
+
           // Run the server and browser audits sequentially so the hourly scan does
           // not compete with itself for the same Base44 request allowance.
           const serverResponse = await base44.functions.invoke('runSystemAudit', {});
