@@ -22,6 +22,7 @@ import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/l
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -186,18 +187,21 @@ export default function Navigation() {
         // reads DispatchCall so opening the map cannot start another backend sync loop.
         fetchCalls();
         let refreshTimer;
-        const scheduleCallRefresh = () => {
-            window.clearTimeout(refreshTimer);
-            refreshTimer = window.setTimeout(() => fetchCalls(), 900);
-        };
-        const unsubscribe = base44.entities.DispatchCall.subscribe(scheduleCallRefresh);
+        const unsubscribe = subscribeDispatchCallChanges(event => {
+            if (!event?.data && event?.type !== 'delete') {
+                window.clearTimeout(refreshTimer);
+                refreshTimer = window.setTimeout(() => fetchCalls(), 5000);
+                return;
+            }
+            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60_000, limit: 250 }));
+        });
         const recoverCalls = () => {
             window.clearTimeout(refreshTimer);
             refreshTimer = window.setTimeout(() => fetchCalls(), 200);
         };
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
-        }, 20000);
+        }, 180000);
         window.addEventListener('bps-operational-resume', recoverCalls);
         window.addEventListener('online', recoverCalls);
         window.addEventListener('pageshow', recoverCalls);
