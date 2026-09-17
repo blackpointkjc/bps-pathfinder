@@ -50,11 +50,10 @@ Deno.serve(async (req) => {
             updateData.current_call_info = null;
         }
 
-        // Update both session and User entity so all users see the change.
-        await Promise.all([
-            base44.auth.updateMe(updateData),
-            base44.asServiceRole.entities.User.update(user.id, updateData)
-        ]);
+        // auth.updateMe and User.update write the same User record. The old
+        // Promise.all sent every status change twice, wasting request allowance and
+        // emitting duplicate realtime events. One service-role update is authoritative.
+        await base44.asServiceRole.entities.User.update(user.id, updateData);
 
         // Keep all CAD status sources synchronized. ActiveOfficer is the live source
         // used by the canonical unit board, so leaving it stale would immediately
