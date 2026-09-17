@@ -43,6 +43,10 @@ export default function MyPerformanceAnalytics() {
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
+      const sourceErrors = Object.entries(payload.service_errors || {});
+      if (sourceErrors.length) {
+        throw new Error(`Performance data is incomplete: ${sourceErrors.map(([name]) => name).join(', ')} could not be read. The last verified score remains on screen.`);
+      }
       return payload;
     },
     enabled: !!user?.email,
@@ -53,21 +57,35 @@ export default function MyPerformanceAnalytics() {
     // Entity subscriptions below still refresh immediately when scoring records change.
     refetchInterval: 120000,
     refetchIntervalInBackground: false,
-    retry: 2,
-    retryDelay: attempt => Math.min(1200 * (attempt + 1), 4000),
+    retry: false,
+    placeholderData: previousData => previousData,
   });
 
   React.useEffect(() => {
     if (!user?.id || !user?.email) return undefined;
-    const refresh = () => queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] });
+    let timer = null;
+    const refresh = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] }), 750);
+    };
     const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Schedule', 'TrainingAssignment', 'TrainingCompletion', 'QRScanEvent', 'PerformanceReview', 'ClientFeedback', 'Commendation']) {
+    const scoringEntities = [
+      'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
+      'CallOut', 'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion',
+      'TrainingModule', 'ShiftBid', 'PerformanceReview', 'ClientFeedback',
+      'Commendation', 'Complaint', 'JobDutyRule', 'PropertyAlert',
+      'DispatchCall', 'CallHistory',
+    ];
+    for (const entity of scoringEntities) {
       try {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
-      } catch { /* The one-minute authoritative refresh remains available. */ }
+      } catch { /* The scheduled authoritative refresh remains available. */ }
     }
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
   }, [queryClient, user?.id, user?.email]);
 
   const timeEntries = performanceData.timeEntries || [];
