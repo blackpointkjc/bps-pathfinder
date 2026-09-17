@@ -18,7 +18,7 @@ import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 import { disconnectExternalGps, getExternalGpsStatus, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
-import GlobalMessageBanner from '@/components/GlobalMessageBanner';
+import GlobalMessageBanner, { CadAudioToggle } from '@/components/GlobalMessageBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -1505,7 +1505,7 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] pl-2 pr-14 pb-0 md:pl-5 md:pr-16 xl:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button type="button" onClick={openMobileToolsMenu} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
@@ -1611,6 +1611,7 @@ export default function Layout({ children, currentPageName }) {
               </div>
             )}
           </div>
+          <CadAudioToggle />
           <button
             type="button"
             onClick={refreshApplication}
