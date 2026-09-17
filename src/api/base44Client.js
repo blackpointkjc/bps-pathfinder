@@ -1,5 +1,6 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
@@ -51,17 +52,18 @@ const schedulePump = delay => {
   wakeTimer = window.setTimeout(pumpReads, Math.max(25, delay));
 };
 function pumpReads() {
-  if (activeWrites > 0 || activeReads >= MAX_CONCURRENT_READS || !readQueue.length) return;
+  if (activeReads >= MAX_CONCURRENT_READS || !readQueue.length) return;
   const cooldown = sharedRateLimitUntil() - Date.now();
   if (cooldown > 0) {
     schedulePump(cooldown + 25);
     return;
   }
-  while (activeWrites === 0 && activeReads < MAX_CONCURRENT_READS && readQueue.length) {
+  while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
     const job = readQueue.shift();
+    window.clearTimeout(job.queueTimer);
     activeReads += 1;
     Promise.resolve()
-      .then(job.task)
+      .then(() => withRequestTimeout(Promise.resolve().then(job.task), 20000, 'Data request'))
       .then(job.resolve, error => {
         noteRateLimit(error);
         job.reject(error);
@@ -77,7 +79,7 @@ function queuedRead(key, task) {
   if (cached && Date.now() - cached.at < READ_CACHE_MS) return Promise.resolve(cached.value);
   if (readInflight.has(key)) return readInflight.get(key);
   const request = new Promise((resolve, reject) => {
-    readQueue.push({
+    const job = {
       task: async () => {
         const value = await task();
         readCache.set(key, { at: Date.now(), value });
@@ -85,7 +87,14 @@ function queuedRead(key, task) {
       },
       resolve,
       reject,
-    });
+    };
+    job.queueTimer = window.setTimeout(() => {
+      const index = readQueue.indexOf(job);
+      if (index < 0) return;
+      readQueue.splice(index, 1);
+      reject(new Error('Data request queue is busy. Please retry.'));
+    }, 25000);
+    readQueue.push(job);
     pumpReads();
   }).finally(() => readInflight.delete(key));
   readInflight.set(key, request);
