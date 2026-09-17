@@ -145,6 +145,18 @@ Deno.serve(async (req) => {
       };
     };
     const canonicalRows = (rows:any[]) => (rows || []).map(canonicalOfficerRow);
+    const canonicalUsers = (users || []).map((user:any) => {
+      const primary = canonicalByUserId.get(String(user.id || '')) || canonicalEmail(user.email);
+      const aliases = [
+        user.email,
+        user.work_email,
+        user.pathfinder_email,
+        user.microsoft_email,
+        user.outlook_email,
+        ...(Array.isArray(user.email_aliases) ? user.email_aliases : []),
+      ].map(canonicalEmail).filter(Boolean);
+      return { ...user, email: primary, email_aliases: [...new Set(aliases)] };
+    });
     const canonicalModules = (trainingModules || []).map((module:any) => ({
       ...module,
       assigned_to: Array.isArray(module.assigned_to) ? module.assigned_to.map(canonicalEmail) : module.assigned_to,
@@ -221,7 +233,8 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      users,
+      generated_at: new Date().toISOString(),
+      users: canonicalUsers,
       divisions,
       timeEntries: canonicalRows(timeEntries),
       schedules: canonicalRows(schedules),
