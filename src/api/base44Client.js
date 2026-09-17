@@ -34,7 +34,7 @@ let wakeTimer = null;
 const errorText = error => String(error?.response?.data?.error || error?.response?.data?.message || error?.message || error || '');
 const isRateLimit = error => /rate limit|too many requests|\b429\b/i.test(errorText(error));
 const stableKey = value => {
-  try { return JSON.stringify(value, (_key, item) => item instanceof File ? { name: item.name, size: item.size, type: item.type } : item); }
+  try { return JSON.stringify(value, (_key, item) => typeof File !== 'undefined' && item instanceof File ? { name: item.name, size: item.size, type: item.type } : item); }
   catch { return String(value); }
 };
 const sharedRateLimitUntil = () => {
