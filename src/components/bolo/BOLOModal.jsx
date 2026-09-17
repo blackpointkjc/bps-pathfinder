@@ -194,6 +194,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
   }, [bolo, mode, draftKey]);
   const [formData, setFormData] = useState(initial || {});
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saveError, setSaveError] = useState('');
   const [emailing, setEmailing] = useState(false);
   const isEditing = mode === 'create' || mode === 'edit';
@@ -223,6 +224,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
   });
 
   const saveToServer = async (action) => {
+    if (savingRef.current) return;
     setSaveError('');
     if (!formData.alert_type) {
       setSaveError('Select an alert type before saving.');
@@ -232,6 +234,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
       setSaveError('Enter a BOLO title before release.');
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     try {
       const response = await base44.functions.invoke('manageBolo', {
@@ -260,6 +263,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
     } catch (error) {
       setSaveError(error?.response?.data?.error || error?.message || 'Unable to save BOLO.');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
