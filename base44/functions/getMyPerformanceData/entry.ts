@@ -243,26 +243,46 @@ Deno.serve(async (req) => {
     const linkedPropertyIncidents = incidentsAll.filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
     const relevantIncidents = [...new Map([...myIncidents, ...linkedPropertyIncidents].map((report:any) => [String(report.id), report])).values()];
 
+    // Return one canonical officer identity so schedule, time, training, and
+    // report records still join when they were saved under different linked emails.
+    const canonicalMyRow = (row:any) => ({
+      ...row,
+      officer_email: email,
+      ...(row?.created_by_email !== undefined ? { created_by_email: email } : {}),
+      ...(row?.created_by && String(row.created_by).includes('@') && aliases.has(lower(row.created_by)) ? { created_by: email } : {}),
+    });
+    const canonicalPartnerRow = (row:any) => aliases.has(lower(row?.officer_email))
+      ? { ...row, officer_email: email }
+      : row;
+    const canonicalModules = (modulesAll || []).map((module:any) => ({
+      ...module,
+      assigned_to: Array.isArray(module.assigned_to)
+        ? module.assigned_to.map((value:any) => aliases.has(lower(value)) ? email : lower(value))
+        : module.assigned_to,
+    }));
+
     return Response.json({
       success: true,
-      timeEntries: myTimeEntries,
-      schedules: mySchedules,
-      bids: myBids,
-      trainingCompletions: myCompletions,
-      trainingAssignments: myAssignments,
+      officer: { ...officer, email, email_aliases: aliasValues },
+      generated_at: new Date().toISOString(),
+      timeEntries: myTimeEntries.map(canonicalMyRow),
+      schedules: mySchedules.map(canonicalMyRow),
+      bids: myBids.map(canonicalMyRow),
+      trainingCompletions: myCompletions.map(canonicalMyRow),
+      trainingAssignments: myAssignments.map(canonicalMyRow),
       notifications: myNotifications,
-      callOuts: myCallOuts,
-      qrScanEvents: myScans,
+      callOuts: myCallOuts.map(canonicalMyRow),
+      qrScanEvents: myScans.map(canonicalMyRow),
       sharedQrScanEvents: sharedQrScans,
-      partnerTimeEntries,
+      partnerTimeEntries: partnerTimeEntries.map(canonicalPartnerRow),
       checkpoints: checkpointsAll.filter((r:any) => r.is_active !== false),
-      trainingModules: modulesAll.filter((r:any) => r.active !== false),
+      trainingModules: canonicalModules.filter((r:any) => r.active !== false),
       incidents: relevantIncidents,
-      commendations: myCommendations,
-      complaints: myComplaints,
-      clientFeedback: myFeedback,
-      performanceReviews: myReviews,
-      dailyActivityReports: myDailyReports,
+      commendations: myCommendations.map(canonicalMyRow),
+      complaints: myComplaints.map(canonicalMyRow),
+      clientFeedback: myFeedback.map(canonicalMyRow),
+      performanceReviews: myReviews.map(canonicalMyRow),
+      dailyActivityReports: myDailyReports.map(canonicalMyRow),
       dispatchCalls: myPropertyCalls,
       jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
       locations: locationsAll,
