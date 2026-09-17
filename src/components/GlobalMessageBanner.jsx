@@ -676,10 +676,11 @@ export default function GlobalMessageBanner({ user }) {
           onClick={toggleQuietMode}
           aria-pressed={!voiceEnabled}
           aria-label={voiceEnabled ? 'Enable CAD quiet mode' : 'Disable CAD quiet mode'}
-          className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-slate-950/90 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur hover:bg-slate-900"
+          title={voiceEnabled ? 'CAD audio is on — tap for quiet mode' : 'Quiet mode is on — tap to enable CAD audio'}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-slate-950/95 p-0 text-xs font-bold text-white shadow-lg backdrop-blur hover:bg-slate-900 xl:h-auto xl:w-auto xl:gap-2 xl:px-3 xl:py-2"
         >
           {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-300" />}
-          {voiceEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}
+          <span className="hidden xl:inline">{voiceEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}</span>
         </button>
       </div>
       {voiceWarning && (
