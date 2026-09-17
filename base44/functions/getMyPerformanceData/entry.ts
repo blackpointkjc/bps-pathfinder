@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
       notifications: myNotifications,
       callOuts: myCallOuts.map(canonicalMyRow),
       qrScanEvents: myScans.map(canonicalMyRow),
-      sharedQrScanEvents: sharedQrScans,
+      sharedQrScanEvents: sharedQrScans.map(canonicalPartnerRow),
       partnerTimeEntries: partnerTimeEntries.map(canonicalPartnerRow),
       checkpoints: checkpointsAll.filter((r:any) => r.is_active !== false),
       trainingModules: canonicalModules.filter((r:any) => r.active !== false),
