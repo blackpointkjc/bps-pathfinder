@@ -433,7 +433,7 @@ export default function AdminAnalytics() {
     return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
   }
 
-  if (analyticsError) {
+  if (analyticsError && !analyticsData?.generated_at) {
     return <div className="min-h-screen bg-slate-950 p-8 text-red-300">Company analytics could not load: {analyticsError.message}</div>;
   }
 
@@ -479,6 +479,12 @@ export default function AdminAnalytics() {
             </Select>
           </div>
         </div>
+
+        {analyticsError && analyticsData?.generated_at && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+            {analyticsError.message} Showing the last verified company analytics from {new Date(analyticsData.generated_at).toLocaleString()}.
+          </div>
+        )}
 
         {analyticsServiceErrorNames.length > 0 && (
           <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
