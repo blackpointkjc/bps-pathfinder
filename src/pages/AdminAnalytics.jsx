@@ -70,6 +70,10 @@ export default function AdminAnalytics() {
       const result = await base44.functions.invoke('getCompanyAnalyticsData', {});
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      const sourceErrors = Object.entries(payload.service_errors || {});
+      if (sourceErrors.length) {
+        throw new Error(`Analytics data is incomplete: ${sourceErrors.map(([name]) => name).join(', ')} could not be read. The last verified totals remain on screen.`);
+      }
       return payload;
     },
     enabled: !!user,
@@ -77,8 +81,8 @@ export default function AdminAnalytics() {
     refetchOnWindowFocus: false,
     refetchInterval: 120000,
     refetchIntervalInBackground: false,
-    retry: 2,
-    retryDelay: attempt => Math.min(1500 * (attempt + 1), 5000),
+    retry: false,
+    placeholderData: previousData => previousData,
   });
 
   useEffect(() => {
@@ -87,14 +91,25 @@ export default function AdminAnalytics() {
     let unsubscribe = null;
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 500);
+      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 750);
     };
-    try {
-      unsubscribe = base44.entities.TimeEntry.subscribe(refresh);
-    } catch { /* The scheduled refresh remains available if subscriptions are unavailable. */ }
+    const unsubscribers = [];
+    const scoringEntities = [
+      'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
+      'CallOut', 'QRScanEvent', 'TrainingCompletion', 'TrainingAssignment',
+      'TrainingModule', 'ShiftBid', 'ClientFeedback', 'PerformanceReview',
+      'Commendation', 'Complaint', 'JobDutyRule', 'PropertyAlert',
+      'DispatchCall', 'CallHistory',
+    ];
+    for (const entity of scoringEntities) {
+      try {
+        const stop = base44.entities[entity].subscribe(refresh);
+        if (typeof stop === 'function') unsubscribers.push(stop);
+      } catch { /* The scheduled authoritative refresh remains available. */ }
+    }
     return () => {
       if (timer) window.clearTimeout(timer);
-      if (typeof unsubscribe === 'function') unsubscribe();
+      unsubscribers.forEach(stop => stop());
     };
   }, [queryClient, user?.id]);
 
