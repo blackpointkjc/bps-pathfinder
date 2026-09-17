@@ -9,12 +9,13 @@ import { base44 } from '@/api/base44Client';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 
 const DashboardDataContext = createContext(null);
 const POLL_INTERVAL_MS = 60_000;       // Realtime subscriptions handle most updates; this is only a fallback
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
-const MIN_REFRESH_MS = 15_000;          // Prevent subscription bursts from causing repeated list calls
+const MIN_REFRESH_MS = 30_000;          // Full-list reads are fallback only; realtime events update the queue directly
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 // Keep the last good queue through a long minimized/idle period. Individual calls
@@ -252,15 +253,30 @@ export function DashboardDataProvider({ children }) {
         setRateLimited(false);
     }, []);
 
-    // Real-time subscription — reload on DispatchCall changes, but throttled to MIN_REFRESH_MS
+    // Apply realtime DispatchCall events directly. A create/update/delete now paints
+    // immediately without spending another list/function request or waiting for a throttle.
     useEffect(() => {
-        const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
-            const now = Date.now();
-            if (now - lastRefreshTime.current >= MIN_REFRESH_MS && now >= rateLimitedUntil.current) {
-                loadData(false);
+        let reconcileTimer;
+        const unsubscribe = subscribeDispatchCallChanges(event => {
+            if (!event?.data && event?.type !== 'delete') {
+                window.clearTimeout(reconcileTimer);
+                reconcileTimer = window.setTimeout(() => loadData(false), 5000);
+                return;
             }
+            setCalls(current => {
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60_000, limit: 200 });
+                try {
+                    window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
+                } catch {}
+                return next;
+            });
+            setLastRefresh(new Date());
+            setRateLimited(false);
         });
-        return unsubscribe;
+        return () => {
+            window.clearTimeout(reconcileTimer);
+            unsubscribe?.();
+        };
     }, [loadData]);
 
     // Do not reload the full CAD call list for every User update. Officer GPS/status
