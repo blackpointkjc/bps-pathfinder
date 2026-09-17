@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
@@ -22,9 +23,32 @@ export default function CallsForService() {
   const { data: calls } = useQuery({
     queryKey: ['callsForService'],
     queryFn: () => base44.entities.CallForService.list('-call_time'),
-    refetchInterval: 60000, // Refresh every 10 seconds
+    refetchInterval: false,
     initialData: [],
   });
+
+  useEffect(() => {
+    const unsubscribe = base44.entities.CallForService.subscribe(event => {
+      queryClient.setQueryData(['callsForService'], current => {
+        const rows = Array.isArray(current) ? current : [];
+        const id = String(event?.id || event?.data?.id || '');
+        if (!id) return rows;
+        if (event.type === 'delete') return rows.filter(row => String(row.id) !== id);
+        if (event.type === 'create') {
+          if (rows.some(row => String(row.id) === id)) return rows;
+          return [event.data, ...rows];
+        }
+        if (event.type === 'update') {
+          const found = rows.some(row => String(row.id) === id);
+          return found
+            ? rows.map(row => String(row.id) === id ? { ...row, ...event.data } : row)
+            : [event.data, ...rows];
+        }
+        return rows;
+      });
+    });
+    return () => unsubscribe?.();
+  }, [queryClient]);
 
   const { data: activeEntry } = useQuery({
     queryKey: ['activeTimeEntry'],
