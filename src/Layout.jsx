@@ -1505,8 +1505,8 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] pl-2 pr-14 pb-0 md:pl-5 md:pr-16 xl:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button type="button" onClick={openMobileToolsMenu} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
             <span>Tools</span>
@@ -1524,12 +1524,12 @@ export default function Layout({ children, currentPageName }) {
             <span className="sm:hidden">Main</span>
             <span className="hidden sm:inline">{userHomeLabel}</span>
           </Link>
-          <div className="min-w-0">
+          <div className="hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-[#7791aa]">
+        <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-[#7791aa]">
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
           <div ref={gpsMenuRef} className="relative">
             <button
@@ -1622,7 +1622,7 @@ export default function Layout({ children, currentPageName }) {
             <RotateCw className={`h-3.5 w-3.5 ${refreshingApp ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{refreshingApp ? 'Refreshing' : 'Refresh App'}</span>
           </button>
-          <div className="pathfinder-header-clock shrink-0 text-right font-mono leading-tight text-[#9fb6cc]">
+          <div className="pathfinder-header-clock hidden shrink-0 text-right font-mono leading-tight text-[#9fb6cc] lg:block">
             <div className="text-[11px] font-black tracking-wider text-white">{clock.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
             <div className="text-[8px] font-bold tracking-[0.12em] text-[#7894af]">{clock.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} ET</div>
           </div>
