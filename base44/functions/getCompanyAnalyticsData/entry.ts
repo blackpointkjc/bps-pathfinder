@@ -106,6 +106,48 @@ Deno.serve(async (req) => {
       filter('PerformanceReview', { review_date: { $gte: monthDateCutoff } }, '-review_date', 1000),
     ]);
 
+    // Normalize every officer-linked record to the officer's primary directory
+    // email. Operational data may have been saved under a Pathfinder/work address
+    // while the User row now carries a Microsoft sign-in address (or vice versa).
+    // Without this join, valid hours and performance records silently disappear.
+    const canonicalByEmail = new Map<string, string>();
+    const canonicalByUserId = new Map<string, string>();
+    for (const user of users || []) {
+      const primary = lower(user?.work_email || user?.pathfinder_email || user?.email);
+      if (!primary) continue;
+      if (user?.id) canonicalByUserId.set(String(user.id), primary);
+      const aliases = [
+        user?.email,
+        user?.work_email,
+        user?.pathfinder_email,
+        user?.microsoft_email,
+        user?.outlook_email,
+        ...(Array.isArray(user?.email_aliases) ? user.email_aliases : []),
+      ];
+      for (const alias of aliases) {
+        const key = lower(alias);
+        if (key) canonicalByEmail.set(key, primary);
+      }
+    }
+    const canonicalEmail = (value:any) => canonicalByEmail.get(lower(value)) || lower(value);
+    const canonicalOfficerRow = (row:any) => {
+      if (!row) return row;
+      const idEmail = canonicalByUserId.get(String(row.officer_id || row.user_id || row.created_by_id || ''));
+      const primary = idEmail || canonicalEmail(row.officer_email || row.created_by_email || row.created_by);
+      if (!primary) return row;
+      return {
+        ...row,
+        ...(row.officer_email !== undefined || idEmail ? { officer_email: primary } : {}),
+        ...(row.created_by_email !== undefined ? { created_by_email: canonicalEmail(row.created_by_email) } : {}),
+        ...(row.created_by && String(row.created_by).includes('@') ? { created_by: canonicalEmail(row.created_by) } : {}),
+      };
+    };
+    const canonicalRows = (rows:any[]) => (rows || []).map(canonicalOfficerRow);
+    const canonicalModules = (trainingModules || []).map((module:any) => ({
+      ...module,
+      assigned_to: Array.isArray(module.assigned_to) ? module.assigned_to.map(canonicalEmail) : module.assigned_to,
+    }));
+
     const alertByCall = new Map<string, any>();
     for (const alert of propertyAlerts || []) {
       if (!alert?.callId) continue;
@@ -180,25 +222,25 @@ Deno.serve(async (req) => {
       success: true,
       users,
       divisions,
-      timeEntries,
-      schedules,
-      bids,
-      trainingCompletions,
-      trainingAssignments,
-      trainingModules,
-      qrScans,
+      timeEntries: canonicalRows(timeEntries),
+      schedules: canonicalRows(schedules),
+      bids: canonicalRows(bids),
+      trainingCompletions: canonicalRows(trainingCompletions),
+      trainingAssignments: canonicalRows(trainingAssignments),
+      trainingModules: canonicalModules,
+      qrScans: canonicalRows(qrScans),
       qrCheckpoints,
-      incidentReports,
-      dailyActivityReports,
-      callOuts,
+      incidentReports: canonicalRows(incidentReports),
+      dailyActivityReports: canonicalRows(dailyActivityReports),
+      callOuts: canonicalRows(callOuts),
       callsForService,
       dispatchCalls,
       dutyRules,
       locations,
-      commendations,
-      complaints,
-      clientFeedback,
-      performanceReviews,
+      commendations: canonicalRows(commendations),
+      complaints: canonicalRows(complaints),
+      clientFeedback: canonicalRows(clientFeedback),
+      performanceReviews: canonicalRows(performanceReviews),
       service_errors: errors,
     });
   } catch (error) {
