@@ -88,7 +88,6 @@ export default function AdminAnalytics() {
   useEffect(() => {
     if (!user?.id) return undefined;
     let timer = null;
-    let unsubscribe = null;
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 750);
