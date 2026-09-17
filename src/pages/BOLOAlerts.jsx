@@ -48,21 +48,18 @@ export default function BOLOAlerts() {
     init();
   }, []);
 
-  const load = async (attempt = 0) => {
-    if (attempt === 0) setLoading(true);
+  const load = async () => {
+    setLoading(true);
     try {
       const data = await withRequestTimeout(base44.entities.BOLOAlert.list('-created_date', 500), 15000, 'BOLO records request');
       setBolos(data || []);
       setPageError('');
       return data || [];
     } catch (error) {
-      const isRateLimit = String(error?.message || error || '').toLowerCase().includes('rate limit');
-      if (isRateLimit && attempt < 3) {
-        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
-        return load(attempt + 1);
-      }
-      setBolos([]);
-      setPageError(error?.message || 'BOLO records could not be loaded. Please retry.');
+      const isRateLimit = /rate limit|too many requests|\b429\b/i.test(String(error?.message || error || ''));
+      setPageError(isRateLimit
+        ? 'BOLO records are temporarily busy. Wait a moment, then use Retry; the list already on screen has been preserved.'
+        : (error?.message || 'BOLO records could not be loaded. Please retry.'));
       return [];
     } finally {
       setLoading(false);
