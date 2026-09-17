@@ -5,7 +5,6 @@
  * a background watchdog fallback, and explicit wake/recovery refreshes.
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
