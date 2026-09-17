@@ -4,6 +4,9 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 const CACHE_KEY = 'bps-cad-active-calls-v2';
 const CACHE_MAX_AGE_MS = 90 * 60 * 1000;
 let inFlight = null;
+let memoryRows = null;
+let memoryRowsAt = 0;
+const MEMORY_DEDUPE_MS = 10_000;
 
 function readLastGoodCalls() {
   try {
@@ -35,6 +38,9 @@ function saveLastGoodCalls(calls) {
  * queue instead of turning a transient request failure into an empty screen.
  */
 export async function loadActiveDispatchCallRows(limit = 100) {
+  if (Array.isArray(memoryRows) && Date.now() - memoryRowsAt < MEMORY_DEDUPE_MS) {
+    return memoryRows.slice(0, limit);
+  }
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
@@ -49,6 +55,8 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       if (payload?.error) throw new Error(payload.error);
       if (!Array.isArray(payload.calls)) throw new Error('Active call feed returned an invalid response.');
       saveLastGoodCalls(payload.calls);
+      memoryRows = payload.calls;
+      memoryRowsAt = Date.now();
       return payload.calls;
     } catch (error) {
       primaryError = error;
@@ -62,6 +70,8 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       );
       if (!Array.isArray(calls)) throw new Error('Active call fallback returned an invalid response.');
       saveLastGoodCalls(calls);
+      memoryRows = calls;
+      memoryRowsAt = Date.now();
       return calls;
     } catch (fallbackError) {
       const cached = readLastGoodCalls();
