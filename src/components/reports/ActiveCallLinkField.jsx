@@ -4,17 +4,30 @@ import { Radio, X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { listAllDispatchCallsForLinking, applyDispatchCallToForm } from '@/lib/reportCallLinking';
+import { subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 
 export default function ActiveCallLinkField({ formData, setFormData, label = 'Link to Active Call for Service' }) {
   const appliedUrlCall = useRef(false);
-  const { data: calls = [], isLoading, error } = useQuery({
+  const { data: calls = [], isLoading, error, refetch } = useQuery({
     queryKey: ['dispatchCallsForLinking'],
     queryFn: () => listAllDispatchCallsForLinking(1000),
-    refetchInterval: 60000,
-    refetchOnWindowFocus: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
     staleTime: 0,
   });
+
+  useEffect(() => {
+    let refreshTimer;
+    const unsubscribe = subscribeDispatchCallChanges(() => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => refetch(), 750);
+    });
+    return () => {
+      window.clearTimeout(refreshTimer);
+      unsubscribe?.();
+    };
+  }, [refetch]);
 
   const handleSelect = (callId) => {
     const call = calls.find(item => item.id === callId || item.original_call_id === callId);
