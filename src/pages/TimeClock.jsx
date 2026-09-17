@@ -176,9 +176,10 @@ export default function TimeClock() {
   const [switchingSite, setSwitchingSite] = useState(false);
   const [selectedNewSite, setSelectedNewSite] = useState("");
 
-  const { data: user } = useQuery({
+  const { data: user, isLoading: userLoading, error: userError, refetch: retryUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),
+    retry: false,
   });
 
   const isAdmin = user?.role === 'admin';
@@ -192,8 +193,9 @@ export default function TimeClock() {
     enabled: !!user, // ADDED enabled property
   });
 
-  const { data: activeEntry, isLoading } = useQuery({
+  const { data: activeEntry, isLoading, error: activeEntryError, refetch: retryActiveEntry } = useQuery({
     queryKey: ['activeTimeEntry', user?.email],
+    retry: false,
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 10);
@@ -752,7 +754,15 @@ export default function TimeClock() {
     generateTimeClockPrint(recentEntries || [], officerName, startDate, endDate);
   };
 
-  if (isLoading) return <div className="p-6 text-slate-300">Loading time clock...</div>;
+  if (userError || activeEntryError || (!userLoading && !user?.email)) {
+    return <div role="alert" className="m-6 rounded-xl border border-amber-500/50 bg-slate-900 p-6 text-slate-100">
+      <h2 className="text-lg font-bold">Time Clock could not load</h2>
+      <p className="mt-2">Your current shift has not been confirmed. Clock actions are unavailable until it loads; no time entries have been changed.</p>
+      <p className="mt-2 text-sm text-amber-200">{String((userError || activeEntryError)?.message || 'Your signed-in officer profile is unavailable.')}</p>
+      <Button className="mt-4" onClick={() => userError || !user?.email ? retryUser() : retryActiveEntry()}>Retry loading</Button>
+    </div>;
+  }
+  if (userLoading || isLoading) return <div className="p-6 text-slate-300">Loading time clock...</div>;
 
   return (
     <div className="min-h-screen bg-[#08111d] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
