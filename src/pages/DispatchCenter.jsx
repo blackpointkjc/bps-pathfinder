@@ -31,6 +31,7 @@ import DispatcherShiftReports from './DispatcherShiftReports';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -125,7 +126,20 @@ export default function DispatchCenter() {
 
         // GRAC ingestion is owned by the scheduled backend automation. Dispatch
         // Center only reads persisted calls and reacts to realtime entity changes.
-        const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
+        const unsubscribeCalls = subscribeDispatchCallChanges(event => {
+            if (!event?.data && event?.type !== 'delete') {
+                loadActiveCalls();
+                return;
+            }
+            setActiveCalls(current => {
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: DISPATCH_CALL_CACHE_MAX_AGE_MS, limit: 200 });
+                try {
+                    window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
+                } catch {}
+                return next;
+            });
+            lastActiveCallsLoadRef.current = Date.now();
+        });
         let unitRefreshTimer;
         const scheduleUnitRefresh = () => {
             window.clearTimeout(unitRefreshTimer);
@@ -134,7 +148,7 @@ export default function DispatchCenter() {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadActiveCalls();
-        }, 120000);
+        }, 180000);
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
         }, 60000);
