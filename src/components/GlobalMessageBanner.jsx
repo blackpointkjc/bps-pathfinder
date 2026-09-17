@@ -24,6 +24,31 @@ const SOURCES = [
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
 const normalized = value => String(value || '').trim().toLowerCase();
 
+export function CadAudioToggle() {
+  const [audioEnabled, setAudioEnabled] = useState(() => isVoiceEnabled());
+
+  const toggleAudio = () => {
+    const enabled = !audioEnabled;
+    setVoiceEnabled(enabled);
+    setAudioEnabled(enabled);
+    if (!enabled) stopVoice();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggleAudio}
+      aria-pressed={!audioEnabled}
+      aria-label={audioEnabled ? 'Enable CAD quiet mode' : 'Disable CAD quiet mode'}
+      title={audioEnabled ? 'CAD audio is on — tap for quiet mode' : 'Quiet mode is on — tap to enable CAD audio'}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-slate-950/95 p-0 text-xs font-bold text-white shadow-sm transition hover:bg-slate-900 xl:h-auto xl:w-auto xl:gap-2 xl:px-3 xl:py-2"
+    >
+      {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-300" />}
+      <span className="hidden xl:inline">{audioEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}</span>
+    </button>
+  );
+}
+
 let notificationAudioContext;
 
 function audioContext() {
@@ -186,7 +211,6 @@ function BannerIcon({ kind }) {
 export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
   const [voiceWarning, setVoiceWarning] = useState(null);
-  const [voiceEnabled, setVoiceEnabledState] = useState(() => isVoiceEnabled());
   const audioSettings = useRef({ enabled: true, volume: 1, voice_profile: 'american_ai', enabled_event_types: [] });
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
@@ -637,13 +661,6 @@ export default function GlobalMessageBanner({ user }) {
     };
   }, [user?.id, user?.email, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
-  const toggleQuietMode = () => {
-    const enabled = !voiceEnabled;
-    setVoiceEnabled(enabled);
-    setVoiceEnabledState(enabled);
-    if (!enabled) stopVoice();
-  };
-
   const dismiss = async id => {
     const banner = banners.find(entry => entry.id === id);
     const receipt = banner?.propertyAcknowledgement;
@@ -670,19 +687,6 @@ export default function GlobalMessageBanner({ user }) {
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-1 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2 md:top-2">
-      <div className="pointer-events-auto ml-auto">
-        <button
-          type="button"
-          onClick={toggleQuietMode}
-          aria-pressed={!voiceEnabled}
-          aria-label={voiceEnabled ? 'Enable CAD quiet mode' : 'Disable CAD quiet mode'}
-          title={voiceEnabled ? 'CAD audio is on — tap for quiet mode' : 'Quiet mode is on — tap to enable CAD audio'}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-slate-950/95 p-0 text-xs font-bold text-white shadow-lg backdrop-blur hover:bg-slate-900 xl:h-auto xl:w-auto xl:gap-2 xl:px-3 xl:py-2"
-        >
-          {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-300" />}
-          <span className="hidden xl:inline">{voiceEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}</span>
-        </button>
-      </div>
       {voiceWarning && (
         <div role="alert" className="pointer-events-auto rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
           CAD audio could not play. Pathfinder is retrying automatically. Visual alerts remain active.
