@@ -3,6 +3,11 @@ import { QueryClient } from '@tanstack/react-query';
 
 export const queryClientInstance = new QueryClient({
 	defaultOptions: {
+		mutations: {
+			// A failed write may already have committed server-side. Never let the
+			// query library repeat creates, updates, status changes, or report saves.
+			retry: false,
+		},
 		queries: {
 			// Do not refetch the entire application merely because the user switches
 			// windows/tabs and comes back. Page-specific realtime subscriptions and
