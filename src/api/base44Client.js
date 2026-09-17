@@ -134,20 +134,40 @@ const entities = new Proxy(rawBase44.entities, {
     return wrappedEntity(name);
   },
 });
+const isReadOnlyFunction = (name, payload = {}) => {
+  const functionName = String(name || '');
+  const action = String(payload?.action || '').toLowerCase();
+  if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
+  if (functionName === 'runSystemAudit') return true;
+  if (functionName === 'manageOfficerPerformanceReviews' && action === 'list') return true;
+  if (functionName === 'companyImapMail' && ['status', 'messages', 'folders'].includes(action)) return true;
+  return false;
+};
 const functions = new Proxy(rawBase44.functions, {
   get(target, property, receiver) {
     const value = Reflect.get(target, property, receiver);
     if (property !== 'invoke' || typeof value !== 'function') return typeof value === 'function' ? value.bind(target) : value;
     return (name, payload) => {
       const key = `function:${String(name)}:${stableKey(payload || {})}`;
-      return protectedWrite(key, () => value.call(target, name, payload));
+      const task = () => value.call(target, name, payload);
+      return isReadOnlyFunction(name, payload) ? queuedRead(key, task) : protectedWrite(key, task);
     };
+  },
+});
+const auth = new Proxy(rawBase44.auth, {
+  get(target, property, receiver) {
+    const value = Reflect.get(target, property, receiver);
+    if (typeof value !== 'function') return value;
+    if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, () => value.apply(target, args));
+    if (property === 'updateMe') return (...args) => protectedWrite(`auth:updateMe:${stableKey(args)}`, () => value.apply(target, args));
+    return value.bind(target);
   },
 });
 export const base44 = new Proxy(rawBase44, {
   get(target, property, receiver) {
     if (property === 'entities') return entities;
     if (property === 'functions') return functions;
+    if (property === 'auth') return auth;
     const value = Reflect.get(target, property, receiver);
     return typeof value === 'function' ? value.bind(target) : value;
   },
