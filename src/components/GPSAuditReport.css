@@ -102,3 +102,97 @@ html body .gps-audit .gps-brand small { display:block; font-size:10px; }
 .gps-map-controls label { display:flex; flex-direction:column; gap:4px; color:#475569; font-size:12px; min-width:0; }
 .gps-map-controls select { max-width:100%; }
 @media print { .gps-map-controls { display:none !important; } }
+
+/* The GPS audit is a document surface, even when rendered inside the CAD dark
+   workspace. Paint cells as well as rows so global night-theme table rules can
+   never bleed through on screen or into the print clone. */
+html body .bps-command-page .gps-audit,
+html body .cad-app main.night-workspace .gps-audit {
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+html body .bps-command-page .gps-audit .gps-body,
+html body .cad-app main.night-workspace .gps-audit .gps-body,
+html body .bps-command-page .gps-audit .gps-report-card,
+html body .cad-app main.night-workspace .gps-audit .gps-report-card {
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+html body .bps-command-page .gps-audit h2,
+html body .cad-app main.night-workspace .gps-audit h2 {
+  color:#0f172a !important;
+  opacity:1 !important;
+}
+html body .bps-command-page .gps-audit table.gps-table,
+html body .cad-app main.night-workspace .gps-audit table.gps-table {
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+html body .bps-command-page .gps-audit table.gps-table thead,
+html body .cad-app main.night-workspace .gps-audit table.gps-table thead,
+html body .gps-audit-print-document .gps-audit table.gps-table thead {
+  background:#eef2f7 !important;
+  color:#334155 !important;
+}
+html body .bps-command-page .gps-audit table.gps-table th,
+html body .cad-app main.night-workspace .gps-audit table.gps-table th,
+html body .gps-audit-print-document .gps-audit table.gps-table th {
+  background:#eef2f7 !important;
+  color:#334155 !important;
+}
+html body .bps-command-page .gps-audit table.gps-table tbody tr > td,
+html body .cad-app main.night-workspace .gps-audit table.gps-table tbody tr > td,
+html body .gps-audit-print-document .gps-audit table.gps-table tbody tr > td {
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+html body .bps-command-page .gps-audit table.gps-table tbody tr:nth-child(even) > td,
+html body .cad-app main.night-workspace .gps-audit table.gps-table tbody tr:nth-child(even) > td,
+html body .gps-audit-print-document .gps-audit table.gps-table tbody tr:nth-child(even) > td {
+  background:#f8fafc !important;
+}
+html body .bps-command-page .gps-audit table.gps-table tbody tr.gps-event > td,
+html body .cad-app main.night-workspace .gps-audit table.gps-table tbody tr.gps-event > td,
+html body .gps-audit-print-document .gps-audit table.gps-table tbody tr.gps-event > td {
+  background:#fff1f2 !important;
+  color:#881337 !important;
+}
+.gps-audit-print-document {
+  margin:0 !important;
+  padding:16px !important;
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+.gps-audit-print-document .gps-audit {
+  background:#ffffff !important;
+  color:#111827 !important;
+}
+@media print {
+  html, body,
+  html body .gps-audit,
+  html body .gps-audit .gps-body,
+  html body .gps-audit .gps-report-card {
+    background:#ffffff !important;
+    color:#111827 !important;
+  }
+  html body .gps-audit .gps-banner {
+    background:#ffffff !important;
+    color:#111827 !important;
+    border-bottom:2px solid #0f172a !important;
+  }
+  html body .gps-audit .gps-banner-meta strong,
+  html body .gps-audit .gps-brand,
+  html body .gps-audit h2 {
+    color:#0f172a !important;
+  }
+  html body .gps-audit .gps-footer {
+    background:#ffffff !important;
+    color:#475569 !important;
+    border-top:1px solid #94a3b8 !important;
+  }
+  html body .gps-audit .gps-report-card {
+    border-color:#cbd5e1 !important;
+    break-inside:auto;
+  }
+}
+
