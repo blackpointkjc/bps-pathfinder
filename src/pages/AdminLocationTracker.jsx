@@ -174,26 +174,37 @@ export default function AdminLocationTracker() {
     refetchOnMount: true,
   });
 
-  const { data: activeOfficerPayload = {}, error: activeOfficerError, isLoading: activeOfficerLoading } = useQuery({
+  const { data: activeOfficerPayload = {}, error: activeOfficerError, isLoading: activeOfficerLoading, refetch: refetchActiveOfficerLocations } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
-      return getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true });
+      return getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true, force: true });
     },
-    // ActiveOfficer subscriptions refresh immediately when data changes. Keep a
-    // one-minute safety poll instead of repeatedly hitting the backend.
+    // Realtime events are primary. This low-frequency poll is only a recovery path
+    // for browsers that temporarily lose their subscription connection.
     refetchInterval: 60000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
     enabled: hasAccess && !!allUsers,
   });
 
   const activeOfficerLocations = activeOfficerPayload.units || [];
   useEffect(() => {
     if (!hasAccess) return undefined;
-    const unsubscribe = subscribeOfficerLocationChanges(() => {
-      queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
-    });
-    return unsubscribe;
-  }, [hasAccess, queryClient]);
+    let refreshTimer;
+    const refreshNow = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        refetchActiveOfficerLocations({ cancelRefetch: true });
+      }, 150);
+    };
+    const unsubscribe = subscribeOfficerLocationChanges(refreshNow);
+    window.addEventListener('bps-operational-resume', refreshNow);
+    return () => {
+      window.clearTimeout(refreshTimer);
+      window.removeEventListener('bps-operational-resume', refreshNow);
+      unsubscribe();
+    };
+  }, [hasAccess, refetchActiveOfficerLocations]);
 
   useEffect(() => {
     const handleLocationQuality = (event) => setDeviceLocationState(event?.detail || null);
@@ -251,9 +262,34 @@ export default function AdminLocationTracker() {
       return payload;
     },
     enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,
-    staleTime: 60000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: selectedDate === auditDay() ? 60000 : false,
   });
+
+  useEffect(() => {
+    if (!hasAccess || viewMode !== 'history' || !selectedOfficerEmail || !selectedDate) return undefined;
+    let refreshTimer;
+    const queueAuditRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => retryAudit(), 500);
+    };
+    const unsubscribers = [];
+    for (const entity of [base44.entities.LocationHistory, base44.entities.GeofenceAlert, base44.entities.TimeEntry]) {
+      try {
+        const unsubscribe = entity.subscribe(queueAuditRefresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {
+        // The one-minute recovery poll still keeps today's report current if a
+        // browser temporarily cannot establish an entity subscription.
+      }
+    }
+    return () => {
+      window.clearTimeout(refreshTimer);
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [hasAccess, viewMode, selectedOfficerEmail, selectedDate, retryAudit]);
 
   const getOfficerName = (email) => {
     const officer = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
@@ -700,7 +736,7 @@ export default function AdminLocationTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-slate-900">Live</div>
-                   <p className="text-xs text-slate-500 mt-1">Instant subscriptions · 60 sec GPS persistence · one-minute movement history</p>
+                   <p className="text-xs text-slate-500 mt-1">Realtime map refresh · GPS saved every 30 sec · one-minute movement history</p>
                 </CardContent>
               </Card>
             </div>
