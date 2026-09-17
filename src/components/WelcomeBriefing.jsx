@@ -335,15 +335,10 @@ export default function WelcomeBriefing({ user }) {
         || roles.has('cad_access')
         || roles.has('dispatch');
       if (operational) {
-        let response;
-        try {
-          response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
-        } catch (firstError) {
-          const firstMessage = String(firstError?.response?.data?.error || firstError?.message || firstError || '');
-          if (!/rate limit|too many requests|\b429\b/i.test(firstMessage)) throw firstError;
-          await new Promise(resolve => window.setTimeout(resolve, 3500));
-          response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
-        }
+        // Never automatically repeat a mutation after a 429. The first request
+        // may have committed even when its response was throttled; retrying could
+        // duplicate status events and worsen the rate-limit burst.
+        const response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
         const payload = response?.data || response || {};
         if (payload?.error) throw new Error(payload.error);
         localStorage.setItem(lastStatusKey, payload.status || 'Available');
