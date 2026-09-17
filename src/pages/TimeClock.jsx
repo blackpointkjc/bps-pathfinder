@@ -287,18 +287,7 @@ export default function TimeClock() {
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      try {
-        return await base44.entities.TimeEntry.update(id, data);
-      } catch (error) {
-        const message = String(error?.message || error || '');
-        if (!/rate limit|too many requests|\b429\b/i.test(message)) throw error;
-        // A single delayed retry protects an officer's clock-out without creating
-        // another request storm when Base44 is already throttling the app.
-        await new Promise(resolve => window.setTimeout(resolve, 5000));
-        return base44.entities.TimeEntry.update(id, data);
-      }
-    },
+    mutationFn: ({ id, data }) => base44.entities.TimeEntry.update(id, data),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
       const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
