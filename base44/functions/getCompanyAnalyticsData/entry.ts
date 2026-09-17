@@ -106,6 +106,8 @@ Deno.serve(async (req) => {
       filter('PerformanceReview', { review_date: { $gte: monthDateCutoff } }, '-review_date', 1000),
     ]);
 
+    const lower = (value:any) => String(value || '').trim().toLowerCase();
+
     // Normalize every officer-linked record to the officer's primary directory
     // email. Operational data may have been saved under a Pathfinder/work address
     // while the User row now carries a Microsoft sign-in address (or vice versa).
@@ -159,7 +161,6 @@ Deno.serve(async (req) => {
       const priorStamp = new Date(prior?.created_date || 0).getTime();
       if (!prior || (hasTime && !priorHasTime) || (hasTime === priorHasTime && stamp > priorStamp)) alertByCall.set(key, alert);
     }
-    const lower = (value:any) => String(value || '').trim().toLowerCase();
     const historyMatchForAlert = (alert:any) => {
       if (alert?.callTime || alert?.time_received) return null;
       const incident = lower(alert?.callIncident);
