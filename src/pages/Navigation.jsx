@@ -653,23 +653,14 @@ export default function Navigation() {
         name: selectedCall?.location || selectedCall?.incident || 'Call location',
     });
 
-    const openExternalMap = (provider) => {
+    const openInAppStreetView = () => {
         const lat = Number(selectedCall?.latitude);
         const lng = Number(selectedCall?.longitude);
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
             toast.error('This call does not have mapped coordinates');
             return;
         }
-        const urls = {
-            street: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`,
-            google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
-            apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
-        };
-        if (provider === 'street') {
-            setStreetViewUrl(urls.street);
-            return;
-        }
-        window.open(urls[provider], '_blank', 'noopener,noreferrer');
+        setStreetViewUrl(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`);
     };
 
     const searchAddress = async (event) => {
@@ -1005,40 +996,40 @@ export default function Navigation() {
 
 
             {isNavigating && navDestination && (
-                <div className="pointer-events-auto absolute left-3 right-3 top-12 z-[1215] md:right-auto md:w-[520px]">
-                    <div className="overflow-hidden rounded-2xl border border-emerald-400/30 bg-[#08130f]/96 shadow-[0_18px_55px_rgba(0,0,0,.55)] backdrop-blur-xl">
+                <div className="pointer-events-auto absolute left-3 right-3 top-12 z-[1215] md:right-auto md:w-[560px]">
+                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,0,.72)]">
                         {(routing || navOffRoute) && (
-                            <div className="flex items-center gap-2 border-b border-amber-400/20 bg-amber-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
+                            <div className="flex items-center gap-2 border-b border-amber-500/30 bg-[#2a1a05] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
                                 <RotateCcw className={`h-3.5 w-3.5 ${routing ? 'animate-spin' : ''}`} />
                                 {routing ? 'Rerouting…' : 'Off route · recalculating'}
                             </div>
                         )}
-                        <div className="flex items-stretch">
-                            <div className="flex w-[104px] shrink-0 flex-col items-center justify-center bg-emerald-500 px-2 py-3 text-white">
-                                {maneuverIconForStep(activeNavStep, 'h-10 w-10 stroke-[2.6]')}
-                                <div className="mt-1 text-xl font-black leading-none">{navDistanceLabel}</div>
+                        <div className="flex min-h-[132px] items-stretch">
+                            <div className="flex w-[118px] shrink-0 flex-col items-center justify-center bg-[#17a566] px-3 py-4 text-white">
+                                {maneuverIconForStep(activeNavStep, 'h-11 w-11 stroke-[2.8]')}
+                                <div className="mt-2 text-2xl font-black leading-none">{navDistanceLabel}</div>
                             </div>
-                            <div className="min-w-0 flex-1 px-4 py-3">
-                                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">Next maneuver</div>
-                                <div className="mt-0.5 text-lg font-black leading-tight text-white">{formatInstruction(activeNavStep)}</div>
+                            <div className="min-w-0 flex-1 bg-[#0a1612] px-5 py-4">
+                                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Next maneuver</div>
+                                <div className="mt-1 text-[22px] font-black leading-[1.12] text-white">{formatInstruction(activeNavStep)}</div>
                                 {nextNavStep && (
-                                    <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-300">
-                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/8 text-emerald-200">{maneuverIconForStep(nextNavStep, 'h-3.5 w-3.5')}</span>
-                                        <span className="truncate"><span className="font-black text-slate-500">THEN</span> {formatInstruction(nextNavStep)}</span>
+                                    <div className="mt-3 flex items-center gap-2 border-t border-slate-700 pt-3 text-xs text-slate-100">
+                                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-800 text-emerald-300">{maneuverIconForStep(nextNavStep, 'h-4 w-4')}</span>
+                                        <span className="min-w-0 truncate"><span className="mr-1 font-black text-emerald-300">THEN</span>{formatInstruction(nextNavStep)}</span>
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 border-t border-white/10 bg-[#07100d] px-3 py-2">
-                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <div><div className="text-sm font-black text-white">{navEtaLabel}</div><div className="text-[8px] font-bold uppercase text-slate-500">ETA</div></div>
-                                <div className="h-7 w-px bg-white/10" />
-                                <div><div className="text-sm font-black text-white">{navDurationMinutes} min</div><div className="text-[8px] font-bold uppercase text-slate-500">{navDistanceMiles.toFixed(1)} mi left</div></div>
-                                <div className="hidden min-w-0 sm:block"><div className="max-w-[180px] truncate text-[10px] font-bold text-slate-300">{navDestination.name}</div><div className="text-[8px] uppercase text-slate-600">Destination</div></div>
+                        <div className="flex items-center gap-2 border-t border-slate-800 bg-[#030806] px-4 py-3">
+                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                                <div><div className="text-base font-black text-white">{navEtaLabel}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">ETA</div></div>
+                                <div className="h-8 w-px bg-slate-700" />
+                                <div><div className="text-base font-black text-white">{navDurationMinutes} min</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{navDistanceMiles.toFixed(1)} mi left</div></div>
+                                <div className="hidden min-w-0 sm:block"><div className="max-w-[185px] truncate text-xs font-black text-white">{navDestination.name}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Destination</div></div>
                             </div>
-                            <button type="button" onClick={toggleNavigationVoice} className={`flex h-9 w-9 items-center justify-center rounded-full border ${navVoiceMuted ? 'border-slate-600 bg-slate-900 text-slate-400' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'}`} title={navVoiceMuted ? 'Turn navigation voice on' : 'Mute navigation voice'}>{navVoiceMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
-                            <button type="button" onClick={recenter} className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-200" title="Recenter navigation"><LocateFixed className="h-4 w-4" /></button>
-                            <button type="button" onClick={stopInAppNavigation} className="flex h-9 w-9 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
+                            <button type="button" onClick={toggleNavigationVoice} className={`flex h-10 w-10 items-center justify-center rounded-full border ${navVoiceMuted ? 'border-slate-600 bg-slate-900 text-slate-400' : 'border-emerald-500 bg-emerald-950 text-emerald-200'}`} title={navVoiceMuted ? 'Turn navigation voice on' : 'Mute navigation voice'}>{navVoiceMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
+                            <button type="button" onClick={recenter} className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-500 bg-blue-950 text-blue-200" title="Recenter navigation"><LocateFixed className="h-4 w-4" /></button>
+                            <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
                         </div>
                     </div>
                 </div>
@@ -1303,17 +1294,9 @@ export default function Navigation() {
                             >
                                 {routing ? 'ROUTING...' : '🧭 START GPS'}
                             </button>
-                            <button onClick={() => openExternalMap('street')} disabled={!selectedCall.latitude || !selectedCall.longitude}
+                            <button onClick={openInAppStreetView} disabled={!selectedCall.latitude || !selectedCall.longitude}
                                 className="px-2 py-1 rounded border border-purple-500/40 text-purple-300 text-[9px] font-mono font-bold hover:bg-purple-500/10 disabled:opacity-40">
                                 STREET VIEW
-                            </button>
-                            <button onClick={() => openExternalMap('google')} disabled={!selectedCall.latitude || !selectedCall.longitude}
-                                className="px-2 py-1 rounded border border-slate-500/40 text-slate-300 text-[9px] font-mono font-bold hover:bg-slate-500/10 disabled:opacity-40">
-                                GOOGLE
-                            </button>
-                            <button onClick={() => openExternalMap('apple')} disabled={!selectedCall.latitude || !selectedCall.longitude}
-                                className="px-2 py-1 rounded border border-slate-500/40 text-slate-300 text-[9px] font-mono font-bold hover:bg-slate-500/10 disabled:opacity-40">
-                                APPLE
                             </button>
                             {selectedCall.assigned_units?.includes(currentUser?.id) ? (
                                 <>
