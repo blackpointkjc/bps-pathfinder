@@ -213,10 +213,26 @@ function AdminSiteAssetsHub() {
 }
 
 function AdminSystemPortalHub() {
-  return <AdminInlineFunctions queryParam="admin_system_portal_tool" tools={[
-    { id: 'cadcontrol', label: 'Admin Control', component: AdminPortal },
-    { id: 'settings', label: 'Portal Visibility', component: AdminPortalSettings },
-  ]} />;
+  return (
+    <div className="min-w-0 space-y-3 p-2">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+        <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+          <div>
+            <div className="text-[9px] font-black uppercase tracking-[.14em] text-cyan-400">System Administration</div>
+            <div className="text-sm font-black text-white">Admin Control Center</div>
+          </div>
+        </div>
+        <AdminPortal embedded />
+      </section>
+      <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+        <div className="border-b border-slate-800 px-3 py-2">
+          <div className="text-[9px] font-black uppercase tracking-[.14em] text-violet-300">Workspace Visibility & Audio</div>
+          <div className="text-sm font-black text-white">Portal Visibility Settings</div>
+        </div>
+        <AdminPortalSettings embedded />
+      </section>
+    </div>
+  );
 }
 
 function AdminReportsQualityHub() {
