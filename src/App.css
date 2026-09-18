@@ -443,6 +443,24 @@ body::-webkit-scrollbar-button,
   }
 }
 
+/* Keep Leaflet completely inside a low stacking context so no marker, popup,
+   pane, attribution, or control can cover Pathfinder dialogs/menus/toolbars. */
+.pathfinder-map-shell,
+.pathfinder-leaflet-map,
+.leaflet-container {
+  position: relative;
+  z-index: 0 !important;
+}
+
+.pathfinder-map-shell {
+  isolation: isolate;
+}
+
+.pathfinder-map-shell .leaflet-pane,
+.pathfinder-map-shell .leaflet-control-container {
+  max-width: 100%;
+}
+
 /* Client center: keep legacy client tools readable inside the dark unified workspace. */
 .client-schedule-page,
 .client-supervisors-page {
