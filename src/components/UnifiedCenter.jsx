@@ -15,7 +15,7 @@ export function useDesktopViewport() {
   return desktop;
 }
 
-export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false }) {
+export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false, headerAction = null }) {
   const location = useLocation();
   const navigate = useNavigate();
   const collapseKey = `bps:center-nav-collapsed:${title || 'center'}`;
@@ -41,19 +41,20 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
 
   const toggleCollapsed = () => setCollapsed(value => { const next = !value; try { localStorage.setItem(collapseKey, next ? '1' : '0'); } catch {} return next; });
 
+  const actionNode = typeof headerAction === 'function' ? headerAction(section) : headerAction;
+
   return (
     <div className="bps-command-theme min-h-full w-full min-w-0 overflow-x-clip bg-[#080d16] text-slate-100">
-      <header className={`shrink-0 border-b border-slate-800 bg-[#0a1220] ${embedded ? 'px-3 py-1 md:px-4' : 'px-3 py-1.5 md:px-4'}`}>
-        <div className="w-full min-w-0">
-          {!embedded && <>
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{eyebrow}</div>
-            <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <h1 className="shrink-0 text-xl font-black tracking-tight text-white md:text-2xl">{title}</h1>
-              <p className="min-w-0 flex-1 truncate text-xs text-slate-400">{description}</p>
+      <header className="shrink-0 border-b border-slate-800/80 bg-[#09121f] px-2 py-1.5 md:px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {!embedded && (
+            <div className="flex shrink-0 items-center gap-2 pr-1">
+              <h1 className="text-[15px] font-black tracking-tight text-white md:text-base">{title}</h1>
+              {eyebrow && <span className="hidden rounded-md border border-cyan-900/60 bg-cyan-950/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-400 lg:inline">{eyebrow}</span>}
             </div>
-          </>}
-          <div className="flex items-center gap-2">
-            {!collapsed && <div className={`${embedded ? 'my-1.5' : 'my-2.5'} min-w-0 flex-1`}>
+          )}
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
               <AdaptiveSelector
                 label={embedded ? 'Section' : `${title} section`}
                 options={safeSections}
@@ -61,14 +62,17 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
                 onChange={select}
                 accent="cyan"
               />
-            </div>}
-            <button type="button" onClick={toggleCollapsed} className="ml-auto flex h-8 shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black uppercase text-slate-300 hover:border-cyan-600 hover:text-white" title={collapsed ? 'Expand center navigation' : 'Collapse center navigation'}>
-              {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}{collapsed ? 'Show' : 'Hide'} Navigation
+            </div>
+          )}
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {actionNode}
+            <button type="button" onClick={toggleCollapsed} className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-400 transition hover:border-cyan-600 hover:text-white" title={collapsed ? 'Show navigation' : 'Hide navigation'} aria-label={collapsed ? 'Show navigation' : 'Hide navigation'}>
+              {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
       </header>
-      <div className={`min-h-0 w-full min-w-0 overflow-x-clip border-y border-slate-800/70 ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-x-clip">{typeof children === 'function' ? children(section) : children}</div></div>
+      <div className={`min-h-0 w-full min-w-0 overflow-x-clip ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-x-clip">{typeof children === 'function' ? children(section) : children}</div></div>
     </div>
   );
 }
