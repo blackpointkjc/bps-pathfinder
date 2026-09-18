@@ -85,10 +85,17 @@ export default function NavigationCamera({
             cameraCenter = [currentLocation[0] + latOffset, currentLocation[1] + lngOffset];
         }
 
-        // GPS position is authoritative while navigating. Avoid overlapping
-        // flyTo animations on every fix; those animations made the camera lag
-        // behind the receiver and repeatedly exposed unloaded tile edges.
-        map.setView(cameraCenter, targetZoom, { animate: false });
+        // GPS position is authoritative while navigating. Preserve the current
+        // tile pyramid whenever the requested zoom is effectively unchanged;
+        // panTo moves the camera with the unit without making Leaflet rebuild the
+        // whole viewport/tile set on every GPS fix.
+        const currentZoom = map.getZoom();
+        const roundedTargetZoom = Math.round(targetZoom * 2) / 2;
+        if (Math.abs(currentZoom - roundedTargetZoom) >= 0.45) {
+            map.setView(cameraCenter, roundedTargetZoom, { animate: false });
+        } else {
+            map.panTo(cameraCenter, { animate: false, noMoveStart: true });
+        }
 
     }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
 
