@@ -64,8 +64,10 @@ function normalizePosition(position) {
     longitude: Number(position.coords.longitude),
     accuracy: Number(position.coords.accuracy),
     heading: Number.isFinite(Number(position.coords.heading)) ? Number(position.coords.heading) : null,
-    // The rest of Pathfinder displays officer speed in miles per hour.
-    speed: Number.isFinite(Number(position.coords.speed)) ? Number(position.coords.speed) * 2.236936 : 0,
+    // Chromium/Windows frequently exposes null speed even while GNSS coordinates
+    // are changing. Preserve null here so publishLiveLocation can derive MPH from
+    // consecutive accepted fixes instead of incorrectly reporting 0 MPH.
+    speed: Number.isFinite(Number(position.coords.speed)) ? Number(position.coords.speed) * 2.236936 : null,
     // Chromium/Windows can return the same sensor timestamp while an officer is
     // stationary even though getCurrentPosition just successfully reconfirmed the
     // device's position. Pathfinder freshness means "last confirmed location",
@@ -83,6 +85,34 @@ function publishLocationError(error) {
   });
 }
 
+function movementMetrics(previous, next) {
+  if (!previous || !next) return { speed: null, heading: null, distance: 0 };
+  const lat1 = Number(previous.latitude);
+  const lon1 = Number(previous.longitude);
+  const lat2 = Number(next.latitude);
+  const lon2 = Number(next.longitude);
+  const elapsedSeconds = (Number(next.timestamp) - Number(previous.timestamp)) / 1000;
+  if (![lat1, lon1, lat2, lon2, elapsedSeconds].every(Number.isFinite) || elapsedSeconds < 0.5 || elapsedSeconds > 45) {
+    return { speed: null, heading: null, distance: 0 };
+  }
+  const toRad = value => value * Math.PI / 180;
+  const toDeg = value => value * 180 / Math.PI;
+  const earthRadius = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const distance = earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+    - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  const heading = (toDeg(Math.atan2(y, x)) + 360) % 360;
+  // Ignore tiny GPS jitter. Clamp implausible derived vehicle speed rather than
+  // letting a bad fix briefly show hundreds of MPH.
+  const speed = distance < 4 ? 0 : Math.min(120, (distance / elapsedSeconds) * 2.236936);
+  return { speed, heading, distance };
+}
+
 export function publishLiveLocation(fix) {
   if (!fix || !Number.isFinite(Number(fix.latitude)) || !Number.isFinite(Number(fix.longitude))) return;
   const candidate = {
@@ -90,11 +120,21 @@ export function publishLiveLocation(fix) {
     longitude: Number(fix.longitude),
     accuracy: Number.isFinite(Number(fix.accuracy)) ? Number(fix.accuracy) : Infinity,
     heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
-    speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
+    speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : null,
     timestamp: Number(fix.timestamp) || Date.now(),
     sensor_timestamp: Number(fix.sensor_timestamp) || Number(fix.timestamp) || Date.now(),
     source: String(fix.source || 'browser_geolocation'),
   };
+  const derived = movementMetrics(latestFix, candidate);
+  if (!Number.isFinite(Number(candidate.speed))) candidate.speed = derived.speed ?? 0;
+  if (!Number.isFinite(Number(candidate.heading)) && Number(candidate.speed) >= 2) candidate.heading = derived.heading;
+
+  // Smooth obviously noisy speed spikes without making the vehicle feel delayed.
+  if (latestFix && Number.isFinite(Number(latestFix.speed)) && Number.isFinite(Number(candidate.speed))) {
+    const delta = Math.abs(Number(candidate.speed) - Number(latestFix.speed));
+    if (delta > 35 && derived.distance < 25) candidate.speed = Number(latestFix.speed);
+  }
+
   // Windows can fall back to IP/network positioning when the CF-33 GNSS sensor
   // momentarily disappears. Those readings can be tens of miles away with a
   // 50,000-100,000m accuracy radius. Never publish that as an officer position.
