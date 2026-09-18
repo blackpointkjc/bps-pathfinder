@@ -16,9 +16,9 @@ const SECTIONS = [
   { id: 'documents', label: 'Training Documents', description: 'Training manuals, policies, site materials and reference files', icon: BookOpen },
 ];
 
-export default function TrainerCenter() {
+export default function TrainerCenter({ embedded = false }) {
   return (
-    <UnifiedCenter eyebrow="Training Operations" title="Trainer Center" description="One connected workspace for training setup, records, officer compliance, certifications, alerts, and student management." sections={SECTIONS} defaultSection="overview">
+    <UnifiedCenter eyebrow="Training Operations" title="Trainer Center" description="One connected workspace for training setup, records, officer compliance, certifications, alerts, and student management." sections={SECTIONS} defaultSection="overview" queryParam={embedded ? 'trainer_section' : 'section'} embedded={embedded}>
       {section => (
         <div className="w-full">
           {section === 'overview' && <TrainerOverview />}
