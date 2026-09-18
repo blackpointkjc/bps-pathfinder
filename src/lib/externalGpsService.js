@@ -277,7 +277,7 @@ async function stopWorkerPort({ terminate = false } = {}) {
     const timeoutId = window.setTimeout(() => {
       if (pendingWorkerStop) pendingWorkerStop = null;
       resolve();
-    }, 1800);
+    }, 4000);
     pendingWorkerStop = { resolve, timeoutId };
     try { serialWorker.postMessage({ type: 'stop' }); }
     catch (_) {
@@ -449,10 +449,10 @@ async function connectPort(port, baudRate) {
 
   emit({ connecting: true, error: '', baudRate: baud, portGranted: true });
   await closeCurrentPort();
-  await delay(180);
+  await delay(350);
 
   let lastError = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
       await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
       activePort = port;
@@ -466,9 +466,10 @@ async function connectPort(port, baudRate) {
     } catch (error) {
       lastError = error;
       const message = String(error?.message || error || '');
-      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 2) break;
+      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 5) break;
       try { if (port?.readable || port?.writable) await port.close(); } catch (_) {}
-      await delay(250 * (attempt + 1));
+      const waits = [300, 500, 800, 1200, 1800, 2200];
+      await delay(waits[attempt] || 1200);
     }
   }
 
@@ -549,13 +550,15 @@ export async function startExternalGpsAutoReconnect() {
       }
 
       const preferredPort = selectedPort || ports[0];
-      if (workerSerialSupported()) {
+      const selector = portSelector(preferredPort);
+      const hasStableSelector = selector.usbVendorId != null || selector.usbProductId != null;
+      if (workerSerialSupported() && hasStableSelector) {
         try {
-          return await startWorkerPort({ baudRate: storedBaud(), selector: portSelector(preferredPort) });
+          return await startWorkerPort({ baudRate: storedBaud(), selector });
         } catch (workerError) {
           console.warn('External GPS worker reconnect failed, using page reader:', workerError?.message);
           await stopWorkerPort({ terminate: true });
-          await delay(180);
+          await delay(350);
         }
       }
 
@@ -593,7 +596,12 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
         throw new Error('This computer is locked to a different GPS antenna. Unlock the saved antenna before changing receivers.');
       }
 
-      const ownsPort = await acquireGpsOwnership({ requestRelease: true, waitMs: 4000 });
+      const selectedBaud = Number(baudRate) || DEFAULT_BAUD;
+      if (state.connected && state.activeSelector && selectorMatches(port, state.activeSelector) && Number(state.baudRate) === selectedBaud) {
+        return getExternalGpsStatus();
+      }
+
+      const ownsPort = await acquireGpsOwnership({ requestRelease: true, waitMs: 7000 });
       if (!ownsPort) {
         throw new Error('Another Pathfinder tab is still using the GPS antenna. Close the other Pathfinder tab and try again.');
       }
@@ -601,18 +609,22 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
       rememberSelector(selector);
       await stopWorkerPort({ terminate: true });
       await closeCurrentPort();
-      await delay(220);
+      await delay(400);
 
-      if (workerSerialSupported()) {
+      const hasStableSelector = selector.usbVendorId != null || selector.usbProductId != null;
+      if (workerSerialSupported() && hasStableSelector) {
         try {
           return await startWorkerPort({ baudRate, selector });
         } catch (workerError) {
-          console.warn('External GPS background reader unavailable, using page reader:', workerError?.message);
+          console.warn('External GPS background reader unavailable, using exact selected port:', workerError?.message);
           await stopWorkerPort({ terminate: true });
-          await delay(220);
+          await delay(400);
         }
       }
 
+      // If the receiver does not expose stable USB IDs, never let the worker
+      // guess among approved COM ports. Open the exact SerialPort selected by
+      // the officer in this tab.
       emit({ backgroundReader: false });
       return await connectPort(port, baudRate);
     })
