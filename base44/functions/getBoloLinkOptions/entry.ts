@@ -9,9 +9,11 @@ Deno.serve(async (req) => {
     const allowed = me.role === 'admin' || me.role === 'dispatch' || roles.has('officer') || roles.has('supervisor') || roles.has('full_access') || roles.has('cad_access');
     if (!allowed) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
+    // These are only picker options inside the BOLO editor. Pulling 600 full
+    // records made NEW/EDIT BOLO look frozen even though the form itself was ready.
     const [calls, reports] = await Promise.all([
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 300),
-      base44.asServiceRole.entities.IncidentReport.list('-created_date', 300),
+      base44.asServiceRole.entities.DispatchCall.list('-created_date', 75),
+      base44.asServiceRole.entities.IncidentReport.list('-created_date', 75),
     ]);
     return Response.json({ calls: calls || [], reports: reports || [] });
   } catch (error) {
