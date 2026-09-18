@@ -239,17 +239,10 @@ export default function Reports() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950">
-            <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
-                <div className="px-6 py-3">
-                    <div className="flex items-center gap-4">
-                        <BarChart className="w-6 h-6 text-blue-400" />
-                        <h1 className="text-xl font-bold text-white tracking-tight font-mono">COMMAND REPORTS</h1>
-                    </div>
-                </div>
-            </div>
+        <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-4">
+            <div className="rounded-2xl border border-blue-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><BarChart className="h-5 w-5 text-blue-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Command Analytics</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Command Reports</h1><p className="mt-1 text-xs text-slate-400">Build operational reports across calls, personnel, sites, and activity records.</p></div></div></div>
 
-            <div className="p-4 md:p-6">
+            <div className="px-0 py-4 md:py-5">
                 <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6">
                     {/* Config Panel */}
                     <div className="w-full md:col-span-4">
