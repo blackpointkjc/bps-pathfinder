@@ -120,9 +120,9 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
-            const container = typeof map.getContainer === 'function' ? map.getContainer() : null;
+            const cleanupContainer = typeof map.getContainer === 'function' ? map.getContainer() : null;
             try { map.stop(); } catch (_) {}
-            if (container && container.isConnected) {
+            if (cleanupContainer && cleanupContainer.isConnected) {
                 try { map.closePopup(); } catch (_) {}
             }
         };
