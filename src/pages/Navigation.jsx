@@ -7,7 +7,7 @@ import MapView from '@/components/map/MapView';
 import {
     Layers, Radio, MapPin, Users,
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search, ChevronLeft, ChevronRight,
-    ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Route, Clock3
+    ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -643,10 +643,7 @@ export default function Navigation() {
         setNavVoiceMuted(current => {
             const next = !current;
             try { localStorage.setItem('bps:navigation-voice-muted', next ? '1' : '0'); } catch {}
-            if (!next) {
-                const step = navSteps[navStepIndex];
-                if (step) announceNavigationInstruction(formatInstruction(step), navTurnDistanceFeet);
-            }
+            if (!next) spokenNavPromptsRef.current.clear();
             return next;
         });
     };
