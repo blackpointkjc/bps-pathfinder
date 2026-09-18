@@ -50,6 +50,17 @@ const AuthenticatedApp = () => {
     checkAppState,
   } = useAuth();
 
+  useEffect(() => {
+    // Screen changes consume the same persistent GPS owner. Ask that stream for
+    // an immediate fresh observation so the newly opened map/status screen does
+    // not wait for the next scheduled device refresh. This does not stop or
+    // recreate the GPS watch.
+    if (!isAuthenticated || !user?.email) return;
+    window.dispatchEvent(new CustomEvent('bps-request-location', {
+      detail: { reason: 'route_change', path: location.pathname, at: Date.now() },
+    }));
+  }, [location.pathname, isAuthenticated, user?.email]);
+
   const needsLogin = !isLoadingPublicSettings && !isLoadingAuth
     && (authError?.type === 'auth_required'
       || authError?.type === 'microsoft_session_expired'
