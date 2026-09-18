@@ -13,7 +13,6 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
@@ -794,7 +793,6 @@ export default function Navigation() {
 
     return (
         <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
-            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
