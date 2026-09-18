@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 const modeLabel = location => location?.auto_dispatch_enabled === true ? (location.auto_dispatch_mode || 'shadow') : 'disabled';
 
-export default function AdminAutoDispatchControls() {
+export default function AdminAutoDispatchControls({ embedded = false }) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState('');
   const [form, setForm] = useState(null);
@@ -50,11 +50,13 @@ export default function AdminAutoDispatchControls() {
       const response = await base44.functions.invoke('manageAutoDispatchConfig', { action: 'update_mode', id: location.id, mode });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-      return payload.location;
+      return payload;
     },
-    onSuccess: async location => {
+    onSuccess: async payload => {
+      const location = payload?.location;
       await refreshAll();
-      setActionMessage(`${location?.site_name || 'Property'} is now ${modeLabel(location).replaceAll('_',' ').toUpperCase()}.`);
+      const reevaluated = Number(payload?.reevaluated_active_alerts || 0);
+      setActionMessage(`${location?.site_name || 'Property'} is now ${modeLabel(location).replaceAll('_',' ').toUpperCase()}${reevaluated ? ` · ${reevaluated} active call${reevaluated === 1 ? '' : 's'} reevaluated` : ''}.`);
       toast.success(`${location?.site_name || 'Property'} automatic dispatch updated.`);
     },
     onError: error => {
@@ -79,6 +81,9 @@ export default function AdminAutoDispatchControls() {
           auto_dispatch_acknowledgement_seconds: Math.max(30, Number(form.auto_dispatch_acknowledgement_seconds || 120)),
           auto_dispatch_escalation_seconds: Math.max(60, Number(form.auto_dispatch_escalation_seconds || 300)),
           auto_dispatch_recheck_seconds: Math.max(30, Number(form.auto_dispatch_recheck_seconds || 60)),
+          auto_dispatch_required_qualifications: String(form.auto_dispatch_required_qualifications || '').split(',').map(value => value.trim()).filter(Boolean),
+          auto_dispatch_required_equipment: String(form.auto_dispatch_required_equipment || '').split(',').map(value => value.trim()).filter(Boolean),
+          auto_dispatch_required_ranks: String(form.auto_dispatch_required_ranks || '').split(',').map(value => value.trim()).filter(Boolean),
         },
       });
       const payload = response?.data || response || {};
@@ -106,6 +111,9 @@ export default function AdminAutoDispatchControls() {
       auto_dispatch_acknowledgement_seconds: Number(location.auto_dispatch_acknowledgement_seconds || 120),
       auto_dispatch_escalation_seconds: Number(location.auto_dispatch_escalation_seconds || 300),
       auto_dispatch_recheck_seconds: Number(location.auto_dispatch_recheck_seconds || 60),
+      auto_dispatch_required_qualifications: (location.auto_dispatch_required_qualifications || []).join(', '),
+      auto_dispatch_required_equipment: (location.auto_dispatch_required_equipment || []).join(', '),
+      auto_dispatch_required_ranks: (location.auto_dispatch_required_ranks || []).join(', '),
     });
   };
 
