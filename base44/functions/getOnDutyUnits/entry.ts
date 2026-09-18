@@ -89,13 +89,16 @@ Deno.serve(async (req) => {
       const units = [...newestByEmail.values()]
         .filter((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff);
+          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionHealthyCutoff);
         })
         .map((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+          // "Signed in now" is presence, not a retained historical tracker row.
+          // Require a fresh heartbeat for live presence. Admin map mode still keeps
+          // older rows in the response so their coordinates can be shown as Last Known.
           const sessionActive = active.session_active !== false
             && Number.isFinite(sessionTs)
-            && sessionTs >= sessionRetentionCutoff;
+            && sessionTs >= sessionHealthyCutoff;
           const connectionStale = sessionActive && sessionTs < sessionHealthyCutoff;
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
           const accuracy = Number(active.accuracy);
