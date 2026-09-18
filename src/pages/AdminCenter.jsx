@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
+import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import AdminDashboard from './AdminDashboard';
@@ -52,6 +52,7 @@ import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import HRCenter from './HRCenter';
 import ClientCenter from './ClientCenter';
+import TrainerCenter from './TrainerCenter';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations, listDirectoryUsers, listOfficerDirectory } from '@/lib/appDirectory';
 import { isClientAccount, isOperationalOfficer } from '@/lib/directoryUtils';
@@ -64,6 +65,7 @@ const MASTER_SECTIONS = [
   { id: 'officer', label: 'Officer', description: 'Officer tools only', icon: Shield },
   { id: 'supervisor', label: 'Supervisor', description: 'Supervisor and inherited officer tools', icon: ClipboardCheck },
   { id: 'hr', label: 'HR', description: 'HR tools only', icon: Briefcase },
+  { id: 'training', label: 'Trainer', description: 'Training operations and compliance', icon: GraduationCap },
   { id: 'client', label: 'Client', description: 'Client portal tools only', icon: Building2 },
 ];
 
@@ -287,12 +289,15 @@ function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOffic
 
 export default function AdminCenter() {
   const queryClient = useQueryClient();
+  const { data: signedInUser } = useQuery({ queryKey: ['adminCenterSignedInUser'], queryFn: () => base44.auth.me(), staleTime: 60000 });
   const navigate = useNavigate();
   const [shadowMode, setShadowMode] = useState('');
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
   const [officers, setOfficers] = useState([]);
   const [selectedOfficer, setSelectedOfficer] = useState('');
+  const signedInRoles = new Set([signedInUser?.role, ...(signedInUser?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const masterSections = MASTER_SECTIONS.filter(item => item.id !== 'training' || signedInRoles.has('trainer') || signedInRoles.has('full_access'));
 
   useEffect(() => {
     if (shadowMode !== 'officer' || officers.length) return;
@@ -393,7 +398,7 @@ export default function AdminCenter() {
       eyebrow="Master Administration"
       title="Admin Center"
       description="Administration and role-specific tools in one workspace. Preview any role when you need to verify exactly what that user experience looks like."
-      sections={MASTER_SECTIONS}
+      sections={masterSections}
       defaultSection="admin"
       queryParam="admin_center"
       headerAction={section => (
@@ -402,7 +407,7 @@ export default function AdminCenter() {
             <Eye className="h-3 w-3"/>PREVIEW AS
           </summary>
           <div className="absolute right-0 top-9 z-[2000] w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0b1725] p-1.5 shadow-2xl">
-            {MASTER_SECTIONS.filter(item => item.id !== 'admin').map(item => (
+            {masterSections.filter(item => item.id !== 'admin').map(item => (
               <button key={item.id} type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); enterShadow(item.id); }} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-black transition hover:bg-cyan-950/60 hover:text-cyan-200 ${section === item.id ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>
                 <item.icon className="h-3.5 w-3.5"/>{item.label}
               </button>
@@ -412,7 +417,7 @@ export default function AdminCenter() {
       )}
     >
       {section => {
-        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
+        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
         return <div className="min-w-0">{mirror}</div>;
       }}
     </UnifiedCenter>
