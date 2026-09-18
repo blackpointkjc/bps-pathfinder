@@ -268,7 +268,7 @@ function AdministrationToolsOnly() {
 }
 
 function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOfficer, onMode, onClient, onOfficer, onExit }) {
-  const labels = { cad:'CAD', officer:'Officer', supervisor:'Supervisor', hr:'HR', client:'Client' };
+  const labels = { cad:'CAD', officer:'Officer', supervisor:'Supervisor', hr:'HR', training:'Trainer', client:'Client' };
   return (
     <div className="sticky top-0 z-[70] border-b border-slate-700 bg-[#09111d]/98 px-3 py-2 text-white shadow-lg backdrop-blur">
       <div className="mx-auto flex max-w-[1700px] flex-wrap items-center gap-2">
@@ -277,7 +277,7 @@ function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOffic
           <span>Previewing as {labels[mode] || 'Role'}</span>
         </div>
         <div className="flex flex-wrap gap-1">
-          {['cad','officer','supervisor','hr','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-md border px-2.5 py-1.5 text-[11px] font-bold ${mode===item?'border-cyan-400 bg-cyan-500/15 text-cyan-100':'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{labels[item]}</button>)}
+          {['cad','officer','supervisor','hr','training','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-md border px-2.5 py-1.5 text-[11px] font-bold ${mode===item?'border-cyan-400 bg-cyan-500/15 text-cyan-100':'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{labels[item]}</button>)}
         </div>
         {mode === 'officer' && <select value={selectedOfficer} onChange={e=>onOfficer(e.target.value)} className="min-w-[280px] flex-1 rounded-md border border-cyan-500/40 bg-[#07111f] px-3 py-1.5 text-xs text-white sm:max-w-xl"><option value="">Choose officer to preview</option>{officers.map(officer=><option key={officer.id} value={officer.id}>{officer.__label}</option>)}</select>}
         {mode === 'client' && <select value={selectedClient} onChange={e=>onClient(e.target.value)} className="min-w-[280px] flex-1 rounded-md border border-blue-500/40 bg-[#07111f] px-3 py-1.5 text-xs text-white sm:max-w-xl"><option value="">Choose client account</option>{clients.map(client=><option key={client.id} value={client.id}>{client.__label}</option>)}</select>}
@@ -386,6 +386,7 @@ export default function AdminCenter() {
     if (shadowMode === 'officer') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Shield className="mx-auto mb-3 h-10 w-10 text-cyan-300"/><div className="text-lg font-black text-white">Select an officer account above</div><div className="mt-1 text-sm">The Officer Center will load that officer's schedule, time, reports, and performance view.</div></div></div>;
     if (shadowMode === 'supervisor') return <SupervisorCenter key="shadow-supervisor" />;
     if (shadowMode === 'hr') return <HRCenter key="shadow-hr" />;
+    if (shadowMode === 'training') return <TrainerCenter key="shadow-training" />;
     if (shadowMode === 'client' && selectedClient) return <ClientCenter key={`shadow-client-${selectedClient}`} />;
     if (shadowMode === 'client') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Building2 className="mx-auto mb-3 h-10 w-10 text-blue-300"/><div className="text-lg font-black text-white">Select a client account above</div><div className="mt-1 text-sm">The full client portal will replace this workspace for shadow testing.</div></div></div>;
     return null;
