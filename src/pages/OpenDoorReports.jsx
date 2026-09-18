@@ -2,7 +2,7 @@ import { uploadInternalFile } from '@/lib/internalUpload';
 
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,11 +66,15 @@ export default function OpenDoorReports() {
     initialData: [], // Provide initial empty array
   });
 
-  // Filter reports by current site
+  // Keep an officer's own historical reports visible after clock-out/site changes.
   const reportsToDisplay = React.useMemo(() => {
-    if (!currentSiteName || !allReports) return [];
-    return allReports.filter(report => report.location === currentSiteName);
-  }, [currentSiteName, allReports]);
+    if (!allReports || !user) return [];
+    if (user.role === 'admin') return allReports;
+    return allReports.filter(report =>
+      recordBelongsToDirectoryUser(user, report)
+      || (currentSiteName && report.location === currentSiteName)
+    );
+  }, [currentSiteName, allReports, user]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
