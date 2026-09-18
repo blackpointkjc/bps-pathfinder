@@ -527,14 +527,16 @@ export default function AdminLocationTracker({ embedded = false }) {
         )}
 
         {locationCheckResults && (
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-600" />
-                Location Check Results - {format(new Date(locationCheckResults.timestamp), 'h:mm:ss a')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <details className="rounded-xl border border-slate-700 bg-[#0a1623] shadow-lg">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-xs font-black text-white">
+              <span className="flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300" />LOCATION HEALTH · {format(new Date(locationCheckResults.timestamp), 'h:mm:ss a')}</span>
+              <span className="flex flex-wrap gap-1.5 text-[9px]">
+                <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">{locationCheckResults.withLocation.length} LIVE</span>
+                <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">{locationCheckResults.staleLocation.length} STALE</span>
+                <span className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-red-200">{locationCheckResults.withoutLocation.length} NO GPS</span>
+              </span>
+            </summary>
+            <div className="border-t border-slate-700 p-4">
               <div className="grid md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -648,36 +650,34 @@ export default function AdminLocationTracker({ embedded = false }) {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </details>
         )}
 
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Tracking Mode</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:gap-4">
-              <Button
-                variant={viewMode === 'live' ? 'default' : 'outline'}
-                onClick={() => setViewMode('live')}
-                className="flex items-center gap-2"
-              >
-                <Activity className="w-4 h-4" />
-                Live Tracking
-              </Button>
-              <Button
-                variant={viewMode === 'history' ? 'default' : 'outline'}
-                onClick={() => setViewMode('history')}
-                className="flex items-center gap-2"
-              >
-                <History className="w-4 h-4" />
-                Historical Movement
-              </Button>
-            </div>
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-700 bg-[#0a1623] p-2 sm:flex-row sm:items-center">
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={viewMode === 'live' ? 'default' : 'outline'}
+              onClick={() => setViewMode('live')}
+              className="h-9 gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              Live Tracking
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'history' ? 'default' : 'outline'}
+              onClick={() => setViewMode('history')}
+              className="h-9 gap-2"
+            >
+              <History className="h-4 w-4" />
+              Historical Movement
+            </Button>
+          </div>
 
             {viewMode === 'history' && (
-              <div className="mt-6 grid md:grid-cols-2 gap-4">
+              <div className="grid flex-1 gap-2 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="officer_select">Select User</Label>
                   <Select value={selectedOfficerEmail} onValueChange={setSelectedOfficerEmail}>
@@ -706,8 +706,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
 
         {viewMode === 'live' && (
           <>
