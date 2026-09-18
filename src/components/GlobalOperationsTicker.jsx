@@ -242,8 +242,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
     ];
   }, [calls, distress, propertyAlerts, activeBolos]);
 
-  const layoutOwnedCadPage = ['CADCenter', 'CommandDashboard', 'DispatchCenter', 'OfficerDispatchQueue', 'Navigation'].includes(String(currentPageName || ''));
-  if (!internal || layoutOwnedCadPage || segments.length === 0) return null;
+  if (!internal || segments.length === 0) return null;
 
   return (
     <div className="bps-operations-ticker flex h-9 shrink-0 items-center overflow-hidden border-b border-red-700/60 bg-[#24080b] shadow-[0_6px_18px_rgba(0,0,0,.28)]" role="status" aria-label="Live operational alerts">
