@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
-import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
+import { loadLegalRecordHistory, updateLegalRecord } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -195,7 +195,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
       }
 
       if (editingSummons?.id) {
-        return await base44.entities.Summons.update(editingSummons.id, {
+        return await updateLegalRecord('summons', editingSummons.id, {
           ...data,
           summons_number: editingSummons.summons_number,
           officer_ip_address: ipAddress,
