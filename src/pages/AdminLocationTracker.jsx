@@ -89,8 +89,8 @@ function HistoricalOfficerMap({ data, officerName, theme }) {
         <MapReadyHandler /><PathfinderTileLayer theme={theme} /><MapUpdater officers={[]} historicalPath={model.points} />
         {model.segments.filter(segment=>segment.length>1).map((segment,index)=><Polyline key={index} positions={segment.map(point=>[Number(point.latitude),Number(point.longitude)])} pathOptions={{color:'#4f46e5',weight:4}} />)}
         {model.points.map((point,index)=><CircleMarker key={point.id || index} center={[Number(point.latitude),Number(point.longitude)]} radius={index===0 || index===model.points.length-1 ? 8 : 4} pathOptions={{color:'white',weight:1,fillColor:index===0?'#16a34a':index===model.points.length-1?'#dc2626':'#4f46e5',fillOpacity:.9}}>
-          <Tooltip>{officerName} · {auditTime(point.timestamp)} ET</Tooltip>
-          <Popup><strong>{officerName}</strong><p>{index===0?'Start · ':index===model.points.length-1?'End · ':''}{auditTime(point.timestamp)} ET</p><p>{point.location || 'Address not recorded'}</p><p>{Number(point.latitude).toFixed(6)}, {Number(point.longitude).toFixed(6)}</p><p>Accuracy: {point.accuracy == null ? 'Not recorded' : `±${Math.round(Number(point.accuracy))}m`}</p></Popup>
+          <Tooltip>{officerName} · {auditTime(point.timestamp)} ET · {Number.isFinite(Number(point.speed)) ? `${Math.round(Number(point.speed))} MPH` : 'Speed n/a'}</Tooltip>
+          <Popup><strong>{officerName}</strong><p>{index===0?'Start · ':index===model.points.length-1?'End · ':''}{auditTime(point.timestamp)} ET</p><p>{point.location || 'Address not recorded'}</p><p>{Number(point.latitude).toFixed(6)}, {Number(point.longitude).toFixed(6)}</p><p>Speed: {Number.isFinite(Number(point.speed)) ? `${Math.round(Number(point.speed))} MPH` : 'Not recorded'}</p><p>Heading: {Number.isFinite(Number(point.heading)) ? `${Math.round(Number(point.heading))}°` : 'Not recorded'}</p><p>Accuracy: {point.accuracy == null ? 'Not recorded' : `±${Math.round(Number(point.accuracy))}m`}</p></Popup>
         </CircleMarker>)}
       </MapContainer>
     </div></CardContent>
@@ -99,7 +99,9 @@ function HistoricalOfficerMap({ data, officerName, theme }) {
 
 function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocation }) {
   const map = useMap();
-  
+  const didInitialRosterFitRef = React.useRef(false);
+  const rosterKeyRef = React.useRef('');
+
   useEffect(() => {
     if (historicalPath && historicalPath.length > 0) {
       const bounds = [];
@@ -127,8 +129,21 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
     } else if (officers && officers.length > 0) {
       const validOfficers = officers.filter(hasValidCoordinates);
       if (validOfficers.length > 0) {
-        const bounds = validOfficers.map(o => [Number(o.latitude), Number(o.longitude)]);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
+        const rosterKey = validOfficers
+          .map(o => String(o.id || o.officer_email || 'unit'))
+          .sort()
+          .join('|');
+        const liveOfficers = validOfficers.filter(o => o.session_active === true && o.gps_stale !== true);
+
+        if (!didInitialRosterFitRef.current || rosterKeyRef.current !== rosterKey) {
+          const bounds = validOfficers.map(o => [Number(o.latitude), Number(o.longitude)]);
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
+          didInitialRosterFitRef.current = true;
+          rosterKeyRef.current = rosterKey;
+        } else if (liveOfficers.length === 1) {
+          const unit = liveOfficers[0];
+          map.panTo([Number(unit.latitude), Number(unit.longitude)], { animate: false, noMoveStart: true });
+        }
       }
     }
   }, [officers, historicalPath, clockInLocation, clockOutLocation, map]);
@@ -175,7 +190,7 @@ export default function AdminLocationTracker({ embedded = false }) {
     },
     // Realtime events are primary. This low-frequency poll is only a recovery path
     // for browsers that temporarily lose their subscription connection.
-    refetchInterval: 60000,
+    refetchInterval: 20000,
     refetchOnWindowFocus: true,
     refetchOnMount: 'always',
     enabled: hasAccess && !!allUsers,
@@ -192,9 +207,11 @@ export default function AdminLocationTracker({ embedded = false }) {
       }, 150);
     };
     const unsubscribe = subscribeOfficerLocationChanges(refreshNow);
+    window.addEventListener('bps-live-location-persisted', refreshNow);
     window.addEventListener('bps-operational-resume', refreshNow);
     return () => {
       window.clearTimeout(refreshTimer);
+      window.removeEventListener('bps-live-location-persisted', refreshNow);
       window.removeEventListener('bps-operational-resume', refreshNow);
       unsubscribe();
     };
@@ -791,7 +808,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                             fillOpacity: officer.gps_stale ? 0.55 : 0.95,
                           }}
                         >
-                          <Tooltip permanent direction="top">{getOfficerName(officer.officer_email)}{officer.gps_stale ? " · Last known" : ""}</Tooltip>
+                          <Tooltip permanent direction="top">{getOfficerName(officer.officer_email)}{officer.gps_stale ? " · Last known" : ` · ${Math.round(Number(officer.speed || 0))} MPH`}</Tooltip>
                           <Popup autoPan={false} className="bps-location-popup">
                             <div className="min-w-[270px] max-w-[340px] rounded-xl bg-[#08111d] p-4 text-white shadow-2xl">
                               <p className="text-base font-black text-white">{getOfficerName(officer.officer_email)}</p>
@@ -804,7 +821,11 @@ export default function AdminLocationTracker({ embedded = false }) {
                                   ? format(new Date(officer.gps_timestamp), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
-                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-cyan-300">
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-black text-cyan-100">{Math.round(Number(officer.speed || 0))} MPH</span>
+                                {Number.isFinite(Number(officer.heading)) && <span className="rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-black text-slate-300">{Math.round(Number(officer.heading))}°</span>}
+                              </div>
+                              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-cyan-300">
                                 Source: {officer.gps_display_source === 'external_serial' ? 'External USB / NMEA GPS' : officer.gps_display_source ? 'Windows / Browser Location' : 'Unknown'}
                               </p>
                               {(officer.gps_stale || officer.gps_low_accuracy) && (
@@ -862,10 +883,13 @@ export default function AdminLocationTracker({ embedded = false }) {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <Activity className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-[#08131f] p-2">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Last Update</p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">Speed</p>
+                        <p className="text-xl font-black text-cyan-200">{Math.round(Number(officer.speed || 0))} <span className="text-[10px] text-cyan-400">MPH</span></p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">Last Update</p>
                         <p className="text-sm font-semibold text-slate-100">
                           {officer.last_update ? format(new Date(officer.last_update), 'h:mm:ss a') : 'No GPS data'}
                         </p>
