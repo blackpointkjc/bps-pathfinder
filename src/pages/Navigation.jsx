@@ -921,6 +921,7 @@ export default function Navigation() {
                     mapCenter={mapCenter}
                     fitBounds={fitBounds}
                     isNavigating={isNavigating}
+                    upcomingManeuverDistance={navTurnDistanceFeet}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
