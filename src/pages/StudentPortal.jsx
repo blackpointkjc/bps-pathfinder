@@ -11,6 +11,7 @@ import { GraduationCap, CheckCircle, User, ShieldAlert, Lock } from "lucide-reac
 import { format } from "date-fns";
 import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 export default function StudentPortal() {
   const [viewingModule, setViewingModule] = useState(null);
@@ -21,10 +22,12 @@ export default function StudentPortal() {
 
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const isStudent = user?.additional_roles?.includes('student');
+  const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const isStudent = roles.has('student') || String(user?.user_type || '').toLowerCase() === 'student';
+  const isPreview = user?.__officer_preview === true;
 
   const { data: trainingModules = [] } = useQuery({
     queryKey: ['trainingModules'],
@@ -40,6 +43,7 @@ export default function StudentPortal() {
 
   const completeTrainingMutation = useMutation({
     mutationFn: async ({ moduleId, moduleTitle, quizScore }) => {
+      if (isPreview) throw new Error('Student preview is read-only.');
       const existing = myCompletions.find(c => c.training_module_id === moduleId);
       if (existing) {
         await base44.entities.TrainingCompletion.update(existing.id, {
@@ -73,6 +77,10 @@ export default function StudentPortal() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (isPreview) {
+      toast.info('Student preview is read-only.');
+      return;
+    }
     setSavingProfile(true);
     await base44.auth.updateMe(profileForm);
     queryClient.invalidateQueries({ queryKey: ['currentUser'] });
@@ -100,6 +108,18 @@ export default function StudentPortal() {
 
   // Profile gate — required fields before class access
   const profileComplete = user?.first_name && user?.last_name && user?.date_of_birth && user?.ssn && user?.dcjs_number;
+
+  if (!profileComplete && isPreview) {
+    return (
+      <div className="min-h-full bg-[#080d16] p-4 text-white md:p-6">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6">
+          <div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Student Account Preview</div>
+          <h2 className="mt-2 text-2xl font-black">{user?.first_name || ''} {user?.last_name || ''}</h2>
+          <p className="mt-2 text-sm text-slate-300">This student has not completed the required profile fields yet. Preview mode is read-only, so Pathfinder will not edit the student's profile from the administrator session.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!profileComplete) {
     return (
