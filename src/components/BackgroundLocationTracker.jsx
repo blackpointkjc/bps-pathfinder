@@ -100,7 +100,7 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Signed-in tracking rule: GPS publishing and one-minute movement history run
+  // Signed-in tracking rule: GPS publishing and movement history run
   // whenever the officer is logged into the app. An open TimeEntry adds site/shift
   // context, but it does not control whether live navigation tracking is active.
   const shouldTrack = !!user?.email && isInternalMember(user);
@@ -140,7 +140,7 @@ export default function BackgroundLocationTracker({ user }) {
           const payload = await publishOfficerLocation(data);
           if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
           rateLimitBackoffUntilRef.current = 0;
-          return payload.active_officer;
+          return payload;
         } catch (error) {
           const message = String(error?.message || error || '');
           if (/rate limit|too many requests|\b429\b/i.test(message)) {
