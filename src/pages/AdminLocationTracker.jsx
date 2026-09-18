@@ -136,7 +136,7 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
   return null;
 }
 
-export default function AdminLocationTracker() {
+export default function AdminLocationTracker({ embedded = false }) {
   const backToLocations = () => {
     setViewMode('live');
     document.querySelector('main.mobile-field-content')?.scrollTo({top:0,behavior:'auto'});
@@ -444,8 +444,8 @@ export default function AdminLocationTracker() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8">
-      <div className="mx-auto max-w-[1400px] space-y-5 sm:space-y-8">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 pb-4 text-white" : "bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8"}>
+      <div className="mx-auto w-full max-w-[1400px] space-y-4">
         {viewMode === 'history' && <div className="mb-3"><Button variant="outline" onClick={backToLocations}>← Live tracker</Button></div>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
 
