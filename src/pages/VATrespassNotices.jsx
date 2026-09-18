@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
-import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
+import { loadLegalRecordHistory, updateLegalRecord } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -303,7 +303,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
       }
 
       if (editingNotice) {
-        const updated = await base44.entities.TrespassingNotice.update(editingNotice.id, {
+        const updated = await updateLegalRecord('trespass', editingNotice.id, {
           ...data,
           location: locationToSubmit,
           status: isDraft ? "draft" : "active",
