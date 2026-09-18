@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
     const now = new Date(receivedAt).toISOString();
     const officerEmail = String(user.email || body.officer_email || '').trim().toLowerCase();
     if (!officerEmail) return Response.json({ error: 'Officer email is required' }, { status: 400 });
-    const trackingSessionKey = String(body.time_entry_id || body.clock_in_time || `login-session:${now}`);
+    // One officer can be signed in on more than one device at once. Use the
+    // TimeEntry id when clocked in, otherwise a stable account session key so a
+    // phone and laptop do not repeatedly invalidate each other's GPS session.
+    const trackingSessionKey = String(body.time_entry_id || `account-session:${user.id || officerEmail}`);
 
     const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
       { officer_email: officerEmail },
@@ -107,6 +110,23 @@ Deno.serve(async (req) => {
     const existingFixAt = new Date(primary?.gps_updated_at || 0).getTime();
     const gpsSource = String(body.gps_source || 'browser_geolocation');
     const candidateAccuracy = hasGps ? finiteNumber(body.accuracy, 999999) : 999999;
+    const deviceId = String(body.device_id || 'legacy-device');
+    const existingDeviceId = String(primary?.gps_device_id || '');
+    const existingAccuracy = finiteNumber(primary?.accuracy, 999999);
+    const existingSource = String(primary?.gps_source || '');
+    const existingFresh = Boolean(primary)
+      && hasCoordinates(primary?.latitude, primary?.longitude)
+      && Number.isFinite(existingFixAt)
+      && existingFixAt > 0
+      && receivedAt - existingFixAt <= 90 * 1000;
+    const sameGpsDevice = !existingDeviceId || existingDeviceId === deviceId;
+    const externalCandidate = gpsSource === 'external_serial';
+    const externalExisting = existingSource === 'external_serial';
+    const candidateClearlyBetter = candidateAccuracy + 15 < existingAccuracy;
+    const candidateOwnsBestSource = !existingFresh
+      || sameGpsDevice
+      || (externalCandidate && !externalExisting)
+      || (!externalExisting && candidateClearlyBetter);
     const sessionChanged = Boolean(primary?.tracking_session_key)
       && String(primary.tracking_session_key) !== trackingSessionKey;
     const sameSessionPosition = Boolean(primary)
@@ -132,7 +152,8 @@ Deno.serve(async (req) => {
       && deviceFixAt >= receivedAt - 2 * 60 * 1000
       && (!Number.isFinite(existingFixAt) || sessionChanged || deviceFixAt >= existingFixAt)
       && !grosslyImpreciseFix
-      && !impossibleBrowserJump;
+      && !impossibleBrowserJump
+      && candidateOwnsBestSource;
 
     const directoryName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
     const canonicalOfficerName = directoryName || String(user.full_name || body.officer_name || officerEmail).trim();
@@ -206,6 +227,7 @@ Deno.serve(async (req) => {
       liveData.accuracy = acceptedAccuracy;
       liveData.gps_session_key = trackingSessionKey;
       liveData.gps_source = gpsSource;
+      liveData.gps_device_id = deviceId;
       liveData.gps_candidate_latitude = null;
       liveData.gps_candidate_longitude = null;
       liveData.gps_candidate_accuracy = null;
@@ -295,7 +317,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} source=${gpsSource} accuracy=${candidateAccuracy} session_changed=${sessionChanged} jump_m=${Math.round(jumpDistance)} grossly_imprecise=${grosslyImpreciseFix} impossible_jump=${impossibleBrowserJump} history=${historyRecorded} history_error=${Boolean(historyError)}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} source=${gpsSource} device=${deviceId} best_source=${candidateOwnsBestSource} accuracy=${candidateAccuracy} existing_accuracy=${existingAccuracy} session_changed=${sessionChanged} jump_m=${Math.round(jumpDistance)} grossly_imprecise=${grosslyImpreciseFix} impossible_jump=${impossibleBrowserJump} history=${historyRecorded} history_error=${Boolean(historyError)}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
