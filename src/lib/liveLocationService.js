@@ -58,6 +58,7 @@ function geolocationSupported() {
 
 function normalizePosition(position) {
   if (!position?.coords) return null;
+  const observedAt = Date.now();
   return {
     latitude: Number(position.coords.latitude),
     longitude: Number(position.coords.longitude),
@@ -65,7 +66,13 @@ function normalizePosition(position) {
     heading: Number.isFinite(Number(position.coords.heading)) ? Number(position.coords.heading) : null,
     // The rest of Pathfinder displays officer speed in miles per hour.
     speed: Number.isFinite(Number(position.coords.speed)) ? Number(position.coords.speed) * 2.236936 : 0,
-    timestamp: Number(position.timestamp) || Date.now(),
+    // Chromium/Windows can return the same sensor timestamp while an officer is
+    // stationary even though getCurrentPosition just successfully reconfirmed the
+    // device's position. Pathfinder freshness means "last confirmed location",
+    // not "last time the coordinates changed", so stamp the successful observation
+    // time and retain the raw sensor timestamp only for diagnostics.
+    timestamp: observedAt,
+    sensor_timestamp: Number(position.timestamp) || observedAt,
     source: 'browser_geolocation',
   };
 }
@@ -85,6 +92,7 @@ export function publishLiveLocation(fix) {
     heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
     speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
     timestamp: Number(fix.timestamp) || Date.now(),
+    sensor_timestamp: Number(fix.sensor_timestamp) || Number(fix.timestamp) || Date.now(),
     source: String(fix.source || 'browser_geolocation'),
   };
   // Windows can fall back to IP/network positioning when the CF-33 GNSS sensor
