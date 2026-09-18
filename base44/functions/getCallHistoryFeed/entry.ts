@@ -3,17 +3,19 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-async function readWithRetry<T>(label: string, loader: () => Promise<T>): Promise<T> {
+async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallback: T): Promise<{ data: T; error: string }> {
   let lastError: any;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await loader();
+      return { data: await loader(), error: '' };
     } catch (error) {
       lastError = error;
-      if (attempt === 0) await wait(500);
+      if (attempt < 2) await wait(350 * (attempt + 1));
     }
   }
-  throw new Error(`${label} unavailable: ${lastError?.message || lastError || 'unknown error'}`);
+  const message = `${label} unavailable: ${lastError?.message || lastError || 'unknown error'}`;
+  console.warn(message);
+  return { data: fallback, error: message };
 }
 
 Deno.serve(async (req) => {
@@ -26,14 +28,18 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('full_access') || roles.has('dispatch') || roles.has('supervisor');
     if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
-    // Keep the feed bounded and fail visibly if a source is unavailable. The old
-    // implementation silently converted timeouts into empty arrays, making valid
-    // property history appear to have vanished.
-    const [active, archived, alerts] = await Promise.all([
-      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 250)),
-      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 750)),
-      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 750)),
-    ]);
+    // Call history is core data; property-alert enrichment is optional. Never
+    // let a slow PropertyAlert read turn hundreds of valid calls into a "0 records"
+    // screen. Keep the reads bounded and perform the optional enrichment last.
+    const activeRead = await readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 175), []);
+    const archivedRead = await readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 400), []);
+    const alertRead = await readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 250), []);
+    const active:any[] = activeRead.data || [];
+    const archived:any[] = archivedRead.data || [];
+    const alerts:any[] = alertRead.data || [];
+    if (!active.length && !archived.length && activeRead.error && archivedRead.error) {
+      throw new Error(`Call data unavailable. ${activeRead.error}; ${archivedRead.error}`);
+    }
 
     const activeById = new Map((active || []).map((row: any) => [String(row.id), row]));
     const archivedByOriginalId = new Map<string, any>();
@@ -145,6 +151,7 @@ Deno.serve(async (req) => {
         propertyAlerts: alertByCallId.size,
         syntheticPropertyRows: syntheticPropertyRows.length,
       },
+      warnings: [activeRead.error, archivedRead.error, alertRead.error].filter(Boolean),
     });
   } catch (error) {
     console.error('getCallHistoryFeed failed:', error);
