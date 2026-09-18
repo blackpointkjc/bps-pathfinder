@@ -197,27 +197,26 @@ export default function ManageClients() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center flex-wrap gap-4">
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-purple-500/25 bg-[#0b1725] p-4 shadow-xl">
           <div className="flex items-center gap-3">
             <Briefcase className="w-8 h-8 text-purple-600" />
             <div>
-              <h1 className="text-3xl font-black text-white">Manage Clients</h1>
-              <p className="text-slate-600">Manage clients assigned from Admin → Pending Users</p>
+              <div className="text-[9px] font-black uppercase tracking-[.18em] text-purple-300">Client Administration</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Manage Clients</h1><p className="mt-1 text-xs text-slate-400">Assign properties, contacts, permissions, and portal access for client accounts.</p>
             </div>
           </div>
           <Badge className="border border-purple-500/40 bg-purple-950/40 text-purple-200">Assigned through Admin → Pending Users</Badge>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
           <CardHeader>
             <CardTitle>Client Accounts ({clientUsers?.length || 0})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {clientUsers?.map((client) => (
-                <div key={client.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
+                <div key={client.id} className="rounded-xl border border-slate-700 bg-[#0a1623] p-4 transition hover:border-purple-500/40 hover:shadow-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
