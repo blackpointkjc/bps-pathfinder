@@ -109,7 +109,7 @@ export default function CadAudioSettingsCard({ user }) {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2 text-sm font-medium">Voice
             <select value={form.voice_profile} onChange={event => setForm({ ...form, voice_profile: event.target.value })} className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3">
-              <option value="american_ai">American AI voice</option>
+              <option value="american_ai">American female voice</option>
               <option value="system_default">Device system voice</option>
             </select>
           </label>
@@ -135,7 +135,7 @@ export default function CadAudioSettingsCard({ user }) {
           <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save CAD Audio Settings'}</Button>
           <Button type="button" variant="outline" onClick={() => {
             setVoiceRuntimeConfig({ volume: form.volume, voiceProfile: form.voice_profile });
-            const accepted = announceVoice('CAD audio test. American public safety voice profile is ready.', { force: true, priority: 'low', dedupeMs: 250 });
+            const accepted = announceVoice('CAD audio test. American female public safety voice is ready.', { force: true, priority: 'low', dedupeMs: 250 });
             if (!accepted) toast.error('Audio test could not start. Check browser audio permissions.');
           }}><Volume2 className="mr-2 h-4 w-4" />Test Audio</Button>
         </div>
