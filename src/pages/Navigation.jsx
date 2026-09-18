@@ -89,6 +89,7 @@ export default function Navigation() {
     const [navVoiceMuted, setNavVoiceMuted] = useState(() => {
         try { return localStorage.getItem('bps:navigation-voice-muted') === '1'; } catch { return false; }
     });
+    const [navOffRoute, setNavOffRoute] = useState(false);
     const [routing, setRouting] = useState(false);
     const [addressQuery, setAddressQuery] = useState('');
     const [addressResults, setAddressResults] = useState([]);
@@ -603,12 +604,52 @@ export default function Navigation() {
             setAddressQuery('');
             setMapCenter(null);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
-            toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
+            if (options.reroute) toast.success('Route updated');
+            else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
             toast.error(error?.message || 'Unable to build route');
         } finally {
             setRouting(false);
         }
+    };
+
+    useEffect(() => {
+        if (!isNavigating || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
+
+        const toRad = value => value * Math.PI / 180;
+        const distanceMiles = (a, b) => {
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+            return 3958.8 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+        };
+
+        const stride = Math.max(1, Math.floor(navRoute.length / 180));
+        let nearest = Infinity;
+        for (let index = 0; index < navRoute.length; index += stride) {
+            nearest = Math.min(nearest, distanceMiles(currentLocation, navRoute[index]));
+            if (nearest < 0.03) break;
+        }
+        const offRoute = nearest > 0.12;
+        setNavOffRoute(offRoute);
+
+        if (offRoute && Date.now() - lastRerouteAtRef.current > 30000) {
+            lastRerouteAtRef.current = Date.now();
+            startNavigationToPoint(navDestination, { setEnroute: false, reroute: true }).catch(() => null);
+        }
+    }, [currentLocation, isNavigating, navRoute, navDestination, routing]);
+
+    const toggleNavigationVoice = () => {
+        setNavVoiceMuted(current => {
+            const next = !current;
+            try { localStorage.setItem('bps:navigation-voice-muted', next ? '1' : '0'); } catch {}
+            if (next) stopVoice();
+            else {
+                const step = navSteps[navStepIndex];
+                if (step) announceNavigationInstruction(formatInstruction(step), navTurnDistanceFeet);
+            }
+            return next;
+        });
     };
 
     const startInAppNavigation = () => startNavigationToPoint({
@@ -670,6 +711,7 @@ export default function Navigation() {
         setNavDistanceMiles(0);
         setNavDurationMinutes(0);
         setNavTurnDistanceFeet(0);
+        setNavOffRoute(false);
     };
 
     const recenter = async () => {
