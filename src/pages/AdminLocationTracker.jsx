@@ -306,7 +306,7 @@ export default function AdminLocationTracker({ embedded = false }) {
         const unsubscribe = entity.subscribe(queueAuditRefresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch {
-        // The one-minute recovery poll still keeps today's report current if a
+        // The recovery poll still keeps today's report current if a
         // browser temporarily cannot establish an entity subscription.
       }
     }
@@ -763,7 +763,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-black text-emerald-300">LIVE</div>
-                   <p className="text-xs text-slate-500 mt-1">Realtime map refresh · GPS saved every 30 sec · one-minute movement history</p>
+                   <p className="mt-1 text-xs text-slate-500">Realtime map refresh · moving GPS about every 7 sec · speed/heading saved in movement history</p>
                 </CardContent>
               </Card>
             </div>
