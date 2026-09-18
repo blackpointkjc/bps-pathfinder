@@ -307,6 +307,11 @@ export default function AdminLocationTracker({ embedded = false }) {
       const results = { total: 0, withLocation: [], withoutLocation: [], staleLocation: [], timestamp: new Date().toISOString() };
       const now = Date.now();
       for (const locationData of latestByEmail.values()) {
+        // Admin map responses may include an offline ActiveOfficer row only so
+        // last-known GPS can still be inspected. Offline rows are historical
+        // context, not current tracking exceptions, and must never appear under
+        // "Officers Without Live GPS."
+        if (locationData.session_active !== true) continue;
         const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
         if (profile && !isOperationallyVisibleUser(profile)) continue;
         const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
@@ -322,7 +327,7 @@ export default function AdminLocationTracker({ embedded = false }) {
           role: profile?.rank || profile?.role || 'officer',
           lastUpdate: hadGps ? new Date(gpsStamp).toISOString() : null,
           minutesSinceUpdate: hadGps ? Math.max(0, Math.floor(gpsAgeMs / 60000)) : null,
-          trackingState: hasFreshGps ? 'Live' : hadGps ? 'Last known' : 'Signed in - GPS unavailable',
+          trackingState: hasFreshGps ? 'Live' : hadGps ? 'Signed in - GPS stale' : 'Signed in - GPS unavailable',
         };
         results.total += 1;
         if (hasFreshGps) results.withLocation.push(item);
