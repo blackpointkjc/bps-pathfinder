@@ -508,10 +508,17 @@ export default function DispatchCenter() {
         }
     };
 
-    const handleCallCreated = async () => {
+    const handleCallCreated = async (createdCall) => {
+        if (!createdCall?.id) return;
+        // Show the saved call immediately instead of waiting on a full CAD reload.
+        setActiveCalls(current => {
+            const without = (current || []).filter(call => String(call.id) !== String(createdCall.id));
+            return [createdCall, ...without];
+        });
         setShowCreateDialog(false);
-        await loadActiveCalls();
         toast.success('Call created and dispatched');
+        // Reconcile quietly in the background after the modal has closed.
+        loadActiveCalls().catch(() => null);
     };
 
     // Re-sort calls when sortOrder changes
