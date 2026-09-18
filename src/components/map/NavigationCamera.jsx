@@ -30,16 +30,23 @@ export default function NavigationCamera({
             }, 8000);
         };
         
+        // Only genuine manual interaction pauses follow mode. Leaflet zoomstart
+        // also fires when Pathfinder changes zoom programmatically, which made the
+        // navigation camera pause itself after its own GPS update.
         map.on('dragstart', handleInteractionStart);
-        map.on('zoomstart', handleInteractionStart);
         map.on('dragend', handleInteractionEnd);
-        map.on('zoomend', handleInteractionEnd);
+        const container = map.getContainer();
+        container?.addEventListener('wheel', handleInteractionStart, { passive: true });
+        container?.addEventListener('pointerdown', handleInteractionStart, { passive: true });
+        container?.addEventListener('pointerup', handleInteractionEnd, { passive: true });
         
         return () => {
             map.off('dragstart', handleInteractionStart);
-            map.off('zoomstart', handleInteractionStart);
             map.off('dragend', handleInteractionEnd);
-            map.off('zoomend', handleInteractionEnd);
+            const container = map.getContainer();
+            container?.removeEventListener('wheel', handleInteractionStart);
+            container?.removeEventListener('pointerdown', handleInteractionStart);
+            container?.removeEventListener('pointerup', handleInteractionEnd);
             if (interactionTimeoutRef.current) {
                 clearTimeout(interactionTimeoutRef.current);
             }
@@ -78,11 +85,10 @@ export default function NavigationCamera({
             cameraCenter = [currentLocation[0] + latOffset, currentLocation[1] + lngOffset];
         }
 
-        map.flyTo(cameraCenter, targetZoom, {
-            animate: true,
-            duration: 0.35,
-            easeLinearity: 0.35
-        });
+        // GPS position is authoritative while navigating. Avoid overlapping
+        // flyTo animations on every fix; those animations made the camera lag
+        // behind the receiver and repeatedly exposed unloaded tile edges.
+        map.setView(cameraCenter, targetZoom, { animate: false });
 
     }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
 
