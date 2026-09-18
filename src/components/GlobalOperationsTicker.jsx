@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FileWarning, Siren } from 'lucide-react';
+import { AlertTriangle, FileWarning, MapPin, Siren } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { cleanIncident } from '@/utils/callUtils';
+import { classifyCall } from '@/lib/cadCallTypes';
+import { dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
-const CLOSED_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+const CLOSED = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const PRIORITY_SHORT = { critical: 'CRIT', high: 'HIGH', medium: 'MED', low: 'LOW' };
 const BOLO_LABELS = {
   fugitive: ['FUGITIVE FILE', 'FUGITIVE FILES'],
@@ -14,6 +18,54 @@ const BOLO_LABELS = {
   property_alert: ['PROPERTY ALERT', 'PROPERTY ALERTS'],
   watch_notice: ['WATCH FILE', 'WATCH FILES'],
 };
+
+const normalized = value => String(value || '').trim().toLowerCase();
+const displayText = value => String(value || '').trim().replace(/\s+/g, ' ');
+
+function recordTime(record) {
+  const value = record?.updated_date || record?.created_date || record?.time_received || record?.activated_at || 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function upsert(rows, record) {
+  if (!record?.id) return rows || [];
+  const next = (rows || []).filter(item => String(item.id) !== String(record.id));
+  next.push(record);
+  return next.sort((a, b) => recordTime(b) - recordTime(a));
+}
+
+function callPriority(call) {
+  if (call?.priority_override && call?.priority) return normalized(call.priority);
+  const classification = classifyCall(`${call?.incident || ''} ${call?.description || ''}`);
+  return normalized(classification.matched_type?.priority || call?.priority || 'medium');
+}
+
+function criticalSummary(calls) {
+  const critical = dedupeOperationalCalls(calls)
+    .filter(call => !CLOSED.has(normalized(call.status)) && callPriority(call) === 'critical')
+    .slice(0, 3);
+  if (!critical.length) return null;
+
+  const detailParts = [];
+  for (const call of critical.slice(0, 2)) {
+    const incident = displayText(cleanIncident(call)).toUpperCase();
+    const investigate = incident.match(/^(.*?)\s*,\s*INVESTIGATE$/i);
+    if (investigate?.[1]) {
+      detailParts.push(investigate[1].trim());
+      detailParts.push(`INVESTIGATE @ ${displayText(call.location).toUpperCase()}`);
+    } else {
+      detailParts.push(`${incident} @ ${displayText(call.location).toUpperCase()}`);
+    }
+  }
+
+  return {
+    key: 'critical:summary',
+    kind: 'call',
+    href: createPageUrl('DispatchCenter'),
+    text: `⚠ ${critical.length} CRITICAL INCIDENT${critical.length === 1 ? '' : 'S'} ACTIVE · ${detailParts.join(' | ')}`,
+  };
+}
 
 function boloFamily(bolo = {}) {
   const type = normalized(bolo.alert_type) || 'watch_notice';
@@ -27,67 +79,69 @@ function boloFamily(bolo = {}) {
   return 'watch_notice';
 }
 
-const normalized = value => String(value || '').trim().toLowerCase();
-const displayText = value => String(value || '').trim().replace(/\s+/g, ' ');
-
-function recordTime(record) {
-  const value = record?.updated_date || record?.created_date || record?.time_received || 0;
-  const time = new Date(value).getTime();
-  return Number.isFinite(time) ? time : 0;
-}
-
-function upsert(rows, record) {
-  if (!record?.id) return rows;
-  const next = rows.filter(item => String(item.id) !== String(record.id));
-  next.push(record);
-  return next.sort((a, b) => recordTime(b) - recordTime(a));
-}
-
-function boloGroupSegments(bolos = []) {
+function boloSegments(bolos = []) {
   const groups = new Map();
   for (const bolo of bolos) {
     if (normalized(bolo?.status) !== 'active') continue;
     const priority = normalized(bolo.priority) || 'medium';
     const family = boloFamily(bolo);
-    // Matching priority + semantic family is similar criteria. This intentionally
-    // merges legacy WATCH NOTICE records titled "Fugitive File" with newer
-    // WANTED PERSON records while leaving every underlying BOLO file separate.
     const key = `${priority}|${family}`;
     const group = groups.get(key) || { priority, family, items: [] };
     group.items.push(bolo);
     groups.set(key, group);
   }
 
-  return [...groups.values()]
-    .sort((a, b) => {
-      const weight = { critical: 4, high: 3, medium: 2, low: 1 };
-      return (weight[b.priority] || 0) - (weight[a.priority] || 0)
-        || recordTime(b.items[0]) - recordTime(a.items[0]);
-    })
-    .map(group => {
-      const count = group.items.length;
-      const [singular, plural] = BOLO_LABELS[group.family] || ['BOLO FILE', 'BOLO FILES'];
-      const locations = [...new Set(group.items.map(item => displayText(item.last_known_location)).filter(Boolean).map(value => value.toUpperCase()))];
-      const single = group.items[0];
-      const detail = count === 1
-        ? [single.title || single.subject_name || single.vehicle_plate || single.bolo_number, locations[0]].filter(Boolean).join(' · ')
-        : locations.length === 1
-          ? locations[0]
-          : locations.length > 1
-            ? 'MULTIPLE LOCATIONS'
-            : '';
-      return {
-        key: `bolo:${group.priority}:${group.family}`,
-        kind: 'bolo',
-        text: `${count} ${PRIORITY_SHORT[group.priority] || group.priority.toUpperCase()} · ${count === 1 ? singular : plural}${detail ? ` · ${detail}` : ''}`,
-        href: createPageUrl('BOLOAlerts'),
-      };
+  return [...groups.values()].map(group => {
+    const count = group.items.length;
+    const [singular, plural] = BOLO_LABELS[group.family] || ['BOLO FILE', 'BOLO FILES'];
+    const locations = [...new Set(group.items.map(item => displayText(item.last_known_location)).filter(Boolean).map(value => value.toUpperCase()))];
+    const single = group.items[0];
+    const detail = count === 1
+      ? [single.title || single.subject_name || single.vehicle_plate || single.bolo_number, locations[0]].filter(Boolean).join(' · ')
+      : locations.length === 1 ? locations[0] : locations.length > 1 ? 'MULTIPLE LOCATIONS' : '';
+    return {
+      key: `bolo:${group.priority}:${group.family}`,
+      kind: 'bolo',
+      href: createPageUrl('BOLOAlerts'),
+      text: `${count} ${PRIORITY_SHORT[group.priority] || group.priority.toUpperCase()} · ${count === 1 ? singular : plural}${detail ? ` · ${detail}` : ''}`,
+    };
+  });
+}
+
+function distressSegments(rows = []) {
+  return (rows || [])
+    .filter(row => ['active', 'acknowledged', 'responders_enroute'].includes(normalized(row.status)))
+    .map(row => ({
+      key: `distress:${row.id}`,
+      kind: 'distress',
+      href: createPageUrl('DispatchCenter'),
+      text: `OFFICER DISTRESS · UNIT ${row.unit_number || 'UNKNOWN'} · ${displayText([row.rank, row.last_name || row.officer_name].filter(Boolean).join(' ')).toUpperCase()}`,
+    }));
+}
+
+function propertySegments(rows = []) {
+  const seen = new Set();
+  const result = [];
+  for (const row of rows || []) {
+    if (row?.is_test === true || ['resolved', 'false_alarm', 'test'].includes(normalized(row.lifecycle_status))) continue;
+    const key = String(row.source_key || row.callId || row.id || '');
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push({
+      key: `property:${key}`,
+      kind: 'property',
+      href: createPageUrl('DispatchCenter'),
+      text: `PROPERTY ALERT · ${displayText(row.callIncident || 'ACTIVE CALL').toUpperCase()} @ ${displayText(row.callLocation || row.propertyName || 'MONITORED PROPERTY').toUpperCase()}`,
     });
+  }
+  return result.slice(0, 4);
 }
 
 export default function GlobalOperationsTicker({ user, currentPageName }) {
-  const [criticalCalls, setCriticalCalls] = useState([]);
+  const [calls, setCalls] = useState([]);
   const [activeBolos, setActiveBolos] = useState([]);
+  const [distress, setDistress] = useState([]);
+  const [propertyAlerts, setPropertyAlerts] = useState([]);
   const loadingRef = useRef(false);
   const backoffUntilRef = useRef(0);
 
@@ -106,13 +160,17 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
       if (!force && Date.now() < backoffUntilRef.current) return;
       loadingRef.current = true;
       try {
-        const [calls, bolos] = await Promise.all([
-          base44.entities.DispatchCall.filter({ priority: 'critical' }, '-time_received', 100),
+        const [callRows, bolos, distressRows, propertyRows] = await Promise.all([
+          loadActiveDispatchCallRows(200),
           base44.entities.BOLOAlert.filter({ status: 'active' }, '-updated_date', 100),
+          base44.entities.OfficerDistress.list('-activated_at', 20),
+          base44.entities.PropertyAlert.list('-created_date', 50),
         ]);
         if (!mounted) return;
-        setCriticalCalls((calls || []).filter(call => !CLOSED_CALL_STATUSES.has(normalized(call.status))));
-        setActiveBolos((bolos || []).filter(bolo => normalized(bolo.status) === 'active'));
+        setCalls(dedupeOperationalCalls(callRows || []));
+        setActiveBolos((bolos || []).filter(row => normalized(row.status) === 'active'));
+        setDistress(distressRows || []);
+        setPropertyAlerts(propertyRows || []);
         backoffUntilRef.current = 0;
       } catch (error) {
         const message = String(error?.message || error || '');
@@ -122,31 +180,41 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
       }
     };
 
-    const applyCallEvent = event => {
-      const record = event?.data;
-      if (!record?.id) return;
-      setCriticalCalls(current => {
-        const without = current.filter(item => String(item.id) !== String(record.id));
-        if (event.type === 'delete' || normalized(record.priority) !== 'critical' || CLOSED_CALL_STATUSES.has(normalized(record.status))) return without;
-        return upsert(without, record).slice(0, 100);
-      });
-    };
-
-    const applyBoloEvent = event => {
-      const record = event?.data;
-      if (!record?.id) return;
-      setActiveBolos(current => {
-        const without = current.filter(item => String(item.id) !== String(record.id));
-        if (event.type === 'delete' || normalized(record.status) !== 'active') return without;
-        return upsert(without, record).slice(0, 100);
-      });
-    };
-
     load(true);
-    let callUnsubscribe;
-    let boloUnsubscribe;
-    try { callUnsubscribe = base44.entities.DispatchCall.subscribe(applyCallEvent); } catch {}
-    try { boloUnsubscribe = base44.entities.BOLOAlert.subscribe(applyBoloEvent); } catch {}
+    const callUnsubscribe = subscribeDispatchCallChanges(event => {
+      setCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60 * 1000, limit: 200 }));
+    });
+    const unsubscribers = [callUnsubscribe];
+    try {
+      const unsub = base44.entities.BOLOAlert.subscribe(event => {
+        const row = event?.data;
+        if (!row?.id) return;
+        setActiveBolos(current => event.type === 'delete' || normalized(row.status) !== 'active'
+          ? current.filter(item => String(item.id) !== String(row.id))
+          : upsert(current, row));
+      });
+      if (typeof unsub === 'function') unsubscribers.push(unsub);
+    } catch {}
+    try {
+      const unsub = base44.entities.OfficerDistress.subscribe(event => {
+        const row = event?.data;
+        if (!row?.id) return;
+        setDistress(current => event.type === 'delete'
+          ? current.filter(item => String(item.id) !== String(row.id))
+          : upsert(current, row));
+      });
+      if (typeof unsub === 'function') unsubscribers.push(unsub);
+    } catch {}
+    try {
+      const unsub = base44.entities.PropertyAlert.subscribe(event => {
+        const row = event?.data;
+        if (!row?.id) return;
+        setPropertyAlerts(current => event.type === 'delete'
+          ? current.filter(item => String(item.id) !== String(row.id))
+          : upsert(current, row));
+      });
+      if (typeof unsub === 'function') unsubscribers.push(unsub);
+    } catch {}
 
     const refresh = () => load();
     const interval = window.setInterval(() => {
@@ -160,55 +228,47 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
       window.clearInterval(interval);
       window.removeEventListener('bps-operational-resume', refresh);
       window.removeEventListener('online', refresh);
-      if (typeof callUnsubscribe === 'function') callUnsubscribe();
-      if (typeof boloUnsubscribe === 'function') boloUnsubscribe();
+      unsubscribers.forEach(unsubscribe => { try { unsubscribe?.(); } catch {} });
     };
   }, [internal]);
 
   const segments = useMemo(() => {
-    const calls = [...criticalCalls]
-      .sort((a, b) => recordTime(b) - recordTime(a))
-      .map(call => ({
-        key: `call:${call.id}`,
-        kind: 'call',
-        text: `CRITICAL CALL · ${call.agency_cad_number || call.bps_reference || call.call_id || 'CAD'} · ${displayText(call.incident || 'CALL FOR SERVICE').toUpperCase()} · ${displayText(call.location || 'LOCATION PENDING').toUpperCase()}`,
-        href: createPageUrl('DispatchCenter'),
-      }));
-    return [...calls, ...boloGroupSegments(activeBolos)];
-  }, [criticalCalls, activeBolos]);
+    const critical = criticalSummary(calls);
+    return [
+      ...distressSegments(distress),
+      ...(critical ? [critical] : []),
+      ...propertySegments(propertyAlerts),
+      ...boloSegments(activeBolos),
+    ];
+  }, [calls, distress, propertyAlerts, activeBolos]);
 
-  const cadLivePage = ['CADCenter', 'CommandDashboard', 'DispatchCenter', 'OfficerDispatchQueue', 'Navigation'].includes(String(currentPageName || ''));
-  if (!internal || cadLivePage || segments.length === 0) return null;
-
-  const strip = duplicateIndex => (
-    <div key={duplicateIndex} className="flex shrink-0 items-center">
-      {segments.map(segment => (
-        <button
-          key={`${duplicateIndex}:${segment.key}`}
-          type="button"
-          onClick={() => { window.location.href = segment.href; }}
-          className="group flex shrink-0 items-center gap-2 px-5 py-1.5 text-left text-[10px] font-black uppercase tracking-[0.11em] text-white hover:bg-white/10"
-        >
-          {segment.kind === 'call'
-            ? <Siren className="h-3.5 w-3.5 animate-pulse text-red-300" />
-            : <FileWarning className="h-3.5 w-3.5 text-amber-300" />}
-          <span>{segment.text}</span>
-          <span className="ml-3 text-red-400/80">◆</span>
-        </button>
-      ))}
-    </div>
-  );
+  const layoutOwnedCadPage = ['CADCenter', 'CommandDashboard', 'DispatchCenter', 'OfficerDispatchQueue', 'Navigation'].includes(String(currentPageName || ''));
+  if (!internal || layoutOwnedCadPage || segments.length === 0) return null;
 
   return (
-    <div className="bps-operations-ticker flex h-8 shrink-0 items-center overflow-hidden border-b border-red-700/60 bg-[#24080b] shadow-[0_4px_16px_rgba(0,0,0,.25)]" role="status" aria-label="Critical calls and active BOLO alerts">
-      <div className="z-10 flex h-full shrink-0 items-center gap-1 border-r border-red-700/70 bg-red-950 px-3 text-[9px] font-black uppercase tracking-[0.16em] text-red-200">
+    <div className="bps-operations-ticker flex h-9 shrink-0 items-center overflow-hidden border-b border-red-700/60 bg-[#24080b] shadow-[0_6px_18px_rgba(0,0,0,.28)]" role="status" aria-label="Live operational alerts">
+      <div className="z-10 flex h-full shrink-0 items-center gap-1.5 border-r border-red-700/70 bg-red-950 px-3 text-[9px] font-black uppercase tracking-[0.16em] text-red-100">
         <AlertTriangle className="h-3.5 w-3.5 animate-pulse" />
         Live Alerts
       </div>
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <div className="bps-operations-ticker-track flex min-w-max items-center whitespace-nowrap">
-          {strip(0)}
-          {strip(1)}
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <div className="bps-operations-ticker-track flex w-max items-center whitespace-nowrap">
+          {segments.map(segment => (
+            <button
+              key={segment.key}
+              type="button"
+              onClick={() => { window.location.href = segment.href; }}
+              className="group flex shrink-0 items-center gap-2 px-5 py-2 text-left text-[10px] font-black uppercase tracking-[0.11em] text-white hover:bg-white/10"
+            >
+              {segment.kind === 'bolo'
+                ? <FileWarning className="h-3.5 w-3.5 text-amber-300" />
+                : segment.kind === 'property'
+                  ? <MapPin className="h-3.5 w-3.5 text-orange-300" />
+                  : <Siren className="h-3.5 w-3.5 animate-pulse text-red-300" />}
+              <span>{segment.text}</span>
+              <span className="ml-3 text-red-400/80">◆</span>
+            </button>
+          ))}
         </div>
       </div>
     </div>
