@@ -249,7 +249,6 @@ export default function BackgroundLocationTracker({ user }) {
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
-          device_id: trackingDeviceIdRef.current,
         });
         lastLivePushRef.current = Date.now();
         
