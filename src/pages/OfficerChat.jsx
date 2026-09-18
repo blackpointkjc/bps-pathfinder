@@ -32,13 +32,23 @@ export default function OfficerChat() {
     queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled,
-    // TeamsNotificationMonitor owns polling and broadcasts one shared result.
-    // The page performs only its initial load to avoid duplicate Graph requests.
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 1,
     staleTime: 15000,
+  });
+
+  const { data: pathfinderMessages = [], refetch: refetchPathfinderHistory } = useQuery({
+    queryKey: ['officerChatMessages'],
+    queryFn: async () => {
+      const rows = await base44.entities.OfficerChatMessage.list('-created_date', 400);
+      return [...(rows || [])].reverse();
+    },
+    enabled: !!user?.id,
+    initialData: [],
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -75,22 +85,13 @@ export default function OfficerChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
-      if (!target?.enabled) throw new Error('Microsoft Teams Officer General Chat is not configured.');
-      // Teams is the source of truth. Do not create a Pathfinder-only message first.
-      const teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'officer_chat');
-      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm Officer Chat delivery.');
+      // Pathfinder is the reliable transport. Teams is an optional mirror so IMAP
+      // and non-Microsoft users are never blocked from Officer Chat.
       const created = await base44.entities.OfficerChatMessage.create({
         ...data,
-        message_source: 'teams',
-        teams_message_id: teamsMessage.id,
-        teams_team_id: target.team_id,
-        teams_channel_id: target.channel_id,
-        teams_sender_id: teamsMessage?.from?.user?.id || '',
-        teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
-        teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
-        teams_synced_at: new Date().toISOString(),
-      }).catch(() => null);
+        message_source: 'pathfinder',
+      });
+
       if (created?.id) {
         await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
           message_id: created.id,
@@ -103,20 +104,43 @@ export default function OfficerChat() {
           read: false,
         }).catch(() => null)));
       }
-      return teamsMessage;
-    },
-    onSuccess: async (teamsMessage) => {
-      const row = normalizeTeamsChannelMessage(teamsMessage);
-      if (row) {
-        queryClient.setQueryData(
-          ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
-          (current = []) => [...current.filter(item => item.id !== row.id), row]
-        );
+
+      let teamsMessage = null;
+      try {
+        const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
+        if (target?.enabled) {
+          teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'officer_chat');
+          if (teamsMessage?.id && created?.id) {
+            await base44.entities.OfficerChatMessage.update(created.id, {
+              message_source: 'teams',
+              teams_message_id: teamsMessage.id,
+              teams_team_id: target.team_id,
+              teams_channel_id: target.channel_id,
+              teams_sender_id: teamsMessage?.from?.user?.id || '',
+              teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
+              teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+              teams_synced_at: new Date().toISOString(),
+            }).catch(() => null);
+          }
+        }
+      } catch (teamsError) {
+        console.warn('[Officer Chat] Teams mirror unavailable; Pathfinder message was preserved:', teamsError?.message);
       }
+
+      return { created, teamsMessage };
+    },
+    onSuccess: ({ created, teamsMessage }) => {
+      if (created?.id) {
+        queryClient.setQueryData(['officerChatMessages'], (current = []) => {
+          const next = [...current.filter(item => item.id !== created.id), created];
+          return next.sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
+        });
+      }
+      if (!teamsMessage && teamsConfig?.enabled) toast.info('Message sent in Pathfinder. Teams mirror is temporarily unavailable.');
       setMessage("");
       setMentionedUsers([]);
     },
-    onError: error => toast.error(`Officer Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 }),
+    onError: error => toast.error(`Officer Chat delivery failed: ${error?.message || 'Unknown error'}`, { duration: 12000 }),
   });
 
   const handleSendMessage = (e) => {
@@ -201,7 +225,7 @@ export default function OfficerChat() {
     return () => window.removeEventListener('bps:teams-channel-data', onTeamsData);
   }, [queryClient, teamsConfig?.team_id, teamsConfig?.channel_id, user?.id]);
 
-  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [];
+  const displayedMessages = pathfinderMessages;
 
   useEffect(() => {
     // ScrollArea's ref points to the Radix root, not the scrolling viewport.
@@ -210,7 +234,8 @@ export default function OfficerChat() {
   }, [displayedMessages]);
 
   const handleRefresh = async () => {
-    if (user?.id && teamsConfig?.enabled) await refetchTeamsHistory();
+    await refetchPathfinderHistory();
+    if (user?.id && teamsConfig?.enabled) await refetchTeamsHistory().catch(() => null);
   };
 
   return (
@@ -231,10 +256,10 @@ export default function OfficerChat() {
             </div>
           </CardHeader>
 
-          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Officer Chat ↔ General Chat</div>
+          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Pathfinder Officer Chat · Teams mirrors automatically when Microsoft is connected</div>
           {liveTeamsError && (
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
-              <span>{/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') ? 'Connect Microsoft 365 to load and sync General Chat.' : 'Teams General Chat could not refresh.'}</span>
+              <span>{/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') ? 'Pathfinder chat remains available. Connect Microsoft 365 only if you also want these messages mirrored to Teams.' : 'Teams mirror could not refresh. Pathfinder chat is still available.'}</span>
               {/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
             </div>
           )}
