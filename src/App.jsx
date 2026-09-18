@@ -15,6 +15,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import DispatcherShiftReports from './pages/DispatcherShiftReports';
 import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
+import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
     authError,
     accountLock,
     isAuthenticated,
+    user,
     navigateToLogin,
     navigateToMicrosoftLogin,
     checkAppState,
@@ -130,6 +132,10 @@ const AuthenticatedApp = () => {
 
   return (
       <div className="fixed inset-0 overflow-hidden">
+        {/* One persistent GPS owner for the entire authenticated Pathfinder
+            session. Route changes must never unmount/restart the shared browser
+            or external GPS stream. Individual pages only consume this stream. */}
+        {user && <BackgroundLocationTracker user={user} />}
         <Routes location={location}>
       <Route
         path="/"
