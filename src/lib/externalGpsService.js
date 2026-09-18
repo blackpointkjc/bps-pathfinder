@@ -12,6 +12,8 @@ let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
 
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
+const STORAGE_SELECTOR_KEY = 'bps:external-gps-selector';
+const STORAGE_LOCK_KEY = 'bps:external-gps-locked';
 const DEFAULT_BAUD = 4800;
 
 function serialPolicyAllowed() {
@@ -42,6 +44,9 @@ let state = {
   hdop: null,
   backgroundReader: false,
   error: '',
+  activeSelector: null,
+  lockedToAntenna: false,
+  lockedSelector: null,
 };
 
 function emit(patch = {}) {
@@ -68,6 +73,35 @@ function storedBaud() {
 
 function rememberBaud(value) {
   try { localStorage.setItem(STORAGE_BAUD_KEY, String(value)); } catch (_) {}
+}
+
+function storedSelector() {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_SELECTOR_KEY) || 'null');
+    if (!value || typeof value !== 'object') return null;
+    return {
+      usbVendorId: Number.isFinite(Number(value.usbVendorId)) ? Number(value.usbVendorId) : null,
+      usbProductId: Number.isFinite(Number(value.usbProductId)) ? Number(value.usbProductId) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function rememberSelector(selector) {
+  try { localStorage.setItem(STORAGE_SELECTOR_KEY, JSON.stringify(selector || {})); } catch (_) {}
+}
+
+function antennaLockEnabled() {
+  try { return localStorage.getItem(STORAGE_LOCK_KEY) === '1'; } catch { return false; }
+}
+
+function selectorMatches(port, selector) {
+  if (!selector) return false;
+  const candidate = portSelector(port);
+  const vendorMatches = selector.usbVendorId == null || candidate.usbVendorId === selector.usbVendorId;
+  const productMatches = selector.usbProductId == null || candidate.usbProductId === selector.usbProductId;
+  return vendorMatches && productMatches && (selector.usbVendorId != null || selector.usbProductId != null);
 }
 
 function workerSerialSupported() {
@@ -145,7 +179,8 @@ function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) {
   if (!worker) return Promise.reject(new Error('Background Web Serial is unavailable.'));
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
   rememberBaud(baud);
-  emit({ connecting: true, error: '', baudRate: baud, portGranted: true, backgroundReader: true });
+  rememberSelector(selector);
+  emit({ connecting: true, error: '', baudRate: baud, portGranted: true, backgroundReader: true, activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
   if (pendingWorkerStart) {
     window.clearTimeout(pendingWorkerStart.timeoutId);
     pendingWorkerStart.reject(new Error('External GPS connection restarted.'));
@@ -297,7 +332,9 @@ async function connectPort(port, baudRate) {
     activePort = port;
     const generation = ++readGeneration;
     rememberBaud(baud);
-    emit({ connected: true, connecting: false, baudRate: baud, portGranted: true, error: '' });
+    const selector = portSelector(port);
+    rememberSelector(selector);
+    emit({ connected: true, connecting: false, baudRate: baud, portGranted: true, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
     void readLoop(port, generation);
     return state;
   } catch (error) {
@@ -333,6 +370,8 @@ export function getExternalGpsStatus() {
     serialApiAvailable: serialApiAvailable(),
     policyAllowed: serialPolicyAllowed(),
     baudRate: state.baudRate || storedBaud(),
+    lockedToAntenna: antennaLockEnabled(),
+    lockedSelector: storedSelector(),
   };
 }
 
@@ -352,21 +391,29 @@ export async function startExternalGpsAutoReconnect() {
   if (state.connected || connectPromise) return connectPromise || getExternalGpsStatus();
   connectPromise = navigator.serial.getPorts()
     .then(async ports => {
-      emit({ portGranted: Array.isArray(ports) && ports.length > 0 });
+      emit({ portGranted: Array.isArray(ports) && ports.length > 0, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
       if (!ports?.length) return getExternalGpsStatus();
+      const remembered = storedSelector();
+      const locked = antennaLockEnabled();
+      const selectedPort = remembered ? ports.find(port => selectorMatches(port, remembered)) : null;
+      if (locked && !selectedPort) {
+        emit({ connected: false, connecting: false, backgroundReader: false, error: 'Locked GPS antenna is not currently available.' });
+        return getExternalGpsStatus();
+      }
+      const preferredPort = selectedPort || ports[0];
       // Prefer the dedicated-worker reader. Chromium can heavily throttle the page
       // main thread when a CF-33 window is minimized, while Web Serial is available
       // directly inside a Dedicated Worker. Previously approved ports can be reopened
       // there without another device prompt.
       if (workerSerialSupported()) {
         try {
-          return await startWorkerPort({ baudRate: storedBaud(), selector: portSelector(ports[0]) });
+          return await startWorkerPort({ baudRate: storedBaud(), selector: portSelector(preferredPort) });
         } catch (workerError) {
           console.warn('External GPS worker reconnect failed, using page reader:', workerError?.message);
         }
       }
       emit({ backgroundReader: false });
-      return connectPort(ports[0], storedBaud());
+      return connectPort(preferredPort, storedBaud());
     })
     .catch(error => {
       emit({ connected: false, connecting: false, backgroundReader: false, error: error?.message || '' });
@@ -392,6 +439,11 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   connectPromise = navigator.serial.requestPort()
     .then(async port => {
       const selector = portSelector(port);
+      const lockedSelector = storedSelector();
+      if (antennaLockEnabled() && lockedSelector && !selectorMatches(port, lockedSelector)) {
+        throw new Error('This computer is locked to a different GPS antenna. Unlock the saved antenna before changing receivers.');
+      }
+      rememberSelector(selector);
       await closeCurrentPort();
       if (workerSerialSupported()) {
         try {
@@ -405,6 +457,23 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
     })
     .finally(() => { connectPromise = null; });
   return connectPromise;
+}
+
+export function lockExternalGpsToCurrentAntenna() {
+  const selector = state.activeSelector || storedSelector();
+  if (!selector || (selector.usbVendorId == null && selector.usbProductId == null)) {
+    throw new Error('Pathfinder cannot identify this receiver well enough to lock it. Connect a USB antenna that reports a hardware ID.');
+  }
+  rememberSelector(selector);
+  try { localStorage.setItem(STORAGE_LOCK_KEY, '1'); } catch (_) {}
+  emit({ lockedToAntenna: true, lockedSelector: selector });
+  return getExternalGpsStatus();
+}
+
+export function unlockExternalGpsAntenna() {
+  try { localStorage.removeItem(STORAGE_LOCK_KEY); } catch (_) {}
+  emit({ lockedToAntenna: false, lockedSelector: storedSelector() });
+  return getExternalGpsStatus();
 }
 
 export async function disconnectExternalGps() {
