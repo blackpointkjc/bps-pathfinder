@@ -211,15 +211,11 @@ export default function AdminPerformanceReviews() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-purple-500/25 bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <ClipboardCheck className="w-8 h-8 text-purple-600" />
-              Performance Reviews
-            </h1>
-            <p className="text-slate-600">Start manual reviews, track annual reviews, and publish final ratings after supervisor and officer responses</p>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-purple-300">Performance Administration</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Performance Reviews</h1><p className="mt-1 text-xs text-slate-400">Start, track, finalize, and publish employee performance reviews.</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
@@ -230,7 +226,7 @@ export default function AdminPerformanceReviews() {
           </Button>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
           <CardHeader>
             <CardTitle>All Performance Reviews ({allReviews?.length || 0})</CardTitle>
           </CardHeader>
