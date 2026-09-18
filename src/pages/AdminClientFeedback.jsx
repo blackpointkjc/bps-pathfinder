@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function AdminClientFeedback() {
+export default function AdminClientFeedback({ embedded = false }) {
   const [assignDialog, setAssignDialog] = useState(null); // feedback record
   const [selectedOfficer, setSelectedOfficer] = useState("");
   const [assignAction, setAssignAction] = useState(""); // "commendation" | "complaint" | "regular"
@@ -182,17 +182,17 @@ export default function AdminClientFeedback() {
   );
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
+      <div className="mx-auto w-full max-w-6xl space-y-4">
+        {!embedded && <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
           <div>
             <h1 className="text-3xl font-black text-white">Client Feedback</h1>
             <p className="text-slate-600">Review and assign client feedback to officers</p>
           </div>
-        </div>
+        </div>}
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-3">
           <Card className="shadow-lg border-green-200">
             <CardHeader className="bg-green-50">
               <CardTitle className="text-green-700 flex items-center gap-2">
