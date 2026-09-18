@@ -382,14 +382,13 @@ export default function ManageTimeEntries() {
   const activeOfficers = allUsers.filter(isInternalMember);
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-indigo-500/25 bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Briefcase className="w-8 h-8 text-indigo-600" />
+            <Briefcase className="h-6 w-6 text-indigo-300" />
             <div>
-              <h1 className="text-3xl font-black text-white">Manage Time Entries</h1>
-              <p className="text-slate-600">Add, edit, or remove officer time entries</p>
+              <div className="text-[9px] font-black uppercase tracking-[.18em] text-indigo-300">Time Administration</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Manage Time Entries</h1><p className="mt-1 text-xs text-slate-400">Review, correct, add, and remove employee time records.</p>
             </div>
           </div>
           <Button
@@ -402,7 +401,7 @@ export default function ManageTimeEntries() {
         </div>
 
         {showAddForm && (
-          <Card className="border-none shadow-xl">
+          <Card className="border border-indigo-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
