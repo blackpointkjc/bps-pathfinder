@@ -113,16 +113,14 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             if (interactionTimer) window.clearTimeout(interactionTimer);
             map.off('dragstart', handleManualStart);
             map.off('dragend', handleManualEnd);
-            const container = map.getContainer();
             container?.removeEventListener('wheel', handleManualStart);
             container?.removeEventListener('pointerdown', handleManualStart);
             container?.removeEventListener('pointerup', handleManualEnd);
             // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
-            const cleanupContainer = typeof map.getContainer === 'function' ? map.getContainer() : null;
             try { map.stop(); } catch (_) {}
-            if (cleanupContainer && cleanupContainer.isConnected) {
+            if (container?.isConnected) {
                 try { map.closePopup(); } catch (_) {}
             }
         };
