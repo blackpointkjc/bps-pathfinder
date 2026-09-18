@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
@@ -194,6 +195,7 @@ function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOffic
 
 export default function AdminCenter() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [shadowMode, setShadowMode] = useState('');
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
@@ -278,11 +280,7 @@ export default function AdminCenter() {
     queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
     queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
     setShadowMode('');
-    const url = new URL(window.location.href);
-    url.searchParams.set('admin_center', 'admin');
-    url.searchParams.delete('section');
-    url.searchParams.delete('tool');
-    window.history.replaceState({}, '', url);
+    navigate({ pathname: window.location.pathname, search: '?admin_center=admin' }, { replace: true });
   };
 
   const shadowContent = useMemo(() => {
