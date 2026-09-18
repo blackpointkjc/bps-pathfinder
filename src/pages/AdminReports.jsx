@@ -1205,13 +1205,17 @@ export default function AdminReports() {
           <div><Label className="text-[9px] text-slate-500">Property</Label><Select value={selectedLocation} onValueChange={setSelectedLocation}><SelectTrigger className="h-8 w-44 bg-slate-950 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Locations</SelectItem>{locations?.map(loc => <SelectItem key={loc.id} value={loc.site_name}>{loc.site_name}</SelectItem>)}</SelectContent></Select></div>
         </div>
 
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setSelectedReviewType('all')} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>All Pending ({pendingTotal})</button>
-            {reviewTypes.map(type => <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>{type.label} ({type.rows.length})</button>)}
-            <button onClick={() => setSelectedReviewType('qr_patrol')} className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === 'qr_patrol' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}><QrCode className="h-3.5 w-3.5"/>QR Patrol Reports</button>
-          </div>
+        <section className="grid gap-3 xl:grid-cols-[230px_minmax(0,1fr)]">
+          <aside className="h-fit rounded-xl border border-slate-700/70 bg-[#0a1421] p-2">
+            <div className="px-2 pb-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-500">Review Queues</div>
+            <div className="space-y-1">
+              <button onClick={() => setSelectedReviewType('all')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-black ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span>All Pending</span><span>{pendingTotal}</span></button>
+              {reviewTypes.map(type => { const Icon = type.icon; return <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{type.label}</span></span><span>{type.rows.length}</span></button>; })}
+              <button onClick={() => setSelectedReviewType('qr_patrol')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === 'qr_patrol' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex items-center gap-2"><QrCode className="h-3.5 w-3.5"/>QR Patrol</span></button>
+            </div>
+          </aside>
 
+          <div className="min-w-0 rounded-xl border border-slate-700/70 bg-[#0a1421] p-2 md:p-3">
           {selectedReviewType === 'qr_patrol' ? (
             <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1522]"><AdminQRReports embedded /></div>
           ) : visibleReviewQueue.length === 0 ? (
@@ -1219,10 +1223,11 @@ export default function AdminReports() {
               <CardContent className="p-12 text-center"><FileText className="mx-auto mb-3 h-12 w-12 text-slate-600" /><h3 className="text-lg font-bold text-white">No reports waiting in this queue</h3><p className="mt-1 text-sm text-slate-500">Submitted reports will appear here until they are approved or returned for revision.</p></CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {visibleReviewQueue.map(({ report, value, icon, label }) => <ReportCard key={`${value}-${report.id}`} report={report} type={value} icon={icon} title={label.replace(/s$/, '')} />)}
             </div>
           )}
+          </div>
         </section>
 
         <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
