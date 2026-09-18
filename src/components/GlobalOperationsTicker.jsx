@@ -120,9 +120,16 @@ function distressSegments(rows = []) {
 }
 
 function propertySegments(rows = [], calls = []) {
+  const activeCalls = dedupeOperationalCalls(calls).filter(call => !CLOSED.has(normalized(call.status)));
+  const activeById = new Map();
+  for (const call of activeCalls) {
+    [call.id, call.external_call_id, call.agency_cad_number, call.bps_reference, call.call_id]
+      .filter(Boolean)
+      .forEach(value => activeById.set(String(value), call));
+  }
   const criticalCallIds = new Set(
-    dedupeOperationalCalls(calls)
-      .filter(call => !CLOSED.has(normalized(call.status)) && callPriority(call) === 'critical')
+    activeCalls
+      .filter(call => callPriority(call) === 'critical')
       .flatMap(call => [call.id, call.external_call_id, call.agency_cad_number, call.bps_reference, call.call_id])
       .filter(Boolean)
       .map(String)
@@ -131,16 +138,19 @@ function propertySegments(rows = [], calls = []) {
   const result = [];
   for (const row of rows || []) {
     if (row?.is_test === true || ['resolved', 'false_alarm', 'test'].includes(normalized(row.lifecycle_status))) continue;
-    const key = String(row.source_key || row.callId || row.id || '');
-    if (!key || seen.has(key)) continue;
     const linkedKeys = [row.callId, row.source_key, row.agency_cad_number, row.bps_reference].filter(Boolean).map(String);
+    const liveCall = linkedKeys.map(value => activeById.get(value)).find(Boolean);
+    if (!liveCall) continue;
     if (linkedKeys.some(value => criticalCallIds.has(value))) continue;
+    const stableCallKey = String(liveCall.external_call_id || liveCall.agency_cad_number || liveCall.bps_reference || liveCall.call_id || liveCall.id);
+    const key = `${row.propertyId || row.propertyName || 'property'}|${stableCallKey}`;
+    if (seen.has(key)) continue;
     seen.add(key);
     result.push({
       key: `property:${key}`,
       kind: 'property',
       href: createPageUrl('DispatchCenter'),
-      text: `PROPERTY ALERT · ${displayText(row.callIncident || 'ACTIVE CALL').toUpperCase()} @ ${displayText(row.callLocation || row.propertyName || 'MONITORED PROPERTY').toUpperCase()}`,
+      text: `PROPERTY ALERT · ${displayText(liveCall.incident || row.callIncident || 'ACTIVE CALL').toUpperCase()} @ ${displayText(liveCall.location || row.callLocation || row.propertyName || 'MONITORED PROPERTY').toUpperCase()}`,
     });
   }
   return result.slice(0, 4);
