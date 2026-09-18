@@ -149,7 +149,8 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         if (valid.length === 0) return;
         const bounds = L.latLngBounds(valid.map(c => [c[0], c[1]]));
         if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [70, 70], animate: false });
+            map.fitBounds(bounds, { padding: [70, 70], animate: false, maxZoom: 15 });
+            if (map.getZoom() < 10) map.setZoom(10, { animate: false });
         }
     }, [fitBounds, map]);
 
@@ -164,7 +165,8 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
         if (routeBounds && !isNavigating) {
             // Only fit bounds when first showing route, not during navigation
-            map.fitBounds(routeBounds, { padding: [50, 50], animate: false });
+            map.fitBounds(routeBounds, { padding: [50, 50], animate: false, maxZoom: 16 });
+            if (map.getZoom() < 10) map.setZoom(10, { animate: false });
         } else if (center && (!prevCenterRef.current || 
             Math.abs(center[0] - prevCenterRef.current[0]) > 0.00005 || 
             Math.abs(center[1] - prevCenterRef.current[1]) > 0.00005)) {
@@ -246,7 +248,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             zoom={isNavigating ? 18 : 13}
             className="h-full w-full"
             zoomControl={false}
-            minZoom={3}
+            minZoom={10}
             maxZoom={20}
         >
             <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
