@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import SignaturePad from '@/components/SignaturePad';
@@ -245,16 +246,13 @@ export default function WitnessSubpoenaRequest() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: getCurrentDirectoryUser });
   const { data: records = [], isLoading } = useQuery({
-    queryKey: ['witnessSubpoenaRequests'],
-    queryFn: () => base44.entities.WitnessSubpoenaRequest.list('-updated_date'),
+    queryKey: ['witnessSubpoenaRequests', user?.id],
+    queryFn: () => loadLegalRecordHistory('subpoena'),
     enabled: !!user,
-    initialData: [],
+    staleTime: 15000,
   });
 
-  const visibleRecords = useMemo(() => {
-    if (user?.role === 'admin') return records;
-    return records.filter((record) => String(record.created_by_id || '') === String(user?.id || ''));
-  }, [records, user]);
+  const visibleRecords = records;
 
   useEffect(() => {
     if (!recordId && user) {
@@ -434,7 +432,7 @@ export default function WitnessSubpoenaRequest() {
             <p>{recordId ? 'Editing saved request' : 'New request'} · {form.witnesses.length} witness{form.witnesses.length === 1 ? '' : 'es'} · continuation pages are automatic</p>
           </div>
           <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={newRequest}><FilePlus2 size={16} className="mr-2" /><span className="btn-label">New</span></Button>
-          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSaved((value) => !value)}><FolderOpen size={16} className="mr-2" /><span className="btn-label">Saved ({visibleRecords.length})</span></Button>
+          <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSaved((value) => !value)}><FolderOpen size={16} className="mr-2" /><span className="btn-label">History ({visibleRecords.length})</span></Button>
           <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={addWitness}><Plus size={16} className="mr-2" /><span className="btn-label">Add witness</span></Button>
           <Button type="button" variant="outline" className="dc-toolbar-secondary" onClick={() => setShowSignature(true)}><PenTool size={16} className="mr-2" /><span className="btn-label">{form.requested_by_signature_url ? 'Replace signature' : 'Sign'}</span></Button>
           <Button type="button" className="dc-toolbar-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save size={16} className="mr-2" /><span className="btn-label">{saveMutation.isPending ? 'Saving…' : 'Save draft'}</span></Button>
@@ -448,7 +446,7 @@ export default function WitnessSubpoenaRequest() {
 
         {showSaved && (
           <section className="dc-saved no-print">
-            <div className="flex items-center gap-2 mb-3"><Users size={18} /><strong>Saved witness subpoena requests</strong></div>
+            <div className="flex items-center gap-2 mb-3"><Users size={18} /><strong>Witness subpoena submission history</strong></div>
             {isLoading ? <p>Loading saved requests…</p> : visibleRecords.length === 0 ? <p className="text-sm text-slate-500">No saved requests yet.</p> : (
               <div className="dc-saved-grid">
                 {visibleRecords.map((record) => (
