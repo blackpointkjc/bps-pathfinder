@@ -8,7 +8,23 @@
     },
     "officer_name": {
       "type": "string",
-      "description": "Name of the officer"
+      "description": "Canonical officer display name"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "Officer first name copied from the user directory for live-map display"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Officer last name copied from the user directory for live-map display"
+    },
+    "rank": {
+      "type": "string",
+      "description": "Officer rank copied from the user directory for live-map display"
+    },
+    "profile_photo_url": {
+      "type": "string",
+      "description": "Officer profile photo copied from the user directory for live operational views"
     },
     "current_location": {
       "type": "string",
