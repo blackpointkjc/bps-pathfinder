@@ -24,6 +24,12 @@ const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v1';
 const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
 const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'importEntities']);
+const PERFORMANCE_ENTITY_NAMES = new Set([
+  'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport', 'CallOut',
+  'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion', 'TrainingModule',
+  'ShiftBid', 'PerformanceReview', 'ClientFeedback', 'Commendation', 'Complaint',
+  'JobDutyRule', 'PropertyAlert', 'DispatchCall', 'CallHistory',
+]);
 const entityWrappers = new Map();
 const readCache = new Map();
 const readInflight = new Map();
@@ -195,6 +201,9 @@ function protectedWrite(key, task, meta = {}) {
         outcome: 'success',
         duration_ms: Date.now() - startedAt,
       });
+      if (meta?.kind === 'entity' && PERFORMANCE_ENTITY_NAMES.has(meta?.name)) {
+        try { window.dispatchEvent(new CustomEvent('bps-performance-refresh', { detail: { entity: meta.name, method: meta.method } })); } catch {}
+      }
       return value;
     })
     .catch(error => {
