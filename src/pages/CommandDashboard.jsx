@@ -240,26 +240,30 @@ function CommandDashboardInner({ embedded = false }) {
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
-    const activeUnits    = statusUnits.filter(u => u.session_active === true && u.status !== 'Out of Service');
-    const inactiveUnits  = statusUnits.filter(u => u.session_active !== true || u.status === 'Out of Service');
-    const staleUnits     = statusUnits.filter(u => u.session_active === true && u.connection_stale === true);
+    const onlineUnits    = statusUnits.filter(u => u.presence_online === true || u.session_active === true);
+    const offlineUnits   = statusUnits.filter(u => !(u.presence_online === true || u.session_active === true));
+    const outOfServiceUnits = statusUnits.filter(u => u.status === 'Out of Service');
+    const staleUnits     = onlineUnits.filter(u => u.connection_stale === true);
+    const inServiceUnits = onlineUnits.filter(u => u.status !== 'Out of Service');
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
     const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
-    const dispatchReadyUnits = activeUnits.filter(u => u.connection_stale !== true);
+    const dispatchReadyUnits = inServiceUnits.filter(u => u.connection_stale !== true);
     const availUnits     = dispatchReadyUnits.filter(u => u.status === 'Available');
     const enrouteUnits   = dispatchReadyUnits.filter(u => u.status === 'Enroute');
     const onSceneUnits   = dispatchReadyUnits.filter(u => u.status === 'On Scene');
     const busyUnits      = dispatchReadyUnits.filter(u => u.status === 'Busy');
-    const allRosterUnits = [...activeUnits, ...inactiveUnits];
+    const allRosterUnits = [...onlineUnits, ...offlineUnits];
     const filteredRosterUnits = allRosterUnits.filter(unit => {
-        const live = unit.session_active === true && unit.status !== 'Out of Service';
-        const stale = live && unit.connection_stale === true;
+        const online = unit.presence_online === true || unit.session_active === true;
+        const stale = online && unit.connection_stale === true;
         if (officerFilter === 'ALL') return true;
-        if (officerFilter === 'IN_SERVICE') return live && !stale;
-        if (officerFilter === 'OOS') return !live;
+        if (officerFilter === 'ONLINE') return online;
+        if (officerFilter === 'OFFLINE') return !online;
+        if (officerFilter === 'IN_SERVICE') return online && unit.status !== 'Out of Service' && !stale;
+        if (officerFilter === 'OOS') return unit.status === 'Out of Service';
         if (officerFilter === 'STALE') return stale;
-        return live && unit.status === officerFilter;
+        return online && unit.status === officerFilter;
     });
     const toggleRosterCollapsed = () => setRosterCollapsed(value => {
         const next = !value;
@@ -397,32 +401,35 @@ function CommandDashboardInner({ embedded = false }) {
                 <div className="flex items-center gap-2 overflow-x-auto">
                     <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/70 px-2 py-1.5 font-mono">
                         <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-300">Officers</span>
-                        <span className="rounded bg-emerald-950/70 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">{activeUnits.length} ACTIVE</span>
-                        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-black text-slate-400">{inactiveUnits.length} OOS/OFFLINE</span>
+                        <span className="rounded bg-emerald-950/70 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">{onlineUnits.length} ONLINE</span>
+                        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-black text-slate-400">{outOfServiceUnits.length} OOS</span>
+                        <span className="rounded bg-red-950/50 px-1.5 py-0.5 text-[9px] font-black text-red-300">{offlineUnits.length} OFFLINE</span>
                         {staleUnits.length > 0 && <span className="rounded bg-amber-950/60 px-1.5 py-0.5 text-[9px] font-black text-amber-300">{staleUnits.length} STALE</span>}
                     </div>
                     <select value={officerFilter} onChange={e => setOfficerFilter(e.target.value)} className="h-7 shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black text-slate-200 outline-none focus:border-cyan-500">
                         <option value="ALL">ALL OFFICERS</option>
+                        <option value="ONLINE">ONLINE</option>
+                        <option value="OFFLINE">OFFLINE</option>
                         <option value="IN_SERVICE">IN SERVICE</option>
                         <option value="Available">AVAILABLE</option>
                         <option value="Enroute">EN ROUTE</option>
                         <option value="On Scene">ON SCENE</option>
                         <option value="Busy">BUSY</option>
-                        <option value="OOS">OUT OF SERVICE / OFFLINE</option>
+                        <option value="OOS">OUT OF SERVICE</option>
                         <option value="STALE">CONNECTION STALE</option>
                     </select>
                     <button type="button" onClick={toggleRosterCollapsed} className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black text-slate-300 hover:border-cyan-600 hover:text-white" title={rosterCollapsed ? 'Expand officer roster' : 'Collapse officer roster'}>
                         {rosterCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}{rosterCollapsed ? 'SHOW' : 'HIDE'} ROSTER
                     </button>
                     {!rosterCollapsed && filteredRosterUnits.map(unit => {
-                        const live = unit.session_active === true && unit.status !== 'Out of Service';
-                        const stale = live && unit.connection_stale === true;
+                        const online = unit.presence_online === true || unit.session_active === true;
+                        const stale = online && unit.connection_stale === true;
                         const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
                         const name = unit.rank && unit.last_name
                             ? `${normalizeRank(unit.rank)} ${unit.last_name}`
                             : (unit.full_name || unit.officer_name || unit.email || 'Officer');
                         return (
-                            <div key={unit.id || unit.email} className={`flex shrink-0 items-center gap-2 rounded-lg border px-2 py-1.5 ${live ? 'border-slate-600/80 bg-slate-900/80' : 'border-slate-800 bg-slate-950/70 opacity-75'}`}>
+                            <div key={unit.id || unit.email} className={`flex shrink-0 items-center gap-2 rounded-lg border px-2 py-1.5 ${online ? 'border-slate-600/80 bg-slate-900/80' : 'border-slate-800 bg-slate-950/70 opacity-75'}`}>
                                 {unit.profile_photo_url ? (
                                     <img src={unit.profile_photo_url} alt="" className="h-6 w-6 rounded-full border border-slate-600 object-cover" />
                                 ) : (
@@ -433,10 +440,11 @@ function CommandDashboardInner({ embedded = false }) {
                                 <div className="min-w-0 font-mono leading-tight">
                                     <div className="max-w-40 truncate text-[9px] font-black uppercase text-white">{name}</div>
                                     <div className="mt-0.5 flex items-center gap-1.5">
-                                        <span className={`h-1.5 w-1.5 rounded-full ${stale ? 'bg-amber-400' : live ? (cfg?.dot || 'bg-emerald-400') : 'bg-slate-600'}`} />
-                                        <span className={`text-[8px] font-bold uppercase ${stale ? 'text-amber-300' : live ? (cfg?.text || 'text-emerald-300') : 'text-slate-500'}`}>
-                                            {stale ? 'CONNECTION STALE' : live ? unit.status : 'OOS / OFFLINE'}
+                                        <span className={`h-1.5 w-1.5 rounded-full ${stale ? 'bg-amber-400' : online ? 'bg-emerald-400' : 'bg-red-500'}`} />
+                                        <span className={`text-[8px] font-black uppercase ${stale ? 'text-amber-300' : online ? 'text-emerald-300' : 'text-red-300'}`}>
+                                            {stale ? 'ONLINE · STALE' : online ? 'ONLINE' : 'OFFLINE'}
                                         </span>
+                                        <span className={`rounded px-1 py-0.5 text-[8px] font-bold uppercase ${cfg?.badge || 'bg-slate-800 text-slate-400'}`}>{unit.status || 'Out of Service'}</span>
                                         {unit.unit_number && <span className="text-[8px] text-slate-600">UNIT-{unit.unit_number}</span>}
                                     </div>
                                 </div>
