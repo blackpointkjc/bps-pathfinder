@@ -93,7 +93,10 @@ Deno.serve(async (req) => {
         })
         .map((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          const connectionStale = !Number.isFinite(sessionTs) || sessionTs < sessionHealthyCutoff;
+          const sessionActive = active.session_active !== false
+            && Number.isFinite(sessionTs)
+            && sessionTs >= sessionRetentionCutoff;
+          const connectionStale = sessionActive && sessionTs < sessionHealthyCutoff;
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
           const accuracy = Number(active.accuracy);
           const reliableAccuracy = Number(active.reliable_accuracy);
@@ -115,7 +118,7 @@ Deno.serve(async (req) => {
             rank: active.rank || '',
             profile_photo_url: active.profile_photo_url || '',
             unit_number: active.unit_number || '',
-            status: active.status || 'Signed In',
+            status: sessionActive ? (active.status || 'Available') : 'Out of Service',
             latitude: hasGps ? Number(active.latitude) : null,
             longitude: hasGps ? Number(active.longitude) : null,
             heading: hasGps ? active.heading : null,
@@ -137,16 +140,16 @@ Deno.serve(async (req) => {
             coarse_accuracy: !hasGps && Number.isFinite(accuracy) ? accuracy : null,
             coarse_gps_updated_at: !hasGps ? active.gps_updated_at || null : null,
             coarse_stale: !hasGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
-            gps_pending: !hasGps,
+            gps_pending: sessionActive && !hasGps,
             show_lights: active.show_lights,
             current_call_info: active.current_call_info || '',
-            current_location: active.current_location || 'Signed In',
+            current_location: sessionActive ? (active.current_location || 'Signed In') : (active.current_location || ''),
             clock_in_time: active.clock_in_time || '',
             last_update: active.last_update || active.updated_date || active.created_date || '',
             last_updated: active.last_update || active.updated_date || active.created_date || '',
-            session_active: active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff,
-            presence_online: active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff,
-            presence_state: active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff ? (connectionStale ? 'stale' : 'online') : 'offline',
+            session_active: sessionActive,
+            presence_online: sessionActive,
+            presence_state: sessionActive ? (connectionStale ? 'stale' : 'online') : 'offline',
             connection_stale: connectionStale,
             connection_age_seconds: Number.isFinite(sessionTs) ? Math.max(0, Math.floor((Date.now() - sessionTs) / 1000)) : null,
           };
