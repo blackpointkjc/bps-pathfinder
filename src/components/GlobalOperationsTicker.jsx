@@ -85,7 +85,7 @@ function boloGroupSegments(bolos = []) {
     });
 }
 
-export default function GlobalOperationsTicker({ user }) {
+export default function GlobalOperationsTicker({ user, currentPageName }) {
   const [criticalCalls, setCriticalCalls] = useState([]);
   const [activeBolos, setActiveBolos] = useState([]);
   const loadingRef = useRef(false);
@@ -177,7 +177,8 @@ export default function GlobalOperationsTicker({ user }) {
     return [...calls, ...boloGroupSegments(activeBolos)];
   }, [criticalCalls, activeBolos]);
 
-  if (!internal || segments.length === 0) return null;
+  const cadLivePage = ['CADCenter', 'CommandDashboard', 'DispatchCenter', 'OfficerDispatchQueue', 'Navigation'].includes(String(currentPageName || ''));
+  if (!internal || cadLivePage || segments.length === 0) return null;
 
   const strip = duplicateIndex => (
     <div key={duplicateIndex} className="flex shrink-0 items-center">
