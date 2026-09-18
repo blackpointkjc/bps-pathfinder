@@ -76,6 +76,19 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const actorName = [user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email;
 
+    if (action === 'list') {
+      const rows = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.list('-updated_date', 100));
+      return Response.json({
+        success: true,
+        rows: rows || [],
+        permissions: {
+          can_create: isOfficer || isManager || hasCadAccess,
+          is_manager: isManager,
+          user_id: user.id,
+        },
+      });
+    }
+
     if (action === 'create' || (action === 'save_draft' && !body?.id)) {
       const data = cleanPayload(body.data || {});
       const isDraft = action === 'save_draft';
