@@ -124,6 +124,29 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
     }
   }, [locations, editingId]);
 
+  const evaluateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error('Select a property first.');
+      setActionMessage('');
+      setActionError('');
+      const response = await base44.functions.invoke('manageAutoDispatchConfig', { action: 'evaluate_active', id: editingId });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: payload => {
+      const decisions = (payload.evaluations || []).map(item => item.decision).filter(Boolean);
+      const assigned = decisions.filter(value => value === 'assigned' || value === 'partially_assigned').length;
+      const none = decisions.filter(value => value === 'no_eligible_unit').length;
+      setActionMessage(`${payload.property?.name || 'Property'} · ${payload.evaluated || 0} active call${payload.evaluated === 1 ? '' : 's'} evaluated · ${assigned} assignment decision${assigned === 1 ? '' : 's'}${none ? ` · ${none} with no eligible unit` : ''}.`);
+    },
+    onError: error => {
+      const message = error?.response?.data?.error || error?.message || 'Active calls could not be evaluated.';
+      setActionError(message);
+      toast.error(message);
+    },
+  });
+
   if (!isAdmin) return <div className="p-8 text-center text-slate-400">Administrator access is required to change automatic-dispatch modes.</div>;
 
   return (
