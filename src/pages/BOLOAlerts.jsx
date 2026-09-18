@@ -11,6 +11,12 @@ const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone:
 const titleCase = value => String(value || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
 const primaryParty = bolo => bolo.parties?.[0] || (bolo.subject_name ? { name: bolo.subject_name } : null);
 const primaryVehicle = bolo => bolo.vehicles?.[0] || ((bolo.vehicle_plate || bolo.vehicle_make) ? { year: bolo.vehicle_year, color: bolo.vehicle_color, make: bolo.vehicle_make, model: bolo.vehicle_model, plate: bolo.vehicle_plate } : null);
+const mergeBoloRecord = (rows, record) => {
+  if (!record?.id) return rows || [];
+  const next = (rows || []).filter(item => String(item.id) !== String(record.id));
+  next.push(record);
+  return next.sort((a, b) => new Date(b.updated_date || b.created_date || 0).getTime() - new Date(a.updated_date || a.created_date || 0).getTime());
+};
 
 export default function BOLOAlerts() {
   const [bolos, setBolos] = useState([]);
@@ -48,10 +54,31 @@ export default function BOLOAlerts() {
     init();
   }, []);
 
+  // Keep the board synchronized with edits made by any authorized device without
+  // re-listing hundreds of BOLO rows after every realtime event.
+  useEffect(() => {
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.BOLOAlert.subscribe(event => {
+        const record = event?.data;
+        if (!record?.id) return;
+        if (event.type === 'delete') {
+          setBolos(current => current.filter(item => String(item.id) !== String(record.id)));
+          return;
+        }
+        setBolos(current => mergeBoloRecord(current, record));
+        setModal(current => current?.bolo?.id === record.id ? { ...current, bolo: record } : current);
+      });
+    } catch {}
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
   const load = async () => {
     setLoading(true);
     try {
-      const data = await withRequestTimeout(base44.entities.BOLOAlert.list('-created_date', 500), 15000, 'BOLO records request');
+      const data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 200), 15000, 'BOLO records request');
       setBolos(data || []);
       setPageError('');
       return data || [];
@@ -102,10 +129,12 @@ export default function BOLOAlerts() {
     const bolo = resolutionDialog;
     setResolving(bolo.id);
     try {
-      await base44.functions.invoke('manageBolo', { action: 'resolve', id: bolo.id, resolution: resolutionText.trim() });
+      const response = await base44.functions.invoke('manageBolo', { action: 'resolve', id: bolo.id, resolution: resolutionText.trim() });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (payload.record) setBolos(current => mergeBoloRecord(current, payload.record));
       setResolutionDialog(null);
       setResolutionText('');
-      await load();
     } catch (error) {
       setPageError(error?.response?.data?.error || error?.message || 'Unable to resolve BOLO. Please retry.');
     } finally {
@@ -175,7 +204,7 @@ export default function BOLOAlerts() {
         })}
       </div>
 
-      {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
+      {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}
 
       <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>
         <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
