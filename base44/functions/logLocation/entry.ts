@@ -292,7 +292,8 @@ Deno.serve(async (req) => {
     // natural recovery opportunity if the data service is temporarily unavailable.
     let historyRecorded = false;
     let historyError = '';
-    if (acceptedForPosition && hasCoordinates(latitude, longitude)) {
+    const shouldRecordHistory = body.record_history !== false;
+    if (shouldRecordHistory && acceptedForPosition && hasCoordinates(latitude, longitude)) {
       try {
         const latestHistory = await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
           { officer_email: officerEmail },
@@ -300,7 +301,9 @@ Deno.serve(async (req) => {
           1,
         ));
         const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
-        if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= 55000) {
+        const speedMph = Math.max(0, finiteNumber(body.speed));
+        const historyIntervalMs = speedMph >= 3 ? 18000 : 55000;
+        if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= historyIntervalMs) {
           await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.create({
             time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
             officer_email: officerEmail,
@@ -322,7 +325,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} source=${gpsSource} device=${deviceId} best_source=${candidateOwnsBestSource} accuracy=${candidateAccuracy} existing_accuracy=${existingAccuracy} session_changed=${sessionChanged} jump_m=${Math.round(jumpDistance)} grossly_imprecise=${grosslyImpreciseFix} impossible_jump=${impossibleBrowserJump} history=${historyRecorded} history_error=${Boolean(historyError)}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps_received=${hasGps} gps_accepted=${acceptsGps} source=${gpsSource} device=${deviceId} best_source=${candidateOwnsBestSource} accuracy=${candidateAccuracy} existing_accuracy=${existingAccuracy} session_changed=${sessionChanged} jump_m=${Math.round(jumpDistance)} grossly_imprecise=${grosslyImpreciseFix} impossible_jump=${impossibleBrowserJump} history_requested=${shouldRecordHistory} history=${historyRecorded} history_error=${Boolean(historyError)}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
