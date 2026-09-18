@@ -97,10 +97,11 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
         subdomains={provider.subdomains}
         maxZoom={20}
         maxNativeZoom={19}
-        keepBuffer={4}
+        keepBuffer={8}
         updateWhenIdle={false}
         updateWhenZooming={false}
-        updateInterval={120}
+        updateInterval={80}
+        detectRetina={false}
         className={provider.filter ? 'bps-night-map-tiles' : ''}
         eventHandlers={{
           tileerror: handleTileError,
