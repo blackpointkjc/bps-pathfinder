@@ -123,6 +123,57 @@ function selectorMatches(port, selector) {
   return vendorMatches && productMatches && (selector.usbVendorId != null || selector.usbProductId != null);
 }
 
+function ensureGpsChannel() {
+  if (gpsChannel || typeof BroadcastChannel === 'undefined') return gpsChannel;
+  gpsChannel = new BroadcastChannel(GPS_CHANNEL);
+  gpsChannel.onmessage = event => {
+    const data = event?.data || {};
+    if (data.type === 'release-owner' && gpsOwner) {
+      void disconnectExternalGps();
+    }
+  };
+  return gpsChannel;
+}
+
+async function acquireGpsOwnership({ requestRelease = false } = {}) {
+  ensureGpsChannel();
+  if (gpsOwner) return true;
+  if (!navigator?.locks?.request) return true;
+  if (gpsOwnerAcquirePromise) return gpsOwnerAcquirePromise;
+
+  if (requestRelease) {
+    try { gpsChannel?.postMessage({ type: 'release-owner' }); } catch (_) {}
+    await delay(250);
+  }
+
+  gpsOwnerAcquirePromise = new Promise(resolve => {
+    navigator.locks.request(GPS_OWNER_LOCK, { ifAvailable: true }, async lock => {
+      if (!lock) {
+        resolve(false);
+        return;
+      }
+      gpsOwner = true;
+      resolve(true);
+      await new Promise(release => { releaseGpsOwnerLock = release; });
+      releaseGpsOwnerLock = null;
+      gpsOwner = false;
+    }).catch(() => resolve(true));
+  }).finally(() => {
+    gpsOwnerAcquirePromise = null;
+  });
+
+  return gpsOwnerAcquirePromise;
+}
+
+function releaseGpsOwnership() {
+  const release = releaseGpsOwnerLock;
+  releaseGpsOwnerLock = null;
+  if (release) {
+    try { release(); } catch (_) {}
+  }
+  gpsOwner = false;
+}
+
 function workerSerialSupported() {
   return externalGpsSupported() && typeof Worker !== 'undefined';
 }
