@@ -165,43 +165,12 @@ function AdminSchedulingCoverageHub() {
 }
 
 function AdminLocationDispatchHub() {
-  const requestedUtility = new URLSearchParams(window.location.search).get('admin_location_dispatch_tool');
-  const [locationsOpen, setLocationsOpen] = useState(() => requestedUtility === 'locations');
-
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get('admin_location_dispatch_tool');
-    if (requested === 'locations') setLocationsOpen(true);
-  }, []);
-
-  return (
-    <div className="min-w-0 bg-[#07101a] p-2 md:p-3">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-[#0a1724] px-3 py-2">
-        <div>
-          <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Location & Dispatch Command</div>
-          <div className="text-sm font-black text-white">GPS, geofences, property rules, and automatic assignment</div>
-        </div>
-        <button type="button" onClick={() => setLocationsOpen(value => !value)} className={`rounded-lg border px-3 py-2 text-[10px] font-black ${locationsOpen ? 'border-blue-500 bg-blue-500/15 text-blue-100' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-blue-600'}`}>LOCATION MANAGEMENT</button>
-      </div>
-
-      <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,.8fr)]">
-        <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-          <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-cyan-400">User Location Tracker</div>
-          <AdminLocationTracker embedded />
-        </section>
-        <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-          <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-amber-300">Geofence Alerts</div>
-          <AdminGeofenceAlerts embedded />
-        </section>
-      </div>
-
-      <section className="mt-3 min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-        <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-emerald-400">Automatic Dispatch Rules & Assignment</div>
-        <AdminAutoDispatchControls embedded />
-      </section>
-
-      {locationsOpen && <section className="mt-3 overflow-hidden rounded-xl border border-blue-700/50 bg-[#08111d]"><AdminLocations embedded /></section>}
-    </div>
-  );
+  return <AdminInlineFunctions queryParam="admin_location_dispatch_tool" tools={[
+    { id: 'tracker', label: 'Live Tracker', component: AdminLocationTracker },
+    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
+    { id: 'autodispatch', label: 'Auto Dispatch', component: AdminAutoDispatchControls },
+    { id: 'locations', label: 'Manage Locations', component: AdminLocations },
+  ]} />;
 }
 
 function AdminSiteOperationsHub() {
