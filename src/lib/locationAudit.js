@@ -83,7 +83,7 @@ export function buildRouteMap(points, segments, width=760, height=480, view={}) 
   const tiles=[];
   for(let x=Math.floor(left/tileSize);x<=Math.floor((left+width)/tileSize);x++) for(let y=Math.floor(top/tileSize);y<=Math.floor((top+height)/tileSize);y++) {
     if(y<0||y>=2**tileZoom)continue;
-    tiles.push({key:tileZoom+':'+x+':'+y,url:'https://a.tile.openstreetmap.org/'+tileZoom+'/'+((x%2**tileZoom+2**tileZoom)%2**tileZoom)+'/'+y+'.png',left:(x*tileSize-left)/width*100,top:(y*tileSize-top)/height*100,width:tileSize/width*100,height:tileSize/height*100});
+    tiles.push({key:tileZoom+':'+x+':'+y,url:'https://a.basemaps.cartocdn.com/rastertiles/voyager/'+tileZoom+'/'+((x%2**tileZoom+2**tileZoom)%2**tileZoom)+'/'+y+'.png?key=cb1_2ias_1_14dba310e123052c62d832d9',left:(x*tileSize-left)/width*100,top:(y*tileSize-top)/height*100,width:tileSize/width*100,height:tileSize/height*100});
   }
   return {width,height,zoom,tiles,points:points.map(toXY),lines:segments.map(segment=>segment.map(p=>toXY(p).join(',')).join(' '))};
 }
