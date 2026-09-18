@@ -6,11 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Wrench, Car, Server, TrendingUp, Clock, AlertTriangle, BarChart3, XCircle } from 'lucide-react';
+import { Users, Shield, Edit2, Wrench, Car, Server, TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 
-import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
@@ -200,7 +199,6 @@ export default function AdminPortal() {
                     { key: 'dashboard', label: 'DASHBOARD', icon: BarChart3 },
                     { key: 'assets', label: 'FLEET', icon: Car },
                     { key: 'maintenance', label: 'MAINTENANCE', icon: Wrench },
-                    { key: 'sysissues', label: 'SYSTEM ISSUES', icon: XCircle },
                 ].map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => {
                         setActiveTab(key);
@@ -346,8 +344,6 @@ export default function AdminPortal() {
                 {activeTab === 'maintenance' && <MaintenanceTracking units={users} />}
 
 
-
-                {activeTab === 'sysissues' && <SystemIssuesPanel currentUser={currentUser} />}
 
             </div>
 
