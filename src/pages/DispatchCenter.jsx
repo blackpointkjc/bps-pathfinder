@@ -17,9 +17,7 @@ import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
-import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
 import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
-import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -666,9 +664,7 @@ export default function DispatchCenter() {
                 </section>
             )}
 
-            <PropertyAlertsBanner />
             <AutoDispatchShadowFeed />
-            <ActiveBoloBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
             <div className="dispatch-kpis grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
