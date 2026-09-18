@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
     const sameSessionPosition = Boolean(primary)
       && !sessionChanged
       && primary?.gps_session_key === trackingSessionKey
+      && (!existingDeviceId || existingDeviceId === deviceId)
       && hasCoordinates(primary?.latitude, primary?.longitude)
       && Number.isFinite(existingFixAt)
       && existingFixAt > 0;
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
       : candidateAccuracy > 2000;
     const acceptsGps = hasGps
       && deviceFixAt >= receivedAt - 2 * 60 * 1000
-      && (!Number.isFinite(existingFixAt) || sessionChanged || deviceFixAt >= existingFixAt)
+      && (!Number.isFinite(existingFixAt) || sessionChanged || deviceFixAt >= existingFixAt || (candidateClearlyBetter && existingFixAt - deviceFixAt <= 30000))
       && !grosslyImpreciseFix
       && !impossibleBrowserJump
       && candidateOwnsBestSource;
@@ -186,6 +187,7 @@ Deno.serve(async (req) => {
       liveData.accuracy = null;
       liveData.gps_source = '';
       liveData.gps_session_key = '';
+      liveData.gps_device_id = '';
     }
     if (sessionChanged) {
       // Reliable/last-known position is session-scoped too. Clear the previous
@@ -325,7 +327,7 @@ Deno.serve(async (req) => {
       longitude: acceptedForPosition ? longitude : null,
       gps_accepted: acceptedForPosition,
       gps_candidate_only: false,
-      gps_rejected_reason: grosslyImpreciseFix ? 'accuracy_too_low' : impossibleBrowserJump ? 'impossible_jump' : null,
+      gps_rejected_reason: grosslyImpreciseFix ? 'accuracy_too_low' : impossibleBrowserJump ? 'impossible_jump' : (!candidateOwnsBestSource && hasGps ? 'better_device_fix_active' : null),
       gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
       last_updated: now,
       history_recorded: historyRecorded,
