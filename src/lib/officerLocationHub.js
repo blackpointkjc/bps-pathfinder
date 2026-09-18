@@ -9,11 +9,44 @@ import { base44 } from '@/api/base44Client';
 // health-check, and CAD fetches without delaying genuine live updates.
 const SNAPSHOT_TTL_MS = 15000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
+const GPS_PUBLISH_MIN_MS = 25000;
+const HEARTBEAT_PUBLISH_MIN_MS = 75000;
+const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
+const PUBLISH_STAMP_PREFIX = 'bps:pathfinder:location-publish-at:';
 const snapshotCache = new Map();
 const inflight = new Map();
+let localPublishPromise = Promise.resolve();
 
 function cacheKey(locationOnly, includeLastKnown) { if (includeLastKnown) return 'admin-location'; return locationOnly ? 'location' : 'full'; }
 function clearSnapshotCache() { snapshotCache.clear(); }
+
+function publishKind(data = {}) {
+  if (data.end_session === true) return 'end';
+  const hasGps = Number.isFinite(Number(data.latitude)) && Number.isFinite(Number(data.longitude));
+  return hasGps && data.heartbeat_only !== true ? 'gps' : 'heartbeat';
+}
+
+function publishStampKey(email, kind) {
+  return `${PUBLISH_STAMP_PREFIX}${String(email || 'unknown').trim().toLowerCase()}:${kind}`;
+}
+
+function lastPublishAt(email, kind) {
+  try { return Number(localStorage.getItem(publishStampKey(email, kind)) || 0) || 0; }
+  catch { return 0; }
+}
+
+function notePublishAt(email, kind, at = Date.now()) {
+  try { localStorage.setItem(publishStampKey(email, kind), String(at)); } catch {}
+}
+
+async function withPublishLock(email, task) {
+  const lockName = `${PUBLISH_LOCK_PREFIX}${String(email || 'unknown').trim().toLowerCase()}`;
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request(lockName, { mode: 'exclusive' }, task);
+  }
+  localPublishPromise = localPublishPromise.catch(() => null).then(task);
+  return localPublishPromise;
+}
 
 function validCoords(lat, lng) {
   return lat !== null && lat !== undefined && lng !== null && lng !== undefined
@@ -75,11 +108,31 @@ function scrubSnapshot(payload = {}) {
 }
 
 export async function publishOfficerLocation(data = {}) {
-  const response = await base44.functions.invoke('logLocation', data);
-  const payload = response?.data || response || {};
-  if (payload.error) throw new Error(payload.error);
-  clearSnapshotCache();
-  return payload;
+  const email = String(data.officer_email || '').trim().toLowerCase();
+  const kind = publishKind(data);
+  const minimumGap = kind === 'gps' ? GPS_PUBLISH_MIN_MS : kind === 'heartbeat' ? HEARTBEAT_PUBLISH_MIN_MS : 0;
+
+  return withPublishLock(email || 'current-user', async () => {
+    if (minimumGap > 0) {
+      const lastAt = lastPublishAt(email || 'current-user', kind);
+      const age = Date.now() - lastAt;
+      if (lastAt > 0 && age >= 0 && age < minimumGap) {
+        return {
+          success: true,
+          suppressed: true,
+          suppressed_reason: `${kind}_publish_throttled`,
+          retry_after_ms: minimumGap - age,
+        };
+      }
+    }
+
+    const response = await base44.functions.invoke('logLocation', data);
+    const payload = response?.data || response || {};
+    if (payload.error) throw new Error(payload.error);
+    if (minimumGap > 0) notePublishAt(email || 'current-user', kind);
+    clearSnapshotCache();
+    return payload;
+  });
 }
 
 export async function endOfficerLocationSession() {
