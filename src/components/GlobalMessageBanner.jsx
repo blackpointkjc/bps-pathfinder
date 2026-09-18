@@ -610,12 +610,19 @@ export default function GlobalMessageBanner({ user }) {
       });
       if (typeof boloUnsubscribe === 'function') unsubscribers.push(boloUnsubscribe);
 
-      // Seed existing BOLO versions as already known so refresh/login does not
-      // replay history. A later update has a new version key and will announce.
+      // Recover a BOLO released/updated while realtime was connecting. The
+      // announcement claim prevents the same user from hearing the same version
+      // repeatedly after a refresh.
+      const boloCutoff = Date.now() - 10 * 60 * 1000;
       base44.entities.BOLOAlert.list('-updated_date', 100).then(records => {
-        (records || []).forEach(record => {
+        (records || []).slice().reverse().forEach(record => {
           if (!record?.id) return;
           const version = record.updated_date || record.created_date || 'active';
+          const changedAt = new Date(version).getTime();
+          if (record.status === 'active' && Number.isFinite(changedAt) && changedAt >= boloCutoff) {
+            void showBolo(record);
+            return;
+          }
           knownIds.current.add(`BOLOAlert:${record.id}:${version}`);
           announcedBoloSpeech.current.add(`bolo:${record.id}:${version}`);
         });
