@@ -711,7 +711,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-lg">
+              <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-blue-600" />
@@ -719,12 +719,12 @@ export default function AdminLocationTracker({ embedded = false }) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-5xl font-bold text-slate-900">{officersForMap.length}</div>
+                  <div className="text-4xl font-black text-white">{officersForMap.length}</div>
                   <p className="text-xs text-slate-500 mt-1">Live, low-accuracy, or last-known location data</p>
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-lg">
+              <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Activity className="w-4 h-4 text-purple-600" />
@@ -732,13 +732,13 @@ export default function AdminLocationTracker({ embedded = false }) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">Live</div>
+                  <div className="text-2xl font-black text-emerald-300">LIVE</div>
                    <p className="text-xs text-slate-500 mt-1">Realtime map refresh · GPS saved every 30 sec · one-minute movement history</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border-none shadow-xl">
+            <Card className="border border-emerald-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
@@ -879,7 +879,7 @@ export default function AdminLocationTracker({ embedded = false }) {
             </div>
 
             {!trackedOfficers?.length && (
-              <Card className="border-none shadow-lg">
+              <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
                 <CardContent className="p-12 text-center">
                   <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <p className="text-slate-500">No officer location records are available yet</p>
