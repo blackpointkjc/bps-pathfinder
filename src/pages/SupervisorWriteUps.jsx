@@ -209,14 +209,13 @@ export default function SupervisorWriteUps() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="mobile-page-header flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Write-Up Reports</h1>
-            <p className="text-slate-600">Document disciplinary actions and policy violations</p>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-orange-300">Supervisor Documentation</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Write-Up Reports</h1><p className="mt-1 text-xs text-slate-400">Document policy violations, officer acknowledgment, revision, and approval status.</p>
             {todoCount > 0 && (
-              <Alert className="mt-3 bg-amber-50 border-amber-200">
+              <Alert className="mt-3 border-amber-500/40 bg-amber-950/25 text-amber-100">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-900">
                   <strong>{todoCount}</strong> write-up{todoCount !== 1 ? 's' : ''} require{todoCount === 1 ? 's' : ''} action: 
