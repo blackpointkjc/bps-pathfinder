@@ -1195,44 +1195,15 @@ export default function AdminReports() {
           </div>
         </div>
 
-        <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
-          <CardContent className="p-4 md:p-5">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Archive Start Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Archive End Date</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Property Filter</Label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    {locations?.map(loc => (
-                      <SelectItem key={loc.id} value={loc.site_name}>
-                        {loc.site_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-700/70 bg-[#0a1421] px-3 py-2">
+          <div className="mr-auto">
+            <div className="text-[9px] font-black uppercase tracking-[.14em] text-emerald-400">Archive Filters</div>
+            <div className="text-xs font-bold text-slate-300">Reviewed report history</div>
+          </div>
+          <div><Label className="text-[9px] text-slate-500">Start</Label><Input className="h-8 w-36 bg-slate-950 text-xs" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+          <div><Label className="text-[9px] text-slate-500">End</Label><Input className="h-8 w-36 bg-slate-950 text-xs" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+          <div><Label className="text-[9px] text-slate-500">Property</Label><Select value={selectedLocation} onValueChange={setSelectedLocation}><SelectTrigger className="h-8 w-44 bg-slate-950 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Locations</SelectItem>{locations?.map(loc => <SelectItem key={loc.id} value={loc.site_name}>{loc.site_name}</SelectItem>)}</SelectContent></Select></div>
+        </div>
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
