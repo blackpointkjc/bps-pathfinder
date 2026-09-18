@@ -43,10 +43,11 @@ export default function MyPerformanceAnalytics() {
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
-      const sourceErrors = Object.entries(payload.service_errors || {});
-      if (sourceErrors.length) {
-        throw new Error(`Performance data is incomplete: ${sourceErrors.map(([name]) => name).join(', ')} could not be read. The last verified score remains on screen.`);
-      }
+      // Partial source failures are returned as data-health metadata, not as a
+      // failed React Query. Throwing here froze the page on the previous verified
+      // payload, which is why officers kept seeing an old score after new records
+      // were posted. Successful sources now update immediately while the warning
+      // identifies any source that is temporarily unavailable.
       return payload;
     },
     enabled: !!user?.email,
@@ -377,7 +378,7 @@ export default function MyPerformanceAnalytics() {
         )}
         {!performanceLoading && !performanceError && performanceServiceErrorNames.length > 0 && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Performance loaded with a temporary data-source issue in {performanceServiceErrorNames.join(', ')}. The page will retry automatically; affected categories are not treated as verified zero activity.
+            <span className="font-bold">Live performance data is partially available.</span> The current score has refreshed from the sources that were verified. Temporarily unavailable: {performanceServiceErrorNames.join(', ')}. Those sources are not treated as verified zero activity and Pathfinder will retry automatically.
           </div>
         )}
 
