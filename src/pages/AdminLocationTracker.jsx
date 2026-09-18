@@ -940,7 +940,7 @@ export default function AdminLocationTracker({ embedded = false }) {
             <strong>Historical Tracking:</strong> Select a user and Eastern Time date to view the complete GPS audit trail, route map, time entries, geofence alerts, estimated stops, and ping log. Use Print / Save PDF to print the same report.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Tracking Scope:</strong> Location tracking is active for every authenticated app session, regardless of duty role or clock-in status, and ends when the app session is no longer active. Location history is recorded at one-minute intervals when GPS permission is available.
+            <strong>Tracking Scope:</strong> Location tracking is active for every authenticated internal app session and ends when the app session is no longer active. Moving units publish live position about every 7 seconds; historical movement records speed and heading about every 20 seconds while moving and about once per minute while stationary.
           </p>
         </div>
       </div>
