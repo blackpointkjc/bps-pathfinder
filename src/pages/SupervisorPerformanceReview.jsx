@@ -273,18 +273,12 @@ export default function SupervisorPerformanceReview() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 mb-2">
-            <ClipboardCheck className="w-8 h-8 text-purple-600" />
-            Performance Review Tasks
-          </h1>
-          <p className="text-slate-600">Review performance for personnel in your assigned command ({assignedPeople.length} personnel)</p>
-        </div>
+    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-violet-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-500/10"><ClipboardCheck className="h-5 w-5 text-violet-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-violet-300">Supervisor Workflow</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Performance Review Tasks</h1><p className="mt-1 text-xs text-slate-400">Review assigned personnel, complete supervisor ratings, and move reviews through the workflow.</p></div></div>
 
         {selectedReview ? (
-          <Card className="border-none shadow-xl">
+          <Card className="border border-violet-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
               <CardTitle className="flex items-center justify-between">
                 <span>Review with {selectedReview.officer_name}</span>
