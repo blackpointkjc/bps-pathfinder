@@ -56,6 +56,8 @@ function emit(patch = {}) {
     supported: serialApiAvailable() && serialPolicyAllowed(),
     serialApiAvailable: serialApiAvailable(),
     policyAllowed: serialPolicyAllowed(),
+    lockedToAntenna: antennaLockEnabled(),
+    lockedSelector: storedSelector(),
   };
   listeners.forEach(listener => {
     try { listener(state); } catch (_) {}
