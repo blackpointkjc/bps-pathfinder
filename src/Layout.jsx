@@ -711,62 +711,38 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             })}
           </div>
         )}
-        {(!collapsed || mobile) && <div className="mb-1 px-2.5 pt-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#5f7d99]">Communication</div>}
-        <Link
-          to={createPageUrl('OfficerInbox')}
-          onClick={() => onCloseMobile?.()}
-          className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-          title={collapsed && !mobile ? 'Teams Messages' : undefined}
-        >
-          <MessageCircle className="h-4 w-4 shrink-0 text-cyan-300" />
-          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">TEAMS MESSAGES</span>}
-          {!!unreadCounts.OfficerInbox && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}</span>}
-        </Link>
-        <Link
-          to={createPageUrl('OutlookMail')}
-          onClick={() => onCloseMobile?.()}
-          className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-          title={collapsed && !mobile ? 'Outlook Mail' : undefined}
-        >
-          <Mail className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
-          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OUTLOOK MAIL</span>}
-          {!!unreadCounts.OutlookMail && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
-        </Link>
-        {(hasFullAccess(user) || hasRole(user, 'officer')) && (
-          <Link
-            to={createPageUrl('OfficerChat')}
-            onClick={() => onCloseMobile?.()}
-            className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-            title={collapsed && !mobile ? 'Officer Chat' : undefined}
-          >
-            <Radio className="h-4 w-4 shrink-0 text-cyan-300" />
-            {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OFFICER CHAT</span>}
-            {!!unreadCounts.OfficerChat && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerChat > 99 ? '99+' : unreadCounts.OfficerChat}</span>}
-          </Link>
-        )}
-        {(hasFullAccess(user) || hasRole(user, 'supervisor')) && (
-          <Link
-            to={createPageUrl('SupervisorChat')}
-            onClick={() => onCloseMobile?.()}
-            className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-            title={collapsed && !mobile ? 'Supervisor Chat' : undefined}
-          >
-            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-300" />
-            {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">SUPERVISOR CHAT</span>}
-            {!!unreadCounts.SupervisorChat && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}
-          </Link>
+        {mobile && !mobileSection && (
+          <>
+            <div className="mb-2 px-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#6d8aa7]">Communication</div>
+            <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              <Link to={createPageUrl('OfficerInbox')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-cyan-500 hover:bg-[#153552]">
+                <MessageCircle className="h-3.5 w-3.5 text-cyan-300" /><span>Teams</span>
+                {!!unreadCounts.OfficerInbox && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}</span>}
+              </Link>
+              <Link to={createPageUrl('OutlookMail')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-blue-500 hover:bg-[#153552]">
+                <Mail className="h-3.5 w-3.5 text-blue-300" /><span>Outlook</span>
+                {!!unreadCounts.OutlookMail && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
+              </Link>
+              {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-cyan-500 hover:bg-[#153552]"><Radio className="h-3.5 w-3.5 text-cyan-300" /><span>Officer Chat</span>{!!unreadCounts.OfficerChat && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.OfficerChat > 99 ? '99+' : unreadCounts.OfficerChat}</span>}</Link>}
+              {(hasFullAccess(user) || hasRole(user, 'supervisor')) && <Link to={createPageUrl('SupervisorChat')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-emerald-500 hover:bg-[#153552]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /><span>Supervisor</span>{!!unreadCounts.SupervisorChat && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}</Link>}
+              <Link to={createPageUrl('Announcements')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-amber-500 hover:bg-[#153552]">
+                <Bell className="h-3.5 w-3.5 text-amber-300" /><span>Announcements</span>
+                {!!unreadCounts.Announcements && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.Announcements > 99 ? '99+' : unreadCounts.Announcements}</span>}
+              </Link>
+            </div>
+          </>
         )}
 
-        <Link
-          to={createPageUrl('Announcements')}
-          onClick={() => onCloseMobile?.()}
-          className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-          title={collapsed && !mobile ? 'Announcements' : undefined}
-        >
-          <Bell className="h-4 w-4 shrink-0 text-amber-300" />
-          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">ANNOUNCEMENTS</span>}
-          {!!unreadCounts.Announcements && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.Announcements > 99 ? '99+' : unreadCounts.Announcements}</span>}
-        </Link>
+        {!mobile && (
+          <>
+            {(!collapsed || mobile) && <div className="mb-1 px-2.5 pt-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#5f7d99]">Communication</div>}
+            <Link to={createPageUrl('OfficerInbox')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><MessageCircle className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">TEAMS MESSAGES</span>}</Link>
+            <Link to={createPageUrl('OutlookMail')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Mail className="h-4 w-4 text-blue-300" />{!collapsed && <span className="text-[11px] font-black">OUTLOOK MAIL</span>}</Link>
+            {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Radio className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">OFFICER CHAT</span>}</Link>}
+            {(hasFullAccess(user) || hasRole(user, 'supervisor')) && <Link to={createPageUrl('SupervisorChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><ShieldCheck className="h-4 w-4 text-emerald-300" />{!collapsed && <span className="text-[11px] font-black">SUPERVISOR CHAT</span>}</Link>}
+            <Link to={createPageUrl('Announcements')} className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Bell className="h-4 w-4 text-amber-300" />{!collapsed && <span className="text-[11px] font-black">ANNOUNCEMENTS</span>}</Link>
+          </>
+        )}
 
         {groups.map((group) => {
           // The Pathfinder Tools window is a page launcher, not another copy of
