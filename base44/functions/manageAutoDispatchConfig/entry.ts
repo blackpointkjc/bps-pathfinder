@@ -82,6 +82,43 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, location, reevaluated_active_alerts: reevaluated });
     }
 
+    if (action === 'evaluate_active') {
+      const id = String(body.id || '').trim();
+      if (!id) return Response.json({ error: 'Property id is required' }, { status: 400 });
+      const property = await base44.asServiceRole.entities.Location.get(id);
+      if (!property) return Response.json({ error: 'Property not found' }, { status: 404 });
+      const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 75).catch(() => []);
+      const actionable = (alerts || [])
+        .filter((item: any) => !['resolved', 'false_alarm', 'test'].includes(normalizeRole(item.lifecycle_status || 'active')))
+        .filter((item: any) => item?.callId)
+        .slice(0, 25);
+      const evaluations:any[] = [];
+      for (const alert of actionable) {
+        const response = await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+          call_id: alert.callId,
+          property_alert_id: alert.id,
+        }).catch((error: any) => ({ data: { error: error?.message || String(error) } }));
+        const payload = response?.data || response || {};
+        evaluations.push({
+          call_id: alert.callId,
+          property_alert_id: alert.id,
+          success: payload?.success === true,
+          mode: payload?.mode || property.auto_dispatch_mode || 'disabled',
+          decision: payload?.decision || '',
+          recommendations: payload?.recommendations || [],
+          excluded_units: payload?.excluded_units || [],
+          staffing_shortfall: payload?.staffing_shortfall ?? null,
+          error: payload?.error || '',
+        });
+      }
+      return Response.json({
+        success: true,
+        property: { id: property.id, name: property.site_name || property.address || 'Property' },
+        evaluated: evaluations.length,
+        evaluations,
+      });
+    }
+
     if (action === 'update_settings') {
       const id = String(body.id || '').trim();
       if (!id) return Response.json({ error: 'Property id is required' }, { status: 400 });
