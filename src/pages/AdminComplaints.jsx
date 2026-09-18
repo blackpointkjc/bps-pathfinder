@@ -14,7 +14,7 @@ import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
-export default function AdminComplaints() {
+export default function AdminComplaints({ embedded = false }) {
   const [showForm, setShowForm] = useState(false);
   const [editingComplaint, setEditingComplaint] = useState(null);
   const [formData, setFormData] = useState({
@@ -130,15 +130,15 @@ This is a formal notification and will be part of your personnel file pending in
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
+      <div className="mx-auto w-full max-w-6xl space-y-4">
+        <div className={`flex items-center justify-between gap-3 ${embedded ? 'rounded-xl border border-slate-700 bg-[#0a1724] p-3' : ''}`}>
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+            <div className="text-[9px] font-black uppercase tracking-[.16em] text-red-300">Personnel Quality</div>
+            <h1 className="mt-0.5 flex items-center gap-2 text-xl font-black text-white">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
               Officer Complaints & Investigations
             </h1>
-            <p className="text-slate-600">File and manage officer complaints</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
