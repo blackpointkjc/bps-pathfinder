@@ -56,10 +56,17 @@ Deno.serve(async (req) => {
       // assignment even though eligible clocked-in units were available.
       let reevaluated = 0;
       if (mode === 'live') {
-        const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 50).catch(() => []);
+        const [alerts, calls] = await Promise.all([
+          base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 50).catch(() => []),
+          base44.asServiceRole.entities.DispatchCall.list('-created_date', 500).catch(() => []),
+        ]);
+        const inactiveStatuses = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+        const activeCallIds = new Set((calls || [])
+          .filter((call: any) => !inactiveStatuses.has(normalizeRole(call.status)))
+          .map((call: any) => String(call.id)));
         const actionable = (alerts || [])
           .filter((item: any) => !['resolved', 'false_alarm', 'test'].includes(normalizeRole(item.lifecycle_status || 'active')))
-          .filter((item: any) => item?.callId)
+          .filter((item: any) => item?.callId && activeCallIds.has(String(item.callId)))
           .slice(0, 20);
         for (const alert of actionable) {
           const response = await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
