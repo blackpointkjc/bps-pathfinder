@@ -114,15 +114,11 @@ This is a formal notification and will be part of your personnel file pending in
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-red-500/25 bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-              File Officer Complaints
-            </h1>
-            <p className="text-slate-600">Submit complaints for admin investigation</p>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-red-300">Supervisor Intake</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">File Officer Complaints</h1><p className="mt-1 text-xs text-slate-400">Submit officer complaints for administrative review and investigation.</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
@@ -133,7 +129,7 @@ This is a formal notification and will be part of your personnel file pending in
           </Button>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
           <CardHeader>
             <CardTitle>My Filed Complaints ({myComplaints?.length || 0})</CardTitle>
           </CardHeader>
