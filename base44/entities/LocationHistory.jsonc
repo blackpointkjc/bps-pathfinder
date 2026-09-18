@@ -34,6 +34,18 @@
     "accuracy": {
       "type": "number",
       "description": "GPS accuracy in meters"
+    },
+    "speed": {
+      "type": "number",
+      "description": "Officer speed in miles per hour at this recorded GPS point"
+    },
+    "heading": {
+      "type": "number",
+      "description": "Direction of travel in degrees at this recorded GPS point"
+    },
+    "gps_source": {
+      "type": "string",
+      "description": "GPS source for this point, such as browser_geolocation or external_serial"
     }
   },
   "required": [
