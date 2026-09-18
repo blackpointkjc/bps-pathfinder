@@ -666,7 +666,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         )}
       </div>
 
-      {(!collapsed || mobile) && (!desktopCenterPage || mobile) && <div className="px-3 pt-3">
+      {(!collapsed || mobile) && (!desktopCenterPage || mobile) && (!mobile || mobileSection === 'reports') && <div className="px-3 pt-3">
         <div className="flex items-center gap-2 rounded-lg border border-[#24435f] bg-[#07131f] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
           <Search className="h-3.5 w-3.5 text-[#65819d]" />
           <input value={search} onChange={event => setSearch(event.target.value)} aria-label={mobile ? 'Search all authorized pages' : `Search ${center.label}`} placeholder={mobile ? 'Search all pages…' : `Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
