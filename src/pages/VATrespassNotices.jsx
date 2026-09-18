@@ -2,7 +2,7 @@ import { uploadInternalFile } from '@/lib/internalUpload';
 // Copy of TrespassingNotices.js renamed to VA Trespass Notices
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,6 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
-  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [editingNotice, setEditingNotice] = useState(null);
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [formData, setFormData] = useState({
@@ -158,12 +156,12 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
   const noticesToDisplay = React.useMemo(() => {
     if (!allNotices) return { active: [], inactive: [] };
 
-    let filtered = [];
-    if (currentSiteName) {
-      filtered = allNotices.filter(notice => notice.location === currentSiteName);
-    } else if (isAdmin) {
-      filtered = allNotices;
-    }
+    const filtered = isAdmin
+      ? allNotices
+      : allNotices.filter(notice =>
+          recordBelongsToDirectoryUser(user, notice)
+          || (currentSiteName && notice.location === currentSiteName)
+        );
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -187,7 +185,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
     });
 
     return { active, inactive };
-  }, [allNotices, currentSiteName, isAdmin]);
+  }, [allNotices, currentSiteName, isAdmin, user]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
@@ -681,7 +679,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
   };
 
   const noticeMatchesSearch = notice => {
-    const query = searchValue.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
     const searchable = [
       JSON.stringify(notice || {}),
@@ -1042,8 +1040,8 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                 <Search className="w-4 h-4 text-slate-500" />
                 <Input
                   placeholder="Search any trespass field: name, DOB, ID, address, vehicle, reason, report or CAD #"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1"
                 />
               </div>
