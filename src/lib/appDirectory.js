@@ -42,6 +42,23 @@ export function findDirectoryUser(users, ...references) {
   return list.find(user => references.some(reference => directoryUserMatches(user, reference))) || null;
 }
 
+export function recordBelongsToDirectoryUser(user, record, extraReferences = []) {
+  if (!user || !record) return false;
+  const references = [
+    record.created_by_id,
+    record.created_by,
+    record.created_by_email,
+    record.officer_email,
+    record.submitted_by,
+    record.submitted_by_email,
+    record.reporting_officer_email,
+    record.primary_officer_id,
+    record.primary_officer_email,
+    ...(Array.isArray(extraReferences) ? extraReferences : [extraReferences]),
+  ];
+  return references.some(reference => directoryUserMatches(user, reference));
+}
+
 export function primaryDirectoryEmail(user) {
   return normalizedIdentity(user?.work_email || user?.pathfinder_email || user?.email);
 }
