@@ -134,9 +134,15 @@ Deno.serve(async (req) => {
       && !grosslyImpreciseFix
       && !impossibleBrowserJump;
 
+    const directoryName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+    const canonicalOfficerName = directoryName || String(user.full_name || body.officer_name || officerEmail).trim();
     const liveData: Record<string, unknown> = {
       officer_email: officerEmail,
-      officer_name: String(user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || body.officer_name || officerEmail),
+      officer_name: canonicalOfficerName,
+      first_name: String(user.first_name || ''),
+      last_name: String(user.last_name || ''),
+      rank: String(user.rank || ''),
+      profile_photo_url: String(user.profile_photo_url || ''),
       unit_number: String(body.unit_number || user.unit_number || ''),
       current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
       clock_in_time: String(body.clock_in_time || now),
