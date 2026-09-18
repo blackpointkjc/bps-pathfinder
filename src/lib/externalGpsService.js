@@ -222,31 +222,73 @@ function ensureSerialWorker() {
         error: data.error || '',
       };
       emit(patch);
+      if (pendingWorkerStop && data.connected === false) {
+        const pending = pendingWorkerStop;
+        pendingWorkerStop = null;
+        window.clearTimeout(pending.timeoutId);
+        pending.resolve(getExternalGpsStatus());
+      }
       if (pendingWorkerStart) {
         const pending = pendingWorkerStart;
         pendingWorkerStart = null;
         window.clearTimeout(pending.timeoutId);
         if (data.connected === true) pending.resolve(getExternalGpsStatus());
-        else pending.reject(new Error(data.error || 'Unable to open the GPS/COM port in the background reader.'));
+        else pending.reject(friendlyOpenError(data.error || 'Unable to open the GPS/COM port in the background reader.'));
       }
     }
   };
   serialWorker.onerror = event => {
     const message = event?.message || 'External GPS background reader failed.';
     emit({ connected: false, connecting: false, backgroundReader: false, error: message });
+    if (pendingWorkerStop) {
+      const pending = pendingWorkerStop;
+      pendingWorkerStop = null;
+      window.clearTimeout(pending.timeoutId);
+      pending.resolve(getExternalGpsStatus());
+    }
     if (pendingWorkerStart) {
       const pending = pendingWorkerStart;
       pendingWorkerStart = null;
       window.clearTimeout(pending.timeoutId);
-      pending.reject(new Error(message));
+      pending.reject(friendlyOpenError(message));
     }
   };
   return serialWorker;
 }
 
-function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) {
+async function stopWorkerPort({ terminate = false } = {}) {
+  if (!serialWorker) return;
+  if (pendingWorkerStart) {
+    window.clearTimeout(pendingWorkerStart.timeoutId);
+    pendingWorkerStart.reject(new Error('External GPS connection restarted.'));
+    pendingWorkerStart = null;
+  }
+  await new Promise(resolve => {
+    const timeoutId = window.setTimeout(() => {
+      if (pendingWorkerStop) pendingWorkerStop = null;
+      resolve();
+    }, 1800);
+    pendingWorkerStop = { resolve, timeoutId };
+    try { serialWorker.postMessage({ type: 'stop' }); }
+    catch (_) {
+      window.clearTimeout(timeoutId);
+      pendingWorkerStop = null;
+      resolve();
+    }
+  });
+  if (terminate && serialWorker) {
+    try { serialWorker.terminate(); } catch (_) {}
+    serialWorker = null;
+  }
+}
+
+async function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) {
+  if (serialWorker && state.backgroundReader) {
+    await stopWorkerPort({ terminate: false });
+    await delay(180);
+  }
   const worker = ensureSerialWorker();
-  if (!worker) return Promise.reject(new Error('Background Web Serial is unavailable.'));
+  if (!worker) throw new Error('Background Web Serial is unavailable.');
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
   rememberBaud(baud);
   rememberSelector(selector);
