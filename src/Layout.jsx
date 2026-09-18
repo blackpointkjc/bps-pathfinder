@@ -1632,7 +1632,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </header>
 
-      <GlobalOperationsTicker user={user} />
+      <GlobalOperationsTicker user={user} currentPageName={currentPageName} />
 
       {activeAlert && <div className="flex items-center justify-between border-b border-red-600 bg-red-950 px-4 py-2 text-sm text-red-100">
         <div className="flex items-center gap-2"><Siren className="h-4 w-4 animate-pulse" /><span className="font-bold">{activeAlert.title || 'Priority dispatch alert'}</span></div>
