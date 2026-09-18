@@ -119,7 +119,7 @@ function CommandDashboardInner({ embedded = false }) {
         const syncUnitStatus = async () => {
             try {
                 const payload = await getOfficerLocationSnapshot();
-                if (active) setCanonicalStatusUsers(Array.isArray(payload.users) ? payload.users : []);
+                if (active) setCanonicalStatusUsers(Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []));
             } catch {}
         };
         syncUnitStatus();
@@ -238,7 +238,9 @@ function CommandDashboardInner({ embedded = false }) {
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
-    const activeUnits    = statusUnits.filter(u => u.status !== 'Out of Service');
+    const activeUnits    = statusUnits.filter(u => u.session_active === true && u.status !== 'Out of Service');
+    const inactiveUnits  = statusUnits.filter(u => u.session_active !== true || u.status === 'Out of Service');
+    const staleUnits     = statusUnits.filter(u => u.session_active === true && u.connection_stale === true);
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
     const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
@@ -274,11 +276,11 @@ function CommandDashboardInner({ embedded = false }) {
             {/* The live critical banner is intentionally the first visible element in
                 this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
             {/* ── SYSTEM HEADER BAR ── */}
-            <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
+            <div className="command-dashboard-system-bar flex-none bg-slate-900/90 border-b border-slate-700/80 px-2.5 py-1.5 flex items-center gap-2">
                 <div className="command-dashboard-spacer flex-1" />
                 <div className="command-dashboard-actions flex items-center gap-1.5">
                     {/* Sync status */}
-                    <div className={`command-dashboard-sync h-9 flex items-center justify-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
+                    <div className={`command-dashboard-sync h-8 flex items-center justify-center gap-1.5 px-2 rounded-lg border font-mono text-[9px] font-bold flex-shrink-0 ${
                         syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
                         syncStatus.state === 'error'   ? 'bg-red-900/30 border-red-600/40 text-red-300' :
                         syncStatus.state === 'ok'      ? 'bg-green-900/30 border-green-600/40 text-green-300' :
@@ -301,7 +303,7 @@ function CommandDashboardInner({ embedded = false }) {
                             params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
                         }
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
-                    }} className="command-dashboard-action h-9 flex min-w-0 items-center justify-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors">
+                    }} className="command-dashboard-action h-8 flex min-w-0 items-center justify-center gap-1 px-2.5 bg-red-800/90 border border-red-600/80 text-white font-mono font-bold text-[9px] rounded-lg hover:bg-red-700 transition-colors">
                         <FileWarning className="w-3 h-3" />NEW BOLO
                     </button>
                     <OfficerDistressButton currentUser={currentUser} className="command-dashboard-distress" />
@@ -320,7 +322,7 @@ function CommandDashboardInner({ embedded = false }) {
             )}
 
             {/* ── MASTER STATUS TILES ── */}
-            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-2 border-b border-slate-800 bg-[#080d16] p-2 sm:grid-cols-4 md:grid-cols-8">
+            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-8">
                 {[
                     { label: 'ACTIVE CALLS', val: calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
                     { label: 'P1 CRITICAL', val: criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
@@ -331,16 +333,16 @@ function CommandDashboardInner({ embedded = false }) {
                     { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
                 ].map(({ label, val, color, bg, border, flash }) => (
-                    <div key={label} className={`command-dashboard-kpi ${bg} rounded-xl border border-slate-700/80 px-2 py-3 flex min-w-0 flex-col items-center justify-center text-center shadow-lg ${flash ? 'animate-pulse' : ''}`}>
-                        <span className={`text-2xl md:text-3xl font-mono font-black leading-none ${color} drop-shadow-[0_0_10px_currentColor]`}>{val}</span>
-                        <span className="text-[9px] text-slate-500 font-mono font-bold tracking-widest mt-1 text-center">{label}</span>
+                    <div key={label} className={`command-dashboard-kpi ${bg} rounded-lg border border-slate-700/80 px-2 py-2 flex min-w-0 flex-col items-center justify-center text-center shadow-md ${flash ? 'animate-pulse' : ''}`}>
+                        <span className={`text-xl md:text-2xl font-mono font-black leading-none ${color} drop-shadow-[0_0_8px_currentColor]`}>{val}</span>
+                        <span className="text-[8px] text-slate-500 font-mono font-bold tracking-[0.12em] mt-1 text-center">{label}</span>
                     </div>
                 ))}
             </div>
 
             {/* ── MY STATUS BAR ── */}
             {currentUser && (
-                <div className="command-status-bar flex-none flex items-center gap-2 px-3 py-2 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
+                <div className="command-status-bar flex-none flex items-center gap-2 px-2.5 py-1.5 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
                     {currentUser.profile_photo_url ? (
                         <img src={currentUser.profile_photo_url} alt="" className="h-8 w-8 flex-shrink-0 rounded-full border border-gold/50 object-cover" />
                     ) : (
@@ -361,7 +363,7 @@ function CommandDashboardInner({ embedded = false }) {
                             const isActive = currentUser.status === s;
                             return (
                                 <button key={s} onClick={() => handleStatusChange(s)}
-                                    className={`h-7 whitespace-nowrap px-2.5 rounded-md font-mono text-[10px] font-bold border transition-all ${
+                                    className={`h-6 whitespace-nowrap px-2 rounded-md font-mono text-[9px] font-bold border transition-all ${
                                         isActive ? `${cfg.badge} ring-1 ring-offset-1 ring-offset-slate-900 ring-current` : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500'
                                     }`}>
                                     {s.toUpperCase()}
@@ -373,8 +375,8 @@ function CommandDashboardInner({ embedded = false }) {
             )}
 
             {/* ── MAIN WORKSPACE ── */}
-            <div className="flex-1 min-h-0 p-2 md:p-3">
-                <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_18px_55px_rgba(0,0,0,.28)]">
+            <div className="flex-1 min-h-0 p-1.5 md:p-2">
+                <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
                     <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span></div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
@@ -406,7 +408,7 @@ function CommandDashboardInner({ embedded = false }) {
                             return (
                                 <div key={call.id}
                                     onClick={() => openCallOnMap(call)}
-                                    className={`cad-call-row flex items-start px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
+                                    className={`cad-call-row flex items-start px-3 py-1.5 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
                                     <div className="cad-call-priority w-8 flex-shrink-0 pt-0.5">
                                         {isAdmin ? (
