@@ -301,10 +301,15 @@ export default function AdminCenter() {
       sections={MASTER_SECTIONS}
       defaultSection="admin"
       queryParam="admin_center"
+      headerAction={section => section !== 'admin' ? (
+        <button type="button" onClick={() => enterShadow(section)} className="flex h-7 items-center gap-1.5 rounded-md border border-slate-600 bg-slate-900 px-2.5 text-[9px] font-black text-slate-200 transition hover:border-cyan-500 hover:text-cyan-200">
+          <Eye className="h-3 w-3"/>PREVIEW {section.toUpperCase()}
+        </button>
+      ) : null}
     >
       {section => {
         const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
-        return <div className="min-w-0">{section !== 'admin' && <div className="flex justify-end border-b border-slate-800 bg-[#08111e] px-4 py-2"><button type="button" onClick={()=>enterShadow(section)} className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-900 px-3 py-1.5 text-[11px] font-black text-slate-200 hover:border-cyan-500 hover:text-cyan-200"><Eye className="h-3.5 w-3.5"/>Preview as {section.charAt(0).toUpperCase()+section.slice(1)}</button></div>}{mirror}</div>;
+        return <div className="min-w-0">{mirror}</div>;
       }}
     </UnifiedCenter>
   );
