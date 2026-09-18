@@ -389,7 +389,9 @@ function centerUnreadSummary(centerKey, unreadCounts = {}) {
   return `${total > 99 ? '99+' : total} unread · ${sources}`;
 }
 
-const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'OfficerChat', 'SupervisorChat']);
+// Teams-only surfaces still require Microsoft. Officer Chat has a Pathfinder
+// native fallback so IMAP/non-Microsoft users can communicate with the same team.
+const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'SupervisorChat']);
 const _COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
 
 function hasFullAccess(user) {
