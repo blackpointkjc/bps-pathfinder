@@ -123,14 +123,11 @@ export default function Announcements() {
   return (
     <>
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-4">
-              <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
-              <div>
-                <h1 className="mb-2 text-3xl font-black text-white">Company Announcements</h1>
-                <p className="text-slate-600">Stay updated with the latest company news</p>
-              </div>
+        <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+          <div className="mx-auto max-w-5xl space-y-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><Megaphone className="h-5 w-5 text-blue-300" /></div>
+              <div className="min-w-0"><div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Company Communications</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Company Announcements</h1><p className="mt-1 text-xs text-slate-400">Operational updates, notices, and company-wide messages.</p></div>
             </div>
 
             <div className="space-y-4">
