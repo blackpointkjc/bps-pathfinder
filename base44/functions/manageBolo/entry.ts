@@ -13,6 +13,23 @@ function cleanPayload(input: any) {
   return output;
 }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const transient = (error: any) => /rate limit|too many requests|\b429\b|timeout|timed out|temporar|connection/i.test(String(error?.message || error || ''));
+
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!transient(error) || attempt === 2) break;
+      await delay(500 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
 function boloAnnouncement(record: any) {
   const party = Array.isArray(record?.parties) ? record.parties.find((item: any) => item?.name) : null;
   const vehicle = Array.isArray(record?.vehicles) ? record.vehicles.find((item: any) => item?.plate || item?.make || item?.model) : null;
@@ -64,7 +81,7 @@ Deno.serve(async (req) => {
       const isDraft = action === 'save_draft';
       if (!data.alert_type) return Response.json({ error: 'Alert type is required' }, { status: 400 });
       if (!isDraft && !String(data.title || '').trim()) return Response.json({ error: 'Title is required before release' }, { status: 400 });
-      const record = await base44.asServiceRole.entities.BOLOAlert.create({
+      const record = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.create({
         ...data,
         title: String(data.title || '').trim() || 'Untitled BOLO Draft',
         priority: data.priority || 'medium',
@@ -72,14 +89,20 @@ Deno.serve(async (req) => {
         bolo_number: isDraft ? '' : `BOLO-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Date.now().toString().slice(-5)}`,
         issued_by: actorName,
         issued_by_id: user.id,
-      });
-      if (!isDraft) await publishAnnouncement(base44, record, now);
-      return Response.json({ success: true, record, status: isDraft ? 'draft' : 'active' });
+      }));
+      let announcementError = '';
+      if (!isDraft) {
+        await publishAnnouncement(base44, record, now).catch(error => {
+          announcementError = String(error?.message || error || 'Announcement delivery failed');
+          console.warn('BOLO saved but announcement logging failed:', announcementError);
+        });
+      }
+      return Response.json({ success: true, record, status: isDraft ? 'draft' : 'active', announcement_error: announcementError });
     }
 
     const id = String(body?.id || '');
     if (!id) return Response.json({ error: 'BOLO id is required' }, { status: 400 });
-    const record = await base44.asServiceRole.entities.BOLOAlert.get(id);
+    const record = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.get(id));
     if (!record) return Response.json({ error: 'BOLO not found' }, { status: 404 });
     const ownsRecord = record.issued_by_id === user.id || record.created_by_id === user.id;
 
@@ -88,8 +111,8 @@ Deno.serve(async (req) => {
       if (!['active', 'draft'].includes(String(record.status || '')) && !isManager) return Response.json({ error: 'Only command staff can edit a closed BOLO' }, { status: 403 });
       const updates = cleanPayload(body.data || {});
       if (action === 'save_draft') updates.status = 'draft';
-      await base44.asServiceRole.entities.BOLOAlert.update(id, updates);
-      return Response.json({ success: true, status: action === 'save_draft' ? 'draft' : record.status });
+      const updatedRecord = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.update(id, updates));
+      return Response.json({ success: true, status: action === 'save_draft' ? 'draft' : (updatedRecord?.status || record.status), record: updatedRecord || { ...record, ...updates, id } });
     }
 
     if (action === 'release') {
@@ -106,24 +129,28 @@ Deno.serve(async (req) => {
         issued_by: actorName,
         issued_by_id: user.id,
       };
-      await base44.asServiceRole.entities.BOLOAlert.update(id, releaseData);
-      const releasedRecord = { ...record, ...releaseData, id };
-      await publishAnnouncement(base44, releasedRecord, now);
-      return Response.json({ success: true, status: 'active', record: releasedRecord });
+      const updatedRecord = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.update(id, releaseData));
+      const releasedRecord = updatedRecord || { ...record, ...releaseData, id };
+      let announcementError = '';
+      await publishAnnouncement(base44, releasedRecord, now).catch(error => {
+        announcementError = String(error?.message || error || 'Announcement delivery failed');
+        console.warn('BOLO released but announcement logging failed:', announcementError);
+      });
+      return Response.json({ success: true, status: 'active', record: releasedRecord, announcement_error: announcementError });
     }
 
     if (action === 'resolve') {
       if (!isManager && !ownsRecord) return Response.json({ error: 'You can only resolve BOLOs you issued' }, { status: 403 });
       const resolution = String(body?.resolution || '').trim();
       if (!resolution) return Response.json({ error: 'Resolution/disposition is required' }, { status: 400 });
-      await base44.asServiceRole.entities.BOLOAlert.update(id, {
+      const updatedRecord = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.update(id, {
         status: 'resolved',
         resolved_at: now,
         resolved_by: actorName,
         resolved_by_id: user.id,
         resolution_notes: resolution,
-      });
-      return Response.json({ success: true, status: 'resolved' });
+      }));
+      return Response.json({ success: true, status: 'resolved', record: updatedRecord });
     }
 
     if (action === 'set_status') {
@@ -137,8 +164,8 @@ Deno.serve(async (req) => {
         updates.resolved_by_id = user.id;
         updates.resolution_notes = String(body?.resolution || status).trim();
       }
-      await base44.asServiceRole.entities.BOLOAlert.update(id, updates);
-      return Response.json({ success: true, status });
+      const updatedRecord = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.update(id, updates));
+      return Response.json({ success: true, status, record: updatedRecord });
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
