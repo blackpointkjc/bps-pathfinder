@@ -374,12 +374,13 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="mb-2 text-2xl font-black text-white md:text-3xl">VA Uniform Summons</h1>
-            <p className="text-sm md:text-base text-slate-600">Issue Virginia uniform traffic summons</p>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Virginia Enforcement</div>
+            <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">VA Uniform Summons</h1>
+            <p className="mt-1 text-xs text-slate-400">Issue and manage Virginia uniform summons records.</p>
           </div>
           <Button
             onClick={() => {
@@ -394,7 +395,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
         </div>
 
         {showForm && canSubmit && (
-          <Card className="border-none shadow-xl">
+          <Card className="border border-blue-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
