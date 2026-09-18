@@ -135,30 +135,40 @@ function ensureGpsChannel() {
   return gpsChannel;
 }
 
-async function acquireGpsOwnership({ requestRelease = false } = {}) {
+async function acquireGpsOwnership({ requestRelease = false, waitMs = 0 } = {}) {
   ensureGpsChannel();
   if (gpsOwner) return true;
   if (!navigator?.locks?.request) return true;
   if (gpsOwnerAcquirePromise) return gpsOwnerAcquirePromise;
 
-  if (requestRelease) {
-    try { gpsChannel?.postMessage({ type: 'release-owner' }); } catch (_) {}
-    await delay(250);
-  }
+  gpsOwnerAcquirePromise = (async () => {
+    if (requestRelease) {
+      try { gpsChannel?.postMessage({ type: 'release-owner' }); } catch (_) {}
+      await delay(250);
+    }
 
-  gpsOwnerAcquirePromise = new Promise(resolve => {
-    navigator.locks.request(GPS_OWNER_LOCK, { ifAvailable: true }, async lock => {
-      if (!lock) {
-        resolve(false);
-        return;
-      }
-      gpsOwner = true;
-      resolve(true);
-      await new Promise(release => { releaseGpsOwnerLock = release; });
-      releaseGpsOwnerLock = null;
-      gpsOwner = false;
-    }).catch(() => resolve(true));
-  }).finally(() => {
+    const deadline = Date.now() + Math.max(0, Number(waitMs) || 0);
+    do {
+      const acquired = await new Promise(resolve => {
+        navigator.locks.request(GPS_OWNER_LOCK, { ifAvailable: true, mode: 'exclusive' }, async lock => {
+          if (!lock) {
+            resolve(false);
+            return;
+          }
+          gpsOwner = true;
+          resolve(true);
+          await new Promise(release => { releaseGpsOwnerLock = release; });
+          releaseGpsOwnerLock = null;
+          gpsOwner = false;
+        }).catch(() => resolve(true));
+      });
+      if (acquired) return true;
+      if (Date.now() >= deadline) return false;
+      await delay(200);
+    } while (Date.now() <= deadline);
+
+    return false;
+  })().finally(() => {
     gpsOwnerAcquirePromise = null;
   });
 
@@ -434,26 +444,38 @@ async function closeCurrentPort() {
 
 async function connectPort(port, baudRate) {
   if (!port) throw new Error('No external GPS receiver was selected.');
-  const baud = [4800, 9600, 38400].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
+  const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
   if (activePort === port && state.connected && state.baudRate === baud) return state;
 
   emit({ connecting: true, error: '', baudRate: baud, portGranted: true });
   await closeCurrentPort();
-  try {
-    await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
-    activePort = port;
-    const generation = ++readGeneration;
-    rememberBaud(baud);
-    const selector = portSelector(port);
-    rememberSelector(selector);
-    emit({ connected: true, connecting: false, baudRate: baud, portGranted: true, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
-    void readLoop(port, generation);
-    return state;
-  } catch (error) {
-    activePort = null;
-    emit({ connected: false, connecting: false, error: error?.message || 'Unable to open the external GPS receiver.' });
-    throw error;
+  await delay(180);
+
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
+      activePort = port;
+      const generation = ++readGeneration;
+      rememberBaud(baud);
+      const selector = portSelector(port);
+      rememberSelector(selector);
+      emit({ connected: true, connecting: false, baudRate: baud, portGranted: true, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
+      void readLoop(port, generation);
+      return state;
+    } catch (error) {
+      lastError = error;
+      const message = String(error?.message || error || '');
+      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 2) break;
+      try { if (port?.readable || port?.writable) await port.close(); } catch (_) {}
+      await delay(250 * (attempt + 1));
+    }
   }
+
+  activePort = null;
+  const friendly = friendlyOpenError(lastError);
+  emit({ connected: false, connecting: false, error: friendly.message });
+  throw friendly;
 }
 
 function installSerialEvents() {
