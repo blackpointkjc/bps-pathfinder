@@ -2,7 +2,7 @@ import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -90,14 +90,19 @@ export default function DailyActivityReports() {
 
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0].trim() : '';
 
-  const { data: reports } = useQuery({
-    queryKey: ['myDailyActivityReports', user?.id],
-    queryFn: () => base44.entities.DailyActivityReport.filter(
-      { created_by_id: user.id },
-      '-created_date'
-    ),
-    enabled: !!user?.id,
+  const { data: allReports = [] } = useQuery({
+    queryKey: ['dailyActivityReportHistory'],
+    queryFn: () => base44.entities.DailyActivityReport.list('-created_date', 500),
+    enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  const reports = !user
+    ? []
+    : isAdmin
+      ? allReports
+      : allReports.filter(report => recordBelongsToDirectoryUser(user, report));
 
   const { data: reportTodos } = useQuery({
     queryKey: ['myDARTodos'],
