@@ -803,17 +803,19 @@ export default function MaintenanceReports() {
         <Card className="border-none shadow-lg">
           <CardHeader>
             <CardTitle>
-              {currentSiteName
-                ? `Maintenance Reports at ${currentSiteName} (${reportsToDisplay.length})`
-                : 'Maintenance Reports (Clock in to view site reports)'}
+              {user?.role === 'admin'
+                ? `All Maintenance Reports (${reportsToDisplay.length})`
+                : currentSiteName
+                  ? `Maintenance Reports at ${currentSiteName} + My History (${reportsToDisplay.length})`
+                  : `My Maintenance Report History (${reportsToDisplay.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!currentSiteName ? (
+            {!currentSiteName && user?.role !== 'admin' && reportsToDisplay.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                <p className="text-slate-600 text-lg">Clock in to a site to view maintenance reports</p>
-                <p className="text-slate-500 text-sm mt-2">You'll see all reports filed at your current site</p>
+                <p className="text-slate-600 text-lg">No maintenance report history found</p>
+                <p className="text-slate-500 text-sm mt-2">Clock in to a site to also see reports filed at your current property.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -883,7 +885,7 @@ export default function MaintenanceReports() {
                   </div>
                 ))}
                 {reportsToDisplay.length === 0 && (
-                  <p className="text-center text-slate-500 py-8">No maintenance reports at {currentSiteName} yet</p>
+                  <p className="text-center text-slate-500 py-8">No maintenance reports found in your history{currentSiteName ? ` or at ${currentSiteName}` : ''}.</p>
                 )}
               </div>
             )}
