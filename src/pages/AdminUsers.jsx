@@ -696,6 +696,23 @@ export default function AdminUsers({ embedded = false }) {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedAdminPhoto}
       />
+      {embedded && (
+        <div className="mb-3 flex flex-col gap-2 rounded-xl border border-slate-700 bg-[#0a1724] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Personnel Intake</div>
+            <div className="mt-0.5 text-sm font-black text-white">Pending Users</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={checkAnniversariesAndBirthdays} disabled={checkingAnniversaries} variant="outline" size="sm">
+              <Calendar className={`mr-1.5 h-3.5 w-3.5 ${checkingAnniversaries ? 'animate-spin' : ''}`} />
+              {checkingAnniversaries ? 'Checking…' : 'Check Dates'}
+            </Button>
+            <Button onClick={() => { resetCreateForm(); setShowCreateDialog(true); }} size="sm" className="bg-blue-600 hover:bg-blue-500">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Create User
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="mb-8">
         {!embedded && <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
