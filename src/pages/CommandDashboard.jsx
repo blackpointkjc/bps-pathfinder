@@ -374,6 +374,47 @@ function CommandDashboardInner({ embedded = false }) {
                 </div>
             )}
 
+            {/* ── OFFICER ROSTER ── */}
+            <div className="flex-none border-b border-slate-800 bg-[#07111d] px-2 py-1.5">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                    <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/70 px-2 py-1.5 font-mono">
+                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-300">Officers</span>
+                        <span className="rounded bg-emerald-950/70 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">{activeUnits.length} ACTIVE</span>
+                        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-black text-slate-400">{inactiveUnits.length} OOS/OFFLINE</span>
+                        {staleUnits.length > 0 && <span className="rounded bg-amber-950/60 px-1.5 py-0.5 text-[9px] font-black text-amber-300">{staleUnits.length} STALE</span>}
+                    </div>
+                    {[...activeUnits, ...inactiveUnits].map(unit => {
+                        const live = unit.session_active === true && unit.status !== 'Out of Service';
+                        const stale = live && unit.connection_stale === true;
+                        const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
+                        const name = unit.rank && unit.last_name
+                            ? `${normalizeRank(unit.rank)} ${unit.last_name}`
+                            : (unit.full_name || unit.officer_name || unit.email || 'Officer');
+                        return (
+                            <div key={unit.id || unit.email} className={`flex shrink-0 items-center gap-2 rounded-lg border px-2 py-1.5 ${live ? 'border-slate-600/80 bg-slate-900/80' : 'border-slate-800 bg-slate-950/70 opacity-75'}`}>
+                                {unit.profile_photo_url ? (
+                                    <img src={unit.profile_photo_url} alt="" className="h-6 w-6 rounded-full border border-slate-600 object-cover" />
+                                ) : (
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-[8px] font-black text-slate-300">
+                                        {(unit.first_name?.[0] || '')}{(unit.last_name?.[0] || '')}
+                                    </div>
+                                )}
+                                <div className="min-w-0 font-mono leading-tight">
+                                    <div className="max-w-40 truncate text-[9px] font-black uppercase text-white">{name}</div>
+                                    <div className="mt-0.5 flex items-center gap-1.5">
+                                        <span className={`h-1.5 w-1.5 rounded-full ${stale ? 'bg-amber-400' : live ? (cfg?.dot || 'bg-emerald-400') : 'bg-slate-600'}`} />
+                                        <span className={`text-[8px] font-bold uppercase ${stale ? 'text-amber-300' : live ? (cfg?.text || 'text-emerald-300') : 'text-slate-500'}`}>
+                                            {stale ? 'CONNECTION STALE' : live ? unit.status : 'OOS / OFFLINE'}
+                                        </span>
+                                        {unit.unit_number && <span className="text-[8px] text-slate-600">UNIT-{unit.unit_number}</span>}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             {/* ── MAIN WORKSPACE ── */}
             <div className="flex-1 min-h-0 p-1.5 md:p-2">
                 <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
