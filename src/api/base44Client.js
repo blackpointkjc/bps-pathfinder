@@ -227,10 +227,10 @@ function wrappedEntity(name) {
       const value = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
       if (READ_METHODS.has(property)) {
-        return (...args) => queuedRead(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args));
+        return (...args) => queuedRead(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
       }
       if (WRITE_METHODS.has(property)) {
-        return (...args) => protectedWrite(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args));
+        return (...args) => protectedWrite(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
       }
       return value.bind(target);
     },
@@ -264,7 +264,8 @@ const functions = new Proxy(rawBase44.functions, {
     return (name, payload) => {
       const key = `function:${String(name)}:${stableKey(payload || {})}`;
       const task = () => value.call(target, name, payload);
-      return isReadOnlyFunction(name, payload) ? queuedRead(key, task) : protectedWrite(key, task);
+      const meta = { kind: 'function', name: String(name), action: String(payload?.action || '').toLowerCase() || '' };
+      return isReadOnlyFunction(name, payload) ? queuedRead(key, task, meta) : protectedWrite(key, task, meta);
     };
   },
 });
@@ -272,8 +273,8 @@ const auth = new Proxy(rawBase44.auth, {
   get(target, property, receiver) {
     const value = Reflect.get(target, property, receiver);
     if (typeof value !== 'function') return value;
-    if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, () => value.apply(target, args));
-    if (property === 'updateMe') return (...args) => protectedWrite(`auth:updateMe:${stableKey(args)}`, () => value.apply(target, args));
+    if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'me' });
+    if (property === 'updateMe') return (...args) => protectedWrite(`auth:updateMe:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'updateMe' });
     return value.bind(target);
   },
 });
@@ -300,6 +301,32 @@ export function getBase44RequestHealth() {
     rateLimitedUntil: until > Date.now() ? new Date(until).toISOString() : null,
     recentRateLimitAt: recentRateLimitAt ? new Date(recentRateLimitAt).toISOString() : null,
   };
+}
+
+export function getBase44RequestTrace() {
+  return loadTrace();
+}
+
+export function clearBase44RequestTrace() {
+  saveTrace([]);
+  try { window.dispatchEvent(new CustomEvent('bps-base44-request-trace-cleared')); } catch {}
+}
+
+export function getBase44RateLimitSummary() {
+  const rows = loadTrace();
+  const byLabel = new Map();
+  for (const row of rows) {
+    const key = row.label || 'unknown';
+    const current = byLabel.get(key) || { label: key, total: 0, rateLimits: 0, errors: 0, successes: 0, cacheHits: 0, lastAt: null };
+    current.total += 1;
+    if (row.outcome === 'rate_limit') current.rateLimits += 1;
+    if (row.outcome === 'error' || row.outcome === 'queue_timeout') current.errors += 1;
+    if (row.outcome === 'success') current.successes += 1;
+    if (row.outcome === 'cache_hit' || row.outcome === 'deduped_inflight') current.cacheHits += 1;
+    if (!current.lastAt || String(row.at) > String(current.lastAt)) current.lastAt = row.at;
+    byLabel.set(key, current);
+  }
+  return [...byLabel.values()].sort((a, b) => (b.rateLimits - a.rateLimits) || (b.total - a.total));
 }
 
 // Browser-side AI is routed through the app's own backend function so legacy call
