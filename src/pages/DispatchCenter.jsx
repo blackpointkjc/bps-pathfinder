@@ -6,7 +6,6 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +16,6 @@ import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
-import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -582,7 +580,6 @@ export default function DispatchCenter() {
 
     return (
         <div className="bps-command-page cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white ">
-            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
@@ -664,7 +661,6 @@ export default function DispatchCenter() {
                 </section>
             )}
 
-            <AutoDispatchShadowFeed />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
             <div className="dispatch-kpis grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
