@@ -17,7 +17,7 @@ import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
-import { disconnectExternalGps, getExternalGpsStatus, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
+import { disconnectExternalGps, getExternalGpsStatus, lockExternalGpsToCurrentAntenna, requestExternalGpsConnection, subscribeExternalGpsStatus, unlockExternalGpsAntenna } from '@/lib/externalGpsService';
 import GlobalMessageBanner, { CadAudioToggle } from '@/components/GlobalMessageBanner';
 import GlobalOperationsTicker from '@/components/GlobalOperationsTicker';
 import NotificationMonitor from '@/components/NotificationMonitor';
@@ -898,6 +898,7 @@ export default function Layout({ children, currentPageName }) {
     if (gpsChanging) return;
     setGpsChanging(true);
     try {
+      if (externalGps.lockedToAntenna) unlockExternalGpsAntenna();
       await disconnectExternalGps();
       toast.success('GPS source changed to Windows / device location.');
       setGpsMenuOpen(false);
@@ -915,7 +916,7 @@ export default function Layout({ children, currentPageName }) {
       return;
     }
     if (externalGps.policyAllowed === false) {
-      toast.error('The Base44 web portal blocks direct Serial access. Open this same Pathfinder app in Pathfinder Desktop for USB/NMEA antenna selection, or use the receiver through Windows Location Services.');
+      toast.error('Direct external GPS selection is unavailable in this browser session. Use the saved device GPS source or Pathfinder Desktop.');
       return;
     }
     setGpsChanging(true);
@@ -933,9 +934,21 @@ export default function Layout({ children, currentPageName }) {
   const changeExternalGpsBaud = async value => {
     const baudRate = Number(value);
     if (!Number.isFinite(baudRate) || gpsChanging) return;
-    // requestPort is intentionally initiated from this user gesture. The chooser
-    // lets the officer confirm/change the receiver while applying the new speed.
     await connectExternalAntenna(baudRate);
+  };
+
+  const toggleExternalGpsLock = () => {
+    try {
+      if (externalGps.lockedToAntenna) {
+        unlockExternalGpsAntenna();
+        toast.success('GPS antenna lock removed. This computer may use another approved receiver.');
+      } else {
+        lockExternalGpsToCurrentAntenna();
+        toast.success('GPS antenna locked to this computer. Pathfinder will reconnect only to this receiver after logout or restart.');
+      }
+    } catch (error) {
+      toast.error(error?.message || 'Unable to change the GPS antenna lock.');
+    }
   };
 
   const refreshApplication = async () => {
@@ -1557,6 +1570,7 @@ export default function Layout({ children, currentPageName }) {
                     {externalGps.connected && <span>Baud {externalGps.baudRate || 4800}</span>}
                     {externalGps.satellites != null && <span>{externalGps.satellites} satellites</span>}
                     {externalGps.backgroundReader && <span className="text-emerald-300">Background reader active</span>}
+                    {externalGps.lockedToAntenna && <span className="text-cyan-300">Locked to saved antenna</span>}
                   </div>
                   {externalGps.error && <div className="mt-2 rounded-md border border-red-800/60 bg-red-950/40 px-2 py-1.5 text-[9px] font-bold text-red-200">{externalGps.error}</div>}
                 </div>
@@ -1578,8 +1592,18 @@ export default function Layout({ children, currentPageName }) {
                     disabled={gpsChanging}
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.connected ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-blue-700 bg-blue-950/25 hover:border-blue-500'}`}
                   >
-                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : externalGps.policyAllowed === false ? 'External GPS · Desktop Required' : 'Connect External GPS Antenna'}</div>
-                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.policyAllowed === false ? 'The hosted web page blocks Serial. Pathfinder Desktop removes that host restriction for the trusted app.' : 'Choose an approved USB / serial NMEA receiver or COM device.'}</div>
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : 'Connect External GPS Antenna'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.policyAllowed === false ? 'Direct antenna selection is unavailable in this browser session.' : 'Choose an approved USB / serial NMEA receiver or COM device.'}</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={toggleExternalGpsLock}
+                    disabled={gpsChanging || (!externalGps.connected && !externalGps.lockedToAntenna)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.lockedToAntenna ? 'border-cyan-500/70 bg-cyan-950/35' : 'border-slate-700 bg-[#0b1725] hover:border-cyan-600/70'}`}
+                  >
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.lockedToAntenna ? 'Unlock Saved Antenna' : 'Lock This Antenna To This Computer'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.lockedToAntenna ? 'The saved receiver will remain preferred across logout, refresh, and restart until you unlock it.' : 'Prevent this computer from automatically switching to another approved GPS receiver.'}</div>
                   </button>
 
                   <div className="rounded-lg border border-slate-700 bg-[#0b1725] p-2.5">
@@ -1603,11 +1627,7 @@ export default function Layout({ children, currentPageName }) {
                       This browser does not expose direct Serial access. Use Pathfinder Desktop or Windows/device GPS.
                     </div>
                   )}
-                  {externalGps.serialApiAvailable && externalGps.policyAllowed === false && (
-                    <div className="rounded-lg border border-amber-600/60 bg-amber-950/30 px-3 py-2 text-[9px] leading-4 text-amber-100">
-                      <span className="font-black">WEB HOST RESTRICTION:</span> Base44 blocks direct Serial access on the hosted page. Direct USB/NMEA antenna selection is enabled in Pathfinder Desktop. Windows Location Services remains available in the browser.
-                    </div>
-                  )}
+
                 </div>
               </div>
             )}
