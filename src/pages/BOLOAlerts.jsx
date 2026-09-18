@@ -33,9 +33,11 @@ export default function BOLOAlerts() {
 
   useEffect(() => {
     const init = async () => {
-      const me = await withRequestTimeout(base44.auth.me(), 12000, 'BOLO authentication').catch(() => null);
+      const [me, loadedBolos] = await Promise.all([
+        withRequestTimeout(base44.auth.me(), 12000, 'BOLO authentication').catch(() => null),
+        load(),
+      ]);
       setUser(me);
-      const loadedBolos = await load();
       const params = new URLSearchParams(window.location.search);
       if (params.get('new') === '1' && me) setModal({ mode: 'create', bolo: {
         alert_type: 'wanted_person', priority: 'medium', status: 'active',
@@ -78,10 +80,13 @@ export default function BOLOAlerts() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 200), 15000, 'BOLO records request');
-      setBolos(data || []);
+      const response = await withRequestTimeout(base44.functions.invoke('manageBolo', { action: 'list' }), 12000, 'BOLO records request');
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      const data = Array.isArray(payload.rows) ? payload.rows : [];
+      setBolos(data);
       setPageError('');
-      return data || [];
+      return data;
     } catch (error) {
       const isRateLimit = /rate limit|too many requests|\b429\b/i.test(String(error?.message || error || ''));
       setPageError(isRateLimit
@@ -155,7 +160,7 @@ export default function BOLOAlerts() {
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-8 w-full rounded border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-[10px] text-white outline-none focus:border-blue-500" />
           </div>
-          {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded border border-red-500 bg-red-700 px-3 text-[10px] font-black hover:bg-red-600 sm:h-8 sm:w-auto"><Plus className="h-3.5 w-3.5" />ISSUE BOLO</button>}
+          {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-400 bg-red-700 px-4 text-[10px] font-black shadow-[0_0_18px_rgba(220,38,38,.25)] hover:bg-red-600 sm:h-9 sm:w-auto"><Plus className="h-4 w-4" />NEW BOLO</button>}
         </div>
       </div>
 
@@ -204,6 +209,7 @@ export default function BOLOAlerts() {
         })}
       </div>
 
+      {canCreate && !modal && <button type="button" onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-red-400 bg-red-700 px-5 py-3 text-xs font-black text-white shadow-[0_10px_40px_rgba(0,0,0,.45)] hover:bg-red-600"><Plus className="h-4 w-4" />NEW BOLO</button>}
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}
 
       <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>
