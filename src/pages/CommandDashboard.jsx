@@ -10,7 +10,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
+import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -94,6 +94,8 @@ function CommandDashboardInner({ embedded = false }) {
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
+    const [officerFilter, setOfficerFilter] = useState('ALL');
+    const [rosterCollapsed, setRosterCollapsed] = useState(() => localStorage.getItem('bps:command-roster-collapsed') === '1');
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
@@ -249,6 +251,21 @@ function CommandDashboardInner({ embedded = false }) {
     const enrouteUnits   = dispatchReadyUnits.filter(u => u.status === 'Enroute');
     const onSceneUnits   = dispatchReadyUnits.filter(u => u.status === 'On Scene');
     const busyUnits      = dispatchReadyUnits.filter(u => u.status === 'Busy');
+    const allRosterUnits = [...activeUnits, ...inactiveUnits];
+    const filteredRosterUnits = allRosterUnits.filter(unit => {
+        const live = unit.session_active === true && unit.status !== 'Out of Service';
+        const stale = live && unit.connection_stale === true;
+        if (officerFilter === 'ALL') return true;
+        if (officerFilter === 'IN_SERVICE') return live && !stale;
+        if (officerFilter === 'OOS') return !live;
+        if (officerFilter === 'STALE') return stale;
+        return live && unit.status === officerFilter;
+    });
+    const toggleRosterCollapsed = () => setRosterCollapsed(value => {
+        const next = !value;
+        try { localStorage.setItem('bps:command-roster-collapsed', next ? '1' : '0'); } catch {}
+        return next;
+    });
 
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -384,7 +401,20 @@ function CommandDashboardInner({ embedded = false }) {
                         <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-black text-slate-400">{inactiveUnits.length} OOS/OFFLINE</span>
                         {staleUnits.length > 0 && <span className="rounded bg-amber-950/60 px-1.5 py-0.5 text-[9px] font-black text-amber-300">{staleUnits.length} STALE</span>}
                     </div>
-                    {[...activeUnits, ...inactiveUnits].map(unit => {
+                    <select value={officerFilter} onChange={e => setOfficerFilter(e.target.value)} className="h-7 shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black text-slate-200 outline-none focus:border-cyan-500">
+                        <option value="ALL">ALL OFFICERS</option>
+                        <option value="IN_SERVICE">IN SERVICE</option>
+                        <option value="Available">AVAILABLE</option>
+                        <option value="Enroute">EN ROUTE</option>
+                        <option value="On Scene">ON SCENE</option>
+                        <option value="Busy">BUSY</option>
+                        <option value="OOS">OUT OF SERVICE / OFFLINE</option>
+                        <option value="STALE">CONNECTION STALE</option>
+                    </select>
+                    <button type="button" onClick={toggleRosterCollapsed} className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black text-slate-300 hover:border-cyan-600 hover:text-white" title={rosterCollapsed ? 'Expand officer roster' : 'Collapse officer roster'}>
+                        {rosterCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}{rosterCollapsed ? 'SHOW' : 'HIDE'} ROSTER
+                    </button>
+                    {!rosterCollapsed && filteredRosterUnits.map(unit => {
                         const live = unit.session_active === true && unit.status !== 'Out of Service';
                         const stale = live && unit.connection_stale === true;
                         const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
@@ -413,6 +443,7 @@ function CommandDashboardInner({ embedded = false }) {
                             </div>
                         );
                     })}
+                    {!rosterCollapsed && filteredRosterUnits.length === 0 && <span className="shrink-0 px-3 text-[9px] font-bold text-slate-500">NO OFFICERS MATCH THIS FILTER</span>}
                 </div>
             </div>
 
