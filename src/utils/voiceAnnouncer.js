@@ -340,10 +340,12 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
   if (!instruction) return;
   const distance = Number(distanceFeet);
   const distanceText = Number.isFinite(distance) && distance > 0
-    ? distance < 1000 ? `in ${Math.round(distance)} feet`
-      : `in ${(distance / 5280).toFixed(1)} miles`
+    ? distance < 1000 ? `In ${Math.max(50, Math.round(distance / 50) * 50)} feet`
+      : `In ${(distance / 5280).toFixed(distance >= 5280 ? 1 : 2)} miles`
     : '';
-  announceVoice(`Navigation advisory. ${instruction}${distanceText ? `, ${distanceText}` : ''}.`, { dedupeMs: 3000, rate: 0.84, pitch: 0.68 });
+  // Navigation prompts should sound like a driving navigator, not an operational
+  // radio announcement. Never prefix each turn with "Navigation advisory".
+  announceVoice(`${distanceText ? `${distanceText}, ` : ''}${instruction}.`, { dedupeMs: 2200, rate: 0.96, pitch: 0.9, priority: 'high' });
 }
 
 export function announcePropertyCall({
