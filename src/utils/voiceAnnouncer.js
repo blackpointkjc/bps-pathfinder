@@ -7,7 +7,11 @@ import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 let lastText = '';
 let lastAt = 0;
 let lockedVoice = null;
+let voiceLoadPromise = null;
 let runtimeConfig = { volume: 1, voiceProfile: 'american_ai' };
+
+const FEMALE_ENGLISH_VOICE_NAMES = /Microsoft (Aria|Jenny|Zira|Ava|Emma|Michelle|Ana|Sonia|Libby)|Samantha|Victoria|Karen|Moira|Tessa|Fiona|Google US English/i;
+const MALE_ENGLISH_VOICE_NAMES = /Microsoft (Guy|Christopher|Andrew|Brian|Davis|Eric|Mark|David|George|Ryan)|Alex|Daniel|Fred/i;
 
 export function setVoiceRuntimeConfig(config = {}) {
   runtimeConfig = {
@@ -22,15 +26,40 @@ function getPreferredVoice(profile = runtimeConfig.voiceProfile) {
   if (lockedVoice) return lockedVoice;
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices?.() || [];
-  const americanAiNames = /Microsoft (Guy|Christopher|Andrew|Brian|Davis|Eric)|Google US English|Alex|Samantha/i;
-  lockedVoice = voices.find(v => /en-US/i.test(v.lang) && americanAiNames.test(v.name))
-    || voices.find(v => /en-US/i.test(v.lang) && v.localService)
-    || voices.find(v => /en-US/i.test(v.lang))
-    || voices.find(v => /^en/i.test(v.lang) && americanAiNames.test(v.name))
-    || voices.find(v => /^en/i.test(v.lang))
-    || voices[0]
+
+  // Pathfinder uses one consistent female English voice. Prefer known Windows/
+  // Microsoft female voices first, then other female English voices, and only
+  // fall back to an English voice that is not known to be male.
+  lockedVoice = voices.find(v => /en-US/i.test(v.lang) && FEMALE_ENGLISH_VOICE_NAMES.test(v.name))
+    || voices.find(v => /^en/i.test(v.lang) && FEMALE_ENGLISH_VOICE_NAMES.test(v.name))
+    || voices.find(v => /en-US/i.test(v.lang) && !MALE_ENGLISH_VOICE_NAMES.test(v.name))
+    || voices.find(v => /^en/i.test(v.lang) && !MALE_ENGLISH_VOICE_NAMES.test(v.name))
     || null;
   return lockedVoice;
+}
+
+function waitForSpeechVoices(timeoutMs = 1200) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return Promise.resolve([]);
+  const existing = window.speechSynthesis.getVoices?.() || [];
+  if (existing.length) return Promise.resolve(existing);
+  if (voiceLoadPromise) return voiceLoadPromise;
+
+  voiceLoadPromise = new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.speechSynthesis.removeEventListener?.('voiceschanged', onVoicesChanged);
+      resolve(window.speechSynthesis.getVoices?.() || []);
+    };
+    const onVoicesChanged = () => finish();
+    window.speechSynthesis.addEventListener?.('voiceschanged', onVoicesChanged, { once: true });
+    window.setTimeout(finish, timeoutMs);
+  }).finally(() => {
+    voiceLoadPromise = null;
+  });
+
+  return voiceLoadPromise;
 }
 
 export function isVoiceSupported() {
@@ -176,7 +205,7 @@ function scheduleAutomaticRetry(item) {
   }, delay);
 }
 
-function nextQueuedSpeech() {
+async function nextQueuedSpeech() {
   if (activeSpeech || !speechQueue.length || !isVoiceSupported()) return;
   speechQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
   const item = speechQueue.shift();
@@ -186,6 +215,11 @@ function nextQueuedSpeech() {
   let started = false;
   let finished = false;
   try {
+    // Chromium can expose an empty voice list for the first fraction of a second
+    // after page load. Speaking before voices load uses the OS default and caused
+    // the first navigation prompt to sound male, then later prompts female.
+    if (item.options.voiceProfile !== 'system_default') await waitForSpeechVoices();
+    if (cancelGeneration !== speechCancelGeneration || activeSpeech?.sequence !== item.sequence) return;
     const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
@@ -343,9 +377,11 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
     ? distance < 1000 ? `In ${Math.max(50, Math.round(distance / 50) * 50)} feet`
       : `In ${(distance / 5280).toFixed(distance >= 5280 ? 1 : 2)} miles`
     : '';
-  // Navigation prompts should sound like a driving navigator, not an operational
-  // radio announcement. Never prefix each turn with "Navigation advisory".
-  announceVoice(`${distanceText ? `${distanceText}, ` : ''}${instruction}.`, { dedupeMs: 2200, rate: 0.96, pitch: 0.9, priority: 'high' });
+  announceVoice(`${distanceText ? `${distanceText}, ` : ''}${instruction}.`, {
+    dedupeMs: 2200,
+    priority: 'high',
+    voiceProfile: 'female_navigation',
+  });
 }
 
 export function announcePropertyCall({
