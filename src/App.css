@@ -594,3 +594,25 @@ body::-webkit-scrollbar-button,
 .schedule-dark [role="combobox"] {
   color: #f8fafc;
 }
+
+/* App-wide operational ticker: critical CAD calls + active BOLO summary. */
+@keyframes bps-operations-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.bps-operations-ticker-track {
+  animation: bps-operations-ticker-scroll 42s linear infinite;
+  will-change: transform;
+}
+
+.bps-operations-ticker:hover .bps-operations-ticker-track,
+.bps-operations-ticker:focus-within .bps-operations-ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bps-operations-ticker-track {
+    animation: none;
+  }
+}
