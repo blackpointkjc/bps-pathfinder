@@ -51,6 +51,18 @@ Deno.serve(async (req) => {
     const roles = new Set((user.additional_roles || []).map((role:string) => String(role).toLowerCase()));
     const isAdmin = user.role === 'admin' || roles.has('full_access');
     const refs = refsForUser(user);
+    const action = String(body?.action || 'list').toLowerCase();
+
+    if (action === 'update') {
+      const id = String(body?.id || '');
+      if (!id) return Response.json({ error: 'Record id is required' }, { status: 400 });
+      const existing = await retry(() => base44.asServiceRole.entities[entityName].get(id));
+      if (!existing) return Response.json({ error: 'Record not found' }, { status: 404 });
+      if (!isAdmin && !belongsTo(existing, refs)) return Response.json({ error: 'You can only edit your own legal record' }, { status: 403 });
+      const data = body?.data && typeof body.data === 'object' ? body.data : {};
+      const updated = await retry(() => base44.asServiceRole.entities[entityName].update(id, data));
+      return Response.json({ success: true, record: updated || { ...existing, ...data, id } });
+    }
 
     const rows:any[] = await retry(() => base44.asServiceRole.entities[entityName].list('-updated_date', 500));
     const visible = isAdmin ? (rows || []) : (rows || []).filter(record => belongsTo(record, refs));
