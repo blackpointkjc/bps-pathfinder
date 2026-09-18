@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
+import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText, Plus, Clock, Printer } from "lucide-react";
+import { FileText, Plus, Clock, Printer, Pencil } from "lucide-react";
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 export default function Summons({ sharedSearch, onSharedSearchChange }) {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingSummons, setEditingSummons] = useState(null);
   const [formData, setFormData] = useState({
     summons_date: new Date().toISOString(),
     linked_call_id: "",
@@ -117,10 +119,11 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
 
   const canSubmit = isAdmin || !!activeEntry;
 
-  const { data: allSummons } = useQuery({
-    queryKey: ['allSummons'],
-    queryFn: () => base44.entities.Summons.list('-created_date'),
+  const { data: allSummons = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['allSummons', user?.id],
+    queryFn: () => loadLegalRecordHistory('summons'),
     enabled: !!user,
+    staleTime: 15000,
   });
 
   const summonsToDisplay = React.useMemo(() => {
@@ -191,6 +194,14 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
         console.error('Failed to get IP address:', error);
       }
 
+      if (editingSummons?.id) {
+        return await base44.entities.Summons.update(editingSummons.id, {
+          ...data,
+          summons_number: editingSummons.summons_number,
+          officer_ip_address: ipAddress,
+        });
+      }
+
       const summonsNumber = generateSummonsNumber();
       
       const summonsWithNumberAndIp = { 
@@ -212,7 +223,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allSummons'] });
       resetForm();
-      alert('✅ Summons issued successfully!');
+      alert(editingSummons ? '✅ Summons updated successfully!' : '✅ Summons issued successfully!');
     },
     onError: (error) => {
       console.error('Error creating summons:', error);
@@ -220,8 +231,26 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
     },
   });
 
+  const editSummons = (summons) => {
+    setEditingSummons(summons);
+    setFormData(current => ({
+      ...current,
+      ...summons,
+      summons_date: summons.summons_date || new Date().toISOString(),
+      offense_date: summons.offense_date ? String(summons.offense_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      offense_time: summons.offense_time || format(new Date(), 'HH:mm'),
+      linked_call_id: summons.linked_call_id || '',
+      linked_call_number: summons.linked_call_number || '',
+      linked_call_type: summons.linked_call_type || '',
+      linked_call_location: summons.linked_call_location || '',
+    }));
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const resetForm = () => {
     setShowForm(false);
+    setEditingSummons(null);
     const officerFullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '';
     const badgeNumber = user?.badge_number || user?.unit_number || '';
     
@@ -1112,7 +1141,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
                     disabled={createSummonsMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {createSummonsMutation.isPending ? 'Issuing...' : 'Issue Summons'}
+                    {createSummonsMutation.isPending ? (editingSummons ? 'Updating...' : 'Issuing...') : (editingSummons ? 'Update Summons' : 'Issue Summons')}
                   </Button>
                 </div>
               </form>
@@ -1178,7 +1207,10 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {(isAdmin || recordBelongsToDirectoryUser(user, summons)) && (
+                      <Button size="sm" variant="outline" onClick={() => editSummons(summons)}><Pencil className="w-4 h-4 mr-2" />Edit Summons</Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -1190,7 +1222,8 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
                   </div>
                 </div>
               ))}
-              {summonsToDisplay.length === 0 && (
+              {historyLoading && <p className="text-center text-slate-500 py-8">Loading summons history…</p>}
+              {!historyLoading && summonsToDisplay.length === 0 && (
                 <p className="text-center text-slate-500 py-8">
                   {searchQuery ? 'No summons found matching your search' : 'No summons issued yet'}
                 </p>
