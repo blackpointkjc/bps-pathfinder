@@ -482,6 +482,18 @@ async function connectPort(port, baudRate) {
 function installSerialEvents() {
   if (serialEventsInstalled || typeof navigator === 'undefined' || !navigator.serial) return;
   serialEventsInstalled = true;
+
+  if (typeof window !== 'undefined') {
+    const releaseOnPageExit = () => {
+      try { serialWorker?.postMessage({ type: 'stop' }); } catch (_) {}
+      try { serialWorker?.terminate(); } catch (_) {}
+      serialWorker = null;
+      releaseGpsOwnership();
+    };
+    window.addEventListener('pagehide', releaseOnPageExit, { capture: true });
+    window.addEventListener('beforeunload', releaseOnPageExit, { capture: true });
+  }
+
   navigator.serial.addEventListener?.('disconnect', event => {
     if (event?.target === activePort || event?.port === activePort) {
       activePort = null;
