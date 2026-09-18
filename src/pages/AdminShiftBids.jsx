@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
-export default function AdminShiftBids() {
+export default function AdminShiftBids({ embedded = false }) {
   const queryClient = useQueryClient();
   const [expandedShifts, setExpandedShifts] = useState({});
   const [showAIRecommendations, setShowAIRecommendations] = useState({});
@@ -328,15 +328,15 @@ Please continue to check for other open shifts.`
   const shiftsWithBids = openShifts?.filter(s => bidsByShift[s.id]?.length > 0) || [];
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
+      <div className="mx-auto w-full max-w-5xl space-y-4">
+        {!embedded && <div>
           <h1 className="flex items-center gap-2 text-3xl font-black text-white">
             <Star className="w-8 h-8 text-amber-600" />
             Shift Bid Management
           </h1>
           <p className="text-slate-600">Review and approve officer bids for open shifts</p>
-        </div>
+        </div>}
 
         {shiftsWithBids.length === 0 ? (
           <Card className="border-none shadow-lg">
