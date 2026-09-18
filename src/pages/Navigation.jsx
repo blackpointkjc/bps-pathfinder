@@ -643,8 +643,7 @@ export default function Navigation() {
         setNavVoiceMuted(current => {
             const next = !current;
             try { localStorage.setItem('bps:navigation-voice-muted', next ? '1' : '0'); } catch {}
-            if (next) stopVoice();
-            else {
+            if (!next) {
                 const step = navSteps[navStepIndex];
                 if (step) announceNavigationInstruction(formatInstruction(step), navTurnDistanceFeet);
             }
@@ -892,6 +891,12 @@ export default function Navigation() {
     const criticalCalls = activeCalls.filter(isCriticalCall);
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
     const displayedCalls = showOnlyCriticalCalls ? criticalCalls : activeCalls;
+    const activeNavStep = navSteps[navStepIndex] || null;
+    const nextNavStep = navSteps[navStepIndex + 1] || null;
+    const navDistanceLabel = navTurnDistanceFeet < 1000
+        ? `${Math.max(0, Math.round(navTurnDistanceFeet / 50) * 50)} ft`
+        : `${(navTurnDistanceFeet / 5280).toFixed(navTurnDistanceFeet >= 5280 ? 1 : 2)} mi`;
+    const navEtaLabel = new Date(Date.now() + navDurationMinutes * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
     const getUnitNumberFromId = (userId) => {
         if (currentUser?.id === userId) return currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT';
@@ -1002,25 +1007,48 @@ export default function Navigation() {
 
 
             {isNavigating && navDestination && (
-                <div className="absolute left-1/2 top-12 z-[1012] w-[min(92vw,620px)] -translate-x-1/2 rounded-xl border border-blue-500/40 bg-[#07111f]/95 p-3 shadow-2xl backdrop-blur-md pointer-events-auto">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-600"><Navigation2 className="h-6 w-6 text-white" /></div>
-                        <div className="min-w-0 flex-1">
-                            <div className="text-[10px] font-mono font-bold tracking-widest text-blue-300">TURN-BY-TURN · {navTurnDistanceFeet < 1000 ? `${navTurnDistanceFeet} FT` : `${(navTurnDistanceFeet / 5280).toFixed(1)} MI`} TO TURN</div>
-                            <div className="truncate text-sm font-bold text-white">{formatInstruction(navSteps[navStepIndex])}</div>
-                            {navSteps[navStepIndex + 1] && <div className="truncate text-[10px] text-slate-400">NEXT: {formatInstruction(navSteps[navStepIndex + 1])}</div>}
-                            <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-mono text-slate-400">
-                                <span>{navDistanceMiles.toFixed(1)} MI</span><span>{navDurationMinutes} MIN</span><span>ETA {new Date(Date.now() + navDurationMinutes * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span><span className="truncate">TO {navDestination.name}</span>
+                <div className="pointer-events-auto absolute left-3 right-3 top-12 z-[1215] md:right-auto md:w-[520px]">
+                    <div className="overflow-hidden rounded-2xl border border-emerald-400/30 bg-[#08130f]/96 shadow-[0_18px_55px_rgba(0,0,0,.55)] backdrop-blur-xl">
+                        {(routing || navOffRoute) && (
+                            <div className="flex items-center gap-2 border-b border-amber-400/20 bg-amber-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
+                                <RotateCcw className={`h-3.5 w-3.5 ${routing ? 'animate-spin' : ''}`} />
+                                {routing ? 'Rerouting…' : 'Off route · recalculating'}
+                            </div>
+                        )}
+                        <div className="flex items-stretch">
+                            <div className="flex w-[104px] shrink-0 flex-col items-center justify-center bg-emerald-500 px-2 py-3 text-white">
+                                {maneuverIconForStep(activeNavStep, 'h-10 w-10 stroke-[2.6]')}
+                                <div className="mt-1 text-xl font-black leading-none">{navDistanceLabel}</div>
+                            </div>
+                            <div className="min-w-0 flex-1 px-4 py-3">
+                                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">Next maneuver</div>
+                                <div className="mt-0.5 text-lg font-black leading-tight text-white">{formatInstruction(activeNavStep)}</div>
+                                {nextNavStep && (
+                                    <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-300">
+                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/8 text-emerald-200">{maneuverIconForStep(nextNavStep, 'h-3.5 w-3.5')}</span>
+                                        <span className="truncate"><span className="font-black text-slate-500">THEN</span> {formatInstruction(nextNavStep)}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <button onClick={stopInAppNavigation} className="flex h-9 items-center gap-1 rounded border border-red-500/40 px-3 text-[10px] font-mono font-bold text-red-300 hover:bg-red-500/10"><Square className="h-3 w-3" />STOP</button>
+                        <div className="flex items-center gap-2 border-t border-white/10 bg-[#07100d] px-3 py-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <div><div className="text-sm font-black text-white">{navEtaLabel}</div><div className="text-[8px] font-bold uppercase text-slate-500">ETA</div></div>
+                                <div className="h-7 w-px bg-white/10" />
+                                <div><div className="text-sm font-black text-white">{navDurationMinutes} min</div><div className="text-[8px] font-bold uppercase text-slate-500">{navDistanceMiles.toFixed(1)} mi left</div></div>
+                                <div className="hidden min-w-0 sm:block"><div className="max-w-[180px] truncate text-[10px] font-bold text-slate-300">{navDestination.name}</div><div className="text-[8px] uppercase text-slate-600">Destination</div></div>
+                            </div>
+                            <button type="button" onClick={toggleNavigationVoice} className={`flex h-9 w-9 items-center justify-center rounded-full border ${navVoiceMuted ? 'border-slate-600 bg-slate-900 text-slate-400' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'}`} title={navVoiceMuted ? 'Turn navigation voice on' : 'Mute navigation voice'}>{navVoiceMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
+                            <button type="button" onClick={recenter} className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-200" title="Recenter navigation"><LocateFixed className="h-4 w-4" /></button>
+                            <button type="button" onClick={stopInAppNavigation} className="flex h-9 w-9 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Street address search and destination routing */}
             {showAddressSearch && (
-                <div className={`absolute left-1/2 z-[1200] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto ${isNavigating ? 'top-32' : 'top-12'}`}>
+                <div className={`absolute left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto ${isNavigating ? 'top-56' : 'top-12'}`}>
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
