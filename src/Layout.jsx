@@ -753,10 +753,14 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         </Link>
 
         {groups.map((group) => {
-          const groupOpen = Boolean(query) || openNavGroup === group.label;
+          // The Pathfinder Tools window is a page launcher, not another copy of
+          // every center's nested navigation. Keep group names internally for
+          // filtering/search, but do not render rows such as
+          // "Admin Center / Command" or "Officer Center / Field Tools".
+          const groupOpen = mobile || Boolean(query) || openNavGroup === group.label;
           return (
-            <div key={`${activeCenter}:${group.label}`} className="mb-2">
-              {(!collapsed || mobile) && (
+            <div key={`${activeCenter}:${group.label}`} className={mobile ? 'mb-1' : 'mb-2'}>
+              {!mobile && (!collapsed || mobile) && (
                 <button
                   type="button"
                   onClick={() => { if (!query) setNavGroup(group.label, !groupOpen); }}
