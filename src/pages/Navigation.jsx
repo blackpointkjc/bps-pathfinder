@@ -963,11 +963,9 @@ export default function Navigation() {
                             {isOnline ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
                             {isOnline ? 'ONLINE' : 'OFFLINE'}
                         </div>
-                        {speed > 2 && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded border bg-blue-900/30 border-blue-500/30 text-blue-300 text-[9px] font-mono font-bold">
-                                {speed} MPH
-                            </div>
-                        )}
+                        <div className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[9px] font-mono font-black ${speed > 2 ? 'border-cyan-500/40 bg-cyan-950/50 text-cyan-200' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>
+                            {Math.max(0, Math.round(Number(speed) || 0))} MPH
+                        </div>
                     </div>
 
                     {/* Right metrics */}
