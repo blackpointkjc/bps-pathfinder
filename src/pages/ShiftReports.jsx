@@ -18,7 +18,7 @@ import StatusBadge from "../components/dashboard/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import {
   formatReportClock,
@@ -61,7 +61,7 @@ export default function ShiftReports() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin'; // Determine if the current user is an admin
@@ -84,16 +84,22 @@ export default function ShiftReports() {
   const canSubmit = isAdmin || !!activeEntry;
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0].trim() : '';
 
-  const { data: reports } = useQuery({
-    queryKey: ['myShiftReports', user?.id],
-    queryFn: () => base44.entities.ShiftReport.filter(
-      { created_by_id: user.id },
-      '-created_date'
-    ),
-    enabled: !!user?.id,
+  const { data: allReports = [] } = useQuery({
+    queryKey: ['shiftReportHistory'],
+    queryFn: () => base44.entities.ShiftReport.list('-created_date', 500),
+    enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
-  // Shift reports are private to their creator (plus authorized admin review).
+  // Keep historical reports visible after account-linking, clock-out, or site changes.
+  // Admins see the complete history; officers see every report tied to any of
+  // their known Pathfinder/Microsoft identities.
+  const reports = !user
+    ? []
+    : isAdmin
+      ? allReports
+      : allReports.filter(report => recordBelongsToDirectoryUser(user, report));
 
   const { data: reportTodos } = useQuery({
     queryKey: ['myReportTodos'],
