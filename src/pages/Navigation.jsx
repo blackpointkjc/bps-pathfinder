@@ -258,7 +258,20 @@ export default function Navigation() {
         const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(currentLocation[0])) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
         const miles = 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         setNavTurnDistanceFeet(Math.max(0, Math.round(miles * 5280)));
-        if (miles < 0.035 && navStepIndex < navSteps.length - 1) setNavStepIndex(index => index + 1);
+
+        // Keep remaining distance/time live instead of leaving the original route
+        // totals frozen for the entire trip.
+        const currentMeters = miles * 1609.344;
+        const laterSteps = navSteps.slice(navStepIndex + 1);
+        const futureMeters = laterSteps.reduce((sum, item) => sum + Math.max(0, Number(item?.distance) || 0), 0);
+        const currentStepMeters = Math.max(1, Number(step?.distance) || currentMeters || 1);
+        const currentStepSeconds = Math.max(0, Number(step?.duration) || 0) * Math.min(1, currentMeters / currentStepMeters);
+        const futureSeconds = laterSteps.reduce((sum, item) => sum + Math.max(0, Number(item?.duration) || 0), 0);
+        setNavDistanceMiles(Math.max(0, (currentMeters + futureMeters) / 1609.344));
+        setNavDurationMinutes(Math.max(1, Math.ceil((currentStepSeconds + futureSeconds) / 60)));
+
+        // Do not advance so early that the final "turn now" prompt is skipped.
+        if (miles < 0.018 && navStepIndex < navSteps.length - 1) setNavStepIndex(index => index + 1);
         if (navDestination?.coords) {
             const [destLat, destLng] = navDestination.coords;
             const ddLat = toRad(destLat - currentLocation[0]);
@@ -579,7 +592,8 @@ export default function Navigation() {
             setNavSteps(routeSteps);
             setNavStepIndex(0);
             lastSpokenNavStepRef.current = -1;
-            if (routeSteps[0]) announceNavigationInstruction(formatInstruction(routeSteps[0]), 0);
+            spokenNavPromptsRef.current.clear();
+            setNavTurnDistanceFeet(Math.max(0, Math.round((Number(routeSteps[0]?.distance) || 0) * 3.28084)));
             setNavDistanceMiles(route.distance / 1609.344);
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
             setIsNavigating(true);
@@ -647,6 +661,7 @@ export default function Navigation() {
     const stopInAppNavigation = () => {
         stopVoice();
         lastSpokenNavStepRef.current = -1;
+        spokenNavPromptsRef.current.clear();
         setIsNavigating(false);
         setNavDestination(null);
         setNavRoute([]);
