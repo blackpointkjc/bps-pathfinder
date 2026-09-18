@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 
 const listeners = new Set();
 let entityUnsubscribe = null;
@@ -75,16 +76,5 @@ export function applyDispatchCallEvent(currentCalls, event, {
     return !Number.isFinite(reliable) || reliable <= 0 || now - reliable <= maxAgeMs;
   });
 
-  const unique = new Map();
-  for (const call of next) {
-    const upstream = call.external_call_id || String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1] || call.id;
-    const existing = unique.get(upstream);
-    const existingOfficial = Boolean(existing?.official_cad_verified && (existing?.agency_cad_number || existing?.call_id));
-    const candidateOfficial = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
-    if (!existing || (!existingOfficial && candidateOfficial)) unique.set(upstream, call);
-  }
-
-  return [...unique.values()]
-    .sort((a, b) => Date.parse(b.time_received || b.created_date || '') - Date.parse(a.time_received || a.created_date || ''))
-    .slice(0, limit);
+  return dedupeOperationalCalls(next).slice(0, limit);
 }
