@@ -217,6 +217,7 @@ export default function GlobalMessageBanner({ user }) {
   const timers = useRef(new Map());
   const announcedPropertyCallStatuses = useRef(new Map());
   const announcedPropertySpeech = useRef(new Set());
+  const announcedBoloSpeech = useRef(new Set());
 
   useEffect(() => {
     const onVoiceBlocked = event => setVoiceWarning(event?.detail?.reason || 'Audio playback was blocked by this browser.');
@@ -343,15 +344,35 @@ export default function GlobalMessageBanner({ user }) {
 
     // BOLOs use their own global alert path because they must notify every
     // authorized user, including the person who issued the BOLO.
-    const showBolo = record => {
+    const showBolo = async record => {
       if (!record?.id || record.status !== 'active') return;
-      const key = `BOLOAlert:${record.id}`;
+      const version = record.updated_date || record.created_date || 'active';
+      const key = `BOLOAlert:${record.id}:${version}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
 
       const summary = boloSummary(record);
-      // manageBolo publishes the durable CallStatusLog event that owns speech.
-      // This BOLO subscription only owns the matching visual alert and chime.
+      const speechKey = `bolo:${record.id}:${version}`;
+      if (!announcedBoloSpeech.current.has(speechKey)) {
+        const claim = await claimAnnouncementEvent({
+          event_key: speechKey,
+          event_id: record.id,
+          cad_number: record.linked_call_number || record.bolo_number || '',
+          event_type: 'bolo_published',
+        }).catch(error => ({ claimed: false, error }));
+        if (claim?.claimed) {
+          announcedBoloSpeech.current.add(speechKey);
+          const announcement = `Attention all units. ${String(record.priority || 'medium')} priority BOLO. ${summary}`;
+          const accepted = speakNotification(announcement, {
+            dedupeMs: 6000,
+            eventId: speechKey,
+            priority: record.priority === 'critical' ? 'critical' : 'high',
+            volume: audioSettings.current.volume,
+            voiceProfile: audioSettings.current.voice_profile,
+          });
+          await finalizeAnnouncementEvent(claim, speechKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+        }
+      }
       playNotificationChime(true);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
@@ -494,9 +515,9 @@ export default function GlobalMessageBanner({ user }) {
 
       const showCadAnnouncementEvent = async record => {
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
-        // Monitored-property speech is owned by PropertyAlert above so it cannot
-        // be missed on subscription timing and cannot be spoken twice.
-        if (record.event_type === 'property_alert') return;
+        // PropertyAlert and BOLOAlert own their own reliable speech paths.
+        // CallStatusLog remains an audit trail but must not speak a second copy.
+        if (record.event_type === 'property_alert' || record.event_type === 'bolo_published') return;
         if (record.sensitive === true && !cadAuthorized) return;
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
@@ -584,17 +605,19 @@ export default function GlobalMessageBanner({ user }) {
       }).catch(() => null);
 
       const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
-        if (event?.type !== 'create' || !event.data?.id) return;
-        showBolo(event.data);
+        if (!['create', 'update'].includes(event?.type) || !event.data?.id) return;
+        void showBolo(event.data);
       });
       if (typeof boloUnsubscribe === 'function') unsubscribers.push(boloUnsubscribe);
 
-      // Seed existing BOLOs as already known. Only a BOLO created after this
-      // listener is active is announced. This prevents refresh/login replay.
-      base44.entities.BOLOAlert.list('-created_date', 100).then(records => {
+      // Seed existing BOLO versions as already known so refresh/login does not
+      // replay history. A later update has a new version key and will announce.
+      base44.entities.BOLOAlert.list('-updated_date', 100).then(records => {
         (records || []).forEach(record => {
           if (!record?.id) return;
-          knownIds.current.add(`BOLOAlert:${record.id}`);
+          const version = record.updated_date || record.created_date || 'active';
+          knownIds.current.add(`BOLOAlert:${record.id}:${version}`);
+          announcedBoloSpeech.current.add(`bolo:${record.id}:${version}`);
         });
       }).catch(() => null);
     } catch (error) {
