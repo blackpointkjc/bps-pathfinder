@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
-import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
+import { loadLegalRecordHistory, updateLegalRecord } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,7 +221,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
       }
 
       if (editingComplaint?.id) {
-        return await base44.entities.CriminalComplaint.update(editingComplaint.id, {
+        return await updateLegalRecord('complaint', editingComplaint.id, {
           ...data,
           complaint_number: editingComplaint.complaint_number,
           call_number: editingComplaint.call_number,
