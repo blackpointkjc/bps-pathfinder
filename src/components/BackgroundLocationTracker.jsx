@@ -353,7 +353,11 @@ export default function BackgroundLocationTracker({ user }) {
 
     const heartbeat = async () => {
       try {
-        if (Date.now() - lastLivePushRef.current < 4 * 60 * 1000) return;
+        // When GPS is successfully persisting every ~30 seconds this does
+        // nothing. If Chromium throttles geolocation while minimized, renew the
+        // signed-in session about every 90 seconds so the officer does not become
+        // connection-stale while the Worker continues trying for a fresh fix.
+        if (Date.now() - lastLivePushRef.current < 75 * 1000) return;
         await persistLiveState({
           heartbeat_only: true,
           officer_email: user.email,
@@ -397,7 +401,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
     window.addEventListener('bps-background-location-tick', handleBackgroundTick);
     window.addEventListener('bps-operational-resume', handleOperationalResume);
-    const heartbeatId = window.setInterval(heartbeat, 5 * 60 * 1000);
+    const heartbeatId = window.setInterval(heartbeat, 90 * 1000);
     return () => {
       window.clearTimeout(recoveryTimer);
       window.clearInterval(heartbeatId);
