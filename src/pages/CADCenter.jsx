@@ -10,7 +10,7 @@ import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
-import CadCriticalIncidentBanner from '@/components/CadCriticalIncidentBanner';
+import GlobalOperationsTicker from '@/components/GlobalOperationsTicker';
 
 const BASE_SECTIONS = [
   { id: 'live', label: 'Live Command', description: 'Command board, dispatch queues and live map', icon: Activity },
@@ -33,7 +33,7 @@ const TOOLS = {
 };
 
 export default function CADCenter({ embedded = false }) {
-  useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const sections = BASE_SECTIONS;
 
 
@@ -52,7 +52,7 @@ export default function CADCenter({ embedded = false }) {
         tools={TOOLS[section] || TOOLS.live}
         queryParam={embedded ? 'cad_tool' : 'tool'}
         workspaceClassName="bg-[#050b13]"
-        headerContent={section === 'live' ? <CadCriticalIncidentBanner /> : null}
+        headerContent={section === 'live' ? <GlobalOperationsTicker user={user} /> : null}
       />}
     </UnifiedCenter>
   );
