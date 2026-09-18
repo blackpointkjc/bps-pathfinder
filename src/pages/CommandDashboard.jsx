@@ -489,8 +489,6 @@ function CommandDashboardInner({ embedded = false }) {
                         })}
                     </div>
                 </div>
-
-            </div>
             </div>
             <FieldCallModal call={selectedCall} onClose={() => setSelectedCall(null)} />
         </div>
