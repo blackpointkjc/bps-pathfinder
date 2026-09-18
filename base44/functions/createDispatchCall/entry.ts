@@ -154,8 +154,23 @@ Deno.serve(async (req) => {
       });
     });
 
-    await Promise.all(assignmentWrites);
-    const propertyAlerts = await Promise.all(alertWrites);
+    const warnings:string[] = [];
+    const assignmentResults = await Promise.allSettled(assignmentWrites);
+    const failedAssignments = assignmentResults.filter((result:any) => result.status === 'rejected');
+    if (failedAssignments.length) {
+      warnings.push(`${failedAssignments.length} unit assignment record${failedAssignments.length === 1 ? '' : 's'} could not be written immediately.`);
+      console.warn('Dispatch call saved with assignment write failures', failedAssignments);
+    }
+
+    const propertyAlertResults = await Promise.allSettled(alertWrites);
+    const propertyAlerts = propertyAlertResults
+      .filter((result:any) => result.status === 'fulfilled')
+      .map((result:any) => result.value);
+    const failedPropertyAlerts = propertyAlertResults.filter((result:any) => result.status === 'rejected');
+    if (failedPropertyAlerts.length) {
+      warnings.push('The call was saved, but one monitored-property alert will need automatic retry.');
+      console.warn('Dispatch call saved with property alert write failures', failedPropertyAlerts);
+    }
     // A manually created CAD call inside a monitored property must enter the same
     // verified property-alert evaluation path as an imported emergency call.
     // Evaluation is attached to the saved PropertyAlert identity, so refreshes
@@ -203,6 +218,10 @@ Deno.serve(async (req) => {
       triggering_action: 'createDispatchCall',
       audio_enabled: true,
       sensitive: false,
+    }).catch((error:any) => {
+      warnings.push('The call was saved, but its CAD audio/log event did not post immediately.');
+      console.error('CallStatusLog create failed after call save', error?.message || error);
+      return null;
     });
 
     await base44.asServiceRole.entities.AuditLog.create({
@@ -219,6 +238,7 @@ Deno.serve(async (req) => {
       success: true,
       call: createdCall,
       property_alerts_created: propertyAlerts.length,
+      warnings,
     });
   } catch (error) {
     console.error('createDispatchCall failed', error);
