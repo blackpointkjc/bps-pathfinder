@@ -763,7 +763,7 @@ export default function MDTrespassNotices() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!currentSiteName && !isAdmin ? (
+            {!currentSiteName && !isAdmin && filteredActiveNotices.length === 0 && filteredInactiveNotices.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-600 text-lg">Clock in to a site to view trespass notices</p>
               </div>
