@@ -82,43 +82,21 @@ const ADMIN_TOOLS = {
     { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
   ],
   people: [
-    { id: 'users', label: 'Users & Accounts', component: AdminUsers },
-    { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
-    { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
-    { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
+    { id: 'personnelhub', label: 'Personnel & Access', component: AdminPersonnelAccessHub },
   ],
   schedule: [
-    { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
-    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
-    { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
-    { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
-    { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
-    { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
+    { id: 'schedulehub', label: 'Scheduling & Coverage', component: AdminSchedulingCoverageHub },
   ],
   sites: [
-    { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
-    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
-    { id: 'autodispatch', label: 'Automatic Dispatch', component: AdminAutoDispatchControls },
-    { id: 'locations', label: 'Locations', component: AdminLocations },
-    { id: 'cadcontrol', label: 'CAD Admin Controls', component: AdminPortal },
-    { id: 'settings', label: 'Portal Visibility', component: AdminPortalSettings },
-    { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
-    { id: 'equipment', label: 'Equipment', component: AdminEquipment },
-    { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
+    { id: 'locationdispatch', label: 'Location & Dispatch', component: AdminLocationDispatchHub },
+    { id: 'siteassets', label: 'Site Assets', component: AdminSiteAssetsHub },
+    { id: 'systemportal', label: 'System & Portal', component: AdminSystemPortalHub },
   ],
   reports: [
-    { id: 'allreports', label: 'All Reports', component: AdminReports },
-    { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
-    { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
-    { id: 'confidential', label: 'Confidential Reports', component: AdminConfidentialReports },
-    { id: 'complaints', label: 'Complaints', component: AdminComplaints },
-    { id: 'commendations', label: 'Commendations', component: AdminCommendations },
-    { id: 'feedback', label: 'Client Feedback', component: AdminClientFeedback },
-    { id: 'cadreports', label: 'CAD Reports', component: PathfinderReports },
+    { id: 'reportshub', label: 'Reports & Quality', component: AdminReportsQualityHub },
   ],
   communications: [
-    { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
-    { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
+    { id: 'communicationshub', label: 'Communications & Requests', component: AdminCommunicationsHub },
   ],
 };
 
@@ -147,6 +125,77 @@ const ADMIN_SUPERVISOR_TOOLS = {
     { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
   ],
 };
+
+function AdminPersonnelAccessHub() {
+  const tools = [
+    { id: 'users', label: 'Users & Accounts', component: AdminUsers },
+    { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
+    { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
+    { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_people_tool" />;
+}
+
+function AdminSchedulingCoverageHub() {
+  const tools = [
+    { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
+    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
+    { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
+    { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
+    { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
+    { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_schedule_tool" />;
+}
+
+function AdminLocationDispatchHub() {
+  const tools = [
+    { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
+    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
+    { id: 'autodispatch', label: 'Automatic Dispatch', component: AdminAutoDispatchControls },
+    { id: 'locations', label: 'Locations', component: AdminLocations },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_location_dispatch_tool" />;
+}
+
+function AdminSiteAssetsHub() {
+  const tools = [
+    { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
+    { id: 'equipment', label: 'Equipment', component: AdminEquipment },
+    { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_site_assets_tool" />;
+}
+
+function AdminSystemPortalHub() {
+  const tools = [
+    { id: 'cadcontrol', label: 'Admin Control', component: AdminPortal },
+    { id: 'settings', label: 'Portal Visibility', component: AdminPortalSettings },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_system_portal_tool" />;
+}
+
+function AdminReportsQualityHub() {
+  const tools = [
+    { id: 'allreports', label: 'Report Review', component: AdminReports },
+    { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
+    { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
+    { id: 'confidential', label: 'Confidential Reports', component: AdminConfidentialReports },
+    { id: 'complaints', label: 'Complaints', component: AdminComplaints },
+    { id: 'commendations', label: 'Commendations', component: AdminCommendations },
+    { id: 'feedback', label: 'Client Feedback', component: AdminClientFeedback },
+    { id: 'cadreports', label: 'CAD Reports', component: PathfinderReports },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_reports_quality_tool" />;
+}
+
+function AdminCommunicationsHub() {
+  const tools = [
+    { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
+    { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
+  ];
+  return <CenterToolSection tools={tools} queryParam="admin_communications_tool" />;
+}
 
 function AdminSupervisorToolsOnly() {
   return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Complete supervisor tools for administrators, without the personal Officer Workspace." sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="overview" queryParam="admin_supervisor_section" embedded>
