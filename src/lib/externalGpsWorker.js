@@ -143,6 +143,9 @@ async function readLoop(port, localGeneration) {
 
 async function startPort({ baudRate = 4800, selector = {} } = {}) {
   await stopPort();
+  // Windows can keep a COM handle busy for a short period after cancel/close.
+  // Give the OS time to release the receiver before reopening it.
+  await new Promise(resolve => setTimeout(resolve, 180));
   if (!self.navigator?.serial) {
     self.postMessage({ type: 'status', connected: false, error: 'Web Serial is not available in this background worker.' });
     return;
@@ -153,15 +156,24 @@ async function startPort({ baudRate = 4800, selector = {} } = {}) {
     return;
   }
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : 4800;
-  try {
-    await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
-    activePort = port;
-    const localGeneration = ++generation;
-    self.postMessage({ type: 'status', connected: true, portGranted: true, baudRate: baud, error: '', backgroundReader: true });
-    void readLoop(port, localGeneration);
-  } catch (error) {
-    self.postMessage({ type: 'status', connected: false, portGranted: true, error: error?.message || 'Unable to open the approved GPS/COM port.' });
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
+      activePort = port;
+      const localGeneration = ++generation;
+      self.postMessage({ type: 'status', connected: true, portGranted: true, baudRate: baud, error: '', backgroundReader: true });
+      void readLoop(port, localGeneration);
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = String(error?.message || error || '');
+      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 2) break;
+      try { if (port?.readable || port?.writable) await port.close(); } catch (_) {}
+      await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+    }
   }
+  self.postMessage({ type: 'status', connected: false, portGranted: true, error: lastError?.message || 'Unable to open the approved GPS/COM port.' });
 }
 
 self.onmessage = event => {
