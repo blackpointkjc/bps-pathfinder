@@ -571,9 +571,11 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
     : availableCenters.includes('supervisor')
       ? [...new Set([...availableCenters, 'officer'])] : availableCenters;
   const sourceGroups = mobile
-    ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || []).map(group => ({
-        ...group, label: `${CENTER_CONFIG[key].label} / ${group.label}`,
-      })))
+    ? (mobileSection === 'reports'
+        ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || [])
+            .filter(group => group.label.toLowerCase().includes('report'))
+            .map(group => ({ ...group, label: `${CENTER_CONFIG[key].label} / ${group.label}` })))
+        : [])
     : desktopCenterPage ? [] : center.groups;
   const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
@@ -627,7 +629,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           )}
         </div>
 
-        {(!collapsed || mobile) && (mobile || availableCenters.length > 1) && (
+        {(!collapsed || mobile) && !mobile && availableCenters.length > 1 && (
           <div className="mt-3">
             {mobile && <div className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">Workspace</div>}
             {mobile ? (
@@ -672,9 +674,23 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       </div>}
 
       <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y px-2 py-2">
-        {mobile && !mobileSection && <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Full workspaces">
-          {mobileCenters.map(key => <Link key={key} to={createPageUrl(DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key))} onClick={onCloseMobile} className="flex min-h-12 items-center rounded-lg border border-cyan-800 bg-cyan-950/40 px-3 py-2 text-xs font-bold text-cyan-100">{CENTER_CONFIG[key].label}</Link>)}
-        </div>}
+        {mobile && !mobileSection && (
+          <>
+            <div className="mb-2 px-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#6d8aa7]">Main Centers</div>
+            <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3" aria-label="Pathfinder centers">
+              {mobileCenters.map(key => {
+                const item = CENTER_CONFIG[key];
+                const Icon = item.icon;
+                return (
+                  <Link key={key} to={createPageUrl(DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key))} onClick={onCloseMobile} className="flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 transition hover:border-cyan-500 hover:bg-[#153552]">
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
         {collapsed && !mobile && (
           <div className="mb-2 space-y-1 border-b border-[#1b3048] pb-2">
             {availableCenters.map(key => {
