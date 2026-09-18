@@ -13,7 +13,7 @@ import VehicleManagement from '@/components/admin/VehicleManagement';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-export default function AdminPortal() {
+export default function AdminPortal({ embedded = false }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -175,9 +175,9 @@ export default function AdminPortal() {
     }
 
     return (
-        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+        <div className={`bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-full'} flex flex-col font-mono`}>
             {/* Header */}
-            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+            {!embedded && <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
                 <Shield className="w-4 h-4 text-gold" />
                 <span className="text-white font-bold text-sm tracking-widest">ADMIN CONTROL CENTER</span>
@@ -191,7 +191,7 @@ export default function AdminPortal() {
                 </div>
                 <div className="flex-1" />
                 <span className="text-slate-500 text-[10px]">{currentUser?.rank || '—'} {currentUser?.last_name?.toUpperCase() || currentUser?.full_name?.split(' ').pop().toUpperCase() || 'ADMIN'}</span>
-            </div>
+            </div>}
 
             {/* Tab Bar */}
             <div className="flex-none flex border-b border-slate-800 bg-slate-900/50">
