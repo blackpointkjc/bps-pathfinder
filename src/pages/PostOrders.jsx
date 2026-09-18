@@ -133,20 +133,15 @@ export default function PostOrders() {
   };
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <FileText className="w-8 h-8 text-blue-600" />
-              Post Orders
-            </h1>
-            <p className="text-slate-600">Site-specific security protocols and procedures</p>
-          </div>
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><FileText className="h-5 w-5 text-blue-300" /></div>
+          <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Site Operations</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Post Orders</h1><p className="mt-1 text-xs text-slate-400">Site directives, emergency procedures, contacts, and officer responsibilities.</p></div>
         </div>
 
-        <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-700 bg-[#0a1623]">
             <CardTitle>Select Your Site</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
