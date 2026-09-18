@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 
@@ -52,7 +52,7 @@ export default function MDTrespassNotices() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin';
@@ -105,12 +105,12 @@ export default function MDTrespassNotices() {
   const noticesToDisplay = React.useMemo(() => {
     if (!allNotices) return { active: [], inactive: [] };
 
-    let filtered = [];
-    if (currentSiteName) {
-      filtered = allNotices.filter(notice => notice.location === currentSiteName);
-    } else if (isAdmin) {
-      filtered = allNotices;
-    }
+    const filtered = isAdmin
+      ? allNotices
+      : allNotices.filter(notice =>
+          recordBelongsToDirectoryUser(user, notice)
+          || (currentSiteName && notice.location === currentSiteName)
+        );
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -134,7 +134,7 @@ export default function MDTrespassNotices() {
     });
 
     return { active, inactive };
-  }, [allNotices, currentSiteName, isAdmin]);
+  }, [allNotices, currentSiteName, isAdmin, user]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
