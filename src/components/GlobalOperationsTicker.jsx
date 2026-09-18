@@ -119,13 +119,22 @@ function distressSegments(rows = []) {
     }));
 }
 
-function propertySegments(rows = []) {
+function propertySegments(rows = [], calls = []) {
+  const criticalCallIds = new Set(
+    dedupeOperationalCalls(calls)
+      .filter(call => !CLOSED.has(normalized(call.status)) && callPriority(call) === 'critical')
+      .flatMap(call => [call.id, call.external_call_id, call.agency_cad_number, call.bps_reference, call.call_id])
+      .filter(Boolean)
+      .map(String)
+  );
   const seen = new Set();
   const result = [];
   for (const row of rows || []) {
     if (row?.is_test === true || ['resolved', 'false_alarm', 'test'].includes(normalized(row.lifecycle_status))) continue;
     const key = String(row.source_key || row.callId || row.id || '');
     if (!key || seen.has(key)) continue;
+    const linkedKeys = [row.callId, row.source_key, row.agency_cad_number, row.bps_reference].filter(Boolean).map(String);
+    if (linkedKeys.some(value => criticalCallIds.has(value))) continue;
     seen.add(key);
     result.push({
       key: `property:${key}`,
@@ -237,7 +246,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
     return [
       ...distressSegments(distress),
       ...(critical ? [critical] : []),
-      ...propertySegments(propertyAlerts),
+      ...propertySegments(propertyAlerts, calls),
       ...boloSegments(activeBolos),
     ];
   }, [calls, distress, propertyAlerts, activeBolos]);
