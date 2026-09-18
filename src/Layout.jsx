@@ -1458,7 +1458,7 @@ export default function Layout({ children, currentPageName }) {
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
   return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
-    {hasFullAccess(user) && <RateLimitDiagnostics open={apiTraceOpen} onClose={() => setApiTraceOpen(false)} />}
+    {user?.role === 'admin' && <RateLimitDiagnostics open={apiTraceOpen} onClose={() => setApiTraceOpen(false)} />}
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-2 backdrop-blur-[4px] sm:p-5" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
       <motion.section initial={{ scale: 0.96, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.97, y: 12, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-hidden rounded-2xl border border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)] sm:h-[min(92dvh,860px)] sm:rounded-3xl" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
@@ -1636,7 +1636,7 @@ export default function Layout({ children, currentPageName }) {
             )}
           </div>
           <CadAudioToggle />
-          {hasFullAccess(user) && (
+          {user?.role === 'admin' && (
             <button
               type="button"
               onClick={() => setApiTraceOpen(true)}
