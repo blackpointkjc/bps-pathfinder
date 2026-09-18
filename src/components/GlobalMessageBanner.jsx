@@ -386,6 +386,7 @@ export default function GlobalMessageBanner({ user }) {
 
     const showPropertyCall = async record => {
       if (!record?.id) return;
+      if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
 
