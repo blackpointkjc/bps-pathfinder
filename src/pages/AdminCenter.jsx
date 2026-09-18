@@ -53,6 +53,7 @@ import RankStructure from './RankStructure';
 import HRCenter from './HRCenter';
 import ClientCenter from './ClientCenter';
 import TrainerCenter from './TrainerCenter';
+import StudentPortal from './StudentPortal';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations, listDirectoryUsers, listOfficerDirectory } from '@/lib/appDirectory';
 import { isClientAccount, isOperationalOfficer } from '@/lib/directoryUtils';
@@ -267,21 +268,38 @@ function AdministrationToolsOnly() {
   );
 }
 
-function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOfficer, onMode, onClient, onOfficer, onExit }) {
-  const labels = { cad:'CAD', officer:'Officer', supervisor:'Supervisor', hr:'HR', training:'Trainer', client:'Client' };
+function AdminShadowBar({ mode, clients, selectedClient, officers, selectedOfficer, roleAccounts, selectedRoleUser, onMode, onClient, onOfficer, onRoleUser, onExit }) {
+  const labels = { cad:'CAD', officer:'Officer', supervisor:'Supervisor', hr:'HR', training:'Trainer', student:'Student', client:'Client' };
+  const needsRoleAccount = ['supervisor','hr','training','student'].includes(mode);
+  const currentAccount = mode === 'officer'
+    ? officers.find(item => String(item.id) === String(selectedOfficer))
+    : mode === 'client'
+      ? clients.find(item => String(item.id) === String(selectedClient))
+      : roleAccounts.find(item => String(item.id) === String(selectedRoleUser));
   return (
-    <div className="sticky top-0 z-[70] border-b border-slate-700 bg-[#09111d]/98 px-3 py-2 text-white shadow-lg backdrop-blur">
-      <div className="mx-auto flex max-w-[1700px] flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 pr-2 text-xs font-black text-cyan-200">
-          <Eye className="h-4 w-4" />
-          <span>Previewing as {labels[mode] || 'Role'}</span>
+    <div className="sticky top-0 z-[70] bg-[#050a12]/96 p-2 text-white backdrop-blur-xl">
+      <div className="mx-auto max-w-[1700px] overflow-hidden rounded-xl border border-[#29445e] bg-[#081522] shadow-[0_14px_40px_rgba(0,0,0,.38)]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#1d3349] px-3 py-2">
+          <div className="flex items-center gap-2 pr-1 text-[10px] font-black uppercase tracking-[.14em] text-cyan-300">
+            <Eye className="h-4 w-4" />
+            Account Preview
+          </div>
+          <div className="flex flex-1 flex-wrap gap-1">
+            {['cad','officer','supervisor','hr','training','student','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black transition ${mode===item?'border-cyan-400 bg-cyan-500/20 text-cyan-50 shadow-sm':'border-slate-700 bg-[#0b1928] text-slate-400 hover:border-slate-500 hover:text-white'}`}>{labels[item]}</button>)}
+          </div>
+          <button type="button" onClick={onExit} className="flex items-center gap-1.5 rounded-lg border border-red-800/70 bg-red-950/30 px-2.5 py-1.5 text-[10px] font-black text-red-200 hover:border-red-500 hover:bg-red-900/40"><X className="h-3.5 w-3.5"/>EXIT PREVIEW</button>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {['cad','officer','supervisor','hr','training','client'].map(item => <button key={item} type="button" onClick={() => onMode(item)} className={`rounded-md border px-2.5 py-1.5 text-[11px] font-bold ${mode===item?'border-cyan-400 bg-cyan-500/15 text-cyan-100':'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{labels[item]}</button>)}
-        </div>
-        {mode === 'officer' && <select value={selectedOfficer} onChange={e=>onOfficer(e.target.value)} className="min-w-[280px] flex-1 rounded-md border border-cyan-500/40 bg-[#07111f] px-3 py-1.5 text-xs text-white sm:max-w-xl"><option value="">Choose officer to preview</option>{officers.map(officer=><option key={officer.id} value={officer.id}>{officer.__label}</option>)}</select>}
-        {mode === 'client' && <select value={selectedClient} onChange={e=>onClient(e.target.value)} className="min-w-[280px] flex-1 rounded-md border border-blue-500/40 bg-[#07111f] px-3 py-1.5 text-xs text-white sm:max-w-xl"><option value="">Choose client account</option>{clients.map(client=><option key={client.id} value={client.id}>{client.__label}</option>)}</select>}
-        <button type="button" onClick={onExit} className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-[11px] font-black text-slate-200 hover:border-red-500 hover:text-red-200"><X className="h-3.5 w-3.5"/>Exit Preview</button>
+        {(mode !== 'cad') && (
+          <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] font-black uppercase tracking-[.14em] text-slate-500">{labels[mode]} account</div>
+              <div className="mt-0.5 truncate text-xs font-bold text-white">{currentAccount?.__label || 'Select an account to load the real user view'}</div>
+            </div>
+            {mode === 'officer' && <select value={selectedOfficer} onChange={e=>onOfficer(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-cyan-500/40 bg-[#07111f] px-3 text-xs text-white sm:max-w-xl"><option value="">Choose officer account…</option>{officers.map(officer=><option key={officer.id} value={officer.id}>{officer.__label}</option>)}</select>}
+            {mode === 'client' && <select value={selectedClient} onChange={e=>onClient(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-blue-500/40 bg-[#07111f] px-3 text-xs text-white sm:max-w-xl"><option value="">Choose client account…</option>{clients.map(client=><option key={client.id} value={client.id}>{client.__label}</option>)}</select>}
+            {needsRoleAccount && <select value={selectedRoleUser} onChange={e=>onRoleUser(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-violet-500/40 bg-[#07111f] px-3 text-xs text-white sm:max-w-xl"><option value="">Choose {labels[mode].toLowerCase()} account…</option>{roleAccounts.map(person=><option key={person.id} value={person.id}>{person.__label}</option>)}</select>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -296,6 +314,8 @@ export default function AdminCenter() {
   const [selectedClient, setSelectedClient] = useState('');
   const [officers, setOfficers] = useState([]);
   const [selectedOfficer, setSelectedOfficer] = useState('');
+  const [previewPeople, setPreviewPeople] = useState([]);
+  const [selectedRoleUser, setSelectedRoleUser] = useState('');
   const signedInRoles = new Set([signedInUser?.role, ...(signedInUser?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
   const masterSections = MASTER_SECTIONS.filter(item => item.id !== 'training' || signedInRoles.has('trainer') || signedInRoles.has('full_access'));
 
@@ -308,6 +328,16 @@ export default function AdminCenter() {
       }));
     }).catch(() => setOfficers([]));
   }, [shadowMode, officers.length]);
+
+  useEffect(() => {
+    if (!['supervisor','hr','training','student'].includes(shadowMode) || previewPeople.length) return;
+    listDirectoryUsers('-last_updated', 1000).then(rows => {
+      setPreviewPeople((rows || []).map(person => {
+        const name = [person.first_name, person.last_name].filter(Boolean).join(' ').trim() || person.full_name || person.email || 'Unnamed User';
+        return { ...person, __label: `${person.rank || 'User'} ${name} — ${person.email || 'No email'}` };
+      }));
+    }).catch(() => setPreviewPeople([]));
+  }, [shadowMode, previewPeople.length]);
 
   useEffect(() => {
     if (shadowMode !== 'client' || clients.length) return;
@@ -327,10 +357,15 @@ export default function AdminCenter() {
       setClientPreviewId('');
       setSelectedClient('');
     }
-    if (mode !== 'officer') {
+    if (mode !== 'officer') setSelectedOfficer('');
+    if (!['officer','supervisor','hr','training','student'].includes(mode)) {
       setOfficerPreviewId('');
-      setSelectedOfficer('');
+      setSelectedRoleUser('');
+    } else {
+      setOfficerPreviewId('');
+      setSelectedRoleUser('');
     }
+    queryClient.removeQueries({ queryKey: ['currentUser'] });
     setShadowMode(mode);
   };
   const chooseClient = async id => {
@@ -339,6 +374,36 @@ export default function AdminCenter() {
     const profile = clients.find(client=>client.id===id);
     setClientPreviewId(id, profile ? {...profile,__auth_admin_id:auth?.id} : null);
   };
+  const roleAccounts = useMemo(() => {
+    const mode = shadowMode;
+    const rankSupervisors = new Set(['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
+    return previewPeople.filter(person => {
+      const roles = new Set([person.role, ...(person.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+      const rank = String(person.rank || '').toLowerCase();
+      if (mode === 'supervisor') return person.is_supervisor === true || roles.has('supervisor') || rankSupervisors.has(rank);
+      if (mode === 'hr') return roles.has('hr') || rank === 'human resources';
+      if (mode === 'training') return roles.has('trainer') || roles.has('training');
+      if (mode === 'student') return roles.has('student') || String(person.user_type || '').toLowerCase() === 'student';
+      return false;
+    });
+  }, [previewPeople, shadowMode]);
+
+  const chooseRoleUser = id => {
+    const profile = roleAccounts.find(person => String(person.id) === String(id));
+    if (!id || !profile) {
+      setOfficerPreviewId('');
+      setSelectedRoleUser('');
+      queryClient.removeQueries({ queryKey: ['currentUser'] });
+      return;
+    }
+    setOfficerPreviewId(id, { ...profile, __officer_preview: true, __role_preview: shadowMode });
+    setSelectedRoleUser(id);
+    queryClient.removeQueries({ queryKey: ['currentUser'] });
+    queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
+    queryClient.removeQueries({ queryKey: ['officerPerformanceReviews'] });
+    queryClient.removeQueries({ queryKey: ['myTrainingCompletions'] });
+  };
+
   const chooseOfficer = id => {
     const profile = officers.find(officer => String(officer.id) === String(id));
     if (!id || !profile) {
@@ -372,6 +437,7 @@ export default function AdminCenter() {
     setSelectedClient('');
     setOfficerPreviewId('');
     setSelectedOfficer('');
+    setSelectedRoleUser('');
     queryClient.removeQueries({ queryKey: ['currentUser'] });
     queryClient.removeQueries({ queryKey: ['myScheduleData'] });
     queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
@@ -384,15 +450,17 @@ export default function AdminCenter() {
     if (shadowMode === 'cad') return <CADCenter key="shadow-cad" />;
     if (shadowMode === 'officer' && selectedOfficer) return <OfficerCenter key={`shadow-officer-${selectedOfficer}`} />;
     if (shadowMode === 'officer') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Shield className="mx-auto mb-3 h-10 w-10 text-cyan-300"/><div className="text-lg font-black text-white">Select an officer account above</div><div className="mt-1 text-sm">The Officer Center will load that officer's schedule, time, reports, and performance view.</div></div></div>;
-    if (shadowMode === 'supervisor') return <SupervisorCenter key="shadow-supervisor" />;
-    if (shadowMode === 'hr') return <HRCenter key="shadow-hr" />;
-    if (shadowMode === 'training') return <TrainerCenter key="shadow-training" />;
+    if (shadowMode === 'supervisor' && selectedRoleUser) return <SupervisorCenter key={`shadow-supervisor-${selectedRoleUser}`} />;
+    if (shadowMode === 'hr' && selectedRoleUser) return <HRCenter key={`shadow-hr-${selectedRoleUser}`} />;
+    if (shadowMode === 'training' && selectedRoleUser) return <TrainerCenter key={`shadow-training-${selectedRoleUser}`} />;
+    if (shadowMode === 'student' && selectedRoleUser) return <StudentPortal key={`shadow-student-${selectedRoleUser}`} />;
+    if (['supervisor','hr','training','student'].includes(shadowMode) && !selectedRoleUser) return <div className="flex min-h-[60vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Eye className="mx-auto mb-3 h-10 w-10 text-violet-300"/><div className="text-lg font-black text-white">Select a {shadowMode === 'training' ? 'trainer' : shadowMode} account above</div><div className="mt-1 text-sm">Pathfinder will load that user's actual account context inside the selected role workspace.</div></div></div>;
     if (shadowMode === 'client' && selectedClient) return <ClientCenter key={`shadow-client-${selectedClient}`} />;
     if (shadowMode === 'client') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Building2 className="mx-auto mb-3 h-10 w-10 text-blue-300"/><div className="text-lg font-black text-white">Select a client account above</div><div className="mt-1 text-sm">The full client portal will replace this workspace for shadow testing.</div></div></div>;
     return null;
-  }, [shadowMode, selectedClient, selectedOfficer]);
+  }, [shadowMode, selectedClient, selectedOfficer, selectedRoleUser]);
 
-  if (shadowMode) return <div className="min-h-full bg-[#070d17]"><AdminShadowBar mode={shadowMode} clients={clients} selectedClient={selectedClient} officers={officers} selectedOfficer={selectedOfficer} onMode={enterShadow} onClient={chooseClient} onOfficer={chooseOfficer} onExit={exitShadow}/>{shadowContent}</div>;
+  if (shadowMode) return <div className="min-h-full bg-[#070d17]"><AdminShadowBar mode={shadowMode} clients={clients} selectedClient={selectedClient} officers={officers} selectedOfficer={selectedOfficer} roleAccounts={roleAccounts} selectedRoleUser={selectedRoleUser} onMode={enterShadow} onClient={chooseClient} onOfficer={chooseOfficer} onRoleUser={chooseRoleUser} onExit={exitShadow}/>{shadowContent}</div>;
 
   return (
     <UnifiedCenter
@@ -408,7 +476,7 @@ export default function AdminCenter() {
             <Eye className="h-3 w-3"/>PREVIEW AS
           </summary>
           <div className="absolute right-0 top-9 z-[2000] w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0b1725] p-1.5 shadow-2xl">
-            {masterSections.filter(item => item.id !== 'admin').map(item => (
+            {[...masterSections.filter(item => item.id !== 'admin'), { id: 'student', label: 'Student', icon: GraduationCap }].filter((item, index, rows) => rows.findIndex(row => row.id === item.id) === index).map(item => (
               <button key={item.id} type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); enterShadow(item.id); }} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-black transition hover:bg-cyan-950/60 hover:text-cyan-200 ${section === item.id ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>
                 <item.icon className="h-3.5 w-3.5"/>{item.label}
               </button>
