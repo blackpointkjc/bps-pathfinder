@@ -6,7 +6,8 @@ import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import {
     Layers, Radio, MapPin, Users,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search, ChevronLeft, ChevronRight
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search, ChevronLeft, ChevronRight,
+    ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Route, Clock3
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -85,6 +86,9 @@ export default function Navigation() {
     const [navDurationMinutes, setNavDurationMinutes] = useState(0);
     const [navTurnDistanceFeet, setNavTurnDistanceFeet] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [navVoiceMuted, setNavVoiceMuted] = useState(() => {
+        try { return localStorage.getItem('bps:navigation-voice-muted') === '1'; } catch { return false; }
+    });
     const [routing, setRouting] = useState(false);
     const [addressQuery, setAddressQuery] = useState('');
     const [addressResults, setAddressResults] = useState([]);
@@ -93,6 +97,8 @@ export default function Navigation() {
     const [streetViewUrl, setStreetViewUrl] = useState('');
     const [fitBounds, setFitBounds] = useState(null);
     const lastSpokenNavStepRef = useRef(-1);
+    const spokenNavPromptsRef = useRef(new Set());
+    const lastRerouteAtRef = useRef(0);
     const initialOperationalFitRef = useRef(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
