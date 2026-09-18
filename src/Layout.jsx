@@ -31,6 +31,7 @@ import MicrosoftMailSetupGate from '@/components/MicrosoftMailSetupGate';
 import OutlookNotificationMonitor from '@/components/OutlookNotificationMonitor';
 import TeamsNotificationMonitor from '@/components/TeamsNotificationMonitor';
 import AdminHourlySystemScan from '@/components/admin/AdminHourlySystemScan';
+import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -848,6 +849,7 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [refreshingApp, setRefreshingApp] = useState(false);
+  const [apiTraceOpen, setApiTraceOpen] = useState(false);
   const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
   const [gpsChanging, setGpsChanging] = useState(false);
   const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
