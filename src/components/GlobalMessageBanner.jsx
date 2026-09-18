@@ -388,7 +388,6 @@ export default function GlobalMessageBanner({ user }) {
       if (!record?.id) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
-      knownIds.current.add(key);
 
       const call = record.callId
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
@@ -405,7 +404,6 @@ export default function GlobalMessageBanner({ user }) {
       const callKey = String(call.id || record.callId);
       const currentStatus = callStatusKey(call.status || 'new');
       if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
-      announcedPropertyCallStatuses.current.set(callKey, currentStatus);
 
       const summary = propertyCallSummary(record, call);
       const propertyEventKey = `property:${callKey}:${currentStatus}`;
@@ -418,7 +416,11 @@ export default function GlobalMessageBanner({ user }) {
             base44.entities.PropertyAlertReceipt.filter({ call_id: callKey, user_email: email }, '-dismissed_at', 1).catch(() => []),
           ]).then(results => results.flat())
         : [];
-      if (priorAcknowledgements?.length) return;
+      if (priorAcknowledgements?.length) {
+        announcedPropertyCallStatuses.current.set(callKey, currentStatus);
+        knownIds.current.add(key);
+        return;
+      }
 
       // PropertyAlert is the authoritative audio owner for monitored-property
       // calls. Relying on a separate CallStatusLog subscription caused missed
@@ -447,6 +449,8 @@ export default function GlobalMessageBanner({ user }) {
         }
       }
 
+      announcedPropertyCallStatuses.current.set(callKey, currentStatus);
+      knownIds.current.add(key);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
