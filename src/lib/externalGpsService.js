@@ -8,13 +8,30 @@ let readGeneration = 0;
 let serialEventsInstalled = false;
 let serialWorker = null;
 let pendingWorkerStart = null;
+let pendingWorkerStop = null;
+let gpsOwner = false;
+let gpsOwnerAcquirePromise = null;
+let releaseGpsOwnerLock = null;
+let gpsChannel = null;
 let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
 
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
 const STORAGE_SELECTOR_KEY = 'bps:external-gps-selector';
 const STORAGE_LOCK_KEY = 'bps:external-gps-locked';
+const GPS_OWNER_LOCK = 'bps:pathfinder:external-gps-owner';
+const GPS_CHANNEL = 'bps:pathfinder:external-gps-control';
 const DEFAULT_BAUD = 4800;
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function friendlyOpenError(error) {
+  const message = String(error?.message || error || '');
+  if (/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message)) {
+    return new Error('The GPS/COM port is already open or still being released. Pathfinder retried the connection. If this continues, close any other Pathfinder tab or GPS/serial program using this antenna, then try again.');
+  }
+  return error instanceof Error ? error : new Error(message || 'Unable to open the external GPS receiver.');
+}
 
 function serialPolicyAllowed() {
   if (typeof document === 'undefined') return true;
