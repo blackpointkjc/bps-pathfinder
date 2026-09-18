@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { createPageUrl } from '@/utils';
 import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
 import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
+import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 
 const severityConfig = {
   outage: { label: 'System Outage', icon: ServerCrash, border: 'border-red-600/60', bg: 'bg-red-950/35', text: 'text-red-300' },
@@ -93,9 +93,7 @@ export default function SystemStatus() {
               <button type="button" onClick={() => setApiTraceOpen(true)} className="flex h-9 items-center gap-2 rounded-lg border border-red-600/50 bg-red-950/25 px-3 text-[10px] font-black text-red-200 hover:bg-red-900/40">
                 <Activity className="h-3.5 w-3.5" /> API TRACE {rateLimitCount > 0 ? `· ${rateLimitCount}` : ''}
               </button>
-              <button type="button" onClick={() => { window.location.href = `${createPageUrl('AdminPortal')}?tab=sysissues`; }} className="flex h-9 items-center gap-2 rounded-lg border border-cyan-600/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-200 hover:bg-cyan-900/40">
-                MANAGE ISSUES <ArrowRight className="h-3.5 w-3.5" />
-              </button>
+
             </>
           )}
         </div>
@@ -114,6 +112,16 @@ export default function SystemStatus() {
               <div className="text-[8px] font-black uppercase tracking-[.14em] text-red-300">Rate Limits Logged</div>
               <div className="mt-1 text-lg font-black text-red-200">{rateLimitCount}</div>
             </button>
+          </div>
+        )}
+
+        {currentUser?.role === 'admin' && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-700 bg-[#08111d]">
+            <div className="border-b border-slate-800 bg-[#0a1623] px-4 py-2.5">
+              <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Administrator Issue Management</div>
+              <div className="text-xs text-slate-500">System issue detection, review, acknowledgement, and resolution now live on this page.</div>
+            </div>
+            <SystemIssuesPanel currentUser={currentUser} />
           </div>
         )}
 
