@@ -150,14 +150,14 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
   if (!isAdmin) return <div className="p-8 text-center text-slate-400">Administrator access is required to change automatic-dispatch modes.</div>;
 
   return (
-    <div className="bps-command-page min-h-full bg-[#080d16] p-4 text-white md:p-6">
-      <div className="mx-auto max-w-[1500px] space-y-5">
-        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-0 text-white" : "bps-command-page min-h-full bg-[#080d16] p-4 text-white md:p-6"}>
+      <div className="mx-auto w-full max-w-[1500px] space-y-4">
+        {!embedded && <section className="rounded-[22px] border border-slate-700/80 bg-[#0d1420] p-4 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div><div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[.24em] text-cyan-300"><Radar className="h-4 w-4"/>Dispatch Automation</div><h1 className="mt-2 text-3xl font-black md:text-4xl">Automatic Dispatch Controls</h1><p className="mt-2 max-w-4xl text-sm text-slate-400">Separate from geofence alerts. Configure whether each monitored property runs Live assignment, Shadow recommendations, Manual Review, or Off.</p></div>
             <Button variant="outline" onClick={() => refetch()} disabled={isLoading}><RefreshCw className="mr-2 h-4 w-4"/>Refresh</Button>
           </div>
-        </section>
+        </section>}
 
         {error && <div className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm font-semibold text-red-200"><AlertTriangle className="mr-2 inline h-4 w-4"/>{error.message}</div>}
         {actionError && <div className="rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-sm font-bold text-red-100"><AlertTriangle className="mr-2 inline h-4 w-4"/>{actionError}</div>}
@@ -179,7 +179,27 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
           <aside className="rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl">
             <div className="text-xs font-black uppercase tracking-[.18em] text-amber-300">Shadow / Dispatch Settings</div>
             <p className="mt-1 text-xs leading-5 text-slate-500">These thresholds are used by Shadow recommendations and Live automatic assignment for the selected property.</p>
-            {form ? <div className="mt-5 space-y-4"><div><Label>Response Radius (miles)</Label><Input type="number" min="0.1" step="0.1" value={form.auto_dispatch_response_radius_miles} onChange={e=>setForm({...form,auto_dispatch_response_radius_miles:e.target.value})}/></div><div><Label>Required Units</Label><Input type="number" min="1" value={form.auto_dispatch_required_units} onChange={e=>setForm({...form,auto_dispatch_required_units:e.target.value})}/></div><div className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#09111d] p-3"><div><Label>Backup Required</Label><p className="text-[10px] text-slate-500">Require a backup recommendation/assignment.</p></div><Switch checked={form.auto_dispatch_backup_required} onCheckedChange={value=>setForm({...form,auto_dispatch_backup_required:value})}/></div><div><Label>Acknowledgement Timer (seconds)</Label><Input type="number" min="30" value={form.auto_dispatch_acknowledgement_seconds} onChange={e=>setForm({...form,auto_dispatch_acknowledgement_seconds:e.target.value})}/></div><div><Label>Escalation Timer (seconds)</Label><Input type="number" min="60" value={form.auto_dispatch_escalation_seconds} onChange={e=>setForm({...form,auto_dispatch_escalation_seconds:e.target.value})}/></div><div><Label>Recheck Interval (seconds)</Label><Input type="number" min="30" value={form.auto_dispatch_recheck_seconds} onChange={e=>setForm({...form,auto_dispatch_recheck_seconds:e.target.value})}/></div><Button className="w-full bg-cyan-700 hover:bg-cyan-600" disabled={settingsMutation.isPending} onClick={()=>settingsMutation.mutate()}><Save className="mr-2 h-4 w-4"/>{settingsMutation.isPending?'SAVING…':'SAVE DISPATCH SETTINGS'}</Button></div> : <div className="mt-8 text-center text-sm text-slate-500">Select a monitored property.</div>}
+            {form ? (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div><Label>Response Radius (miles)</Label><Input type="number" min="0.1" step="0.1" value={form.auto_dispatch_response_radius_miles} onChange={e=>setForm({...form,auto_dispatch_response_radius_miles:e.target.value})}/></div>
+                  <div><Label>Required Units</Label><Input type="number" min="1" value={form.auto_dispatch_required_units} onChange={e=>setForm({...form,auto_dispatch_required_units:e.target.value})}/></div>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#09111d] p-3"><div><Label>Backup Required</Label><p className="text-[10px] text-slate-500">Require a backup recommendation/assignment.</p></div><Switch checked={form.auto_dispatch_backup_required} onCheckedChange={value=>setForm({...form,auto_dispatch_backup_required:value})}/></div>
+                <div><Label>Required Qualifications</Label><Input value={form.auto_dispatch_required_qualifications} onChange={e=>setForm({...form,auto_dispatch_required_qualifications:e.target.value})} placeholder="DCJS Armed, CPR"/></div>
+                <div><Label>Required Equipment</Label><Input value={form.auto_dispatch_required_equipment} onChange={e=>setForm({...form,auto_dispatch_required_equipment:e.target.value})} placeholder="Patrol vehicle, AED"/></div>
+                <div><Label>Allowed Ranks</Label><Input value={form.auto_dispatch_required_ranks} onChange={e=>setForm({...form,auto_dispatch_required_ranks:e.target.value})} placeholder="Officer, Corporal, Sergeant"/></div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div><Label>Ack Timer</Label><Input type="number" min="30" value={form.auto_dispatch_acknowledgement_seconds} onChange={e=>setForm({...form,auto_dispatch_acknowledgement_seconds:e.target.value})}/></div>
+                  <div><Label>Escalation</Label><Input type="number" min="60" value={form.auto_dispatch_escalation_seconds} onChange={e=>setForm({...form,auto_dispatch_escalation_seconds:e.target.value})}/></div>
+                  <div><Label>Recheck</Label><Input type="number" min="30" value={form.auto_dispatch_recheck_seconds} onChange={e=>setForm({...form,auto_dispatch_recheck_seconds:e.target.value})}/></div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button className="bg-cyan-700 hover:bg-cyan-600" disabled={settingsMutation.isPending} onClick={()=>settingsMutation.mutate()}><Save className="mr-2 h-4 w-4"/>{settingsMutation.isPending?'SAVING…':'SAVE RULES'}</Button>
+                  <Button variant="outline" disabled={evaluateMutation.isPending} onClick={()=>evaluateMutation.mutate()}><RefreshCw className={`mr-2 h-4 w-4 ${evaluateMutation.isPending ? 'animate-spin' : ''}`}/>{evaluateMutation.isPending?'EVALUATING…':'RUN ACTIVE CALLS NOW'}</Button>
+                </div>
+              </div>
+            ) : <div className="mt-8 text-center text-sm text-slate-500">Select a monitored property.</div>}
           </aside>
         </div>
       </div>
