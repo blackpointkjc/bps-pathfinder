@@ -310,6 +310,9 @@ Deno.serve(async (req) => {
             longitude,
             timestamp: new Date(deviceFixAt).toISOString(),
             accuracy: acceptedAccuracy,
+            speed: finiteNumber(body.speed),
+            heading: finiteNumber(body.heading),
+            gps_source: gpsSource,
           }));
           historyRecorded = true;
         }
