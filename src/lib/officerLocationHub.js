@@ -110,7 +110,8 @@ function scrubSnapshot(payload = {}) {
 export async function publishOfficerLocation(data = {}) {
   const email = String(data.officer_email || '').trim().toLowerCase();
   const kind = publishKind(data);
-  const minimumGap = kind === 'gps' ? GPS_PUBLISH_MIN_MS : kind === 'heartbeat' ? HEARTBEAT_PUBLISH_MIN_MS : 0;
+  const forcePublish = data.end_session === true || Boolean(data.status) || data.force_publish === true || data.reset_gps === true;
+  const minimumGap = forcePublish ? 0 : (kind === 'gps' ? GPS_PUBLISH_MIN_MS : kind === 'heartbeat' ? HEARTBEAT_PUBLISH_MIN_MS : 0);
 
   return withPublishLock(email || 'current-user', async () => {
     if (minimumGap > 0) {
