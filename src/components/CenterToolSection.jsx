@@ -39,7 +39,7 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
   return (
     <div className={`w-full ${workspaceClassName} ${fullCanvas ? 'flex h-[65dvh] min-h-[320px] xl:h-[calc(100vh-150px)] xl:min-h-[680px] flex-col' : ''}`}>
       {safeTools.length > 1 && (
-        <div className="flex items-center gap-2 border-b border-slate-800/70 bg-gradient-to-r from-[#08111e] via-[#0a1726] to-[#08111e] px-3 py-1.5 md:px-4">
+        <div className="flex min-h-10 items-center gap-2 border-b border-slate-800/70 bg-[#08111e] px-2 py-1 md:px-3">
           {!collapsed && <div className="min-w-0 flex-1">
             <AdaptiveSelector
               label="Page"
@@ -49,8 +49,8 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
               accent="blue"
             />
           </div>}
-          <button type="button" onClick={toggleCollapsed} className="ml-auto flex h-8 shrink-0 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[9px] font-black uppercase text-slate-300 hover:border-blue-600 hover:text-white" title={collapsed ? 'Expand page navigation' : 'Collapse page navigation'}>
-            {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}{collapsed ? 'Show' : 'Hide'} Page Tabs
+          <button type="button" onClick={toggleCollapsed} className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-400 transition hover:border-blue-600 hover:text-white" title={collapsed ? 'Show page tabs' : 'Hide page tabs'} aria-label={collapsed ? 'Show page tabs' : 'Hide page tabs'}>
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>
         </div>
       )}
