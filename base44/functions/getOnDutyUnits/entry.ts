@@ -388,6 +388,7 @@ Deno.serve(async (req) => {
           accuracy: freshPosition && Number.isFinite(Number(freshPosition.accuracy)) ? Number(freshPosition.accuracy) : null,
           gps_updated_at: freshPosition ? (freshPosition.gps_updated_at || userGpsTimestamp) : null,
           gps_source: freshPosition ? (freshPosition.gps_source || (freshPosition === user ? 'user_location_fallback' : 'browser_geolocation')) : '',
+          gps_device_id: freshPosition === active ? (active?.gps_device_id || '') : '',
           last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (storedPosition ? storedGpsTimestamp : (hasClockInPosition ? openEntry.clock_in : null)),
           last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (storedPosition ? Number(storedPosition.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : null)),
           last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (storedPosition ? Number(storedPosition.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : null)),
