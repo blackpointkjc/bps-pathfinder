@@ -204,6 +204,7 @@ import DispatchCenter from './pages/DispatchCenter';
 import CommandDashboard from './pages/CommandDashboard';
 import Personnel from './pages/Personnel';
 import AdminPortal from './pages/AdminPortal';
+import SystemStatus from './pages/SystemStatus';
 import __Layout from './Layout.jsx';
 
 
@@ -355,6 +356,7 @@ export const PAGES = {
     "CommandDashboard": CommandDashboard,
     "Personnel": Personnel,
     "AdminPortal": AdminPortal,
+    "SystemStatus": SystemStatus,
 }
 
 export const pagesConfig = {
