@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
+import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
 
 const severityConfig = {
   outage: { label: 'System Outage', icon: ServerCrash, border: 'border-red-600/60', bg: 'bg-red-950/35', text: 'text-red-300' },
@@ -28,6 +30,7 @@ export default function SystemStatus() {
   const [issues, setIssues] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [apiTraceOpen, setApiTraceOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -65,8 +68,13 @@ export default function SystemStatus() {
     [issues]
   );
 
+  const requestHealth = getBase44RequestHealth();
+  const rateLimitSummary = getBase44RateLimitSummary();
+  const rateLimitCount = rateLimitSummary.reduce((sum, item) => sum + (Number(item.rateLimits) || 0), 0);
+
   return (
     <div className="min-h-full bg-[#060b12] p-3 text-white sm:p-5">
+      {currentUser?.role === 'admin' && <RateLimitDiagnostics open={apiTraceOpen} onClose={() => setApiTraceOpen(false)} />}
       <div className="mx-auto max-w-5xl">
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700 bg-[#0a1623] p-4 shadow-xl">
           <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${activeOutages.length ? 'border-red-600/50 bg-red-950/50 text-red-300' : 'border-emerald-600/50 bg-emerald-950/30 text-emerald-300'}`}>
@@ -81,11 +89,33 @@ export default function SystemStatus() {
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />REFRESH
           </button>
           {currentUser?.role === 'admin' && (
-            <button type="button" onClick={() => { window.location.href = `${createPageUrl('AdminPortal')}?tab=sysissues`; }} className="flex h-9 items-center gap-2 rounded-lg border border-cyan-600/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-200 hover:bg-cyan-900/40">
-              MANAGE ISSUES <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            <>
+              <button type="button" onClick={() => setApiTraceOpen(true)} className="flex h-9 items-center gap-2 rounded-lg border border-red-600/50 bg-red-950/25 px-3 text-[10px] font-black text-red-200 hover:bg-red-900/40">
+                <Activity className="h-3.5 w-3.5" /> API TRACE {rateLimitCount > 0 ? `· ${rateLimitCount}` : ''}
+              </button>
+              <button type="button" onClick={() => { window.location.href = `${createPageUrl('AdminPortal')}?tab=sysissues`; }} className="flex h-9 items-center gap-2 rounded-lg border border-cyan-600/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-200 hover:bg-cyan-900/40">
+                MANAGE ISSUES <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </>
           )}
         </div>
+
+        {currentUser?.role === 'admin' && (
+          <div className="mb-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-700 bg-[#0a1623] px-3 py-2">
+              <div className="text-[8px] font-black uppercase tracking-[.14em] text-slate-500">Queued API Reads</div>
+              <div className="mt-1 text-lg font-black text-cyan-300">{requestHealth.queuedReads}</div>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-[#0a1623] px-3 py-2">
+              <div className="text-[8px] font-black uppercase tracking-[.14em] text-slate-500">Active API Requests</div>
+              <div className="mt-1 text-lg font-black text-blue-300">{requestHealth.activeReads + requestHealth.activeWrites}</div>
+            </div>
+            <button type="button" onClick={() => setApiTraceOpen(true)} className="rounded-xl border border-red-700/50 bg-red-950/25 px-3 py-2 text-left transition hover:bg-red-900/35">
+              <div className="text-[8px] font-black uppercase tracking-[.14em] text-red-300">Rate Limits Logged</div>
+              <div className="mt-1 text-lg font-black text-red-200">{rateLimitCount}</div>
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex min-h-56 items-center justify-center rounded-2xl border border-slate-800 bg-[#08111d]">
