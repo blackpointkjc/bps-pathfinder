@@ -98,10 +98,11 @@ async function stopPort() {
 function portMatches(port, selector = {}) {
   if (!port) return false;
   const info = port.getInfo?.() || {};
-  const vendorWanted = Number(selector.usbVendorId);
-  const productWanted = Number(selector.usbProductId);
-  if (Number.isFinite(vendorWanted) && Number(info.usbVendorId) !== vendorWanted) return false;
-  if (Number.isFinite(productWanted) && Number(info.usbProductId) !== productWanted) return false;
+  const hasVendor = selector.usbVendorId !== null && selector.usbVendorId !== undefined && Number.isFinite(Number(selector.usbVendorId));
+  const hasProduct = selector.usbProductId !== null && selector.usbProductId !== undefined && Number.isFinite(Number(selector.usbProductId));
+  if (!hasVendor && !hasProduct) return false;
+  if (hasVendor && Number(info.usbVendorId) !== Number(selector.usbVendorId)) return false;
+  if (hasProduct && Number(info.usbProductId) !== Number(selector.usbProductId)) return false;
   return true;
 }
 
@@ -109,8 +110,10 @@ async function selectGrantedPort(selector = {}) {
   if (!self.navigator?.serial?.getPorts) return null;
   const ports = await self.navigator.serial.getPorts();
   if (!ports?.length) return null;
-  const selected = ports.find(port => portMatches(port, selector));
-  return selected || ports[0];
+  const hasIdentity = (selector.usbVendorId !== null && selector.usbVendorId !== undefined)
+    || (selector.usbProductId !== null && selector.usbProductId !== undefined);
+  if (!hasIdentity) return ports.length === 1 ? ports[0] : null;
+  return ports.find(port => portMatches(port, selector)) || null;
 }
 
 async function readLoop(port, localGeneration) {
@@ -143,9 +146,9 @@ async function readLoop(port, localGeneration) {
 
 async function startPort({ baudRate = 4800, selector = {} } = {}) {
   await stopPort();
-  // Windows can keep a COM handle busy for a short period after cancel/close.
-  // Give the OS time to release the receiver before reopening it.
-  await new Promise(resolve => setTimeout(resolve, 180));
+  // Windows can keep a COM handle busy after cancel/close, especially for
+  // USB-to-serial GNSS receivers. Give the driver a real release window.
+  await new Promise(resolve => setTimeout(resolve, 350));
   if (!self.navigator?.serial) {
     self.postMessage({ type: 'status', connected: false, error: 'Web Serial is not available in this background worker.' });
     return;
@@ -157,7 +160,7 @@ async function startPort({ baudRate = 4800, selector = {} } = {}) {
   }
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : 4800;
   let lastError = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
       await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
       activePort = port;
@@ -168,9 +171,10 @@ async function startPort({ baudRate = 4800, selector = {} } = {}) {
     } catch (error) {
       lastError = error;
       const message = String(error?.message || error || '');
-      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 2) break;
+      if (!/failed to open serial port|invalidstate|networkerror|busy|in use|already open/i.test(message) || attempt === 5) break;
       try { if (port?.readable || port?.writable) await port.close(); } catch (_) {}
-      await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+      const waits = [300, 500, 800, 1200, 1800, 2200];
+      await new Promise(resolve => setTimeout(resolve, waits[attempt] || 1200));
     }
   }
   self.postMessage({ type: 'status', connected: false, portGranted: true, error: lastError?.message || 'Unable to open the approved GPS/COM port.' });
