@@ -9,12 +9,10 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
-import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
-import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
+import { MapPin, AlertTriangle, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -260,6 +258,22 @@ function CommandDashboardInner() {
         ? [...MY_STATUSES, ...(hasDispatchAccess ? ['Dispatch'] : [])]
         : DISPATCH_STATUSES;
 
+    const criticalBannerLines = (() => {
+        const primary = [];
+        const secondary = [];
+        for (const call of criticalCalls.slice(0, 2)) {
+            const incident = String(cleanIncident(call) || '').replace(/\s+/g, ' ').trim();
+            const split = incident.match(/^(.*?)\s*,\s*INVESTIGATE$/i);
+            if (split?.[1]) {
+                primary.push(split[1].trim());
+                secondary.push(`INVESTIGATE @ ${call.location}`);
+            } else {
+                primary.push(`${incident} @ ${call.location}`);
+            }
+        }
+        return [primary.join(' | '), ...secondary].filter(Boolean);
+    })();
+
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
             <div className="text-center">
@@ -270,9 +284,25 @@ function CommandDashboardInner() {
     );
 
     return (
-        <div className="bps-command-page command-dashboard min-h-full min-w-0 overflow-x-hidden bg-slate-950 flex flex-col">
+        <div className="bps-command-page command-dashboard min-h-full min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.28),_transparent_38%),#050b13] flex flex-col">
+            {/* The live critical banner is intentionally the first visible element in
+                this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
+            {criticalCalls.length > 0 && (
+                <div className="flex-none border-b border-red-500/80 bg-gradient-to-r from-[#5f1116] via-[#7a171d] to-[#4d0d12] px-4 py-2.5 shadow-[0_10px_30px_rgba(127,29,29,.22)]">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-red-200" />
+                        <div className="min-w-0 font-mono uppercase">
+                            <div className="text-xs font-black tracking-[0.08em] text-white">
+                                ⚠ {criticalCalls.length} CRITICAL INCIDENT{criticalCalls.length > 1 ? 'S' : ''} ACTIVE
+                            </div>
+                            {criticalBannerLines.map((line, index) => (
+                                <div key={index} className="mt-0.5 text-[11px] font-bold tracking-[0.04em] text-red-100/90">{line}</div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
-            <ActiveBoloBanner />
             {isDispatchOrAdmin && <AutoDispatchShadowFeed />}
 
             {/* ── SYSTEM HEADER BAR ── */}
@@ -374,28 +404,9 @@ function CommandDashboardInner() {
                 </div>
             )}
 
-            {/* ── CRITICAL INCIDENT FLASH BANNER ── */}
-            {criticalCalls.length > 0 && (
-                <div className="flex-none flex items-center gap-3 bg-red-900/80 border-b-2 border-red-500 px-4 py-1.5">
-                    <AlertTriangle className="w-4 h-4 text-red-300 animate-pulse flex-shrink-0" />
-                    <span className="text-red-200 font-mono font-bold text-xs tracking-wider">
-                        ⚠ {criticalCalls.length} CRITICAL INCIDENT{criticalCalls.length > 1 ? 'S' : ''} ACTIVE
-                    </span>
-                    <span className="text-red-300/70 font-mono text-xs flex-1 truncate">
-                        {criticalCalls.slice(0, 2).map(c => `${cleanIncident(c)} @ ${c.location}`).join('  |  ')}
-                    </span>
-                    <button onClick={() => navigate(createPageUrl('Navigation'))}
-                        className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded border border-red-400 transition-colors">
-                        MAP <ChevronRight className="w-3 h-3" />
-                    </button>
-                </div>
-            )}
-
-            {/* ── MAIN GRID ── */}
-            <div className="flex-1 grid min-h-0 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_350px]">
-
-                {/* ── CALL QUEUE (3 cols) ── */}
-                <div className="flex min-h-0 min-w-0 flex-col border-r border-slate-800">
+            {/* ── MAIN WORKSPACE ── */}
+            <div className="flex-1 min-h-0 p-2 md:p-3">
+                <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_18px_55px_rgba(0,0,0,.28)]">
                     <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span></div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
