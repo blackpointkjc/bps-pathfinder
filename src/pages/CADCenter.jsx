@@ -10,6 +10,7 @@ import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
+import CadCriticalIncidentBanner from '@/components/CadCriticalIncidentBanner';
 
 const BASE_SECTIONS = [
   { id: 'live', label: 'Live Command', description: 'Command board, dispatch queues and live map', icon: Activity },
@@ -43,11 +44,16 @@ export default function CADCenter({ embedded = false }) {
       description="One desktop workspace for live calls, unit status, mapping, alerts, history, and records intelligence."
       sections={sections}
       defaultSection="live"
-      contentClassName="bg-[#07111f] text-slate-100 shadow-[inset_0_1px_0_rgba(51,65,85,.45)]"
+      contentClassName="bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.22),_transparent_42%),#050b13] text-slate-100"
       queryParam={embedded ? 'cad_section' : 'section'}
       embedded={embedded}
     >
-      {section => <CenterToolSection tools={TOOLS[section] || TOOLS.live} queryParam={embedded ? 'cad_tool' : 'tool'} />}
+      {section => <CenterToolSection
+        tools={TOOLS[section] || TOOLS.live}
+        queryParam={embedded ? 'cad_tool' : 'tool'}
+        workspaceClassName="bg-[#050b13]"
+        headerContent={section === 'live' ? <CadCriticalIncidentBanner /> : null}
+      />}
     </UnifiedCenter>
   );
 }
