@@ -188,12 +188,11 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
             // When navigating, keep map zoomed in and centered on user
             if (isNavigating) {
-                map.setView(center, 18, { animate: false });
+                map.panTo(center, { animate: false, noMoveStart: true });
             } else {
-                // Keep the current zoom but immediately move the viewport with
-                // the GPS fix. setView avoids the delayed translation state that
-                // can leave blank tile edges during continuous vehicle movement.
-                map.setView(center, map.getZoom(), { animate: false });
+                // Preserve the current zoom/tile pyramid while the GPS moves.
+                // Repeated setView calls were forcing unnecessary tile churn.
+                map.panTo(center, { animate: false, noMoveStart: true });
             }
             prevCenterRef.current = center;
         }
