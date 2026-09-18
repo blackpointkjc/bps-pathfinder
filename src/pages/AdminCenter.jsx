@@ -278,6 +278,11 @@ export default function AdminCenter() {
     queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
     queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
     setShadowMode('');
+    const url = new URL(window.location.href);
+    url.searchParams.set('admin_center', 'admin');
+    url.searchParams.delete('section');
+    url.searchParams.delete('tool');
+    window.history.replaceState({}, '', url);
   };
 
   const shadowContent = useMemo(() => {
@@ -308,7 +313,7 @@ export default function AdminCenter() {
           </summary>
           <div className="absolute right-0 top-9 z-[2000] w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0b1725] p-1.5 shadow-2xl">
             {MASTER_SECTIONS.filter(item => item.id !== 'admin').map(item => (
-              <button key={item.id} type="button" onClick={() => enterShadow(item.id)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-black transition hover:bg-cyan-950/60 hover:text-cyan-200 ${section === item.id ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>
+              <button key={item.id} type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); enterShadow(item.id); }} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-black transition hover:bg-cyan-950/60 hover:text-cyan-200 ${section === item.id ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>
                 <item.icon className="h-3.5 w-3.5"/>{item.label}
               </button>
             ))}
