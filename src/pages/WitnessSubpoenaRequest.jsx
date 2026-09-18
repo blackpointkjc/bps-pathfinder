@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
-import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
+import { loadLegalRecordHistory, updateLegalRecord } from '@/lib/legalRecordHistory';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import SignaturePad from '@/components/SignaturePad';
@@ -265,7 +265,7 @@ export default function WitnessSubpoenaRequest() {
     mutationFn: async () => {
       const payload = { ...form, witnesses: form.witnesses.map(({ ...witness }) => witness) };
       return recordId
-        ? base44.entities.WitnessSubpoenaRequest.update(recordId, payload)
+        ? updateLegalRecord('subpoena', recordId, payload)
         : base44.entities.WitnessSubpoenaRequest.create(payload);
     },
     onSuccess: (saved) => {
