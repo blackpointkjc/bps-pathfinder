@@ -232,12 +232,12 @@ Review in Admin > Shift Bids.`
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-slate-100 md:p-8">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto max-w-6xl space-y-4">
         <div className="flex items-center gap-3">
           <Briefcase className="h-8 w-8 text-emerald-400" />
           <div>
-            <h1 className="text-3xl font-bold text-white">Open Shifts</h1>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Available Coverage</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Open Shifts</h1>
             <p className="text-slate-400">Bid on available shifts based on your preferences</p>
           </div>
         </div>
