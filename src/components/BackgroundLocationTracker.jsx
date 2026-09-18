@@ -19,6 +19,22 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+function getTrackingDeviceId() {
+  try {
+    const key = 'bps:pathfinder:gps-device-id:v1';
+    let value = window.localStorage.getItem(key);
+    if (!value) {
+      value = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.localStorage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    return `browser-${String(navigator?.userAgent || 'unknown').slice(0, 80)}`;
+  }
+}
+
 function isPointInsideBoundary(lat, lng, rawPolygon = []) {
   const polygon = rawPolygon
     .map(point => Array.isArray(point) ? { lat: Number(point[0]), lng: Number(point[1]) } : { lat: Number(point?.lat), lng: Number(point?.lng) })
@@ -43,6 +59,7 @@ export default function BackgroundLocationTracker({ user }) {
   const uploadChainRef = useRef(Promise.resolve());
   const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
+  const trackingDeviceIdRef = useRef(getTrackingDeviceId());
   const queryClient = useQueryClient();
 
   const { data: activeEntry } = useQuery({
@@ -155,6 +172,7 @@ export default function BackgroundLocationTracker({ user }) {
           time_entry_id: activeEntry?.id || '',
           user_role: user?.role || 'user',
           session_active: true,
+          device_id: trackingDeviceIdRef.current,
         });
         lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
@@ -228,8 +246,10 @@ export default function BackgroundLocationTracker({ user }) {
           speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
+          device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
+          device_id: trackingDeviceIdRef.current,
         });
         lastLivePushRef.current = Date.now();
         
@@ -345,6 +365,7 @@ export default function BackgroundLocationTracker({ user }) {
           time_entry_id: activeEntry?.id || '',
           user_role: user?.role || 'user',
           session_active: true,
+          device_id: trackingDeviceIdRef.current,
         });
         lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
