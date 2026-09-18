@@ -86,7 +86,7 @@ function PanelHeader({ children, count, accent = 'gold' }) {
 }
 
 // Inner dashboard — consumes context
-function CommandDashboardInner() {
+function CommandDashboardInner({ embedded = false }) {
     const navigate = useNavigate();
     const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
 
@@ -287,7 +287,7 @@ function CommandDashboardInner() {
         <div className="bps-command-page command-dashboard min-h-full min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.28),_transparent_38%),#050b13] flex flex-col">
             {/* The live critical banner is intentionally the first visible element in
                 this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
-            {criticalCalls.length > 0 && (
+            {!embedded && criticalCalls.length > 0 && (
                 <div className="flex-none border-b border-red-500/80 bg-gradient-to-r from-[#5f1116] via-[#7a171d] to-[#4d0d12] px-4 py-2.5 shadow-[0_10px_30px_rgba(127,29,29,.22)]">
                     <div className="flex items-start gap-3">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-red-200" />
@@ -526,10 +526,10 @@ function CommandDashboardInner() {
     );
 }
 
-export default function CommandDashboard() {
+export default function CommandDashboard({ embedded = false }) {
     return (
         <DashboardDataProvider>
-            <CommandDashboardInner />
+            <CommandDashboardInner embedded={embedded} />
         </DashboardDataProvider>
     );
 }
