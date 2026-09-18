@@ -77,19 +77,13 @@ export default function AdminPortalSettings() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div>
-          <h1 className="mb-2 flex items-center gap-3 text-3xl font-black text-white">
-            <Settings className="w-8 h-8 text-blue-600" />
-            Portal Visibility Settings
-          </h1>
-          <p className="text-slate-600">Customize which portal sections appear in your navigation</p>
-        </div>
+    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-blue-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><Settings className="h-5 w-5 text-blue-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Workspace Configuration</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Portal Visibility Settings</h1><p className="mt-1 text-xs text-slate-400">Control which workspaces and navigation sections each account can see.</p></div></div>
 
         <CadAudioSettingsCard user={user} />
 
-        <Card className="border-none shadow-xl">
+        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
             <CardTitle>Your Available Portals</CardTitle>
           </CardHeader>
