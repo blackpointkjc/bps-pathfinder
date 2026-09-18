@@ -10,7 +10,7 @@ import { Shield, Plus, Clock, Printer, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function MDCriminalComplaints() {
@@ -56,7 +56,7 @@ export default function MDCriminalComplaints() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin';
@@ -87,9 +87,9 @@ export default function MDCriminalComplaints() {
   const complaintsToDisplay = React.useMemo(() => {
     if (!allComplaints || !user) return [];
     
-    const userComplaints = isAdmin 
-      ? allComplaints 
-      : allComplaints.filter(complaint => String(complaint.created_by_id || '') === String(user.id));
+    const userComplaints = isAdmin
+      ? allComplaints
+      : allComplaints.filter(complaint => recordBelongsToDirectoryUser(user, complaint));
     
     if (!searchQuery.trim()) return userComplaints;
     
