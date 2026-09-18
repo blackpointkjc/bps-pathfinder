@@ -114,7 +114,12 @@ export async function publishOfficerLocation(data = {}) {
 
   return withPublishLock(email || 'current-user', async () => {
     if (minimumGap > 0) {
-      const lastAt = lastPublishAt(email || 'current-user', kind);
+      const identity = email || 'current-user';
+      const ownLastAt = lastPublishAt(identity, kind);
+      // A fresh GPS update is also a presence heartbeat. Do not let another tab
+      // immediately send a heartbeat-only write after GPS just succeeded.
+      const recentGpsAt = kind === 'heartbeat' ? lastPublishAt(identity, 'gps') : 0;
+      const lastAt = Math.max(ownLastAt, recentGpsAt);
       const age = Date.now() - lastAt;
       if (lastAt > 0 && age >= 0 && age < minimumGap) {
         return {
