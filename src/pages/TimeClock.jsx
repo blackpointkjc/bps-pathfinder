@@ -767,17 +767,17 @@ export default function TimeClock() {
   return (
     <div className="min-h-screen bg-[#08111d] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
       <div className="mx-auto max-w-5xl space-y-5 md:space-y-6">
-        <div className="rounded-2xl border border-[#21384f] bg-[#0d1825] px-4 py-4 shadow-xl sm:px-6">
-          <h1 className="mb-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Time Clock</h1>
-          <p className="text-sm text-slate-400 sm:text-base">Track your shift hours{isAdmin ? '' : ' with live location tracking'}</p>
+        <div className="rounded-2xl border border-[#29445f] bg-[linear-gradient(135deg,#0d1b2b_0%,#0a1420_60%,#07101a_100%)] px-4 py-4 shadow-xl sm:px-5">
+          <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Duty Session</div>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-2"><div><h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">Time Clock</h1><p className="mt-1 text-xs text-slate-400">Shift status, work site, hours, and live location state.</p></div><div className={`rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-slate-600 bg-slate-900 text-slate-300'}`}>{activeEntry ? 'ON DUTY' : 'OFF DUTY'}</div></div>
         </div>
 
         {!isAdmin && (
-          <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4">
+          <div className="rounded-xl border border-red-500/40 bg-red-950/25 p-4 shadow-lg">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-bold text-red-900 mb-2">Keep Pathfinder Available While Clocked In</p>
+                <p className="mb-2 text-sm font-black text-red-200">Keep Pathfinder Available While Clocked In</p>
                 <p className="text-sm text-red-800 font-semibold">
                   Closing the app or disabling location permission can interrupt live GPS updates and create gaps in your location history.
                 </p>
