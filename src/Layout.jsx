@@ -417,6 +417,21 @@ const OFFICER_MODERN_PAGES = new Set([
   'RankStructure', 'RankDuties', 'OfficerAvailability'
 ]);
 
+const MODERNIZED_WORKSPACE_PAGES = new Set([
+  'AdminCenter', 'OfficerCenter', 'SupervisorCenter', 'HRCenter', 'TrainerCenter',
+  'AdminUsers', 'Personnel', 'AdminShiftBids', 'AdminLocationTracker', 'AdminGeofenceAlerts',
+  'AdminLocations', 'AdminPortal', 'AdminPortalSettings', 'AdminClientReports',
+  'AdminSupervisorReports', 'AdminConfidentialReports', 'AdminComplaints', 'AdminCommendations',
+  'AdminClientFeedback', 'Reports', 'OfficerDispatchQueue', 'TimeClock', 'Schedule', 'Announcements',
+  'PostOrders', 'ShiftHandover', 'VATrespassNotices', 'VACriminalComplaints', 'Summons',
+  'DailyActivityReports', 'IncidentReports', 'MaintenanceReports', 'OpenDoorReports',
+  'ConfidentialReport', 'ExpenseReports', 'QRPatrolScan', 'OpenShifts', 'OfficerPayrollDates',
+  'OfficerProfile', 'MyPerformanceAnalytics', 'OfficerPerformanceReviews', 'OfficerTraining',
+  'RankStructure', 'RankDuties', 'SupervisorPerformanceReview', 'SupervisorWriteUps',
+  'SupervisorComplaints', 'AdminDivisions', 'ManageClients', 'ManageTimeEntries',
+  'AdminPTOApproval', 'AdminPTOLossReport', 'AdminPerformanceReviews'
+]);
+
 function normalizedRoles(user) {
   return new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(role => String(role).toLowerCase()));
 }
@@ -1668,7 +1683,7 @@ export default function Layout({ children, currentPageName }) {
       <GlobalOperationsTicker user={user} currentPageName={currentPageName} />
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
