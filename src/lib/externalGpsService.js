@@ -523,53 +523,68 @@ export async function startExternalGpsAutoReconnect() {
   }
   installSerialEvents();
   if (state.connected || connectPromise) return connectPromise || getExternalGpsStatus();
-  connectPromise = navigator.serial.getPorts()
-    .then(async ports => {
+
+  connectPromise = (async () => {
+    const ownsPort = await acquireGpsOwnership({ waitMs: 0 });
+    if (!ownsPort) {
+      emit({ connected: false, connecting: false, backgroundReader: false, error: '' });
+      return getExternalGpsStatus();
+    }
+
+    try {
+      const ports = await navigator.serial.getPorts();
       emit({ portGranted: Array.isArray(ports) && ports.length > 0, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
-      if (!ports?.length) return getExternalGpsStatus();
+      if (!ports?.length) {
+        releaseGpsOwnership();
+        return getExternalGpsStatus();
+      }
+
       const remembered = storedSelector();
       const locked = antennaLockEnabled();
       const selectedPort = remembered ? ports.find(port => selectorMatches(port, remembered)) : null;
       if (locked && !selectedPort) {
         emit({ connected: false, connecting: false, backgroundReader: false, error: 'Locked GPS antenna is not currently available.' });
+        releaseGpsOwnership();
         return getExternalGpsStatus();
       }
+
       const preferredPort = selectedPort || ports[0];
-      // Prefer the dedicated-worker reader. Chromium can heavily throttle the page
-      // main thread when a CF-33 window is minimized, while Web Serial is available
-      // directly inside a Dedicated Worker. Previously approved ports can be reopened
-      // there without another device prompt.
       if (workerSerialSupported()) {
         try {
           return await startWorkerPort({ baudRate: storedBaud(), selector: portSelector(preferredPort) });
         } catch (workerError) {
           console.warn('External GPS worker reconnect failed, using page reader:', workerError?.message);
+          await stopWorkerPort({ terminate: true });
+          await delay(180);
         }
       }
+
       emit({ backgroundReader: false });
-      return connectPort(preferredPort, storedBaud());
-    })
-    .catch(error => {
-      emit({ connected: false, connecting: false, backgroundReader: false, error: error?.message || '' });
+      return await connectPort(preferredPort, storedBaud());
+    } catch (error) {
+      const friendly = friendlyOpenError(error);
+      emit({ connected: false, connecting: false, backgroundReader: false, error: friendly.message });
+      releaseGpsOwnership();
       return getExternalGpsStatus();
-    })
-    .finally(() => { connectPromise = null; });
+    }
+  })().finally(() => { connectPromise = null; });
+
   return connectPromise;
 }
 
 export async function requestExternalGpsConnection({ baudRate = storedBaud() } = {}) {
   if (!serialApiAvailable()) {
-    throw new Error('Direct USB/serial GPS is not available in this browser. Use Pathfinder Desktop, Chrome/Edge with Serial enabled, or Windows Location Services.');
+    throw new Error('Direct USB/serial GPS is not available in this browser. Use Windows Location Services or Pathfinder Desktop.');
   }
   if (!serialPolicyAllowed()) {
-    throw new Error('This hosted Pathfinder page is blocked from direct Serial access by its Permissions Policy. Use Pathfinder Desktop for direct USB/NMEA antenna selection, or configure the receiver through Windows Location Services.');
+    throw new Error('Direct external GPS selection is unavailable in this browser session.');
   }
   installSerialEvents();
   if (connectPromise) return connectPromise;
-  // requestPort must happen immediately from the user's click. After the user has
-  // chosen a receiver, it is safe to close any main-thread port and move the new
-  // selection into the background worker. This makes the global "Change Antenna"
-  // control reliable even when another receiver is already connected.
+
+  // Keep requestPort directly attached to the user's click. Ownership handoff is
+  // performed only after the user selects the receiver, so Chromium's user-gesture
+  // requirement is preserved.
   connectPromise = navigator.serial.requestPort()
     .then(async port => {
       const selector = portSelector(port);
@@ -577,19 +592,36 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
       if (antennaLockEnabled() && lockedSelector && !selectorMatches(port, lockedSelector)) {
         throw new Error('This computer is locked to a different GPS antenna. Unlock the saved antenna before changing receivers.');
       }
+
+      const ownsPort = await acquireGpsOwnership({ requestRelease: true, waitMs: 4000 });
+      if (!ownsPort) {
+        throw new Error('Another Pathfinder tab is still using the GPS antenna. Close the other Pathfinder tab and try again.');
+      }
+
       rememberSelector(selector);
+      await stopWorkerPort({ terminate: true });
       await closeCurrentPort();
+      await delay(220);
+
       if (workerSerialSupported()) {
         try {
           return await startWorkerPort({ baudRate, selector });
         } catch (workerError) {
           console.warn('External GPS background reader unavailable, using page reader:', workerError?.message);
+          await stopWorkerPort({ terminate: true });
+          await delay(220);
         }
       }
+
       emit({ backgroundReader: false });
-      return connectPort(port, baudRate);
+      return await connectPort(port, baudRate);
+    })
+    .catch(error => {
+      releaseGpsOwnership();
+      throw friendlyOpenError(error);
     })
     .finally(() => { connectPromise = null; });
+
   return connectPromise;
 }
 
@@ -611,17 +643,15 @@ export function unlockExternalGpsAntenna() {
 }
 
 export async function disconnectExternalGps() {
-  if (serialWorker) {
-    try { serialWorker.postMessage({ type: 'stop' }); } catch (_) {}
-    try { serialWorker.terminate(); } catch (_) {}
-    serialWorker = null;
-  }
+  await stopWorkerPort({ terminate: true });
   if (pendingWorkerStart) {
     window.clearTimeout(pendingWorkerStart.timeoutId);
     pendingWorkerStart.reject(new Error('External GPS disconnected.'));
     pendingWorkerStart = null;
   }
   await closeCurrentPort();
+  await delay(120);
+  releaseGpsOwnership();
   emit({ connected: false, connecting: false, backgroundReader: false, lastFixAt: null, satellites: null, hdop: null, error: '' });
   return getExternalGpsStatus();
 }
