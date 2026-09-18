@@ -713,13 +713,12 @@ export default function AdminUsers({ embedded = false }) {
           </div>
         </div>
       )}
-      <div className="mb-8">
-        {!embedded && <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
+        {!embedded && <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
             <div>
-              <h1 className="text-3xl font-black text-white">Pending Users</h1>
-              <p className="text-slate-400">Create one user account, then assign the person as Officer, Student, or Client</p>
+              <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Personnel Intake</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Pending Users</h1><p className="mt-1 text-xs text-slate-400">Create accounts, review pending users, and assign Officer, Student, or Client access.</p>
             </div>
           </div>
           <div className="flex gap-3">
