@@ -1176,24 +1176,24 @@ export default function AdminReports() {
   const pendingTotal = pendingQueue.length;
 
   return (
-    <div className="min-h-screen bg-[#07111d] p-4 text-slate-100 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-slate-700/70 bg-gradient-to-r from-[#0d1a2a] to-[#111827] p-5 shadow-xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Reports & Quality</div>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Report Review</h1>
-              <p className="mt-1 text-sm text-slate-400">One review queue for submitted reports. Open the report, approve it, or return it to the author for correction.</p>
+    <div className="min-h-full bg-[#07111d] p-2 text-slate-100 md:p-3">
+      <div className="w-full space-y-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-700/70 bg-[#0b1624] px-3 py-2 shadow-lg">
+          <div className="mr-auto flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
+              <ClipboardList className="h-4 w-4 text-cyan-300" />
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3"><div className="text-2xl font-black text-amber-300">{pendingTotal}</div><div className="text-[9px] font-bold uppercase tracking-wider text-amber-100/60">Pending Review</div></div>
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3"><div className="text-2xl font-black text-emerald-300">{Object.values(archiveData).reduce((sum, rows) => sum + rows.length, 0)}</div><div className="text-[9px] font-bold uppercase tracking-wider text-emerald-100/60">Approved / Archived</div></div>
-              <div className="hidden rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 sm:block"><div className="text-2xl font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</div><div className="text-[9px] font-bold uppercase tracking-wider text-blue-100/60">Types Waiting</div></div>
+            <div>
+              <h1 className="text-base font-black tracking-tight text-white">Report Review</h1>
+              <div className="text-[9px] font-black uppercase tracking-[.14em] text-slate-500">Reports & Quality</div>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-amber-300">{pendingTotal}</span><span className="ml-1.5 text-[8px] font-black uppercase text-amber-100/60">Pending</span></div>
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-emerald-300">{Object.values(archiveData).reduce((sum, rows) => sum + rows.length, 0)}</span><span className="ml-1.5 text-[8px] font-black uppercase text-emerald-100/60">Reviewed</span></div>
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</span><span className="ml-1.5 text-[8px] font-black uppercase text-blue-100/60">Queues</span></div>
+          </div>
         </div>
-
-        <LegalCaseHistoryPanel audience="admin" title="Enforcement Legal History" limit={150} />
 
         <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
           <CardContent className="p-4 md:p-5">
