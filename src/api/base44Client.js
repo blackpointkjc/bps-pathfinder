@@ -20,6 +20,8 @@ const MAX_CONCURRENT_READS = 3;
 const READ_CACHE_MS = 3_000;
 const RATE_LIMIT_COOLDOWN_MS = 20_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
+const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v1';
+const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
 const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'importEntities']);
 const entityWrappers = new Map();
@@ -33,6 +35,42 @@ let recentRateLimitAt = null;
 let wakeTimer = null;
 
 const errorText = error => String(error?.response?.data?.error || error?.response?.data?.message || error?.message || error || '');
+const tracePage = () => {
+  try { return window.location.pathname + window.location.search; } catch { return ''; }
+};
+const loadTrace = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TRACE_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+};
+const saveTrace = rows => {
+  try { localStorage.setItem(TRACE_STORAGE_KEY, JSON.stringify(rows.slice(0, TRACE_MAX))); } catch {}
+};
+const recordRequestTrace = entry => {
+  try {
+    const row = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      at: new Date().toISOString(),
+      page: tracePage(),
+      queuedReads: readQueue.length,
+      activeReads,
+      activeWrites,
+      ...entry,
+    };
+    saveTrace([row, ...loadTrace()]);
+    window.dispatchEvent(new CustomEvent('bps-base44-request-trace', { detail: row }));
+  } catch {
+    // Diagnostics must never create another application failure.
+  }
+};
+const requestLabel = meta => {
+  if (!meta) return 'unknown';
+  if (meta.kind === 'entity') return `Entity ${meta.name}.${meta.method}`;
+  if (meta.kind === 'function') return `Function ${meta.name}${meta.action ? ` [${meta.action}]` : ''}`;
+  if (meta.kind === 'auth') return `Auth ${meta.method}`;
+  return meta.label || 'unknown';
+};
 const isRateLimit = error => /rate limit|too many requests|\b429\b/i.test(errorText(error));
 const stableKey = value => {
   try { return JSON.stringify(value, (_key, item) => typeof File !== 'undefined' && item instanceof File ? { name: item.name, size: item.size, type: item.type } : item); }
