@@ -87,10 +87,17 @@ Deno.serve(async (req) => {
       if (!id) return Response.json({ error: 'Property id is required' }, { status: 400 });
       const property = await base44.asServiceRole.entities.Location.get(id);
       if (!property) return Response.json({ error: 'Property not found' }, { status: 404 });
-      const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 75).catch(() => []);
+      const [alerts, calls] = await Promise.all([
+        base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 75).catch(() => []),
+        base44.asServiceRole.entities.DispatchCall.list('-created_date', 500).catch(() => []),
+      ]);
+      const inactiveStatuses = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+      const activeCallIds = new Set((calls || [])
+        .filter((call: any) => !inactiveStatuses.has(normalizeRole(call.status)))
+        .map((call: any) => String(call.id)));
       const actionable = (alerts || [])
         .filter((item: any) => !['resolved', 'false_alarm', 'test'].includes(normalizeRole(item.lifecycle_status || 'active')))
-        .filter((item: any) => item?.callId)
+        .filter((item: any) => item?.callId && activeCallIds.has(String(item.callId)))
         .slice(0, 25);
       const evaluations:any[] = [];
       for (const alert of actionable) {
