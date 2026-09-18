@@ -90,19 +90,33 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         // Track user interaction. Keep the delayed reset cancellable so no map
         // lifecycle work survives a CAD Center tab/unmount transition.
         let interactionTimer = null;
-        const handleMoveStart = () => { userInteractingRef.current = true; };
-        const handleMoveEnd = () => {
+        const handleManualStart = () => {
+            userInteractingRef.current = true;
             if (interactionTimer) window.clearTimeout(interactionTimer);
-            interactionTimer = window.setTimeout(() => { userInteractingRef.current = false; }, 5000);
+        };
+        const handleManualEnd = () => {
+            if (interactionTimer) window.clearTimeout(interactionTimer);
+            interactionTimer = window.setTimeout(() => { userInteractingRef.current = false; }, 3000);
         };
 
-        map.on('movestart', handleMoveStart);
-        map.on('moveend', handleMoveEnd);
+        // movestart is fired by Pathfinder's own panTo/setView calls, so using it
+        // as a proxy for manual interaction caused the GPS follow camera to disable
+        // itself after every programmatic recenter.
+        map.on('dragstart', handleManualStart);
+        map.on('dragend', handleManualEnd);
+        const container = map.getContainer();
+        container?.addEventListener('wheel', handleManualStart, { passive: true });
+        container?.addEventListener('pointerdown', handleManualStart, { passive: true });
+        container?.addEventListener('pointerup', handleManualEnd, { passive: true });
 
         return () => {
             if (interactionTimer) window.clearTimeout(interactionTimer);
-            map.off('movestart', handleMoveStart);
-            map.off('moveend', handleMoveEnd);
+            map.off('dragstart', handleManualStart);
+            map.off('dragend', handleManualEnd);
+            const container = map.getContainer();
+            container?.removeEventListener('wheel', handleManualStart);
+            container?.removeEventListener('pointerdown', handleManualStart);
+            container?.removeEventListener('pointerup', handleManualEnd);
             // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
@@ -155,8 +169,9 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     }, [fitBounds, map]);
 
     useEffect(() => {
-        // Don't auto-center if user is manually panning
-        if (userInteractingRef.current) return;
+        // Outside navigation, briefly respect a real manual pan. Active
+        // navigation uses NavigationCamera and always returns to GPS follow.
+        if (userInteractingRef.current && !isNavigating) return;
 
         // Throttle updates to improve performance
         const now = Date.now();
@@ -175,8 +190,10 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             if (isNavigating) {
                 map.setView(center, 18, { animate: false });
             } else {
-                // Don't auto-zoom when not navigating, just pan to follow user
-                map.panTo(center, { animate: false });
+                // Keep the current zoom but immediately move the viewport with
+                // the GPS fix. setView avoids the delayed translation state that
+                // can leave blank tile edges during continuous vehicle movement.
+                map.setView(center, map.getZoom(), { animate: false });
             }
             prevCenterRef.current = center;
         }
