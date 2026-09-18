@@ -25,7 +25,12 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
+      // Performance used to fan out 20+ reads two at a time. On busy Base44
+      // sessions the later reads (Complaint, ClientFeedback, CAD/property data,
+      // duty rules and locations) were the ones consistently hitting 429s.
+      // Serialize this monthly analytics snapshot: correctness matters more than
+      // shaving a few milliseconds off a background performance refresh.
+      if (activeReads >= 1) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -37,13 +42,17 @@ Deno.serve(async (req) => {
     const safeRead = async (entity: string, reader: () => Promise<any[]>) => {
       await acquireReadSlot();
       try {
-        try {
-          return await reader() || [];
-        } catch (error) {
-          if (!transientReadError(error)) throw error;
-          await pause(300);
-          return await reader() || [];
+        let lastError:any = null;
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          try {
+            return await reader() || [];
+          } catch (error) {
+            lastError = error;
+            if (!transientReadError(error) || attempt === 3) break;
+            await pause(500 * (attempt + 1));
+          }
         }
+        throw lastError || new Error('Unable to read data');
       } catch (error) {
         serviceErrors[entity] = error?.message || 'Unable to read data';
         console.warn(`getMyPerformanceData ${entity} unavailable`, error?.message || error);
@@ -287,6 +296,10 @@ Deno.serve(async (req) => {
       jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
       locations: locationsAll,
       service_errors: serviceErrors,
+      data_health: Object.keys(serviceErrors).length ? 'partial' : 'verified',
+      missing_sources: Object.keys(serviceErrors),
+      is_partial: Object.keys(serviceErrors).length > 0,
+      last_verified_at: Object.keys(serviceErrors).length ? null : new Date().toISOString(),
       meta: {
         timeEntries: myTimeEntries.length,
         schedules: mySchedules.length,
