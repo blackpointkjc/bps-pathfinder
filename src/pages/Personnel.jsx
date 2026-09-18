@@ -18,7 +18,7 @@ const STATUS_CFG = {
     'Out of Service': { dot: 'bg-gray-500',   badge: 'bg-gray-800 text-gray-500 border-gray-600/50' },
 };
 
-export default function Personnel() {
+export default function Personnel({ embedded = false }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [personnel, setPersonnel] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -238,7 +238,7 @@ export default function Personnel() {
     );
 
     return (
-        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+        <div className={`bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-full'} flex flex-col font-mono`}>
             <Dialog open={!!signOutDialog} onOpenChange={open => { if (!open && !signOutUpdatingId) { setSignOutDialog(null); setSignOutReason(''); } }}>
                 <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
                     <DialogHeader><DialogTitle>Force Sign Out of Pathfinder</DialogTitle></DialogHeader>
@@ -286,7 +286,7 @@ export default function Personnel() {
                 </DialogContent>
             </Dialog>
             {/* Header */}
-            <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {!embedded && <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
                 <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
                 <div className="flex-1" />
@@ -295,7 +295,7 @@ export default function Personnel() {
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
                     <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
                 </button>
-            </div>
+            </div>}
 
             {/* Stats Bar */}
             <div className="flex-none grid grid-cols-2 border-b border-slate-800 sm:grid-cols-4">
