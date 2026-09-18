@@ -49,6 +49,28 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.Location.update(id, update);
       const location = await base44.asServiceRole.entities.Location.get(id);
+
+      // Turning LIVE on should take effect immediately for calls that are already
+      // active at this monitored property. Previously Pathfinder waited for the
+      // ingestion/recheck loop, so administrators could enable LIVE and see no
+      // assignment even though eligible clocked-in units were available.
+      let reevaluated = 0;
+      if (mode === 'live') {
+        const alerts = await base44.asServiceRole.entities.PropertyAlert.filter({ propertyId: id }, '-created_date', 50).catch(() => []);
+        const actionable = (alerts || [])
+          .filter((item: any) => !['resolved', 'false_alarm', 'test'].includes(normalizeRole(item.lifecycle_status || 'active')))
+          .filter((item: any) => item?.callId)
+          .slice(0, 20);
+        for (const alert of actionable) {
+          const response = await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+            call_id: alert.callId,
+            property_alert_id: alert.id,
+          }).catch(() => null);
+          const payload = response?.data || response || {};
+          if (payload?.success) reevaluated += 1;
+        }
+      }
+
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'Location', entity_id: id, action: 'update', actor_id: user.id,
         actor_name: user.full_name || user.email || 'Administrator',
@@ -57,7 +79,7 @@ Deno.serve(async (req) => {
         field_changed: 'auto_dispatch_enabled,auto_dispatch_mode', timestamp: new Date().toISOString(),
         description: `Automatic dispatch mode changed to ${mode}.`,
       }).catch(() => null);
-      return Response.json({ success: true, location });
+      return Response.json({ success: true, location, reevaluated_active_alerts: reevaluated });
     }
 
     if (action === 'update_settings') {
