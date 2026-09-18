@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Gavel, Link2, Radio, Scale, Users } from 'lucide-react';
@@ -65,9 +66,9 @@ export default function LegalCaseHistoryPanel({ audience = 'officer', clientLoca
     queryKey: ['legalCaseHistory', audience, clientLocations.join('|'), user?.id],
     queryFn: async () => {
       const [complaints, summonses, subpoenas] = await Promise.all([
-        base44.entities.CriminalComplaint.list('-updated_date', 500),
-        base44.entities.Summons.list('-updated_date', 500),
-        base44.entities.WitnessSubpoenaRequest.list('-updated_date', 500),
+        loadLegalRecordHistory('complaint'),
+        loadLegalRecordHistory('summons'),
+        loadLegalRecordHistory('subpoena'),
       ]);
       return { complaints, summonses, subpoenas };
     },
@@ -79,7 +80,7 @@ export default function LegalCaseHistoryPanel({ audience = 'officer', clientLoca
     const sites = new Set(clientLocations.map(normSite).filter(Boolean));
     const canSee = record => {
       if (audience === 'admin') return true;
-      if (audience === 'officer') return ownRecord(record, user);
+      if (audience === 'officer') return true;
       const possibleSites = [record.location, record.linked_location, record.linked_call_location, record.location_of_offense, record.offense_county_city, record.court_location].map(normSite);
       return possibleSites.some(site => site && sites.has(site));
     };
