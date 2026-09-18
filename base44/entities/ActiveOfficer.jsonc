@@ -70,6 +70,10 @@
       "type": "string",
       "description": "Source of the current GPS fix, such as browser_geolocation or external_serial"
     },
+    "gps_device_id": {
+      "type": "string",
+      "description": "Stable browser/device identifier that currently owns the selected live GPS fix"
+    },
     "reliable_latitude": {
       "type": "number",
       "description": "Most recent precise tactical GPS latitude (100 meters accuracy or better)"
