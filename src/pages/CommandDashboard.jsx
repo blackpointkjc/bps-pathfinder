@@ -10,7 +10,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { MapPin, AlertTriangle, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
+import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -244,10 +244,11 @@ function CommandDashboardInner({ embedded = false }) {
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
     const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
-    const availUnits     = activeUnits.filter(u => u.status === 'Available');
-    const enrouteUnits   = activeUnits.filter(u => u.status === 'Enroute');
-    const onSceneUnits   = activeUnits.filter(u => u.status === 'On Scene');
-    const busyUnits      = activeUnits.filter(u => u.status === 'Busy');
+    const dispatchReadyUnits = activeUnits.filter(u => u.connection_stale !== true);
+    const availUnits     = dispatchReadyUnits.filter(u => u.status === 'Available');
+    const enrouteUnits   = dispatchReadyUnits.filter(u => u.status === 'Enroute');
+    const onSceneUnits   = dispatchReadyUnits.filter(u => u.status === 'On Scene');
+    const busyUnits      = dispatchReadyUnits.filter(u => u.status === 'Busy');
 
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
