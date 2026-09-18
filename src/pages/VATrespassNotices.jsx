@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
+import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,10 +139,11 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
 
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
 
-  const { data: allNotices } = useQuery({
-    queryKey: ['allTrespassingNotices'],
-    queryFn: () => base44.entities.TrespassingNotice.list('-created_date'),
-    initialData: [],
+  const { data: allNotices = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['allTrespassingNotices', user?.id],
+    queryFn: () => loadLegalRecordHistory('trespass'),
+    enabled: !!user,
+    staleTime: 15000,
   });
 
   // Real-time sync across devices
@@ -263,6 +265,22 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
   };
 
   const canSubmit = isAdmin || !!activeEntry;
+
+  const editNotice = (notice) => {
+    setEditingNotice(notice);
+    setEditingTodoId(null);
+    setFormData(current => ({
+      ...current,
+      ...notice,
+      notice_date: notice.notice_date ? new Date(notice.notice_date).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+      linked_call_id: notice.linked_call_id || '',
+      linked_call_number: notice.linked_call_number || '',
+      linked_call_type: notice.linked_call_type || '',
+      linked_call_location: notice.linked_call_location || '',
+    }));
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const saveNoticeMutation = useMutation({
     mutationFn: async (variables) => {
@@ -1092,6 +1110,11 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                                   <Eye className="w-4 h-4 mr-2" />
                                   View
                                 </Button>
+                                {(isAdmin || recordBelongsToDirectoryUser(user, notice)) && (
+                                  <Button variant="outline" size="sm" onClick={() => editNotice(notice)} className="bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100">
+                                    <Pencil className="w-4 h-4 mr-2" />Edit
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1135,7 +1158,8 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                         </Card>
                       );
                     })}
-                    {filteredActiveNotices.length === 0 && (
+                    {historyLoading && <p className="text-center text-slate-500 py-8">Loading trespass history…</p>}
+                    {!historyLoading && filteredActiveNotices.length === 0 && (
                       <p className="text-center text-slate-500 py-8">No active trespass notices</p>
                     )}
                   </div>
@@ -1144,7 +1168,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                 <TabsContent value="inactive" className="mt-4">
                   <div className="space-y-4">
                     {filteredInactiveNotices?.map((notice) => (
-                      <div key={notice.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-slate-400 opacity-60">
+                      <div key={notice.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-slate-400 opacity-80">
                         <div className="flex items-start gap-3 mb-3">
                           <div className="flex-1">
                             <div className="flex flex-wrap gap-2 mb-2">
@@ -1155,6 +1179,11 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                             <p className="font-semibold text-slate-700 mb-1">{notice.subject_name}</p>
                             <p className="text-sm text-slate-600">Issued: {format(new Date(notice.notice_date), 'MMM d, yyyy')}</p>
                             <p className="text-sm text-slate-600">Location: {notice.location}</p>
+                            <div className="mt-3 flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => viewNotice(notice)}><Eye className="w-4 h-4 mr-1"/>View</Button>
+                              {(isAdmin || recordBelongsToDirectoryUser(user, notice)) && <Button variant="outline" size="sm" onClick={() => editNotice(notice)}><Pencil className="w-4 h-4 mr-1"/>Edit</Button>}
+                              <Button variant="outline" size="sm" onClick={() => printNotice(notice)}><Printer className="w-4 h-4 mr-1"/>Print</Button>
+                            </div>
                           </div>
                         </div>
                       </div>
