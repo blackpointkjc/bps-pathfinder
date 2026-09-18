@@ -216,6 +216,7 @@ export default function GlobalMessageBanner({ user }) {
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
   const announcedPropertyCallStatuses = useRef(new Map());
+  const announcedPropertySpeech = useRef(new Set());
 
   useEffect(() => {
     const onVoiceBlocked = event => setVoiceWarning(event?.detail?.reason || 'Audio playback was blocked by this browser.');
@@ -418,10 +419,34 @@ export default function GlobalMessageBanner({ user }) {
           ]).then(results => results.flat())
         : [];
       if (priorAcknowledgements?.length) return;
-      // CallStatusLog is the only owner of property-alert speech. PropertyAlert
-      // owns the visual/chime and per-user acknowledgement only. Keeping speech
-      // out of this second realtime subscription prevents the same call from
-      // being spoken twice under two different event keys.
+
+      // PropertyAlert is the authoritative audio owner for monitored-property
+      // calls. Relying on a separate CallStatusLog subscription caused missed
+      // speech whenever that log row was created before this browser subscribed.
+      // Claim the canonical property+call+status event so multiple tabs/devices
+      // still speak it only once for this user.
+      if (!announcedPropertySpeech.current.has(propertyEventKey)) {
+        const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id || '';
+        const announcementText = `Active call for service at ${monitoredProperty.site_name || monitoredProperty.address || record.propertyName || 'monitored property'}. ${cleanIncident(call) || call.incident || 'Call for service'} at ${call.location || monitoredProperty.address || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
+        const claim = await claimAnnouncementEvent({
+          event_key: propertyEventKey,
+          event_id: record.id,
+          cad_number: String(cadNumber),
+          event_type: 'property_alert',
+        }).catch(error => ({ claimed: false, error }));
+        if (claim?.claimed) {
+          announcedPropertySpeech.current.add(propertyEventKey);
+          const accepted = speakNotification(announcementText, {
+            dedupeMs: 6000,
+            eventId: propertyEventKey,
+            priority: ['critical', 'high'].includes(normalized(call.priority)) ? normalized(call.priority) : 'high',
+            volume: audioSettings.current.volume,
+            voiceProfile: audioSettings.current.voice_profile,
+          });
+          await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+        }
+      }
+
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
@@ -464,6 +489,9 @@ export default function GlobalMessageBanner({ user }) {
 
       const showCadAnnouncementEvent = async record => {
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
+        // Monitored-property speech is owned by PropertyAlert above so it cannot
+        // be missed on subscription timing and cannot be spoken twice.
+        if (record.event_type === 'property_alert') return;
         if (record.sensitive === true && !cadAuthorized) return;
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
@@ -536,13 +564,13 @@ export default function GlobalMessageBanner({ user }) {
       }).catch(() => null);
 
       const propertyUnsubscribe = base44.entities.PropertyAlert.subscribe(event => {
-        if (event?.type !== 'create' || !event.data?.id) return;
+        if (!['create', 'update'].includes(event?.type) || !event.data?.id) return;
         showPropertyCall(event.data);
       });
       if (typeof propertyUnsubscribe === 'function') unsubscribers.push(propertyUnsubscribe);
 
       // Match BOLO reliability: recover a call created while realtime was connecting.
-      const propertyCutoff = Date.now() - 2 * 60 * 1000;
+      const propertyCutoff = Date.now() - 6 * 60 * 60 * 1000;
       base44.entities.PropertyAlert.list('-created_date', 20).then(records => {
         (records || []).slice().reverse().forEach(record => {
           const created = new Date(record.created_date || 0).getTime();
