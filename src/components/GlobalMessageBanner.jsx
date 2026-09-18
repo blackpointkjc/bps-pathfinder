@@ -686,7 +686,7 @@ export default function GlobalMessageBanner({ user }) {
   };
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-1 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2 md:top-2">
+    <div className="pointer-events-none fixed left-1/2 top-24 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2">
       {voiceWarning && (
         <div role="alert" className="pointer-events-auto rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
           CAD audio could not play. Pathfinder is retrying automatically. Visual alerts remain active.
