@@ -527,12 +527,12 @@ export default function AdminPTOLossReport() {
   }
 
   return (
-    <div className="bps-command-page pto-loss-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center flex-wrap gap-4">
+    <div className="bps-command-page pto-loss-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-500/25 bg-[#0b1725] p-4 shadow-xl">
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-3xl font-black text-white">PTO Accrual & Loss Report</h1>
+                <div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Leave Analytics</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">PTO Accrual & Loss Report</h1>
                 <p className="text-slate-600">
                   {dateRangeMode === "custom" && startDate && endDate 
                     ? `${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}`
