@@ -162,7 +162,13 @@ function AdminSchedulingCoverageHub() {
 }
 
 function AdminLocationDispatchHub() {
-  const [utility, setUtility] = useState('');
+  const requestedUtility = new URLSearchParams(window.location.search).get('admin_location_dispatch_tool');
+  const [utility, setUtility] = useState(() => requestedUtility === 'geofence' || requestedUtility === 'locations' ? requestedUtility : '');
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('admin_location_dispatch_tool');
+    if ((requested === 'geofence' || requested === 'locations') && requested !== utility) setUtility(requested);
+  }, [utility]);
   return (
     <div className="min-w-0 bg-[#07101a] p-2 md:p-3">
       <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_390px]">
