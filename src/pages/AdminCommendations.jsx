@@ -14,7 +14,7 @@ import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
-export default function AdminCommendations() {
+export default function AdminCommendations({ embedded = false }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     officer_email: "",
@@ -123,15 +123,15 @@ Keep up the excellent work!`
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
+      <div className="mx-auto w-full max-w-5xl space-y-4">
+        <div className={`flex items-center justify-between gap-3 ${embedded ? 'rounded-xl border border-slate-700 bg-[#0a1724] p-3' : ''}`}>
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <Award className="w-8 h-8 text-green-600" />
+            <div className="text-[9px] font-black uppercase tracking-[.16em] text-emerald-300">Recognition</div>
+            <h1 className="mt-0.5 flex items-center gap-2 text-xl font-black text-white">
+              <Award className="h-5 w-5 text-emerald-400" />
               Officer Commendations
             </h1>
-            <p className="text-slate-600">Issue and track officer commendations</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
