@@ -522,13 +522,12 @@ export default function AdminLocations({ embedded = false }) {
 
   return (
     <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-0 pb-8 text-white" : "bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8"}> 
-      <div className={`${embedded ? 'w-full' : 'mx-auto max-w-6xl'} space-y-5 sm:space-y-8`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`${embedded ? 'w-full' : 'mx-auto max-w-7xl'} space-y-4`}>
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-600" />
+            <Shield className="h-6 w-6 text-blue-300" />
             <div>
-              <h1 className="text-3xl font-black text-white">Manage Locations</h1>
-              <p className="text-slate-600">Add, edit, or remove patrol sites</p>
+              <div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Property Operations</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Manage Locations</h1><p className="mt-1 text-xs text-slate-400">Manage patrol sites, coordinates, supervisors, geofence rules, and dispatch settings.</p>
             </div>
           </div>
           <Button
