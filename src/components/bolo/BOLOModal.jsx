@@ -244,22 +244,23 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-      // Issuing/releasing a BOLO automatically sends the same HTML bulletin to
-      // every active internal user. Drafts and ordinary edits do not create a
-      // second blast; the view screen keeps a manual RESEND option when needed.
-      if (action === 'create' || action === 'release') {
-        let releasedBolo = payload.record || null;
-        const releasedId = releasedBolo?.id || formData.id || bolo?.id;
-        if (!releasedBolo && releasedId) releasedBolo = await base44.entities.BOLOAlert.get(releasedId).catch(() => null);
-        if (releasedBolo?.id) {
-          const mailResponse = await base44.functions.invoke('sendBoloEmail', { bolo: releasedBolo });
-          const mailPayload = mailResponse?.data || mailResponse || {};
-          payload.email_delivery = mailPayload;
-          if (mailPayload.error) console.error('Automatic BOLO email failed:', mailPayload.error);
-        }
-      }
+      // The BOLO record write is authoritative. Close/update the UI immediately
+      // from the record returned by manageBolo instead of issuing a second list/get
+      // request that can race eventual consistency or trip the Base44 rate limit.
       localStorage.removeItem(draftKey);
       onSaved(payload);
+
+      // Issuing/releasing also sends the HTML bulletin, but email is secondary.
+      // A mail-service 429 must never turn a successfully saved BOLO into a false
+      // "Rate limit exceeded" save failure that invites duplicate submissions.
+      if ((action === 'create' || action === 'release') && payload.record?.id) {
+        void base44.functions.invoke('sendBoloEmail', { bolo: payload.record })
+          .then(response => {
+            const mailPayload = response?.data || response || {};
+            if (mailPayload.error) console.error('Automatic BOLO email failed:', mailPayload.error);
+          })
+          .catch(error => console.error('Automatic BOLO email failed:', error?.message || error));
+      }
     } catch (error) {
       setSaveError(error?.response?.data?.error || error?.message || 'Unable to save BOLO.');
     } finally {
