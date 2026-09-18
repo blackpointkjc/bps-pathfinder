@@ -1230,14 +1230,14 @@ export default function AdminReports() {
           </div>
         </section>
 
-        <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
-          <CardHeader className="border-b border-slate-800 bg-[#111d2b]">
-            <CardTitle className="flex items-center gap-2 text-white">
-              <FileText className="h-5 w-5 text-slate-400" />
+        <Card className="overflow-hidden border-slate-700/70 bg-[#0a1421] text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-800 bg-[#0b1624] px-3 py-2">
+            <CardTitle className="flex items-center gap-2 text-sm text-white">
+              <FileText className="h-4 w-4 text-emerald-300" />
               Reviewed Report Archive
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent className="p-2 md:p-3">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {archiveTypes.map(type => (
@@ -1249,24 +1249,24 @@ export default function AdminReports() {
 
               <div className="space-y-3">
                 {archiveData[selectedArchiveType].map((report) => (
-                  <div key={report.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">{getOfficerName(report.created_by_id || report.created_by)}</h4>
-                        <p className="text-sm text-slate-600">
+                  <div key={report.id} className="rounded-lg border border-slate-800 bg-[#08111d] px-3 py-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="truncate text-xs font-black text-white">{getOfficerName(report.created_by_id || report.created_by)}</h4>
+                        <p className="text-[10px] text-slate-500">
                          {format(new Date(
                            report.shift_date || report.report_date || report.incident_date || report.notice_date || 
                            report.violation_date || report.complaint_date || report.offense_date
                          ), 'MMM d, yyyy')} • {report.location}
                         </p>
-                        <Badge className="mt-2 bg-green-100 text-green-800">Approved</Badge>
+                        <Badge className="mt-1 bg-emerald-950 text-emerald-200">APPROVED</Badge>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => printReport(report, selectedArchiveType)}>
+                      <div className="flex gap-1.5">
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-[9px]" onClick={() => printReport(report, selectedArchiveType)}>
                           <Printer className="w-4 h-4 mr-1" />
                           Print
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleAction('view', selectedArchiveType, report)}>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-[9px]" onClick={() => handleAction('view', selectedArchiveType, report)}>
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
