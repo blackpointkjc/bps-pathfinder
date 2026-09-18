@@ -23,7 +23,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function TrespassingNotices() {
@@ -58,7 +58,7 @@ export default function TrespassingNotices() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin';
@@ -110,12 +110,12 @@ export default function TrespassingNotices() {
   const noticesToDisplay = React.useMemo(() => {
     if (!allNotices) return { active: [], inactive: [] };
 
-    let filtered = [];
-    if (currentSiteName) {
-      filtered = allNotices.filter(notice => notice.location === currentSiteName);
-    } else if (isAdmin) {
-      filtered = allNotices;
-    }
+    const filtered = isAdmin
+      ? allNotices
+      : allNotices.filter(notice =>
+          recordBelongsToDirectoryUser(user, notice)
+          || (currentSiteName && notice.location === currentSiteName)
+        );
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -139,7 +139,7 @@ export default function TrespassingNotices() {
     });
 
     return { active, inactive };
-  }, [allNotices, currentSiteName, isAdmin]);
+  }, [allNotices, currentSiteName, isAdmin, user]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
