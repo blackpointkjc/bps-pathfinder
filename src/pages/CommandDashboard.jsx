@@ -8,7 +8,6 @@ import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
-import GlobalOperationsTicker from '@/components/GlobalOperationsTicker';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, AlertTriangle, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
@@ -274,8 +273,6 @@ function CommandDashboardInner({ embedded = false }) {
         <div className="bps-command-page command-dashboard min-h-full min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.28),_transparent_38%),#050b13] flex flex-col">
             {/* The live critical banner is intentionally the first visible element in
                 this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
-            {!embedded && <GlobalOperationsTicker user={currentUser} />}
-
             {/* ── SYSTEM HEADER BAR ── */}
             <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
                 <div className="command-dashboard-spacer flex-1" />
