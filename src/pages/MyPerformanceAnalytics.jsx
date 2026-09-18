@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
   BarChart3, Clock, CheckCircle2, Calendar, Star, AlertTriangle,
-  MapPin, ChevronRight, GraduationCap, UserX
+  MapPin, ChevronRight, GraduationCap, UserX, RefreshCw
 } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -36,7 +36,7 @@ export default function MyPerformanceAnalytics() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const { data: performanceData = {}, isLoading: performanceLoading, error: performanceError } = useQuery({
+  const { data: performanceData = {}, isLoading: performanceLoading, isFetching: performanceFetching, error: performanceError, refetch: refetchPerformance } = useQuery({
     queryKey: ['myPerformanceData', user?.email],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyPerformanceData', getOfficerPreviewRequest());
@@ -51,12 +51,13 @@ export default function MyPerformanceAnalytics() {
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 15000,
+    staleTime: 5000,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
-    // Keep the page current without repeatedly hammering 20+ performance data sources.
-    // Entity subscriptions below still refresh immediately when scoring records change.
-    refetchInterval: 120000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    // One backend request refreshes the complete scoring snapshot. Keep a one-minute
+    // repair interval while realtime entity subscriptions handle immediate changes.
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: previousData => previousData,
@@ -67,7 +68,10 @@ export default function MyPerformanceAnalytics() {
     let timer = null;
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] }), 750);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] });
+        queryClient.refetchQueries({ queryKey: ['myPerformanceData', user.email], type: 'active' });
+      }, 250);
     };
     const unsubscribers = [];
     const scoringEntities = [
@@ -83,9 +87,17 @@ export default function MyPerformanceAnalytics() {
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch { /* The scheduled authoritative refresh remains available. */ }
     }
+    const onPerformanceRefresh = () => refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('bps-performance-refresh', onPerformanceRefresh);
+    window.addEventListener('online', onPerformanceRefresh);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       if (timer) window.clearTimeout(timer);
       unsubscribers.forEach(unsubscribe => unsubscribe());
+      window.removeEventListener('bps-performance-refresh', onPerformanceRefresh);
+      window.removeEventListener('online', onPerformanceRefresh);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [queryClient, user?.id, user?.email]);
 
@@ -353,16 +365,25 @@ export default function MyPerformanceAnalytics() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden px-4 py-4 sm:px-5 md:px-6">
       <div className="mx-auto w-full max-w-[1180px] min-w-0 space-y-5">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-            <BarChart3 className="w-8 h-8 text-blue-600" />
-            My Performance Analytics
-          </h1>
-          <p className="text-slate-600">Track your performance metrics and upcoming schedule</p>
-          <Badge className="bg-blue-100 text-blue-800 mt-2">
-            <Calendar className="w-3 h-3 mr-1" />
-            {currentMonthName} (Resets Monthly)
-          </Badge>
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-700 bg-[#0b1725] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Officer Analytics</div>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-black text-white sm:text-3xl">
+              <BarChart3 className="h-7 w-7 text-cyan-300" />
+              My Performance Analytics
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge className="bg-blue-900/60 text-blue-100">
+                <Calendar className="w-3 h-3 mr-1" />
+                {currentMonthName}
+              </Badge>
+              {performanceData.generated_at && <span className="text-[10px] font-bold text-slate-500">Updated {new Date(performanceData.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>}
+            </div>
+          </div>
+          <button type="button" onClick={() => refetchPerformance()} disabled={performanceFetching} className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-600/50 bg-cyan-950/30 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-900/40 disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${performanceFetching ? 'animate-spin' : ''}`} />
+            {performanceFetching ? 'REFRESHING' : 'REFRESH SCORE'}
+          </button>
         </div>
 
         {performanceLoading && (
