@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
-import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 
@@ -26,7 +26,7 @@ function readCachedActiveCalls() {
         const cached = JSON.parse(window.localStorage.getItem(ACTIVE_CALL_CACHE_KEY) || 'null');
         if (!cached || Date.now() - Number(cached.savedAt || 0) > ACTIVE_CALL_CACHE_MAX_AGE_MS || !Array.isArray(cached.calls)) return [];
         const oneHourAgo = Date.now() - 60 * 60 * 1000;
-        return cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= oneHourAgo);
+        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= oneHourAgo));
     } catch {
         return [];
     }
@@ -134,20 +134,7 @@ export function DashboardDataProvider({ children }) {
                 return !callTime || callTime >= oneHourAgo;
             });
 
-            const uniqueCalls = new Map();
-            for (const call of recentCalls) {
-                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-                const key = call.external_call_id || descriptionKey || call.id;
-                const current = uniqueCalls.get(key);
-                const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
-                const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
-                const currentHasOfficialCad = Boolean(current?.official_cad_verified && (current?.agency_cad_number || current?.call_id));
-                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
-                if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
-            }
-            const active = [...uniqueCalls.values()].sort((a, b) =>
-                (getReliableCallTimestamp(b) || 0) - (getReliableCallTimestamp(a) || 0)
-            );
+            const active = dedupeOperationalCalls(recentCalls);
 
             // Paint calls immediately. This makes Active Calls independent of the
             // slower roster request while still allowing units to populate moments later.
