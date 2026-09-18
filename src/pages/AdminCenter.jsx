@@ -76,29 +76,7 @@ const ADMIN_SECTIONS = [
   { id: 'communications', label: 'Requests & Documents', description: 'Announcements and special requests', icon: MessageCircle },
 ];
 
-const ADMIN_TOOLS = {
-  command: [
-    { id: 'dashboard', label: 'Dashboard', component: AdminDashboard },
-    { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
-  ],
-  people: [
-    { id: 'personnelhub', label: 'Personnel & Access', component: AdminPersonnelAccessHub },
-  ],
-  schedule: [
-    { id: 'schedulehub', label: 'Scheduling & Coverage', component: AdminSchedulingCoverageHub },
-  ],
-  sites: [
-    { id: 'locationdispatch', label: 'Location & Dispatch', component: AdminLocationDispatchHub },
-    { id: 'siteassets', label: 'Site Assets', component: AdminSiteAssetsHub },
-    { id: 'systemportal', label: 'System & Portal', component: AdminSystemPortalHub },
-  ],
-  reports: [
-    { id: 'reportshub', label: 'Reports & Quality', component: AdminReportsQualityHub },
-  ],
-  communications: [
-    { id: 'communicationshub', label: 'Communications & Requests', component: AdminCommunicationsHub },
-  ],
-};
+
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
@@ -126,57 +104,107 @@ const ADMIN_SUPERVISOR_TOOLS = {
   ],
 };
 
+function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
+  const navigate = useNavigate();
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get(queryParam);
+  const initial = requested && tools.some(item => item.id === requested) ? requested : (defaultTool || tools[0]?.id);
+  const [activeId, setActiveId] = useState(initial);
+
+  useEffect(() => {
+    const current = new URLSearchParams(window.location.search).get(queryParam);
+    if (current && tools.some(item => item.id === current) && current !== activeId) setActiveId(current);
+  }, [queryParam, tools, activeId]);
+
+  const select = id => {
+    setActiveId(id);
+    const next = new URLSearchParams(window.location.search);
+    next.set(queryParam, id);
+    navigate({ pathname: window.location.pathname, search: `?${next.toString()}` }, { replace: true });
+  };
+
+  const active = tools.find(item => item.id === activeId) || tools[0];
+  const Component = active?.component;
+
+  return (
+    <div className="min-w-0">
+      <div className="sticky top-0 z-30 flex flex-wrap gap-1.5 border-b border-slate-800 bg-[#08111e]/95 px-2 py-2 backdrop-blur">
+        {tools.map(item => (
+          <button key={item.id} type="button" onClick={() => select(item.id)}
+            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black transition ${activeId === item.id ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100 shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="min-w-0 overflow-x-clip">{Component ? <Component embedded /> : null}</div>
+    </div>
+  );
+}
+
 function AdminPersonnelAccessHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_people_tool" tools={[
     { id: 'users', label: 'Users & Accounts', component: AdminUsers },
     { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
     { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
     { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_people_tool" />;
+  ]} />;
 }
 
 function AdminSchedulingCoverageHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_schedule_tool" tools={[
     { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
     { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
     { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
     { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
     { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
     { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_schedule_tool" />;
+  ]} />;
 }
 
 function AdminLocationDispatchHub() {
-  const tools = [
-    { id: 'tracker', label: 'Location Tracker', component: AdminLocationTracker },
-    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
-    { id: 'autodispatch', label: 'Automatic Dispatch', component: AdminAutoDispatchControls },
-    { id: 'locations', label: 'Locations', component: AdminLocations },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_location_dispatch_tool" />;
+  const [utility, setUtility] = useState('');
+  return (
+    <div className="min-w-0 bg-[#07101a] p-2 md:p-3">
+      <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_390px]">
+        <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+          <div className="border-b border-slate-800 px-3 py-2">
+            <div className="text-[9px] font-black uppercase tracking-[.14em] text-cyan-400">Location & Unit Awareness</div>
+          </div>
+          <AdminLocationTracker embedded />
+        </section>
+        <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+          <div className="border-b border-slate-800 px-3 py-2">
+            <div className="text-[9px] font-black uppercase tracking-[.14em] text-emerald-400">Automatic Dispatch</div>
+          </div>
+          <AdminAutoDispatchControls embedded />
+        </section>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={() => setUtility(utility === 'geofence' ? '' : 'geofence')} className={`rounded-lg border px-3 py-2 text-[10px] font-black ${utility === 'geofence' ? 'border-amber-500 bg-amber-500/15 text-amber-100' : 'border-slate-700 bg-slate-900 text-slate-300'}`}>GEOFENCE ALERTS</button>
+        <button type="button" onClick={() => setUtility(utility === 'locations' ? '' : 'locations')} className={`rounded-lg border px-3 py-2 text-[10px] font-black ${utility === 'locations' ? 'border-blue-500 bg-blue-500/15 text-blue-100' : 'border-slate-700 bg-slate-900 text-slate-300'}`}>LOCATION MANAGEMENT</button>
+      </div>
+      {utility && <section className="mt-2 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">{utility === 'geofence' ? <AdminGeofenceAlerts embedded /> : <AdminLocations embedded />}</section>}
+    </div>
+  );
 }
 
 function AdminSiteAssetsHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_site_assets_tool" tools={[
     { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
     { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_site_assets_tool" />;
+  ]} />;
 }
 
 function AdminSystemPortalHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_system_portal_tool" tools={[
     { id: 'cadcontrol', label: 'Admin Control', component: AdminPortal },
     { id: 'settings', label: 'Portal Visibility', component: AdminPortalSettings },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_system_portal_tool" />;
+  ]} />;
 }
 
 function AdminReportsQualityHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_reports_quality_tool" tools={[
     { id: 'allreports', label: 'Report Review', component: AdminReports },
     { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
     { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
@@ -185,16 +213,14 @@ function AdminReportsQualityHub() {
     { id: 'commendations', label: 'Commendations', component: AdminCommendations },
     { id: 'feedback', label: 'Client Feedback', component: AdminClientFeedback },
     { id: 'cadreports', label: 'CAD Reports', component: PathfinderReports },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_reports_quality_tool" />;
+  ]} />;
 }
 
 function AdminCommunicationsHub() {
-  const tools = [
+  return <AdminInlineFunctions queryParam="admin_communications_tool" tools={[
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
-  ];
-  return <CenterToolSection tools={tools} queryParam="admin_communications_tool" />;
+  ]} />;
 }
 
 function AdminSupervisorToolsOnly() {
@@ -217,7 +243,18 @@ function AdministrationToolsOnly() {
       queryParam="admin_ops_section"
       embedded
     >
-      {section => <CenterToolSection tools={ADMIN_TOOLS[section]} queryParam="admin_ops_tool" />}
+      {section => {
+        if (section === 'command') return <AdminInlineFunctions queryParam="admin_command_tool" tools={[
+          { id: 'dashboard', label: 'Dashboard', component: AdminDashboard },
+          { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
+        ]} />;
+        if (section === 'people') return <AdminPersonnelAccessHub />;
+        if (section === 'schedule') return <AdminSchedulingCoverageHub />;
+        if (section === 'sites') return <div className="min-w-0"><AdminLocationDispatchHub /><div className="mt-3 grid gap-3 xl:grid-cols-2"><section className="overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]"><div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Site Assets</div><AdminSiteAssetsHub /></section><section className="overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]"><div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">System & Portal</div><AdminSystemPortalHub /></section></div></div>;
+        if (section === 'reports') return <AdminReportsQualityHub />;
+        if (section === 'communications') return <AdminCommunicationsHub />;
+        return <AdminDashboard />;
+      }}
     </UnifiedCenter>
   );
 }
