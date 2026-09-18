@@ -7,9 +7,8 @@ import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils'
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
-import AutoDispatchShadowFeed from '@/components/dispatch/AutoDispatchShadowFeed';
+import GlobalOperationsTicker from '@/components/GlobalOperationsTicker';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, AlertTriangle, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
@@ -92,7 +91,7 @@ function CommandDashboardInner({ embedded = false }) {
 
     const [currentUser, setCurrentUser]         = useState(null);
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
-    const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
+    const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
@@ -140,9 +139,13 @@ function CommandDashboardInner({ embedded = false }) {
     // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
     // Frontend just displays data — no redundant LLM polling (was causing rate-limit lockouts).
     useEffect(() => {
-        // Show a static "MANAGED" sync indicator since backend handles ingestion
-        setSyncStatus({ state: 'ok', lastSync: lastRefresh, added: 0, updated: 0, total: 0, error: null });
-    }, [lastRefresh]);
+        // The visible queue is already live through persisted rows + realtime
+        // subscriptions. Do not leave the command board saying AWAITING SYNC while
+        // a slower ingestion/recovery request finishes in the background.
+        if (!loading) {
+            setSyncStatus({ state: 'ok', lastSync: lastRefresh || new Date(), added: 0, updated: 0, total: calls.length, error: null });
+        }
+    }, [lastRefresh, loading, calls.length]);
 
 
     const handleStatusChange = async (newStatus) => {
@@ -302,8 +305,7 @@ function CommandDashboardInner({ embedded = false }) {
                     </div>
                 </div>
             )}
-            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
-            {isDispatchOrAdmin && <AutoDispatchShadowFeed />}
+            {!embedded && <GlobalOperationsTicker user={currentUser} />}
 
             {/* ── SYSTEM HEADER BAR ── */}
             <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
@@ -320,10 +322,10 @@ function CommandDashboardInner({ embedded = false }) {
                             <><RotateCcw className="w-3 h-3 animate-spin" />SYNCING...</>
                         ) : syncStatus.state === 'error' ? (
                             <><WifiOff className="w-3 h-3" />SYNC ERR</>
-                        ) : syncStatus.lastSync ? (
-                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />+{syncStatus.added} @ {fmtTime(syncStatus.lastSync)}</>
+                        ) : syncStatus.state === 'ok' ? (
+                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />LIVE · {syncStatus.total} CALL{syncStatus.total === 1 ? '' : 'S'}</>
                         ) : (
-                            <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
+                            <><span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />CONNECTING</>
                         )}
                     </div>
                     <button onClick={() => {
