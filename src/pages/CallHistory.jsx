@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -58,15 +58,38 @@ export default function CallHistory() {
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [warnings, setWarnings] = useState([]);
     const intervalRef = useRef(null);
+    const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
 
     useEffect(() => {
         init();
         intervalRef.current = setInterval(() => {
             if (document.visibilityState === 'visible') loadAll();
-        }, 60000);
-        return () => clearInterval(intervalRef.current);
+        }, 120000);
+
+        const subscriptions = [];
+        const scheduleRealtimeRefresh = () => {
+            window.clearTimeout(realtimeTimerRef.current);
+            realtimeTimerRef.current = window.setTimeout(() => {
+                if (document.visibilityState === 'visible') loadAll();
+            }, 300);
+        };
+        for (const entity of ['DispatchCall', 'CallHistory', 'PropertyAlert']) {
+            try {
+                const unsubscribe = base44.entities[entity].subscribe(scheduleRealtimeRefresh);
+                if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
+            } catch {}
+        }
+        const onVisible = () => { if (document.visibilityState === 'visible') loadAll(); };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            clearInterval(intervalRef.current);
+            window.clearTimeout(realtimeTimerRef.current);
+            subscriptions.forEach(unsubscribe => unsubscribe());
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, []);
 
     const init = async () => {
@@ -100,6 +123,7 @@ export default function CallHistory() {
             const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
             const dedupedArchived = archivedRows.filter(c => !seenIds.has(c.call_id));
             setRows([...activeRows, ...dedupedArchived]);
+            setWarnings(Array.isArray(payload.warnings) ? payload.warnings.filter(Boolean) : []);
             setLastRefresh(new Date());
         } catch (e) {
             console.error('[HISTORY] feed load failed:', e);
@@ -165,8 +189,12 @@ export default function CallHistory() {
 
     const SortIcon = ({ field }) => {
         if (sortField !== field) return <span className="text-slate-700 ml-1">↕</span>;
-        return <span className="text-gold ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+        return <span className="text-cyan-300 ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
     };
+
+    const activeCount = sorted.filter(r => r._source === 'active' && !['Closed','Cleared','Cancelled'].includes(r.status)).length;
+    const archivedCount = sorted.filter(r => r._source !== 'active').length;
+    const propertyCount = sorted.filter(r => r._propertyCall).length;
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -175,22 +203,36 @@ export default function CallHistory() {
     );
 
     return (
-        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+        <div className="min-h-full bg-[#07111d] p-2 font-mono text-white md:p-3">
             {/* Header */}
-            <div className="flex-none flex flex-col gap-2 border-b-2 border-gold/50 bg-slate-900 px-3 py-3 sm:px-4 md:flex-row md:items-center md:gap-3 md:py-2">
-                <div className="w-1 h-6 bg-gold rounded-sm" />
-                <span className="text-white font-bold text-sm tracking-widest">CALL HISTORY LOG</span>
-                <span className="text-[10px] text-slate-500 md:ml-2">ACTIVE + ARCHIVED — {sorted.length} RECORDS</span>
-                <div className="hidden flex-1 md:block" />
-                <span className="text-[10px] text-slate-600">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-                <button onClick={handleRefresh} disabled={refreshing}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
-                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
-                </button>
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#2b4258] bg-[#0a1623] p-3 shadow-xl lg:flex-row lg:items-center">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><History className="h-5 w-5 text-cyan-300" /></div>
+                    <div className="min-w-0">
+                        <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-400">CAD Records</div>
+                        <h1 className="truncate text-lg font-black tracking-tight text-white">Call History</h1>
+                        <div className="text-[9px] text-slate-500">Active and archived calls in one live record stream</div>
+                    </div>
+                </div>
+                <div className="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4 lg:ml-4">
+                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2"><div className="text-[8px] font-black uppercase text-cyan-300">Showing</div><div className="text-lg font-black">{sorted.length}</div></div>
+                    <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-emerald-300"><Radio className="h-3 w-3"/>Active</div><div className="text-lg font-black">{activeCount}</div></div>
+                    <div className="rounded-lg border border-slate-600 bg-slate-900/70 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-slate-400"><Archive className="h-3 w-3"/>Archived</div><div className="text-lg font-black">{archivedCount}</div></div>
+                    <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-amber-300"><Building2 className="h-3 w-3"/>Property</div><div className="text-lg font-black">{propertyCount}</div></div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    <span className="hidden text-[9px] text-slate-500 sm:inline">UPDATED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                    <button onClick={handleRefresh} disabled={refreshing}
+                        className="flex h-9 items-center gap-1.5 rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-100 transition hover:border-cyan-400 hover:bg-cyan-900/40 disabled:opacity-50">
+                        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
+                    </button>
+                </div>
             </div>
 
+            {warnings.length > 0 && <div className="mt-2 rounded-xl border border-amber-700/50 bg-amber-950/20 px-3 py-2 text-[10px] text-amber-200">Partial source warning: {warnings.join(' · ')}</div>}
+
             {/* Filter Bar */}
-            <div className="flex-none flex flex-col gap-2 border-b border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 md:flex-row md:flex-wrap md:items-center md:py-2">
+            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#293f55] bg-[#091522] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">
                 {/* Search */}
                 <div className="relative w-full md:w-auto">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
@@ -228,7 +270,7 @@ export default function CallHistory() {
             </div>
 
             {/* Table */}
-            <div className="flex-1 overflow-auto">
+            <div className="mt-2 max-h-[calc(100dvh-265px)] overflow-auto rounded-t-xl border border-[#293f55] bg-[#08131f]">
                 {/* Column Headers */}
                 <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-3 py-1.5 text-[9px] tracking-widest text-slate-500 select-none md:flex">
                     <div className="w-8 flex-shrink-0">#</div>
@@ -324,10 +366,10 @@ export default function CallHistory() {
             </div>
 
             {/* Status Bar */}
-            <div className="flex-none flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-800 bg-slate-900 px-3 py-1 text-[9px] text-slate-500 sm:px-4">
+            <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 rounded-b-xl border border-t-0 border-[#293f55] bg-[#091522] px-3 py-1.5 text-[9px] text-slate-500 sm:px-4">
                 <span>TOTAL: <span className="text-white">{sorted.length}</span></span>
-                <span>ACTIVE: <span className="text-blue-400">{sorted.filter(r => r._source === 'active' && !['Closed','Cleared','Cancelled'].includes(r.status)).length}</span></span>
-                <span>ARCHIVED: <span className="text-slate-400">{sorted.filter(r => r._source === 'archived').length}</span></span>
+                <span>ACTIVE: <span className="text-cyan-300">{activeCount}</span></span>
+                <span>ARCHIVED: <span className="text-slate-300">{archivedCount}</span></span>
                 <div className="flex-1" />
                 <span className="text-green-500">● LIVE</span>
             </div>
