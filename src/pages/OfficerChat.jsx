@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { beginOutlookConnection } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 
@@ -56,6 +56,19 @@ export default function OfficerChat() {
     window.addEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
     return () => window.removeEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
   }, [refetchTeamsHistory]);
+
+  useEffect(() => {
+    const unsubscribe = base44.entities.OfficerChatMessage.subscribe(event => {
+      const row = event?.data;
+      if (!row?.id) return;
+      queryClient.setQueryData(['officerChatMessages'], (current = []) => {
+        if (event.type === 'delete') return current.filter(item => item.id !== row.id);
+        const next = [...current.filter(item => item.id !== row.id), row];
+        return next.sort((a, b) => new Date(a.created_date || a.teams_created_at || 0) - new Date(b.created_date || b.teams_created_at || 0));
+      });
+    });
+    return unsubscribe;
+  }, [queryClient]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -220,6 +233,9 @@ export default function OfficerChat() {
       if (event.detail?.configKey !== 'officer_chat') return;
       const rows = Array.isArray(event.detail?.rows) ? event.detail.rows : [];
       queryClient.setQueryData(['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id], rows);
+      // TeamsSyncMonitor imports channel messages into OfficerChatMessage. Refresh
+      // the native history after that import without turning Teams into a hard dependency.
+      window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] }), 350);
     };
     window.addEventListener('bps:teams-channel-data', onTeamsData);
     return () => window.removeEventListener('bps:teams-channel-data', onTeamsData);
