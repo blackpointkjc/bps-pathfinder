@@ -201,47 +201,6 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         ? L.latLngBounds(safeRoute)
         : null;
 
-    // Determine tile layer URL based on base map type and theme
-    const getTileLayerUrl = () => {
-        // Navigation uses the original Leaflet day/night basemaps.
-        if (isNavigating) {
-            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        }
-
-        if (useOfflineTiles) {
-            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        }
-
-        if (mapTheme === 'night') {
-            if (baseMapType === 'satellite') {
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-            }
-            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        }
-
-        switch (baseMapType) {
-            case 'satellite':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-            case 'topo':
-                return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
-            case 'street':
-            default:
-                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        }
-    };
-
-    const getTileAttribution = () => {
-        switch (baseMapType) {
-            case 'satellite':
-                return '&copy; <a href="https://www.esri.com/">Esri</a>';
-            case 'topo':
-                return '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>';
-            case 'street':
-            default:
-                return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-        }
-    };
-
     return (
         <div className="pathfinder-map-shell relative z-0 isolate h-full w-full overflow-hidden">
         <MapContainer
