@@ -297,6 +297,8 @@ export default function Personnel({ embedded = false }) {
                 </button>
             </div>}
 
+            {embedded && <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a1724] px-3 py-2"><div><div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Personnel Command</div><div className="text-sm font-black text-white">Personnel Roster</div></div><button onClick={() => { setRefreshing(true); loadPersonnel(); }} disabled={refreshing} className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 text-[9px] font-black text-slate-300 hover:border-cyan-600 hover:text-white"><RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`}/>REFRESH</button></div>}
+
             {/* Stats Bar */}
             <div className="flex-none grid grid-cols-2 border-b border-slate-800 sm:grid-cols-4">
                 {[
