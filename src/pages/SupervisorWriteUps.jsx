@@ -21,6 +21,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 export default function SupervisorWriteUps() {
   const [showForm, setShowForm] = useState(false);
   const [editingWriteUp, setEditingWriteUp] = useState(null);
+  const [activeWriteUpTab, setActiveWriteUpTab] = useState('draft');
   // selectedOfficer state removed as officer selection dropdown is replaced with text inputs
   const [formData, setFormData] = useState({
     report_date: new Date().toISOString(),
@@ -522,20 +523,20 @@ export default function SupervisorWriteUps() {
           </Card>
         )}
 
-        <Tabs defaultValue="draft" className="space-y-6">
-          <TabsList className="bg-white border border-slate-200 p-1">
-            <TabsTrigger value="draft" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-900">
+        <Tabs value={activeWriteUpTab} onValueChange={setActiveWriteUpTab} className="space-y-6">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border border-slate-300 bg-slate-100 p-2 lg:grid-cols-4">
+            <TabsTrigger value="draft" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-amber-500 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-950 data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-amber-300">
               <AlertCircle className="w-4 h-4 mr-2" />
               Draft / Action Required ({filteredDraftWriteUps.length})
             </TabsTrigger>
-            <TabsTrigger value="pending" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-900">
+            <TabsTrigger value="pending" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-blue-500 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-950 data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-blue-300">
               <Send className="w-4 h-4 mr-2" />
               Pending Admin Approval ({filteredPendingWriteUps.length})
             </TabsTrigger>
-            <TabsTrigger value="approved" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-900">
+            <TabsTrigger value="approved" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-green-500 data-[state=active]:bg-green-100 data-[state=active]:text-green-950 data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-green-300">
               Approved ({filteredApprovedWriteUps.length})
             </TabsTrigger>
-            <TabsTrigger value="archived" className="data-[state=active]:bg-slate-50 data-[state=active]:text-slate-900">
+            <TabsTrigger value="archived" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-slate-700 data-[state=active]:bg-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-slate-400">
               <Archive className="w-4 h-4 mr-2" />
               Archived ({filteredArchivedWriteUps.length})
             </TabsTrigger>
