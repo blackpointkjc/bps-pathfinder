@@ -39,7 +39,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   return (
     <div className="bps-command-theme min-h-full w-full min-w-0 overflow-x-clip bg-[#080d16] text-slate-100">
       <header className={`shrink-0 border-b border-slate-800 bg-[#0a1220] ${embedded ? 'px-3 py-1 md:px-4' : 'px-3 py-1.5 md:px-4'}`}>
-        <div className="mx-auto w-full min-w-0 max-w-[1700px]">
+        <div className="w-full min-w-0">
           {!embedded && <>
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{eyebrow}</div>
             <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
@@ -58,7 +58,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           </div>
         </div>
       </header>
-      <div className={`mx-auto min-h-0 w-full max-w-[1700px] min-w-0 overflow-x-clip border-x border-slate-800/70 ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-x-clip">{typeof children === 'function' ? children(section) : children}</div></div>
+      <div className={`min-h-0 w-full min-w-0 overflow-x-clip border-y border-slate-800/70 ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-x-clip">{typeof children === 'function' ? children(section) : children}</div></div>
     </div>
   );
 }
