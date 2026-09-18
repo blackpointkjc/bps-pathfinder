@@ -44,17 +44,25 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
 
         setCreating(true);
         try {
-            // Geocode address
-            const geoResponse = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location + ', Virginia, USA')}&limit=1`,
-                { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-            );
-            const geoData = await geoResponse.json();
-            
+            // Geocoding is helpful but must never prevent a CAD call from being
+            // created. Abort the public geocoder quickly and let backend automation
+            // fill coordinates later when the provider is slow/unavailable.
             let latitude = null, longitude = null;
-            if (geoData && geoData.length > 0) {
-                latitude = parseFloat(geoData[0].lat);
-                longitude = parseFloat(geoData[0].lon);
+            try {
+                const controller = new AbortController();
+                const timer = window.setTimeout(() => controller.abort(), 3500);
+                const geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location + ', Virginia, USA')}&limit=1`,
+                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' }, signal: controller.signal }
+                );
+                window.clearTimeout(timer);
+                const geoData = await geoResponse.json();
+                if (geoData && geoData.length > 0) {
+                    latitude = parseFloat(geoData[0].lat);
+                    longitude = parseFloat(geoData[0].lon);
+                }
+            } catch (geocodeError) {
+                console.warn('Create call geocoder skipped:', geocodeError?.message || geocodeError);
             }
 
             const cadResponse = await base44.functions.invoke('issueCadNumber', {});
@@ -80,11 +88,15 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
             const result = await base44.functions.invoke('createDispatchCall', { data: callData, selected_units: selectedUnits });
             const payload = result?.data || result || {};
             if (payload.error) throw new Error(payload.error);
+            if (!payload.success || !payload.call?.id) throw new Error('The CAD server did not confirm that the call was saved.');
 
             onCreated(payload.call);
+            if (Array.isArray(payload.warnings) && payload.warnings.length) {
+                toast.warning(`Call created. ${payload.warnings.join(' ')}`);
+            }
         } catch (error) {
             console.error('Error creating call:', error);
-            toast.error('Failed to create call');
+            toast.error(error?.response?.data?.error || error?.message || 'Failed to create call');
         } finally {
             setCreating(false);
         }
