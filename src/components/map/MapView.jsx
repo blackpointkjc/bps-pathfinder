@@ -243,10 +243,11 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
     };
 
     return (
+        <div className="pathfinder-map-shell relative z-0 isolate h-full w-full overflow-hidden">
         <MapContainer
             center={defaultCenter}
             zoom={isNavigating ? 18 : 13}
-            className="h-full w-full"
+            className="pathfinder-leaflet-map relative z-0 h-full w-full"
             zoomControl={false}
             minZoom={10}
             maxZoom={20}
@@ -379,6 +380,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             {/* Additional children (e.g., VA Counties) */}
             {children}
         </MapContainer>
+        </div>
     );
 }
 
