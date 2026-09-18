@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
     let activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
     let timeEntries = await withRetry(() => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1500));
     let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
+    let currentCalls = await withRetry(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500));
 
     const propertyLat = Number(property.latitude ?? call.latitude);
     const propertyLon = Number(property.longitude ?? call.longitude);
@@ -127,6 +128,7 @@ Deno.serve(async (req) => {
         archived: false,
       }));
       assignments = [];
+      currentCalls = [call];
     }
 
     // Automatic assignment is opt-in per property. Shadow remains the default;
@@ -197,12 +199,18 @@ Deno.serve(async (req) => {
         openEntryByEmail.set(email, entry);
       }
     }
-    // Assignment lifecycle is authoritative for unit occupancy. Clearing/archive
-    // workflows already close CallAssignment rows; avoiding a second full call-list
-    // read keeps this evaluator fast and reliable during refresh/reconnect storms.
+    // An assignment makes a unit busy only while its CAD call is still active.
+    // Historical rows were not always closed correctly, so treating every old
+    // pending/accepted CallAssignment as live can permanently block a unit from
+    // automatic dispatch.
+    const inactiveCallStatuses = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+    const activeCallIds = new Set((currentCalls || [])
+      .filter((item: any) => !inactiveCallStatuses.has(lower(item.status)))
+      .map((item: any) => String(item.id)));
     const busyUnitIds = new Set((assignments || [])
       .filter((item: any) => item.call_id !== callId
-        && !['cleared', 'cancelled'].includes(lower(item.status)))
+        && activeCallIds.has(String(item.call_id))
+        && !['cleared', 'cancelled', 'canceled'].includes(lower(item.status)))
       .map((item: any) => String(item.unit_id)));
 
     const ranked: any[] = [];
@@ -216,10 +224,13 @@ Deno.serve(async (req) => {
       const sessionAt = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
       const liveSessionFresh = Boolean(session && session.session_active !== false
         && Number.isFinite(sessionAt) && sessionAt >= heartbeatCutoff);
-      // A retained browser session may stay visible to CAD while Chromium is
-      // minimized, but it must not by itself make a unit dispatch-eligible after
-      // the app heartbeat is stale. A real open TimeEntry remains the fallback.
-      const clockedIn = Boolean(openEntry || liveSessionFresh);
+      // Automatic assignment is a work-status action, not merely an app-login
+      // action. Require a real open TimeEntry when one exists in the scheduling
+      // system. A fresh ActiveOfficer session remains a compatibility fallback
+      // only for accounts whose legacy clock-in flow records clock_in_time on the
+      // live session but has not created a TimeEntry row.
+      const sessionHasWorkClock = Boolean(liveSessionFresh && session?.clock_in_time);
+      const clockedIn = Boolean(openEntry || sessionHasWorkClock);
       const status = lower((liveSessionFresh ? session?.status : '') || officer.status || (openEntry ? 'Available' : ''));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
