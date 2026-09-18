@@ -53,6 +53,8 @@ function isPointInsideBoundary(lat, lng, rawPolygon = []) {
 
 export default function BackgroundLocationTracker({ user }) {
   const lastGpsPushRef = useRef(0);
+  const lastHistoryPushRef = useRef(0);
+  const lastPushedFixRef = useRef(null);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const activeOfficerRecordRef = useRef(null);
@@ -224,14 +226,29 @@ export default function BackgroundLocationTracker({ user }) {
       if (!shouldPublish) return;
 
       try {
-        // Persist one canonical GPS fix every 30 seconds. The browser's local GPS watch
-        // still updates continuously, but Base44 writes are rate-limited here so
-        // maps/history stay current without burning requests every 15 seconds.
-        if (now - lastGpsPushRef.current < 30000) return;
+        const speedMph = Number.isFinite(Number(fix.speed)) ? Math.max(0, Number(fix.speed)) : 0;
+        const previousPushed = lastPushedFixRef.current;
+        const movedMeters = previousPushed
+          ? getDistanceFromLatLonInMeters(
+              Number(previousPushed.latitude),
+              Number(previousPushed.longitude),
+              lat,
+              lng
+            )
+          : Infinity;
+        const moving = speedMph >= 3 || movedMeters >= 18;
+        // Moving vehicles need a near-realtime operational map. Stationary units
+        // can publish more slowly. This cadence is intentionally independent from
+        // history persistence so faster map motion does not multiply history writes.
+        const livePushIntervalMs = moving ? 7000 : 30000;
+        if (now - lastGpsPushRef.current < livePushIntervalMs) return;
         lastGpsPushRef.current = now;
 
+        const historyIntervalMs = moving ? 20000 : 55000;
+        const recordHistory = now - lastHistoryPushRef.current >= historyIntervalMs;
+
         // Always update ActiveOfficer for the app-wide authoritative live position.
-        await persistLiveState({
+        const liveResult = await persistLiveState({
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
@@ -243,14 +260,32 @@ export default function BackgroundLocationTracker({ user }) {
           latitude: lat,
           longitude: lng,
           heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
-          speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
+          speed: speedMph,
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
+          record_history: recordHistory,
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
         });
+        lastPushedFixRef.current = { latitude: lat, longitude: lng, timestamp: fixTimestamp };
+        if (recordHistory && liveResult?.history_recorded) lastHistoryPushRef.current = now;
         lastLivePushRef.current = Date.now();
+
+        // Broadcast immediately so every mounted Pathfinder map can move the unit
+        // without waiting for its recovery poll.
+        window.dispatchEvent(new CustomEvent('bps-live-location-persisted', {
+          detail: {
+            officer_email: user.email,
+            latitude: lat,
+            longitude: lng,
+            speed: speedMph,
+            heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
+            accuracy,
+            moving,
+            at: fixTimestamp,
+          },
+        }));
         
         // Invalidate active officers query to refresh map
         queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
