@@ -24,7 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
 
-export default function AdminUsers() {
+export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -688,7 +688,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
@@ -697,7 +697,7 @@ export default function AdminUsers() {
         onSave={saveCroppedAdminPhoto}
       />
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        {!embedded && <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
             <div>
@@ -735,7 +735,7 @@ export default function AdminUsers() {
               Create User
             </Button>
           </div>
-        </div>
+        </div>}
 
         {error && (
           <Card className="p-8 text-center border-red-200 bg-red-50">
