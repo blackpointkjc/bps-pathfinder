@@ -104,23 +104,23 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         // itself after every programmatic recenter.
         map.on('dragstart', handleManualStart);
         map.on('dragend', handleManualEnd);
-        const container = map.getContainer();
-        container?.addEventListener('wheel', handleManualStart, { passive: true });
-        container?.addEventListener('pointerdown', handleManualStart, { passive: true });
-        container?.addEventListener('pointerup', handleManualEnd, { passive: true });
+        const interactionContainer = map.getContainer();
+        interactionContainer?.addEventListener('wheel', handleManualStart, { passive: true });
+        interactionContainer?.addEventListener('pointerdown', handleManualStart, { passive: true });
+        interactionContainer?.addEventListener('pointerup', handleManualEnd, { passive: true });
 
         return () => {
             if (interactionTimer) window.clearTimeout(interactionTimer);
             map.off('dragstart', handleManualStart);
             map.off('dragend', handleManualEnd);
-            container?.removeEventListener('wheel', handleManualStart);
-            container?.removeEventListener('pointerdown', handleManualStart);
-            container?.removeEventListener('pointerup', handleManualEnd);
+            interactionContainer?.removeEventListener('wheel', handleManualStart);
+            interactionContainer?.removeEventListener('pointerdown', handleManualStart);
+            interactionContainer?.removeEventListener('pointerup', handleManualEnd);
             // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
             try { map.stop(); } catch (_) {}
-            if (container?.isConnected) {
+            if (interactionContainer?.isConnected) {
                 try { map.closePopup(); } catch (_) {}
             }
         };
@@ -130,16 +130,16 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         // Leaflet does not automatically know when its embedded Center panel
         // changes size. Keep its internal viewport synchronized with the actual
         // Live Map canvas and cancel the observer cleanly on unmount.
-        const container = map.getContainer();
+        const resizeContainer = map.getContainer();
         let frame = null;
         const refresh = () => {
             if (frame) cancelAnimationFrame(frame);
             frame = requestAnimationFrame(() => {
-                if (container?.isConnected) map.invalidateSize({ animate: false, pan: false });
+                if (resizeContainer?.isConnected) map.invalidateSize({ animate: false, pan: false });
             });
         };
         const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
-        observer?.observe(container);
+        observer?.observe(resizeContainer);
         refresh();
         return () => {
             observer?.disconnect();
