@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,14 +137,9 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
 }
 
 export default function AdminLocationTracker() {
-  const navigate = useNavigate();
   const backToLocations = () => {
     setViewMode('live');
     document.querySelector('main.mobile-field-content')?.scrollTo({top:0,behavior:'auto'});
-  };
-  const backToPreviousPage = () => {
-    if (window.history.state?.idx > 0) navigate(-1);
-    else navigate('/AdminCenter');
   };
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState('live');
@@ -452,18 +446,16 @@ export default function AdminLocationTracker() {
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8">
       <div className="mx-auto max-w-[1400px] space-y-5 sm:space-y-8">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button variant="outline" onClick={backToPreviousPage}>← Previous page</Button>
-          {viewMode === 'history' && <Button variant="outline" onClick={backToLocations}>← Back to locations</Button>}
-        </div>
+        {viewMode === 'history' && <div className="mb-3"><Button variant="outline" onClick={backToLocations}>← Live tracker</Button></div>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
 
           <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <Activity className="w-8 h-8 text-green-600" />
+            <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Location & Dispatch</div>
+            <h1 className="mt-1 flex items-center gap-2 text-xl font-black text-white sm:text-2xl">
+              <Activity className="h-5 w-5 text-emerald-400" />
               User Location Tracker
             </h1>
-            <p className="text-slate-600">Live GPS and one-minute movement history while officers are signed into the app</p>
+            <p className="mt-1 text-xs text-slate-400">Live GPS, officer presence, historical movement, and location health in one workspace.</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
                 Last live check: {format(lastAutoCheck, 'h:mm:ss a')} • GPS saved about once per minute
