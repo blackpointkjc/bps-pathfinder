@@ -1071,12 +1071,13 @@ Provide:
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Incident Reports</h1>
-            <p className="text-sm md:text-base text-slate-600">Document and track incidents</p>
+            <div className="text-[9px] font-black uppercase tracking-[.18em] text-red-300">Field Reporting</div>
+            <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Incident Reports</h1>
+            <p className="mt-1 text-xs text-slate-400">Create, edit, review, and track incident documentation.</p>
           </div>
           <Button
             onClick={() => {
@@ -1091,16 +1092,16 @@ Provide:
         </div>
 
         {!canSubmit && (
-          <Alert className="border-amber-200 bg-amber-50">
+          <Alert className="border-amber-500/40 bg-amber-950/25 text-amber-100">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
+            <AlertDescription className="text-amber-100">
               You must be clocked in to submit an incident report. Please clock in at your assigned location first.
             </AlertDescription>
           </Alert>
         )}
 
         {showForm && canSubmit && (
-          <Card className="border-none shadow-xl">
+          <Card className="border border-red-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
               <CardTitle className="flex items-center gap-2">
                 {editingReportId ? (
