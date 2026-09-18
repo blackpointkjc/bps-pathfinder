@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
+import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Plus, Clock, Printer, AlertTriangle, Camera, Gavel } from "lucide-react";
+import { Shield, Plus, Clock, Printer, AlertTriangle, Camera, Gavel, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +27,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
   const [searchQuery, setSearchQuery] = useState("");
   const [showIDScanner, setShowIDScanner] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [editingComplaint, setEditingComplaint] = useState(null);
   const [dispositionComplaintId, setDispositionComplaintId] = useState(null);
   const [magistrateForm, setMagistrateForm] = useState({
     magistrate_disposition: 'pending',
@@ -102,11 +104,11 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
 
   const canSubmit = isAdmin || !!activeEntry;
 
-  const { data: allComplaints } = useQuery({
-    queryKey: ['allCriminalComplaints'],
-    queryFn: () => base44.entities.CriminalComplaint.list('-created_date'),
+  const { data: allComplaints = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['allCriminalComplaints', user?.id],
+    queryFn: () => loadLegalRecordHistory('complaint'),
     enabled: !!user,
-    initialData: [],
+    staleTime: 15000,
   });
 
   // Real-time sync across devices
@@ -218,9 +220,17 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
         console.error('Failed to get IP address:', error);
       }
 
+      if (editingComplaint?.id) {
+        return await base44.entities.CriminalComplaint.update(editingComplaint.id, {
+          ...data,
+          complaint_number: editingComplaint.complaint_number,
+          call_number: editingComplaint.call_number,
+          status: editingComplaint.status === 'approved' ? 'approved' : 'submitted',
+          officer_ip_address: ipAddress,
+        });
+      }
       const complaintNumber = generateComplaintNumber();
       const callNumber = generateCallNumber();
-      
       const complaintWithNumbersAndIp = { 
         ...data, 
         complaint_number: complaintNumber, 
@@ -232,7 +242,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allCriminalComplaints'] });
-      alert('✅ Criminal complaint filed successfully!');
+      alert(editingComplaint ? '✅ Criminal complaint updated successfully!' : '✅ Criminal complaint filed successfully!');
       resetForm();
     },
     onError: (error) => {
@@ -279,8 +289,26 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
     setDispositionComplaintId(complaint.id);
   };
 
+  const editComplaint = (complaint) => {
+    setEditingComplaint(complaint);
+    setFormData(current => ({
+      ...current,
+      ...complaint,
+      complaint_date: complaint.complaint_date || new Date().toISOString(),
+      offense_date: complaint.offense_date ? String(complaint.offense_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      offense_time: complaint.offense_time || format(new Date(), 'HH:mm'),
+      linked_call_id: complaint.linked_call_id || '',
+      linked_call_number: complaint.linked_call_number || '',
+      linked_call_type: complaint.linked_call_type || '',
+      linked_call_location: complaint.linked_call_location || '',
+    }));
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const resetForm = () => {
     setShowForm(false);
+    setEditingComplaint(null);
     setFormData({
       complaint_date: new Date().toISOString(),
       offense_date: format(new Date(), 'yyyy-MM-dd'),
@@ -848,7 +876,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                     disabled={createComplaintMutation.isPending}
                     className="bg-red-600 hover:bg-red-700"
                   >
-                    {createComplaintMutation.isPending ? 'Filing...' : 'File Complaint'}
+                    {createComplaintMutation.isPending ? (editingComplaint ? 'Updating...' : 'Filing...') : (editingComplaint ? 'Update Complaint' : 'File Complaint')}
                   </Button>
                 </div>
               </form>
@@ -943,6 +971,9 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4">
+                    {(isAdmin || recordBelongsToDirectoryUser(user, complaint)) && complaint.status !== 'approved' && (
+                      <Button type="button" size="sm" variant="outline" onClick={() => editComplaint(complaint)}><Pencil className="w-4 h-4 mr-2" />Edit Complaint</Button>
+                    )}
                     <Button type="button" size="sm" className="bg-amber-700 hover:bg-amber-800" onClick={() => openMagistrateResult(complaint)}>
                       <Gavel className="w-4 h-4 mr-2" />Record Magistrate Result
                     </Button>
@@ -957,7 +988,8 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                   </div>
                 </div>
               ))}
-              {complaintsToDisplay.length === 0 && (
+              {historyLoading && <p className="text-center text-slate-500 py-8">Loading complaint history…</p>}
+              {!historyLoading && complaintsToDisplay.length === 0 && (
                 <p className="text-center text-slate-500 py-8">
                   {searchQuery ? 'No complaints found matching your search.' : 'No complaints filed yet.'}
                 </p>
