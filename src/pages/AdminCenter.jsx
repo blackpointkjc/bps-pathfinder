@@ -204,35 +204,15 @@ function AdminLocationDispatchHub() {
   );
 }
 
-function AdminSiteAssetsHub() {
-  return <AdminInlineFunctions queryParam="admin_site_assets_tool" tools={[
+function AdminSiteOperationsHub() {
+  return <AdminInlineFunctions queryParam="admin_site_ops_tool" tools={[
+    { id: 'location', label: 'Location & Dispatch', component: AdminLocationDispatchHub },
     { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
     { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
+    { id: 'control', label: 'Admin Control', component: AdminPortal },
+    { id: 'visibility', label: 'Portal Visibility', component: AdminPortalSettings },
   ]} />;
-}
-
-function AdminSystemPortalHub() {
-  return (
-    <div className="min-w-0 space-y-3 p-2">
-      <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-        <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-[.14em] text-cyan-400">System Administration</div>
-            <div className="text-sm font-black text-white">Admin Control Center</div>
-          </div>
-        </div>
-        <AdminPortal embedded />
-      </section>
-      <section className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-        <div className="border-b border-slate-800 px-3 py-2">
-          <div className="text-[9px] font-black uppercase tracking-[.14em] text-violet-300">Workspace Visibility & Audio</div>
-          <div className="text-sm font-black text-white">Portal Visibility Settings</div>
-        </div>
-        <AdminPortalSettings embedded />
-      </section>
-    </div>
-  );
 }
 
 function AdminReportsQualityHub() {
@@ -282,7 +262,7 @@ function AdministrationToolsOnly() {
         ]} />;
         if (section === 'people') return <AdminPersonnelAccessHub />;
         if (section === 'schedule') return <AdminSchedulingCoverageHub />;
-        if (section === 'sites') return <div className="min-w-0"><AdminLocationDispatchHub /><div className="mt-3 grid gap-3 xl:grid-cols-2"><section className="overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]"><div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Site Assets</div><AdminSiteAssetsHub /></section><section className="overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]"><div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">System & Portal</div><AdminSystemPortalHub /></section></div></div>;
+        if (section === 'sites') return <AdminSiteOperationsHub />;
         if (section === 'reports') return <AdminReportsQualityHub />;
         if (section === 'communications') return <AdminCommunicationsHub />;
         return <AdminDashboard />;
