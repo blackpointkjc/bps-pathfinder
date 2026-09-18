@@ -234,17 +234,31 @@ export default function AdminLocationTracker({ embedded = false }) {
     return [...newestLocationByEmail.values()].map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
       if (profile && !isOperationallyVisibleUser(profile)) return null;
+      const rawLocation = String(locationData.current_location || '').trim();
+      const locationIsPlaceholder = !rawLocation || ['signed in', 'clocked in', 'online', 'available'].includes(rawLocation.toLowerCase());
+      const hasGps = hasValidCoordinates(locationData);
+      const coordinateLabel = hasGps
+        ? `GPS ${Number(locationData.latitude).toFixed(6)}, ${Number(locationData.longitude).toFixed(6)}`
+        : '';
+      const sessionActive = locationData.session_active === true;
       return {
         ...locationData,
         id: locationData.id,
-        current_location: locationData.current_location || profile?.assigned_location || 'Signed In',
-        clock_in_time: locationData.clock_in_time,
+        current_location: !locationIsPlaceholder
+          ? rawLocation
+          : (coordinateLabel || profile?.assigned_location || (sessionActive ? 'Location pending' : 'Last known location unavailable')),
+        clock_in_time: sessionActive ? locationData.clock_in_time : null,
         user_role: locationData.user_role || profile?.role || 'user',
-        user_status: locationData.status || profile?.status || 'Signed In',
-        gps_pending: !hasValidCoordinates(locationData),
+        user_status: sessionActive ? (locationData.status || profile?.status || 'Available') : 'Offline',
+        gps_pending: sessionActive && !hasGps,
       };
     }).filter(Boolean);
   }, [newestLocationByEmail, allUsers]);
+
+  const activeTrackedOfficers = React.useMemo(
+    () => (trackedOfficers || []).filter(officer => officer.session_active === true),
+    [trackedOfficers]
+  );
 
   const { data: auditData, isLoading: auditLoading, error: auditError, refetch: retryAudit } = useQuery({
     queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate],
@@ -706,7 +720,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-5xl font-bold text-slate-900">{trackedOfficers.filter(officer => officer.session_active === true).length}</div>
+                  <div className="text-4xl font-black text-emerald-200">{activeTrackedOfficers.length}</div>
                   <p className="text-xs text-slate-900 mt-1">Active app sessions</p>
                 </CardContent>
               </Card>
@@ -817,9 +831,9 @@ export default function AdminLocationTracker({ embedded = false }) {
               </Card>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trackedOfficers?.map((officer) => (
-                <Card key={officer.id} className="border-none shadow-xl hover:shadow-2xl transition-shadow">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+              {activeTrackedOfficers.map((officer) => (
+                <Card key={officer.id} className="border border-emerald-500/25 bg-[#0d1927] text-slate-100 shadow-lg transition hover:border-emerald-400/50">
+                  <CardHeader className="border-b border-emerald-500/20 bg-emerald-950/20 py-3">
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
@@ -827,7 +841,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                             {getOfficerName(officer.officer_email).charAt(0)}
                           </span>
                         </div>
-                        <span className="text-slate-900">{getOfficerName(officer.officer_email)}</span>
+                        <span className="text-white">{getOfficerName(officer.officer_email)}</span>
                       </div>
                       <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" title="Active" />
                     </CardTitle>
@@ -836,41 +850,33 @@ export default function AdminLocationTracker({ embedded = false }) {
                     <div className="flex items-start gap-2">
                       <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-slate-500">Current Location</p>
-                        <p className="text-sm font-semibold text-slate-900">{officer.current_location}</p>
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Current Location</p>
+                        <p className="text-sm font-semibold text-slate-100">{officer.current_location}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <Clock className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-slate-500">Session / Shift Started</p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Session / Shift Started</p>
+                        <p className="text-sm font-semibold text-slate-100">
+                          {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'Active session'}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <Activity className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-slate-500">Last Update</p>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Last Update</p>
+                        <p className="text-sm font-semibold text-slate-100">
                           {officer.last_update ? format(new Date(officer.last_update), 'h:mm:ss a') : 'No GPS data'}
                         </p>
                       </div>
                     </div>
                     {officer.latitude && officer.longitude && (
-                      <div className="pt-2 border-t border-slate-200">
-                        <p className="text-xs text-slate-500 font-mono">
-                          GPS: {officer.latitude.toFixed(6)}, {officer.longitude.toFixed(6)}
+                      <div className="border-t border-slate-700 pt-2">
+                        <p className="font-mono text-[11px] text-cyan-300">
+                          GPS {Number(officer.latitude).toFixed(6)}, {Number(officer.longitude).toFixed(6)}
                         </p>
-                        <a
-                          href={`https://www.google.com/maps?q=${officer.latitude},${officer.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          View on Google Maps →
-                        </a>
                       </div>
                     )}
                   </CardContent>
@@ -878,11 +884,12 @@ export default function AdminLocationTracker({ embedded = false }) {
               ))}
             </div>
 
-            {!trackedOfficers?.length && (
+            {!activeTrackedOfficers.length && (
               <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
                 <CardContent className="p-12 text-center">
                   <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-slate-500">No officer location records are available yet</p>
+                  <p className="text-slate-400">No officers currently have an active Pathfinder session.</p>
+                  <p className="mt-1 text-xs text-slate-600">Last-known offline positions remain available on the map and in Historical Movement.</p>
                 </CardContent>
               </Card>
             )}
