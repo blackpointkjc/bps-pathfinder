@@ -272,16 +272,26 @@ export default function Navigation() {
         }
     }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination]);
 
-    // Speak each turn once as GPS advances. This uses a generic deep tactical
-    // cadence rather than imitating a named character or actor.
+    // Modern staged turn prompts: one early cue, one near-turn cue, and a
+    // turn-now cue. Each stage is spoken only once per maneuver.
     useEffect(() => {
-        if (!isNavigating || !navSteps.length || navStepIndex < 0) return;
-        if (lastSpokenNavStepRef.current === navStepIndex) return;
+        if (!isNavigating || navVoiceMuted || !navSteps.length || navStepIndex < 0) return;
         const step = navSteps[navStepIndex];
         if (!step) return;
+        const feet = Number(navTurnDistanceFeet);
+        if (!Number.isFinite(feet) || feet < 0) return;
+
+        let stage = 'far';
+        if (feet <= 110) stage = 'now';
+        else if (feet <= 450) stage = 'near';
+        else if (feet <= 1400) stage = 'approach';
+
+        const key = `${navStepIndex}:${stage}`;
+        if (spokenNavPromptsRef.current.has(key)) return;
+        spokenNavPromptsRef.current.add(key);
         lastSpokenNavStepRef.current = navStepIndex;
-        announceNavigationInstruction(formatInstruction(step), navTurnDistanceFeet);
-    }, [isNavigating, navStepIndex, navSteps, navTurnDistanceFeet]);
+        announceNavigationInstruction(formatInstruction(step), stage === 'now' ? 0 : feet);
+    }, [isNavigating, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet]);
 
     const syncScheduledCadPartnership = async (user) => {
         if (!user?.email || !user?.id) return user;
@@ -461,13 +471,48 @@ export default function Navigation() {
 
     const formatInstruction = (step) => {
         if (!step) return 'Continue to destination';
-        const type = step.maneuver?.type || 'continue';
-        const modifier = step.maneuver?.modifier ? ` ${step.maneuver.modifier}` : '';
-        const road = step.name ? ` onto ${step.name}` : '';
-        if (type === 'arrive') return 'Arrive at the call location';
-        if (type === 'depart') return `Head${modifier}${road}`;
-        if (type === 'roundabout') return `Enter the roundabout${road}`;
-        return `${type.charAt(0).toUpperCase() + type.slice(1)}${modifier}${road}`;
+        const type = String(step.maneuver?.type || 'continue').toLowerCase();
+        const modifier = String(step.maneuver?.modifier || '').toLowerCase();
+        const name = String(step.name || '').trim();
+        const onto = name ? ` onto ${name}` : '';
+        const onRoad = name ? ` on ${name}` : '';
+
+        if (type === 'arrive') {
+            if (modifier.includes('left')) return 'Your destination is on the left';
+            if (modifier.includes('right')) return 'Your destination is on the right';
+            return 'You have arrived at your destination';
+        }
+        if (type === 'depart') {
+            if (modifier.includes('left')) return `Head left${onRoad}`;
+            if (modifier.includes('right')) return `Head right${onRoad}`;
+            return `Head straight${onRoad}`;
+        }
+        if (type === 'roundabout' || type === 'rotary') {
+            const exit = Number(step.maneuver?.exit);
+            return `Enter the roundabout${Number.isFinite(exit) && exit > 0 ? ` and take exit ${exit}` : ''}${onto}`;
+        }
+        if (modifier.includes('uturn') || modifier.includes('u-turn')) return `Make a U-turn${onto}`;
+        if (type === 'merge') return `Merge ${modifier || 'ahead'}${onto}`;
+        if (type === 'fork') return `Keep ${modifier.includes('left') ? 'left' : modifier.includes('right') ? 'right' : 'ahead'}${onto}`;
+        if (type === 'end of road') return `Turn ${modifier.includes('left') ? 'left' : 'right'}${onto}`;
+        if (modifier.includes('slight left')) return `Bear left${onto}`;
+        if (modifier.includes('slight right')) return `Bear right${onto}`;
+        if (modifier.includes('sharp left')) return `Make a sharp left${onto}`;
+        if (modifier.includes('sharp right')) return `Make a sharp right${onto}`;
+        if (modifier.includes('left')) return `Turn left${onto}`;
+        if (modifier.includes('right')) return `Turn right${onto}`;
+        if (type === 'new name') return `Continue${onto}`;
+        return `Continue straight${onRoad}`;
+    };
+
+    const maneuverIconForStep = (step, className = 'h-8 w-8') => {
+        const type = String(step?.maneuver?.type || 'continue').toLowerCase();
+        const modifier = String(step?.maneuver?.modifier || '').toLowerCase();
+        if (modifier.includes('uturn') || modifier.includes('u-turn')) return <RotateCcw className={className} />;
+        if (modifier.includes('left')) return <CornerUpLeft className={className} />;
+        if (modifier.includes('right')) return <CornerUpRight className={className} />;
+        if (type === 'arrive') return <MapPin className={className} />;
+        return <ArrowUp className={className} />;
     };
 
     const getFreshDeviceLocation = async () => {
