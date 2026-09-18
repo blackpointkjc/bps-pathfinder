@@ -100,10 +100,32 @@ function pumpReads() {
     const job = readQueue.shift();
     window.clearTimeout(job.queueTimer);
     activeReads += 1;
+    const startedAt = Date.now();
     Promise.resolve()
       .then(() => withRequestTimeout(Promise.resolve().then(job.task), 20000, 'Data request'))
-      .then(job.resolve, error => {
+      .then(value => {
+        recordRequestTrace({
+          label: requestLabel(job.meta),
+          kind: job.meta?.kind || 'read',
+          mode: 'read',
+          outcome: 'success',
+          queue_ms: Math.max(0, startedAt - job.queuedAt),
+          duration_ms: Date.now() - startedAt,
+        });
+        job.resolve(value);
+      }, error => {
+        const throttled = isRateLimit(error);
         noteRateLimit(error);
+        recordRequestTrace({
+          label: requestLabel(job.meta),
+          kind: job.meta?.kind || 'read',
+          mode: 'read',
+          outcome: throttled ? 'rate_limit' : 'error',
+          status: error?.response?.status || error?.status || null,
+          queue_ms: Math.max(0, startedAt - job.queuedAt),
+          duration_ms: Date.now() - startedAt,
+          error: errorText(error).slice(0, 700),
+        });
         job.reject(error);
       })
       .finally(() => {
@@ -112,10 +134,16 @@ function pumpReads() {
       });
   }
 }
-function queuedRead(key, task) {
+function queuedRead(key, task, meta = {}) {
   const cached = readCache.get(key);
-  if (cached && Date.now() - cached.at < READ_CACHE_MS) return Promise.resolve(cached.value);
-  if (readInflight.has(key)) return readInflight.get(key);
+  if (cached && Date.now() - cached.at < READ_CACHE_MS) {
+    recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'cache_hit', duration_ms: 0 });
+    return Promise.resolve(cached.value);
+  }
+  if (readInflight.has(key)) {
+    recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'deduped_inflight', duration_ms: 0 });
+    return readInflight.get(key);
+  }
   const request = new Promise((resolve, reject) => {
     const job = {
       task: async () => {
@@ -125,12 +153,23 @@ function queuedRead(key, task) {
       },
       resolve,
       reject,
+      meta,
+      queuedAt: Date.now(),
     };
     job.queueTimer = window.setTimeout(() => {
       const index = readQueue.indexOf(job);
       if (index < 0) return;
       readQueue.splice(index, 1);
-      reject(new Error('Data request queue is busy. Please retry.'));
+      const error = new Error('Data request queue is busy. Please retry.');
+      recordRequestTrace({
+        label: requestLabel(meta),
+        kind: meta.kind || 'read',
+        mode: 'read',
+        outcome: 'queue_timeout',
+        queue_ms: Date.now() - job.queuedAt,
+        error: error.message,
+      });
+      reject(error);
     }, 25000);
     readQueue.push(job);
     pumpReads();
@@ -138,14 +177,38 @@ function queuedRead(key, task) {
   readInflight.set(key, request);
   return request;
 }
-function protectedWrite(key, task) {
-  if (writeInflight.has(key)) return writeInflight.get(key);
+function protectedWrite(key, task, meta = {}) {
+  if (writeInflight.has(key)) {
+    recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'write', mode: 'write', outcome: 'deduped_inflight', duration_ms: 0 });
+    return writeInflight.get(key);
+  }
   activeWrites += 1;
   readCache.clear();
+  const startedAt = Date.now();
   const request = Promise.resolve()
     .then(task)
+    .then(value => {
+      recordRequestTrace({
+        label: requestLabel(meta),
+        kind: meta.kind || 'write',
+        mode: 'write',
+        outcome: 'success',
+        duration_ms: Date.now() - startedAt,
+      });
+      return value;
+    })
     .catch(error => {
+      const throttled = isRateLimit(error);
       noteRateLimit(error);
+      recordRequestTrace({
+        label: requestLabel(meta),
+        kind: meta.kind || 'write',
+        mode: 'write',
+        outcome: throttled ? 'rate_limit' : 'error',
+        status: error?.response?.status || error?.status || null,
+        duration_ms: Date.now() - startedAt,
+        error: errorText(error).slice(0, 700),
+      });
       throw error;
     })
     .finally(() => {
