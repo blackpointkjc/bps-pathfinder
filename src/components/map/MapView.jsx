@@ -187,7 +187,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
 const validCoordPair = value => Array.isArray(value) && value.length >= 2 && value.slice(0,2).every(v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v))) && Math.abs(Number(value[0])) <= 90 && Math.abs(Number(value[1])) <= 180;
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, upcomingManeuverDistance = null, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
     const safeMapCenter = validCoordPair(mapCenter) ? [Number(mapCenter[0]), Number(mapCenter[1])] : null;
     const safeDestination = destination && validCoordPair(destination.coords) ? { ...destination, coords: [Number(destination.coords[0]), Number(destination.coords[1])] } : null;
@@ -299,6 +299,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     currentLocation={safeCurrentLocation}
                     heading={heading}
                     speed={speed}
+                    upcomingManeuverDistance={upcomingManeuverDistance}
                     onUserInteraction={otherUnits ? undefined : undefined}
                 />
             )}
