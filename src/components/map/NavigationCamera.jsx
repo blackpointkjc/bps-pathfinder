@@ -58,7 +58,14 @@ export default function NavigationCamera({
         if (speed > 55) targetZoom = 16.8;
         else if (speed > 35) targetZoom = 17.2;
         else if (speed > 15) targetZoom = 17.8;
-        else targetZoom = 18.5;
+        else targetZoom = 18.4;
+
+        const maneuverFeet = Number(upcomingManeuverDistance);
+        if (Number.isFinite(maneuverFeet)) {
+            if (maneuverFeet <= 140) targetZoom = Math.max(targetZoom, 19);
+            else if (maneuverFeet <= 450) targetZoom = Math.max(targetZoom, 18.6);
+            else if (maneuverFeet <= 1200) targetZoom = Math.max(targetZoom, 18.1);
+        }
 
         const validHeading = Number.isFinite(Number(heading));
         const lookAheadMeters = Math.min(140, Math.max(35, Number(speed || 0) * 2.2));
