@@ -177,10 +177,9 @@ export default function AdminPortal({ embedded = false }) {
     return (
         <div className={`bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-full'} flex flex-col font-mono`}>
             {/* Header */}
-            {!embedded && <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
-                <div className="w-1 h-6 bg-gold rounded-sm" />
-                <Shield className="w-4 h-4 text-gold" />
-                <span className="text-white font-bold text-sm tracking-widest">ADMIN CONTROL CENTER</span>
+            {!embedded && <div className="m-3 flex-none rounded-2xl border border-[#29445f] bg-[#0b1725] px-4 py-3 shadow-xl flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
+                <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">System Administration</div><span className="text-white font-black text-base">Admin Control Center</span></div>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-green-400 font-mono text-[10px]">ONLINE</span>
@@ -194,7 +193,7 @@ export default function AdminPortal({ embedded = false }) {
             </div>}
 
             {/* Tab Bar */}
-            <div className="flex-none flex border-b border-slate-800 bg-slate-900/50">
+            <div className="mx-3 flex-none flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-[#08131f] p-1">
                 {[
                     { key: 'dashboard', label: 'DASHBOARD', icon: BarChart3 },
                     { key: 'assets', label: 'FLEET', icon: Car },
