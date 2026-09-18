@@ -685,6 +685,14 @@ export default function GlobalMessageBanner({ user }) {
     setBanners(current => current.filter(entry => entry.id !== id));
   };
 
+  const visibleBanners = [...new Map(
+    banners
+      // BOLO and monitored-property operational alerts are owned by the single
+      // LIVE ALERTS ticker. Do not show the same event again as a floating card.
+      .filter(entry => !['bolo', 'property'].includes(entry.kind))
+      .map(entry => [normalized(entry.message || entry.title || entry.id), entry])
+  ).values()];
+
   return (
     <div className="pointer-events-none fixed left-1/2 top-24 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2">
       {voiceWarning && (
@@ -693,7 +701,7 @@ export default function GlobalMessageBanner({ user }) {
         </div>
       )}
       <AnimatePresence>
-        {banners.map(banner => (
+        {visibleBanners.map(banner => (
           <motion.button
             key={banner.id}
             type="button"
