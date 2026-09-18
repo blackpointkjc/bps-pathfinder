@@ -1,7 +1,7 @@
 // This is the same as the existing CriminalComplaints page - renamed to VA Criminal Complaints
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +24,6 @@ import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
 export default function VACriminalComplaints({ sharedSearch, onSharedSearchChange }) {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
-  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [showIDScanner, setShowIDScanner] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [dispositionComplaintId, setDispositionComplaintId] = useState(null);
@@ -123,11 +121,11 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
   const complaintsToDisplay = React.useMemo(() => {
     if (!allComplaints || !user) return [];
     
-    const userComplaints = isAdmin 
-      ? allComplaints 
-      : allComplaints.filter(complaint => String(complaint.created_by_id || '') === String(user.id));
+    const userComplaints = isAdmin
+      ? allComplaints
+      : allComplaints.filter(complaint => recordBelongsToDirectoryUser(user, complaint));
     
-    const query = searchValue.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     if (!query) return userComplaints;
     const terms = query.split(/\s+/).filter(Boolean);
     return userComplaints.filter(complaint => {
@@ -151,7 +149,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
       ].filter(Boolean).join(' ').toLowerCase();
       return terms.every(term => searchable.includes(term));
     });
-  }, [allComplaints, user, isAdmin, searchValue]);
+  }, [allComplaints, user, isAdmin, searchQuery]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations', 'vaCriminalComplaints', user?.division || 'all'],
@@ -865,8 +863,8 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="Search any complaint field: name, DOB, SSN, ID, code, facts, complaint, warrant or CAD #"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-80"
                 />
               </div>
