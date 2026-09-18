@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,6 @@ import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 export default function Summons({ sharedSearch, onSharedSearchChange }) {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchValue = typeof sharedSearch === 'string' ? sharedSearch : searchQuery;
-  const setSearchValue = onSharedSearchChange || setSearchQuery;
   const [formData, setFormData] = useState({
     summons_date: new Date().toISOString(),
     linked_call_id: "",
@@ -128,11 +126,11 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
   const summonsToDisplay = React.useMemo(() => {
     if (!allSummons || !user) return [];
     
-    const userSummons = isAdmin 
-      ? allSummons 
-      : allSummons.filter(summons => String(summons.created_by_id || '') === String(user.id));
+    const userSummons = isAdmin
+      ? allSummons
+      : allSummons.filter(summons => recordBelongsToDirectoryUser(user, summons));
     
-    const query = searchValue.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     if (!query) return userSummons;
     const terms = query.split(/\s+/).filter(Boolean);
     return userSummons.filter(summons => {
@@ -155,7 +153,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
       ].filter(Boolean).join(' ').toLowerCase();
       return terms.every(term => searchable.includes(term));
     });
-  }, [allSummons, user, isAdmin, searchValue]);
+  }, [allSummons, user, isAdmin, searchQuery]);
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
@@ -1129,8 +1127,8 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="Search any summons field: name, DOB, license, case, code, charge, location or CAD #"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-80"
                 />
               </div>
