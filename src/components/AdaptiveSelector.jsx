@@ -37,23 +37,21 @@ export default function AdaptiveSelector({
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="group flex min-h-14 w-full items-center gap-3 rounded-2xl border border-slate-700/80 bg-gradient-to-r from-[#0d1928] to-[#09121f] px-3.5 py-2.5 text-left shadow-[0_12px_30px_rgba(0,0,0,.18)] transition hover:border-cyan-500/60"
+          className="group flex min-h-10 w-full items-center gap-2 rounded-lg border border-slate-700/80 bg-[#0b1624] px-2.5 py-1.5 text-left transition hover:border-cyan-500/60"
         >
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accentClasses}`}>
-            {ActiveIcon ? <ActiveIcon className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${accentClasses}`}>
+            {ActiveIcon ? <ActiveIcon className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</span>
-            <span className="mt-0.5 block truncate text-sm font-black text-white">{active?.label || 'Select'}</span>
-            {active?.description && <span className="mt-0.5 block truncate text-[10px] text-slate-500">{active.description}</span>}
+            <span className="block truncate text-xs font-black text-white">{active?.label || 'Select'}</span>
           </span>
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-950/60 text-slate-300">
-            <ChevronDown className="h-4 w-4" />
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-950/60 text-slate-300">
+            <ChevronDown className="h-3.5 w-3.5" />
           </span>
         </button>
       </div>
 
-      <div className="hidden lg:flex max-w-full items-center gap-1.5 overflow-x-auto rounded-2xl border border-slate-800 bg-[#060d17]/80 p-1.5 shadow-inner [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="hidden lg:flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#060d17]/80 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {options.map(({ id, label: optionLabel, icon: Icon }) => {
           const selected = value === id;
           return (
@@ -62,10 +60,10 @@ export default function AdaptiveSelector({
               type="button"
               onClick={() => choose(id)}
               aria-pressed={selected}
-              className={`flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-left transition-all ${selected ? accentClasses + ' shadow-[0_6px_18px_rgba(6,182,212,.12)]' : 'border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900/80 hover:text-white'}`}
+              className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-left transition-all ${selected ? accentClasses : 'border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900/80 hover:text-white'}`}
             >
-              {Icon && <Icon className={`h-4 w-4 shrink-0 ${selected ? '' : 'text-slate-600'}`} />}
-              <span className="whitespace-nowrap text-xs font-black">{optionLabel}</span>
+              {Icon && <Icon className={`h-3 w-3 shrink-0 ${selected ? '' : 'text-slate-600'}`} />}
+              <span className="whitespace-nowrap text-[10px] font-black">{optionLabel}</span>
             </button>
           );
         })}
@@ -77,19 +75,19 @@ export default function AdaptiveSelector({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="max-h-[82dvh] w-full overflow-hidden rounded-[26px] border border-slate-700 bg-[#09131f] text-white shadow-2xl"
+            className="max-h-[82dvh] w-full overflow-hidden rounded-[22px] border border-slate-700 bg-[#09131f] text-white shadow-2xl"
             onClick={event => event.stopPropagation()}
           >
-            <div className="flex items-center gap-3 border-b border-slate-800 px-4 py-4">
+            <div className="flex items-center gap-3 border-b border-slate-800 px-3 py-3">
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Choose workspace</div>
-                <h2 className="mt-1 truncate text-lg font-black">{label}</h2>
+                <div className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">Choose workspace</div>
+                <h2 className="mt-0.5 truncate text-base font-black">{label}</h2>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-300" aria-label="Close selector">
-                <X className="h-5 w-5" />
+              <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300" aria-label="Close selector">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="grid max-h-[calc(82dvh-76px)] gap-2 overflow-y-auto p-3 sm:grid-cols-2">
+            <div className="grid max-h-[calc(82dvh-64px)] gap-2 overflow-y-auto p-3 sm:grid-cols-2">
               {options.map(item => {
                 const Icon = item.icon;
                 const selected = value === item.id;
@@ -98,16 +96,15 @@ export default function AdaptiveSelector({
                     key={item.id}
                     type="button"
                     onClick={() => choose(item.id)}
-                    className={`flex min-h-16 items-center gap-3 rounded-2xl border p-3 text-left transition ${selected ? accentClasses : 'border-slate-800 bg-[#0d1826] text-slate-200 active:bg-slate-800'}`}
+                    className={`flex min-h-12 items-center gap-2 rounded-xl border p-2.5 text-left transition ${selected ? accentClasses : 'border-slate-800 bg-[#0d1826] text-slate-200 active:bg-slate-800'}`}
                   >
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${selected ? 'bg-white/10' : 'bg-slate-950/70 text-slate-500'}`}>
-                      {Icon ? <Icon className="h-5 w-5" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-white/10' : 'bg-slate-950/70 text-slate-500'}`}>
+                      {Icon ? <Icon className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-black">{item.label}</span>
-                      {item.description && <span className="mt-0.5 block text-[10px] leading-4 text-slate-400">{item.description}</span>}
+                      <span className="block text-xs font-black">{item.label}</span>
                     </span>
-                    {selected && <Check className="h-5 w-5 shrink-0" />}
+                    {selected && <Check className="h-4 w-4 shrink-0" />}
                   </button>
                 );
               })}
