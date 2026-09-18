@@ -63,11 +63,15 @@ function normalizePosition(position) {
     latitude: Number(position.coords.latitude),
     longitude: Number(position.coords.longitude),
     accuracy: Number(position.coords.accuracy),
-    heading: Number.isFinite(Number(position.coords.heading)) ? Number(position.coords.heading) : null,
+    heading: position.coords.heading !== null && position.coords.heading !== undefined && Number.isFinite(Number(position.coords.heading))
+      ? Number(position.coords.heading)
+      : null,
     // Chromium/Windows frequently exposes null speed even while GNSS coordinates
     // are changing. Preserve null here so publishLiveLocation can derive MPH from
     // consecutive accepted fixes instead of incorrectly reporting 0 MPH.
-    speed: Number.isFinite(Number(position.coords.speed)) ? Number(position.coords.speed) * 2.236936 : null,
+    speed: position.coords.speed !== null && position.coords.speed !== undefined && Number.isFinite(Number(position.coords.speed))
+      ? Number(position.coords.speed) * 2.236936
+      : null,
     // Chromium/Windows can return the same sensor timestamp while an officer is
     // stationary even though getCurrentPosition just successfully reconfirmed the
     // device's position. Pathfinder freshness means "last confirmed location",
@@ -119,8 +123,8 @@ export function publishLiveLocation(fix) {
     latitude: Number(fix.latitude),
     longitude: Number(fix.longitude),
     accuracy: Number.isFinite(Number(fix.accuracy)) ? Number(fix.accuracy) : Infinity,
-    heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
-    speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : null,
+    heading: fix.heading !== null && fix.heading !== undefined && Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : null,
+    speed: fix.speed !== null && fix.speed !== undefined && Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : null,
     timestamp: Number(fix.timestamp) || Date.now(),
     sensor_timestamp: Number(fix.sensor_timestamp) || Number(fix.timestamp) || Date.now(),
     source: String(fix.source || 'browser_geolocation'),
