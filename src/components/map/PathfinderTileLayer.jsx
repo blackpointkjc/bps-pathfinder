@@ -6,20 +6,20 @@ const CARTO_RASTER_KEY = 'cb1_2ias_1_14dba310e123052c62d832d9';
 const cartoRasterUrl = path => `https://{s}.basemaps.cartocdn.com/${path}?key=${CARTO_RASTER_KEY}`;
 
 const PROVIDERS = {
+  // Production maps must never use OpenStreetMap's volunteer tile servers
+  // directly. Pathfinder already has a keyed CARTO raster provider; keep that
+  // as the primary street/night source and use Esri only as a resilient fallback.
   street: [
-    { id: 'osm', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors', subdomains: 'abc' },
-    { id: 'carto-voyager', url: cartoRasterUrl('rastertiles/voyager/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
+    { id: 'carto-voyager-keyed', url: cartoRasterUrl('rastertiles/voyager/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
     { id: 'esri-street', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
   ],
   night: [
-    { id: 'carto-dark', url: cartoRasterUrl('dark_all/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
-    { id: 'osm-night', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors', subdomains: 'abc', filter: true },
+    { id: 'carto-dark-keyed', url: cartoRasterUrl('dark_all/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
     { id: 'esri-night', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri', filter: true },
   ],
   satellite: [
     { id: 'esri-imagery', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
-    { id: 'carto-voyager-fallback', url: cartoRasterUrl('rastertiles/voyager/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
-    { id: 'osm-fallback', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors', subdomains: 'abc' },
+    { id: 'carto-voyager-keyed-fallback', url: cartoRasterUrl('rastertiles/voyager/{z}/{x}/{y}{r}.png'), attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd' },
   ],
 };
 
