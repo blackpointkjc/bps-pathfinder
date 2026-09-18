@@ -84,7 +84,7 @@ export default function NavigationCamera({
             easeLinearity: 0.35
         });
 
-    }, [map, isNavigating, currentLocation, heading, speed]);
+    }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
 
     return null;
 }
