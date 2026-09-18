@@ -301,11 +301,20 @@ export default function AdminCenter() {
       sections={MASTER_SECTIONS}
       defaultSection="admin"
       queryParam="admin_center"
-      headerAction={section => section !== 'admin' ? (
-        <button type="button" onClick={() => enterShadow(section)} className="flex h-7 items-center gap-1.5 rounded-md border border-slate-600 bg-slate-900 px-2.5 text-[9px] font-black text-slate-200 transition hover:border-cyan-500 hover:text-cyan-200">
-          <Eye className="h-3 w-3"/>PREVIEW {section.toUpperCase()}
-        </button>
-      ) : null}
+      headerAction={section => (
+        <details className="relative">
+          <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-md border border-cyan-700/70 bg-cyan-950/30 px-2.5 text-[9px] font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-900/40">
+            <Eye className="h-3 w-3"/>PREVIEW AS
+          </summary>
+          <div className="absolute right-0 top-9 z-[2000] w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0b1725] p-1.5 shadow-2xl">
+            {MASTER_SECTIONS.filter(item => item.id !== 'admin').map(item => (
+              <button key={item.id} type="button" onClick={() => enterShadow(item.id)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-black transition hover:bg-cyan-950/60 hover:text-cyan-200 ${section === item.id ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>
+                <item.icon className="h-3.5 w-3.5"/>{item.label}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
     >
       {section => {
         const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
