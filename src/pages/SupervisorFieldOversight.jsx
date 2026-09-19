@@ -67,33 +67,27 @@ export default function SupervisorFieldOversight() {
   const welfareChecks = welfarePayload.welfare_checks || [];
   const supervisorRequests = welfarePayload.supervisor_requests || [];
   const displayByEmail = welfarePayload.display_by_email || {};
-  const liveUnits = useMemo(() => {
-    const signedIn = (locationPayload.users || []).filter(unit => unit.session_active === true && lower(unit.status) !== 'out of service');
-    const openPunchFallbacks = (locationPayload.clocked_in_without_session || []).filter(unit => lower(unit.status) !== 'out of service');
+  const onlineUnits = useMemo(() => {
     const byOfficer = new Map();
-    for (const unit of [...signedIn, ...openPunchFallbacks]) {
+    for (const unit of (locationPayload.users || []).filter(item => item?.session_active === true)) {
       const key = lower(unit?.officer_email || unit?.email || unit?.id);
       if (!key) continue;
-      const current = byOfficer.get(key) || {};
-      byOfficer.set(key, {
-        ...unit,
-        ...current,
-        session_active: true,
-        session_source: current.session_source || unit.session_source || 'open_time_entry',
-        status: current.status || unit.status || 'Out of Service',
-        gps_pending: !validPosition(current) && !validPosition(unit),
-      });
+      const current = byOfficer.get(key);
+      if (!current || new Date(unit?.last_update || unit?.last_updated || 0).getTime() >= new Date(current?.last_update || current?.last_updated || 0).getTime()) {
+        byOfficer.set(key, unit);
+      }
     }
-    return [...byOfficer.values()].filter(unit => lower(unit.status) !== 'out of service');
-  }, [locationPayload.users, locationPayload.clocked_in_without_session]);
+    return [...byOfficer.values()];
+  }, [locationPayload.users]);
+  const liveUnits = useMemo(() => onlineUnits.filter(unit => lower(unit.status) !== 'out of service'), [onlineUnits]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
-  const mappedUnits = useMemo(() => liveUnits.filter(unit => unit?.show_on_map !== false && hasUsablePosition(unit)), [liveUnits]);
+  const mappedUnits = useMemo(() => onlineUnits.filter(unit => unit?.show_on_map !== false && hasUsablePosition(unit)), [onlineUnits]);
   const attention = useMemo(() => board.filter(row => row.overdue), [board]);
   const attentionCount = attention.length + supervisorRequests.length + welfareChecks.filter(check => lower(check.status) === 'pending').length;
   const pendingWelfare = useMemo(() => welfareChecks.filter(check => lower(check.status) === 'pending'), [welfareChecks]);
   const pendingAck = useMemo(() => board.filter(row => lower(row.assignment_status) === 'pending'), [board]);
-  const missingGps = useMemo(() => liveUnits.filter(row => !hasUsablePosition(row)), [liveUnits]);
+  const missingGps = useMemo(() => onlineUnits.filter(row => !hasUsablePosition(row)), [onlineUnits]);
   const uniqueOfficers = useMemo(() => new Set(board.map(row => row.unit_id)).size, [board]);
 
   useEffect(() => {
@@ -180,13 +174,13 @@ export default function SupervisorFieldOversight() {
 
     <main className="mx-auto max-w-[1700px] space-y-5 p-4 md:p-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Metric icon={Users} label="Signed-In Units" value={liveUnits.length}/><Metric icon={MapPin} label="Units on Map" value={mappedUnits.length}/><Metric icon={Clock3} label="Active Calls" value={activeCalls.length}/><Metric icon={Users} label="Officers Assigned" value={uniqueOfficers}/><Metric icon={AlertTriangle} label="Needs Attention" value={attentionCount} tone={attentionCount?'red':''}/><Metric icon={Signal} label="GPS Missing" value={missingGps.length} tone={missingGps.length?'amber':''}/>
+        <Metric icon={Users} label="Signed-In Units" value={onlineUnits.length}/><Metric icon={MapPin} label="Units on Map" value={mappedUnits.length}/><Metric icon={Clock3} label="Active Calls" value={activeCalls.length}/><Metric icon={Users} label="Officers Assigned" value={uniqueOfficers}/><Metric icon={AlertTriangle} label="Needs Attention" value={attentionCount} tone={attentionCount?'red':''}/><Metric icon={Signal} label="GPS Missing" value={missingGps.length} tone={missingGps.length?'amber':''}/>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.65fr_.9fr]">
         <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="flex items-center justify-between border-b border-slate-700 px-4 py-3"><div><h2 className="font-black">Live Operational Map</h2><p className="text-xs text-slate-500">Live, low-accuracy and last-known officer positions from the same CAD location feed</p></div><div className="flex gap-3 text-[10px] font-bold"><span className="text-cyan-300">● OFFICER</span><span className="text-red-300">● ACTIVE CALL</span></div></div><div className="h-[480px] min-h-[360px] w-full"><MapContainer center={[37.5407,-77.4360]} zoom={11} className="h-full w-full" zoomControl><PathfinderTileLayer theme={mapTheme}/><ActiveCallMarkers calls={activeCalls} onCallClick={openCad}/><OtherUnitsLayer units={mappedUnits} currentUserId={null}/></MapContainer></div></div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Unit Status</h2><p className="text-xs text-slate-500">Current signed-in officers</p></div><div className="max-h-[480px] divide-y divide-slate-800 overflow-y-auto">{liveUnits.length===0?<div className="p-8 text-center text-sm text-slate-500">No signed-in units.</div>:liveUnits.map(unit=><div key={unit.id || unit.officer_email} className="p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-bold">{unit.unit_number?`Unit ${unit.unit_number} · `:''}{officerLabel(unit)}</div><div className="mt-1 text-xs text-slate-400">{effectiveLocationLabel(unit)}</div></div><Badge variant="outline" className="border-slate-600 text-slate-200">{String(unit.status||'Signed In').toUpperCase()}</Badge></div><div className="mt-2 flex flex-wrap gap-2 text-[10px]"><span className={hasUsablePosition(unit)?'text-emerald-300':'text-amber-300'}>{hasUsablePosition(unit)?`GPS ${gpsAge(effectiveGpsTimestamp(unit))}`:'GPS unavailable'}</span>{unit.current_call_info&&<span className="text-cyan-300">{unit.current_call_info}</span>}</div></div>)}</div></div>
+        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]"><div className="border-b border-slate-700 px-4 py-3"><h2 className="font-black">Unit Status</h2><p className="text-xs text-slate-500">Dispatch-ready signed-in officers; signed-in OOS units remain visible on the map</p></div><div className="max-h-[480px] divide-y divide-slate-800 overflow-y-auto">{liveUnits.length===0?<div className="p-8 text-center text-sm text-slate-500">No signed-in units.</div>:liveUnits.map(unit=><div key={unit.id || unit.officer_email} className="p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-bold">{unit.unit_number?`Unit ${unit.unit_number} · `:''}{officerLabel(unit)}</div><div className="mt-1 text-xs text-slate-400">{effectiveLocationLabel(unit)}</div></div><Badge variant="outline" className="border-slate-600 text-slate-200">{String(unit.status||'Signed In').toUpperCase()}</Badge></div><div className="mt-2 flex flex-wrap gap-2 text-[10px]"><span className={hasUsablePosition(unit)?'text-emerald-300':'text-amber-300'}>{hasUsablePosition(unit)?`GPS ${gpsAge(effectiveGpsTimestamp(unit))}`:'GPS unavailable'}</span>{unit.current_call_info&&<span className="text-cyan-300">{unit.current_call_info}</span>}</div></div>)}</div></div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
