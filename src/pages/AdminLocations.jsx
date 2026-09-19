@@ -493,8 +493,9 @@ export default function AdminLocations({ embedded = false }) {
       geofence_polygon: sharedBoundary,
       property_monitoring_polygon: sharedBoundary,
       property_monitoring_boundary_type: sharedBoundary.length >= 3 ? 'polygon' : 'circle',
-      latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-      longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+      address: formData.is_special_event && !String(formData.address || '').trim() ? 'Special Event / Variable Location' : String(formData.address || '').trim(),
+      latitude: formData.latitude !== null && formData.latitude !== '' ? parseFloat(formData.latitude) : null,
+      longitude: formData.longitude !== null && formData.longitude !== '' ? parseFloat(formData.longitude) : null,
       assigned_client_email: formData.assigned_client_email === "" ? "" : formData.assigned_client_email,
       assigned_supervisors: Array.isArray(formData.assigned_supervisors) ? formData.assigned_supervisors : [],
       property_monitoring_radius_meters: Number(formData.property_monitoring_radius_meters || formData.geofence_radius_meters || 500),
@@ -864,6 +865,9 @@ export default function AdminLocations({ embedded = false }) {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="">Select division...</option>
+                  {formData.division && !divisions.some(d => !d.is_subdivision && d.division_name === formData.division) && (
+                    <option value={formData.division}>{formData.division} (current)</option>
+                  )}
                   {divisions.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
                     <option key={div.id} value={div.division_name}>{div.division_name}</option>
                   ))}
@@ -885,6 +889,9 @@ export default function AdminLocations({ embedded = false }) {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="">None</option>
+                  {formData.subdivision && !divisions.some(d => d.is_subdivision && d.parent_division === formData.division && (d.subdivision || d.division_name) === formData.subdivision) && (
+                    <option value={formData.subdivision}>{formData.subdivision} (current)</option>
+                  )}
                   {divisions
                     .filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false)
                     .map((div) => (
