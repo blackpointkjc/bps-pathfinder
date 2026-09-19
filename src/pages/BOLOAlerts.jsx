@@ -88,7 +88,7 @@ export default function BOLOAlerts() {
         const payload = response?.data || response || {};
         if (payload.error) throw new Error(payload.error);
         data = Array.isArray(payload.rows) ? payload.rows : [];
-      } catch (serviceError) {
+      } catch {
         data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 100), 10000, 'BOLO direct fallback');
       }
       if (Array.isArray(data) && data.length) saveBoloCache(data);
