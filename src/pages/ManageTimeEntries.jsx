@@ -386,7 +386,7 @@ export default function ManageTimeEntries() {
   }
 
   const groupedEntries = groupByOfficer(timeEntries);
-  const activeOfficers = allUsers.filter(isInternalMember);
+  const activeOfficers = allUsers.filter(isOperationalOfficer).sort((a, b) => String(a.last_name || a.full_name || a.email).localeCompare(String(b.last_name || b.full_name || b.email)));
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
