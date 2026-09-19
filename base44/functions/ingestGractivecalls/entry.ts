@@ -848,7 +848,8 @@ Deno.serve(async (req) => {
           ...(manuallyCleared ? { time_cleared: existing.time_cleared || existing.manual_dismissed_at || new Date().toISOString() } : {}),
         };
         if (changed(existing, incomingWithCad)) {
-          const updatedRecord = await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          const updatedRecord = { ...existing, ...incomingWithCad, id: existing.id };
           updated += 1;
           immediatePropertyAlertsCreated += await createImmediatePropertyAlerts(
             base44,
