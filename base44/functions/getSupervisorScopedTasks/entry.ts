@@ -1,6 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalized = (value:any) => String(value || '').trim().toLowerCase();
+const delay = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+async function readRowsWithRetry(label:string, loader:()=>Promise<any[]>, optional=false) {
+  let lastError:any = null;
+  for (let attempt=0; attempt<3; attempt+=1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`getSupervisorScopedTasks could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
 const OPERATIONAL_RANKS = new Set(RANK_ORDER);
 const normalizeRank = (value:any) => {
@@ -64,9 +80,11 @@ Deno.serve(async (req) => {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
-    const supervisorStates = await base44.asServiceRole.entities.WorkQueueState
-      .filter({ queue_role:'supervisor' }, '-completed_at', 2000)
-      .catch(() => []);
+    const supervisorStates = await readRowsWithRetry(
+      'supervisor work queue state',
+      () => base44.asServiceRole.entities.WorkQueueState.filter({ queue_role:'supervisor' }, '-completed_at', 2000),
+      true,
+    );
     const completedSupervisorKeys = new Set(
       (supervisorStates || [])
         .filter((state:any) => ['completed','auto_completed'].includes(normalized(state.status)))
@@ -143,11 +161,23 @@ Deno.serve(async (req) => {
       return Response.json({ success:true, task_key:taskKey, status:'completed', wording:'Supervisor contacted officer' });
     }
 
-    const [allUsers, teamsLinks, outlookLinks] = await Promise.all([
-      base44.asServiceRole.entities.User.list(undefined, 1000),
-      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000).catch(() => []),
-      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000).catch(() => []),
-    ]);
+    // User identity is required for every supervisor join. Load it first and
+    // retry it independently; optional Microsoft/Outlook aliases must never make
+    // the whole work queue disappear.
+    const allUsers = await readRowsWithRetry(
+      'users',
+      () => base44.asServiceRole.entities.User.list(undefined, 1000),
+    );
+    const teamsLinks = await readRowsWithRetry(
+      'Teams identities',
+      () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000),
+      true,
+    );
+    const outlookLinks = await readRowsWithRetry(
+      'Outlook identities',
+      () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000),
+      true,
+    );
     const users = (allUsers || []).filter(operational);
     let assigned:any[] = [];
     if (me.role === 'admin' || roles.has('full_access')) {
@@ -212,15 +242,44 @@ Deno.serve(async (req) => {
     }));
     if (request?.peopleOnly) return Response.json({ assignedPeople });
 
-    const [complaints, writeups, reviews, inspections, schedules, timeEntries, dailyReports] = await Promise.all([
-      base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000),
-      base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000),
-      base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000),
-      base44.asServiceRole.entities.InspectionReport.list('-inspection_date', 1000),
-      base44.asServiceRole.entities.Schedule.list('-shift_date', 2500),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 2500),
-      base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 2500),
-    ]);
+    // These datasets used to fire as a seven-read burst. Read them in a
+    // controlled sequence with independent retries so one throttled table cannot
+    // blank every supervisor panel at once.
+    const complaints = await readRowsWithRetry(
+      'complaints',
+      () => base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000),
+      true,
+    );
+    const writeups = await readRowsWithRetry(
+      'write-ups',
+      () => base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000),
+      true,
+    );
+    const reviews = await readRowsWithRetry(
+      'performance reviews',
+      () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000),
+      true,
+    );
+    const inspections = await readRowsWithRetry(
+      'inspections',
+      () => base44.asServiceRole.entities.InspectionReport.list('-inspection_date', 1000),
+      true,
+    );
+    const schedules = await readRowsWithRetry(
+      'schedules',
+      () => base44.asServiceRole.entities.Schedule.list('-shift_date', 2500),
+      true,
+    );
+    const timeEntries = await readRowsWithRetry(
+      'time entries',
+      () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 2500),
+      true,
+    );
+    const dailyReports = await readRowsWithRetry(
+      'daily activity reports',
+      () => base44.asServiceRole.entities.DailyActivityReport.list('-report_date', 2500),
+      true,
+    );
 
     const officerForReview = (review:any) => (allUsers || []).find((person:any) =>
       (review.officer_id && String(person.id || '') === String(review.officer_id)) ||
