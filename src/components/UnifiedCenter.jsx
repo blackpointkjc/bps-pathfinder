@@ -44,7 +44,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   const actionNode = typeof headerAction === 'function' ? headerAction(section) : headerAction;
 
   return (
-    <div className="bps-command-theme min-h-full w-full min-w-0 overflow-x-clip bg-[#080d16] text-slate-100">
+    <div className="bps-command-theme min-h-full w-full min-w-0 overflow-visible bg-[#080d16] text-slate-100">
       <header className="shrink-0 border-b border-slate-800/80 bg-[#09121f] px-2 py-1.5 md:px-3">
         <div className="flex min-w-0 items-center gap-2">
           {!embedded && (
@@ -72,7 +72,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           </div>
         </div>
       </header>
-      <div className={`min-h-0 w-full min-w-0 overflow-x-clip ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-x-clip">{typeof children === 'function' ? children(section) : children}</div></div>
+      <div className={`min-h-0 w-full min-w-0 overflow-visible ${contentClassName}`}><div className="bps-command-content w-full min-w-0 max-w-full overflow-visible">{typeof children === 'function' ? children(section) : children}</div></div>
     </div>
   );
 }
