@@ -316,6 +316,15 @@ export default function TimeClock() {
       queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
       queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       base44.functions.invoke('enforceOfficerDutyStatus', { action: 'clock_out' }).catch(err => console.warn('Unable to retire live officer marker after clock-out:', err?.message));
+      // Recalculate PTO once after the completed shift is committed, but keep it
+      // out of the immediate clock-out burst so status/location/report writes get
+      // the request allowance first.
+      window.setTimeout(() => {
+        if (!user?.email) return;
+        base44.functions.invoke('calculatePTOForOfficer', { officer_email: user.email })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['currentUser'] }))
+          .catch(err => console.warn('[PTO] deferred accrual refresh failed:', err?.message));
+      }, 20000);
       setNotes("");
       setSelectedLocation("");
       setVerifyingLocation(false);
