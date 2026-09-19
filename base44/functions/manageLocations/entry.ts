@@ -116,14 +116,21 @@ Deno.serve(async (req) => {
       if (!body.data?.site_name) {
         return Response.json({ error: 'Site name is required' }, { status: 400 });
       }
-      const location = await base44.asServiceRole.entities.Location.create(body.data);
+      const createData = { ...body.data };
+      if (!String(createData.address || '').trim() && createData.is_special_event === true) {
+        createData.address = 'Special Event / Variable Location';
+      }
+      if (!String(createData.address || '').trim()) {
+        return Response.json({ error: 'Address is required for a fixed location' }, { status: 400 });
+      }
+      const location = await base44.asServiceRole.entities.Location.create(createData);
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'Location',
         entity_id: location.id,
         action: 'create',
         actor_id: user.id,
         actor_name: user.full_name || user.email || 'Administrator',
-        after_value: JSON.stringify(body.data),
+        after_value: JSON.stringify(createData),
         field_changed: 'location_and_auto_dispatch_configuration',
         timestamp: new Date().toISOString(),
         description: 'Location created. Property monitoring and automatic-dispatch settings were recorded with the original configuration.',
