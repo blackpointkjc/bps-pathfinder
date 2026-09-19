@@ -290,11 +290,13 @@ function speakQueued(clean, options = {}, resolve = null) {
   const item = { clean, options, priority, sequence: ++speechSequence, resolve };
   speechQueue.push(item);
 
-  // Emergency traffic may preempt lower-priority speech. Routine/high traffic
-  // never interrupts an emergency; it waits in the shared queue.
-  if (priority >= PRIORITY.emergency && activeSpeech && activeSpeech.priority < PRIORITY.emergency) {
+  // Critical operational traffic (including a newly detected monitored-property
+  // call) may preempt routine/high chatter so it is heard as soon as Pathfinder
+  // detects it. Officer-distress emergency traffic remains the highest level and
+  // can never be interrupted by a critical property call.
+  if (priority >= PRIORITY.critical && activeSpeech && activeSpeech.priority < priority) {
     // Cancel the lower-priority utterance without allowing its onerror callback
-    // to place it into the automatic retry loop ahead of emergency traffic.
+    // to place it into the automatic retry loop ahead of urgent traffic.
     speechCancelGeneration += 1;
     pendingSpeech = null;
     lastBlockedSpeech = null;
