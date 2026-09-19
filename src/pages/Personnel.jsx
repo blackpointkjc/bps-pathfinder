@@ -92,7 +92,7 @@ export default function Personnel({ embedded = false }) {
 
     const loadPersonnel = async () => {
         try {
-            const response = await listDirectoryUsers();
+            const response = await listDirectoryUsers(undefined, 1000, true);
             setPersonnel((response || []).filter(isOperationalOfficer));
             setLastRefresh(new Date());
         } catch (error) { console.error(error); }
