@@ -153,13 +153,26 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const segment = lower(body.segment || 'core');
     const errors:Record<string,string> = {};
+    let activeReads = 0;
+    const waiters:Array<() => void> = [];
+    const acquire = async () => {
+      if (activeReads >= 2) await new Promise<void>(resolve => waiters.push(resolve));
+      activeReads += 1;
+    };
+    const release = () => {
+      activeReads = Math.max(0, activeReads - 1);
+      waiters.shift()?.();
+    };
     const safe = async (entityName:string, loader:() => Promise<any[]>) => {
+      await acquire();
       try {
         const rows = await loader();
         return Array.isArray(rows) ? rows : [];
       } catch (error) {
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
+      } finally {
+        release();
       }
     };
     const entity = (name:string) => (base44.asServiceRole.entities as any)[name];
