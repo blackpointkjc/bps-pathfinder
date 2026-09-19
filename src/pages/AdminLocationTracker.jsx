@@ -191,13 +191,13 @@ export default function AdminLocationTracker({ embedded = false }) {
   const { data: activeOfficerPayload = {}, error: activeOfficerError, isLoading: activeOfficerLoading, refetch: refetchActiveOfficerLocations } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
-      return getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true, force: true });
+      return getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true });
     },
     // Realtime events are primary. This low-frequency poll is only a recovery path
     // for browsers that temporarily lose their subscription connection.
-    refetchInterval: 20000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
     enabled: hasAccess && !!allUsers,
   });
 
