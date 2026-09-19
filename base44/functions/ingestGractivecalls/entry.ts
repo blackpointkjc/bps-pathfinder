@@ -277,6 +277,98 @@ function propertyMatch(call: any, location: any) {
     : null;
 }
 
+function propertyAlertFingerprint(call: any, propertyId: any) {
+  return [
+    String(propertyId || ''),
+    String(call?.external_call_id || call?.agency_cad_number || call?.bps_reference || call?.call_id || call?.id || ''),
+    String(call?.incident || '').trim().toUpperCase(),
+    String(call?.location || '').trim().toUpperCase(),
+  ].join('|');
+}
+
+async function createImmediatePropertyAlerts(
+  base44: any,
+  call: any,
+  monitored: any[],
+  existingCallPropertyKeys: Set<string>,
+  existingKeys: Set<string>,
+  sideEffects: Promise<any>[],
+) {
+  if (!call?.id || ['Cleared', 'Cancelled'].includes(String(call.status || ''))) return 0;
+  let created = 0;
+  for (const location of monitored || []) {
+    const match = propertyMatch(call, location);
+    if (!match) continue;
+    const key = propertyAlertFingerprint(call, location.id);
+    const callPropertyKey = `${String(location.id || '')}|${String(call.id || '')}`;
+    if (existingCallPropertyKeys.has(callPropertyKey) || existingKeys.has(key)) continue;
+
+    const propertyAlert = await base44.asServiceRole.entities.PropertyAlert.create({
+      callId: call.id,
+      propertyId: location.id,
+      propertyName: location.site_name || 'Monitored Property',
+      callIncident: call.incident || 'Unknown incident',
+      callLocation: call.location || '',
+      callPriority: call.priority || 'medium',
+      callStatus: call.status || 'New',
+      cadNumber: String(call.agency_cad_number || call.bps_reference || call.call_id || call.id || ''),
+      callTime: call.time_received || call.created_date || new Date().toISOString(),
+      time_received: call.time_received || call.created_date || new Date().toISOString(),
+      source_key: key,
+      distanceMeters: Number(match.distanceMeters || 0),
+      acknowledged: false,
+      description: match.relation === 'inside'
+        ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
+        : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
+    });
+
+    // The PropertyAlert create above is the realtime audio trigger. Everything
+    // below starts immediately but is deliberately kept off the critical path so
+    // SMS/provider latency and assignment evaluation can never delay speech.
+    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+    const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
+    sideEffects.push(
+      base44.asServiceRole.entities.CallStatusLog.create({
+        call_id: String(call.id),
+        incident_type: call.incident || 'Call for service',
+        location: call.location || location.address || '',
+        old_status: '',
+        new_status: call.status || 'New',
+        notes: `Monitored-property active call detected for ${location.site_name || location.address || 'property'}.`,
+        latitude: call.latitude,
+        longitude: call.longitude,
+        event_key: propertyEventKey,
+        event_type: 'property_alert',
+        announcement_text: `Active call for service at ${location.site_name || location.address || 'monitored property'}. ${call.incident || 'Call for service'} at ${call.location || location.address || 'address unavailable'}. CAD number ${cadNumber}.`,
+        announcement_priority: ['critical', 'high'].includes(String(call.priority || '').toLowerCase()) ? String(call.priority).toLowerCase() : 'high',
+        cad_number: String(cadNumber),
+        triggering_action: 'ingestGractivecalls.property_alert_created',
+        audio_enabled: true,
+        sensitive: false,
+      }).catch((error: any) => console.error('Unable to publish property alert announcement event', error?.message || error)),
+      base44.asServiceRole.functions.invoke('notifyPropertyAlertSms', {
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => console.error('Property-call SMS notification failed', {
+        property_alert_id: propertyAlert.id,
+        error: error?.message || String(error),
+      })),
+      base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+        call_id: call.id,
+        property_alert_id: propertyAlert.id,
+      }).catch((error: any) => console.error('Automatic property-dispatch evaluation failed', {
+        call_id: call.id,
+        property_alert_id: propertyAlert.id,
+        error: error?.message || String(error),
+      })),
+    );
+
+    existingKeys.add(key);
+    existingCallPropertyKeys.add(callPropertyKey);
+    created += 1;
+  }
+  return created;
+}
+
 async function reconcilePropertyAlerts(base44: any) {
   const [calls, locations, existingAlerts, existingEvaluations] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list('-created_date', 300),
