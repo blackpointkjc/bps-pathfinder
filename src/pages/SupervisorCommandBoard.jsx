@@ -26,11 +26,20 @@ export default function SupervisorCommandBoard() {
       return data;
     },
     refetchInterval:60000,
-    refetchOnWindowFocus:true,
-    staleTime:0,
+    refetchOnWindowFocus:false,
+    staleTime:30000,
+  });
+  const { data: workforce = { signed_in_units: [], counts: {} }, refetch: refetchWorkforce } = useQuery({
+    queryKey:['workforceSnapshot'],
+    queryFn:async()=>{ const response=await base44.functions.invoke('getWorkforceSnapshot',{}); const data=response?.data||response||{}; if(data.error) throw new Error(data.error); return data; },
+    placeholderData:{ signed_in_units:[], counts:{} },
+    staleTime:60000,
+    refetchOnWindowFocus:false,
   });
   const board = payload.board || [];
+  const activeCalls = payload.active_calls || [];
   const overdue = useMemo(()=>board.filter(row=>row.overdue),[board]);
+  const refreshBoard = () => { refetch(); refetchWorkforce(); };
 
   const escalate = async row => {
     if (workingId) return;
@@ -66,10 +75,12 @@ export default function SupervisorCommandBoard() {
   return <div className="min-h-full bg-[#07111d] p-4 text-slate-100 md:p-6">
     <div className="mx-auto max-w-7xl space-y-5">
       <header className="rounded-2xl border border-cyan-900/70 bg-[#0b1725] p-5 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><ShieldAlert className="h-6 w-6 text-cyan-300"/><h1 className="text-2xl font-black">Supervisor CAD Command</h1></div><p className="mt-1 text-sm text-slate-400">Live officer welfare timers, acknowledgement oversight, emergency escalation, and closest-supervisor response.</p></div><Button variant="outline" onClick={()=>refetch()}><RefreshCw className="mr-2 h-4 w-4"/>Refresh</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><ShieldAlert className="h-6 w-6 text-cyan-300"/><h1 className="text-2xl font-black">Supervisor CAD Command</h1></div><p className="mt-1 text-sm text-slate-400">Live officer welfare timers, acknowledgement oversight, emergency escalation, and closest-supervisor response.</p></div><Button variant="outline" onClick={refreshBoard}><RefreshCw className="mr-2 h-4 w-4"/>Refresh</Button></div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Active Calls</div><div className="mt-1 text-3xl font-black text-cyan-300">{activeCalls.length}</div></div>
+        <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Signed-In Units</div><div className="mt-1 text-3xl font-black">{workforce.counts?.signed_in ?? workforce.signed_in_units?.length ?? 0}</div></div>
         <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Active Assignments</div><div className="mt-1 text-3xl font-black">{board.length}</div></div>
         <div className={`rounded-xl border p-4 ${overdue.length?'border-red-600 bg-red-950/30':'border-slate-700 bg-[#0b1725]'}`}><div className="text-xs font-bold uppercase text-slate-500">Welfare Overdue</div><div className={overdue.length?'mt-1 text-3xl font-black text-red-300':'mt-1 text-3xl font-black'}>{overdue.length}</div></div>
         <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Pending Acknowledgement</div><div className="mt-1 text-3xl font-black text-amber-300">{board.filter(row=>row.assignment_status==='pending').length}</div></div>
