@@ -44,38 +44,31 @@ export default function AdminPTOLossReport() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['officerDirectory', 'ptoLoss'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listOfficerDirectory('last_name', 1000),
     enabled: hasHRAccess,
     initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
 
-  const { data: timeEntries = [] } = useQuery({
-    queryKey: ['allTimeEntries', selectedYear],
+  const { data: hrTimeSnapshot = { entries: [], call_outs: [] } } = useQuery({
+    queryKey: ['hrTimeEntriesSnapshot'],
     queryFn: async () => {
       const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      return payload.entries || [];
+      return { entries: payload.entries || [], call_outs: payload.call_outs || [] };
     },
     enabled: hasHRAccess,
-    initialData: [],
+    initialData: { entries: [], call_outs: [] },
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
-
-  const { data: callOuts = [] } = useQuery({
-    queryKey: ['allCallOuts', selectedYear],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.call_outs || [];
-    },
-    enabled: hasHRAccess,
-    initialData: [],
-  });
+  const timeEntries = hrTimeSnapshot.entries || [];
+  const callOuts = hrTimeSnapshot.call_outs || [];
 
   // Calculate PTO based on actual time entries for the selected date range
   const calculatePTOFromTimeEntries = (officer, startDateStr, endDateStr) => {
