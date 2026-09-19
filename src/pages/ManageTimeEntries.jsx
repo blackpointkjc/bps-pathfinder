@@ -90,11 +90,11 @@ export default function ManageTimeEntries() {
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
-    queryFn: () => listDirectoryUsers('last_name', 1000, true),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: isAdmin || isHR,
     initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
@@ -107,20 +107,23 @@ export default function ManageTimeEntries() {
     enabled: isAdmin || isHR,
   });
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ['allTimeEntries', selectedOfficer],
+  const { data: hrTimeSnapshot = { entries: [], call_outs: [] } } = useQuery({
+    queryKey: ['hrTimeEntriesSnapshot'],
     queryFn: async () => {
       const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      const entries = payload.entries || [];
-      if (selectedOfficer === 'all') return entries;
-      return entries.filter(e => e.officer_email === selectedOfficer);
+      return { entries: payload.entries || [], call_outs: payload.call_outs || [] };
     },
     enabled: isAdmin || isHR,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+  const allTimeEntries = hrTimeSnapshot.entries || [];
+  const timeEntries = selectedOfficer === 'all'
+    ? allTimeEntries
+    : allTimeEntries.filter(entry => entry.officer_email === selectedOfficer);
 
   useEffect(() => {
     if (!isAdmin && !isHR) return undefined;
@@ -129,7 +132,7 @@ export default function ManageTimeEntries() {
     const scheduleRefresh = () => {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+        queryClient.invalidateQueries({ queryKey: ['hrTimeEntriesSnapshot'] });
       }, 500);
     };
     try { unsubscribe = base44.entities.TimeEntry.subscribe(scheduleRefresh); } catch {}
