@@ -11,7 +11,7 @@ const tools = [
 ];
 
 export default function AdminQRCenter({ embedded = false }) {
-  const [tool, setTool] = useState('checkpoints');
+  const [tool, setTool] = useState('duty');
   const Active = tool === 'print' ? AdminQRPrintManager : tool === 'duty' ? AdminPropertyDutyRules : AdminQRCheckpoints;
   return (
     <div className={embedded ? "bps-command-page min-h-0 bg-[#07111d] p-2 text-white" : "bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5"}>
