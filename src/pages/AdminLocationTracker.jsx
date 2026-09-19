@@ -819,7 +819,15 @@ export default function AdminLocationTracker({ embedded = false }) {
                                 Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
                               <p className={`mt-3 text-xs font-black ${officer.gps_stale || officer.gps_low_accuracy ? 'text-amber-300' : 'text-emerald-300'}`}>
-                                {officer.gps_stale ? 'LAST KNOWN GPS' : officer.gps_low_accuracy ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}` : 'LIVE GPS'}: {officer.gps_timestamp
+                                {officer.gps_display_source === 'site_fallback'
+                                  ? 'CONFIGURED SITE POSITION'
+                                  : officer.gps_display_source === 'shift_clock_in'
+                                    ? 'SHIFT CLOCK-IN POSITION'
+                                    : officer.gps_stale
+                                      ? 'LAST KNOWN GPS'
+                                      : officer.gps_low_accuracy
+                                        ? `LOW ACCURACY GPS${officer.accuracy ? ` ±${Math.round(Number(officer.accuracy))}m` : ''}`
+                                        : 'LIVE GPS'}: {officer.gps_timestamp
                                   ? format(new Date(officer.gps_timestamp), 'h:mm:ss a')
                                   : 'No GPS data'}
                               </p>
