@@ -102,12 +102,21 @@ export async function getAppDirectory(force = false) {
       payload = payload.data;
     }
     if (payload.error) throw new Error(payload.error);
-    cache = {
+    const degraded = new Set(payload?.meta?.degraded_sources || []);
+    const next = {
       users: Array.isArray(payload.users) ? payload.users : [],
       locations: Array.isArray(payload.locations) ? payload.locations : [],
       divisions: Array.isArray(payload.divisions) ? payload.divisions : [],
       meta: payload.meta || {},
     };
+    // A partial directory refresh must never erase previously verified roster/site
+    // data. Keep the last good bucket only for the source that failed.
+    if (cache) {
+      if (degraded.has('company employees') && Array.isArray(cache.users) && cache.users.length) next.users = cache.users;
+      if (degraded.has('locations') && Array.isArray(cache.locations) && cache.locations.length) next.locations = cache.locations;
+      if (degraded.has('divisions') && Array.isArray(cache.divisions) && cache.divisions.length) next.divisions = cache.divisions;
+    }
+    cache = next;
     cacheAt = Date.now();
     persistDirectory(cache);
     return cache;
@@ -294,6 +303,17 @@ function matchesQuery(row, query = {}) {
 async function listBucket(bucket, sort, limit) {
   const directory = await getAppDirectory();
   let rows = sortRows(directory[bucket] || [], sort);
+  const degraded = new Set(directory?.meta?.degraded_sources || []);
+  const sourceByBucket = { users: 'company employees', locations: 'locations', divisions: 'divisions' };
+  const entityByBucket = { users: 'User', locations: 'Location', divisions: 'Division' };
+  if (!rows.length && degraded.has(sourceByBucket[bucket]) && entityByBucket[bucket]) {
+    try {
+      rows = await base44.entities[entityByBucket[bucket]].list(sort, Number(limit) || 1000);
+    } catch (error) {
+      console.warn(`[Directory] Direct ${bucket} fallback unavailable:`, error?.message || error);
+    }
+  }
+  rows = sortRows(rows || [], sort);
   if (Number(limit) > 0) rows = rows.slice(0, Number(limit));
   return rows;
 }
