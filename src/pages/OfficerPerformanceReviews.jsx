@@ -206,7 +206,7 @@ export default function OfficerPerformanceReviews() {
       })}
     </div>
 
-    {signing && <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-4">
+    {signing && <div className="fixed inset-0 z-[100020] overflow-y-auto bg-black/80 p-4">
       <div className="mx-auto my-8 max-w-2xl rounded-xl border border-slate-700 bg-slate-900 p-5">
         <h2 className="text-xl font-bold">Officer Self-Rating & Signature</h2>
         <p className="mb-4 mt-1 text-sm text-slate-400">Complete every self-rating. Your electronic signature sends the review to HR for final approval.</p>
