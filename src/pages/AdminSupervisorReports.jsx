@@ -5,9 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, Users, Printer, BarChart3, ShieldCheck } from "lucide-react";
+import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, ShieldCheck } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { getRankLastNameByEmail } from "@/utils/officerDisplay";
@@ -20,13 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+
 
 export default function AdminSupervisorReports() {
   const [selectedInspection, setSelectedInspection] = useState(null);
