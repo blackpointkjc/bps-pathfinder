@@ -63,6 +63,16 @@ const wallMinutes = (value:any) => {
   return hour * 60 + Number(match[2]);
 };
 const dayKey = (value:any) => eastern(value).date;
+const wallStamp = (dateKey:string, minutes:number) => {
+  if (!dateKey || !Number.isFinite(minutes) || minutes < 0) return null;
+  const [year,month,day] = dateKey.split('-').map(Number);
+  if (![year,month,day].every(Number.isFinite)) return null;
+  return Math.floor(Date.UTC(year, month - 1, day) / 60000) + minutes;
+};
+const easternStamp = (value:any) => {
+  const parts = eastern(value);
+  return wallStamp(parts.date, parts.minutes);
+};
 const siteNameFrom = (value:any) => clean(value).split(':')[0].split(' - ')[0].trim();
 
 Deno.serve(async (req) => {
@@ -133,7 +143,7 @@ Deno.serve(async (req) => {
       return null;
     };
 
-    const todaysEntries = (timeEntries || []).filter((entry:any) => entry.archived !== true && dayKey(entry.clock_in) === current.date);
+    const attendanceEntries = (timeEntries || []).filter((entry:any) => entry.archived !== true && entry.clock_in);
     const reportShiftIds = new Set((dailyReports || []).map((report:any)=>String(report.shift_id || '')).filter(Boolean));
     const reportLegacyKeys = new Set((dailyReports || []).map((report:any)=>`${lower(report.officer_email || report.created_by)}|${clean(report.report_date)}|${lower(siteNameFrom(report.location))}`));
     const tasks:any[] = [];
@@ -142,10 +152,17 @@ Deno.serve(async (req) => {
       if (shift.archived === true || shift.is_open === true || lower(shift.officer_email) === 'open') continue;
       const start = wallMinutes(shift.start_time);
       if (start < 0 || start > current.minutes - 5) continue;
-      const hasPunch = todaysEntries.some((entry:any) =>
-        lower(entry.officer_email) === lower(shift.officer_email)
-        && (lower(siteNameFrom(entry.location)) === lower(siteNameFrom(shift.location)) || Math.abs(eastern(entry.clock_in).minutes - start) <= 240)
-      );
+      const scheduledStamp = wallStamp(current.date, start);
+      const hasPunch = attendanceEntries.some((entry:any) => {
+        if (lower(entry.officer_email) !== lower(shift.officer_email)) return false;
+        const inStamp = easternStamp(entry.clock_in);
+        const outStamp = entry.clock_out ? easternStamp(entry.clock_out) : wallStamp(current.date, current.minutes);
+        if (inStamp == null || scheduledStamp == null) return false;
+        const alreadyOnDuty = outStamp != null && inStamp <= scheduledStamp + 5 && outStamp >= scheduledStamp - 5;
+        const nearStart = Math.abs(inStamp - scheduledStamp) <= 240;
+        const sameSite = lower(siteNameFrom(entry.location)) === lower(siteNameFrom(shift.location));
+        return alreadyOnDuty || nearStart || (sameSite && Math.abs(inStamp - scheduledStamp) <= 360);
+      });
       if (hasPunch) continue;
       const officer = userByEmail.get(lower(shift.officer_email));
       tasks.push({
