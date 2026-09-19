@@ -201,7 +201,7 @@ export default function AdminLocations({ embedded = false }) {
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'adminLocations'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: hasAccess,
     staleTime: 0,
     refetchOnMount: 'always',
