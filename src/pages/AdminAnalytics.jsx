@@ -148,8 +148,7 @@ export default function AdminAnalytics() {
       'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
       'CallOut', 'QRScanEvent', 'TrainingCompletion', 'TrainingAssignment',
       'TrainingModule', 'ShiftBid', 'ClientFeedback', 'PerformanceReview',
-      'Commendation', 'Complaint', 'JobDutyRule', 'PropertyAlert',
-      'DispatchCall', 'CallHistory',
+      'Commendation', 'Complaint', 'JobDutyRule',
     ];
     for (const entity of scoringEntities) {
       try {
