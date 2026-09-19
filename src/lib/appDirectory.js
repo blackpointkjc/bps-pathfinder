@@ -14,7 +14,7 @@ let supervisorOfficerPending = null;
 // Directory data changes infrequently and every management mutation explicitly
 // invalidates this cache. A longer TTL prevents each page transition from reloading
 // five large directory entities and competing with CAD/time-clock requests.
-const TTL_MS = 5 * 60_000;
+const TTL_MS = 10 * 60_000;
 
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
 
@@ -160,7 +160,17 @@ if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
   const shouldClearDirectory = detail => {
     const kind = String(detail?.kind || '');
     const name = String(detail?.name || '');
-    if (kind === 'entity') return ['User', 'Location', 'Division', 'OfficerRoster'].includes(name);
+    const method = String(detail?.method || '').toLowerCase();
+    const remote = detail?.remote === true;
+    if (kind === 'entity') {
+      if (!['User', 'Location', 'Division', 'OfficerRoster'].includes(name)) return false;
+      // Realtime User updates are often PTO/status metadata changes that do not
+      // alter the directory roster. Do not throw away the 10-minute directory
+      // cache for every background field update. Explicit management functions
+      // below still invalidate immediately, and create/delete events still do.
+      if (remote && method === 'update') return false;
+      return true;
+    }
     if (kind === 'function') return [
       'updateUser',
       'createPortalAccount',
