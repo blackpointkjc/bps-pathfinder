@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,6 @@ export default function TimeRequests() {
   const [reason, setReason] = useState("");
   const [requestType, setRequestType] = useState("paid");
   const queryClient = useQueryClient();
-  const recalculatedForRef = useRef('');
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -27,13 +26,9 @@ export default function TimeRequests() {
     refetchInterval: 5 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!user?.email || recalculatedForRef.current === user.email) return;
-    recalculatedForRef.current = user.email;
-    base44.functions.invoke('calculatePTOForOfficer', { officer_email: user.email })
-      .then(() => queryClient.invalidateQueries({ queryKey: ['currentUser'] }))
-      .catch(error => console.warn('[PTO] accrual refresh failed:', error?.message));
-  }, [user?.email, queryClient]);
+  // PTO accrual is recalculated when a completed time entry changes. Opening the
+  // request page must be read-only; the old mount-time recalculation generated a
+  // full ledger scan every visit and competed with time clock / CAD traffic.
 
   const { data: requests = [], error: requestsError } = useQuery({
     queryKey: ['timeOffRequests', user?.email],
