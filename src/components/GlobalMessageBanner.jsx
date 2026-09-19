@@ -27,7 +27,7 @@ const normalized = value => String(value || '').trim().toLowerCase();
 const SUPERVISORY_RANKS = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
 const hasSupervisorAccess = user => {
   const roles = lowerRoles(user);
-  return user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || SUPERVISORY_RANKS.has(normalized(user?.rank));
+  return user?.role === 'admin' || normalized(user?.role) === 'supervisor' || user?.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || SUPERVISORY_RANKS.has(normalized(user?.rank));
 };
 
 export function CadAudioToggle() {
@@ -779,6 +779,27 @@ export default function GlobalMessageBanner({ user }) {
 
     const supervisorTaskSource = SOURCES.find(source => source.targeted === 'supervisor_task');
     if (supervisorTaskSource && user.email && hasSupervisorAccess(user)) {
+      const onSupervisorTasksSynced = event => {
+        const assigned = Array.isArray(event?.detail?.assigned_tasks) ? event.detail.assigned_tasks : [];
+        assigned.forEach(task => {
+          if (!task?.alert_notification_id || String(task.source_kind || '').toLowerCase() === 'missing_report') return;
+          showBanner(supervisorTaskSource, {
+            id: task.alert_notification_id,
+            type: 'supervisor_task',
+            recipient_email: normalized(user.email),
+            title: task.title || 'Supervisor Operations',
+            message: [task.person, task.detail].filter(Boolean).join(' · '),
+            priority: task.priority || 'high',
+            source_name: 'Supervisor Operations',
+            task_key: task.task_key,
+            event_key: task.event_key || `supervisor-task:${task.task_key || task.alert_notification_id}`,
+            announcement_text: task.announcement_text || `Attention supervisor. ${task.title || 'A supervisor task requires your attention.'}`,
+            is_read: false,
+          });
+        });
+      };
+      window.addEventListener('bps-supervisor-tasks-synced', onSupervisorTasksSynced);
+      unsubscribers.push(() => window.removeEventListener('bps-supervisor-tasks-synced', onSupervisorTasksSynced));
       base44.entities.Notification.filter({
         recipient_email: normalized(user.email),
         type: 'supervisor_task',
