@@ -7,20 +7,20 @@ function lowerRoles(user: any) {
 const cleanEmail = (value: any) => String(value || '').trim().toLowerCase();
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-async function listWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+async function readSource(label: string, loader: () => Promise<any[]>, errors: Record<string,string>) {
   let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const rows = await loader();
       return Array.isArray(rows) ? rows : [];
     } catch (error) {
       lastError = error;
-      if (attempt < 2) await delay(700 * (attempt + 1));
+      if (attempt === 0) await delay(300);
     }
   }
-  console.error(`getAppDirectory could not load ${label}`, lastError);
-  if (optional) return [];
-  throw lastError || new Error(`Unable to load ${label}`);
+  errors[label] = String(lastError?.message || lastError || 'Unavailable');
+  console.warn(`getAppDirectory ${label} unavailable`, lastError);
+  return [];
 }
 
 function addEmailAliases(entry: any, teamsByUser: Map<string, any>, outlookByUser: Map<string, any>) {
@@ -98,24 +98,22 @@ Deno.serve(async (req) => {
     const clientOnly = !fullAccess && (roles.has('client') || me.user_type === 'client' || rank === 'client');
     const studentOnly = !fullAccess && roles.has('student');
 
-    // Directory reads are intentionally serialized and retried. Loading five
-    // service-role entities at once was intermittently rate-limited, which made
-    // Manage Employees fall back to only the signed-in user and appear to remove officers.
-    const rawUsers = await listWithRetry('company employees', () =>
-      base44.asServiceRole.entities.User.list(undefined, 1000)
-    );
-    const rawLocations = await listWithRetry('locations', () =>
-      base44.asServiceRole.entities.Location.list('site_name', 1000)
-    );
-    const rawDivisions = await listWithRetry('divisions', () =>
-      base44.asServiceRole.entities.Division.list('division_name', 1000)
-    );
-    const rawTeamsLinks = await listWithRetry('Teams identities', () =>
-      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000), true
-    );
-    const rawOutlookLinks = await listWithRetry('Outlook identities', () =>
-      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000), true
-    );
+    // Keep the operational directory responsive even when an optional identity
+    // source is slow. Two small read groups avoid the old 5-call serial chain that
+    // could exceed the browser's 15-second request timeout and falsely appear down.
+    // Individual source failures are returned as metadata instead of blanking the
+    // entire directory with a 500 response.
+    const sourceErrors: Record<string,string> = {};
+    const [rawUsersRead, rawLocations] = await Promise.all([
+      readSource('company employees', () => base44.asServiceRole.entities.User.list(undefined, 1000), sourceErrors),
+      readSource('locations', () => base44.asServiceRole.entities.Location.list('site_name', 1000), sourceErrors),
+    ]);
+    const [rawDivisions, rawTeamsLinks, rawOutlookLinks] = await Promise.all([
+      readSource('divisions', () => base44.asServiceRole.entities.Division.list('division_name', 1000), sourceErrors),
+      readSource('Teams identities', () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000), sourceErrors),
+      readSource('Outlook identities', () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000), sourceErrors),
+    ]);
+    const rawUsers = rawUsersRead.length ? rawUsersRead : [me];
 
     const teamsByUser = new Map<string, any>();
     for (const link of rawTeamsLinks || []) {
@@ -168,7 +166,14 @@ Deno.serve(async (req) => {
       users,
       locations,
       divisions,
-      meta: { user_count: users.length, location_count: locations.length, division_count: divisions.length },
+      meta: {
+        user_count: users.length,
+        location_count: locations.length,
+        division_count: divisions.length,
+        degraded_sources: Object.keys(sourceErrors),
+        source_errors: sourceErrors,
+        data_health: Object.keys(sourceErrors).length ? 'partial' : 'verified',
+      },
     });
   } catch (error) {
     console.error('getAppDirectory failed', error);
