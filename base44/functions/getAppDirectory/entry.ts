@@ -61,6 +61,8 @@ function safeUser(entry: any, full = false) {
     subdivision: entry.subdivision || '',
     profile_photo_url: entry.profile_photo_url || '',
     additional_roles: entry.additional_roles || [],
+    is_supervisor: entry.is_supervisor === true,
+    dispatch_role: entry.dispatch_role === true,
     role: entry.role || 'user',
     is_supervisor: entry.is_supervisor === true,
     dispatch_role: entry.dispatch_role === true,
