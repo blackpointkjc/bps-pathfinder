@@ -208,17 +208,63 @@ function queuedRead(key, task, meta = {}) {
   readInflight.set(key, request);
   return request;
 }
+function invalidateReadCacheForWrite(meta = {}) {
+  const prefixes = new Set();
+  const addEntity = name => prefixes.add(`entity:${name}:`);
+  const addFunction = name => prefixes.add(`function:${name}:`);
+
+  if (meta?.kind === 'entity' && meta?.name) {
+    addEntity(meta.name);
+    if (PERFORMANCE_ENTITY_NAMES.has(meta.name)) {
+      addFunction('getCompanyAnalyticsData');
+      addFunction('getMyPerformanceData');
+    }
+    if (['User','Location','Division','OfficerRoster'].includes(meta.name)) {
+      addFunction('getAppDirectory');
+      addFunction('getOfficerDirectory');
+    }
+    if (meta.name === 'DispatchCall') addFunction('getActiveDispatchCalls');
+    if (meta.name === 'ActiveOfficer') addFunction('getOnDutyUnits');
+  }
+
+  if (meta?.kind === 'function') {
+    const name = String(meta.name || '');
+    if (['logLocation','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
+      addEntity('ActiveOfficer'); addEntity('Unit'); addEntity('User'); addFunction('getOnDutyUnits');
+      if (name !== 'logLocation') prefixes.add('auth:me:');
+    }
+    if (['ingestGractivecalls','createDispatchCall','updateCadCallStatus','updateCadCallPriority','manageCadUnitAssignment'].includes(name)) {
+      addEntity('DispatchCall'); addEntity('PropertyAlert'); addFunction('getActiveDispatchCalls');
+    }
+    if (name === 'manageLocations') { addEntity('Location'); addFunction('getAppDirectory'); }
+    if (name === 'manageHRDivisions') { addEntity('Division'); addFunction('getAppDirectory'); }
+    if (['updateUser','createPortalAccount','manageClientAssignments','manageOfficerCertifications','syncCertToOfficer'].includes(name)) {
+      addEntity('User'); addFunction('getAppDirectory'); addFunction('getOfficerDirectory'); prefixes.add('auth:me:');
+    }
+    if (/performance|timeentr|schedule|report|complaint|commendation|feedback|training|callout|duty/i.test(name)) {
+      addFunction('getCompanyAnalyticsData'); addFunction('getMyPerformanceData');
+    }
+    // A management endpoint's cached list/get response must never survive its own write.
+    addFunction(name);
+  }
+
+  if (!prefixes.size) return;
+  for (const cacheKey of [...readCache.keys()]) {
+    if ([...prefixes].some(prefix => cacheKey.startsWith(prefix))) readCache.delete(cacheKey);
+  }
+}
+
 function protectedWrite(key, task, meta = {}) {
   if (writeInflight.has(key)) {
     recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'write', mode: 'write', outcome: 'deduped_inflight', duration_ms: 0 });
     return writeInflight.get(key);
   }
   activeWrites += 1;
-  readCache.clear();
   const startedAt = Date.now();
   const request = Promise.resolve()
     .then(task)
     .then(value => {
+      invalidateReadCacheForWrite(meta);
       recordRequestTrace({
         label: requestLabel(meta),
         kind: meta.kind || 'write',
