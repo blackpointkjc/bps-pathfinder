@@ -1,5 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function loadEntriesWithRetry(base44: any, query: Record<string, any>) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await base44.asServiceRole.entities.TimeEntry.filter(query, '-clock_in', 500);
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('Unable to load time entries');
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -23,11 +38,7 @@ Deno.serve(async (req) => {
         ...(endDate ? { $lte: `${endDate}T23:59:59.999Z` } : {}),
       };
     }
-    const entries = await base44.asServiceRole.entities.TimeEntry.filter(
-      query,
-      '-clock_in',
-      500,
-    );
+    const entries = await loadEntriesWithRetry(base44, query);
     return Response.json({ success: true, entries: (entries || []).filter((entry: any) => entry.archived !== true) });
   } catch (error) {
     console.error('getMyTimeEntries failed', error);
