@@ -94,13 +94,6 @@ export default function SupervisorOverview() {
   const activeCalls = board.active_calls || [];
   const welfare = board.welfare_checks || board.active_welfare || [];
   const supervisorRequests = board.supervisor_requests || [];
-  const attention = [
-    ...missedClockIns.slice(0,3).map(row => ({ label: 'Missed Clock-In', detail: `${operationalName(row, directory, { fallback: 'Officer' })} · ${row.start_time || 'scheduled'} at ${row.location || 'site'}` })),
-    ...supervisorRequests.slice(0,2).map(row => ({ label: 'Supervisor Request', detail: row.call_number || row.location || 'Field request pending' })),
-    ...welfare.slice(0,2).map(row => ({ label: 'Welfare Check', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
-    ...missingReports.slice(0,2).map(row => ({ label: 'Missing Required Report', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
-    ...writeups.slice(0,1).map(row => ({ label: 'Write-Up', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
-  ].slice(0,7);
 
   const legacyTaskQueue = [
     ...missedClockIns.slice(0,6).map(row => ({ id:`missed-clock-${row.id}`, source_id:row.id, kind:'missed_clock_in', title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}` })),
@@ -128,6 +121,11 @@ export default function SupervisorOverview() {
   ];
 
   const totalTasks = taskQueue.length;
+  const attention = [
+    ...taskQueue.filter(item => item.kind !== 'report_review').slice(0,4).map(item => ({ label: item.title, detail: `${item.person} · ${item.detail}` })),
+    ...supervisorRequests.slice(0,2).map(row => ({ label: 'Supervisor Request', detail: row.call_number || row.location || 'Field request pending' })),
+    ...welfare.slice(0,2).map(row => ({ label: 'Welfare Check', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
+  ].slice(0,7);
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
