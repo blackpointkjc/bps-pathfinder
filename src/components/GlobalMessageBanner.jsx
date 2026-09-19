@@ -756,6 +756,17 @@ export default function GlobalMessageBanner({ user }) {
       }
     }
 
+    const supervisorTaskSource = SOURCES.find(source => source.targeted === 'supervisor_task');
+    if (supervisorTaskSource && user.email && (user.role === 'admin' || roles.has('supervisor') || roles.has('full_access'))) {
+      base44.entities.Notification.filter({
+        recipient_email: normalized(user.email),
+        type: 'supervisor_task',
+        is_read: false,
+      }, '-created_date', 50)
+        .then(records => (records || []).slice().reverse().forEach(record => showBanner(supervisorTaskSource, record)))
+        .catch(() => null);
+    }
+
     const welfareSource = SOURCES.find(source => source.assignment === 'call_assignment');
     if (welfareSource && user.email) {
       Promise.all([
