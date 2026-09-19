@@ -604,67 +604,10 @@ body::-webkit-scrollbar-button,
   margin-top: 1rem !important;
 }
 
-.pathfinder-modern-page h1 {
-  font-size: clamp(1.25rem, 2vw, 1.75rem) !important;
-  line-height: 1.15 !important;
-  letter-spacing: -.015em;
-}
-
-.pathfinder-modern-page h2 {
-  line-height: 1.2;
-}
-
-.pathfinder-modern-page .bg-white,
-.pathfinder-modern-page .bg-slate-50,
-.pathfinder-modern-page .bg-slate-100,
-.pathfinder-modern-page .bg-gray-50,
-.pathfinder-modern-page .bg-gray-100,
-.pathfinder-modern-page [class*="from-blue-50"],
-.pathfinder-modern-page [class*="from-purple-50"],
-.pathfinder-modern-page [class*="from-green-50"],
-.pathfinder-modern-page [class*="from-amber-50"],
-.pathfinder-modern-page [class*="from-yellow-50"],
-.pathfinder-modern-page [class*="from-orange-50"],
-.pathfinder-modern-page [class*="from-red-50"],
-.pathfinder-modern-page [class*="to-blue-50"],
-.pathfinder-modern-page [class*="to-purple-50"],
-.pathfinder-modern-page [class*="to-green-50"] {
-  background-color: #0d1927 !important;
-  background-image: none !important;
-  border-color: #2c4258 !important;
-}
-
-.pathfinder-modern-page .text-slate-950,
-.pathfinder-modern-page .text-slate-900,
-.pathfinder-modern-page .text-slate-800,
-.pathfinder-modern-page .text-slate-700,
-.pathfinder-modern-page .text-gray-900,
-.pathfinder-modern-page .text-gray-800,
-.pathfinder-modern-page .text-blue-900,
-.pathfinder-modern-page .text-purple-900,
-.pathfinder-modern-page .text-green-900,
-.pathfinder-modern-page .text-amber-900,
-.pathfinder-modern-page .text-red-900 {
-  color: #f4f8fc !important;
-}
-
-.pathfinder-modern-page .text-slate-600,
-.pathfinder-modern-page .text-slate-500,
-.pathfinder-modern-page .text-gray-600,
-.pathfinder-modern-page .text-gray-500 {
-  color: #9fb2c5 !important;
-}
-
-.pathfinder-modern-page [class*="border-slate-200"],
-.pathfinder-modern-page [class*="border-slate-300"],
-.pathfinder-modern-page [class*="border-gray-200"],
-.pathfinder-modern-page [class*="border-blue-200"],
-.pathfinder-modern-page [class*="border-purple-200"],
-.pathfinder-modern-page [class*="border-green-200"],
-.pathfinder-modern-page [class*="border-amber-200"],
-.pathfinder-modern-page [class*="border-red-200"] {
-  border-color: #30485f !important;
-}
+/* Do not recolor arbitrary descendant cards/text here. Printable reports,
+   signatures, QR labels, legal forms, status chips, and embedded tools all carry
+   intentional light/dark color contracts. Modernization belongs in each page
+   shell/component rather than a blanket descendant override. */
 
 .pathfinder-modern-page [class*="shadow-lg"],
 .pathfinder-modern-page [class*="shadow-xl"],
@@ -687,20 +630,6 @@ body::-webkit-scrollbar-button,
   color: #6f879e !important;
 }
 
-.pathfinder-modern-page table {
-  border-color: #2c4258 !important;
-}
-
-.pathfinder-modern-page th {
-  background: #0b1724 !important;
-  color: #b9cada !important;
-  border-color: #2c4258 !important;
-}
-
-.pathfinder-modern-page td {
-  border-color: #263b4f !important;
-}
-
 .pathfinder-modern-page [role="tablist"] {
   height: auto !important;
   border: 1px solid #2c4258 !important;
@@ -721,12 +650,6 @@ body::-webkit-scrollbar-button,
   background: #12304a !important;
   color: #e8f5ff !important;
   box-shadow: inset 0 0 0 1px rgba(34,211,238,.35), 0 6px 16px rgba(0,0,0,.18) !important;
-}
-
-.pathfinder-modern-page .rounded-lg.border,
-.pathfinder-modern-page .rounded-xl.border,
-.pathfinder-modern-page .rounded-2xl.border {
-  border-color: #2c4258;
 }
 
 @media (max-width: 767px) {
