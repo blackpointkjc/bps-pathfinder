@@ -1,5 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function loadUsers(base44: any) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await base44.asServiceRole.entities.User.list(undefined, 1000);
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(500 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('Unable to load client users');
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -10,7 +25,7 @@ Deno.serve(async (req) => {
     const authorized = currentUser.role === 'admin' || roles.has('accounting') || roles.has('hr') || roles.has('full_access');
     if (!authorized) return Response.json({ error: 'Client directory access required', clients: [] }, { status: 403 });
 
-    const allUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
+    const allUsers = await loadUsers(base44);
     const clients = (allUsers || [])
       .filter((entry: any) => {
         const entryRoles = (entry.additional_roles || []).map((role: string) => String(role).toLowerCase());
