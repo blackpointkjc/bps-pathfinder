@@ -56,7 +56,7 @@ export default function SupervisorOperationsMonitor({ user }) {
     };
 
     schedule(250);
-    const interval = window.setInterval(run, 30000);
+    const interval = window.setInterval(run, 60000);
 
     for (const entity of [
       'Schedule',
@@ -66,8 +66,16 @@ export default function SupervisorOperationsMonitor({ user }) {
       'WriteUpReport',
       'PerformanceReview',
       'InspectionReport',
-      'ActiveOfficer',
-      'Location',
+      'ShiftReport',
+      'IncidentReport',
+      'TrespassingNotice',
+      'ParkingViolation',
+      'CriminalComplaint',
+      'DispatcherShiftReport',
+      'UseOfForceReport',
+      'ConfidentialReport',
+      'MaintenanceReport',
+      'OpenDoorReport',
     ]) {
       try {
         const unsubscribe = base44.entities[entity].subscribe(() => schedule());
