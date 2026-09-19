@@ -201,7 +201,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
 
     load(true);
     const callUnsubscribe = subscribeDispatchCallChanges(event => {
-      setCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60 * 1000, limit: 200 }));
+      setCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 8 * 60 * 60 * 1000, limit: 200 }));
     });
     const unsubscribers = [callUnsubscribe];
     try {
