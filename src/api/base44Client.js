@@ -204,6 +204,19 @@ function protectedWrite(key, task, meta = {}) {
       if (meta?.kind === 'entity' && PERFORMANCE_ENTITY_NAMES.has(meta?.name)) {
         try { window.dispatchEvent(new CustomEvent('bps-performance-refresh', { detail: { entity: meta.name, method: meta.method } })); } catch {}
       }
+      // Every successful write announces its domain to the app. This is the
+      // cross-page synchronization bridge used by management/reporting screens:
+      // save in one tool, connected active views refresh immediately instead of
+      // waiting for their staleTime window or a full browser reload.
+      try {
+        const detail = { ...meta, at: Date.now() };
+        window.dispatchEvent(new CustomEvent('bps-data-changed', { detail }));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const channel = new BroadcastChannel('bps-pathfinder-data-sync');
+          channel.postMessage(detail);
+          channel.close();
+        }
+      } catch {}
       return value;
     })
     .catch(error => {
