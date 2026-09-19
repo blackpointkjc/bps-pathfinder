@@ -90,8 +90,10 @@ function scrubUnitLocation(unit = {}) {
 }
 
 function isLiveUnit(unit = {}) {
-  return unit?.session_active === true
-    && String(unit?.status || '').trim().toLowerCase() !== 'out of service';
+  // Map presence follows the authenticated Pathfinder session, not duty status.
+  // An officer may be online while marked Out of Service and must still remain
+  // visible to other authorized officers for safety/awareness.
+  return unit?.session_active === true || unit?.presence_online === true;
 }
 
 function scrubSnapshot(payload = {}) {
