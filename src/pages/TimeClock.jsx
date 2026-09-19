@@ -17,7 +17,8 @@ import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
-import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
+import { listDirectoryLocations } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
@@ -177,13 +178,9 @@ export default function TimeClock() {
   const [switchingSite, setSwitchingSite] = useState(false);
   const [selectedNewSite, setSelectedNewSite] = useState("");
 
-  const { data: user, isLoading: userLoading, error: userError, refetch: retryUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const { user, isLoadingAuth: userLoading } = useAuth();
+  const userError = null;
+  const retryUser = () => Promise.resolve(user);
 
   const isAdmin = user?.role === 'admin';
 
@@ -205,8 +202,10 @@ export default function TimeClock() {
       return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
-    staleTime: 60000,
+    staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: () => queryClient.getQueryData(['bgTrackerActiveEntry', user?.email]),
   });
 
   useEffect(() => {
