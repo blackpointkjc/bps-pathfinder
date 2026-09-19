@@ -13,8 +13,8 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { withRequestTimeout } from '@/lib/requestTimeout';
-import { persistOfficerStatus } from '@/lib/officerStatusService';
+import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
+import { useAuth } from '@/lib/AuthContext';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -88,8 +88,9 @@ function PanelHeader({ children, count, accent = 'gold' }) {
 function CommandDashboardInner({ embedded = false }) {
     const navigate = useNavigate();
     const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
+    const { user: authenticatedUser } = useAuth();
 
-    const [currentUser, setCurrentUser]         = useState(null);
+    const [currentUser, setCurrentUser] = useState(() => authenticatedUser ? { ...authenticatedUser, status: getLastOfficerStatus() || authenticatedUser.status || 'Out of Service' } : null);
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
@@ -108,13 +109,24 @@ function CommandDashboardInner({ embedded = false }) {
     }, []);
 
     useEffect(() => {
-        withRequestTimeout(base44.auth.me(), 12000, 'Command user request').then(user => {
-            setCurrentUser(user?.status === 'On Patrol' ? { ...user, status: 'Available' } : user);
-            const val = !isDispatchAlertMuted();
-            setSoundEnabled(val);
-            soundEnabledRef.current = val;
-        }).catch(() => {});
+        if (!authenticatedUser) return;
+        const cachedStatus = getLastOfficerStatus();
+        setCurrentUser({
+            ...authenticatedUser,
+            status: cachedStatus || (authenticatedUser.status === 'On Patrol' ? 'Out of Service' : authenticatedUser.status) || 'Out of Service',
+        });
+        const val = !isDispatchAlertMuted();
+        setSoundEnabled(val);
+        soundEnabledRef.current = val;
+    }, [authenticatedUser]);
 
+    useEffect(() => {
+        const syncStatus = event => {
+            const next = event?.detail?.status;
+            if (next) setCurrentUser(previous => previous ? { ...previous, status: next } : previous);
+        };
+        window.addEventListener('bps-officer-status-changed', syncStatus);
+        return () => window.removeEventListener('bps-officer-status-changed', syncStatus);
     }, []);
 
     useEffect(() => {
