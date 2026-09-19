@@ -16,6 +16,15 @@ function writeLast(status) {
   try { localStorage.setItem(STATUS_KEY, JSON.stringify({ status, at: Date.now() })); } catch {}
 }
 
+export function getLastOfficerStatus() {
+  return readLast()?.status || '';
+}
+
+export function cacheOfficerStatus(status) {
+  const normalized = String(status || '').trim();
+  if (normalized) writeLast(normalized);
+}
+
 export async function persistOfficerStatus(status, { force = false } = {}) {
   const normalized = String(status || '').trim();
   if (!normalized) throw new Error('A status is required.');
@@ -28,7 +37,9 @@ export async function persistOfficerStatus(status, { force = false } = {}) {
     const response = await base44.functions.invoke('updateOfficerStatus', { status: normalized });
     const payload = response?.data || response || {};
     if (payload.error) throw new Error(payload.error);
-    writeLast(payload.status || normalized);
+    const savedStatus = payload.status || normalized;
+    writeLast(savedStatus);
+    try { window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: savedStatus, source: 'status-service' } })); } catch {}
     return payload;
   };
 
