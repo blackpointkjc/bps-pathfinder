@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
       incidentReports: canonicalRows(incidentReports),
       dailyActivityReports: canonicalRows(dailyActivityReports),
       callOuts: canonicalRows(callOuts),
-      callsForService,
+      callsForService: [],
       dispatchCalls,
       dutyRules,
       locations,
