@@ -772,7 +772,7 @@ export default function GlobalMessageBanner({ user }) {
 
       // Match BOLO reliability: recover a call created while realtime was connecting.
       const propertyCutoff = Date.now() - 6 * 60 * 60 * 1000;
-      base44.entities.PropertyAlert.list('-created_date', 20).then(records => {
+      base44.entities.PropertyAlert.list('-created_date', 100).then(records => {
         (records || []).slice().reverse().forEach(record => {
           const created = new Date(record.created_date || 0).getTime();
           if (created >= propertyCutoff) showPropertyCall(record);
