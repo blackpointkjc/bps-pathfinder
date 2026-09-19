@@ -3,14 +3,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallback: T): Promise<{ data: T; error: string }> {
+async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallback: T, maxAttempts = 1): Promise<{ data: T; error: string }> {
   let lastError: any;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       return { data: await loader(), error: '' };
     } catch (error) {
       lastError = error;
-      if (attempt < 2) await wait(350 * (attempt + 1));
+      if (attempt < maxAttempts - 1) await wait(250 * (attempt + 1));
     }
   }
   const message = `${label} unavailable: ${lastError?.message || lastError || 'unknown error'}`;
