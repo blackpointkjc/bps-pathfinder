@@ -108,24 +108,17 @@ Deno.serve(async (req) => {
       readSource('company employees', () => base44.asServiceRole.entities.User.list(undefined, 1000), sourceErrors),
       readSource('locations', () => base44.asServiceRole.entities.Location.list('site_name', 1000), sourceErrors),
     ]);
-    const [rawDivisions, rawTeamsLinks, rawOutlookLinks] = await Promise.all([
-      readSource('divisions', () => base44.asServiceRole.entities.Division.list('division_name', 1000), sourceErrors),
-      readSource('Teams identities', () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000), sourceErrors),
-      readSource('Outlook identities', () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000), sourceErrors),
-    ]);
+    const rawDivisions = await readSource(
+      'divisions',
+      () => base44.asServiceRole.entities.Division.list('division_name', 1000),
+      sourceErrors,
+    );
     const rawUsers = rawUsersRead.length ? rawUsersRead : [me];
 
-    const teamsByUser = new Map<string, any>();
-    for (const link of rawTeamsLinks || []) {
-      if (link?.active === false || !link?.user_id || teamsByUser.has(String(link.user_id))) continue;
-      teamsByUser.set(String(link.user_id), link);
-    }
-    const outlookByUser = new Map<string, any>();
-    for (const link of rawOutlookLinks || []) {
-      if (link?.connected === false || !link?.user_id || outlookByUser.has(String(link.user_id))) continue;
-      outlookByUser.set(String(link.user_id), link);
-    }
-    const directoryUsers = (rawUsers || []).map((entry: any) => addEmailAliases(entry, teamsByUser, outlookByUser));
+    // Linked work/Microsoft aliases are now stored on the canonical User record.
+    // Do not scan MicrosoftTeamsIdentity/OutlookMailboxLink for every directory
+    // request; those reads were duplicated again during auth and performance loads.
+    const directoryUsers = (rawUsers || []).map((entry: any) => addEmailAliases(entry, new Map(), new Map()));
 
     const internalRoles = new Set(['cad_access','officer','supervisor','hr','accounting','trainer','full_access','support_staff']);
     const isInternal = (entry: any) => {
