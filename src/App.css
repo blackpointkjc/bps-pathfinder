@@ -586,7 +586,6 @@ body::-webkit-scrollbar-button,
 .pathfinder-modern-page > *,
 .pathfinder-modern-page > * > * {
   min-width: 0;
-  max-width: 100%;
 }
 
 /* Keep all descendant component contracts intact. Embedded maps, dialogs,
