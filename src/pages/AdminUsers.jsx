@@ -103,7 +103,7 @@ export default function AdminUsers({ embedded = false }) {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
-    queryFn: async () => await listDirectoryUsers(undefined, 1000) || [],
+    queryFn: async () => await listDirectoryUsers(undefined, 1000, true) || [],
     enabled: hasAccess,
     retry: 3,
     staleTime: 0,
