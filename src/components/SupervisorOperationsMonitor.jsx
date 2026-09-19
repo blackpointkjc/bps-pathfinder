@@ -68,7 +68,11 @@ export default function SupervisorOperationsMonitor({ user }) {
       timer.current = window.setTimeout(() => run({ refreshReports }), delay);
     };
 
-    schedule(250, true);
+    // Realtime subscriptions are installed immediately below, but the expensive
+    // multi-table reconciliation must not compete with CAD/location during the
+    // first paint. Emergency source changes still schedule a near-immediate run.
+    schedule(8000, false);
+    const reportStartupTimer = window.setTimeout(() => schedule(250, true), 30000);
     const interval = window.setInterval(run, 60000);
 
     const reportEntities = new Set([
@@ -114,6 +118,7 @@ export default function SupervisorOperationsMonitor({ user }) {
     return () => {
       active = false;
       window.clearInterval(interval);
+      window.clearTimeout(reportStartupTimer);
       window.clearTimeout(timer.current);
       unsubscribers.forEach(unsubscribe => {
         try { unsubscribe(); } catch {}
