@@ -126,6 +126,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
+      // Authenticated sessions verify the user in parallel with public settings.
+      // Public settings are required for login/error routing, but they must not
+      // serialize signed-in startup behind a separate network request.
+      const authPromise = appParams.token ? checkUserAuth(requestId) : Promise.resolve(null);
       
       // First, check app public settings (with token if available)
       // This will tell us if auth is required, user not registered, etc.
@@ -148,7 +152,7 @@ export const AuthProvider = ({ children }) => {
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
-          await checkUserAuth(requestId);
+          await authPromise;
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
@@ -156,6 +160,14 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
+        const authenticatedUser = appParams.token ? await authPromise.catch(() => null) : null;
+        if (authenticatedUser) {
+          // A signed-in session can continue even when the public-settings
+          // endpoint is temporarily slow/unavailable. Retry settings later rather
+          // than trapping the entire app behind the splash screen.
+          setIsLoadingPublicSettings(false);
+          return;
+        }
         
         // Handle app-level errors without exposing Microsoft/AADSTS internals.
         if (microsoftSessionError(appError)) {
