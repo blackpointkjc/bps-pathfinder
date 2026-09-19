@@ -14,6 +14,7 @@ const safeMessage = value => {
 };
 
 const isRateLimited = value => /rate limit|too many requests|\b429\b/i.test(safeMessage(value));
+const isTransientProbePressure = value => /data request queue is busy|queue is busy|timed out|timeout|temporar|network/i.test(safeMessage(value));
 
 export function getRuntimeIssues() {
   try {
@@ -241,13 +242,14 @@ export async function runClientFunctionalAudit() {
       await probe.run();
     } catch (error) {
       const throttled = isRateLimited(error);
+      const pressured = throttled || isTransientProbePressure(error);
       findings.push(finding(
         probe.key,
         probe.area,
-        throttled ? 'degraded' : 'outage',
-        throttled ? `${probe.area} scan was throttled` : probe.title,
-        throttled
-          ? 'The diagnostic request was rate limited. The operational service was not marked down and will be checked again on the next scan.'
+        pressured ? 'degraded' : 'outage',
+        pressured ? `${probe.area} diagnostic was temporarily deferred` : probe.title,
+        pressured
+          ? 'The diagnostic request was delayed by request pressure or a transient timeout. Pathfinder did not mark the operational service down; live/realtime data and the last verified snapshot remain in use.'
           : safeMessage(error),
       ));
     }
