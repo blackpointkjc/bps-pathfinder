@@ -462,7 +462,7 @@ export default function AdminAnalytics() {
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0), pending };
   }, [allComplaints, filteredUsers]);
 
-  if (isLoadingAuth || (!user && analyticsLoading)) {
+  if (isLoadingAuth || (analyticsLoading && !analyticsData?.generated_at)) {
     return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
   }
 
