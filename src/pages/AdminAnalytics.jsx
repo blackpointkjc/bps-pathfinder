@@ -85,7 +85,7 @@ export default function AdminAnalytics() {
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    refetchInterval: 120000,
+    refetchInterval: 5 * 60 * 1000,
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: previousData => previousData,
