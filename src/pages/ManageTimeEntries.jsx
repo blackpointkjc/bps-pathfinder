@@ -14,7 +14,7 @@ import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { findDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { useAuth } from '@/lib/AuthContext';
-import { isInternalMember } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePaidHours } from '@/lib/payrollCalculations';
 import { createPageUrl } from '@/utils';
 
