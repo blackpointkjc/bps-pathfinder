@@ -592,18 +592,6 @@ body::-webkit-scrollbar-button,
 /* Keep component-level width and height contracts intact. Embedded maps,
    dialogs, and center workspaces rely on their own max-width/min-height values. */
 
-.pathfinder-modern-page .p-8 {
-  padding: 1rem !important;
-}
-
-.pathfinder-modern-page .md\:p-8 {
-  padding: 1rem !important;
-}
-
-.pathfinder-modern-page .space-y-8 > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1rem !important;
-}
-
 /* Do not recolor arbitrary descendant cards/text here. Printable reports,
    signatures, QR labels, legal forms, status chips, and embedded tools all carry
    intentional light/dark color contracts. Modernization belongs in each page
@@ -653,12 +641,6 @@ body::-webkit-scrollbar-button,
 }
 
 @media (max-width: 767px) {
-  .pathfinder-modern-page .p-6,
-  .pathfinder-modern-page .p-8,
-  .pathfinder-modern-page .md\:p-8 {
-    padding: .75rem !important;
-  }
-
   .pathfinder-modern-page [role="tab"] {
     flex: 1 1 8rem;
     white-space: normal;
