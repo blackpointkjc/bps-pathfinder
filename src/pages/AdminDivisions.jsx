@@ -37,7 +37,7 @@ export default function AdminDivisions() {
   const divisionRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasAccess = user?.role === 'admin' || divisionRoles.has('hr') || divisionRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
-  const { data: divisions = [], isLoading: divisionsLoading, error: divisionsError } = useQuery({
+  const { data: divisions = [] } = useQuery({
     queryKey: ['divisions'],
     queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
