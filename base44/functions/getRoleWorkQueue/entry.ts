@@ -104,21 +104,27 @@ Deno.serve(async (req) => {
     const loadErrors: string[] = [];
     const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
     const safeList = async (label: string, loader: () => Promise<any[]>) => {
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          const rows = await loader();
-          return Array.isArray(rows) ? rows : [];
-        } catch (error) {
-          lastError = error;
-          if (attempt < 2) await delay(800 * (attempt + 1) + Math.min(400, label.length * 9));
-        }
+      try {
+        const rows = await loader();
+        return Array.isArray(rows) ? rows : [];
+      } catch (error) {
+        console.error(`getRoleWorkQueue could not load ${label}`, error);
+        loadErrors.push(label);
+        return [];
       }
-      console.error(`getRoleWorkQueue could not load ${label}`, lastError);
-      loadErrors.push(label);
-      return [];
     };
-    const loadLimited = async (loaders: Array<() => Promise<any[]>>, concurrency = 1) => {
+    const safeOptionalList = async (label: string, loader: () => Promise<any[]>) => {
+      try {
+        const rows = await loader();
+        return Array.isArray(rows) ? rows : [];
+      } catch (error) {
+        // Optional queue enrichments must not hold the whole command dashboard
+        // open or prevent unrelated task reconciliation.
+        console.warn(`getRoleWorkQueue optional source unavailable: ${label}`, error?.message || error);
+        return [];
+      }
+    };
+    const loadLimited = async (loaders: Array<() => Promise<any[]>>, concurrency = 2) => {
       const results: any[][] = [];
       for (let index = 0; index < loaders.length; index += concurrency) {
         const batch = loaders.slice(index, index + concurrency);
@@ -254,8 +260,8 @@ Deno.serve(async (req) => {
         () => safeList('open-door reports', () => base44.asServiceRole.entities.OpenDoorReport.list('-created_date', 1000)),
         () => safeList('expense reports', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 1000)),
         () => safeList('shift bids', () => base44.asServiceRole.entities.ShiftBid.list('-created_date', 1000)),
-        () => safeList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 1000)),
-        () => safeList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
+        () => safeOptionalList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 250)),
+        () => safeOptionalList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
       ]);
     }
 
