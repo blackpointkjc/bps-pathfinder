@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const LOGO_URL = "/black-point-shield.webp";
@@ -34,19 +35,16 @@ export default function AdminPTOLossReport() {
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [detailedOfficer, setDetailedOfficer] = useState(null);
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
   const hrRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasHRAccess = user?.role === 'admin' || hrRoles.has('hr') || hrRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['officerDirectory', 'ptoLoss'],
-    queryFn: () => listOfficerDirectory('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasHRAccess,
-    initialData: [],
+    placeholderData: [],
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
@@ -62,7 +60,7 @@ export default function AdminPTOLossReport() {
       return { entries: payload.entries || [], call_outs: payload.call_outs || [] };
     },
     enabled: hasHRAccess,
-    initialData: { entries: [], call_outs: [] },
+    placeholderData: { entries: [], call_outs: [] },
     staleTime: 2 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -192,8 +190,7 @@ export default function AdminPTOLossReport() {
           shifts
         };
       })
-      .filter(officer => officer.hoursLost > 0)
-      .sort((a, b) => b.hoursLost - a.hoursLost);
+      .sort((a, b) => (b.hoursLost - a.hoursLost) || a.name.localeCompare(b.name));
   }, [allUsers, timeEntries, callOuts, selectedYear, dateRangeMode, startDate, endDate, selectedOfficerEmail]);
 
   const filteredOfficers = useMemo(() => {
