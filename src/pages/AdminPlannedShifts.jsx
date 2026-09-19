@@ -88,7 +88,7 @@ export default function AdminPlannedShifts() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.PlannedShift.create(data),
+    mutationFn: async (data) => { const response = await base44.functions.invoke('managePlannedShifts', { action: 'create', data }); const payload = response?.data || response || {}; if (payload.error) throw new Error(payload.error); return payload.row; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plannedShifts'] });
       resetForm();
