@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { endOfficerLocationSession } from '@/lib/officerLocationHub';
+import { cacheOfficerStatus } from '@/lib/officerStatusService';
 
 // Keep one AuthContext instance across Vite/Base44 hot-module reloads. Without
 // this, the provider can remain mounted with the previous module's context while
@@ -74,6 +75,7 @@ export const AuthProvider = ({ children }) => {
       if (operational && !dutyStatusBootstrappedRef.current) {
         dutyStatusBootstrappedRef.current = true;
         currentUser = { ...currentUser, status: 'Out of Service' };
+        cacheOfficerStatus('Out of Service');
         void base44.functions.invoke('enforceOfficerDutyStatus', { action: 'session_start' })
           .catch(error => console.warn('[AUTH] Unable to initialize Out of Service status:', error?.message || error));
       }
