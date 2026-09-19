@@ -451,6 +451,7 @@ export default function AdminLocationTracker({ embedded = false }) {
       if (!candidates.length) return null;
       candidates.sort((a, b) => b.ts - a.ts);
       const best = candidates[0];
+      const fallbackPosition = ['shift_clock_in', 'site_fallback'].includes(best.source);
       return {
         ...o,
         latitude: best.lat,
@@ -458,8 +459,9 @@ export default function AdminLocationTracker({ embedded = false }) {
         accuracy: Number.isFinite(best.acc) ? best.acc : null,
         gps_timestamp: best.ts || null,
         gps_display_source: best.source || '',
-        gps_low_accuracy: best.low || (Number.isFinite(best.acc) && best.acc > 100),
-        gps_stale: o.session_active === false || !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
+        gps_fallback: fallbackPosition,
+        gps_low_accuracy: !fallbackPosition && (best.low || (Number.isFinite(best.acc) && best.acc > 100)),
+        gps_stale: fallbackPosition || o.session_active === false || !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
       };
     })
     .filter(Boolean);
@@ -826,13 +828,27 @@ export default function AdminLocationTracker({ embedded = false }) {
                                 {Number.isFinite(Number(officer.heading)) && <span className="rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-black text-slate-300">{Math.round(Number(officer.heading))}°</span>}
                               </div>
                               <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-cyan-300">
-                                Source: {officer.gps_display_source === 'external_serial' ? 'External USB / NMEA GPS' : officer.gps_display_source ? 'Windows / Browser Location' : 'Unknown'}
+                                Source: {officer.gps_display_source === 'external_serial'
+                                  ? 'External USB / NMEA GPS'
+                                  : officer.gps_display_source === 'shift_clock_in'
+                                    ? 'Verified shift clock-in position'
+                                    : officer.gps_display_source === 'site_fallback'
+                                      ? 'Configured site position'
+                                      : officer.gps_display_source
+                                        ? 'Windows / Browser Location'
+                                        : 'Unknown'}
                               </p>
                               {(officer.gps_stale || officer.gps_low_accuracy) && (
                                 <p className="mt-2 text-xs font-bold leading-5 text-amber-100">
-                                  {officer.gps_stale
-                                    ? 'This is a last-known point, not a current fix. Pathfinder refreshes GPS automatically; the officer remains clocked in and dispatch can still use the clocked-in fallback while distance/ETA waits for fresh GPS.'
-                                    : 'The current fix is outside the 100m precision target. The officer remains clocked in and dispatch can use the clocked-in fallback while precision improves.'}
+                                  {officer.gps_display_source === 'site_fallback'
+                                    ? 'Device GPS is pending. This marker is the configured property position, not the officer’s exact live position.'
+                                    : officer.gps_display_source === 'shift_clock_in'
+                                      ? 'Device GPS is pending. This marker is the verified shift clock-in position, not a current GPS fix.'
+                                      : officer.gps_stale && officer.session_active === false
+                                        ? 'Officer is offline or the live session heartbeat is no longer current. This marker is retained last-known location data.'
+                                        : officer.gps_stale
+                                          ? 'The live session is waiting for a fresh device GPS fix. This marker shows the best retained location until GPS recovers.'
+                                          : 'The current fix is outside the 100m precision target. Pathfinder will replace it automatically when a more precise fix arrives.'}
                                 </p>
                               )}
                             </div>
