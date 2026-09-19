@@ -176,7 +176,7 @@ function queuedRead(key, task, meta = {}) {
         error: error.message,
       });
       reject(error);
-    }, 25000);
+    }, 60000);
     readQueue.push(job);
     pumpReads();
   }).finally(() => readInflight.delete(key));
@@ -269,14 +269,17 @@ const entities = new Proxy(rawBase44.entities, {
 const isReadOnlyFunction = (name, payload = {}) => {
   const functionName = String(name || '');
   const action = String(payload?.action || '').toLowerCase();
-  const readActions = new Set(['list', 'get', 'search', 'status', 'messages', 'folders', 'preview', 'check']);
-  // Some legacy functions begin with "get" but also accept approve/update/delete
-  // actions. Any explicit non-read action must retain write priority.
-  if (action && !readActions.has(action)) return false;
+  const readActions = new Set(['list', 'get', 'search', 'status', 'messages', 'folders', 'preview', 'check', 'history', 'summary']);
+
+  // An explicit action is authoritative. Management-style functions often expose
+  // both reads and writes behind one endpoint (for example action=list/preview
+  // versus action=update/delete). The old classifier treated every manage* list
+  // as a write, which bypassed read throttling, cleared caches, and made opening a
+  // page look like a mutation. That caused request bursts and stale/loading loops.
+  if (action) return readActions.has(action);
+
   if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
   if (functionName === 'runSystemAudit') return true;
-  if (functionName === 'manageOfficerPerformanceReviews' && action === 'list') return true;
-  if (functionName === 'companyImapMail' && readActions.has(action)) return true;
   return false;
 };
 const functions = new Proxy(rawBase44.functions, {
