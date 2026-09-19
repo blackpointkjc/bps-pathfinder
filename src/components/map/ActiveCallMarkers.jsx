@@ -2,7 +2,7 @@
  * ActiveCallMarkers — PURE RENDER ONLY.
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
  */
-import { Marker, Pane, Tooltip } from 'react-leaflet';
+import { CircleMarker, Marker, Pane, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
 const createCallIcon = (call, isHighPriority = false) => {
@@ -90,20 +90,30 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
         <Pane name="active-cad-calls" style={{ zIndex: 690 }}>
             {renderable.map((call, index) => {
                 const priority = assessCallPriority(call);
+                const key = call.id || `call-${index}`;
+                const fillColor = priority.score >= 3 ? '#ef4444' : '#2563eb';
                 return (
-                    <Marker
-                        key={call.id || `call-${index}`}
-                        pane="active-cad-calls"
-                        position={[call.latitude, call.longitude]}
-                        icon={createCallIcon(call, priority.score >= 3)}
-                        zIndexOffset={priority.score >= 3 ? 1200 : 900}
-                        eventHandlers={{ click: () => onCallClick?.(call) }}
-                    >
-                        <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
-                            <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
-                            <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
-                        </Tooltip>
-                    </Marker>
+                    <span key={key}>
+                        <CircleMarker
+                            pane="active-cad-calls"
+                            center={[call.latitude, call.longitude]}
+                            radius={13}
+                            interactive={false}
+                            pathOptions={{ color: '#ffffff', weight: 3, fillColor, fillOpacity: 0.85 }}
+                        />
+                        <Marker
+                            pane="active-cad-calls"
+                            position={[call.latitude, call.longitude]}
+                            icon={createCallIcon(call, priority.score >= 3)}
+                            zIndexOffset={priority.score >= 3 ? 1200 : 900}
+                            eventHandlers={{ click: () => onCallClick?.(call) }}
+                        >
+                            <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
+                                <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
+                                <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
+                            </Tooltip>
+                        </Marker>
+                    </span>
                 );
             })}
         </Pane>
