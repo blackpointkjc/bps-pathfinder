@@ -35,8 +35,6 @@ Deno.serve(async (req) => {
       activeReads = Math.max(0, activeReads - 1);
       readWaiters.shift()?.();
     };
-    const transientReadError = (error:any) => /rate limit|too many requests|\b429\b|timed out|timeout|server selection|temporar/i.test(String(error?.message || error));
-    const pause = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
     const safeRead = async (entity: string, reader: () => Promise<any[]>) => {
       await acquireReadSlot();
       try {
