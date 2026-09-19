@@ -1,5 +1,3 @@
-import { base44 } from '@/api/base44Client';
-
 const STALE_AFTER_MS = 5 * 60 * 1000;
 const RECOVERY_COOLDOWN_MS = 15 * 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
