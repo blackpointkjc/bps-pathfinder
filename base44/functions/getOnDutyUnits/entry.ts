@@ -478,6 +478,9 @@ Deno.serve(async (req) => {
         const hasClockInPosition = Boolean(openEntry)
           && hasValidCoordinates(openEntry?.clock_in_latitude, openEntry?.clock_in_longitude)
           && (!Number.isFinite(clockInAccuracy) || clockInAccuracy <= MAX_USABLE_GPS_ACCURACY_METERS);
+        const fallbackSite = operationalSiteFor(active?.current_location || openEntry?.location || user.assigned_location);
+        const hasSitePosition = Boolean(fallbackSite)
+          && hasValidCoordinates(fallbackSite?.latitude, fallbackSite?.longitude);
         return {
           id: user.id,
           user_id: user.id,
@@ -507,11 +510,13 @@ Deno.serve(async (req) => {
           gps_updated_at: freshPosition ? (freshPosition.gps_updated_at || userGpsTimestamp) : null,
           gps_source: freshPosition ? (freshPosition.gps_source || (freshPosition === user ? 'user_location_fallback' : 'browser_geolocation')) : '',
           gps_device_id: freshPosition === active ? (active?.gps_device_id || '') : '',
-          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (storedPosition ? storedGpsTimestamp : (hasClockInPosition ? openEntry.clock_in : null)),
-          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (storedPosition ? Number(storedPosition.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : null)),
-          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (storedPosition ? Number(storedPosition.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : null)),
-          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (storedPosition ? storedAccuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : null)),
-          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (storedPosition ? (storedPosition.gps_source || (storedPosition === user ? 'user_location_fallback' : '')) : (hasClockInPosition ? 'shift_clock_in' : '')),
+          last_gps_updated_at: hasReliablePosition ? active?.reliable_gps_updated_at : (storedPosition ? storedGpsTimestamp : (hasClockInPosition ? openEntry.clock_in : (hasSitePosition ? (active?.last_update || user.last_updated || user.updated_date) : null))),
+          last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (storedPosition ? Number(storedPosition.latitude) : (hasClockInPosition ? Number(openEntry.clock_in_latitude) : (hasSitePosition ? Number(fallbackSite.latitude) : null))),
+          last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (storedPosition ? Number(storedPosition.longitude) : (hasClockInPosition ? Number(openEntry.clock_in_longitude) : (hasSitePosition ? Number(fallbackSite.longitude) : null))),
+          last_known_accuracy: hasReliablePosition ? reliableAccuracy : (storedPosition ? storedAccuracy : (hasClockInPosition && Number.isFinite(clockInAccuracy) ? clockInAccuracy : (hasSitePosition ? Number(fallbackSite.geofence_radius_meters || 0) || null : null))),
+          last_known_gps_source: hasReliablePosition ? (active?.reliable_gps_source || active?.gps_source || '') : (storedPosition ? (storedPosition.gps_source || (storedPosition === user ? 'user_location_fallback' : '')) : (hasClockInPosition ? 'shift_clock_in' : (hasSitePosition ? 'site_fallback' : ''))),
+          position_fallback: !hasReliablePosition && !storedPosition && (hasClockInPosition || hasSitePosition),
+          site_position: !hasReliablePosition && !storedPosition && !hasClockInPosition && hasSitePosition,
           // Show the officer's best available device position even when it isn't
           // precise (Wi-Fi/indoor fixes). Any valid stored coordinate in the
           // current record renders as a low-accuracy marker rather than hiding
