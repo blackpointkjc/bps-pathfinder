@@ -286,9 +286,9 @@ export default function Personnel({ embedded = false }) {
                 </DialogContent>
             </Dialog>
             {/* Header */}
-            {!embedded && <div className="m-3 flex-none rounded-2xl border border-[#29445f] bg-[#0b1725] px-4 py-3 shadow-xl flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><Users className="h-4 w-4 text-cyan-300"/></div>
-                <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Personnel Command</div><span className="text-white font-black text-base">Personnel Roster</span></div>
+            {!embedded && <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="w-1 h-6 bg-gold rounded-sm" />
+                <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
                 <div className="flex-1" />
                 <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
                 <button onClick={() => { setRefreshing(true); loadPersonnel(); }} disabled={refreshing}
@@ -296,8 +296,6 @@ export default function Personnel({ embedded = false }) {
                     <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
                 </button>
             </div>}
-
-            {embedded && <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a1724] px-3 py-2"><div><div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Personnel Command</div><div className="text-sm font-black text-white">Personnel Roster</div></div><button onClick={() => { setRefreshing(true); loadPersonnel(); }} disabled={refreshing} className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 text-[9px] font-black text-slate-300 hover:border-cyan-600 hover:text-white"><RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`}/>REFRESH</button></div>}
 
             {/* Stats Bar */}
             <div className="flex-none grid grid-cols-2 border-b border-slate-800 sm:grid-cols-4">

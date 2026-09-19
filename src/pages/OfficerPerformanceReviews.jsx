@@ -138,11 +138,12 @@ export default function OfficerPerformanceReviews() {
     }
   };
 
-  return <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
-    <div className="mx-auto max-w-6xl space-y-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-[#0b1725] p-4 shadow-xl">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10"><ClipboardCheck className="h-5 w-5 text-amber-300"/></div>
-        <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Performance & Feedback</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">My Reviews & Feedback</h1><p className="mt-1 text-xs text-slate-400">Review status, self-rating, supervisor feedback, and signatures.</p></div>
+  return <div className="min-h-screen bg-[#08131f] p-4 text-slate-100 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-5">
+      <div>
+        <h1 className="flex items-center gap-3 text-3xl font-bold"><ClipboardCheck className="text-amber-400"/>My Reviews & Feedback</h1>
+        <p className="mt-1 text-slate-400">Officer Center → Profile & Training → My Reviews & Feedback</p>
+        <p className="mt-1 text-sm text-slate-500">See where each review is in the cycle and complete your self-rating and signature when it reaches you.</p>
       </div>
 
       {loading ? (

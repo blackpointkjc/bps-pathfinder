@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function AdminClientFeedback({ embedded = false }) {
+export default function AdminClientFeedback() {
   const [assignDialog, setAssignDialog] = useState(null); // feedback record
   const [selectedOfficer, setSelectedOfficer] = useState("");
   const [assignAction, setAssignAction] = useState(""); // "commendation" | "complaint" | "regular"
@@ -182,12 +182,18 @@ export default function AdminClientFeedback({ embedded = false }) {
   );
 
   return (
-    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
-      <div className="mx-auto w-full max-w-6xl space-y-4">
-        {!embedded && <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10"><Shield className="h-5 w-5 text-emerald-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-emerald-300">Client Quality</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Client Feedback</h1><p className="mt-1 text-xs text-slate-400">Review ratings, assign feedback, and connect recognition or concerns to officers.</p></div></div>}
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-amber-600" />
+          <div>
+            <h1 className="text-3xl font-black text-white">Client Feedback</h1>
+            <p className="text-slate-600">Review and assign client feedback to officers</p>
+          </div>
+        </div>
 
-        <div className="grid md:grid-cols-3 gap-3">
-          <Card className="border border-emerald-500/25 bg-[#0d1927] text-slate-100 shadow-lg">
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="shadow-lg border-green-200">
             <CardHeader className="bg-green-50">
               <CardTitle className="text-green-700 flex items-center gap-2">
                 <Award className="w-5 h-5" />Commendations

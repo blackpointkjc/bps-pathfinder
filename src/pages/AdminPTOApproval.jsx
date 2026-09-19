@@ -190,15 +190,21 @@ export default function AdminPTOApproval() {
   }
 
   return (
-    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10"><CalendarClock className="h-5 w-5 text-emerald-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-emerald-300">Leave Administration</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">PTO Approval</h1><p className="mt-1 text-xs text-slate-400">Review pending leave requests, decisions, and PTO history.</p></div></div>
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center gap-4">
+          <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
+          <div>
+            <h1 className="text-3xl font-black text-white">PTO Approval</h1>
+            <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
+          </div>
+        </div>
 
         {ptoLoading && <p className="text-slate-400">Loading PTO requests…</p>}
         {ptoError && <Card className="border-red-700/50 bg-red-950/20"><CardContent className="p-4 text-red-300">Unable to load PTO requests: {ptoError.message}</CardContent></Card>}
 
-        <Card className="border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
-          <CardHeader className="border-b border-amber-500/20 bg-amber-950/20">
+        <Card className="border-none shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
             <CardTitle className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-amber-600" />
               Pending Requests ({pendingRequests?.length || 0})

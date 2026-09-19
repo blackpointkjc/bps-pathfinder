@@ -160,16 +160,19 @@ export default function ConfidentialReport() {
   };
 
   return (
-    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
-      <div className="mx-auto max-w-4xl space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-violet-500/30 bg-[linear-gradient(135deg,#1b1024_0%,#0c1522_60%,#07101a_100%)] p-4 shadow-xl">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-500/10"><ShieldCheck className="h-5 w-5 text-violet-300"/></div>
-          <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-violet-300">Protected Reporting</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Confidential Report</h1><p className="mt-1 text-xs text-slate-400">Submit sensitive concerns privately to authorized management.</p></div>
+    <div className="p-4 md:p-8 min-h-screen">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <ShieldCheck className="w-12 h-12 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900">Confidential Report</h1>
+          </div>
+          <p className="text-slate-600">Submit concerns privately and securely to management</p>
         </div>
 
-        <Alert className="border-blue-500/30 bg-blue-950/25 text-blue-100">
+        <Alert className="bg-blue-50 border-blue-200">
           <Lock className="h-5 w-5 text-blue-600" />
-          <AlertDescription className="text-blue-100">
+          <AlertDescription className="text-blue-900">
             <p className="font-semibold mb-2">This report is completely confidential</p>
             <ul className="list-disc list-inside space-y-1 text-sm">
               <li>Only authorized management and office staff can view your report</li>
@@ -181,7 +184,7 @@ export default function ConfidentialReport() {
           </AlertDescription>
         </Alert>
 
-        <Card className="border border-violet-500/25 bg-[#0d1927] text-slate-100 shadow-xl">
+        <Card className="border-none shadow-xl">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-blue-600" />

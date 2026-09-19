@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, ShieldCheck } from "lucide-react";
+import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, Users, Printer, BarChart3, ShieldCheck } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { getRankLastNameByEmail } from "@/utils/officerDisplay";
@@ -19,8 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AdminSupervisorReports() {
   const [selectedInspection, setSelectedInspection] = useState(null);
@@ -574,12 +580,18 @@ export default function AdminSupervisorReports() {
   };
 
   return (
-    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10"><Shield className="h-5 w-5 text-amber-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Supervisor Quality</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Supervisor Reports</h1><p className="mt-1 text-xs text-slate-400">Review inspections, write-ups, approvals, and supervisor reporting activity.</p></div></div>
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-amber-600" />
+          <div>
+            <h1 className="text-3xl font-black text-white">Supervisor Reports</h1>
+            <p className="text-slate-600">Review inspections and write-up reports from supervisors</p>
+          </div>
+        </div>
 
         <Tabs defaultValue="sitechecks" className="space-y-6">
-          <TabsList className="flex h-auto flex-wrap gap-1 rounded-xl border border-slate-700 bg-[#08131f] p-1">
+          <TabsList className="bg-white border border-slate-200 p-1 flex flex-wrap gap-1">
             <TabsTrigger value="sitechecks" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-900">
               <ShieldCheck className="w-4 h-4 mr-2" />
               Site Checks ({siteChecks?.length || 0})

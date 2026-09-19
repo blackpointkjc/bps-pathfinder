@@ -74,10 +74,10 @@ export default function PayrollDates({ readOnly = false }) {
     saveMutation.mutate(data);
   };
 
-  return <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
-    <div className="mx-auto max-w-6xl space-y-4">
+  return <div className="min-h-screen p-4 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/40 bg-blue-950/30"><CalendarClock className="h-5 w-5 text-blue-300" /></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Payroll Calendar</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Payroll Dates</h1><p className="mt-1 text-xs text-slate-400">Published pay periods and deposit dates.</p></div></div>
+        <div className="flex items-center gap-3"><div className="rounded-lg border border-blue-500/40 bg-blue-950/30 p-3"><CalendarClock className="h-7 w-7 text-blue-400" /></div><div><h1 className="text-3xl font-bold">Payroll Dates</h1><p className="text-slate-400">Enter the first three periods once, then repeat the pattern on a rolling two-year schedule.</p></div></div>
         {canManage && <div className="flex gap-2"><Button variant="outline" onClick={() => rollingMutation.mutate()} disabled={rollingMutation.isPending || sorted.length < 3}>{rollingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Repeat2 className="mr-2 h-4 w-4" />}Generate Rolling 2 Years</Button><Button onClick={() => openForm(null)}><Plus className="mr-2 h-4 w-4" />Add Payroll Period</Button></div>}
       </div>
 

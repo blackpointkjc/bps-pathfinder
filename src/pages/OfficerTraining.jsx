@@ -267,19 +267,18 @@ export default function OfficerTraining() {
   const overdueCount = assignments.filter(a => a.due_date && isPast(new Date(a.due_date)) && a.status !== 'approved').length;
 
   return (
-    <div className="bps-command-page min-h-full overflow-x-hidden bg-[#07111d] p-3 text-white sm:p-4 md:p-5">
+    <div className="bps-command-page min-h-screen overflow-x-hidden bg-[#080d16] p-3 text-white sm:p-4 md:p-5">
       <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
 
         {/* Header */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 sm:h-11 sm:w-11">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="text-[9px] font-black uppercase tracking-[.18em] text-violet-300">Training & Compliance</div>
-              <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">My Training & Compliance</h1>
-              <p className="mt-1 text-xs text-slate-400">Modules, certifications, expirations, and required compliance activity.</p>
+              <h1 className="text-xl font-black text-white sm:text-2xl">My Training & Compliance</h1>
+            <p className="text-slate-500 text-sm">All training modules, certifications, and compliance records</p>
             </div>
           </div>
           <Link

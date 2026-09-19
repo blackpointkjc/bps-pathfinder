@@ -330,7 +330,13 @@ Please continue to check for other open shifts.`
   return (
     <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
       <div className="mx-auto w-full max-w-5xl space-y-4">
-        {!embedded && <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10"><Star className="h-5 w-5 text-amber-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Coverage & Staffing</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Shift Bid Management</h1><p className="mt-1 text-xs text-slate-400">Review bids, compare eligible officers, and approve open-shift coverage.</p></div></div>}
+        {!embedded && <div>
+          <h1 className="flex items-center gap-2 text-3xl font-black text-white">
+            <Star className="w-8 h-8 text-amber-600" />
+            Shift Bid Management
+          </h1>
+          <p className="text-slate-600">Review and approve officer bids for open shifts</p>
+        </div>}
 
         {shiftsWithBids.length === 0 ? (
           <Card className="border-none shadow-lg">

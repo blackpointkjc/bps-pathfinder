@@ -271,11 +271,11 @@ export default function Schedule() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="bps-command-page schedule-dark min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
-      <div className="mx-auto max-w-[1600px] space-y-4">
-        <section className="rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl">
+    <div className="bps-command-page schedule-dark min-h-screen bg-[#080d16] p-4 text-slate-100 md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
+        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Officer Scheduling</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">My Schedule</h1><p className="mt-1 text-xs text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage.</p></div>
+            <div><div className="text-[11px] font-black uppercase tracking-[.25em] text-cyan-300">Officer Scheduling</div><h1 className="mt-2 text-3xl font-black text-white md:text-4xl">My Schedule</h1><p className="mt-2 text-sm text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p></div>
             <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>LIVE UPDATES ENABLED</span></div>
           </div>
         </section>

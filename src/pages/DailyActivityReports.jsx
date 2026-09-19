@@ -745,7 +745,7 @@ export default function DailyActivityReports() {
   }, []);
 
   return (
-    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
+    <div className="p-4 md:p-8 min-h-screen bg-white">
       <SupervisorSiteCheckModal
         isOpen={showSiteCheckModal}
         onClose={() => setShowSiteCheckModal(false)}
@@ -761,16 +761,15 @@ export default function DailyActivityReports() {
         officerName={user?.full_name || user?.email}
         officerEmail={user?.email}
       />
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl md:flex-row md:items-center md:justify-between">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-slate-900 -ml-2">
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
             <div>
-              <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Shift Documentation</div>
-              <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Daily Activity Reports</h1>
-              <p className="mt-1 text-xs text-slate-400">Hourly patrol activity, checks, contacts, and notable events.</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-1">Daily Activity Reports</h1>
+              <p className="text-sm md:text-base text-slate-600">Document hourly activities during your shift</p>
             </div>
           </div>
           <Button

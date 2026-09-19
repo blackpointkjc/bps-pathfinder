@@ -430,13 +430,12 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
   }
 
   return (
-    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl md:flex-row md:items-center md:justify-between">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <div className="text-[9px] font-black uppercase tracking-[.18em] text-red-300">Virginia Enforcement</div>
-            <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">VA Criminal Complaints</h1>
-            <p className="mt-1 text-xs text-slate-400">Prepare, submit, edit, and review Virginia criminal complaints.</p>
+            <h1 className="mb-2 text-2xl font-black text-white md:text-3xl">VA Criminal Complaints</h1>
+            <p className="text-sm md:text-base text-slate-600">File criminal complaints for Virginia prosecution</p>
           </div>
           <Button
             onClick={() => {
@@ -451,7 +450,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
         </div>
 
         {!canSubmit && (
-          <Alert className="border-amber-500/40 bg-amber-950/25 text-amber-100">
+          <Alert className="border-amber-200 bg-amber-50">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
               You must be clocked in to file a criminal complaint. Please clock in at your assigned location first.

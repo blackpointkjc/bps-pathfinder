@@ -340,9 +340,14 @@ export default function AdminClientReports() {
     .sort((a, b) => a.first_name.localeCompare(b.first_name));
 
   return (
-    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-cyan-500/25 bg-[#0b1725] p-4 shadow-xl print:mb-8"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><FileText className="h-5 w-5 text-cyan-300"/></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Client Reporting</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Client Reports</h1><p className="mt-1 text-xs text-slate-400">Generate site hours, activity, incident, and staffing reports for clients.</p></div></div>
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex items-center gap-4 print:mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-white">Client Reports</h1>
+            <p className="text-slate-600">Generate hours and activity reports for client sites</p>
+          </div>
+        </div>
 
         <Card className="border-none shadow-lg print:hidden">
           <CardHeader>

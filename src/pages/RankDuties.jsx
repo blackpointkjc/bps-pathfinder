@@ -173,16 +173,19 @@ export default function RankDuties() {
   };
 
   return (
-    <div className="bps-command-page min-h-full bg-[#07111d] p-3 text-white md:p-5">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-[#0b1725] p-4 shadow-xl">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10"><Shield className="h-5 w-5 text-amber-300"/></div>
-          <div><div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Chain of Command</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Rank Structure & Duties</h1><p className="mt-1 text-xs text-slate-400">Operational authority, responsibilities, and reporting expectations by rank.</p></div>
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-amber-600" />
+          <div>
+            <h1 className="text-3xl font-black text-white">Rank Structure & Duties</h1>
+            <p className="text-slate-600">Security operations chain of command and responsibilities</p>
+          </div>
         </div>
 
         <div className="grid gap-4">
           {ranks.filter(item => ["Sergeant / Field Lead Supervisor", "Senior Corporal / Field Supervisor", "Corporal / Site Supervisor", "Senior Officer / Lead Officer", "Armed Officer", "Unarmed Officer", "Special Conservator"].includes(item.rank)).map((item) => (
-            <Card key={item.rank} className="overflow-hidden border border-slate-700 bg-[#0d1927] text-slate-100 shadow-lg">
+            <Card key={item.rank} className="border-none shadow-lg overflow-hidden">
               <div 
                 className={`${item.color} text-white p-4 cursor-pointer hover:opacity-90 transition-opacity`}
                 onClick={() => toggleRank(item.rank)}

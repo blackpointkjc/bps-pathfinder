@@ -510,13 +510,12 @@ export default function MaintenanceReports() {
   };
 
   return (
-    <div className="min-h-full bg-[#07111d] p-3 text-slate-100 md:p-5">
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-4 md:p-8 min-h-screen">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex justify-between items-center">
           <div>
-            <div className="text-[9px] font-black uppercase tracking-[.18em] text-amber-300">Site Conditions</div>
-            <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Maintenance Reports</h1>
-            <p className="mt-1 text-xs text-slate-400">Document hazards, damage, outages, repairs, and urgent maintenance needs.</p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Maintenance Reports</h1>
+            <p className="text-slate-600">Report and track maintenance issues</p>
           </div>
           <Button
             onClick={() => {

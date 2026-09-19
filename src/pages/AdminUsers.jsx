@@ -696,29 +696,13 @@ export default function AdminUsers({ embedded = false }) {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedAdminPhoto}
       />
-      {embedded && (
-        <div className="mb-3 flex flex-col gap-2 rounded-xl border border-slate-700 bg-[#0a1724] p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Personnel Intake</div>
-            <div className="mt-0.5 text-sm font-black text-white">Pending Users</div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={checkAnniversariesAndBirthdays} disabled={checkingAnniversaries} variant="outline" size="sm">
-              <Calendar className={`mr-1.5 h-3.5 w-3.5 ${checkingAnniversaries ? 'animate-spin' : ''}`} />
-              {checkingAnniversaries ? 'Checking…' : 'Check Dates'}
-            </Button>
-            <Button onClick={() => { resetCreateForm(); setShowCreateDialog(true); }} size="sm" className="bg-blue-600 hover:bg-blue-500">
-              <Plus className="mr-1.5 h-3.5 w-3.5" />Create User
-            </Button>
-          </div>
-        </div>
-      )}
-      <div className="mb-4">
-        {!embedded && <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8">
+        {!embedded && <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
             <div>
-              <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Personnel Intake</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Pending Users</h1><p className="mt-1 text-xs text-slate-400">Create accounts, review pending users, and assign Officer, Student, or Client access.</p>
+              <h1 className="text-3xl font-black text-white">Pending Users</h1>
+              <p className="text-slate-400">Create one user account, then assign the person as Officer, Student, or Client</p>
             </div>
           </div>
           <div className="flex gap-3">

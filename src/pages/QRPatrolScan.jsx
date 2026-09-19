@@ -491,18 +491,26 @@ export default function QRPatrolScan() {
   };
 
   return (
-    <div className="bps-command-page mx-auto max-w-5xl space-y-4 bg-[#07111d] p-3 pb-10 text-white md:p-5">
-      <div className="flex items-center gap-3 rounded-2xl border border-cyan-500/25 bg-[#0b1725] p-4 shadow-xl"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><QrCode className="h-5 w-5 text-cyan-300" /></div><div><div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Patrol Verification</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">QR Patrol Scan</h1><p className="mt-1 text-xs text-slate-400">{format(new Date(), 'EEEE, MMMM d, yyyy')} · Verify checkpoints and patrol completion.</p></div></div>
+    <div className="bps-command-page mx-auto max-w-3xl space-y-4 bg-[#080d16] p-4 pb-10 text-white md:p-6">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="bg-blue-600 p-2 rounded-xl">
+          <QrCode className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-black text-white">QR Patrol Scan</h1>
+          <p className="text-sm text-slate-500">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+        </div>
+      </div>
 
       {cameraError && (
-        <Alert className="border-red-500/40 bg-red-950/25 text-red-100">
+        <Alert className="border-red-200 bg-red-50">
           <CameraOff className="w-4 h-4 text-red-600" />
-          <AlertDescription className="font-medium text-red-100">{cameraError}</AlertDescription>
+          <AlertDescription className="text-red-800 font-medium">{cameraError}</AlertDescription>
         </Alert>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border border-blue-500/25 bg-[#0d1927] text-slate-100">
+        <Card className="border-blue-100">
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-blue-600">{successScans.length}</p>
             <p className="text-xs text-slate-500 mt-1">Successful Scans Today</p>
