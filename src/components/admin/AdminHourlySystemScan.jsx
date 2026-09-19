@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -40,6 +40,8 @@ export default function AdminHourlySystemScan({ user }) {
 
     const runIfDue = async () => {
       if (!active || runningRef.current || document.hidden) return;
+      const requestHealth = getBase44RequestHealth();
+      if (requestHealth.rateLimitedUntil || requestHealth.activeWrites > 0 || requestHealth.activeReads > 0 || requestHealth.queuedReads > 0) return;
       runningRef.current = true;
       try {
         const execute = async () => {
@@ -53,7 +55,7 @@ export default function AdminHourlySystemScan({ user }) {
           // not compete with itself for the same Base44 request allowance.
           const serverResponse = await base44.functions.invoke('runSystemAudit', {});
           const serverAudit = serverResponse?.data || serverResponse || {};
-          const clientAudit = await runClientFunctionalAudit();
+          const clientAudit = await runClientFunctionalAudit({ includeFunctionalProbes: false });
           if (serverAudit.error) throw new Error(serverAudit.error);
           const audit = combineAudits(serverAudit, clientAudit);
           const publishResponse = await base44.functions.invoke('publishSystemScan', { audit });
