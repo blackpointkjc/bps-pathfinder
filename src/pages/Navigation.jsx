@@ -224,15 +224,24 @@ export default function Navigation() {
 
 
     useEffect(() => {
-        if (initialOperationalFitRef.current || activeCalls.length === 0) return;
-        const coords = [...activeCalls, ...otherUnits]
-            .map(item => [Number(item.latitude), Number(item.longitude)])
-            .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
-        if (coords.length === 0) return;
+        if (initialOperationalFitRef.current) return;
+        const coords = [];
+        if (currentLocation && Number.isFinite(Number(currentLocation[0])) && Number.isFinite(Number(currentLocation[1]))) {
+            coords.push([Number(currentLocation[0]), Number(currentLocation[1])]);
+        }
+        for (const item of [...activeCalls, ...otherUnits]) {
+            const liveLat = Number(item.latitude);
+            const liveLng = Number(item.longitude);
+            const lastLat = Number(item.last_known_latitude);
+            const lastLng = Number(item.last_known_longitude);
+            if (Number.isFinite(liveLat) && Number.isFinite(liveLng) && !(liveLat === 0 && liveLng === 0)) coords.push([liveLat, liveLng]);
+            else if (Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0)) coords.push([lastLat, lastLng]);
+        }
+        if (coords.length < 2) return;
         initialOperationalFitRef.current = true;
         setFitBounds(coords);
         window.setTimeout(() => setFitBounds(null), 1000);
-    }, [activeCalls, otherUnits]);
+    }, [activeCalls, otherUnits, currentLocation]);
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
@@ -742,7 +751,7 @@ export default function Navigation() {
             // stale stored coordinate must not become a live map marker.
             const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
             const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
-                .filter(unit => unit.session_active !== false);
+                .filter(unit => unit.session_active === true || unit.presence_online === true);
             const currentEmail = currentUser?.email?.toLowerCase();
             const self = sourceUnits.find(unit => String(unit.officer_email || unit.email || '').toLowerCase() === currentEmail);
             // Server positions are a labelled fallback while this device acquires GPS.
