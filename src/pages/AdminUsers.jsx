@@ -194,7 +194,12 @@ export default function AdminUsers({ embedded = false }) {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, userData }) => base44.entities.User.update(id, userData),
+    mutationFn: async ({ id, userData }) => {
+      const response = await base44.functions.invoke('updateUser', { userId: id, updates: userData });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ predicate: query => {
@@ -891,7 +896,10 @@ export default function AdminUsers({ embedded = false }) {
                           try {
                             const action = newRole === 'admin' ? 'grant full admin access to' : 'remove admin access from';
                             if (await confirmInApp(`Are you sure you want to ${action} ${userData.first_name} ${userData.last_name}?`)) {
-                              await base44.entities.User.update(userData.id, { role: newRole });
+                              const response = await base44.functions.invoke('updateUser', { userId: userData.id, updates: { role: newRole } });
+                              const payload = response?.data || response || {};
+                              if (payload.error) throw new Error(payload.error);
+                              invalidateAppDirectory();
                               queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
