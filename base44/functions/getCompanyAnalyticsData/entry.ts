@@ -15,16 +15,17 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     if (body.health_check === true) {
-      // The hourly system scan only needs to prove that the analytics backend and
-      // its core data services are reachable. Loading all 23 analytics datasets
-      // for a health check caused connection-pool/rate-limit cascades.
-      const users = await base44.asServiceRole.entities.User.list('-updated_date', 1);
-      const timeEntries = await base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1);
+      // The server-side audit already verifies the underlying entity services.
+      // This probe only needs to prove that the analytics function can authenticate,
+      // parse its request, and return the expected contract. Performing additional
+      // entity reads here duplicated the audit workload and could turn request
+      // throttling into a misleading Company Analytics 500.
       return Response.json({
         success: true,
         health_check: true,
-        users: Array.isArray(users) ? users : [],
-        timeEntries: Array.isArray(timeEntries) ? timeEntries : [],
+        probe_mode: 'function_contract',
+        users: [],
+        timeEntries: [],
         service_errors: {},
       });
     }
