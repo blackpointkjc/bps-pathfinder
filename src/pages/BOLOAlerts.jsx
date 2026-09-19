@@ -217,7 +217,6 @@ export default function BOLOAlerts() {
         })}
       </div>
 
-      {canCreate && !modal && <button type="button" onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-red-400 bg-red-700 px-5 py-3 text-xs font-black text-white shadow-[0_10px_40px_rgba(0,0,0,.45)] hover:bg-red-600"><Plus className="h-4 w-4" />NEW BOLO</button>}
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onEdit={modal.mode === 'view' && canEditRecord(modal.bolo) ? () => setModal({ mode: 'edit', bolo: { ...modal.bolo } }) : null} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}
 
       <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>
