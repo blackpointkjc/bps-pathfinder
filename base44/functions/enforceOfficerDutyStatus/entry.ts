@@ -77,6 +77,15 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || 'sweep');
 
+    if (action === 'session_start') {
+      const retired = await retireLiveOfficer(base44, caller.email);
+      if (lower(caller.status) === 'out of service') {
+        return Response.json({ success: true, changed: false, status: 'Out of Service', retired_live_records: retired });
+      }
+      const result = await setOutOfService(base44, caller, 'started or refreshed a Pathfinder session.', false);
+      return Response.json({ success: true, changed: true, officer: result, retired_live_records: retired });
+    }
+
     if (action === 'logout') {
       const retired = await retireLiveOfficer(base44, caller.email);
       if (caller.status === 'Out of Service') {
@@ -117,16 +126,19 @@ Deno.serve(async (req) => {
       const result = await setOutOfService(
         base44,
         caller,
-        'remained Available for at least 12 hours and 1 minute without going Out of Service.',
+        'remained Available for at least 8 hours without going Out of Service.',
         true,
       );
       return Response.json({ success: true, changed: true, officer: result });
     }
 
-    // Fixed server-side sweep: callers cannot choose a target officer. This can safely
-    // be invoked by any authenticated app session so stale Available statuses are
-    // corrected even when command staff are not logged in.
-    const users = await base44.asServiceRole.entities.User.list(undefined, 2000);
+    // Fixed server-side sweep: callers cannot choose a target officer. Enforce
+    // both the 8-hour Available ceiling and an 8-hour stale live-session cutoff.
+    const [users, activeSessions, allUnits] = await Promise.all([
+      base44.asServiceRole.entities.User.list(undefined, 2000),
+      base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 2000).catch(() => []),
+      base44.asServiceRole.entities.Unit.list(undefined, 2000).catch(() => []),
+    ]);
     const now = Date.now();
     const availableOfficers = (users || []).filter((officer: any) => isCadOfficer(officer) && lower(officer.status) === 'available');
     for (const officer of availableOfficers) {
@@ -145,12 +157,56 @@ Deno.serve(async (req) => {
       changed.push(await setOutOfService(
         base44,
         officer,
-        'remained Available for at least 12 hours and 1 minute without going Out of Service.',
+        'remained Available for at least 8 hours without going Out of Service.',
         true,
+        allUnits,
       ));
     }
 
-    return Response.json({ success: true, checked: (users || []).length, forced_out_of_service: changed });
+    const staleCutoff = now - STALE_SESSION_LIMIT_MS;
+    const userByEmail = new Map((users || []).map((officer:any) => [lower(officer.email), officer]));
+    const staleSessionEmails = new Set<string>();
+    const stampNow = new Date().toISOString();
+    for (const session of activeSessions || []) {
+      if (session?.session_active === false) continue;
+      const stamp = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
+      if (!Number.isFinite(stamp) || stamp > staleCutoff) continue;
+      const email = lower(session.officer_email);
+      if (!email) continue;
+      staleSessionEmails.add(email);
+      await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
+        session_active: false,
+        status: 'Out of Service',
+        last_update: stampNow,
+        gps_updated_at: null,
+        latitude: null,
+        longitude: null,
+        heading: null,
+        speed: 0,
+        accuracy: null,
+        current_call_info: '',
+      }).catch(() => null);
+    }
+
+    const staleSessionOfficers:any[] = [];
+    for (const email of staleSessionEmails) {
+      const officer = userByEmail.get(email);
+      if (!officer) continue;
+      staleSessionOfficers.push(await setOutOfService(
+        base44,
+        officer,
+        'had no Pathfinder heartbeat for at least 8 hours and was automatically signed out of the live CAD roster.',
+        true,
+        allUnits,
+      ));
+    }
+
+    return Response.json({
+      success: true,
+      checked: (users || []).length,
+      forced_out_of_service: changed,
+      stale_sessions_retired: staleSessionOfficers,
+    });
   } catch (error) {
     console.error('enforceOfficerDutyStatus failed:', error);
     return Response.json({ error: error?.message || 'Unable to enforce officer duty status' }, { status: 500 });
