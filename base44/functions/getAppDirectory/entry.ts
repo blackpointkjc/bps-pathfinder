@@ -62,6 +62,8 @@ function safeUser(entry: any, full = false) {
     profile_photo_url: entry.profile_photo_url || '',
     additional_roles: entry.additional_roles || [],
     role: entry.role || 'user',
+    is_supervisor: entry.is_supervisor === true,
+    dispatch_role: entry.dispatch_role === true,
     user_type: entry.user_type || '',
     account_type: entry.account_type || '',
     portal_type: entry.portal_type || '',
