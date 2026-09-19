@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, FileText, AlertTriangle, Shield, Calendar, MapPin, Megaphone, GraduationCap, ClipboardList, Briefcase, CalendarClock, BookOpen, UserCheck, ShieldCheck, LayoutDashboard } from "lucide-react";
 import { format } from "date-fns";
