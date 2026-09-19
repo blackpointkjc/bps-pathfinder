@@ -19,14 +19,14 @@ const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 // Keep the last good queue through a long minimized/idle period. Individual calls
 // are still filtered to the one-hour operational window before they are rendered.
-const ACTIVE_CALL_CACHE_MAX_AGE_MS = 65 * 60_000;
+const ACTIVE_CALL_CACHE_MAX_AGE_MS = 8 * 60 * 60_000;
 
 function readCachedActiveCalls() {
     try {
         const cached = JSON.parse(window.localStorage.getItem(ACTIVE_CALL_CACHE_KEY) || 'null');
         if (!cached || Date.now() - Number(cached.savedAt || 0) > ACTIVE_CALL_CACHE_MAX_AGE_MS || !Array.isArray(cached.calls)) return [];
-        const oneHourAgo = Date.now() - 60 * 60 * 1000;
-        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= oneHourAgo));
+        const activeWindowStart = Date.now() - 8 * 60 * 60 * 1000;
+        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= activeWindowStart));
     } catch {
         return [];
     }
@@ -127,11 +127,11 @@ export function DashboardDataProvider({ children }) {
 
             // Keep the live CAD queue to the most recent hour. Preserve the 1-hour
             // requirement, but use the same trustworthy timestamp logic as the UI.
-            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const activeWindowStart = Date.now() - 8 * 60 * 60 * 1000;
             const recentCalls = (callsData || []).filter(call => {
                 if (['Cleared', 'Cancelled'].includes(call.status)) return false;
                 const callTime = getReliableCallTimestamp(call);
-                return !callTime || callTime >= oneHourAgo;
+                return !callTime || callTime >= activeWindowStart;
             });
 
             const active = dedupeOperationalCalls(recentCalls);
@@ -250,7 +250,7 @@ export function DashboardDataProvider({ children }) {
                 return;
             }
             setCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60_000, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 8 * 60 * 60_000, limit: 200 });
                 try {
                     window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
