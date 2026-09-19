@@ -33,6 +33,7 @@ const withTimeout = (promise, milliseconds, label) => {
 
 export const AuthProvider = ({ children }) => {
   const requestSequence = useRef(0);
+  const dutyStatusBootstrappedRef = useRef(false);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -47,35 +48,34 @@ export const AuthProvider = ({ children }) => {
       let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
       if (requestId !== requestSequence.current) return;
 
-      // Preserve the immutable Pathfinder user ID for authorization and joins,
-      // while treating the admin-managed work email and linked Microsoft email
-      // as aliases for the same person. This prevents schedules, reports, time
-      // entries, posts, and messages from splitting when Microsoft uses a
-      // different address.
-      try {
-        const [teamsLinks, outlookLinks] = await Promise.all([
-          base44.entities.MicrosoftTeamsIdentity.filter({ user_id: currentUser.id, active: true }, '-updated_at', 10).catch(() => []),
-          base44.entities.OutlookMailboxLink.filter({ user_id: currentUser.id, connected: true }, '-last_verified_at', 10).catch(() => []),
-        ]);
-        if (requestId !== requestSequence.current) return;
-        const teams = teamsLinks?.[0];
-        const outlook = outlookLinks?.[0];
-        const cleanEmail = value => String(value || '').trim().toLowerCase();
-        const authEmail = cleanEmail(currentUser.email);
-        const workEmail = cleanEmail(teams?.pathfinder_email || outlook?.pathfinder_email || authEmail);
-        const microsoftEmail = cleanEmail(teams?.microsoft_email || outlook?.outlook_email);
-        currentUser = {
-          ...currentUser,
-          email: workEmail || authEmail,
-          auth_email: authEmail,
-          work_email: workEmail || authEmail,
-          pathfinder_email: workEmail || authEmail,
-          microsoft_email: microsoftEmail,
-          outlook_email: cleanEmail(outlook?.outlook_email || teams?.microsoft_email),
-          email_aliases: [...new Set([authEmail, workEmail, microsoftEmail].filter(Boolean))],
-        };
-      } catch (linkError) {
-        console.warn('[AUTH] Linked Microsoft identity unavailable; using the authenticated Pathfinder identity.', linkError?.message);
+      // The User record already carries the linked work/Microsoft aliases.
+      // Do not re-query MicrosoftTeamsIdentity and OutlookMailboxLink on every auth
+      // refresh; those duplicate reads were a major startup request source.
+      const cleanEmail = value => String(value || '').trim().toLowerCase();
+      const authEmail = cleanEmail(currentUser.email);
+      const workEmail = cleanEmail(currentUser.work_email || currentUser.pathfinder_email || authEmail);
+      const microsoftEmail = cleanEmail(currentUser.microsoft_email || currentUser.outlook_email);
+      currentUser = {
+        ...currentUser,
+        email: workEmail || authEmail,
+        auth_email: authEmail,
+        work_email: workEmail || authEmail,
+        pathfinder_email: workEmail || authEmail,
+        microsoft_email: microsoftEmail,
+        outlook_email: cleanEmail(currentUser.outlook_email || currentUser.microsoft_email),
+        email_aliases: [...new Set([authEmail, workEmail, microsoftEmail, ...(currentUser.email_aliases || [])].map(cleanEmail).filter(Boolean))],
+      };
+
+      // A newly loaded Pathfinder session starts field personnel Out of Service.
+      // Officers/supervisors explicitly choose Available/Enroute/etc. themselves.
+      const roleSet = new Set([currentUser.role, ...(currentUser.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+      const fieldRank = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(String(currentUser.rank || '').trim().toLowerCase());
+      const operational = roleSet.has('officer') || roleSet.has('cad_access') || roleSet.has('supervisor') || currentUser.is_supervisor === true || fieldRank;
+      if (operational && !dutyStatusBootstrappedRef.current) {
+        dutyStatusBootstrappedRef.current = true;
+        currentUser = { ...currentUser, status: 'Out of Service' };
+        void base44.functions.invoke('enforceOfficerDutyStatus', { action: 'session_start' })
+          .catch(error => console.warn('[AUTH] Unable to initialize Out of Service status:', error?.message || error));
       }
 
       setUser(currentUser);
