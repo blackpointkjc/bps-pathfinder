@@ -339,10 +339,10 @@ function CommandDashboardInner({ embedded = false }) {
             {/* ── MASTER STATUS TILES ── */}
             <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-8">
                 {[
-                    { label: 'ACTIVE CALLS', val: calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
-                    { label: 'P1 CRITICAL', val: criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
-                    { label: 'P2 HIGH', val: highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
-                    { label: 'UNASSIGNED', val: unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
+                    { label: 'ACTIVE CALLS', val: loading && calls.length === 0 ? '—' : calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
+                    { label: 'P1 CRITICAL', val: loading && calls.length === 0 ? '—' : criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
+                    { label: 'P2 HIGH', val: loading && calls.length === 0 ? '—' : highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
+                    { label: 'UNASSIGNED', val: loading && calls.length === 0 ? '—' : unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
                     { label: 'AVAILABLE', val: availUnits.length, color: 'text-green-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'EN ROUTE', val: enrouteUnits.length, color: 'text-yellow-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
@@ -471,8 +471,8 @@ function CommandDashboardInner({ embedded = false }) {
 
                     <div className="flex-1 overflow-y-auto">
                         {sortedCalls.length === 0 ? (
-                            <div className="flex items-center justify-center h-32 text-slate-600 font-mono text-xs tracking-widest">
-                                — NO ACTIVE INCIDENTS —
+                            <div className="flex items-center justify-center h-32 text-slate-500 font-mono text-xs tracking-widest">
+                                {loading ? '— LOADING CURRENT INCIDENTS —' : '— NO ACTIVE INCIDENTS —'}
                             </div>
                         ) : sortedCalls.map((call) => {
                             const priority = getCallPriority(call);
