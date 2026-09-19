@@ -7,6 +7,7 @@ import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
@@ -338,8 +339,7 @@ export default function WelcomeBriefing({ user }) {
         // Never automatically repeat a mutation after a 429. The first request
         // may have committed even when its response was throttled; retrying could
         // duplicate status events and worsen the rate-limit burst.
-        const response = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' });
-        const payload = response?.data || response || {};
+        const payload = await persistOfficerStatus('Available');
         if (payload?.error) throw new Error(payload.error);
         localStorage.setItem(lastStatusKey, payload.status || 'Available');
         window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: payload.status || 'Available', source: 'welcome-briefing' } }));
