@@ -101,13 +101,26 @@ Deno.serve(async (req) => {
     if (action === 'geocode') {
       const address = String(body.address || body.data?.address || '').trim();
       if (!address) {
-        return Response.json({ error: 'Address is required to find coordinates' }, { status: 400 });
+        return Response.json({ success: false, error: 'Address is required to find coordinates' });
       }
-      const result = await geocodeWithCensus(address) || await geocodeWithPhoton(address);
+      const candidates = [
+        address,
+        /\b(VA|Virginia)\b/i.test(address) ? address : `${address}, Virginia`,
+        /\bRichmond\b/i.test(address) ? address : `${address}, Richmond, Virginia`,
+      ].filter((value, index, values) => value && values.indexOf(value) === index);
+      let result = null;
+      for (const candidate of candidates) {
+        result = await geocodeWithCensus(candidate) || await geocodeWithPhoton(candidate);
+        if (result) break;
+      }
       if (!result) {
+        // Geocoding is a lookup result, not a missing API route. Return HTTP 200 so
+        // the Base44 client can surface this useful message instead of replacing it
+        // with the generic Axios "Request failed with status code 404" error.
         return Response.json({
-          error: 'Address could not be matched. Add the city, state, and ZIP code or enter coordinates manually.'
-        }, { status: 404 });
+          success: false,
+          error: 'Address could not be matched. Include the street number, street name, city, state, and ZIP code, or enter the coordinates manually.'
+        });
       }
       return Response.json({ success: true, ...result });
     }
