@@ -294,16 +294,46 @@ export default function GlobalMessageBanner({ user }) {
       window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
 
       const isWelfareNotification = source.kind === 'assignment' && record.source_name === 'CAD Welfare';
+      const isSupervisorTask = source.kind === 'supervisor_task' && record.type === 'supervisor_task';
       const targetPage = isWelfareNotification
         ? 'OfficerDispatchQueue'
-        : source.targeted && record.source_name === 'Automatic Property Dispatch'
-          ? 'DispatchCenter'
-          : (record.page || source.page);
+        : isSupervisorTask
+          ? 'SupervisorOverview'
+          : source.targeted && record.source_name === 'Automatic Property Dispatch'
+            ? 'DispatchCenter'
+            : (record.page || source.page);
 
       if (!duplicate) {
         if (source.kind === 'message' && source.direct) {
           // Use concise CAD radio wording and the shared dispatch voice.
           speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
+        } else if (isSupervisorTask) {
+          playNotificationChime(true);
+          const settings = audioSettings.current;
+          const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
+          const taskAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('supervisor_task'));
+          if (taskAudioEnabled) {
+            const eventKey = record.event_key || `supervisor-task:${record.task_key || record.id}`;
+            void (async () => {
+              const claim = await claimAnnouncementEvent({
+                event_key: eventKey,
+                event_id: record.id,
+                event_type: 'supervisor_task',
+              }).catch(error => ({ claimed: false, error }));
+              if (!claim?.claimed) return;
+              const accepted = speakNotification(
+                record.announcement_text || `Attention supervisor. ${record.message || record.title || 'A supervisor task requires your attention.'}`,
+                {
+                  dedupeMs: 5000,
+                  eventId: eventKey,
+                  priority: record.priority === 'critical' ? 'critical' : 'high',
+                  volume: settings.volume,
+                  voiceProfile: settings.voice_profile,
+                },
+              );
+              await finalizeAnnouncementEvent(claim, eventKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+            })();
+          }
         } else if (source.kind === 'assignment') {
           // The durable CallStatusLog event owns assignment speech. This targeted
           // notification remains visual so the officer receives the assignment
@@ -320,12 +350,12 @@ export default function GlobalMessageBanner({ user }) {
       const text = bannerText(source, record);
       const banner = {
         id: key,
-        title: source.kind === 'assignment' ? (record.title || source.label) : source.label,
+        title: (source.kind === 'assignment' || isSupervisorTask) ? (record.title || source.label) : source.label,
         page: targetPage,
         kind: source.kind,
-        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification),
+        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification || isSupervisorTask),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
-        notificationId: isWelfareNotification ? record.id : null,
+        notificationId: (isWelfareNotification || isSupervisorTask) ? record.id : null,
         relatedId: isWelfareNotification ? String(record.related_id || '') : '',
         fingerprint,
         sender: text.sender,
