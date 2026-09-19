@@ -2,6 +2,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
 
 const key = (value: unknown) => String(value || '').trim().toLowerCase();
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function readRowsWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`manageOfficerPerformanceReviews could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
 const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
 const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
@@ -26,10 +42,16 @@ const ratingFields = [
 ];
 
 async function identity(base44: any, me: any) {
-  const [teams, outlook] = await Promise.all([
-    base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000).catch(() => []),
-    base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000).catch(() => []),
-  ]);
+  const teams = await readRowsWithRetry(
+    'Teams identities',
+    () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000),
+    true,
+  );
+  const outlook = await readRowsWithRetry(
+    'Outlook identities',
+    () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000),
+    true,
+  );
   const aliases = new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
   for (const row of [...(teams || []), ...(outlook || [])]) {
     if (String(row.user_id || '') === String(me.id || '') ||
@@ -96,7 +118,10 @@ Deno.serve(async (req) => {
       : new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
     let all = action === 'acknowledge' && body.review_id
       ? [await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id))]
-      : await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000);
+      : await readRowsWithRetry(
+          'performance reviews',
+          () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000),
+        );
     all = (all || []).filter(Boolean);
     const owns = (review: any) => String(review.officer_id || '') === String(officer.id || '') || aliases.has(key(review.officer_email));
 
@@ -139,7 +164,10 @@ Deno.serve(async (req) => {
       workflow_stage: 'hr_approval_pending',
     });
 
-    const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
+    const users = await readRowsWithRetry(
+      'users',
+      () => base44.asServiceRole.entities.User.list(undefined, 1000),
+    );
     const hrRecipients = new Set<string>();
     if (review.reviewer_email) hrRecipients.add(key(review.reviewer_email));
     for (const user of users || []) {
