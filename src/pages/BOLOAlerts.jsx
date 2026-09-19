@@ -12,6 +12,10 @@ const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone:
 const titleCase = value => String(value || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
 const primaryParty = bolo => bolo.parties?.[0] || (bolo.subject_name ? { name: bolo.subject_name } : null);
 const primaryVehicle = bolo => bolo.vehicles?.[0] || ((bolo.vehicle_plate || bolo.vehicle_make) ? { year: bolo.vehicle_year, color: bolo.vehicle_color, make: bolo.vehicle_make, model: bolo.vehicle_model, plate: bolo.vehicle_plate } : null);
+const BOLO_CACHE_KEY = 'bps:bolo:last-good:v2';
+const readBoloCache = () => { try { const value = JSON.parse(localStorage.getItem(BOLO_CACHE_KEY) || 'null'); return Array.isArray(value?.rows) ? value.rows : []; } catch { return []; } };
+const saveBoloCache = rows => { try { if (Array.isArray(rows)) localStorage.setItem(BOLO_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rows })); } catch {} };
+
 const mergeBoloRecord = (rows, record) => {
   if (!record?.id) return rows || [];
   const next = (rows || []).filter(item => String(item.id) !== String(record.id));
@@ -20,7 +24,7 @@ const mergeBoloRecord = (rows, record) => {
 };
 
 export default function BOLOAlerts() {
-  const [bolos, setBolos] = useState([]);
+  const [bolos, setBolos] = useState(() => readBoloCache());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [view, setView] = useState('active');
@@ -66,7 +70,7 @@ export default function BOLOAlerts() {
           setBolos(current => current.filter(item => String(item.id) !== String(record.id)));
           return;
         }
-        setBolos(current => mergeBoloRecord(current, record));
+        setBolos(current => { const next = mergeBoloRecord(current, record); saveBoloCache(next); return next; });
         setModal(current => current?.bolo?.id === record.id ? { ...current, bolo: record } : current);
       });
     } catch {}
@@ -80,14 +84,15 @@ export default function BOLOAlerts() {
     try {
       let data = [];
       try {
-        data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 500), 12000, 'BOLO records request');
-      } catch (directError) {
-        const response = await withRequestTimeout(base44.functions.invoke('manageBolo', { action: 'list' }), 12000, 'BOLO records fallback');
+        const response = await withRequestTimeout(base44.functions.invoke('manageBolo', { action: 'list' }), 18000, 'BOLO records request');
         const payload = response?.data || response || {};
         if (payload.error) throw new Error(payload.error);
         data = Array.isArray(payload.rows) ? payload.rows : [];
+      } catch (serviceError) {
+        data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 100), 10000, 'BOLO direct fallback');
       }
-      setBolos(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length) saveBoloCache(data);
+      setBolos(Array.isArray(data) ? data : readBoloCache());
       setPageError('');
       return data;
     } catch (error) {
