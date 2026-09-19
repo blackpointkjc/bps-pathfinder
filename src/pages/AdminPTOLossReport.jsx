@@ -506,6 +506,7 @@ export default function AdminPTOLossReport() {
     }, 250);
   };
 
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading PTO access…</div>;
   if (!hasHRAccess) {
     return (
       <div className="p-8 text-center">
