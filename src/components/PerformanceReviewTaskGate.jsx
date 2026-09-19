@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ClipboardCheck, LockKeyhole } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { getOfficerPerformanceReviewSnapshot } from '@/lib/officerPerformanceReviewHub';
 
 export default function PerformanceReviewTaskGate({ user }) {
   const navigate = useNavigate();
@@ -12,10 +13,7 @@ export default function PerformanceReviewTaskGate({ user }) {
   const { data = { reviews: [] }, refetch } = useQuery({
     queryKey: ['requiredOfficerPerformanceReviewGate', user?.id],
     queryFn: async () => {
-      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list' });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload;
+      return getOfficerPerformanceReviewSnapshot();
     },
     enabled: !!user?.id,
     // PerformanceReview realtime events handle fast delivery. The five-minute
@@ -23,7 +21,7 @@ export default function PerformanceReviewTaskGate({ user }) {
     // polling from every signed-in user was a major source of request pressure.
     refetchInterval: responseInProgress ? false : 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    staleTime: 30_000,
+    staleTime: 90_000,
     retry: false,
   });
 
