@@ -199,7 +199,7 @@ const AuthenticatedApp = () => {
       || authError?.type === 'microsoft_session_expired'
       || (!authError && !isAuthenticated));
 
-  if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
+  if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 
   if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
 
