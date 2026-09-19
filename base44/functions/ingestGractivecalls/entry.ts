@@ -738,6 +738,30 @@ Deno.serve(async (req) => {
     const archivedByExternal = new Set((archivedHistory || []).map((row: any) => externalKey(row)).filter(Boolean));
     const archivedByLegacy = new Set((archivedHistory || []).map((row: any) => legacyKey(row)).filter(Boolean));
 
+    // Preload the property-monitoring state once so every call can be checked
+    // immediately after its DispatchCall write instead of waiting for the entire
+    // ingest batch to finish.
+    const [immediateLocations, immediateExistingAlerts] = await Promise.all([
+      base44.asServiceRole.entities.Location.list('site_name', 100).catch(() => []),
+      base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+    ]);
+    const immediateMonitored = (immediateLocations || [])
+      .filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
+    const immediateCallPropertyKeys = new Set((immediateExistingAlerts || []).map((alert: any) =>
+      `${String(alert?.propertyId || '')}|${String(alert?.callId || '')}`
+    ));
+    const immediateAlertKeys = new Set((immediateExistingAlerts || []).map((alert: any) => {
+      if (alert?.source_key) return String(alert.source_key);
+      return [
+        String(alert?.propertyId || ''),
+        String(alert?.callTime || alert?.time_received || alert?.created_date || ''),
+        String(alert?.callIncident || '').trim().toUpperCase(),
+        String(alert?.callLocation || '').trim().toUpperCase(),
+      ].join('|');
+    }));
+    const immediatePropertySideEffects: Promise<any>[] = [];
+    let immediatePropertyAlertsCreated = 0;
+
     const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
     const needingCad = uniqueExisting.filter(record =>
       recordKey(record) && !/^BPS-\d{6}-\d{1,8}$/i.test(String(record.bps_reference || ''))
@@ -782,7 +806,7 @@ Deno.serve(async (req) => {
       if (!existing) {
         const bpsReference = cadNumbers[cadIndex++];
         const officialCad = String(callData.agency_cad_number || '').trim();
-        await base44.asServiceRole.entities.DispatchCall.create({
+        const createdRecord = await base44.asServiceRole.entities.DispatchCall.create({
           ...callData,
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference,
@@ -791,6 +815,14 @@ Deno.serve(async (req) => {
           description: callData.description,
         });
         created += 1;
+        immediatePropertyAlertsCreated += await createImmediatePropertyAlerts(
+          base44,
+          createdRecord,
+          immediateMonitored,
+          immediateCallPropertyKeys,
+          immediateAlertKeys,
+          immediatePropertySideEffects,
+        );
       } else {
         const matchedOfficialCad = String(callData.agency_cad_number || '').trim();
         const existingAgency = String(existing.agency || callData.agency || '').toUpperCase();
@@ -816,8 +848,16 @@ Deno.serve(async (req) => {
           ...(manuallyCleared ? { time_cleared: existing.time_cleared || existing.manual_dismissed_at || new Date().toISOString() } : {}),
         };
         if (changed(existing, incomingWithCad)) {
-          await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          const updatedRecord = await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
           updated += 1;
+          immediatePropertyAlertsCreated += await createImmediatePropertyAlerts(
+            base44,
+            updatedRecord,
+            immediateMonitored,
+            immediateCallPropertyKeys,
+            immediateAlertKeys,
+            immediatePropertySideEffects,
+          );
         }
       }
     }
@@ -836,6 +876,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Side effects were started as soon as each verified PropertyAlert was created.
+    // Wait for those background writes before the safety reconciliation so it can
+    // see any auto-dispatch receipts and avoid redundant work.
+    await Promise.allSettled(immediatePropertySideEffects);
+
     // Final reconciliation closes any race caused by simultaneous browser sync requests.
     const finalCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
     const finalGroups = new Map<string, any[]>();
@@ -853,10 +898,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const propertyAlertsCreated = await reconcilePropertyAlerts(base44).catch(error => {
+    const reconciledPropertyAlertsCreated = await reconcilePropertyAlerts(base44).catch(error => {
       console.error('Property alert reconciliation failed:', error);
       return 0;
     });
+    const propertyAlertsCreated = immediatePropertyAlertsCreated + reconciledPropertyAlertsCreated;
     const phase2aSafety = await ensurePhase2ASafetyEvidence(base44).catch(error => {
       console.error('Phase 2A shadow safety verification failed:', error);
       return { status: 'failed', error: error?.message || String(error) };
