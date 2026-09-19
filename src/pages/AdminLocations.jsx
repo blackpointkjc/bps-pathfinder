@@ -168,43 +168,30 @@ export default function AdminLocations({ embedded = false }) {
 
   const { data: divisions = [], error: divisionsError, refetch: refetchDivisions } = useQuery({
     queryKey: ['adminLocationDivisions'],
-    queryFn: async () => {
-      try {
-        const response = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
-        const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
-        if (Array.isArray(payload.divisions)) return payload.divisions;
-      } catch (error) {
-        console.warn('Division service unavailable, using directory fallback:', error?.message);
-      }
-      return await listDirectoryDivisions('division_name', 1000);
-    },
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
     initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const { data: locations = [], isLoading: locationsLoading, error: locationsError } = useQuery({
     queryKey: ['adminManagedLocations'],
-    queryFn: async () => {
-      const response = await base44.functions.invoke('manageLocations', { action: 'list' });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return Array.isArray(payload.locations) ? payload.locations : [];
-    },
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     enabled: hasAccess,
     initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'adminLocations'],
     queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: hasAccess,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     initialData: [],
   });
