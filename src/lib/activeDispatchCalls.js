@@ -6,7 +6,7 @@ const CACHE_MAX_AGE_MS = 90 * 60 * 1000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 10_000;
+const MEMORY_DEDUPE_MS = 30_000;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 function normalizedText(value) {
@@ -112,15 +112,15 @@ export async function loadActiveDispatchCallRows(limit = 100) {
   inFlight = (async () => {
     let primaryError;
     try {
-      const response = await withRequestTimeout(
-        base44.functions.invoke('getActiveDispatchCalls', { limit }),
-        12000,
+      // DispatchCall is already the persisted source of truth. Reading it directly
+      // avoids an extra function invocation/auth hop on every command startup.
+      const calls = await withRequestTimeout(
+        base44.entities.DispatchCall.list('-created_date', limit),
+        10000,
         'Active call feed',
       );
-      const payload = response?.data || response || {};
-      if (payload?.error) throw new Error(payload.error);
-      if (!Array.isArray(payload.calls)) throw new Error('Active call feed returned an invalid response.');
-      const deduped = dedupeOperationalCalls(payload.calls);
+      if (!Array.isArray(calls)) throw new Error('Active call feed returned an invalid response.');
+      const deduped = dedupeOperationalCalls(calls);
       saveLastGoodCalls(deduped);
       memoryRows = deduped;
       memoryRowsAt = Date.now();
@@ -130,13 +130,15 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     }
 
     try {
-      const calls = await withRequestTimeout(
-        base44.entities.DispatchCall.list('-created_date', limit),
-        15000,
-        'Active call entity fallback',
+      const response = await withRequestTimeout(
+        base44.functions.invoke('getActiveDispatchCalls', { limit }),
+        12000,
+        'Active call function fallback',
       );
-      if (!Array.isArray(calls)) throw new Error('Active call fallback returned an invalid response.');
-      const deduped = dedupeOperationalCalls(calls);
+      const payload = response?.data || response || {};
+      if (payload?.error) throw new Error(payload.error);
+      if (!Array.isArray(payload.calls)) throw new Error('Active call fallback returned an invalid response.');
+      const deduped = dedupeOperationalCalls(payload.calls);
       saveLastGoodCalls(deduped);
       memoryRows = deduped;
       memoryRowsAt = Date.now();
@@ -144,7 +146,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     } catch (fallbackError) {
       const cached = readLastGoodCalls();
       if (cached.length) return cached;
-      throw fallbackError || primaryError;
+      throw primaryError || fallbackError;
     }
   })().finally(() => {
     inFlight = null;
