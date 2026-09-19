@@ -315,13 +315,15 @@ export const listDirectoryUsers = async (sort, limit, strict = false) => {
     console.warn('[Directory] Full user directory unavailable; retaining the signed-in identity.', error?.message || error);
   }
 
-  // General identity joins may use the signed-in account as a temporary fallback.
-  // Management screens pass strict=true so a failed directory request is shown as
-  // an error instead of falsely making every other employee disappear.
-  try {
-    const me = await withRequestTimeout(base44.auth.me(), 12000, 'Directory user request');
-    if (me?.id && !rows.some(row => String(row?.id) === String(me.id))) rows = [...rows, me];
-  } catch {}
+  // Only fall back to the signed-in identity when the directory itself is empty.
+  // Calling auth.me after every successful directory read doubled common page-load
+  // traffic (Rank Structure, Sites, previews, management pages) for no benefit.
+  if (!rows.length && !strict) {
+    try {
+      const me = await withRequestTimeout(base44.auth.me(), 12000, 'Directory user request');
+      if (me?.id) rows = [me];
+    } catch {}
+  }
 
   return sortRows(rows, sort).slice(0, Number(limit) || 1000);
 };
