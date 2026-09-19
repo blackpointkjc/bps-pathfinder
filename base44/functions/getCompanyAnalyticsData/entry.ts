@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 4) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -48,13 +48,7 @@ Deno.serve(async (req) => {
     const safeRead = async (entityName:string, reader:() => Promise<any[]>) => {
       await acquireReadSlot();
       try {
-        try {
-          return await reader() || [];
-        } catch (error) {
-          if (!transientReadError(error)) throw error;
-          await pause(350);
-          return await reader() || [];
-        }
+        return await reader() || [];
       } catch (error) {
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
