@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       // Keep this bounded, but do not serialize 20+ monthly reads one-by-one.
       // Two service-role reads at a time cuts the long blank load substantially
       // without recreating the large fan-out that previously caused 429s.
-      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 4) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -41,13 +41,12 @@ Deno.serve(async (req) => {
       await acquireReadSlot();
       try {
         let lastError:any = null;
-        for (let attempt = 0; attempt < 2; attempt += 1) {
+        for (let attempt = 0; attempt < 1; attempt += 1) {
           try {
             return await reader() || [];
           } catch (error) {
             lastError = error;
-            if (!transientReadError(error) || attempt === 1) break;
-            await pause(300);
+            break;
           }
         }
         throw lastError || new Error('Unable to read data');
@@ -70,23 +69,19 @@ Deno.serve(async (req) => {
       return service.filter(query, sort, limit);
     });
 
-    // Resolve linked identities first. This keeps officer records joined correctly
-    // when the Microsoft sign-in address differs from the Pathfinder work email.
+    // User is the canonical identity source. Linked work/Microsoft aliases are
+    // persisted on the User record, so performance must not re-query Teams and
+    // Outlook identity tables on every analytics refresh.
     const officerId = String(officer.id || '');
-    const [teamsLinksAll, outlookLinksAll] = await Promise.all([
-      safeFilter('MicrosoftTeamsIdentity', { user_id: officerId }, '-updated_at', 100),
-      safeFilter('OutlookMailboxLink', { user_id: officerId }, '-last_verified_at', 100),
-    ]);
-    const aliases = new Set<string>([email, lower(officer.email), lower(officer.work_email), lower(officer.pathfinder_email), lower(officer.microsoft_email), lower(officer.outlook_email)].filter(Boolean));
-    for (const link of teamsLinksAll || []) {
-      if (link?.active === false) continue;
-      [link?.pathfinder_email, link?.microsoft_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
-    }
-    for (const link of outlookLinksAll || []) {
-      if (link?.connected === false) continue;
-      [link?.pathfinder_email, link?.outlook_email].map(lower).filter(Boolean).forEach(value => aliases.add(value));
-    }
-
+    const aliases = new Set<string>([
+      email,
+      lower(officer.email),
+      lower(officer.work_email),
+      lower(officer.pathfinder_email),
+      lower(officer.microsoft_email),
+      lower(officer.outlook_email),
+      ...((officer.email_aliases || []).map(lower)),
+    ].filter(Boolean));
     const aliasValues = [...aliases];
     const officerEmailQuery = (field = 'officer_email') => ({ [field]: { $in: aliasValues } });
     const officerRecordQuery = (emailFields = ['officer_email'], idFields = ['officer_id']) => ({
