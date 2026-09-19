@@ -9,6 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, ChevronLeft, ChevronRight, Users, Wrench, CheckCircle2, Trash2 } from 'lucide-react';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
+
+const FLEET_VEHICLE_CACHE_KEY = 'bps:fleet-vehicles:last-good:v1';
+const readFleetVehicleCache = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FLEET_VEHICLE_CACHE_KEY) || 'null');
+    return Array.isArray(parsed?.rows) ? parsed.rows : [];
+  } catch { return []; }
+};
+const saveFleetVehicleCache = rows => {
+  try { localStorage.setItem(FLEET_VEHICLE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rows })); } catch {}
+};
 
 const minutes = value => {
   const [h = 0, m = 0] = String(value || '00:00').split(':').map(Number);
@@ -33,13 +45,24 @@ export default function FleetVehicleAssignments() {
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
 
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const { user, isLoadingAuth } = useAuth();
   const normalizedRoles = (user?.additional_roles || []).map(role => String(role).toLowerCase());
   const isAdmin = user?.role === 'admin' || normalizedRoles.includes('full_access') || normalizedRoles.includes('fleet_manager');
-  const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers() });
-  const { data: vehicles = [], error: vehicleError } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id', 500), refetchInterval: 5 * 60 * 1000 });
-  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 1500), refetchInterval: 5 * 60 * 1000 });
-  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 1500), refetchInterval: 5 * 60 * 1000 });
+  const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers('last_name', 1000), enabled: !!user, placeholderData: [], staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
+  const { data: vehicles = [], error: vehicleError } = useQuery({
+    queryKey: ['fleetVehicles'],
+    queryFn: async () => {
+      const rows = await base44.entities.Vehicle.list('vehicle_id', 500);
+      if (Array.isArray(rows) && rows.length) saveFleetVehicleCache(rows);
+      return Array.isArray(rows) ? rows : readFleetVehicleCache();
+    },
+    placeholderData: readFleetVehicleCache,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 1500), placeholderData: [], staleTime: 60 * 1000, refetchInterval: 5 * 60 * 1000, refetchOnWindowFocus: false });
+  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 1500), placeholderData: [], staleTime: 60 * 1000, refetchInterval: 5 * 60 * 1000, refetchOnWindowFocus: false });
 
   useEffect(() => {
     const subscriptions = [];
@@ -166,6 +189,8 @@ export default function FleetVehicleAssignments() {
     await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
     await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
   };
+
+  if (isLoadingAuth) return <div className="p-6 text-slate-300">Loading fleet schedule…</div>;
 
   return <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6">
     <div className="mx-auto max-w-[1500px] space-y-4">
