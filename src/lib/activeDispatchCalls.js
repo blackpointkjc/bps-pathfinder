@@ -129,25 +129,9 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       primaryError = error;
     }
 
-    try {
-      const response = await withRequestTimeout(
-        base44.functions.invoke('getActiveDispatchCalls', { limit }),
-        12000,
-        'Active call function fallback',
-      );
-      const payload = response?.data || response || {};
-      if (payload?.error) throw new Error(payload.error);
-      if (!Array.isArray(payload.calls)) throw new Error('Active call fallback returned an invalid response.');
-      const deduped = dedupeOperationalCalls(payload.calls);
-      saveLastGoodCalls(deduped);
-      memoryRows = deduped;
-      memoryRowsAt = Date.now();
-      return deduped;
-    } catch (fallbackError) {
-      const cached = readLastGoodCalls();
-      if (cached.length) return cached;
-      throw primaryError || fallbackError;
-    }
+    const cached = readLastGoodCalls();
+    if (cached.length) return cached;
+    throw primaryError;
   })().finally(() => {
     inFlight = null;
   });
