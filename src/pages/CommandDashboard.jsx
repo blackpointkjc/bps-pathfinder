@@ -125,14 +125,16 @@ function CommandDashboardInner({ embedded = false }) {
                 if (active) setCanonicalStatusUsers(Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []));
             } catch {}
         };
-        syncUnitStatus();
-        // DashboardDataContext already keeps the shared roster current; this is a slow
-        // safety refresh so the command page does not duplicate the same backend call.
+        // DashboardDataContext intentionally loads Active Calls first, then the
+        // shared roster. Do not launch a second location snapshot during the same
+        // startup burst. This is only a delayed safety refresh.
+        const initialTimer = window.setTimeout(syncUnitStatus, 30000);
         const timer = setInterval(syncUnitStatus, 60000);
         const onStatusChanged = () => syncUnitStatus();
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
         return () => {
             active = false;
+            window.clearTimeout(initialTimer);
             clearInterval(timer);
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
         };
