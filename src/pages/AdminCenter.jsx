@@ -302,20 +302,28 @@ export default function AdminCenter() {
   }, [shadowMode, officers.length]);
 
   useEffect(() => {
-    if (!['supervisor','hr','training','student'].includes(shadowMode) || previewPeople.length) return;
-    listDirectoryUsers('-last_updated', 1000).then(async directoryRows => {
-      let rows = directoryRows || [];
-      if (!rows.length) {
-        // The directory feed can fail or rate-limit; fall back to the direct user
-        // list so a role preview never shows an empty account dropdown.
-        try { rows = await base44.entities.User.list(undefined, 500) || []; } catch { rows = []; }
+    if (!['supervisor','hr','training','student'].includes(shadowMode)) return;
+    let active = true;
+    Promise.allSettled([
+      listDirectoryUsers('-last_updated', 1000),
+      base44.entities.User.list(undefined, 1000),
+    ]).then(results => {
+      if (!active) return;
+      const directoryRows = results[0].status === 'fulfilled' ? (results[0].value || []) : [];
+      const directRows = results[1].status === 'fulfilled' ? (results[1].value || []) : [];
+      const byIdentity = new Map();
+      for (const person of [...directoryRows, ...directRows]) {
+        const key = String(person?.id || person?.email || '').trim().toLowerCase();
+        if (!key) continue;
+        byIdentity.set(key, { ...(byIdentity.get(key) || {}), ...person });
       }
-      setPreviewPeople((rows || []).map(person => {
+      setPreviewPeople([...byIdentity.values()].map(person => {
         const name = [person.first_name, person.last_name].filter(Boolean).join(' ').trim() || person.full_name || person.email || 'Unnamed User';
         return { ...person, __label: `${person.rank || 'User'} ${name} — ${person.email || 'No email'}` };
       }));
-    }).catch(() => setPreviewPeople([]));
-  }, [shadowMode, previewPeople.length]);
+    }).catch(() => { if (active) setPreviewPeople([]); });
+    return () => { active = false; };
+  }, [shadowMode]);
 
   useEffect(() => {
     if (shadowMode !== 'client' || clients.length) return;
