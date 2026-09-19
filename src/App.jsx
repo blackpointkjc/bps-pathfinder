@@ -21,6 +21,75 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
+const DATA_SYNC_TERMS = {
+  User: ['user', 'directory', 'officer', 'personnel', 'client', 'supervisor', 'training', 'currentuser', 'portal', 'rank', 'pto'],
+  Division: ['division', 'directory', 'location', 'schedule', 'client', 'user'],
+  Location: ['location', 'directory', 'site', 'schedule', 'client', 'geofence', 'dispatch'],
+  OfficerRoster: ['officer', 'roster', 'directory', 'personnel'],
+  ActiveOfficer: ['activeofficer', 'location', 'officer', 'personnel', 'status'],
+  TimeEntry: ['timeentry', 'timeentries', 'activetime', 'recenttime', 'payroll', 'performance', 'client', 'supervisor', 'hr', 'workqueue'],
+  Schedule: ['schedule', 'shift', 'openshift', 'availability', 'performance', 'supervisor', 'workqueue'],
+  ShiftBid: ['bid', 'shift', 'schedule', 'openshift'],
+  OfficerAvailability: ['availability', 'schedule', 'shift'],
+  TimeOffRequest: ['pto', 'timeoff', 'leave', 'hr', 'currentuser'],
+  PTOAdjustment: ['pto', 'leave', 'hr', 'currentuser'],
+  PayrollPeriod: ['payroll'],
+  Announcement: ['announcement'],
+  AnnouncementReceipt: ['announcement'],
+  DailyActivityReport: ['dailyactivity', 'dar', 'report', 'performance'],
+  IncidentReport: ['incident', 'report', 'performance', 'client', 'supervisor'],
+  MaintenanceReport: ['maintenance', 'report', 'client'],
+  OpenDoorReport: ['opendoor', 'report'],
+  ConfidentialReport: ['confidential', 'report'],
+  TrespassingNotice: ['trespass', 'report', 'legal'],
+  CriminalComplaint: ['criminalcomplaint', 'complaint', 'legal'],
+  Summons: ['summons', 'legal'],
+  QRScanEvent: ['qr', 'patrol', 'performance'],
+  QRCheckpoint: ['qr', 'checkpoint'],
+  TrainingAssignment: ['training', 'performance'],
+  TrainingCompletion: ['training', 'performance', 'supervisor'],
+  TrainingSubmission: ['training'],
+  PerformanceReview: ['performance', 'review'],
+  ClientFeedback: ['feedback', 'client', 'performance'],
+  Commendation: ['commendation', 'performance'],
+  Complaint: ['complaint', 'performance', 'supervisor'],
+  WriteUpReport: ['writeup', 'write-up', 'performance', 'supervisor'],
+  InspectionReport: ['inspection', 'performance', 'supervisor'],
+};
+
+const FUNCTION_SYNC_TERMS = {
+  updateUser: DATA_SYNC_TERMS.User,
+  createPortalAccount: DATA_SYNC_TERMS.User,
+  manageHRDivisions: DATA_SYNC_TERMS.Division,
+  manageLocations: DATA_SYNC_TERMS.Location,
+  manageClientAssignments: [...DATA_SYNC_TERMS.User, ...DATA_SYNC_TERMS.Location],
+  manageHRTimeEntries: DATA_SYNC_TERMS.TimeEntry,
+  getMyTimeEntries: DATA_SYNC_TERMS.TimeEntry,
+  rollbackMyTimeEntry: DATA_SYNC_TERMS.TimeEntry,
+  calculatePTOForOfficer: ['pto', 'leave', 'hr', 'currentuser', 'user'],
+  getPTORequests: ['pto', 'timeoff', 'leave', 'hr', 'currentuser'],
+  managePerformanceReviews: ['performance', 'review', 'user', 'officer'],
+  manageOfficerPerformanceReviews: ['performance', 'review', 'user', 'officer'],
+  completeSupervisorPerformanceReview: ['performance', 'review', 'supervisor', 'workqueue'],
+  officerTrainingAction: ['training', 'performance', 'officer'],
+  claimOpenShift: ['openshift', 'shift', 'schedule', 'bid'],
+  maintainRollingPayrollPeriods: ['payroll'],
+  updateOfficerStatus: ['activeofficer', 'officer', 'status', 'location', 'personnel'],
+  forceOfficerStatus: ['activeofficer', 'officer', 'status', 'location', 'personnel'],
+  forceUserSignOut: ['activeofficer', 'officer', 'status', 'location', 'personnel', 'user'],
+  enforceOfficerDutyStatus: ['activeofficer', 'officer', 'status', 'location', 'timeentry'],
+  manageOfficerCertifications: ['training', 'certification', 'officer', 'user'],
+  syncCertToOfficer: ['training', 'certification', 'officer', 'user'],
+};
+
+function syncTermsForChange(detail = {}) {
+  const kind = String(detail.kind || '');
+  const name = String(detail.name || '');
+  if (kind === 'entity') return DATA_SYNC_TERMS[name] || [name.toLowerCase()];
+  if (kind === 'function') return FUNCTION_SYNC_TERMS[name] || [];
+  return [];
+}
+
 const LayoutWrapper = ({ children, currentPageName }) => Layout
   ? <Layout currentPageName={currentPageName}><PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary></Layout>
   : <PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary>;
@@ -176,6 +245,47 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  useEffect(() => {
+    const pendingTerms = new Set();
+    let refreshTimer = null;
+
+    const flush = () => {
+      refreshTimer = null;
+      if (!pendingTerms.size) return;
+      const terms = [...pendingTerms];
+      pendingTerms.clear();
+      queryClientInstance.invalidateQueries({
+        predicate: query => {
+          const key = JSON.stringify(query.queryKey || []).toLowerCase();
+          return terms.some(term => key.includes(String(term).toLowerCase()));
+        },
+      });
+    };
+
+    const queueChange = detail => {
+      const terms = syncTermsForChange(detail);
+      if (!terms.length) return;
+      terms.forEach(term => pendingTerms.add(term));
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(flush, 180);
+    };
+
+    const handleLocalChange = event => queueChange(event?.detail || {});
+    window.addEventListener('bps-data-changed', handleLocalChange);
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('bps-pathfinder-data-sync');
+      channel.addEventListener('message', event => queueChange(event?.data || {}));
+    } catch {}
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      window.removeEventListener('bps-data-changed', handleLocalChange);
+      try { channel?.close(); } catch {}
+    };
+  }, []);
+
   useEffect(() => {
     const nativeAlert = window.alert;
 
