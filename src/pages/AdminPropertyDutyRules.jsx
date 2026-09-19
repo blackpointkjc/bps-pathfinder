@@ -35,11 +35,19 @@ export default function AdminPropertyDutyRules() {
     if(!String(data.property_site||'').trim()) throw new Error('Select a property before saving this rule.');
     const validIds=new Set(checkpoints.filter(cp=>cp.property_site===data.property_site&&cp.is_active!==false).map(cp=>cp.id));
     const payload={...data,required_checkpoint_ids:(data.required_checkpoint_ids||[]).filter(id=>validIds.has(id)),updated_by:user?.email||''};
-    return editingRule?base44.entities.JobDutyRule.update(editingRule.id,payload):base44.entities.JobDutyRule.create(payload);
+    const existingForSite=editingRule||rules.find(rule=>rule.property_site===data.property_site);
+    return existingForSite?.id?base44.entities.JobDutyRule.update(existingForSite.id,payload):base44.entities.JobDutyRule.create(payload);
   },onSuccess:()=>{qc.invalidateQueries({queryKey:['jobDutyRules']});setShowForm(false);setEditingRule(null);toast.success('Property duty rules updated.');},onError:e=>toast.error(e?.message||'Unable to save property duty rules.')});
 
   const openNewRule=()=>{setEditingRule(null);setRuleForm({...defaultRule});setShowForm(true);};
-  const openRule=site=>{const existing=rules.find(rule=>rule.property_site===site);setEditingRule(existing||null);setRuleForm({
+  const selectRuleSite=site=>{const existing=rules.find(rule=>rule.property_site===site);setEditingRule(existing||null);setRuleForm({
+    property_site:site,active:existing?.active!==false,effective_date:existing?.effective_date||'',daily_activity_report_required:existing?.daily_activity_report_required!==false,
+    incident_report_required_for_property_calls:existing?.incident_report_required_for_property_calls!==false,qr_required:existing?existing.qr_required===true:checkpoints.some(cp=>cp.property_site===site&&cp.is_active!==false&&cp.is_required!==false),
+    qr_frequency_minutes:Number(existing?.qr_frequency_minutes||60),qr_window_minutes:Number(existing?.qr_window_minutes||30),qr_scans_per_shift:Number(existing?.qr_scans_per_shift||0),
+    require_all_required_checkpoints:existing?.require_all_required_checkpoints!==false,required_checkpoint_ids:(existing?.required_checkpoint_ids||[]).filter(id=>checkpoints.some(cp=>cp.id===id&&cp.property_site===site&&cp.is_active!==false)),notes:existing?.notes||''
+  });};
+  const openRule=site=>{selectRuleSite(site);setShowForm(true);};
+  const legacyOpenRuleRemoved=site=>{const existing=rules.find(rule=>rule.property_site===site);setEditingRule(existing||null);setRuleForm({
     property_site:site,active:existing?.active!==false,effective_date:existing?.effective_date||'',daily_activity_report_required:existing?.daily_activity_report_required!==false,
     incident_report_required_for_property_calls:existing?.incident_report_required_for_property_calls!==false,qr_required:existing?existing.qr_required===true:checkpoints.some(cp=>cp.property_site===site&&cp.is_active!==false&&cp.is_required!==false),
     qr_frequency_minutes:Number(existing?.qr_frequency_minutes||60),qr_window_minutes:Number(existing?.qr_window_minutes||30),qr_scans_per_shift:Number(existing?.qr_scans_per_shift||0),
