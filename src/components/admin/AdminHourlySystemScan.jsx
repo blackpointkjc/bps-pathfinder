@@ -41,7 +41,9 @@ export default function AdminHourlySystemScan({ user }) {
     const runIfDue = async () => {
       if (!active || runningRef.current || document.hidden) return;
       const requestHealth = getBase44RequestHealth();
-      if (requestHealth.rateLimitedUntil || requestHealth.activeWrites > 0 || requestHealth.activeReads > 0 || requestHealth.queuedReads > 0) return;
+      const recentLimitAt = requestHealth.recentRateLimitAt ? new Date(requestHealth.recentRateLimitAt).getTime() : 0;
+      const recentlyThrottled = Number.isFinite(recentLimitAt) && recentLimitAt > 0 && Date.now() - recentLimitAt < 10 * 60 * 1000;
+      if (requestHealth.rateLimitedUntil || recentlyThrottled || requestHealth.activeWrites > 0 || requestHealth.activeReads > 0 || requestHealth.queuedReads > 0) return;
       runningRef.current = true;
       try {
         const execute = async () => {
