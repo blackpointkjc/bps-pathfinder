@@ -6,6 +6,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
+import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const actions = [
   { label: 'Live Field Oversight', detail: 'Units, active calls, welfare and supervisor requests', icon: Radio, page: 'SupervisorFieldOversight' },
@@ -65,13 +66,15 @@ export default function SupervisorOverview() {
       const supervisorAssignments = assignmentResult?.data || assignmentResult || {};
       const taskResult = await base44.functions.invoke('getSupervisorScopedTasks', {}).catch(() => ({}));
       const taskPayload = taskResult?.data || taskResult || {};
-      const [boardResult, reportResult] = await Promise.all([
+      const [boardResult, reportResult, locationSnapshot] = await Promise.all([
         base44.functions.invoke('getSupervisorWelfareBoard', {}).catch(() => ({})),
         base44.functions.invoke('getRoleWorkQueue', { queue_role:'supervisor_reports' }).catch(() => ({})),
+        getOfficerLocationSnapshot().catch(() => ({})),
       ]);
       const board = boardResult?.data || boardResult || {};
       const reportWork = reportResult?.data || reportResult || {};
-      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments };
+      const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true);
+      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits };
     },
     staleTime: 30000,
     refetchInterval: 60000,
@@ -90,7 +93,7 @@ export default function SupervisorOverview() {
   const inspections = tasks.inspections || [];
   const missedClockIns = tasks.missedClockIns || [];
   const missingReports = tasks.missingReports || [];
-  const liveUnits = board.live_units || [];
+  const liveUnits = data.liveUnits || [];
   const activeCalls = board.active_calls || [];
   const welfare = board.welfare_checks || board.active_welfare || [];
   const supervisorRequests = board.supervisor_requests || [];
