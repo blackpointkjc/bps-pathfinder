@@ -15,6 +15,7 @@ import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
+import { readPerformanceSnapshot, savePerformanceSnapshot } from '@/lib/analyticsSnapshot';
 
 function breakMinutes(entry) {
   return (entry?.break_periods || []).reduce((total, period) => {
@@ -36,10 +37,12 @@ export default function MyPerformanceAnalytics() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
+  const previewRequest = getOfficerPreviewRequest();
+  const performanceSnapshot = readPerformanceSnapshot(previewRequest);
   const { data: performanceData = {}, isLoading: performanceLoading, isFetching: performanceFetching, error: performanceError, refetch: refetchPerformance } = useQuery({
     queryKey: ['myPerformanceData', user?.email],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getMyPerformanceData', getOfficerPreviewRequest());
+      const result = await base44.functions.invoke('getMyPerformanceData', previewRequest);
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
@@ -48,12 +51,15 @@ export default function MyPerformanceAnalytics() {
       // payload, which is why officers kept seeing an old score after new records
       // were posted. Successful sources now update immediately while the warning
       // identifies any source that is temporarily unavailable.
+      savePerformanceSnapshot(previewRequest, payload);
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 5000,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    initialData: performanceSnapshot?.data,
+    initialDataUpdatedAt: performanceSnapshot?.savedAt,
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     // One backend request refreshes the complete scoring snapshot. Keep a one-minute
     // repair interval while realtime entity subscriptions handle immediate changes.
