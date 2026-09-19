@@ -16,9 +16,9 @@ const rawBase44 = createClient({
 // many always-mounted realtime features, so an unbounded startup/refetch burst can
 // consume that allowance just as an officer saves a report or changes status.
 // User writes always bypass this queue; only reads are capped and deduplicated.
-const MAX_CONCURRENT_READS = 3;
-const READ_CACHE_MS = 3_000;
-const RATE_LIMIT_COOLDOWN_MS = 20_000;
+const MAX_CONCURRENT_READS = 2;
+const READ_CACHE_MS = 12_000;
+const RATE_LIMIT_COOLDOWN_MS = 45_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v1';
 const TRACE_MAX = 300;
