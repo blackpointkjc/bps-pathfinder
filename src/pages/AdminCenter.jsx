@@ -139,7 +139,7 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
           </button>
         ))}
       </div>
-      <div className="min-w-0 overflow-x-clip">{Component ? <Component embedded /> : null}</div>
+      <div className="min-w-0 overflow-visible">{Component ? <Component embedded /> : null}</div>
     </div>
   );
 }
