@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { createPageUrl } from '@/utils';
+import { useAuth } from '@/lib/AuthContext';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
@@ -91,8 +91,8 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
 
 export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
-  const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>getCurrentDirectoryUser()});
-  const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers()});
+  const { user } = useAuth();
+  const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers('last_name',1000),staleTime:10*60*1000,refetchOnWindowFocus:false,placeholderData:previous=>previous});
   const roles=rolesOf(user);
   const allowed=user?.role==='admin'||roles.has('officer')||roles.has('cad_access')||roles.has('supervisor')||roles.has('full_access');
   const active=useMemo(()=>users.filter(isOperational).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999)),[users]);
