@@ -95,7 +95,14 @@ Deno.serve(async (req) => {
       const taskKey = String(request?.task_key || '').trim();
       if (!taskKey || taskKey.length > 240) return Response.json({ error:'A valid task key is required' }, { status:400 });
       const completedAt = new Date().toISOString();
-      const title = String(request?.title || 'Supervisor follow-up').slice(0, 250);
+      const assignedState = (supervisorStates || []).find((state:any) => String(state.task_key || '') === taskKey && state.status === 'open');
+      const fullAccess = me.role === 'admin' || roles.has('full_access');
+      if (assignedState?.assigned_to_id && !fullAccess
+          && String(assignedState.assigned_to_id) !== String(me.id || '')
+          && normalized(assignedState.assigned_to_email) !== normalized(me.email)) {
+        return Response.json({ error:'This Supervisor Operations task is assigned to another supervisor.' }, { status:403 });
+      }
+      const title = String(request?.title || assignedState?.title || 'Supervisor follow-up').slice(0, 250);
       const person = String(request?.person || '').slice(0, 250);
       const sourceKind = String(request?.kind || '').slice(0, 100);
       const sourceId = String(request?.source_id || '').slice(0, 250);
@@ -146,6 +153,17 @@ Deno.serve(async (req) => {
           ...adminRecord,
         });
       }
+      const supervisorNotifications = await base44.asServiceRole.entities.Notification.filter({
+        type:'supervisor_task',
+        task_key:taskKey,
+      }, '-created_date', 20).catch(() => []);
+      for (const notification of supervisorNotifications || []) {
+        await base44.asServiceRole.entities.Notification.update(notification.id, {
+          is_read:true,
+          acknowledged_at:completedAt,
+        }).catch(() => null);
+      }
+
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type:'WorkQueueState',
         entity_id:taskKey,
