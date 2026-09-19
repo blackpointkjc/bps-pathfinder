@@ -15,6 +15,27 @@ let supervisorOfficerPending = null;
 // invalidates this cache. A longer TTL prevents each page transition from reloading
 // five large directory entities and competing with CAD/time-clock requests.
 const TTL_MS = 10 * 60_000;
+const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
+const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v2';
+
+function readPersistedDirectory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DIRECTORY_STORAGE_KEY) || 'null');
+    if (!parsed?.data || !parsed?.savedAt) return null;
+    if (Date.now() - Number(parsed.savedAt) > STALE_CACHE_MAX_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function persistDirectory(data) {
+  try { localStorage.setItem(DIRECTORY_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch {}
+}
+
+const persistedDirectory = typeof window !== 'undefined' ? readPersistedDirectory() : null;
+if (persistedDirectory?.data) {
+  cache = persistedDirectory.data;
+  cacheAt = Number(persistedDirectory.savedAt || 0);
+}
 
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
 
@@ -72,8 +93,8 @@ export function directoryEmailLabel(user) {
 export async function getAppDirectory(force = false) {
   const now = Date.now();
   if (!force && cache && now - cacheAt < TTL_MS) return cache;
-  if (pending) return pending;
-  pending = withRequestTimeout(base44.functions.invoke('getAppDirectory', {}), 15000, 'App directory request').then(result => {
+  if (pending) return (!force && cache) ? cache : pending;
+  const refresh = withRequestTimeout(base44.functions.invoke('getAppDirectory', {}), 15000, 'App directory request').then(result => {
     let payload = result?.data || result || {};
     // Base44 function responses can be wrapped once more by different SDK builds.
     // Unwrap that envelope so directory joins never silently become an empty list.
@@ -88,8 +109,18 @@ export async function getAppDirectory(force = false) {
       meta: payload.meta || {},
     };
     cacheAt = Date.now();
+    persistDirectory(cache);
     return cache;
-  }).finally(() => { pending = null; });
+  });
+  pending = refresh.finally(() => { pending = null; });
+  // Stale-while-revalidate: previously verified directory/site data paints
+  // immediately while a fresh copy is fetched in the background. Management
+  // mutations explicitly invalidate this cache, so normal navigation never needs
+  // to blank the screen waiting for the directory function.
+  if (!force && cache && now - cacheAt < STALE_CACHE_MAX_MS) {
+    pending.catch(error => console.warn('[Directory] Background refresh failed; keeping last verified directory.', error?.message || error));
+    return cache;
+  }
   return pending;
 }
 
