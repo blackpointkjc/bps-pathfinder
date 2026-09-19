@@ -64,7 +64,7 @@ export default function Personnel({ embedded = false }) {
             if (typeof userUnsubscribe === 'function') userUnsubscribe();
             if (typeof activeOfficerUnsubscribe === 'function') activeOfficerUnsubscribe();
         };
-    }, []);
+    }, [isLoadingAuth, currentUser?.id]);
 
     const init = async () => {
         if (isLoadingAuth) return;
