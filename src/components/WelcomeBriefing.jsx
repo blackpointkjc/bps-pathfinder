@@ -7,7 +7,6 @@ import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
-import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
