@@ -117,7 +117,35 @@ export default function CallHistory() {
             let payload = result?.data || result || {};
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
-            const feedRows = payload.rows || [];
+            let feedRows = Array.isArray(payload.rows) ? payload.rows : [];
+            // PropertyAlert is authoritative property-call history. If the backend
+            // enrichment was degraded or produced no property rows, recover those
+            // alerts directly instead of showing an empty Property filter.
+            if (!feedRows.some(row => row._propertyCall)) {
+                try {
+                    const alerts = await withRequestTimeout(base44.entities.PropertyAlert.list('-created_date', 500), 10000, 'Property call history fallback');
+                    const represented = new Set(feedRows.flatMap(row => [row.id, row.original_call_id].filter(Boolean).map(String)));
+                    const synthetic = (alerts || []).filter(alert => alert?.callId && !represented.has(String(alert.callId))).map(alert => ({
+                        id: `property-alert-${alert.id}`,
+                        original_call_id: String(alert.callId || ''),
+                        call_id: String(alert.cadNumber || alert.callId || ''),
+                        time_received: alert.callTime || alert.time_received || alert.created_date,
+                        created_date: alert.created_date,
+                        incident: alert.callIncident || 'Monitored Property Call',
+                        location: alert.callLocation || alert.propertyName || 'Monitored property',
+                        agency: 'MONITORING',
+                        status: alert.acknowledged ? 'Closed' : 'Pending',
+                        description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
+                        assigned_units: [],
+                        _source: 'property_alert',
+                        _propertyCall: true,
+                        _propertyAlert: alert,
+                    }));
+                    feedRows = [...feedRows, ...synthetic];
+                } catch (propertyError) {
+                    console.warn('[HISTORY] Property history fallback unavailable:', propertyError?.message || propertyError);
+                }
+            }
             const activeRows = feedRows.filter(row => row._source === 'active');
             const archivedRows = feedRows.filter(row => row._source !== 'active');
             const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
