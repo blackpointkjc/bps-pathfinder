@@ -163,7 +163,7 @@ export default function ManageTimeEntries() {
       return entry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['hrTimeEntriesSnapshot'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       invalidatePayrollViews();
       setShowAddForm(false);
@@ -198,7 +198,7 @@ export default function ManageTimeEntries() {
       return entry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['hrTimeEntriesSnapshot'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       invalidatePayrollViews();
       setEditingEntry(null);
@@ -220,7 +220,7 @@ export default function ManageTimeEntries() {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['hrTimeEntriesSnapshot'] });
       invalidatePayrollViews();
     },
   });
@@ -237,7 +237,7 @@ export default function ManageTimeEntries() {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['hrTimeEntriesSnapshot'] });
       queryClient.invalidateQueries({ queryKey: ['myPerformanceData'] });
       queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] });
       queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
