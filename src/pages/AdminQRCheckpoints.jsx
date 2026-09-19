@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { QrCode, Plus, Edit, Power, Search, Printer, Settings2 } from "lucide-react";
+import { QrCode, Plus, Edit, Power, Search, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
