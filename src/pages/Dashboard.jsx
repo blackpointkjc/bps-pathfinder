@@ -1,6 +1,7 @@
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
+import { getOfficerPerformanceReviewSnapshot } from '@/lib/officerPerformanceReviewHub';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { motion } from "framer-motion";
@@ -95,15 +96,12 @@ export default function Dashboard({ embedded = false }) {
   const { data: myReviewData = { reviews: [] } } = useQuery({
     queryKey: ['dashboardPerformanceReviews', user?.id],
     queryFn: async () => {
-      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list', ...getOfficerPreviewRequest() });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload;
+      return getOfficerPerformanceReviewSnapshot(getOfficerPreviewRequest());
     },
     enabled: !!user?.id,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: 90_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   const myPerformanceReviews = myReviewData.reviews || [];
   const reviewResponseRequired = myPerformanceReviews.find(review =>
