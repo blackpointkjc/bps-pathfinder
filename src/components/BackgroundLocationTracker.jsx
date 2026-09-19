@@ -58,6 +58,7 @@ export default function BackgroundLocationTracker({ user }) {
   const lastPushedFixRef = useRef(null);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
+  const geofenceStateRef = useRef(new Map());
   const activeOfficerRecordRef = useRef(null);
   const uploadChainRef = useRef(Promise.resolve());
   const rateLimitBackoffUntilRef = useRef(0);
@@ -326,7 +327,9 @@ export default function BackgroundLocationTracker({ user }) {
 
             // Only create alert if GPS accuracy is reasonable (under 200m) and officer is outside
             // the custom property polygon (or the radius fallback when no polygon exists).
-            if (accuracy <= 200 && outsideGeofence) {
+            const geofenceKey = String(siteLocation.site_name || '').trim().toLowerCase();
+            const previousGeofenceState = geofenceStateRef.current.get(geofenceKey);
+            if (accuracy <= 200 && outsideGeofence && previousGeofenceState !== 'outside') {
               try {
                 await createGeofenceAlertMutation.mutateAsync({
                   officer_email: user.email,
@@ -337,11 +340,12 @@ export default function BackgroundLocationTracker({ user }) {
                   longitude: lng,
                   distance_from_site: Math.round(distance),
                 });
+                geofenceStateRef.current.set(geofenceKey, 'outside');
                 console.warn(`Geofence alert: Officer outside ${sharedPolygon.length >= 3 ? 'custom boundary' : `${radius}m radius`} at ${siteLocation.site_name}`);
               } catch (e) {
                 console.error('Failed to create geofence alert:', e);
               }
-            } else if (accuracy <= 200 && !outsideGeofence) {
+            } else if (accuracy <= 200 && !outsideGeofence && previousGeofenceState === 'outside') {
               // Returning to the approved boundary resolves any outstanding alert
               // for this officer/site automatically. Supervisors still retain the
               // resolved item in history for review.
@@ -351,6 +355,7 @@ export default function BackgroundLocationTracker({ user }) {
                   location: siteLocation.site_name,
                   reason: 'Automatically resolved when officer returned inside the approved geofence.',
                 });
+                geofenceStateRef.current.set(geofenceKey, 'inside');
                 queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
               } catch (e) {
                 console.warn('Unable to auto-resolve geofence alert:', e?.message);
