@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     const roles = new Set((me.additional_roles || []).map(lower));
     const rank = lower(me.rank);
     const supervisoryRank = ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
-    if (me.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access') && !supervisoryRank) {
+    if (me.role !== 'admin' && lower(me.role) !== 'supervisor' && me.is_supervisor !== true && !roles.has('supervisor') && !roles.has('full_access') && !supervisoryRank) {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const supervisorUserIds = new Set((users || []).filter((u:any) => {
       const itemRoles = new Set((u.additional_roles || []).map(lower));
       const itemRank = lower(u.rank);
-      return u.role === 'admin' || itemRoles.has('supervisor') || itemRoles.has('full_access') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(itemRank);
+      return u.role === 'admin' || lower(u.role) === 'supervisor' || u.is_supervisor === true || itemRoles.has('supervisor') || itemRoles.has('full_access') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(itemRank);
     }).map((u:any) => String(u.id)));
     const activeSupervisorCallIds = new Set((assignments || []).filter((a:any) => supervisorUserIds.has(String(a.unit_id))).map((a:any) => String(a.call_id)));
     const pendingSupervisorRequests = (statusLogs || [])
