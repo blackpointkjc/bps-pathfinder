@@ -200,7 +200,10 @@ export default function Navigation() {
                 refreshTimer = window.setTimeout(() => fetchCalls(), 5000);
                 return;
             }
-            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 65 * 60_000, limit: 250 }));
+            // Keep the map aligned with the canonical CAD dashboard window. A realtime
+            // update must not evict a still-active call just because it is older than
+            // 65 minutes; long-running incidents remain visible until they are closed.
+            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 8 * 60 * 60_000, limit: 250 }));
         });
         const recoverCalls = () => {
             window.clearTimeout(refreshTimer);
