@@ -98,6 +98,13 @@ export default function SupervisorCommandBoard() {
           </div>
         </div>)}
       </div>}
+
+      <section className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1725]">
+        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Live CAD</div><h2 className="mt-1 font-black">Active Calls</h2></div><Badge variant="outline" className="border-cyan-700 text-cyan-200">{activeCalls.length} ACTIVE</Badge></div>
+        <div className="max-h-[520px] divide-y divide-slate-800 overflow-y-auto">
+          {activeCalls.length===0 ? <div className="p-8 text-center text-sm text-slate-500">No active CAD calls are currently loaded.</div> : activeCalls.slice(0,40).map(call=><button key={call.id} type="button" onClick={()=>openDispatch(call)} className="block w-full px-4 py-3 text-left hover:bg-slate-900/60"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-xs font-black text-cyan-300">CAD {call.agency_cad_number||call.bps_reference||call.call_id||call.id}</div><div className="mt-1 text-sm font-black text-white">{call.incident||'Call for Service'}</div></div><Badge variant="outline" className="border-slate-600 text-slate-200">{String(call.status||'ACTIVE').toUpperCase()}</Badge></div><div className="mt-2 flex items-start gap-2 text-xs text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5"/>{call.location||'Location not listed'}</div></button>)}
+        </div>
+      </section>
     </div>
   </div>;
 }
