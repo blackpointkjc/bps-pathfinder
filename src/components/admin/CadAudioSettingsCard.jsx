@@ -21,6 +21,7 @@ const EVENT_TYPES = [
   ['officer_emergency', 'Officer emergency'],
   ['welfare_requested', 'Welfare requested'],
   ['welfare_overdue', 'Welfare overdue'],
+  ['supervisor_task', 'Supervisor task assigned'],
   ['property_alert', 'Property alert'],
   ['priority_upgraded', 'Priority upgraded'],
   ['call_cancelled', 'Call cancelled'],
