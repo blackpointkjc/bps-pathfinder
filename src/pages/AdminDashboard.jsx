@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +73,7 @@ export default function AdminDashboard() {
   // independent from the much heavier administrative work queue means a report,
   // special-request, or scheduling source can never blank Total Officers or
   // Today's Entries.
-  const { data: workforce = { users: [], today_entries: [], active_entries: [], counts: {} }, error: workforceError } = useQuery({
+  const { data: workforce = { users: [], today_entries: [], active_entries: [], counts: {} }, error: workforceError, refetch: refetchWorkforce } = useQuery({
     queryKey: ['workforceSnapshot'],
     queryFn: async () => {
       const response = await base44.functions.invoke('getWorkforceSnapshot', {});
@@ -85,10 +86,31 @@ export default function AdminDashboard() {
     staleTime: 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    refetchInterval: 2 * 60 * 1000,
   });
   const allUsers = workforce.users || [];
   const todayEntries = workforce.today_entries || [];
   const activeOfficers = Number(workforce.counts?.clocked_in ?? workforce.active_entries?.length ?? 0);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return undefined;
+    let timer;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['workforceSnapshot'] }), 700);
+    };
+    const unsubscribers = [];
+    for (const entity of [base44.entities.TimeEntry, base44.entities.User, base44.entities.ActiveOfficer]) {
+      try {
+        const unsubscribe = entity.subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {}
+    }
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [queryClient, user?.role]);
 
   const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError, isFetching: adminWorkRefreshing, refetch: refetchAdminWork } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
