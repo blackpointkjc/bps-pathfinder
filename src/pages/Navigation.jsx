@@ -750,7 +750,9 @@ export default function Navigation() {
             // stale stored coordinate must not become a live map marker.
             const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
             const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
-                .filter(unit => unit.session_active === true || unit.presence_online === true);
+                // Retained-session officers (map_visible) stay on the map with their
+                // last known position even when their live session recently ended.
+                .filter(unit => unit.session_active === true || unit.presence_online === true || unit.map_visible === true);
             const currentEmail = currentUser?.email?.toLowerCase();
             const self = sourceUnits.find(unit => String(unit.officer_email || unit.email || '').toLowerCase() === currentEmail);
             // Server positions are a labelled fallback while this device acquires GPS.

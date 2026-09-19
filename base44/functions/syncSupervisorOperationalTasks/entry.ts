@@ -217,6 +217,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Clear replayed/stale task banners: unread supervisor_task notifications
+    // whose task no longer exists, plus every legacy daily-report announcement
+    // (that announcement path is retired), are acknowledged so they can never
+    // return after a supervisor finishes the item or the source condition clears.
+    const unreadTaskNotifications = await readRows('unread supervisor task notifications', () =>
+      base44.asServiceRole.entities.Notification.filter({ type: 'supervisor_task', is_read: false }, '-created_date', 500), true);
+    for (const notification of unreadTaskNotifications || []) {
+      const key = clean(notification.task_key);
+      if (!key || (!key.startsWith('missing-report-') && activeTaskKeys.has(key))) continue;
+      await base44.asServiceRole.entities.Notification.update(notification.id, { is_read: true, acknowledged_at: nowIso }).catch(() => null);
+    }
+
     const workload = new Map<string,number>();
     for (const state of states || []) {
       if (state.status === 'open' && state.assigned_to_id) workload.set(String(state.assigned_to_id), (workload.get(String(state.assigned_to_id)) || 0) + 1);
@@ -291,7 +303,9 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.WorkQueueState.update(state.id, { last_seen_at:nowIso }).catch(() => null);
       }
 
-      if (assignmentChanged || !state?.alert_notification_id) {
+      // Missing daily reports stay in the Supervisor Operations work queue, but
+      // they must not create a global red banner/voice announcement for every report.
+      if ((assignmentChanged || !state?.alert_notification_id) && task.kind !== 'missing_report') {
         const eventKey = `supervisor-task:${task.key}:${chosen.user.id}`;
         const prior = await base44.asServiceRole.entities.Notification.filter({ recipient_email:lower(chosen.user.email), type:'supervisor_task', task_key:task.key, is_read:false }, '-created_date', 5).catch(() => []);
         let notification = prior?.[0] || null;

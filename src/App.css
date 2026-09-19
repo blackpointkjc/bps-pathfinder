@@ -653,3 +653,11 @@ body::-webkit-scrollbar-button,
     animation: none;
   }
 }
+
+/* Keep every Leaflet map inside its own stacking layer. Without this, the map's
+   internal panes (tiles z-200, overlays z-400, popups z-700) compete with
+   application dialogs and detail windows in the root stacking order, so popups
+   and modals can render behind the map. */
+.leaflet-container {
+  z-index: 0;
+}

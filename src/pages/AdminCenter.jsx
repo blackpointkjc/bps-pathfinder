@@ -303,7 +303,13 @@ export default function AdminCenter() {
 
   useEffect(() => {
     if (!['supervisor','hr','training','student'].includes(shadowMode) || previewPeople.length) return;
-    listDirectoryUsers('-last_updated', 1000).then(rows => {
+    listDirectoryUsers('-last_updated', 1000).then(async directoryRows => {
+      let rows = directoryRows || [];
+      if (!rows.length) {
+        // The directory feed can fail or rate-limit; fall back to the direct user
+        // list so a role preview never shows an empty account dropdown.
+        try { rows = await base44.entities.User.list(undefined, 500) || []; } catch { rows = []; }
+      }
       setPreviewPeople((rows || []).map(person => {
         const name = [person.first_name, person.last_name].filter(Boolean).join(' ').trim() || person.full_name || person.email || 'Unnamed User';
         return { ...person, __label: `${person.rank || 'User'} ${name} — ${person.email || 'No email'}` };
@@ -350,9 +356,13 @@ export default function AdminCenter() {
     const mode = shadowMode;
     const rankSupervisors = new Set(['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
     return previewPeople.filter(person => {
-      const roles = new Set([person.role, ...(person.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+      // Role fields have arrived as both arrays and plain strings across accounts;
+      // normalize either form so an account is never hidden from its own preview.
+      const rawRoles = Array.isArray(person.additional_roles) ? person.additional_roles
+        : person.additional_roles ? [person.additional_roles] : [];
+      const roles = new Set([person.role, ...rawRoles].filter(Boolean).map(value => String(value).toLowerCase()));
       const rank = String(person.rank || '').toLowerCase();
-      if (mode === 'supervisor') return person.is_supervisor === true || roles.has('supervisor') || rankSupervisors.has(rank);
+      if (mode === 'supervisor') return person.is_supervisor === true || person.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || rankSupervisors.has(rank);
       if (mode === 'hr') return roles.has('hr') || rank === 'human resources';
       if (mode === 'training') return roles.has('trainer') || roles.has('training');
       if (mode === 'student') return roles.has('student') || String(person.user_type || '').toLowerCase() === 'student';

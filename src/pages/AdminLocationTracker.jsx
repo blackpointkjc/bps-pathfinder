@@ -81,11 +81,12 @@ function MapReadyHandler() {
 
 function HistoricalOfficerMap({ data, officerName, theme }) {
   const model = React.useMemo(() => buildAuditModel(data.history || []), [data.history]);
-  if (!model.points.length) return <p className="rounded-lg border border-slate-600 p-4">No usable GPS positions recorded for {officerName} on {data.date}. Any other recorded pings remain in the report below.</p>;
+  const windowLabel = data.window_label && data.window_label !== 'Full day' ? ` · ${data.window_label}` : '';
+  if (!model.points.length) return <p className="rounded-lg border border-slate-600 p-4">No usable GPS positions recorded for {officerName} on {data.date}{windowLabel}. Any other recorded pings remain in the report below. Try widening or clearing the time window.</p>;
   return <Card className="my-4 overflow-hidden">
-    <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date} · {model.points.length} mapped pings · Eastern Time. Select a point for its recorded time and location.</p></CardHeader>
+    <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date}{windowLabel} · {model.points.length} mapped pings · Eastern Time. Select a point for its recorded time and location.</p></CardHeader>
     <CardContent className="p-0"><div className="h-[420px] w-full sm:h-[540px]">
-      <MapContainer key={data.date + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
+      <MapContainer key={data.date + (data.window_label || '') + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
         <MapReadyHandler /><PathfinderTileLayer theme={theme} /><MapUpdater officers={[]} historicalPath={model.points} />
         {model.segments.filter(segment=>segment.length>1).map((segment,index)=><Polyline key={index} positions={segment.map(point=>[Number(point.latitude),Number(point.longitude)])} pathOptions={{color:'#4f46e5',weight:4}} />)}
         {model.points.map((point,index)=><CircleMarker key={point.id || index} center={[Number(point.latitude),Number(point.longitude)]} radius={index===0 || index===model.points.length-1 ? 8 : 4} pathOptions={{color:'white',weight:1,fillColor:index===0?'#16a34a':index===model.points.length-1?'#dc2626':'#4f46e5',fillOpacity:.9}}>
@@ -160,6 +161,10 @@ export default function AdminLocationTracker({ embedded = false }) {
   const [viewMode, setViewMode] = useState('live');
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => auditDay());
+  // Optional Eastern-time window so a night shift (for example 18:00-06:00) can
+  // be reviewed without merging into the next day's daytime activity.
+  const [windowStart, setWindowStart] = useState('');
+  const [windowEnd, setWindowEnd] = useState('');
   const [checkingLocations, setCheckingLocations] = useState(false);
   const [locationCheckResults, setLocationCheckResults] = useState(null);
   const [lastAutoCheck, setLastAutoCheck] = useState(null);
@@ -278,9 +283,14 @@ export default function AdminLocationTracker({ embedded = false }) {
   );
 
   const { data: auditData, isLoading: auditLoading, error: auditError, refetch: retryAudit } = useQuery({
-    queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate],
+    queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate, windowStart, windowEnd],
     queryFn: async () => {
-      const response = await base44.functions.invoke('getLocationAuditReport', { officer_email: selectedOfficerEmail, date: selectedDate });
+      const response = await base44.functions.invoke('getLocationAuditReport', {
+        officer_email: selectedOfficerEmail,
+        date: selectedDate,
+        start_time: windowStart || undefined,
+        end_time: windowEnd || undefined,
+      });
       const payload = response?.data?.data || response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       if (!Array.isArray(payload.history)) throw new Error("The GPS report response was incomplete. Please retry.");
@@ -696,7 +706,7 @@ export default function AdminLocationTracker({ embedded = false }) {
           </div>
 
             {viewMode === 'history' && (
-              <div className="grid flex-1 gap-2 md:grid-cols-2">
+              <div className="grid flex-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="officer_select">Select User</Label>
                   <Select value={selectedOfficerEmail} onValueChange={setSelectedOfficerEmail}>
@@ -722,6 +732,30 @@ export default function AdminLocationTracker({ embedded = false }) {
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="window_start">Start Time (ET)</Label>
+                  <Input
+                    id="window_start"
+                    type="time"
+                    value={windowStart}
+                    onChange={(e) => setWindowStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="window_end">End Time (ET)</Label>
+                  <Input
+                    id="window_end"
+                    type="time"
+                    value={windowEnd}
+                    onChange={(e) => setWindowEnd(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 md:col-span-2 xl:col-span-4">
+                  <span className="text-xs font-bold text-slate-400">Time Window:</span>
+                  {[['Full Day', '', ''], ['Day Shift 6a-6p', '06:00', '18:00'], ['Night Shift 6p-6a', '18:00', '06:00']].map(([presetLabel, start, end]) => (
+                    <button key={presetLabel} type="button" onClick={() => { setWindowStart(start); setWindowEnd(end); }} className={`rounded-lg border px-3 py-1.5 text-[11px] font-black transition ${windowStart === start && windowEnd === end ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100' : 'border-slate-700 bg-[#0b1928] text-slate-300 hover:border-slate-500 hover:text-white'}`}>{presetLabel}</button>
+                  ))}
                 </div>
               </div>
             )}

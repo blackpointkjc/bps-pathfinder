@@ -5,6 +5,7 @@ import { recoverLiveLocationTracking, requestBestLiveLocation, requestFreshLiveL
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
+import { releaseOperationalWakeLock, requestOperationalWakeLock } from '@/lib/keepAliveService';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -113,6 +114,15 @@ export default function BackgroundLocationTracker({ user }) {
     if (!shouldTrack) return undefined;
     startExternalGpsAutoReconnect().catch(() => null);
     return undefined;
+  }, [shouldTrack]);
+
+  // A sleeping screen suspends timers, GPS, and audio — the top cause of
+  // "Pathfinder went stale" on in-vehicle laptops and phones. Hold a Screen
+  // Wake Lock for the whole signed-in session where the browser supports it.
+  useEffect(() => {
+    if (!shouldTrack) return undefined;
+    requestOperationalWakeLock();
+    return () => releaseOperationalWakeLock();
   }, [shouldTrack]);
 
   // Mutation to create geofence alert

@@ -306,6 +306,10 @@ export default function GlobalMessageBanner({ user }) {
 
       const isWelfareNotification = source.kind === 'assignment' && record.source_name === 'CAD Welfare';
       const isSupervisorTask = source.kind === 'supervisor_task' && record.type === 'supervisor_task';
+      // Retired daily-report announcement path: the task still appears on the
+      // Supervisor Operations board, but never as a blocking banner or voice
+      // announcement for each missing report.
+      if (isSupervisorTask && String(record.task_key || '').startsWith('missing-report-')) return;
       const targetPage = isWelfareNotification
         ? 'OfficerDispatchQueue'
         : isSupervisorTask
@@ -319,7 +323,13 @@ export default function GlobalMessageBanner({ user }) {
           // Use concise CAD radio wording and the shared dispatch voice.
           speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
         } else if (isSupervisorTask) {
+          // A missed check-in must cut through: critical tasks repeat the urgent
+          // chime so the alert cannot be missed; routine tasks chime once.
           playNotificationChime(true);
+          if (String(record.priority || '').toLowerCase() === 'critical') {
+            window.setTimeout(() => playNotificationChime(true), 900);
+            window.setTimeout(() => playNotificationChime(true), 1800);
+          }
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
           const taskAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('supervisor_task'));
@@ -774,7 +784,16 @@ export default function GlobalMessageBanner({ user }) {
         type: 'supervisor_task',
         is_read: false,
       }, '-created_date', 50)
-        .then(records => (records || []).slice().reverse().forEach(record => showBanner(supervisorTaskSource, record)))
+        .then(records => (records || [])
+          .filter(record => {
+            const created = new Date(record.created_date || 0).getTime();
+            // Finished/retired tasks are acknowledged by the supervisor sync;
+            // never replay an old task as a blocking red banner on sign-in.
+            return Number.isFinite(created) && Date.now() - created <= 12 * 60 * 60 * 1000;
+          })
+          .slice()
+          .reverse()
+          .forEach(record => showBanner(supervisorTaskSource, record)))
         .catch(() => null);
     }
 
@@ -929,6 +948,24 @@ export default function GlobalMessageBanner({ user }) {
                 <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-100">{banner.message}</p>
               </div>
               {!banner.persistent && <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>}
+              {banner.persistent && banner.notificationId && (
+                <span
+                  onClick={async event => {
+                    event.stopPropagation();
+                    // Dismissing a persistent task/welfare banner also acknowledges
+                    // its notification so it can never return on the next sign-in.
+                    await base44.entities.Notification.update(banner.notificationId, {
+                      is_read: true,
+                      acknowledged_at: new Date().toISOString(),
+                    }).catch(() => null);
+                    await dismiss(banner.id);
+                  }}
+                  className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"
+                  aria-label="Dismiss and acknowledge alert"
+                >
+                  <X className="h-4 w-4" />
+                </span>
+              )}
             </div>
             <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
           </motion.button>
