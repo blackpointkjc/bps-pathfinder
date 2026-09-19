@@ -35,6 +35,7 @@ const withTimeout = (promise, milliseconds, label) => {
 export const AuthProvider = ({ children }) => {
   const requestSequence = useRef(0);
   const dutyStatusBootstrappedRef = useRef(false);
+  const operationalSessionHeartbeatRef = useRef(Date.now());
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -358,6 +359,46 @@ export const AuthProvider = ({ children }) => {
       base44.auth.logout();
     }
   }, [user?.id, user?.email]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return undefined;
+    const roles = new Set([user.role, ...(user.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+    const rank = String(user.rank || '').trim().toLowerCase();
+    const operational = roles.has('officer') || roles.has('cad_access') || roles.has('supervisor') || user.is_supervisor === true
+      || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(rank);
+    if (!operational) return undefined;
+
+    const staleAfterMs = 8 * 60 * 60 * 1000;
+    let signingOut = false;
+    operationalSessionHeartbeatRef.current = Date.now();
+    const markAlive = () => { if (!signingOut) operationalSessionHeartbeatRef.current = Date.now(); };
+    const verifyResume = () => {
+      if (signingOut) return;
+      const age = Date.now() - Number(operationalSessionHeartbeatRef.current || 0);
+      if (age >= staleAfterMs) {
+        signingOut = true;
+        cacheOfficerStatus('Out of Service');
+        void logout(true);
+        return;
+      }
+      markAlive();
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') verifyResume(); };
+    const interval = window.setInterval(markAlive, 60_000);
+    window.addEventListener('pageshow', verifyResume);
+    window.addEventListener('focus', verifyResume);
+    window.addEventListener('bps-background-location-tick', markAlive);
+    window.addEventListener('bps-live-location-persisted', markAlive);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('pageshow', verifyResume);
+      window.removeEventListener('focus', verifyResume);
+      window.removeEventListener('bps-background-location-tick', markAlive);
+      window.removeEventListener('bps-live-location-persisted', markAlive);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isAuthenticated, user?.id, user?.role, user?.rank, user?.is_supervisor, user?.additional_roles, logout]);
 
   const navigateToLogin = useCallback(() => {
     try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
