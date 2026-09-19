@@ -589,13 +589,8 @@ body::-webkit-scrollbar-button,
   max-width: 100%;
 }
 
-.pathfinder-modern-page [class*="max-w-"] {
-  max-width: 100% !important;
-}
-
-.pathfinder-modern-page [class*="min-h-screen"] {
-  min-height: 0 !important;
-}
+/* Keep component-level width and height contracts intact. Embedded maps,
+   dialogs, and center workspaces rely on their own max-width/min-height values. */
 
 .pathfinder-modern-page .p-8 {
   padding: 1rem !important;
