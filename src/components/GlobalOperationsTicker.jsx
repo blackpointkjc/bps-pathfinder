@@ -183,7 +183,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
           loadActiveDispatchCallRows(200),
           base44.entities.BOLOAlert.filter({ status: 'active' }, '-updated_date', 100),
           base44.entities.OfficerDistress.list('-activated_at', 20),
-          base44.entities.PropertyAlert.list('-created_date', 50),
+          base44.entities.PropertyAlert.list('-created_date', 100),
         ]);
         if (!mounted) return;
         setCalls(dedupeOperationalCalls(callRows || []));
