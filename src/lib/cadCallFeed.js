@@ -1,10 +1,4 @@
-import { base44 } from '@/api/base44Client';
-import { withRequestTimeout } from '@/lib/requestTimeout';
-
 const STALE_AFTER_MS = 5 * 60 * 1000;
-const MIN_KICK_GAP_MS = 5 * 60 * 1000;
-let lastKickAt = 0;
-let inFlight = null;
 
 function timestampMs(value) {
   if (!value) return 0;
@@ -32,30 +26,16 @@ export function cadCallFeedIsStale(calls = [], maxAgeMs = STALE_AFTER_MS) {
 }
 
 /**
- * Self-heal the persisted CAD feed only when it is stale. Scheduled ingestion
- * remains primary; this is a bounded recovery path for an authenticated internal
- * Pathfinder session if the scheduler has missed a run.
+ * The scheduled Base44 ingestion job is the sole writer for the external CAD
+ * feed. Browsers used to invoke ingestGractivecalls themselves whenever they
+ * thought the feed was stale, which meant several officers could start the same
+ * expensive ingestion at once and immediately consume the global request budget.
+ *
+ * Keep this compatibility helper for existing callers, but never launch a second
+ * ingestion from the browser. Realtime DispatchCall updates deliver scheduled
+ * ingestion results to every open workstation.
  */
 export async function refreshCadIngestionIfStale(calls = [], { maxAgeMs = STALE_AFTER_MS } = {}) {
   if (!cadCallFeedIsStale(calls, maxAgeMs)) return { skipped: true, reason: 'feed_fresh' };
-  const now = Date.now();
-  if (inFlight) return inFlight;
-  if (now - lastKickAt < MIN_KICK_GAP_MS) return { skipped: true, reason: 'recent_attempt' };
-
-  lastKickAt = now;
-  inFlight = (async () => {
-    try {
-      const response = await withRequestTimeout(
-        base44.functions.invoke('ingestGractivecalls', {}),
-        20000,
-        'CAD feed recovery'
-      );
-      const payload = response?.data || response || {};
-      if (payload?.error) throw new Error(payload.error);
-      return payload;
-    } finally {
-      inFlight = null;
-    }
-  })();
-  return inFlight;
+  return { skipped: true, reason: 'scheduled_ingestion_pending' };
 }
