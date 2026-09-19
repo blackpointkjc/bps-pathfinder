@@ -112,11 +112,30 @@ export default function HROverview() {
     refetchInterval: 60 * 60 * 1000,
   });
 
-  const employees = (data.employees || []).filter(row => !row.termination_date);
+  const { data: workforce = { users: [], active_entries: [], counts: {} }, isFetching: workforceFetching, refetch: refetchWorkforce } = useQuery({
+    queryKey: ['workforceSnapshot'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getWorkforceSnapshot', {});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    placeholderData: { users: [], active_entries: [], counts: {} },
+    staleTime: 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
+
+  const employees = (workforce.users?.length ? workforce.users : (data.employees || [])).filter(row => !row.termination_date);
   const directory = buildDirectoryIndex(employees);
-  const counts = data.counts || {};
-  const activeEntries = data.active_entries || [];
+  const counts = {
+    ...(data.counts || {}),
+    active_employees: workforce.counts?.active_employees ?? data.counts?.active_employees ?? employees.length,
+    clocked_in: workforce.counts?.clocked_in ?? data.counts?.clocked_in ?? workforce.active_entries?.length ?? 0,
+  };
+  const activeEntries = workforce.active_entries?.length ? workforce.active_entries : (data.active_entries || []);
   const pendingActions = data.tasks || [];
+  const refreshAll = () => { refetch(); refetchWorkforce(); };
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
