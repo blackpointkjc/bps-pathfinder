@@ -1,18 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-async function listUsersWithRetry(base44: any) {
-  let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const rows = await base44.asServiceRole.entities.User.list('last_name', 1000);
-      return Array.isArray(rows) ? rows : [];
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2) await delay(500 * (attempt + 1));
-    }
-  }
-  throw lastError || new Error('Unable to load officer directory');
+async function listUsers(base44: any) {
+  const rows = await base44.asServiceRole.entities.User.list('last_name', 1000);
+  return Array.isArray(rows) ? rows : [];
 }
 
 Deno.serve(async (req) => {
@@ -21,21 +11,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Authentication required', officers: [] }, { status: 401 });
 
-    const [users, teamsLinks, outlookLinks] = await Promise.all([
-      listUsersWithRetry(base44),
-      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000).catch(() => []),
-      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000).catch(() => []),
-    ]);
-    const teamsByUser = new Map<string, any>();
-    for (const link of teamsLinks || []) {
-      if (link?.active === false || !link?.user_id || teamsByUser.has(String(link.user_id))) continue;
-      teamsByUser.set(String(link.user_id), link);
-    }
-    const outlookByUser = new Map<string, any>();
-    for (const link of outlookLinks || []) {
-      if (link?.connected === false || !link?.user_id || outlookByUser.has(String(link.user_id))) continue;
-      outlookByUser.set(String(link.user_id), link);
-    }
+    const users = await listUsers(base44);
     const email = (value: any) => String(value || '').trim().toLowerCase();
 
     const officers = (users || [])
@@ -45,19 +21,17 @@ Deno.serve(async (req) => {
         return roles.has('officer');
       })
       .map((entry: any) => {
-        const teams = teamsByUser.get(String(entry.id));
-        const outlook = outlookByUser.get(String(entry.id));
-        const workEmail = email(entry.email);
-        const pathfinderEmail = email(teams?.pathfinder_email || outlook?.pathfinder_email || workEmail);
-        const microsoftEmail = email(teams?.microsoft_email || outlook?.outlook_email);
+        const workEmail = email(entry.work_email || entry.pathfinder_email || entry.email);
+        const pathfinderEmail = email(entry.pathfinder_email || entry.work_email || entry.email);
+        const microsoftEmail = email(entry.microsoft_email || entry.outlook_email);
         return ({
         id: entry.id,
         email: workEmail || pathfinderEmail,
         work_email: workEmail || pathfinderEmail,
         pathfinder_email: pathfinderEmail || workEmail,
         microsoft_email: microsoftEmail,
-        outlook_email: email(outlook?.outlook_email || teams?.microsoft_email),
-        email_aliases: [...new Set([workEmail, pathfinderEmail, microsoftEmail].filter(Boolean))],
+        outlook_email: email(entry.outlook_email || entry.microsoft_email),
+        email_aliases: [...new Set([workEmail, pathfinderEmail, microsoftEmail, ...((entry.email_aliases || []).map(email))].filter(Boolean))],
         first_name: entry.first_name || '',
         last_name: entry.last_name || '',
         full_name: entry.full_name || '',
