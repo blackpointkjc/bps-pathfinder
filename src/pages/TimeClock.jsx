@@ -779,7 +779,8 @@ export default function TimeClock() {
       <Button className="mt-4" onClick={() => userError || !user?.email ? retryUser() : retryActiveEntry()}>Retry loading</Button>
     </div>;
   }
-  if (userLoading || isLoading) return <div className="p-6 text-slate-300">Loading time clock...</div>;
+  if (userLoading) return <div className="p-6 text-slate-300">Loading officer session...</div>;
+  const shiftStatePending = isLoading && activeEntry === undefined;
 
   return (
     <div className="min-h-screen bg-[#08111d] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
@@ -815,11 +816,15 @@ export default function TimeClock() {
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-blue-500/10'}`}>
                 <Clock className={`h-5 w-5 ${activeEntry ? 'text-emerald-300' : 'text-blue-300'}`} />
               </div>
-              {activeEntry ? 'Currently On Duty' : 'Ready to Clock In'}
+              {shiftStatePending ? 'Checking Current Shift' : activeEntry ? 'Currently On Duty' : 'Ready to Clock In'}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 md:p-7">
-            {activeEntry ? (
+            {shiftStatePending ? (
+              <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-700 bg-slate-950/40 text-sm font-bold text-slate-400">
+                <Clock className="mr-2 h-4 w-4 animate-pulse text-blue-300" /> Confirming current duty status…
+              </div>
+            ) : activeEntry ? (
               <div className="space-y-6">
                 {geoError && (
                   <Alert variant="destructive">
