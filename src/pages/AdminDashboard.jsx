@@ -1,4 +1,3 @@
-import { listDirectoryUsers } from '@/lib/appDirectory';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +7,7 @@ import { Users, Clock, FileText, AlertTriangle, Shield, Calendar, MapPin, Megaph
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useAuth } from '@/lib/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,46 +66,29 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['adminDashboardActiveUsers'],
+  // One bounded backend snapshot powers the roster and clock KPIs. Keeping this
+  // independent from the much heavier administrative work queue means a report,
+  // special-request, or scheduling source can never blank Total Officers or
+  // Today's Entries.
+  const { data: workforce = { users: [], today_entries: [], active_entries: [], counts: {} }, error: workforceError } = useQuery({
+    queryKey: ['workforceSnapshot'],
     queryFn: async () => {
-      const users = await listDirectoryUsers();
-      return (Array.isArray(users) ? users : []).filter(u => !u?.termination_date);
+      const response = await base44.functions.invoke('getWorkforceSnapshot', {});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: user?.role === 'admin',
-    initialData: [],
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
-
-  // One shared TimeEntry read powers both today's activity and the active-duty
-  // count. The previous duplicate startup queries were identical and could push
-  // the Admin main page into a Base44 429 during the global monitor startup burst.
-  const { data: dashboardTimeEntries = [] } = useQuery({
-    queryKey: ['adminDashboardTimeEntries'],
-    queryFn: () => base44.entities.TimeEntry.list('-created_date', 500),
-    enabled: user?.role === 'admin',
-    initialData: [],
+    placeholderData: { users: [], today_entries: [], active_entries: [], counts: {} },
     staleTime: 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const todayEntries = (dashboardTimeEntries || []).filter(entry => {
-    if (!entry?.clock_in) return false;
-    try {
-      return format(new Date(entry.clock_in), 'yyyy-MM-dd') === today;
-    } catch {
-      return false;
-    }
-  });
-  const activeOfficers = (dashboardTimeEntries || []).filter(entry => !entry?.clock_out && entry?.archived !== true).length;
+  const allUsers = workforce.users || [];
+  const todayEntries = workforce.today_entries || [];
+  const activeOfficers = Number(workforce.counts?.clocked_in ?? workforce.active_entries?.length ?? 0);
 
   const { data: adminWork = { tasks: [], counts: {} }, error: adminWorkError, isFetching: adminWorkRefreshing, refetch: refetchAdminWork } = useQuery({
     queryKey: ['adminDashboardWorkQueue'],
@@ -169,6 +152,7 @@ export default function AdminDashboard() {
     { id: "post_orders", title: "Post Orders", icon: BookOpen, url: createPageUrl("AdminPostOrders"), category: "communication" },
   ];
 
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading administrator access…</div>;
   if (user?.role !== 'admin') {
     return (
       <div className="p-8 text-center">
@@ -258,9 +242,9 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
           <Card className="bps-kpi-card border border-blue-500/30 bg-[#0d2033] p-5 text-white shadow-lg">
             <div className="bps-kpi-icon bg-blue-500/10 text-blue-300"><Users className="h-5 w-5" /></div>
-            <div className="bps-kpi-value text-3xl font-black text-white sm:text-4xl">{allUsers?.length || 0}</div>
+            <div className="bps-kpi-value text-3xl font-black text-white sm:text-4xl">{workforce.counts?.active_employees ?? allUsers.length}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Total Officers</div>
-            <p className="bps-kpi-detail text-sm font-medium text-blue-200">{allUsers?.filter(u => u.role === 'admin').length || 0} admins</p>
+            <p className="bps-kpi-detail text-sm font-medium text-blue-200">{workforce.counts?.admins ?? allUsers.filter(u => u.role === 'admin').length} admins</p>
           </Card>
 
           <Card className="bps-kpi-card border border-emerald-500/30 bg-[#0d2033] p-5 text-white shadow-lg">
