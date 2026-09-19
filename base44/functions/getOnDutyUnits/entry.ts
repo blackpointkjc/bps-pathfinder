@@ -15,6 +15,50 @@ const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordi
   && !(Number(latitude) === 0 && Number(longitude) === 0);
 
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+async function retireExpiredSessions(base44: any, rows: any[], retentionCutoff: number) {
+  const stale = (rows || []).filter((row: any) => {
+    if (row?.session_active === false) return false;
+    const stamp = new Date(row?.last_update || row?.updated_date || row?.created_date || 0).getTime();
+    return !Number.isFinite(stamp) || stamp < retentionCutoff;
+  });
+  if (!stale.length) return 0;
+  const now = new Date().toISOString();
+  const emails = new Set(stale.map((row: any) => lower(row.officer_email)).filter(Boolean));
+  await Promise.all(stale.map(async (row: any) => {
+    row.session_active = false;
+    row.status = 'Out of Service';
+    row.last_update = now;
+    await base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
+      session_active: false,
+      status: 'Out of Service',
+      last_update: now,
+      current_call_info: '',
+      gps_updated_at: null,
+      latitude: null,
+      longitude: null,
+      heading: null,
+      speed: 0,
+      accuracy: null,
+    }).catch(() => null);
+  }));
+  const [users, units] = await Promise.all([
+    base44.asServiceRole.entities.User.list(undefined, 2000).catch(() => []),
+    base44.asServiceRole.entities.Unit.list(undefined, 2000).catch(() => []),
+  ]);
+  await Promise.all((users || []).filter((user: any) => emails.has(lower(user.email))).map((user: any) =>
+    base44.asServiceRole.entities.User.update(user.id, {
+      status: 'Out of Service', status_since: now, last_updated: now,
+      current_call_id: null, current_call_info: null,
+    }).catch(() => null)
+  ));
+  await Promise.all((units || []).filter((unit: any) => emails.has(lower(unit.user_email))).map((unit: any) =>
+    base44.asServiceRole.entities.Unit.update(unit.id, {
+      status: 'Out of Service', last_update_at: now, last_updated: now, assigned_call_ids: [],
+    }).catch(() => null)
+  ));
+  return stale.length;
+}
+
 async function readWithRetry(loader: () => Promise<any[]>, label: string) {
   let lastError: any = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -80,7 +124,8 @@ Deno.serve(async (req) => {
         'active officer sessions',
       );
       const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
-      const sessionRetentionCutoff = Date.now() - 12 * 60 * 60 * 1000;
+      const sessionRetentionCutoff = Date.now() - 8 * 60 * 60 * 1000;
+      await retireExpiredSessions(base44, activeOfficers, sessionRetentionCutoff);
       const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
@@ -301,7 +346,8 @@ Deno.serve(async (req) => {
     // behavior does not make an officer vanish. Retained sessions are explicitly
     // marked connection_stale and are not app-dispatch eligible until recovered.
     const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
-    const sessionRetentionCutoff = Date.now() - 12 * 60 * 60 * 1000;
+    const sessionRetentionCutoff = Date.now() - 8 * 60 * 60 * 1000;
+    await retireExpiredSessions(base44, activeOfficers, sessionRetentionCutoff);
     const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
