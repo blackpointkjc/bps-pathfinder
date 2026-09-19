@@ -165,7 +165,7 @@ function AdminSchedulingCoverageHub() {
 }
 
 function AdminLocationDispatchHub() {
-  return <AdminInlineFunctions queryParam="admin_location_dispatch_tool" tools={[
+  return <AdminInlineFunctions queryParam="admin_location_dispatch_tool" defaultTool="locations" tools={[
     { id: 'tracker', label: 'Live Tracker', component: AdminLocationTracker },
     { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
     { id: 'autodispatch', label: 'Auto Dispatch', component: AdminAutoDispatchControls },
