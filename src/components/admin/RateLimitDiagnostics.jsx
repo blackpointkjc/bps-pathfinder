@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Clipboard, Trash2, X } from 'lucide-react';
-import { clearBase44RequestTrace, getBase44RateLimitSummary, getBase44RequestHealth, getBase44RequestTrace } from '@/api/base44Client';
+import { clearBase44RequestTrace, getBase44RequestHealth, getBase44RequestTrace } from '@/api/base44Client';
 
 const outcomeClass = outcome => {
   if (outcome === 'rate_limit') return 'border-red-500/50 bg-red-950/40 text-red-200';
@@ -30,9 +30,27 @@ export default function RateLimitDiagnostics({ open, onClose }) {
     };
   }, [open]);
 
-  const summary = useMemo(() => getBase44RateLimitSummary(), [rows]);
-  const rateLimits = useMemo(() => rows.filter(row => row.outcome === 'rate_limit'), [rows]);
-  const recent = rows.slice(0, 100);
+  const recentWindowRows = useMemo(() => {
+    const cutoff = Date.now() - 15 * 60 * 1000;
+    return rows.filter(row => new Date(row.at || 0).getTime() >= cutoff);
+  }, [rows]);
+  const summary = useMemo(() => {
+    const grouped = new Map();
+    for (const row of recentWindowRows) {
+      const key = row.label || 'unknown';
+      const current = grouped.get(key) || { label: key, total: 0, rateLimits: 0, errors: 0, successes: 0, cacheHits: 0, lastAt: null };
+      current.total += 1;
+      if (row.outcome === 'rate_limit') current.rateLimits += 1;
+      if (row.outcome === 'error' || row.outcome === 'queue_timeout') current.errors += 1;
+      if (row.outcome === 'success') current.successes += 1;
+      if (row.outcome === 'cache_hit' || row.outcome === 'deduped_inflight') current.cacheHits += 1;
+      if (!current.lastAt || String(row.at) > String(current.lastAt)) current.lastAt = row.at;
+      grouped.set(key, current);
+    }
+    return [...grouped.values()].sort((a, b) => (b.rateLimits - a.rateLimits) || (b.total - a.total));
+  }, [recentWindowRows]);
+  const rateLimits = useMemo(() => recentWindowRows.filter(row => row.outcome === 'rate_limit'), [recentWindowRows]);
+  const recent = recentWindowRows.slice(0, 100);
 
   if (!open) return null;
 
@@ -83,7 +101,7 @@ export default function RateLimitDiagnostics({ open, onClose }) {
 
         <div className="grid min-h-0 flex-1 gap-3 overflow-hidden p-3 lg:grid-cols-[360px_minmax(0,1fr)]">
           <div className="min-h-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
-            <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Top Request Sources</div>
+            <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Top Request Sources · Last 15 Minutes</div>
             <div className="max-h-full overflow-y-auto">
               {summary.slice(0, 50).map(item => (
                 <div key={item.label} className="border-b border-slate-800/70 px-3 py-2">
