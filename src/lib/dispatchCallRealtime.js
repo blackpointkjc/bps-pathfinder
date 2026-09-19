@@ -42,7 +42,7 @@ export function subscribeDispatchCallChanges(listener) {
 
 export function applyDispatchCallEvent(currentCalls, event, {
   hideClosed = true,
-  maxAgeMs = 65 * 60 * 1000,
+  maxAgeMs = 8 * 60 * 60 * 1000,
   limit = 250,
 } = {}) {
   const current = Array.isArray(currentCalls) ? currentCalls : [];
