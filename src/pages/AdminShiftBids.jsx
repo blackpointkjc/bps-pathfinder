@@ -167,22 +167,32 @@ export default function AdminShiftBids({ embedded = false }) {
       });
 
       const shift = openShifts?.find(s => s.id === bid.shift_id);
-      await base44.integrations.Core.SendEmail({
-        to: bid.officer_email,
-        subject: `Shift Bid Update - ${shift?.location || 'Shift'}`,
-        body: `Your bid for the shift on ${shift ? format(parseISO(shift.shift_date), 'MMMM d, yyyy') : 'the requested date'} was not selected.
+      // The bid decision is already committed above. Email/in-app delivery is
+      // secondary and must never make a successful rejection appear to fail.
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: bid.officer_email,
+          subject: `Shift Bid Update - ${shift?.location || 'Shift'}`,
+          body: `Your bid for the shift on ${shift ? format(parseISO(shift.shift_date), 'MMMM d, yyyy') : 'the requested date'} was not selected.
 
 Please continue to check for other open shifts.`
-      });
+        });
+      } catch (error) {
+        console.warn('Bid rejected but rejection email failed:', error?.message || error);
+      }
 
-      await base44.entities.Notification.create({
-        recipient_email: bid.officer_email,
-        type: 'bid_rejected',
-        title: 'Shift Bid Not Selected',
-        message: `Your bid for ${shift ? format(parseISO(shift.shift_date), 'MMM d') : 'shift'} was not selected.`,
-        priority: 'normal',
-        related_id: shift?.id,
-      });
+      try {
+        await base44.entities.Notification.create({
+          recipient_email: bid.officer_email,
+          type: 'bid_rejected',
+          title: 'Shift Bid Not Selected',
+          message: `Your bid for ${shift ? format(parseISO(shift.shift_date), 'MMM d') : 'shift'} was not selected.`,
+          priority: 'normal',
+          related_id: shift?.id,
+        });
+      } catch (error) {
+        console.warn('Bid rejected but in-app notification failed:', error?.message || error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allShiftBids'] });
