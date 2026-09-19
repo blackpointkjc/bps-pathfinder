@@ -3,7 +3,6 @@ import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ServerCrash, Wrench }
 import { base44 } from '@/api/base44Client';
 import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
 import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
-import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 
 const severityConfig = {
   outage: { label: 'System Outage', icon: ServerCrash, border: 'border-red-600/60', bg: 'bg-red-950/35', text: 'text-red-300' },
@@ -63,10 +62,17 @@ export default function SystemStatus() {
     };
   }, []);
 
-  const activeOutages = useMemo(
-    () => issues.filter(issue => !issue.resolved_at).sort((a, b) => new Date(b.last_seen_at || b.created_date || 0) - new Date(a.last_seen_at || a.created_date || 0)),
-    [issues]
-  );
+  const activeOutages = useMemo(() => {
+    const bySignature = new Map();
+    for (const issue of issues.filter(issue => !issue.resolved_at)) {
+      const signature = [issue.component, issue.title, issue.source].map(value => String(value || '').trim().toLowerCase()).join('|');
+      const existing = bySignature.get(signature);
+      const issueStamp = new Date(issue.last_seen_at || issue.created_date || 0).getTime();
+      const existingStamp = existing ? new Date(existing.last_seen_at || existing.created_date || 0).getTime() : -Infinity;
+      if (!existing || issueStamp >= existingStamp) bySignature.set(signature, issue);
+    }
+    return [...bySignature.values()].sort((a, b) => new Date(b.last_seen_at || b.created_date || 0) - new Date(a.last_seen_at || a.created_date || 0));
+  }, [issues]);
 
   const requestHealth = getBase44RequestHealth();
   const rateLimitSummary = getBase44RateLimitSummary();
@@ -112,16 +118,6 @@ export default function SystemStatus() {
               <div className="text-[8px] font-black uppercase tracking-[.14em] text-red-300">Rate Limits Logged</div>
               <div className="mt-1 text-lg font-black text-red-200">{rateLimitCount}</div>
             </button>
-          </div>
-        )}
-
-        {currentUser?.role === 'admin' && (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-700 bg-[#08111d]">
-            <div className="border-b border-slate-800 bg-[#0a1623] px-4 py-2.5">
-              <div className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-400">Administrator Issue Management</div>
-              <div className="text-xs text-slate-500">System issue detection, review, acknowledgement, and resolution now live on this page.</div>
-            </div>
-            <SystemIssuesPanel currentUser={currentUser} />
           </div>
         )}
 
