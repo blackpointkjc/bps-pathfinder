@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const AVAILABLE_LIMIT_MS = (12 * 60 + 1) * 60 * 1000;
+const AVAILABLE_LIMIT_MS = 8 * 60 * 60 * 1000;
+const STALE_SESSION_LIMIT_MS = 8 * 60 * 60 * 1000;
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 
@@ -16,8 +17,7 @@ function displayName(user: any) {
 }
 
 async function retireLiveOfficer(base44: any, email: string) {
-  const rows = await base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []);
-  const mine = (rows || []).filter((row: any) => lower(row.officer_email) === lower(email));
+  const mine = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: email }, '-last_update', 100).catch(() => []);
   const now = new Date().toISOString();
   await Promise.all(mine.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
     session_active: false,
@@ -34,7 +34,7 @@ async function retireLiveOfficer(base44: any, email: string) {
   return mine.length;
 }
 
-async function setOutOfService(base44: any, officer: any, reason: string, alertSupervisors: boolean) {
+async function setOutOfService(base44: any, officer: any, reason: string, alertSupervisors: boolean, prefetchedUnits: any[] | null = null) {
   const now = new Date().toISOString();
   const update = {
     status: 'Out of Service',
@@ -46,7 +46,7 @@ async function setOutOfService(base44: any, officer: any, reason: string, alertS
 
   await base44.asServiceRole.entities.User.update(officer.id, update);
 
-  const units = await base44.asServiceRole.entities.Unit.list(undefined, 1000).catch(() => []);
+  const units = prefetchedUnits || await base44.asServiceRole.entities.Unit.list(undefined, 1000).catch(() => []);
   const linked = (units || []).filter((unit: any) =>
     unit.user_id === officer.id || lower(unit.user_email) === lower(officer.email)
   );
