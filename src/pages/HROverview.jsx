@@ -77,9 +77,8 @@ export default function HROverview() {
   const { data = {}, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['hrOverviewSnapshot'],
     queryFn: async () => {
-      // Idempotent: creates only annual reviews that are actually due and missing.
-      const annualResult = await base44.functions.invoke('generateAnnualPerformanceReviews', {}).catch(err => ({ data: { error: err?.message || 'Annual review check failed' } }));
-      const annualPayload = annualResult?.data || annualResult || {};
+      // Annual review generation is a scheduled daily backend job. Do not rerun
+      // that expensive company-wide generator every time HR opens this dashboard.
       const queueResult = await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'hr' });
       const queue = queueResult?.data || queueResult || {};
       if (queue.error) throw new Error(queue.error);
@@ -98,7 +97,6 @@ export default function HROverview() {
           ...queue,
           tasks: mergedTasks,
           counts: { ...(previous.counts || {}), total: mergedTasks.length },
-          annual_review_check_error: annualPayload.error || '',
           retaining_last_confirmed_tasks: true,
         };
       }
@@ -106,12 +104,11 @@ export default function HROverview() {
         ...queue,
         tasks: currentTasks,
         counts: { ...(queue.counts || {}), total: currentTasks.length },
-        annual_review_check_error: annualPayload.error || '',
       };
     },
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     refetchInterval: 60 * 60 * 1000,
   });
 
