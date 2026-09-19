@@ -14,6 +14,7 @@ import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning, ChevronUp
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -152,8 +153,7 @@ function CommandDashboardInner({ embedded = false }) {
     const handleStatusChange = async (newStatus) => {
         const previousStatus = currentUser?.status;
         try {
-            const response = await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
-            const payload = response?.data || response || {};
+            const payload = await persistOfficerStatus(newStatus);
             if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => ({ ...prev, status: newStatus }));
             window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
