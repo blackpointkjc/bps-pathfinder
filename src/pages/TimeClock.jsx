@@ -19,7 +19,7 @@ import L from 'leaflet';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { useAuth } from '@/lib/AuthContext';
-import { publishOfficerLocation } from '@/lib/officerLocationHub';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -272,28 +272,12 @@ export default function TimeClock() {
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
 
-      // The TimeEntry save is the clock-in transaction. Status/GPS publication
-      // continues in the background so a slow secondary service cannot leave the
-      // button spinning or make a successful punch look like a timeout.
-      void (async () => {
-      // Clocking in records duty time and starts location tracking, but it does
-      // not make the officer Available. Status begins OOS and must be selected
-      // manually from the officer/CAD status control.
-      await publishOfficerLocation({
-        officer_email: submittedEntry.officer_email,
-        current_location: submittedEntry.location,
-        clock_in_time: submittedEntry.clock_in,
-        time_entry_id: createdEntry?.id || '',
-        device_fix_at: new Date().toISOString(),
-        latitude: submittedEntry.clock_in_latitude,
-        longitude: submittedEntry.clock_in_longitude,
-        accuracy: submittedEntry.clock_in_accuracy,
-        status: 'Out of Service',
-        session_active: true,
-        force_publish: true,
-      }).catch(error => console.warn('Clock-in saved, but live map synchronization is retrying:', error?.message));
-      window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: 'Out of Service', source: 'time-clock' } }));
-      })();
+      // The TimeEntry save is the clock-in transaction. The global background
+      // tracker owns logLocation and will establish/update the live GPS session
+      // from this new active entry. Do not force a second location-function call
+      // here; that startup burst was the main source of logLocation 429s.
+      void persistOfficerStatus('Out of Service')
+        .catch(error => console.warn('Clock-in saved, but OOS status synchronization is retrying:', error?.message));
     },
   });
 
@@ -409,6 +393,7 @@ export default function TimeClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
+      queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
       setSwitchingSite(false);
       setSelectedNewSite("");
