@@ -26,6 +26,18 @@ function easternParts(value: Date | string = new Date()) {
   };
 }
 
+function wallStamp(dateKey: string, minutes: number) {
+  if (!dateKey || !Number.isFinite(minutes) || minutes < 0) return null;
+  const [year,month,day] = dateKey.split('-').map(Number);
+  if (![year,month,day].every(Number.isFinite)) return null;
+  return Math.floor(Date.UTC(year, month - 1, day) / 60000) + minutes;
+}
+
+function easternStamp(value: Date | string) {
+  const parts = easternParts(value);
+  return wallStamp(parts.date, parts.minutes);
+}
+
 function parseWallMinutes(value: unknown) {
   const raw = String(value || '').trim();
   const match = raw.match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i);
@@ -263,17 +275,22 @@ Deno.serve(async (req) => {
     };
 
     const activeEntries = (entries || []).filter((entry: any) => entry.clock_in && !entry.clock_out && entry.archived !== true);
-    const todayEntries = (entries || []).filter((entry: any) => easternParts(entry.clock_in).date === now.date && entry.archived !== true);
+    const attendanceEntries = (entries || []).filter((entry: any) => entry.clock_in && entry.archived !== true);
     const missedClockIns = queueRole === 'hr' ? (schedules || []).filter((shift: any) => {
       if (shift.archived === true || shift.is_open === true || normalized(shift.officer_email) === 'open') return false;
       if (String(shift.shift_date || '') !== now.date) return false;
       const start = parseWallMinutes(shift.start_time);
       if (start < 0 || start > fiveMinutesAgo) return false;
-      return !todayEntries.some((entry: any) => {
+      const scheduledStamp = wallStamp(now.date, start);
+      return !attendanceEntries.some((entry: any) => {
         if (normalized(entry.officer_email) !== normalized(shift.officer_email)) return false;
-        const entryMinute = easternParts(entry.clock_in).minutes;
-        const sameLocation = normalized(entry.location) === normalized(shift.location);
-        return sameLocation || Math.abs(entryMinute - start) <= 240;
+        const inStamp = easternStamp(entry.clock_in);
+        const outStamp = entry.clock_out ? easternStamp(entry.clock_out) : wallStamp(now.date, now.minutes);
+        if (inStamp == null || scheduledStamp == null) return false;
+        const alreadyOnDuty = outStamp != null && inStamp <= scheduledStamp + 5 && outStamp >= scheduledStamp - 5;
+        const nearStart = Math.abs(inStamp - scheduledStamp) <= 240;
+        const sameLocation = normalized(String(entry.location || '').split(':')[0].split(' - ')[0]) === normalized(String(shift.location || '').split(':')[0].split(' - ')[0]);
+        return alreadyOnDuty || nearStart || (sameLocation && Math.abs(inStamp - scheduledStamp) <= 360);
       });
     }) : [];
 
