@@ -28,7 +28,11 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'entity' && ['Vehicle','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'BOLOAlert') return 2 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'Schedule') return 60_000;
-  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits','getSupervisorWelfareBoard'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && meta?.name === 'getWorkforceSnapshot') return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getRoleWorkQueue') return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getFleetScheduleData') return 2 * 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'managePlannedShifts' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
@@ -91,11 +95,13 @@ const recordRequestTrace = entry => {
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
+  if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCallHistoryFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
+  if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
