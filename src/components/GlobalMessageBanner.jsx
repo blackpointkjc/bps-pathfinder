@@ -405,11 +405,88 @@ export default function GlobalMessageBanner({ user }) {
       return location;
     };
 
-    const showPropertyCall = async record => {
+    const showPropertyCall = async (record, options = {}) => {
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
+
+      // A freshly-created PropertyAlert is emitted only after the backend has
+      // verified that the CAD call is inside an active monitored property. Use
+      // that verified snapshot immediately instead of blocking speech on several
+      // follow-up network reads. Recovery/update events keep the conservative
+      // lookup path below so stale history can never replay as a live call.
+      const realtimeCreate = options.realtimeCreate === true;
+      if (realtimeCreate && record.callId && record.propertyId && record.propertyName && record.callIncident) {
+        const callKey = String(record.callId);
+        const currentStatus = callStatusKey(record.callStatus || 'new');
+        if (HIDDEN_EXISTING_CALL_STATUSES.has(normalized(record.callStatus))) return;
+        if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
+
+        const propertyEventKey = `property:${callKey}:${currentStatus}`;
+        const cadNumber = String(record.cadNumber || '');
+        const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
+
+        if (!announcedPropertySpeech.current.has(propertyEventKey)) {
+          announcedPropertySpeech.current.add(propertyEventKey);
+          const accepted = speakNotification(announcementText, {
+            dedupeMs: 6000,
+            eventId: propertyEventKey,
+            // New monitored-property calls must cut through routine/high chatter
+            // immediately, while officer-distress emergency traffic stays above it.
+            priority: 'critical',
+            volume: audioSettings.current.volume,
+            voiceProfile: audioSettings.current.voice_profile,
+          });
+
+          // Record/dedupe across devices after audio has already been queued.
+          // The remote claim must never delay the first spoken word.
+          void claimAnnouncementEvent({
+            event_key: propertyEventKey,
+            event_id: record.id,
+            cad_number: cadNumber,
+            event_type: 'property_alert',
+          }).then(claim => {
+            if (!claim?.claimed) return null;
+            return finalizeAnnouncementEvent(
+              claim,
+              propertyEventKey,
+              accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
+            );
+          }).catch(() => null);
+        }
+
+        announcedPropertyCallStatuses.current.set(callKey, currentStatus);
+        knownIds.current.add(key);
+        window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+          detail: { page: 'DispatchCenter', key },
+        }));
+        const banner = {
+          id: key,
+          title: 'ACTIVE CALL FOR SERVICE',
+          page: 'DispatchCenter',
+          kind: 'property',
+          persistent: false,
+          recordId: record.id,
+          fingerprint: key,
+          sender: record.propertyName || 'Monitored Property',
+          photo: '',
+          message: `${record.callIncident || 'Call for service'} · ${record.callLocation || record.propertyName || 'Monitored property'}`,
+          propertyAcknowledgement: {
+            alert_id: record.id,
+            call_id: callKey,
+            property_id: record.propertyId,
+            event_key: propertyEventKey,
+          },
+        };
+        setBanners(current => [...current.slice(-4), banner]);
+        const timer = window.setTimeout(() => {
+          setBanners(current => current.filter(entry => entry.id !== key));
+          timers.current.delete(key);
+        }, 30000);
+        timers.current.set(key, timer);
+        return;
+      }
 
       const call = record.callId
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
@@ -591,7 +668,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const propertyUnsubscribe = base44.entities.PropertyAlert.subscribe(event => {
         if (!['create', 'update'].includes(event?.type) || !event.data?.id) return;
-        showPropertyCall(event.data);
+        showPropertyCall(event.data, { realtimeCreate: event.type === 'create' });
       });
       if (typeof propertyUnsubscribe === 'function') unsubscribers.push(propertyUnsubscribe);
 
