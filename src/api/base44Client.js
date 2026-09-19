@@ -70,6 +70,15 @@ const recordRequestTrace = entry => {
     // Diagnostics must never create another application failure.
   }
 };
+const readPriority = meta => {
+  if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
+  if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
+  if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer'].includes(meta?.name)) return 90;
+  if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
+  return 50;
+};
 const requestLabel = meta => {
   if (!meta) return 'unknown';
   if (meta.kind === 'entity') return `Entity ${meta.name}.${meta.method}`;
@@ -177,7 +186,10 @@ function queuedRead(key, task, meta = {}) {
       });
       reject(error);
     }, 60000);
-    readQueue.push(job);
+    job.priority = readPriority(meta);
+    const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
+    if (insertAt < 0) readQueue.push(job);
+    else readQueue.splice(insertAt, 0, job);
     pumpReads();
   }).finally(() => readInflight.delete(key));
   readInflight.set(key, request);
