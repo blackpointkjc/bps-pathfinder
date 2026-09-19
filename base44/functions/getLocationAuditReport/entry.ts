@@ -10,10 +10,23 @@ const dayKey = (value: unknown) => {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(time));
   return ['year', 'month', 'day'].map(type => parts.find(p => p.type === type)?.value).join('-');
 };
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function readAll(entity: any, query: any, sort: string) {
   const rows: any[] = [];
   for (let skip = 0; skip < 20000; skip += 1000) {
-    const page = await entity.filter(query, sort, 1000, skip);
+    let page: any[] | null = null;
+    let lastError: any = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const result = await entity.filter(query, sort, 1000, skip);
+        page = Array.isArray(result) ? result : [];
+        break;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await delay(450 * (attempt + 1));
+      }
+    }
+    if (page === null) throw lastError || new Error('Unable to load location audit records');
     rows.push(...page);
     if (page.length < 1000) return rows;
   }
