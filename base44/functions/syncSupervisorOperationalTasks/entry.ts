@@ -10,7 +10,7 @@ const isSupervisor = (user: any) => {
   const roles = rolesOf(user);
   return !!user?.email && !user?.termination_date
     && !['terminated','on_leave'].includes(lower(user?.employment_status))
-    && (user.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || RANKS.has(lower(user.rank)));
+    && (user.role === 'admin' || lower(user.role) === 'supervisor' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || RANKS.has(lower(user.rank)));
 };
 const displayName = (user: any) => {
   const rank = clean(user?.rank);
@@ -322,7 +322,13 @@ Deno.serve(async (req) => {
           state = { ...state, alert_notification_id:notification.id };
         }
       }
-      assigned.push({ ...state, detail:task.detail, priority:task.priority });
+      assigned.push({
+        ...state,
+        detail:task.detail,
+        priority:task.priority,
+        announcement_text:task.speech,
+        event_key:`supervisor-task:${task.key}:${chosen.user.id}`,
+      });
     }
 
     const myId = String(me.id || '');
