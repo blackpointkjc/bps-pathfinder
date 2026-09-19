@@ -2,7 +2,7 @@
  * ActiveCallMarkers — PURE RENDER ONLY.
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
  */
-import { Marker } from 'react-leaflet';
+import { Marker, Pane, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
 const createCallIcon = (call, isHighPriority = false) => {
@@ -87,18 +87,25 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     ).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));
 
     return (
-        <>
+        <Pane name="active-cad-calls" style={{ zIndex: 690 }}>
             {renderable.map((call, index) => {
                 const priority = assessCallPriority(call);
                 return (
                     <Marker
                         key={call.id || `call-${index}`}
+                        pane="active-cad-calls"
                         position={[call.latitude, call.longitude]}
                         icon={createCallIcon(call, priority.score >= 3)}
+                        zIndexOffset={priority.score >= 3 ? 1200 : 900}
                         eventHandlers={{ click: () => onCallClick?.(call) }}
-                    />
+                    >
+                        <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
+                            <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
+                            <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
+                        </Tooltip>
+                    </Marker>
                 );
             })}
-        </>
+        </Pane>
     );
 }
