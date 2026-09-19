@@ -41,7 +41,7 @@ export default function AdminDivisions() {
     queryKey: ['divisions'],
     queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
-    initialData: [],
+    placeholderData: [],
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
