@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { toast } from "@/components/ui/use-toast";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
+import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
 import { pagesConfig } from './pages.config';
@@ -55,6 +56,17 @@ const DATA_SYNC_TERMS = {
   Complaint: ['complaint', 'performance', 'supervisor'],
   WriteUpReport: ['writeup', 'write-up', 'performance', 'supervisor'],
   InspectionReport: ['inspection', 'performance', 'supervisor'],
+  ShiftHandover: ['handover', 'shift', 'supervisor'],
+  GeneralPostOrder: ['postorder', 'postorders'],
+  PostOrder: ['postorder', 'postorders'],
+  ReportTodo: ['reporttodo', 'myreport', 'dar', 'incident', 'legal'],
+  JobDutyRule: ['jobduty', 'qr', 'patrol', 'postorder'],
+  Equipment: ['equipment', 'user', 'officer'],
+  AccessRequest: ['pendingaccess', 'user', 'portal'],
+  DispatchCall: ['dispatch', 'call', 'report', 'cad'],
+  CallHistory: ['callhistory', 'report', 'cad'],
+  UnitStatusLog: ['unitstatus', 'report', 'cad'],
+  SupervisorSiteCheck: ['supervisor', 'sitecheck', 'performance'],
 };
 
 const FUNCTION_SYNC_TERMS = {
@@ -88,6 +100,58 @@ function syncTermsForChange(detail = {}) {
   if (kind === 'entity') return DATA_SYNC_TERMS[name] || [name.toLowerCase()];
   if (kind === 'function') return FUNCTION_SYNC_TERMS[name] || [];
   return [];
+}
+
+const REALTIME_SYNC_ENTITIES = [
+  'User',
+  'Location',
+  'Division',
+  'Schedule',
+  'TimeEntry',
+  'ShiftBid',
+  'OfficerAvailability',
+  'TimeOffRequest',
+  'PerformanceReview',
+  'TrainingAssignment',
+  'TrainingCompletion',
+  'DailyActivityReport',
+  'IncidentReport',
+  'MaintenanceReport',
+  'OpenDoorReport',
+  'TrespassingNotice',
+  'CriminalComplaint',
+  'Summons',
+  'ClientFeedback',
+  'Complaint',
+  'Commendation',
+  'WriteUpReport',
+  'QRScanEvent',
+  'Announcement',
+];
+
+function GlobalDataRealtimeSync({ enabled }) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const unsubscribers = [];
+    for (const name of REALTIME_SYNC_ENTITIES) {
+      try {
+        const unsubscribe = base44.entities[name].subscribe(event => {
+          window.dispatchEvent(new CustomEvent('bps-data-changed', {
+            detail: { kind: 'entity', name, method: event?.type || 'realtime', at: Date.now(), remote: true },
+          }));
+        });
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch (error) {
+        console.warn(`[Realtime Sync] Unable to subscribe to ${name}:`, error?.message || error);
+      }
+    }
+    return () => {
+      unsubscribers.forEach(unsubscribe => {
+        try { unsubscribe(); } catch {}
+      });
+    };
+  }, [enabled]);
+  return null;
 }
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout
@@ -216,6 +280,7 @@ const AuthenticatedApp = () => {
             session. Route changes must never unmount/restart the shared browser
             or external GPS stream. Individual pages only consume this stream. */}
         {user && <BackgroundLocationTracker user={user} />}
+        <GlobalDataRealtimeSync enabled={Boolean(user)} />
         <Routes location={location}>
       <Route
         path="/"
