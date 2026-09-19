@@ -25,7 +25,8 @@
         "schedule_changed",
         "call_assignment",
         "call_unassignment",
-        "system_issue"
+        "system_issue",
+        "supervisor_task"
       ],
       "description": "Type of notification"
     },
@@ -75,6 +76,18 @@
     "source_name": {
       "type": "string",
       "description": "System source displayed to the recipient"
+    },
+    "task_key": {
+      "type": "string",
+      "description": "Stable Supervisor Operations task key when this notification represents a supervisor assignment"
+    },
+    "event_key": {
+      "type": "string",
+      "description": "Stable key used to deduplicate audible supervisor/CAD alerts across sessions and devices"
+    },
+    "announcement_text": {
+      "type": "string",
+      "description": "Approved spoken wording for the alert when operational audio is enabled"
     }
   },
   "required": [
