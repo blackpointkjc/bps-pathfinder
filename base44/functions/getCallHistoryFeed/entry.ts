@@ -31,9 +31,11 @@ Deno.serve(async (req) => {
     // Call history is core data; property-alert enrichment is optional. Never
     // let a slow PropertyAlert read turn hundreds of valid calls into a "0 records"
     // screen. Keep the reads bounded and perform the optional enrichment last.
-    const activeRead = await readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 175), []);
-    const archivedRead = await readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 400), []);
-    const alertRead = await readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 250), []);
+    const [activeRead, archivedRead, alertRead] = await Promise.all([
+      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500), []),
+      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000), []),
+      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000), []),
+    ]);
     const active:any[] = activeRead.data || [];
     const archived:any[] = archivedRead.data || [];
     const alerts:any[] = alertRead.data || [];
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
       const fingerprintAlert = source === 'archived'
         ? alertByFingerprint.get(propertyFingerprint(row.time_received || row.created_date, row.incident, row.location))
         : null;
-      const alert = directOriginalId ? alertByCallId.get(directOriginalId) : fingerprintAlert;
+      const alert = (directOriginalId ? alertByCallId.get(directOriginalId) : null) || fingerprintAlert;
       const originalId = directOriginalId || String(fingerprintAlert?.callId || '');
       return {
         ...row,
