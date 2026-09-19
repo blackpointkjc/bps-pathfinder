@@ -15,6 +15,7 @@ import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
+import { readCompanyAnalyticsSnapshot, saveCompanyAnalyticsSnapshot } from '@/lib/analyticsSnapshot';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 const isPunctualityLeaderboardOfficer = (officer) => {
@@ -64,6 +65,7 @@ export default function AdminAnalytics() {
     }
   };
 
+  const companySnapshot = readCompanyAnalyticsSnapshot();
   const { data: analyticsData = {}, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ['companyAnalyticsData'],
     queryFn: async () => {
@@ -74,10 +76,14 @@ export default function AdminAnalytics() {
       if (sourceErrors.length) {
         throw new Error(`Analytics data is incomplete: ${sourceErrors.map(([name]) => name).join(', ')} could not be read. The last verified totals remain on screen.`);
       }
+      saveCompanyAnalyticsSnapshot(payload);
       return payload;
     },
     enabled: !!user,
-    staleTime: 30000,
+    initialData: companySnapshot?.data,
+    initialDataUpdatedAt: companySnapshot?.savedAt,
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchInterval: 120000,
     refetchIntervalInBackground: false,
