@@ -2,7 +2,7 @@ import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v2';
-const CACHE_MAX_AGE_MS = 90 * 60 * 1000;
+const CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
