@@ -284,15 +284,6 @@ function CommandDashboardInner({ embedded = false }) {
         ? [...MY_STATUSES, ...(hasDispatchAccess ? ['Dispatch'] : [])]
         : DISPATCH_STATUSES;
 
-    if (loading) return (
-        <div className="h-full min-h-[360px] bg-slate-950 flex items-center justify-center">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" />
-                <p className="text-gold font-mono text-xs tracking-widest">INITIALIZING COMMAND SYSTEM...</p>
-            </div>
-        </div>
-    );
-
     return (
         <div className="bps-command-page command-dashboard h-full min-h-0 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.28),_transparent_38%),#050b13] flex flex-col">
             {/* The live critical banner is intentionally the first visible element in
