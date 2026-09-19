@@ -853,7 +853,10 @@ export default function AdminLocations({ embedded = false }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="division">Division</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="division">Division</Label>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => refetchDivisions()} className="h-7 px-2 text-[10px]">REFRESH</Button>
+                </div>
                 <select
                   id="division"
                   value={formData.division || ''}
@@ -865,6 +868,10 @@ export default function AdminLocations({ embedded = false }) {
                     <option key={div.id} value={div.division_name}>{div.division_name}</option>
                   ))}
                 </select>
+                {divisionsError && <p className="text-xs font-semibold text-red-400">Unable to load divisions: {divisionsError.message}</p>}
+                {!divisionsError && divisions.filter(d => !d.is_subdivision && d.active !== false).length === 0 && (
+                  <p className="text-xs font-semibold text-amber-400">No active divisions are available. Add or reactivate a division in Company Areas & Divisions.</p>
+                )}
               </div>
             </div>
 
@@ -1041,6 +1048,11 @@ export default function AdminLocations({ embedded = false }) {
                   {geocoding ? 'Finding...' : 'Find Coordinates'}
                 </Button>
               </div>
+              {geocodeMessage && (
+                <div className={`rounded-lg border px-3 py-2 text-xs font-semibold ${/found via/i.test(geocodeMessage) ? 'border-emerald-500/30 bg-emerald-950/20 text-emerald-200' : 'border-red-500/30 bg-red-950/20 text-red-200'}`}>
+                  {geocodeMessage}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
