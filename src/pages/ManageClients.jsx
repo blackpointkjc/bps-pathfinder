@@ -48,7 +48,7 @@ export default function ManageClients() {
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'manageClients'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: hasAccess,
     staleTime: 0,
     refetchOnMount: 'always',
