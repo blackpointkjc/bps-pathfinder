@@ -30,7 +30,7 @@ import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
-const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
+const DISPATCH_CALL_CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 function readCachedDispatchCalls() {
     try {
@@ -40,7 +40,7 @@ function readCachedDispatchCalls() {
             const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
             const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
             const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000 ? upstreamAt : (createdAt || upstreamAt);
-            return receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000
+            return receivedAt > 0 && Date.now() - receivedAt < 8 * 60 * 60 * 1000
                 && !['Cleared', 'Cancelled'].includes(call.status)
                 && call.manual_dismissed !== true;
         });
@@ -309,7 +309,7 @@ export default function DispatchCenter() {
                 const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
                     ? upstreamAt
                     : (createdAt || upstreamAt);
-                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000;
+                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 8 * 60 * 60 * 1000;
                 // Keep Pathfinder CAD lifecycle authoritative for the live queue. The
                 // upstream agency may publish time_closed before our assigned officer
                 // clears the Pathfinder assignment, so time_closed alone must not hide it.
