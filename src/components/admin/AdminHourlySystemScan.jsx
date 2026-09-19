@@ -4,6 +4,7 @@ import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const STARTUP_DEFER_MS = 90 * 1000;
 
 function combineAudits(serverAudit, clientAudit) {
   const findingMap = new Map();
@@ -73,12 +74,17 @@ export default function AdminHourlySystemScan({ user }) {
       }
     };
 
-    runIfDue();
+    // Do not launch a full application audit during the login/command startup
+    // burst. CAD, live location, directory, and the user's active workspace must
+    // get the request budget first. The scan is still hourly, just deferred until
+    // the app has been usable for a short period.
+    const startupTimer = window.setTimeout(runIfDue, STARTUP_DEFER_MS);
     const interval = window.setInterval(runIfDue, CHECK_INTERVAL_MS);
     const onVisible = () => { if (!document.hidden) runIfDue(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       active = false;
+      window.clearTimeout(startupTimer);
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
     };
