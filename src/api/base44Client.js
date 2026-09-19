@@ -18,6 +18,17 @@ const rawBase44 = createClient({
 // User writes always bypass this queue; only reads are capped and deduplicated.
 const MAX_CONCURRENT_READS = 2;
 const READ_CACHE_MS = 12_000;
+const readCacheTtl = meta => {
+  if (meta?.kind === 'auth') return 5 * 60_000;
+  if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 10 * 60_000;
+  if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 10 * 60_000;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 60_000;
+  if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 30_000;
+  if (meta?.kind === 'entity' && meta?.name === 'TimeEntry') return 20_000;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
+  return READ_CACHE_MS;
+};
 const RATE_LIMIT_COOLDOWN_MS = 45_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v1';
@@ -74,7 +85,7 @@ const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
-  if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer'].includes(meta?.name)) return 90;
+  if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
@@ -151,7 +162,7 @@ function pumpReads() {
 }
 function queuedRead(key, task, meta = {}) {
   const cached = readCache.get(key);
-  if (cached && Date.now() - cached.at < READ_CACHE_MS) {
+  if (cached && Date.now() - cached.at < readCacheTtl(meta)) {
     recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'cache_hit', duration_ms: 0 });
     return Promise.resolve(cached.value);
   }
