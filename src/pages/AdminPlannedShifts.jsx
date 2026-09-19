@@ -97,7 +97,7 @@ export default function AdminPlannedShifts() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.PlannedShift.update(id, data),
+    mutationFn: async ({ id, data }) => { const response = await base44.functions.invoke('managePlannedShifts', { action: 'update', id, data }); const payload = response?.data || response || {}; if (payload.error) throw new Error(payload.error); return payload.row; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plannedShifts'] });
       resetForm();
