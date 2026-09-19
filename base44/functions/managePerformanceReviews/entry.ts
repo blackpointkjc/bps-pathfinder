@@ -2,6 +2,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function readRowsWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`managePerformanceReviews could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 const emailKey = (value: unknown) => String(value || '').trim().toLowerCase();
 const dateOnly = (value = new Date()) => value.toISOString().slice(0, 10);
 const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
@@ -23,11 +39,20 @@ const rating = (value: unknown, fallback = 3) => {
 };
 
 async function resolveOfficer(base44: any, officerId: unknown, officerEmail: unknown) {
-  const [users, teams, outlook] = await Promise.all([
-    base44.asServiceRole.entities.User.list(undefined, 5000),
-    base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000).catch(() => []),
-    base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000).catch(() => []),
-  ]);
+  const users = await readRowsWithRetry(
+    'users',
+    () => base44.asServiceRole.entities.User.list(undefined, 5000),
+  );
+  const teams = await readRowsWithRetry(
+    'Teams identities',
+    () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000),
+    true,
+  );
+  const outlook = await readRowsWithRetry(
+    'Outlook identities',
+    () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000),
+    true,
+  );
   const id = String(officerId || '');
   const email = emailKey(officerEmail);
   if (id) {
@@ -110,7 +135,10 @@ Deno.serve(async (req) => {
     const action = String(body.action || 'preview');
 
     if (action === 'list') {
-      const reviews = await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 2000);
+      const reviews = await readRowsWithRetry(
+        'performance reviews',
+        () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 2000),
+      );
       return Response.json({ success: true, reviews: reviews || [] });
     }
 
@@ -121,7 +149,10 @@ Deno.serve(async (req) => {
       if (!Number.isFinite(newRate) || newRate <= 0) {
         return Response.json({ error: 'This review does not contain a valid pay recommendation.' }, { status: 400 });
       }
-      const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 5000),
+      );
       const officer = (users || []).find((user: any) =>
         (review.officer_id && String(user.id || '') === String(review.officer_id))
         || emailKey(user.email) === emailKey(review.officer_email)
@@ -181,7 +212,10 @@ Deno.serve(async (req) => {
     if (action === 'preview') return Response.json({ success: true, metrics });
     if (action !== 'create') return Response.json({ error: 'Unsupported action.' }, { status: 400 });
 
-    const existingReviews = await base44.asServiceRole.entities.PerformanceReview.list('-supervisor_task_created_at', 5000);
+    const existingReviews = await readRowsWithRetry(
+      'review assignment history',
+      () => base44.asServiceRole.entities.PerformanceReview.list('-supervisor_task_created_at', 5000),
+    );
     const assignedSupervisor = chooseRotatingSupervisor(officer, users || [], existingReviews || []);
     const commonPayload = {
       ...reviewPayloadFromMetrics(metrics, body.review || {}),
