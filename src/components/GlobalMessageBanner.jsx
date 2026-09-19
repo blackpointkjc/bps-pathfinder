@@ -19,6 +19,7 @@ const SOURCES = [
   // the same way ChatMention is (see the `assignment` check in showBanner).
   { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
   { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
+  { entity: 'Notification', label: 'Supervisor Operations', page: 'SupervisorOverview', kind: 'supervisor_task', targeted: 'supervisor_task', supervisorOnly: true },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -202,7 +203,7 @@ function propertyCallSummary(alert, call = {}) {
 }
 
 function BannerIcon({ kind }) {
-  if (kind === 'property' || kind === 'bolo' || kind === 'assignment') return <Siren className="h-5 w-5 text-red-200" />;
+  if (kind === 'property' || kind === 'bolo' || kind === 'assignment' || kind === 'supervisor_task') return <Siren className="h-5 w-5 text-red-200" />;
   if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
   if (kind === 'mention') return <Bell className="h-5 w-5 animate-pulse text-fuchsia-200" />;
   return <MessageCircle className="h-5 w-5 text-blue-200" />;
