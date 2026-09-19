@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import BOLOModal from '@/components/bolo/BOLOModal';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/lib/boloConfig';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { useAuth } from '@/lib/AuthContext';
 
 const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 const titleCase = value => String(value || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
@@ -25,21 +26,18 @@ export default function BOLOAlerts() {
   const [view, setView] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all');
   const [modal, setModal] = useState(null);
-  const [user, setUser] = useState(null);
+  const { user, isLoadingAuth } = useAuth();
   const [resolving, setResolving] = useState(null);
   const [resolutionDialog, setResolutionDialog] = useState(null);
   const [resolutionText, setResolutionText] = useState('');
   const [pageError, setPageError] = useState('');
 
   useEffect(() => {
+    if (isLoadingAuth) return;
     const init = async () => {
-      const [me, loadedBolos] = await Promise.all([
-        withRequestTimeout(base44.auth.me(), 12000, 'BOLO authentication').catch(() => null),
-        load(),
-      ]);
-      setUser(me);
+      const loadedBolos = await load();
       const params = new URLSearchParams(window.location.search);
-      if (params.get('new') === '1' && me) setModal({ mode: 'create', bolo: {
+      if (params.get('new') === '1' && user) setModal({ mode: 'create', bolo: {
         alert_type: 'wanted_person', priority: 'medium', status: 'active',
         linked_call_id: params.get('call_id') || '',
         linked_call_number: params.get('call_number') || '',
@@ -54,7 +52,7 @@ export default function BOLOAlerts() {
       }
     };
     init();
-  }, []);
+  }, [isLoadingAuth, user?.id]);
 
   // Keep the board synchronized with edits made by any authorized device without
   // re-listing hundreds of BOLO rows after every realtime event.
@@ -80,11 +78,16 @@ export default function BOLOAlerts() {
   const load = async () => {
     setLoading(true);
     try {
-      const response = await withRequestTimeout(base44.functions.invoke('manageBolo', { action: 'list' }), 12000, 'BOLO records request');
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      const data = Array.isArray(payload.rows) ? payload.rows : [];
-      setBolos(data);
+      let data = [];
+      try {
+        data = await withRequestTimeout(base44.entities.BOLOAlert.list('-updated_date', 500), 12000, 'BOLO records request');
+      } catch (directError) {
+        const response = await withRequestTimeout(base44.functions.invoke('manageBolo', { action: 'list' }), 12000, 'BOLO records fallback');
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        data = Array.isArray(payload.rows) ? payload.rows : [];
+      }
+      setBolos(Array.isArray(data) ? data : []);
       setPageError('');
       return data;
     } catch (error) {
