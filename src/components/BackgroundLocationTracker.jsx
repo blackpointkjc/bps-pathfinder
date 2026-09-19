@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { recoverLiveLocationTracking, requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 import { startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 import { releaseOperationalWakeLock, requestOperationalWakeLock } from '@/lib/keepAliveService';
 
@@ -92,14 +93,15 @@ export default function BackgroundLocationTracker({ user }) {
     queryKey: ['locationsForGeofence'],
     queryFn: async () => {
       try {
-        return await base44.entities.Location.list();
+        return await listDirectoryLocations('site_name', 1000);
       } catch (e) {
         console.error('Error fetching locations:', e);
         return [];
       }
     },
     enabled: !!user?.email,
-    staleTime: 60000,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Signed-in tracking rule: GPS publishing and movement history run
@@ -251,7 +253,7 @@ export default function BackgroundLocationTracker({ user }) {
         // Moving vehicles need a near-realtime operational map. Stationary units
         // can publish more slowly. This cadence is intentionally independent from
         // history persistence so faster map motion does not multiply history writes.
-        const livePushIntervalMs = moving ? 7000 : 30000;
+        const livePushIntervalMs = moving ? 45000 : 90000;
         if (now - lastGpsPushRef.current < livePushIntervalMs) return;
         lastGpsPushRef.current = now;
 
@@ -407,7 +409,7 @@ export default function BackgroundLocationTracker({ user }) {
         // nothing. If Chromium throttles geolocation while minimized, renew the
         // signed-in session about every 90 seconds so the officer does not become
         // connection-stale while the Worker continues trying for a fresh fix.
-        if (Date.now() - lastLivePushRef.current < 75 * 1000) return;
+        if (Date.now() - lastLivePushRef.current < 4 * 60 * 1000) return;
         await persistLiveState({
           heartbeat_only: true,
           officer_email: user.email,
@@ -451,7 +453,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
     window.addEventListener('bps-background-location-tick', handleBackgroundTick);
     window.addEventListener('bps-operational-resume', handleOperationalResume);
-    const heartbeatId = window.setInterval(heartbeat, 90 * 1000);
+    const heartbeatId = window.setInterval(heartbeat, 5 * 60 * 1000);
     return () => {
       window.clearTimeout(recoveryTimer);
       window.clearInterval(heartbeatId);
