@@ -267,7 +267,7 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: (createdEntry, submittedEntry) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
