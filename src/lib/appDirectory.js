@@ -335,9 +335,24 @@ export const listDirectoryUsers = async (sort, limit, strict = false) => {
     console.warn('[Directory] Full user directory unavailable; retaining the signed-in identity.', error?.message || error);
   }
 
-  // Only fall back to the signed-in identity when the directory itself is empty.
-  // Calling auth.me after every successful directory read doubled common page-load
-  // traffic (Rank Structure, Sites, previews, management pages) for no benefit.
+  // If the composite directory is temporarily degraded, fall back to the User
+  // entity itself before collapsing to only the signed-in identity. Officer
+  // pickers, HR dropdowns, planned shifts, fleet, and rank structure all require
+  // the complete roster to remain usable during a directory-function outage.
+  if (!rows.length) {
+    try {
+      const direct = await withRequestTimeout(
+        base44.entities.User.list(sort || 'last_name', Number(limit) || 1000),
+        15000,
+        'Direct user directory request'
+      );
+      if (Array.isArray(direct) && direct.length) rows = direct;
+    } catch (error) {
+      if (strict) throw error;
+      console.warn('[Directory] Direct user fallback unavailable:', error?.message || error);
+    }
+  }
+
   if (!rows.length && !strict) {
     try {
       const me = await withRequestTimeout(base44.auth.me(), 12000, 'Directory user request');
