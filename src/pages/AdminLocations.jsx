@@ -160,7 +160,7 @@ export default function AdminLocations({ embedded = false }) {
   const [mapCenter, setMapCenter] = useState([37.5407, -77.4360]); // Richmond, VA default
   const queryClient = useQueryClient();
 
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
 
   const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support') || user?.additional_roles?.includes('support_staff') || user?.additional_roles?.includes('full_access');
 
@@ -525,6 +525,7 @@ export default function AdminLocations({ embedded = false }) {
     }
   }, [formData.latitude, formData.longitude]);
 
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading location access…</div>;
   if (!hasAccess) {
     return (
       <div className="p-8 text-center">
