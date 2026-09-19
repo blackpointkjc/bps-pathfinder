@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
     const request = await req.json().catch(() => ({}));
     const roles = rolesOf(me);
-    if (me.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) {
+    if (me.role !== 'admin' && normalized(me.role) !== 'supervisor' && me.is_supervisor !== true && !roles.has('supervisor') && !roles.has('full_access') && !OPERATIONAL_RANKS.has(normalizeRank(me.rank))) {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
