@@ -306,6 +306,8 @@ export default function GlobalMessageBanner({ user }) {
 
       const isWelfareNotification = source.kind === 'assignment' && record.source_name === 'CAD Welfare';
       const isSupervisorTask = source.kind === 'supervisor_task' && record.type === 'supervisor_task';
+      const createdAt = new Date(record.created_date || Date.now()).getTime();
+      const freshForAudio = Number.isFinite(createdAt) && Date.now() - createdAt <= 5 * 60 * 1000;
       // Retired daily-report announcement path: the task still appears on the
       // Supervisor Operations board, but never as a blocking banner or voice
       // announcement for each missing report.
@@ -322,7 +324,7 @@ export default function GlobalMessageBanner({ user }) {
         if (source.kind === 'message' && source.direct) {
           // Use concise CAD radio wording and the shared dispatch voice.
           speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
-        } else if (isSupervisorTask) {
+        } else if (isSupervisorTask && freshForAudio) {
           // A missed check-in must cut through: critical tasks repeat the urgent
           // chime so the alert cannot be missed; routine tasks chime once.
           playNotificationChime(true);
@@ -806,6 +808,7 @@ export default function GlobalMessageBanner({ user }) {
             task_key: task.task_key,
             event_key: task.event_key || `supervisor-task:${task.task_key || task.alert_notification_id}`,
             announcement_text: task.announcement_text || `Attention supervisor. ${task.title || 'A supervisor task requires your attention.'}`,
+            created_date: new Date().toISOString(),
             is_read: false,
           });
         });
@@ -822,7 +825,7 @@ export default function GlobalMessageBanner({ user }) {
             const created = new Date(record.created_date || 0).getTime();
             // Finished/retired tasks are acknowledged by the supervisor sync;
             // never replay an old task as a blocking red banner on sign-in.
-            return Number.isFinite(created) && Date.now() - created <= 12 * 60 * 60 * 1000;
+            return Number.isFinite(created) && Date.now() - created <= 15 * 60 * 1000;
           })
           .slice()
           .reverse()
@@ -959,7 +962,7 @@ export default function GlobalMessageBanner({ user }) {
   ).values()];
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-24 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2">
+    <div className="pointer-events-none fixed right-2 top-20 z-[100030] flex w-[min(430px,calc(100vw-16px))] flex-col gap-2 sm:right-4">
       {voiceWarning && (
         <div role="alert" className="pointer-events-auto rounded-xl border border-amber-400/60 bg-amber-950/95 px-4 py-3 text-sm font-semibold text-amber-50 shadow-2xl">
           CAD audio could not play. Pathfinder is retrying automatically. Visual alerts remain active.
