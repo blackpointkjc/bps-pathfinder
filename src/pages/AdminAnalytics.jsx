@@ -72,15 +72,15 @@ export default function AdminAnalytics() {
       const segments = [
         {
           name: 'core', required: true,
-          fields: { users: 'User', divisions: 'Division', timeEntries: 'TimeEntry', schedules: 'Schedule', incidentReports: 'IncidentReport' },
+          fields: { users: 'User', divisions: 'Division', timeEntries: ['User','TimeEntry'], schedules: ['User','Schedule'], incidentReports: ['User','IncidentReport'] },
         },
         {
           name: 'training',
-          fields: { bids: 'ShiftBid', trainingCompletions: 'TrainingCompletion', trainingAssignments: 'TrainingAssignment', trainingModules: 'TrainingModule' },
+          fields: { bids: ['User','ShiftBid'], trainingCompletions: ['User','TrainingCompletion'], trainingAssignments: ['User','TrainingAssignment'], trainingModules: ['User','TrainingModule'] },
         },
         {
           name: 'duty',
-          fields: { qrScans: 'QRScanEvent', qrCheckpoints: 'QRCheckpoint', dailyActivityReports: 'DailyActivityReport', callOuts: 'CallOut', dutyRules: 'JobDutyRule', locations: 'Location' },
+          fields: { qrScans: ['User','QRScanEvent'], qrCheckpoints: 'QRCheckpoint', dailyActivityReports: ['User','DailyActivityReport'], callOuts: ['User','CallOut'], dutyRules: 'JobDutyRule', locations: 'Location' },
         },
         {
           name: 'calls',
@@ -88,7 +88,7 @@ export default function AdminAnalytics() {
         },
         {
           name: 'quality',
-          fields: { commendations: 'Commendation', complaints: 'Complaint', clientFeedback: 'ClientFeedback', performanceReviews: 'PerformanceReview' },
+          fields: { commendations: ['User','Commendation'], complaints: ['User','Complaint'], clientFeedback: ['User','ClientFeedback'], performanceReviews: ['User','PerformanceReview'] },
         },
       ];
 
