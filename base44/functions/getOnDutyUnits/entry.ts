@@ -538,18 +538,20 @@ Deno.serve(async (req) => {
           clock_in_time: openEntry?.clock_in || active?.clock_in_time || '',
         };
       });
-    const liveUsers = onDutyUsers.filter((row: any) => row.session_active === true && lower(row.status) !== 'out of service');
+    const liveUsers = onDutyUsers.filter((row: any) => row.session_active === true);
+    const dispatchReadyUsers = liveUsers.filter((row: any) => lower(row.status) !== 'out of service');
 
     return Response.json({
       success: true,
       // The status board needs the enriched directory roster so signed-out/OOS
       // officers and profile fields (including photos) remain visible. Live maps
-      // continue to consume `users`, which contains signed-in non-OOS units only.
+      // consume `users`, which now contains every signed-in session including OOS;
+      // dispatch action lists apply their own non-OOS filter.
       units: onDutyUsers,
       users: liveUsers,
       open_count: openByEmail.size,
       signed_in_count: onDutyUsers.filter((row: any) => row.session_active === true).length,
-      dispatch_ready_count: liveUsers.length,
+      dispatch_ready_count: dispatchReadyUsers.length,
       roster_count: onDutyUsers.length,
       clocked_in_without_session: clockedInWithoutSession,
       clocked_in_without_session_count: clockedInWithoutSession.length,
