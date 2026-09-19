@@ -7,6 +7,8 @@ const isSupervisorUser = user => {
   const roles = new Set((user?.additional_roles || []).map(lower));
   return Boolean(user) && (
     user.role === 'admin'
+    || lower(user.role) === 'supervisor'
+    || user.is_supervisor === true
     || roles.has('supervisor')
     || roles.has('full_access')
     || SUPERVISORY_RANKS.has(lower(user.rank))
@@ -54,7 +56,7 @@ export default function SupervisorOperationsMonitor({ user }) {
     };
 
     schedule(250);
-    const interval = window.setInterval(run, 60000);
+    const interval = window.setInterval(run, 30000);
 
     for (const entity of [
       'Schedule',
@@ -76,8 +78,11 @@ export default function SupervisorOperationsMonitor({ user }) {
     }
 
     const resume = () => schedule(200);
+    const onVisibility = () => { if (document.visibilityState === 'visible') schedule(100); };
     window.addEventListener('online', resume);
     window.addEventListener('pageshow', resume);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('bps-operational-resume', resume);
 
     return () => {
@@ -89,6 +94,8 @@ export default function SupervisorOperationsMonitor({ user }) {
       });
       window.removeEventListener('online', resume);
       window.removeEventListener('pageshow', resume);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('bps-operational-resume', resume);
     };
   }, [user?.id, user?.email, user?.role, user?.rank, JSON.stringify(user?.additional_roles || [])]);
