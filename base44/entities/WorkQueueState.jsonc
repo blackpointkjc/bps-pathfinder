@@ -36,6 +36,47 @@
     "source_id": {
       "type": "string"
     },
+    "assigned_to_id": {
+      "type": "string",
+      "description": "User ID of the supervisor currently assigned to this work item"
+    },
+    "assigned_to_email": {
+      "type": "string",
+      "description": "Email of the supervisor currently assigned to this work item"
+    },
+    "assigned_to_name": {
+      "type": "string",
+      "description": "Display name of the supervisor currently assigned to this work item"
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Pathfinder automatically or manually assigned this work item"
+    },
+    "assigned_distance_miles": {
+      "type": "number",
+      "description": "Distance in miles from the task origin to the assigned supervisor when distance-based assignment was available"
+    },
+    "assignment_basis": {
+      "type": "string",
+      "description": "How the supervisor was selected, such as nearest_gps, nearest_site, direct_chain, or nearest_available"
+    },
+    "source_location": {
+      "type": "string",
+      "description": "Operational location associated with this work item"
+    },
+    "source_latitude": {
+      "type": "number",
+      "description": "Task-origin latitude used for closest-supervisor assignment"
+    },
+    "source_longitude": {
+      "type": "number",
+      "description": "Task-origin longitude used for closest-supervisor assignment"
+    },
+    "alert_notification_id": {
+      "type": "string",
+      "description": "Notification record created for the assigned supervisor"
+    },
     "completed_at": {
       "type": "string",
       "format": "date-time"
