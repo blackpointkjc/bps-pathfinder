@@ -392,6 +392,15 @@ export default function GlobalMessageBanner({ user }) {
         const timer = window.setTimeout(() => {
           setBanners(current => current.filter(entry => entry.id !== key));
           timers.current.delete(key);
+          // The floating supervisor card is only the attention surface. Once it
+          // times out, acknowledge that notification so a refresh cannot bring
+          // the same red card back; the open task itself remains on the board.
+          if (isSupervisorTask && record?.id) {
+            base44.entities.Notification.update(record.id, {
+              is_read: true,
+              acknowledged_at: new Date().toISOString(),
+            }).catch(() => null);
+          }
         }, 20000);
         timers.current.set(key, timer);
       }
