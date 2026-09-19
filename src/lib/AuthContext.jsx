@@ -94,6 +94,7 @@ export const AuthProvider = ({ children }) => {
         console.warn('[AUTH] Account lock check unavailable:', lockError?.message);
         setAccountLock(null);
       }
+      return currentUser;
     } catch (error) {
       if (requestId !== requestSequence.current) return;
       console.error('User auth check failed:', error);
@@ -114,6 +115,7 @@ export const AuthProvider = ({ children }) => {
           message: error.message || 'Unable to verify the secure session'
         });
       }
+      return null;
     } finally {
       if (requestId === requestSequence.current) setIsLoadingAuth(false);
     }
