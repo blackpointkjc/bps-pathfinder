@@ -49,20 +49,27 @@ export default function FleetVehicleAssignments() {
   const normalizedRoles = (user?.additional_roles || []).map(role => String(role).toLowerCase());
   const isAdmin = user?.role === 'admin' || normalizedRoles.includes('full_access') || normalizedRoles.includes('fleet_manager');
   const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers('last_name', 1000), enabled: !!user, placeholderData: [], staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false });
-  const { data: vehicles = [], error: vehicleError } = useQuery({
-    queryKey: ['fleetVehicles'],
+  const { data: fleetData = { vehicles: readFleetVehicleCache(), schedules: [], assignments: [] }, error: fleetError } = useQuery({
+    queryKey: ['fleetScheduleData'],
     queryFn: async () => {
-      const rows = await base44.entities.Vehicle.list('vehicle_id', 500);
-      if (Array.isArray(rows) && rows.length) saveFleetVehicleCache(rows);
-      return Array.isArray(rows) ? rows : readFleetVehicleCache();
+      const response = await base44.functions.invoke('getFleetScheduleData', {});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (Array.isArray(payload.vehicles) && payload.vehicles.length) saveFleetVehicleCache(payload.vehicles);
+      return {
+        vehicles: Array.isArray(payload.vehicles) ? payload.vehicles : readFleetVehicleCache(),
+        schedules: Array.isArray(payload.schedules) ? payload.schedules : [],
+        assignments: Array.isArray(payload.assignments) ? payload.assignments : [],
+      };
     },
-    placeholderData: readFleetVehicleCache,
-    staleTime: 5 * 60 * 1000,
+    placeholderData: () => ({ vehicles: readFleetVehicleCache(), schedules: [], assignments: [] }),
+    staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 1500), placeholderData: [], staleTime: 60 * 1000, refetchInterval: 5 * 60 * 1000, refetchOnWindowFocus: false });
-  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 1500), placeholderData: [], staleTime: 60 * 1000, refetchInterval: 5 * 60 * 1000, refetchOnWindowFocus: false });
+  const vehicles = fleetData.vehicles || [];
+  const schedules = fleetData.schedules || [];
+  const assignments = fleetData.assignments || [];
 
   useEffect(() => {
     const subscriptions = [];
@@ -72,9 +79,9 @@ export default function FleetVehicleAssignments() {
         if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
       } catch {}
     };
-    watch(base44.entities.Vehicle, 'fleetVehicles');
-    watch(base44.entities.Schedule, 'fleetSchedules');
-    watch(base44.entities.VehicleAssignment, 'fleetAssignments');
+    watch(base44.entities.Vehicle, 'fleetScheduleData');
+    watch(base44.entities.Schedule, 'fleetScheduleData');
+    watch(base44.entities.VehicleAssignment, 'fleetScheduleData');
     return () => subscriptions.forEach(unsubscribe => unsubscribe());
   }, [qc]);
 
@@ -208,7 +215,7 @@ export default function FleetVehicleAssignments() {
         </div>
       </div></section>
 
-      {(vehicleError || scheduleError || assignmentError) && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. Refresh the page; if the message remains, verify fleet and scheduling access.</div>}
+      {fleetError && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. The last verified vehicle list is retained while Pathfinder retries.</div>}
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card className="border-slate-800 bg-slate-900 text-white">
