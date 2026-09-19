@@ -22,10 +22,11 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 10 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 10 * 60_000;
-  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 60_000;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 30_000;
   if (meta?.kind === 'entity' && meta?.name === 'TimeEntry') return 20_000;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData'].includes(meta?.name)) return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   return READ_CACHE_MS;
 };
@@ -90,6 +91,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
+const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
 const requestLabel = meta => {
   if (!meta) return 'unknown';
   if (meta.kind === 'entity') return `Entity ${meta.name}.${meta.method}`;
@@ -128,7 +130,7 @@ function pumpReads() {
     activeReads += 1;
     const startedAt = Date.now();
     Promise.resolve()
-      .then(() => withRequestTimeout(Promise.resolve().then(job.task), 20000, 'Data request'))
+      .then(() => withRequestTimeout(Promise.resolve().then(job.task), readTimeoutMs(job.meta), 'Data request'))
       .then(value => {
         recordRequestTrace({
           label: requestLabel(job.meta),
