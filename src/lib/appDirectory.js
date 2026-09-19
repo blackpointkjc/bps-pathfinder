@@ -178,6 +178,7 @@ export async function getCurrentDirectoryUser(force = false) {
 export function invalidateAppDirectory() {
   cache = null;
   cacheAt = 0;
+  try { localStorage.removeItem(DIRECTORY_STORAGE_KEY); } catch {}
   officerCache = null;
   officerCacheAt = 0;
   supervisorOfficerCache = null;
