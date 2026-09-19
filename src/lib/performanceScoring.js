@@ -135,7 +135,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     if (!entry) {
       const scheduledStartWall = wallClockMinute(schedule.shift_date, schedule.start_time);
       const spanning = timeEntries
-        .filter(candidate => candidate?.clock_in && !usedEntries.has(String(candidate.id || '')))
+        .filter(candidate => candidate?.clock_in)
         .filter(candidate => emailKey(candidate.officer_email) === emailKey(schedule.officer_email))
         .map(candidate => {
           const inWall = wallClockMinute(easternDateKey(candidate.clock_in), easternTimeKey(candidate.clock_in));
@@ -149,7 +149,6 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
         .sort((a,b) => Math.abs(a.inWall - scheduledStartWall) - Math.abs(b.inWall - scheduledStartWall))[0];
       if (spanning?.candidate) {
         entry = spanning.candidate;
-        usedEntries.add(String(entry.id || ''));
         exempt++;
         details.push({
           status: 'covered_elsewhere',
