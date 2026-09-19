@@ -30,82 +30,58 @@ Deno.serve(async (req) => {
     const findings: Finding[] = [];
     const checkedAreas: string[] = [];
     const datasets: Record<string, any[]> = {};
+    // Only load datasets that are actually consumed by the integrity rules
+    // below. The previous scanner read 29 collections even though 10 of them were
+    // never referenced, which made the diagnostic itself a major source of rate
+    // limiting. Page/module coverage remains in the client audit.
     const checks = [
-      ['Users & Access', 'User'],
-      ['CAD Calls', 'DispatchCall'],
-      ['CAD Assignments', 'CallAssignment'],
-      ['Active Units', 'Unit'],
-      ['Live Location Tracking', 'ActiveOfficer'],
-      ['Movement History', 'LocationHistory'],
-      ['Properties', 'Location'],
-      ['Property Alerts', 'PropertyAlert'],
-      ['Automatic Dispatch', 'AutoDispatchEvaluation'],
-      ['Scheduling', 'Schedule'],
-      ['Timekeeping', 'TimeEntry'],
-      ['Payroll', 'PayrollPeriod'],
-      ['Payroll', 'PayrollEntry'],
-      ['Alerts & Announcements', 'CadAnnouncementReceipt'],
-      ['Daily Reports', 'DailyActivityReport'],
-      ['Incident Reports', 'IncidentReport'],
-      ['Maintenance Reports', 'MaintenanceReport'],
-      ['Training', 'TrainingAssignment'],
-      ['Company Analytics', 'Division'],
-      ['Company Analytics', 'TrainingCompletion'],
-      ['Company Analytics', 'TrainingModule'],
-      ['Company Analytics', 'CallForService'],
-      ['Company Analytics', 'Commendation'],
-      ['Company Analytics', 'Complaint'],
-      ['Announcements', 'Announcement'],
-      ['Team Messaging', 'ChatMessage'],
-      ['Fleet', 'Vehicle'],
-      ['BOLO', 'BOLOAlert'],
-      ['System Issues', 'SystemOutage'],
+      ['Users & Access', 'User', 750],
+      ['CAD Calls', 'DispatchCall', 400],
+      ['CAD Assignments', 'CallAssignment', 600],
+      ['Active Units', 'Unit', 500],
+      ['Live Location Tracking', 'ActiveOfficer', 500],
+      ['Movement History', 'LocationHistory', 500],
+      ['Properties', 'Location', 500],
+      ['Property Alerts', 'PropertyAlert', 500],
+      ['Automatic Dispatch', 'AutoDispatchEvaluation', 500],
+      ['Scheduling', 'Schedule', 1200],
+      ['Timekeeping', 'TimeEntry', 1200],
+      ['Payroll', 'PayrollPeriod', 500],
+      ['Payroll', 'PayrollEntry', 1200],
+      ['Alerts & Announcements', 'CadAnnouncementReceipt', 500],
+      ['Daily Reports', 'DailyActivityReport', 600],
+      ['Incident Reports', 'IncidentReport', 600],
+      ['Maintenance Reports', 'MaintenanceReport', 500],
+      ['BOLO', 'BOLOAlert', 500],
+      ['System Issues', 'SystemOutage', 500],
     ] as const;
 
     const serviceFailures: Array<{ area: string; entityName: string; message: string }> = [];
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    const readDataset = async (area: string, entityName: string) => {
+    const readDataset = async (_area: string, entityName: string, limit: number) => {
       const entity = (base44.asServiceRole.entities as any)[entityName];
       if (!entity?.list) throw new Error(`${entityName} service is unavailable`);
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          return await entity.list('-created_date', 1000);
-        } catch (error) {
-          lastError = error;
-          const transient = /rate limit|too many requests|429|timed out|timeout/i.test(String(error?.message || error));
-          if (!transient || attempt === 2) break;
-          await delay(500 * (attempt + 1));
-        }
-      }
-      throw lastError || new Error(`Unable to read ${entityName} records`);
+      return await entity.list('-created_date', limit);
     };
 
-    // A full audit previously launched every dataset read simultaneously while
-    // the browser also ran analytics and payroll probes. That burst exhausted the
-    // shared Base44 request allowance and falsely labeled healthy modules as
-    // outages. Two workers keep the scan comprehensive without starving CAD/GPS.
-    let nextCheckIndex = 0;
-    const workers = Array.from({ length: 2 }, async () => {
-      while (nextCheckIndex < checks.length) {
-        const currentIndex = nextCheckIndex;
-        nextCheckIndex += 1;
-        const [area, entityName] = checks[currentIndex];
-        checkedAreas.push(area);
-        try {
-          datasets[entityName] = await readDataset(area, entityName);
-        } catch (error) {
-          datasets[entityName] = [];
-          serviceFailures.push({
-            area,
-            entityName,
-            message: error?.message || `The app could not read ${entityName} records.`,
-          });
-        }
-        await delay(75);
+    // Diagnostics yield between reads and never retry a throttled read inside the
+    // same scan. Retrying under pressure only consumed more request allowance and
+    // turned one temporary limit into six or more failures.
+    for (const [area, entityName, limit] of checks) {
+      checkedAreas.push(area);
+      try {
+        const rows = await readDataset(area, entityName, limit);
+        datasets[entityName] = Array.isArray(rows) ? rows : [];
+      } catch (error) {
+        datasets[entityName] = [];
+        serviceFailures.push({
+          area,
+          entityName,
+          message: error?.message || `The app could not read ${entityName} records.`,
+        });
       }
-    });
-    await Promise.all(workers);
+      await delay(300);
+    }
 
     const throttledFailures = serviceFailures.filter(item =>
       /rate limit|too many requests|429/i.test(item.message)
