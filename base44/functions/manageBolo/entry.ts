@@ -16,14 +16,14 @@ function cleanPayload(input: any) {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const transient = (error: any) => /rate limit|too many requests|\b429\b|timeout|timed out|temporar|connection/i.test(String(error?.message || error || ''));
 
-async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+async function withRetry<T>(operation: () => Promise<T>, maxAttempts = 2): Promise<T> {
   let lastError: any;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       lastError = error;
-      if (!transient(error) || attempt === 2) break;
+      if (!transient(error) || attempt === maxAttempts - 1) break;
       await delay(500 * (attempt + 1));
     }
   }
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     const actorName = [user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email;
 
     if (action === 'list') {
-      const rows = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.list('-updated_date', 100));
+      const rows = await withRetry(() => base44.asServiceRole.entities.BOLOAlert.list('-updated_date', 100), 1);
       return Response.json({
         success: true,
         rows: rows || [],
