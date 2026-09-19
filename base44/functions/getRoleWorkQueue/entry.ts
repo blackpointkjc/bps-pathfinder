@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
           ? 'admin'
           : canUseAdminQueue ? 'admin' : 'hr';
     const loadErrors: string[] = [];
+    const optionalLoadErrors: string[] = [];
     const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
     const safeList = async (label: string, loader: () => Promise<any[]>) => {
       try {
@@ -121,6 +122,7 @@ Deno.serve(async (req) => {
         // Optional queue enrichments must not hold the whole command dashboard
         // open or prevent unrelated task reconciliation.
         console.warn(`getRoleWorkQueue optional source unavailable: ${label}`, error?.message || error);
+        optionalLoadErrors.push(label);
         return [];
       }
     };
@@ -510,19 +512,52 @@ Deno.serve(async (req) => {
       })
     ));
 
-    if (loadErrors.length === 0) {
-      await settleLimited(roleStates.filter((state: any) =>
-        normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
-      ).map((state: any) => () =>
-        base44.asServiceRole.entities.WorkQueueState.update(state.id, {
-          status: 'auto_completed',
-          completed_at: observedAt,
-          completed_by: 'system',
-          completion_note: 'Automatically completed because the underlying record no longer requires action.',
-          last_seen_at: observedAt,
-        })
-      ));
-    }
+    const loadErrorSet = new Set(loadErrors);
+    const optionalErrorSet = new Set(optionalLoadErrors);
+    const sourceAvailableForKind = (kindValue: unknown) => {
+      const kind = normalized(kindValue);
+      if (kind === 'missed_clock_in' || kind === 'late_clock_out') {
+        return !loadErrorSet.has('schedules') && !loadErrorSet.has('time entries');
+      }
+      if (kind === 'pto') return !loadErrorSet.has('time-off requests');
+      if (kind === 'performance_review' || kind === 'annual_review_due') {
+        return !loadErrorSet.has('performance reviews') && !loadErrorSet.has('employee directory');
+      }
+      if (kind === 'missing_report') {
+        return !loadErrorSet.has('time entries for report matching') && !loadErrorSet.has('daily activity reports');
+      }
+      if (kind === 'availability') return !loadErrorSet.has('availability requests');
+      if (kind === 'access') return !loadErrorSet.has('access requests');
+      if (kind === 'expense') return !loadErrorSet.has('expense reports');
+      if (kind === 'shift_bid') return !loadErrorSet.has('shift bids');
+      if (kind === 'special_coverage') return !optionalErrorSet.has('special coverage requests');
+      if (kind === 'weekly_schedule') return !optionalErrorSet.has('schedule publication status');
+      if (kind === 'report_review') {
+        return ![
+          'shift reports','daily activity reports','incident reports','trespass notices',
+          'parking violations','criminal complaints','dispatcher logs','use-of-force reports',
+          'confidential reports','maintenance reports','open-door reports',
+        ].some(label => loadErrorSet.has(label));
+      }
+      return loadErrors.length === 0;
+    };
+
+    // Reconcile each task against the source that actually owns it. An unrelated
+    // source outage must never preserve a stale "missed shift" after valid time
+    // punches prove the officer attended or switched sites.
+    await settleLimited(roleStates.filter((state: any) =>
+      normalized(state.status) === 'open'
+      && !candidateKeys.has(String(state.task_key))
+      && sourceAvailableForKind(state.source_kind)
+    ).map((state: any) => () =>
+      base44.asServiceRole.entities.WorkQueueState.update(state.id, {
+        status: 'auto_completed',
+        completed_at: observedAt,
+        completed_by: 'system',
+        completion_note: 'Automatically completed because the underlying record no longer requires action.',
+        last_seen_at: observedAt,
+      })
+    ));
 
     let tasks = candidates.filter(task => {
       const state = stateByKey.get(String(task.id));
@@ -546,7 +581,9 @@ Deno.serve(async (req) => {
         return 'AdminReports';
       };
       const retained = roleStates.filter((state: any) =>
-        normalized(state.status) === 'open' && !candidateKeys.has(String(state.task_key))
+        normalized(state.status) === 'open'
+        && !candidateKeys.has(String(state.task_key))
+        && !sourceAvailableForKind(state.source_kind)
       ).map((state: any) => ({
         id: String(state.task_key),
         source_id: String(state.source_id || ''),
@@ -574,6 +611,7 @@ Deno.serve(async (req) => {
       role: queueRole,
       queue_name: queueRole === 'hr' ? 'HR workforce queue' : queueRole === 'supervisor' ? 'Supervisor report queue' : 'Administrative site and access queue',
       load_errors: loadErrors,
+      optional_load_errors: optionalLoadErrors,
       tasks,
       recently_completed: recentCompleted,
       counts: {
