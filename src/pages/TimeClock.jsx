@@ -20,7 +20,6 @@ import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/l
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
-import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -171,6 +170,7 @@ export default function TimeClock() {
   const [endDate, setEndDate] = useState(easternTodayKey);
   const [clockInCoords, setClockInCoords] = useState(null);
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
+  const [historyReady, setHistoryReady] = useState(false);
   const queryClient = useQueryClient();
 
   // NEW STATE VARIABLES
@@ -181,6 +181,8 @@ export default function TimeClock() {
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),
     retry: false,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const isAdmin = user?.role === 'admin';
@@ -207,6 +209,13 @@ export default function TimeClock() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  useEffect(() => {
+    setHistoryReady(false);
+    if (!user?.email) return undefined;
+    const timer = window.setTimeout(() => setHistoryReady(true), 1500);
+    return () => window.clearTimeout(timer);
+  }, [user?.email]);
+
   const { data: recentEntries = [] } = useQuery({
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
@@ -227,9 +236,10 @@ export default function TimeClock() {
         return !selectedLocation || String(entry.location || '').includes(selectedLocation);
       });
     },
-    enabled: !!user?.email,
-    staleTime: 15000,
-    refetchInterval: 60000,
+    enabled: !!user?.email && historyReady,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
