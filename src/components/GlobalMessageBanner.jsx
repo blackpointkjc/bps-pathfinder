@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
-import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
+import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
 const SOURCES = [
   // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
@@ -374,7 +374,10 @@ export default function GlobalMessageBanner({ user }) {
         title: (source.kind === 'assignment' || isSupervisorTask) ? (record.title || source.label) : source.label,
         page: targetPage,
         kind: source.kind,
-        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification || isSupervisorTask),
+        // Supervisor task cards are urgent but should not sit over the workspace
+        // indefinitely. The durable task remains on Supervisor Operations after
+        // this visual alert auto-closes or the user dismisses it.
+        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
         notificationId: (isWelfareNotification || isSupervisorTask) ? record.id : null,
         relatedId: isWelfareNotification ? String(record.related_id || '') : '',
@@ -896,6 +899,26 @@ export default function GlobalMessageBanner({ user }) {
 
   const dismiss = async id => {
     const banner = banners.find(entry => entry.id === id);
+    if (banner?.notificationId) {
+      await base44.entities.Notification.update(banner.notificationId, {
+        is_read: true,
+        acknowledged_at: new Date().toISOString(),
+      }).catch(() => null);
+    }
+    if (banner?.kind === 'announcement' && banner?.recordId && user?.email) {
+      markAnnouncementsReadLocally(user.email, [banner.recordId]);
+      const existing = await base44.entities.AnnouncementReceipt.filter({
+        announcement_id: String(banner.recordId),
+        user_email: String(user.email),
+      }, '-read_at', 1).catch(() => []);
+      if (!existing?.length) {
+        await base44.entities.AnnouncementReceipt.create({
+          announcement_id: String(banner.recordId),
+          user_email: String(user.email),
+          read_at: new Date().toISOString(),
+        }).catch(() => null);
+      }
+    }
     const receipt = banner?.propertyAcknowledgement;
     if (receipt && user?.email) {
       const userEmail = normalized(user.email);
@@ -934,7 +957,7 @@ export default function GlobalMessageBanner({ user }) {
         </div>
       )}
       <AnimatePresence>
-        {visibleBanners.map(banner => (
+        {visibleBanners.slice(-3).map(banner => (
           <motion.button
             key={banner.id}
             type="button"
@@ -968,25 +991,13 @@ export default function GlobalMessageBanner({ user }) {
                 <p className="mt-1 truncate text-sm font-bold text-white">{banner.sender}</p>
                 <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-100">{banner.message}</p>
               </div>
-              {!banner.persistent && <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>}
-              {banner.persistent && banner.notificationId && (
-                <span
-                  onClick={async event => {
-                    event.stopPropagation();
-                    // Dismissing a persistent task/welfare banner also acknowledges
-                    // its notification so it can never return on the next sign-in.
-                    await base44.entities.Notification.update(banner.notificationId, {
-                      is_read: true,
-                      acknowledged_at: new Date().toISOString(),
-                    }).catch(() => null);
-                    await dismiss(banner.id);
-                  }}
-                  className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"
-                  aria-label="Dismiss and acknowledge alert"
-                >
-                  <X className="h-4 w-4" />
-                </span>
-              )}
+              <span
+                onClick={event => { event.stopPropagation(); void dismiss(banner.id); }}
+                className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"
+                aria-label="Dismiss alert"
+              >
+                <X className="h-4 w-4" />
+              </span>
             </div>
             <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
           </motion.button>
