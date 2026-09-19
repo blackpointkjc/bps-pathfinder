@@ -26,7 +26,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     else if (status === 'Busy') statusColor = '#F59E0B';
     else if (status === 'Out of Service') statusColor = '#475569';
     if (isSupervisor) statusColor = '#EAB308';
-    if (locationState === 'last_known') statusColor = '#94A3B8';
+    if (locationState === 'last_known' || locationState === 'site_fallback' || locationState === 'shift_clock_in') statusColor = '#94A3B8';
     if (locationState === 'low_accuracy') statusColor = '#F59E0B';
 
     const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
@@ -39,7 +39,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
           <div style="position:relative;width:38px;height:46px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
             ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.9);z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsPoliceFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsPoliceFlash .8s .4s infinite"></span></div>` : ''}
             <svg width="54" height="58" viewBox="0 0 54 58" style="position:absolute;top:5px;left:0;z-index:2;overflow:visible">
-              <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${locationState === 'last_known' ? '#94a3b8' : isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2" opacity="${locationState === 'last_known' ? '.72' : '1'}"/>
+              <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${['last_known','site_fallback','shift_clock_in'].includes(locationState) ? '#94a3b8' : isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2" opacity="${['last_known','site_fallback','shift_clock_in'].includes(locationState) ? '.72' : '1'}"/>
               <path d="M27 7 L42 12 V26 C42 36 36 44 27 49 C18 44 12 36 12 26 V12 Z" fill="#0f3b68" stroke="${statusColor}" stroke-width="2"/>
               <circle cx="27" cy="25" r="9" fill="#e5eef8" stroke="#93c5fd" stroke-width="1.2"/>
               <path d="M27 17.2 L29.2 22.3 L34.7 22.8 L30.5 26.5 L31.8 31.8 L27 29 L22.2 31.8 L23.5 26.5 L19.3 22.8 L24.8 22.3 Z" fill="${isSupervisor ? '#eab308' : '#123b63'}"/>
@@ -104,7 +104,9 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         const best = candidates[0];
         const stale = !best.ts || now - best.ts > LIVE_GPS_FRESH_MS;
         let locationState = best.state;
-        if (stale) locationState = 'last_known';
+        if (best.source === 'site_fallback') locationState = 'site_fallback';
+        else if (best.source === 'shift_clock_in') locationState = 'shift_clock_in';
+        else if (stale) locationState = 'last_known';
         else if (best.state === 'live' && Number.isFinite(best.acc) && best.acc > 100) locationState = 'low_accuracy';
         return {
             ...unit,
@@ -228,7 +230,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
                                 <div className="space-y-2">
                                     <div className={`rounded-md px-2 py-1 text-[10px] font-black ${unit.location_state === 'live' ? 'bg-emerald-100 text-emerald-700' : unit.location_state === 'low_accuracy' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
-                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY GPS${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : 'LAST KNOWN POSITION'}
+                                        {unit.location_state === 'live' ? 'LIVE GPS' : unit.location_state === 'low_accuracy' ? `LOW ACCURACY GPS${unit.display_accuracy ? ` ±${Math.round(unit.display_accuracy)}m` : ''}` : unit.location_state === 'shift_clock_in' ? 'VERIFIED SHIFT CLOCK-IN POSITION' : unit.location_state === 'site_fallback' ? 'CONFIGURED SITE POSITION — GPS PENDING' : 'LAST KNOWN POSITION'}
                                     </div>
                                     {unit.connection_stale && <div className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">APP CONNECTION STALE — WAITING FOR DEVICE WAKE/HEARTBEAT</div>}
                                     <div className="text-[10px] font-bold text-gray-500">
