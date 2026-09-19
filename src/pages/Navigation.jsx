@@ -22,6 +22,7 @@ import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -479,8 +480,7 @@ export default function Navigation() {
         unitStatusRef.current = newStatus;
         try {
             const stamp = new Date().toISOString();
-            const response = await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
-            const payload = response?.data || response || {};
+            const payload = await persistOfficerStatus(newStatus);
             if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: stamp, status_since: stamp } : prev);
             window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
