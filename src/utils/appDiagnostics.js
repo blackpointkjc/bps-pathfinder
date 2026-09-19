@@ -1,4 +1,5 @@
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
+import { getAppDirectory } from '@/lib/appDirectory';
 import { runVoiceDedupeSelfTest } from '@/utils/voiceAnnouncer';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
@@ -204,9 +205,7 @@ export async function runClientFunctionalAudit() {
       area: 'Platoon & Directory',
       title: 'Operational directory failed its functional check',
       run: async () => {
-        const response = await base44.functions.invoke('getAppDirectory', {});
-        const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
+        const payload = await getAppDirectory(false);
         if (!Array.isArray(payload.users) || payload.users.length === 0) throw new Error('The directory returned no users.');
       },
     },
@@ -215,6 +214,8 @@ export async function runClientFunctionalAudit() {
       area: 'Live Location Tracking',
       title: 'Live officer tracking failed its functional check',
       run: async () => {
+        const health = getBase44RequestHealth();
+        if (health.queuedReads > 2 || health.activeReads >= 2 || health.rateLimitedUntil) return;
         const payload = await getOfficerLocationSnapshot({ locationOnly: true });
         if (!Array.isArray(payload.units)) throw new Error('The live-unit service returned an invalid response.');
       },
