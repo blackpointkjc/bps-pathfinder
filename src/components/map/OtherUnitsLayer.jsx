@@ -79,13 +79,13 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     // 25 feet so overlapping icons never hide one another.
     const toLocTs = v => { const t = new Date(v || 0).getTime(); return Number.isFinite(t) ? t : 0; };
     // Defense in depth: this is the final rendering boundary for officer markers.
-    // A signed-out/OOS officer must never appear on any live map even if a caller
-    // passes stale cached data. Only an explicitly active live session can render.
+    // Presence is controlled by the live Pathfinder session. Duty status (including
+    // Out of Service) changes the marker styling/status text but must not hide an
+    // officer who is still online.
     const unitsToShow = units
       .filter(unit => unit.id !== currentUserId)
       .filter(unit => unit.show_on_map !== false)
-      .filter(unit => unit.session_active === true)
-      .filter(unit => String(unit.status || '').trim().toLowerCase() !== 'out of service')
+      .filter(unit => unit.session_active === true || unit.presence_online === true)
       .map(unit => {
         const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);
         // The officer's marker must follow the most recent device reading. A
