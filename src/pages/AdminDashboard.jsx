@@ -73,7 +73,7 @@ export default function AdminDashboard() {
   // independent from the much heavier administrative work queue means a report,
   // special-request, or scheduling source can never blank Total Officers or
   // Today's Entries.
-  const { data: workforce = { users: [], today_entries: [], active_entries: [], counts: {} }, error: workforceError, refetch: refetchWorkforce } = useQuery({
+  const { data: workforce = { users: [], today_entries: [], active_entries: [], counts: {} }, error: workforceError } = useQuery({
     queryKey: ['workforceSnapshot'],
     queryFn: async () => {
       const response = await base44.functions.invoke('getWorkforceSnapshot', {});
@@ -260,6 +260,8 @@ export default function AdminDashboard() {
           </DropdownMenu>
           </div>
         </div>
+
+        {workforceError && <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">Workforce counts could not refresh: {workforceError.message}. Existing command data remains available below.</div>}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
           <Card className="bps-kpi-card border border-blue-500/30 bg-[#0d2033] p-5 text-white shadow-lg">
