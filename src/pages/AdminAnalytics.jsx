@@ -69,15 +69,42 @@ export default function AdminAnalytics() {
   const { data: analyticsData = {}, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ['companyAnalyticsData'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getCompanyAnalyticsData', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      const sourceErrors = Object.entries(payload.service_errors || {});
-      if (sourceErrors.length) {
-        throw new Error(`Analytics data is incomplete: ${sourceErrors.map(([name]) => name).join(', ')} could not be read. The last verified totals remain on screen.`);
+      const previous = companySnapshot?.data || {};
+      const merged = { ...previous };
+      const serviceErrors = {};
+      const segments = [
+        { name: 'core', required: true },
+        { name: 'training' },
+        { name: 'duty' },
+        { name: 'calls' },
+        { name: 'quality' },
+      ];
+
+      let successfulSegments = 0;
+      for (const segment of segments) {
+        try {
+          const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: segment.name });
+          const payload = result?.data || result || {};
+          if (payload.error) throw new Error(payload.error);
+          Object.entries(payload).forEach(([key, value]) => {
+            if (!['success','segment','generated_at','service_errors'].includes(key)) merged[key] = value;
+          });
+          Object.assign(serviceErrors, payload.service_errors || {});
+          successfulSegments += 1;
+        } catch (error) {
+          serviceErrors[`segment:${segment.name}`] = error?.message || 'Segment could not be loaded';
+          if (segment.required && !previous?.users?.length) throw error;
+        }
+        // Yield between groups so analytics cannot monopolize the shared request
+        // allowance while command/CAD/location reads are waiting.
+        await new Promise(resolve => window.setTimeout(resolve, 350));
       }
-      saveCompanyAnalyticsSnapshot(payload);
-      return payload;
+
+      merged.generated_at = new Date().toISOString();
+      merged.service_errors = serviceErrors;
+      merged.analytics_segments_loaded = successfulSegments;
+      if (Object.keys(serviceErrors).length === 0) saveCompanyAnalyticsSnapshot(merged);
+      return merged;
     },
     enabled: !!user,
     initialData: companySnapshot?.data,
