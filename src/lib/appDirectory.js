@@ -153,6 +153,39 @@ export function invalidateAppDirectory() {
   supervisorOfficerCacheAt = 0;
 }
 
+// Directory-backed pages share a five-minute in-memory cache. Clear it centrally
+// whenever an account/location/division management write succeeds so one screen
+// can never keep stale people/site data after another screen changes it.
+if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
+  const shouldClearDirectory = detail => {
+    const kind = String(detail?.kind || '');
+    const name = String(detail?.name || '');
+    if (kind === 'entity') return ['User', 'Location', 'Division', 'OfficerRoster'].includes(name);
+    if (kind === 'function') return [
+      'updateUser',
+      'createPortalAccount',
+      'manageHRDivisions',
+      'manageLocations',
+      'manageClientAssignments',
+      'manageOfficerCertifications',
+      'syncCertToOfficer',
+    ].includes(name);
+    return false;
+  };
+  const handleDirectoryChange = event => {
+    if (shouldClearDirectory(event?.detail)) invalidateAppDirectory();
+  };
+  window.addEventListener('bps-data-changed', handleDirectoryChange);
+  try {
+    const channel = new BroadcastChannel('bps-pathfinder-data-sync');
+    channel.addEventListener('message', event => {
+      if (shouldClearDirectory(event?.data)) invalidateAppDirectory();
+    });
+    window.__bpsDirectorySyncChannel = channel;
+  } catch {}
+  window.__bpsDirectorySyncInstalled = true;
+}
+
 export async function listOfficerDirectory(sort = 'last_name', limit = 1000, force = false) {
   const now = Date.now();
   if (!force && officerCache && now - officerCacheAt < TTL_MS) {
