@@ -9,8 +9,8 @@ import { base44 } from '@/api/base44Client';
 // health-check, and CAD fetches without delaying genuine live updates.
 const SNAPSHOT_TTL_MS = 15000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
-const GPS_PUBLISH_MIN_MS = 25000;
-const HEARTBEAT_PUBLISH_MIN_MS = 75000;
+const GPS_PUBLISH_MIN_MS = 35000;
+const HEARTBEAT_PUBLISH_MIN_MS = 120000;
 const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
 const PUBLISH_STAMP_PREFIX = 'bps:pathfinder:location-publish-at:';
 const snapshotCache = new Map();
