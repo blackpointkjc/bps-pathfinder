@@ -4,6 +4,60 @@ function rolesOf(user: any) {
   return new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
 }
 
+function finiteCoordinate(value: any) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+async function geocodeWithCensus(address: string) {
+  try {
+    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
+    const response = await fetch(url, { headers: { 'User-Agent': 'BPS-Pathfinder/1.0' } });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const match = payload?.result?.addressMatches?.[0];
+    const latitude = finiteCoordinate(match?.coordinates?.y);
+    const longitude = finiteCoordinate(match?.coordinates?.x);
+    if (latitude === null || longitude === null) return null;
+    return {
+      latitude,
+      longitude,
+      formatted_address: match?.matchedAddress || address,
+      provider: 'US Census Geocoder',
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function geocodeWithPhoton(address: string) {
+  try {
+    const url = `https://photon.komoot.io/api/?limit=1&q=${encodeURIComponent(address)}`;
+    const response = await fetch(url, { headers: { 'User-Agent': 'BPS-Pathfinder/1.0' } });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const feature = payload?.features?.[0];
+    const longitude = finiteCoordinate(feature?.geometry?.coordinates?.[0]);
+    const latitude = finiteCoordinate(feature?.geometry?.coordinates?.[1]);
+    if (latitude === null || longitude === null) return null;
+    const properties = feature?.properties || {};
+    const formatted = [
+      properties.housenumber && properties.street ? `${properties.housenumber} ${properties.street}` : properties.street,
+      properties.city || properties.county,
+      properties.state,
+      properties.postcode,
+    ].filter(Boolean).join(', ');
+    return {
+      latitude,
+      longitude,
+      formatted_address: formatted || address,
+      provider: 'Photon',
+    };
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -42,6 +96,20 @@ Deno.serve(async (req) => {
         result.push(current);
       }
       return Response.json({ success: true, locations: result });
+    }
+
+    if (action === 'geocode') {
+      const address = String(body.address || body.data?.address || '').trim();
+      if (!address) {
+        return Response.json({ error: 'Address is required to find coordinates' }, { status: 400 });
+      }
+      const result = await geocodeWithCensus(address) || await geocodeWithPhoton(address);
+      if (!result) {
+        return Response.json({
+          error: 'Address could not be matched. Add the city, state, and ZIP code or enter coordinates manually.'
+        }, { status: 404 });
+      }
+      return Response.json({ success: true, ...result });
     }
 
     if (action === 'create') {
