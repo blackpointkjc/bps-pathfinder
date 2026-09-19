@@ -892,7 +892,7 @@ export default function GlobalMessageBanner({ user }) {
       timers.current.forEach(timer => window.clearTimeout(timer));
       timers.current.clear();
     };
-  }, [user?.id, user?.email, user?.role, JSON.stringify(user?.additional_roles || [])]);
+  }, [user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
 
   const dismiss = async id => {
     const banner = banners.find(entry => entry.id === id);
