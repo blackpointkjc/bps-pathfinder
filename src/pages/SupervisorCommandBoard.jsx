@@ -39,6 +39,7 @@ export default function SupervisorCommandBoard() {
   const board = payload.board || [];
   const activeCalls = payload.active_calls || [];
   const overdue = useMemo(()=>board.filter(row=>row.overdue),[board]);
+  const sessionByEmail = useMemo(()=>new Map((workforce.signed_in_units || []).map(row=>[String(row.officer_email||'').toLowerCase(),row])),[workforce.signed_in_units]);
   const refreshBoard = () => { refetch(); refetchWorkforce(); };
 
   const escalate = async row => {
@@ -69,7 +70,9 @@ export default function SupervisorCommandBoard() {
   };
 
   const openDispatch = row => {
-    window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch&call_id=${encodeURIComponent(row.call_id)}`;
+    const id = row?.call_id || row?.id;
+    if (!id) return;
+    window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch&call_id=${encodeURIComponent(id)}`;
   };
 
   return <div className="min-h-full bg-[#07111d] p-4 text-slate-100 md:p-6">
@@ -90,7 +93,7 @@ export default function SupervisorCommandBoard() {
         {board.map(row=><div key={row.assignment_id} className={`rounded-2xl border p-4 ${row.overdue?'border-red-600 bg-red-950/25':'border-slate-700 bg-[#0b1725]'}`}>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge className={statusTone(row.assignment_status)}>{String(row.assignment_status||'pending').replaceAll('_',' ').toUpperCase()}</Badge>{row.overdue&&<Badge className="bg-red-700"><AlertTriangle className="mr-1 h-3 w-3"/>WELFARE OVERDUE</Badge>}<span className="text-xs font-black text-cyan-300">CAD {row.cad_number}</span></div><div className="mt-2 text-lg font-black">{row.unit_number?`Unit ${row.unit_number} · `:''}{row.officer_name}</div><div className="mt-1 text-sm text-slate-300">{row.incident}</div><div className="mt-1 flex items-start gap-2 text-xs text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5"/>{row.location||'Location not listed'}</div></div>
-            <div className="grid min-w-[260px] grid-cols-2 gap-2 text-center"><div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3"><Clock3 className="mx-auto mb-1 h-4 w-4 text-cyan-300"/><div className="text-[10px] uppercase text-slate-500">Timer</div><div className={`font-black ${row.overdue?'text-red-300':'text-white'}`}>{fmtElapsed(row.elapsed_seconds)}</div></div><div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3"><Radio className="mx-auto mb-1 h-4 w-4 text-cyan-300"/><div className="text-[10px] uppercase text-slate-500">GPS</div><div className="text-xs font-bold">{row.gps_updated_at?'RECEIVED':'NO FIX'}</div></div></div>
+            <div className="grid min-w-[260px] grid-cols-2 gap-2 text-center"><div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3"><Clock3 className="mx-auto mb-1 h-4 w-4 text-cyan-300"/><div className="text-[10px] uppercase text-slate-500">Timer</div><div className={`font-black ${row.overdue?'text-red-300':'text-white'}`}>{fmtElapsed(row.elapsed_seconds)}</div></div><div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3"><Radio className="mx-auto mb-1 h-4 w-4 text-cyan-300"/><div className="text-[10px] uppercase text-slate-500">GPS</div><div className="text-xs font-bold">{sessionByEmail.get(String(row.officer_email||'').toLowerCase())?.gps_updated_at?'RECEIVED':'NO FIX'}</div></div></div>
             <div className="grid gap-2 sm:grid-cols-3 xl:w-[430px]"><Button variant="outline" onClick={()=>openDispatch(row)}>OPEN CALL</Button><Button onClick={()=>requestSupervisor(row)} disabled={!!workingId} className="bg-purple-700 hover:bg-purple-600">REQUEST SUPERVISOR</Button><Button onClick={()=>escalate(row)} disabled={!!workingId} className="bg-red-700 hover:bg-red-600">EMERGENCY ESCALATE</Button></div>
           </div>
         </div>)}
