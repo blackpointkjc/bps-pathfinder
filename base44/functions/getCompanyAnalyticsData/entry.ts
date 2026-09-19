@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     monthStart.setDate(monthStart.getDate() - 2);
     const monthDateCutoff = monthStart.toISOString().slice(0, 10);
 
-    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCallsLive, callHistory, propertyAlerts, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
+    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, dispatchCallsLive, callHistory, propertyAlerts, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
       list('User', '-updated_date', 1000),
       list('Division', 'division_name', 500),
       filter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 2000),
@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
       filter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1500),
       filter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 2000),
       filter('CallOut', { call_out_date: { $gte: monthDateCutoff } }, '-call_out_date', 1000),
-      filter('CallForService', { call_time: { $gte: activityCutoff } }, '-call_time', 1000),
       list('DispatchCall', '-time_received', 750),
       filter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
       filter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
