@@ -25,10 +25,11 @@ Deno.serve(async (req) => {
       || ['client','student'].includes(lower(me.rank));
     if (blocked) return Response.json({ error: 'Operational access required' }, { status: 403 });
 
+    const recentCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const [usersResult, entriesResult, activeResult] = await Promise.allSettled([
       base44.asServiceRole.entities.User.list('-updated_date', 1200),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 2000),
-      base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 800),
+      base44.asServiceRole.entities.TimeEntry.filter({ clock_in: { $gte: recentCutoff } }, '-clock_in', 600),
+      base44.asServiceRole.entities.ActiveOfficer.filter({ session_active: true }, '-last_update', 400),
     ]);
 
     const users = usersResult.status === 'fulfilled' && Array.isArray(usersResult.value) ? usersResult.value : [];
