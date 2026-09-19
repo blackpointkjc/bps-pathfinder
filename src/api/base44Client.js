@@ -134,11 +134,22 @@ const schedulePump = delay => {
 function pumpReads() {
   if (activeReads >= MAX_CONCURRENT_READS || !readQueue.length) return;
   const cooldown = sharedRateLimitUntil() - Date.now();
-  if (cooldown > 0) {
+  const criticalPriority = 90;
+
+  // A 429 from a background/admin/analytics request must never freeze login,
+  // CAD, live officer location, or current time-entry reads for the entire
+  // cooldown window. Critical operational reads may still attempt immediately;
+  // lower-priority work continues to back off.
+  if (cooldown > 0 && Number(readQueue[0]?.priority || 0) < criticalPriority) {
     schedulePump(cooldown + 25);
     return;
   }
+
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
+    if (cooldown > 0 && Number(readQueue[0]?.priority || 0) < criticalPriority) {
+      schedulePump(cooldown + 25);
+      break;
+    }
     const job = readQueue.shift();
     window.clearTimeout(job.queueTimer);
     activeReads += 1;
