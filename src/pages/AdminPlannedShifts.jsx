@@ -80,7 +80,7 @@ export default function AdminPlannedShifts() {
 
   const { data: plannedShifts = [] } = useQuery({
     queryKey: ['plannedShifts'],
-    queryFn: () => base44.entities.PlannedShift.list('location', 1000),
+    queryFn: async () => { const response = await base44.functions.invoke('managePlannedShifts', { action: 'list' }); const payload = response?.data || response || {}; if (payload.error) throw new Error(payload.error); return payload.rows || []; },
     enabled: canManage,
     placeholderData: [],
     staleTime: 5 * 60 * 1000,
