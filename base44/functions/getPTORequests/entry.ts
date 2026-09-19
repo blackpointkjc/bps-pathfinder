@@ -1,6 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalizeRoles = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function readRowsWithRetry(label: string, loader: () => Promise<any[]>) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`getPTORequests could not load ${label}`, lastError);
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 
 Deno.serve(async (req) => {
   try {
@@ -20,7 +36,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'list') {
-      const requests = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const requests = await readRowsWithRetry(
+        'time off requests',
+        () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      );
       const visibleRequests = (requests || []).filter((entry: any) => {
         if (entry.reason === 'PTO workflow verification record') return false;
         // Balance adjustments are not leave requests and must never appear in PTO request history.
@@ -63,7 +82,10 @@ Deno.serve(async (req) => {
     if (action === 'cancel_pending') {
       const { request_id, admin_notes = '' } = body;
       if (!request_id) return Response.json({ error: 'PTO request is required' }, { status: 400 });
-      const all = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const all = await readRowsWithRetry(
+        'time off requests',
+        () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      );
       const request = (all || []).find((entry: any) => entry.id === request_id);
       if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
       if (String(request.status || '').toLowerCase() !== 'pending') return Response.json({ error: 'Only pending PTO requests can be cancelled here' }, { status: 400 });
@@ -94,7 +116,10 @@ Deno.serve(async (req) => {
       if (!request_id || !['approved', 'denied'].includes(status)) {
         return Response.json({ error: 'A request and valid decision are required' }, { status: 400 });
       }
-      const all = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const all = await readRowsWithRetry(
+        'time off requests',
+        () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      );
       const request = (all || []).find((entry: any) => entry.id === request_id);
       if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
 
@@ -105,7 +130,10 @@ Deno.serve(async (req) => {
         reviewed_date: new Date().toISOString(),
       });
 
-      const users = await base44.asServiceRole.entities.User.list();
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 2000),
+      );
       const creatorOfficer = (users || []).find((entry: any) => String(entry.id || '') === String(request.created_by_id || ''));
       const officerEmail = request.requested_by_email || request.created_by || creatorOfficer?.email;
       let openedShifts = 0;
@@ -163,14 +191,20 @@ Deno.serve(async (req) => {
     if (action === 'cancel_approved') {
       const { request_id, admin_notes = '' } = body;
       if (!request_id) return Response.json({ error: 'PTO request is required' }, { status: 400 });
-      const all = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const all = await readRowsWithRetry(
+        'time off requests',
+        () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      );
       const request = (all || []).find((entry: any) => entry.id === request_id);
       if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
       if (request.status !== 'approved') return Response.json({ error: 'Only approved PTO requests can be removed' }, { status: 400 });
       if (String(request.admin_notes || '').startsWith('Manual ')) return Response.json({ error: 'Manual balance entries must be corrected from Manual PTO' }, { status: 400 });
 
       const hours = Number(request.hours_requested || 0);
-      const users = await base44.asServiceRole.entities.User.list();
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 2000),
+      );
       const creatorOfficer = (users || []).find((entry: any) => String(entry.id || '') === String(request.created_by_id || ''));
       const officerEmail = request.requested_by_email || request.created_by || creatorOfficer?.email;
       if (request.request_type === 'paid' && officerEmail && hours > 0) {
@@ -202,7 +236,10 @@ Deno.serve(async (req) => {
       if (!officer_email || !call_out_date || !Number.isFinite(amount) || amount <= 0) {
         return Response.json({ error: 'Officer, call-out date, and positive hours are required' }, { status: 400 });
       }
-      const users = await base44.asServiceRole.entities.User.list();
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 2000),
+      );
       const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officer_email).toLowerCase());
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
       const callout = await base44.asServiceRole.entities.CallOut.create({
@@ -250,7 +287,10 @@ Deno.serve(async (req) => {
       if (!officer_email || !hours || Number(hours) <= 0) {
         return Response.json({ error: 'Officer and positive bonus hours are required' }, { status: 400 });
       }
-      const users = await base44.asServiceRole.entities.User.list();
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 2000),
+      );
       const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officer_email).toLowerCase());
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
       const amount = Number(hours);
@@ -288,7 +328,10 @@ Deno.serve(async (req) => {
       if (remove_shifts && (!start_date || !end_date)) {
         return Response.json({ error: 'Start and end dates are required when removing scheduled shifts' }, { status: 400 });
       }
-      const users = await base44.asServiceRole.entities.User.list();
+      const users = await readRowsWithRetry(
+        'users',
+        () => base44.asServiceRole.entities.User.list(undefined, 2000),
+      );
       const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officer_email).toLowerCase());
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
       const amount = Number(hours);
