@@ -36,7 +36,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { format, parseISO } from 'date-fns';
-import { invalidateAppDirectory, listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { isClientAccount } from '@/lib/directoryUtils';
 
 // Fix leaflet default marker icon
@@ -159,10 +160,7 @@ export default function AdminLocations({ embedded = false }) {
   const [mapCenter, setMapCenter] = useState([37.5407, -77.4360]); // Richmond, VA default
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user } = useAuth();
 
   const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support') || user?.additional_roles?.includes('support_staff') || user?.additional_roles?.includes('full_access');
 
@@ -193,7 +191,7 @@ export default function AdminLocations({ embedded = false }) {
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    initialData: [],
+    placeholderData: [],
   });
   const clientUsers = directoryUsers.filter(isClientAccount);
   const supervisorUsers = directoryUsers.filter(u => (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('supervisor'));
