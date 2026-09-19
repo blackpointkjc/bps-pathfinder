@@ -290,6 +290,7 @@ export default function TimeClock() {
         accuracy: submittedEntry.clock_in_accuracy,
         status: 'Out of Service',
         session_active: true,
+        force_publish: true,
       }).catch(error => console.warn('Clock-in saved, but live map synchronization is retrying:', error?.message));
       window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: 'Out of Service', source: 'time-clock' } }));
       })();
