@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { invalidateAppDirectory, listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STATUS_CFG = {
@@ -19,7 +20,7 @@ const STATUS_CFG = {
 };
 
 export default function Personnel({ embedded = false }) {
-    const [currentUser, setCurrentUser] = useState(null);
+    const { user: currentUser, isLoadingAuth } = useAuth();
     const [personnel, setPersonnel] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('all');
@@ -66,10 +67,9 @@ export default function Personnel({ embedded = false }) {
     }, []);
 
     const init = async () => {
+        if (isLoadingAuth) return;
         try {
-            const user = await withRequestTimeout(base44.auth.me(), 12000, 'Personnel authentication');
-            setCurrentUser(user);
-            await Promise.all([loadPersonnel(), loadOverrides(user), loadAccountLocks(user)]);
+            await Promise.all([loadPersonnel(), loadOverrides(currentUser), loadAccountLocks(currentUser)]);
         } catch (error) { console.error(error); }
         finally { setLoading(false); }
     };
@@ -82,7 +82,18 @@ export default function Personnel({ embedded = false }) {
     const loadOverrides = async (actor = currentUser) => {
         if (!canForceStatus(actor)) return setForcedOverrides([]);
         try {
-            const response = await withRequestTimeout(base44.functions.invoke('forceOfficerStatus', { action: 'list' }), 12000, 'Status override request');
+            if (actor?.role === 'admin') {
+                const rows = await withRequestTimeout(base44.entities.OfficerStatusOverride.filter({ active: true }, '-forced_at', 500), 10000, 'Status override request');
+                setForcedOverrides((rows || []).map(entry => ({
+                    officer_id: entry.officer_id,
+                    officer_email: entry.officer_email,
+                    reason: entry.reason || '',
+                    forced_by_name: entry.forced_by_name || entry.forced_by_email || '',
+                    forced_at: entry.forced_at,
+                })));
+                return;
+            }
+            const response = await withRequestTimeout(base44.functions.invoke('forceOfficerStatus', { action: 'list' }), 12000, 'Status override fallback');
             const payload = response?.data || response || {};
             setForcedOverrides(payload.overrides || []);
         } catch (error) {
