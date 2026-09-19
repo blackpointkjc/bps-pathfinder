@@ -16,18 +16,22 @@ Deno.serve(async (req) => {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
-    // One bounded snapshot powers the entire supervisor overview. This avoids the
-    // former three independent 10-15 second page polling loops and large 1k-1.5k reads.
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 300);
+    // One bounded snapshot powers the entire supervisor overview. Read the
+    // independent sources together so the board does not wait through five serial
+    // database round trips before it can paint.
+    const [calls, allAssignments, welfareChecks, statusLogs, users] = await Promise.all([
+      base44.asServiceRole.entities.DispatchCall.list('-created_date', 300).catch(() => []),
+      base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600).catch(() => []),
+      base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []),
+      base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []),
+      base44.asServiceRole.entities.User.list('-updated_date', 750).catch(() => []),
+    ]);
     const activeCalls = (calls || []).filter((call:any) => !terminalCall(call)).slice(0, 200);
     const activeCallIds = new Set(activeCalls.map((call:any) => String(call.id)));
-    const assignments = (await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600))
+    const assignments = (allAssignments || [])
       .filter((a:any) => activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status)));
     // Officer GPS/status is intentionally NOT loaded here. All live-location data
-    // comes from the canonical getOnDutyUnits feed through officerLocationHub.
-    const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []);
-    const statusLogs = await base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []);
-    const users = await base44.asServiceRole.entities.User.list('-updated_date', 750);
+    // comes from the canonical workforce/location feeds.
 
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
