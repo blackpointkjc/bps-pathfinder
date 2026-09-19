@@ -304,24 +304,27 @@ export default function AdminCenter() {
   useEffect(() => {
     if (!['supervisor','hr','training','student'].includes(shadowMode)) return;
     let active = true;
-    Promise.allSettled([
-      listDirectoryUsers('-last_updated', 1000),
-      base44.entities.User.list(undefined, 1000),
-    ]).then(results => {
+    const loadPreviewPeople = async () => {
+      let rows = [];
+      try {
+        rows = await listDirectoryUsers('-last_updated', 1000, true);
+      } catch (directoryError) {
+        console.warn('[Admin Preview] directory request failed; using direct user fallback:', directoryError?.message || directoryError);
+        rows = await base44.entities.User.list(undefined, 1000).catch(() => []);
+      }
       if (!active) return;
-      const directoryRows = results[0].status === 'fulfilled' ? (results[0].value || []) : [];
-      const directRows = results[1].status === 'fulfilled' ? (results[1].value || []) : [];
       const byIdentity = new Map();
-      for (const person of [...directoryRows, ...directRows]) {
+      for (const person of rows || []) {
         const key = String(person?.id || person?.email || '').trim().toLowerCase();
         if (!key) continue;
-        byIdentity.set(key, { ...(byIdentity.get(key) || {}), ...person });
+        byIdentity.set(key, person);
       }
       setPreviewPeople([...byIdentity.values()].map(person => {
         const name = [person.first_name, person.last_name].filter(Boolean).join(' ').trim() || person.full_name || person.email || 'Unnamed User';
         return { ...person, __label: `${person.rank || 'User'} ${name} — ${person.email || 'No email'}` };
       }));
-    }).catch(() => { if (active) setPreviewPeople([]); });
+    };
+    loadPreviewPeople();
     return () => { active = false; };
   }, [shadowMode]);
 
