@@ -25,12 +25,10 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const readWaiters: Array<() => void> = [];
     const acquireReadSlot = async () => {
-      // Performance used to fan out 20+ reads two at a time. On busy Base44
-      // sessions the later reads (Complaint, ClientFeedback, CAD/property data,
-      // duty rules and locations) were the ones consistently hitting 429s.
-      // Serialize this monthly analytics snapshot: correctness matters more than
-      // shaving a few milliseconds off a background performance refresh.
-      if (activeReads >= 1) await new Promise<void>(resolve => readWaiters.push(resolve));
+      // Keep this bounded, but do not serialize 20+ monthly reads one-by-one.
+      // Two service-role reads at a time cuts the long blank load substantially
+      // without recreating the large fan-out that previously caused 429s.
+      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -43,13 +41,13 @@ Deno.serve(async (req) => {
       await acquireReadSlot();
       try {
         let lastError:any = null;
-        for (let attempt = 0; attempt < 4; attempt += 1) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             return await reader() || [];
           } catch (error) {
             lastError = error;
-            if (!transientReadError(error) || attempt === 3) break;
-            await pause(500 * (attempt + 1));
+            if (!transientReadError(error) || attempt === 1) break;
+            await pause(300);
           }
         }
         throw lastError || new Error('Unable to read data');
@@ -107,13 +105,12 @@ Deno.serve(async (req) => {
     // My Performance is a monthly officer view. Query officer-scoped collections
     // directly and only read recent company-wide operational records needed to
     // validate partner QR scans and property-call report obligations.
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
       safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500),
       safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 1000),
       safeFilter('ShiftBid', officerEmailQuery(), '-created_date', 1000),
       safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 1000),
       safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 1000),
-      safeFilter('Notification', { recipient_email: { $in: aliasValues } }, '-created_date', 500),
       safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
       safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 1500),
       safeList('QRCheckpoint', 'property_site', 1000),
@@ -136,7 +133,6 @@ Deno.serve(async (req) => {
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
-    const myNotifications = notificationsAll.filter((r:any) => sameEmail(r, 'recipient_email', aliases));
     const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
@@ -279,7 +275,6 @@ Deno.serve(async (req) => {
       bids: myBids.map(canonicalMyRow),
       trainingCompletions: myCompletions.map(canonicalMyRow),
       trainingAssignments: myAssignments.map(canonicalMyRow),
-      notifications: myNotifications,
       callOuts: myCallOuts.map(canonicalMyRow),
       qrScanEvents: myScans.map(canonicalMyRow),
       sharedQrScanEvents: sharedQrScans.map(canonicalPartnerRow),
