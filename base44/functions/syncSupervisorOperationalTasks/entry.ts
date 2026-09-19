@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
         key:`missed-clock-${shift.id}`, kind:'missed_clock_in', source_id:String(shift.id), officer_id:String(officer?.id || ''), officer_email:lower(shift.officer_email),
         title:'Officer Failed to Check In', person:displayName(officer || { email:shift.officer_email }), location:clean(shift.location),
         detail:`${shift.start_time || 'Scheduled'} at ${siteNameFrom(shift.location) || 'assigned site'}`, priority:'critical',
-        speech:`Attention supervisor. ${displayName(officer || { email:shift.officer_email })} failed to check in for the ${shift.start_time || 'scheduled'} shift at ${siteNameFrom(shift.location) || 'the assigned site'}. Supervisor follow-up is assigned to you.`,
+        speech:`CAD alert. ${displayName(officer || { email:shift.officer_email })} failed to check in for the ${shift.start_time || 'scheduled'} shift at ${siteNameFrom(shift.location) || 'the assigned site'}. Supervisor follow-up has been assigned to you.`,
       });
     }
 
@@ -197,10 +197,49 @@ Deno.serve(async (req) => {
       tasks.push({ key:`inspection-${row.id}`, kind:'inspection', source_id:String(row.id), officer_id:String(officer?.id || ''), officer_email:lower(row.officer_email), title:'Officer Inspection Follow-Up', person:displayName(officer || { email:row.officer_email }), location:clean(row.location), detail:clean(row.location) || 'Inspection follow-up required', priority:'high', speech:`Attention supervisor. An officer inspection follow-up is pending for ${displayName(officer || { email:row.officer_email })}. The task is assigned to you.` });
     }
 
-    const stateByKey = new Map<string,any>();
+    // Multiple supervisor browsers can run this synchronizer at the same time.
+    // Collapse any legacy/racing duplicate rows by task_key before calculating
+    // workload or assigning new work. A duplicate-consolidation completion is
+    // not a real task completion and therefore must not suppress the canonical
+    // open row on the next synchronization pass.
+    const groupedStates = new Map<string,any[]>();
     for (const state of states || []) {
       const key = clean(state.task_key);
-      if (key && !stateByKey.has(key)) stateByKey.set(key, state);
+      if (!key) continue;
+      if (!groupedStates.has(key)) groupedStates.set(key, []);
+      groupedStates.get(key)!.push(state);
+    }
+    const stateByKey = new Map<string,any>();
+    const duplicateStates:any[] = [];
+    for (const [key, group] of groupedStates) {
+      const sorted = [...group].sort((a:any,b:any) =>
+        new Date(b.last_seen_at || b.updated_date || b.created_date || 0).getTime()
+        - new Date(a.last_seen_at || a.updated_date || a.created_date || 0).getTime()
+      );
+      const trueCompletion = sorted.find((state:any) =>
+        ['completed','auto_completed'].includes(lower(state.status))
+        && !lower(state.completion_note).includes('duplicate supervisor task state')
+      );
+      if (trueCompletion) {
+        stateByKey.set(key, trueCompletion);
+        duplicateStates.push(...sorted.filter((state:any) => lower(state.status) === 'open'));
+        continue;
+      }
+      const openStates = sorted.filter((state:any) => lower(state.status) === 'open');
+      const canonical = openStates[0] || sorted[0];
+      if (canonical) stateByKey.set(key, canonical);
+      duplicateStates.push(...openStates.slice(1));
+    }
+    for (const duplicate of duplicateStates.slice(0, 250)) {
+      await base44.asServiceRole.entities.WorkQueueState.update(duplicate.id, {
+        status:'auto_completed', completed_at:nowIso, completed_by:'Pathfinder Supervisor Operations',
+        completion_note:'Duplicate supervisor task state consolidated automatically.', last_seen_at:nowIso,
+      }).catch(() => null);
+      if (duplicate.alert_notification_id) {
+        await base44.asServiceRole.entities.Notification.update(duplicate.alert_notification_id, {
+          is_read:true, acknowledged_at:nowIso,
+        }).catch(() => null);
+      }
     }
     const activeTaskKeys = new Set(tasks.map(task => task.key));
     const managedKinds = new Set(['missed_clock_in','missing_report','complaint','writeup','review','review_follow_up','inspection']);
@@ -230,7 +269,7 @@ Deno.serve(async (req) => {
     }
 
     const workload = new Map<string,number>();
-    for (const state of states || []) {
+    for (const state of stateByKey.values()) {
       if (state.status === 'open' && state.assigned_to_id) workload.set(String(state.assigned_to_id), (workload.get(String(state.assigned_to_id)) || 0) + 1);
     }
     const sessionHealthyCutoff = now - 15*60*1000;
