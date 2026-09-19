@@ -70,11 +70,26 @@ export default function AdminAnalytics() {
       const merged = { ...previous };
       const serviceErrors = {};
       const segments = [
-        { name: 'core', required: true },
-        { name: 'training' },
-        { name: 'duty' },
-        { name: 'calls' },
-        { name: 'quality' },
+        {
+          name: 'core', required: true,
+          fields: { users: 'User', divisions: 'Division', timeEntries: 'TimeEntry', schedules: 'Schedule', incidentReports: 'IncidentReport' },
+        },
+        {
+          name: 'training',
+          fields: { bids: 'ShiftBid', trainingCompletions: 'TrainingCompletion', trainingAssignments: 'TrainingAssignment', trainingModules: 'TrainingModule' },
+        },
+        {
+          name: 'duty',
+          fields: { qrScans: 'QRScanEvent', qrCheckpoints: 'QRCheckpoint', dailyActivityReports: 'DailyActivityReport', callOuts: 'CallOut', dutyRules: 'JobDutyRule', locations: 'Location' },
+        },
+        {
+          name: 'calls',
+          fields: { dispatchCalls: ['DispatchCall', 'CallHistory', 'PropertyAlert'] },
+        },
+        {
+          name: 'quality',
+          fields: { commendations: 'Commendation', complaints: 'Complaint', clientFeedback: 'ClientFeedback', performanceReviews: 'PerformanceReview' },
+        },
       ];
 
       let successfulSegments = 0;
@@ -83,10 +98,13 @@ export default function AdminAnalytics() {
           const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: segment.name });
           const payload = result?.data || result || {};
           if (payload.error) throw new Error(payload.error);
-          Object.entries(payload).forEach(([key, value]) => {
-            if (!['success','segment','generated_at','service_errors'].includes(key)) merged[key] = value;
+          const segmentErrors = payload.service_errors || {};
+          Object.entries(segment.fields || {}).forEach(([key, sources]) => {
+            const requiredSources = Array.isArray(sources) ? sources : [sources];
+            const sourceFailed = requiredSources.some(source => segmentErrors[source]);
+            if (!sourceFailed && Object.prototype.hasOwnProperty.call(payload, key)) merged[key] = payload[key];
           });
-          Object.assign(serviceErrors, payload.service_errors || {});
+          Object.assign(serviceErrors, segmentErrors);
           successfulSegments += 1;
         } catch (error) {
           serviceErrors[`segment:${segment.name}`] = error?.message || 'Segment could not be loaded';
