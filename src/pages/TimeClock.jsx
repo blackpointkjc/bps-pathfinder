@@ -20,6 +20,7 @@ import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/l
 import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -266,8 +267,7 @@ export default function TimeClock() {
       // continues in the background so a slow secondary service cannot leave the
       // button spinning or make a successful punch look like a timeout.
       void (async () => {
-      const statusResult = await base44.functions.invoke('updateOfficerStatus', { status: 'Available' }).catch(error => ({ error }));
-      const statusPayload = statusResult?.data || statusResult || {};
+      const statusPayload = await persistOfficerStatus('Available').catch(error => ({ error }));
       if (statusPayload?.error) {
         console.warn('Clock-in saved, but Available status could not be synchronized:', statusPayload.error?.message || statusPayload.error);
       }
