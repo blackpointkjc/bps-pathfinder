@@ -30,6 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 const LOGO_URL = "/black-point-shield.webp";
 
 export default function AdminScheduling() {
@@ -83,17 +84,15 @@ export default function AdminScheduling() {
 
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'scheduling'],
     queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    placeholderData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
@@ -2640,7 +2639,10 @@ Return ONLY a JSON array of suggestion objects with this structure:
     return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
   };
 
-  if (user?.role !== 'admin') {
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading scheduling access…</div>;
+  const schedulingRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const canManageSchedule = user?.role === 'admin' || schedulingRoles.has('full_access');
+  if (!canManageSchedule) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
