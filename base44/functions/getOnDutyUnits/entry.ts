@@ -37,12 +37,14 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = roleSet(me);
-    const allowed = me.role === 'admin' || Boolean(me.dispatch_role) || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
+    const rank = lower(me.rank);
+    const supervisoryRank = ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
+    const allowed = me.role === 'admin' || lower(me.role) === 'supervisor' || me.is_supervisor === true || Boolean(me.dispatch_role) || supervisoryRank || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
     if (!allowed) return Response.json({ error: 'Operational access required' }, { status: 403 });
 
     const input = await req.json().catch(() => ({}));
     if (input?.history_email) {
-      if (me.role !== 'admin' && !roles.has('full_access') && !roles.has('supervisor')) {
+      if (me.role !== 'admin' && lower(me.role) !== 'supervisor' && me.is_supervisor !== true && !supervisoryRank && !roles.has('full_access') && !roles.has('supervisor')) {
         return Response.json({ error: 'Location history access required' }, { status: 403 });
       }
       const history: any[] = [];
