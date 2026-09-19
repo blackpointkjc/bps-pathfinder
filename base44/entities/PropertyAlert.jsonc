@@ -22,6 +22,18 @@
       "type": "string",
       "description": "Call location"
     },
+    "callPriority": {
+      "type": "string",
+      "description": "Dispatch call priority snapshot captured when the property alert is created"
+    },
+    "callStatus": {
+      "type": "string",
+      "description": "Dispatch call status snapshot captured when the property alert is created"
+    },
+    "cadNumber": {
+      "type": "string",
+      "description": "Agency CAD/BPS reference snapshot for immediate announcement without an extra call lookup"
+    },
     "callTime": {
       "type": "string",
       "format": "date-time",
