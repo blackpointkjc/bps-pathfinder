@@ -98,7 +98,7 @@ export default function SupervisorOperationsMonitor({ user }) {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('bps-operational-resume', resume);
     };
-  }, [user?.id, user?.email, user?.role, user?.rank, JSON.stringify(user?.additional_roles || [])]);
+  }, [user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
 
   return null;
 }
