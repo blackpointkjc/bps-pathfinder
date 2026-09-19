@@ -127,7 +127,47 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       .map(entry => ({ entry, matched: matchTimeEntryToSchedule(entry, [schedule]) }))
       .filter(item => item.matched)
       .sort((a, b) => new Date(a.entry.clock_in).getTime() - new Date(b.entry.clock_in).getTime());
-    const entry = candidates[0]?.entry || null;
+    let entry = candidates[0]?.entry || null;
+    // An officer can already be on duty when another scheduled block begins
+    // (overnight coverage, site reassignment, split coverage, or a corrected
+    // schedule). Treat a time entry that spans the scheduled start as worked
+    // coverage instead of falsely recording a missed/no-clock-in shift.
+    if (!entry) {
+      const scheduledStartWall = wallClockMinute(schedule.shift_date, schedule.start_time);
+      const spanning = timeEntries
+        .filter(candidate => candidate?.clock_in && !usedEntries.has(String(candidate.id || '')))
+        .filter(candidate => emailKey(candidate.officer_email) === emailKey(schedule.officer_email))
+        .map(candidate => {
+          const inWall = wallClockMinute(easternDateKey(candidate.clock_in), easternTimeKey(candidate.clock_in));
+          const outWall = candidate.clock_out
+            ? wallClockMinute(easternDateKey(candidate.clock_out), easternTimeKey(candidate.clock_out))
+            : nowWall;
+          return { candidate, inWall, outWall };
+        })
+        .filter(item => scheduledStartWall != null && item.inWall != null && item.outWall != null
+          && item.inWall <= scheduledStartWall + 5 && item.outWall >= scheduledStartWall - 5)
+        .sort((a,b) => Math.abs(a.inWall - scheduledStartWall) - Math.abs(b.inWall - scheduledStartWall))[0];
+      if (spanning?.candidate) {
+        entry = spanning.candidate;
+        usedEntries.add(String(entry.id || ''));
+        exempt++;
+        details.push({
+          status: 'covered_elsewhere',
+          shift_date: schedule.shift_date,
+          scheduled_start: schedule.start_time,
+          scheduled_end: schedule.end_time,
+          actual_clock_in: easternTimeKey(entry.clock_in),
+          actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+          minutes_late: null,
+          performance_exception: true,
+          performance_exception_reason: 'Officer was already clocked in when this scheduled block began.',
+          location: schedule.location || '',
+          schedule_id: schedule.id,
+          time_entry_id: entry.id,
+        });
+        continue;
+      }
+    }
     if (!entry) {
       missed++;
       details.push({
