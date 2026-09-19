@@ -19,13 +19,25 @@ export default function SupervisorOperationsMonitor({ user }) {
   const running = useRef(false);
   const pending = useRef(false);
   const timer = useRef(null);
+  const lastReportQueueRefresh = useRef(0);
 
   useEffect(() => {
     if (!isSupervisorUser(user)) return undefined;
     let active = true;
     const unsubscribers = [];
 
-    const run = async () => {
+    const refreshReportQueue = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastReportQueueRefresh.current < 5 * 60 * 1000) return;
+      lastReportQueueRefresh.current = now;
+      try {
+        await base44.functions.invoke('getRoleWorkQueue', { queue_role: 'supervisor_reports' });
+      } catch (error) {
+        console.warn('[Supervisor Operations] Report review queue refresh failed:', error?.message || error);
+      }
+    };
+
+    const run = async ({ refreshReports = false } = {}) => {
       if (!active) return;
       if (running.current) {
         pending.current = true;
@@ -33,6 +45,7 @@ export default function SupervisorOperationsMonitor({ user }) {
       }
       running.current = true;
       try {
+        await refreshReportQueue(refreshReports);
         const response = await base44.functions.invoke('syncSupervisorOperationalTasks', {});
         const payload = response?.data || response || {};
         if (payload?.error) throw new Error(payload.error);
@@ -49,14 +62,19 @@ export default function SupervisorOperationsMonitor({ user }) {
       }
     };
 
-    const schedule = (delay = 700) => {
+    const schedule = (delay = 700, refreshReports = false) => {
       if (!active) return;
       window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(run, delay);
+      timer.current = window.setTimeout(() => run({ refreshReports }), delay);
     };
 
-    schedule(250);
+    schedule(250, true);
     const interval = window.setInterval(run, 60000);
+
+    const reportEntities = new Set([
+      'DailyActivityReport','ShiftReport','IncidentReport','TrespassingNotice','ParkingViolation',
+      'CriminalComplaint','DispatcherShiftReport','UseOfForceReport','ConfidentialReport','MaintenanceReport','OpenDoorReport',
+    ]);
 
     for (const entity of [
       'Schedule',
@@ -78,7 +96,7 @@ export default function SupervisorOperationsMonitor({ user }) {
       'OpenDoorReport',
     ]) {
       try {
-        const unsubscribe = base44.entities[entity].subscribe(() => schedule());
+        const unsubscribe = base44.entities[entity].subscribe(() => schedule(700, reportEntities.has(entity)));
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch (error) {
         console.warn(`[Supervisor Operations] Realtime unavailable for ${entity}:`, error?.message || error);
