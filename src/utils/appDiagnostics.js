@@ -87,7 +87,7 @@ const finding = (key, area, severity, title, description, count) => ({
   key, area, severity, title, description, ...(count ? { count } : {}),
 });
 
-export async function runClientFunctionalAudit() {
+export async function runClientFunctionalAudit({ includeFunctionalProbes = true } = {}) {
   const startedAt = Date.now();
   const findings = [];
   const moduleFailures = [];
@@ -199,7 +199,7 @@ export async function runClientFunctionalAudit() {
   // same large tables in the browser doubled scan load and caused false rate-limit
   // outages across unrelated modules.
 
-  const functionalProbes = [
+  const functionalProbes = includeFunctionalProbes ? [
     {
       key: 'probe:directory',
       area: 'Platoon & Directory',
@@ -234,7 +234,7 @@ export async function runClientFunctionalAudit() {
         }
       },
     },
-  ];
+  ] : [];
   // Run backend probes one at a time. Firing directory, live-location, analytics,
   // and payroll calls together can exhaust the shared request allowance and make
   // a healthy service look like an outage.
