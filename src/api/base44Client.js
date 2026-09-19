@@ -29,7 +29,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'entity' && meta?.name === 'BOLOAlert') return 2 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'Schedule') return 60_000;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 30_000;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData'].includes(meta?.name)) return 2 * 60_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
@@ -96,10 +96,10 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCallHistoryFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
-const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
+const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
 const requestLabel = meta => {
   if (!meta) return 'unknown';
   if (meta.kind === 'entity') return `Entity ${meta.name}.${meta.method}`;
@@ -225,6 +225,7 @@ function invalidateReadCacheForWrite(meta = {}) {
     addEntity(meta.name);
     if (PERFORMANCE_ENTITY_NAMES.has(meta.name)) {
       addFunction('getCompanyAnalyticsData');
+      addFunction('getCompanyAnalyticsSegment');
       addFunction('getMyPerformanceData');
     }
     if (meta.name === 'User') prefixes.add('auth:me:');
@@ -251,7 +252,7 @@ function invalidateReadCacheForWrite(meta = {}) {
       addEntity('User'); addFunction('getAppDirectory'); addFunction('getOfficerDirectory'); prefixes.add('auth:me:');
     }
     if (/performance|timeentr|schedule|report|complaint|commendation|feedback|training|callout|duty/i.test(name)) {
-      addFunction('getCompanyAnalyticsData'); addFunction('getMyPerformanceData');
+      addFunction('getCompanyAnalyticsData'); addFunction('getCompanyAnalyticsSegment'); addFunction('getMyPerformanceData');
     }
     // A management endpoint's cached list/get response must never survive its own write.
     addFunction(name);
