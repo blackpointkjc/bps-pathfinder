@@ -84,16 +84,20 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
-      try {
-        const locks = await base44.entities.AccountLock.filter({ user_id: currentUser.id, locked: true }, '-locked_at', 1);
-        if (requestId !== requestSequence.current) return;
-        setAccountLock(locks?.[0] || null);
-      } catch (lockError) {
-        // A lock-check failure must not accidentally lock everyone out. Retry on
-        // the next authentication check instead.
-        console.warn('[AUTH] Account lock check unavailable:', lockError?.message);
-        setAccountLock(null);
-      }
+
+      // Authentication is complete at this point. Account-lock verification is
+      // important, but it must not keep the entire app behind the splash screen
+      // when the normal-priority read queue is backing off after an unrelated
+      // rate limit. Resolve it immediately in the background.
+      void base44.entities.AccountLock.filter({ user_id: currentUser.id, locked: true }, '-locked_at', 1)
+        .then(locks => {
+          if (requestId !== requestSequence.current) return;
+          setAccountLock(locks?.[0] || null);
+        })
+        .catch(lockError => {
+          console.warn('[AUTH] Account lock check unavailable:', lockError?.message);
+          if (requestId === requestSequence.current) setAccountLock(null);
+        });
       return currentUser;
     } catch (error) {
       if (requestId !== requestSequence.current) return;
