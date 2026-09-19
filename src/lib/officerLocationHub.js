@@ -120,17 +120,22 @@ export async function publishOfficerLocation(data = {}) {
     if (minimumGap > 0) {
       const identity = email || 'current-user';
       const ownLastAt = lastPublishAt(identity, kind);
-      // A fresh GPS update is also a presence heartbeat. Do not let another tab
-      // immediately send a heartbeat-only write after GPS just succeeded.
-      const recentGpsAt = kind === 'heartbeat' ? lastPublishAt(identity, 'gps') : 0;
-      const lastAt = Math.max(ownLastAt, recentGpsAt);
-      const age = Date.now() - lastAt;
-      if (lastAt > 0 && age >= 0 && age < minimumGap) {
+      // A fresh GPS update is also a presence heartbeat. Likewise, a just-saved
+      // heartbeat/session establishment should suppress an immediate GPS function
+      // call for a short burst window so clock-in + tracker startup cannot spend
+      // several function requests in the same few seconds.
+      const otherKind = kind === 'gps' ? 'heartbeat' : 'gps';
+      const otherLastAt = lastPublishAt(identity, otherKind);
+      const ownAge = ownLastAt > 0 ? Date.now() - ownLastAt : Infinity;
+      const crossAge = otherLastAt > 0 ? Date.now() - otherLastAt : Infinity;
+      const ownSuppressed = ownLastAt > 0 && ownAge >= 0 && ownAge < minimumGap;
+      const crossSuppressed = otherLastAt > 0 && crossAge >= 0 && crossAge < CROSS_KIND_BURST_GAP_MS;
+      if (ownSuppressed || crossSuppressed) {
         return {
           success: true,
           suppressed: true,
-          suppressed_reason: `${kind}_publish_throttled`,
-          retry_after_ms: minimumGap - age,
+          suppressed_reason: crossSuppressed ? 'location_publish_burst_suppressed' : `${kind}_publish_throttled`,
+          retry_after_ms: crossSuppressed ? CROSS_KIND_BURST_GAP_MS - crossAge : minimumGap - ownAge,
         };
       }
     }
