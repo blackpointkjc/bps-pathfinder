@@ -41,25 +41,15 @@ const ratingFields = [
   'overall_rating',
 ];
 
-async function identity(base44: any, me: any) {
-  const teams = await readRowsWithRetry(
-    'Teams identities',
-    () => base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000),
-    true,
-  );
-  const outlook = await readRowsWithRetry(
-    'Outlook identities',
-    () => base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000),
-    true,
-  );
-  const aliases = new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
-  for (const row of [...(teams || []), ...(outlook || [])]) {
-    if (String(row.user_id || '') === String(me.id || '') ||
-        aliases.has(key(row.pathfinder_email)) || aliases.has(key(row.microsoft_email)) || aliases.has(key(row.outlook_email))) {
-      [row.pathfinder_email, row.microsoft_email, row.outlook_email].map(key).filter(Boolean).forEach((email: string) => aliases.add(email));
-    }
-  }
-  return aliases;
+function identity(me: any) {
+  return new Set([
+    me.email,
+    me.work_email,
+    me.pathfinder_email,
+    me.microsoft_email,
+    me.outlook_email,
+    ...(Array.isArray(me.email_aliases) ? me.email_aliases : []),
+  ].map(key).filter(Boolean));
 }
 
 function randomIndex(length: number) {
@@ -114,13 +104,18 @@ Deno.serve(async (req) => {
     // Signing must be fast and deterministic. The immutable officer ID survives
     // email/Microsoft migrations, so fetch only the requested review on acknowledge.
     const aliases = action === 'list'
-      ? await identity(base44, officer)
-      : new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
+      ? identity(officer)
+      : identity(me);
     let all = action === 'acknowledge' && body.review_id
       ? [await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id))]
       : await readRowsWithRetry(
           'performance reviews',
-          () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000),
+          () => base44.asServiceRole.entities.PerformanceReview.filter({
+            $or: [
+              { officer_id: String(officer.id || '') },
+              { officer_email: { $in: [...aliases] } },
+            ],
+          }, '-review_date', 250),
         );
     all = (all || []).filter(Boolean);
     const owns = (review: any) => String(review.officer_id || '') === String(officer.id || '') || aliases.has(key(review.officer_email));
