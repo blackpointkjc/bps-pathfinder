@@ -197,6 +197,84 @@ Deno.serve(async (req) => {
       tasks.push({ key:`inspection-${row.id}`, kind:'inspection', source_id:String(row.id), officer_id:String(officer?.id || ''), officer_email:lower(row.officer_email), title:'Officer Inspection Follow-Up', person:displayName(officer || { email:row.officer_email }), location:clean(row.location), detail:clean(row.location) || 'Inspection follow-up required', priority:'high', speech:`Attention supervisor. An officer inspection follow-up is pending for ${displayName(officer || { email:row.officer_email })}. The task is assigned to you.` });
     }
 
+    // Fold the legacy supervisor_reports work-queue rows into this same closest-
+    // supervisor assignment engine. The underlying report remains authoritative:
+    // once its status no longer requires review, retire the old queue state and
+    // acknowledge any stale notification so completed reports can never replay.
+    const reportReviewEntityByTitle:Record<string,string> = {
+      'Shift Report':'ShiftReport',
+      'Daily Activity Report':'DailyActivityReport',
+      'Incident Report':'IncidentReport',
+      'Trespass Notice':'TrespassingNotice',
+      'Parking Violation':'ParkingViolation',
+      'Criminal Complaint':'CriminalComplaint',
+      'Dispatcher Shift Log':'DispatcherShiftReport',
+      'Use of Force Report':'UseOfForceReport',
+      'Confidential Report':'ConfidentialReport',
+      'Maintenance Report':'MaintenanceReport',
+      'Open Door Report':'OpenDoorReport',
+    };
+    const reportPendingStatuses:Record<string,Set<string>> = {
+      'Shift Report':new Set(['submitted']),
+      'Daily Activity Report':new Set(['submitted']),
+      'Incident Report':new Set(['submitted','pending']),
+      'Trespass Notice':new Set(['active']),
+      'Parking Violation':new Set(['issued']),
+      'Criminal Complaint':new Set(['submitted']),
+      'Dispatcher Shift Log':new Set(['submitted']),
+      'Use of Force Report':new Set(['submitted']),
+      'Confidential Report':new Set(['new','submitted','pending']),
+      'Maintenance Report':new Set(['reported','in_progress']),
+      'Open Door Report':new Set(['open','referred']),
+    };
+    const seenReportReviewKeys = new Set<string>();
+    for (const state of states || []) {
+      if (lower(state.status) !== 'open' || lower(state.source_kind) !== 'report_review') continue;
+      const taskKey = clean(state.task_key);
+      if (!taskKey || seenReportReviewKeys.has(taskKey)) continue;
+      seenReportReviewKeys.add(taskKey);
+      const title = clean(state.title) || 'Report Review';
+      const entityName = reportReviewEntityByTitle[title];
+      const entityApi = entityName ? (base44.asServiceRole.entities as any)[entityName] : null;
+      const source = entityApi && state.source_id ? await entityApi.get(String(state.source_id)).catch(() => null) : null;
+      const requiredStatuses = reportPendingStatuses[title];
+      const stillPending = Boolean(source && requiredStatuses?.has(lower(source.status)));
+      if (!stillPending) {
+        state.status = 'auto_completed';
+        await base44.asServiceRole.entities.WorkQueueState.update(state.id, {
+          status:'auto_completed', completed_at:nowIso, completed_by:'Pathfinder Supervisor Operations',
+          completion_note:'Report no longer requires supervisor review.', last_seen_at:nowIso,
+        }).catch(() => null);
+        if (state.alert_notification_id) {
+          await base44.asServiceRole.entities.Notification.update(state.alert_notification_id, { is_read:true, acknowledged_at:nowIso }).catch(() => null);
+        }
+        continue;
+      }
+      const sourceEmail = lower(source.officer_email || source.reporting_officer_email || source.created_by_email || source.created_by);
+      const officer = userByEmail.get(sourceEmail);
+      const sourceLocation = clean(source.location || source.site_name || source.property_name || source.address || state.source_location);
+      const routineDar = title === 'Daily Activity Report';
+      if (routineDar && state.alert_notification_id) {
+        await base44.asServiceRole.entities.Notification.update(state.alert_notification_id, { is_read:true, acknowledged_at:nowIso }).catch(() => null);
+        await base44.asServiceRole.entities.WorkQueueState.update(state.id, { alert_notification_id:'', last_seen_at:nowIso }).catch(() => null);
+        state.alert_notification_id = '';
+      }
+      tasks.push({
+        key:taskKey,
+        kind:'report_review',
+        source_id:String(state.source_id || source.id || ''),
+        officer_id:String(officer?.id || source.officer_id || ''),
+        officer_email:sourceEmail,
+        title:`${title} Awaiting Review`,
+        person:clean(state.person) || displayName(officer || { email:sourceEmail }),
+        location:sourceLocation,
+        detail:sourceLocation || clean(source.report_number) || 'Submitted report requires supervisor review',
+        priority:title === 'Use of Force Report' ? 'critical' : 'high',
+        suppress_alert:routineDar,
+        speech:routineDar ? '' : `Attention supervisor. ${title} from ${clean(state.person) || displayName(officer || { email:sourceEmail })} requires review${sourceLocation ? ` at ${sourceLocation}` : ''}. The review has been assigned to you.`,
+      });
+    }
+
     // Multiple supervisor browsers can run this synchronizer at the same time.
     // Collapse any legacy/racing duplicate rows by task_key before calculating
     // workload or assigning new work. A duplicate-consolidation completion is
@@ -245,7 +323,7 @@ Deno.serve(async (req) => {
       }));
     }
     const activeTaskKeys = new Set(tasks.map(task => task.key));
-    const managedKinds = new Set(['missed_clock_in','missing_report','complaint','writeup','review','review_follow_up','inspection']);
+    const managedKinds = new Set(['missed_clock_in','missing_report','complaint','writeup','review','review_follow_up','inspection','report_review']);
 
     // Automatically close generated tasks that no longer exist in the source data.
     for (const state of states || []) {
@@ -347,7 +425,7 @@ Deno.serve(async (req) => {
 
       // Missing daily reports stay in the Supervisor Operations work queue, but
       // they must not create a global red banner/voice announcement for every report.
-      if ((assignmentChanged || !state?.alert_notification_id) && task.kind !== 'missing_report') {
+      if ((assignmentChanged || !state?.alert_notification_id) && task.kind !== 'missing_report' && task.suppress_alert !== true) {
         const eventKey = `supervisor-task:${task.key}:${chosen.user.id}`;
         const prior = await base44.asServiceRole.entities.Notification.filter({ recipient_email:lower(chosen.user.email), type:'supervisor_task', task_key:task.key, is_read:false }, '-created_date', 5).catch(() => []);
         let notification = prior?.[0] || null;
