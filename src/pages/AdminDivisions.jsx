@@ -32,14 +32,20 @@ export default function AdminDivisions() {
   const [expandedDivisions, setExpandedDivisions] = useState(new Set());
   const queryClient = useQueryClient();
 
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
 
   const divisionRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasAccess = user?.role === 'admin' || divisionRoles.has('hr') || divisionRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: divisions = [] } = useQuery({
     queryKey: ['divisions'],
-    queryFn: () => listDirectoryDivisions('division_name', 1000),
+    queryFn: async () => {
+      try {
+        const rows = await listDirectoryDivisions('division_name', 1000);
+        if (Array.isArray(rows) && rows.length) return rows;
+      } catch {}
+      return base44.entities.Division.list('division_name', 1000);
+    },
     enabled: hasAccess,
     placeholderData: [],
     staleTime: 10 * 60 * 1000,
@@ -173,6 +179,7 @@ export default function AdminDivisions() {
     return { mainDivisions: main, subdivisionsByParent: subs };
   }, [divisions]);
 
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading division access…</div>;
   if (!hasAccess) {
     return (
       <div className="p-8 text-center">
