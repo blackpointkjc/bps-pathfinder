@@ -119,37 +119,10 @@ export default function AdminPlannedShifts() {
   // Mutation to post shift to schedule
   const postToScheduleMutation = useMutation({
     mutationFn: async ({ shift, targetDate }) => {
-      const locationObj = locations?.find(l => l.site_name === shift.location);
-      const locationStr = locationObj ? `${locationObj.site_name}: ${locationObj.address}` : shift.location;
-      
-      // Determine if overnight shift
-      const isOvernightShift = parseInt(shift.end_time.replace(':', '')) < parseInt(shift.start_time.replace(':', ''));
-      
-      // Create shifts for each officer needed
-      const numOfficers = shift.num_officers || 1;
-      const preferredOfficers = shift.preferred_officers || [];
-      
-      const shiftsToCreate = [];
-      for (let i = 0; i < numOfficers; i++) {
-        const officerEmail = preferredOfficers[i] || 'OPEN';
-        shiftsToCreate.push({
-          officer_email: officerEmail,
-          shift_date: targetDate,
-          start_time: shift.start_time,
-          end_time: shift.end_time,
-          location: locationStr,
-          is_open: officerEmail === 'OPEN',
-          is_split_shift: isOvernightShift,
-        });
-      }
-      
-      // Create the shifts
-      await base44.entities.Schedule.bulkCreate(shiftsToCreate);
-      
-      // Mark planned shift as inactive
-      await base44.entities.PlannedShift.update(shift.id, { active: false });
-      
-      return shiftsToCreate.length;
+      const response = await base44.functions.invoke('managePlannedShifts', { action: 'post', id: shift.id, target_date: targetDate });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return Number(payload.posted_count || 0);
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['plannedShifts'] });
