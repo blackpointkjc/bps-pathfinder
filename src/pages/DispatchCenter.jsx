@@ -541,14 +541,6 @@ export default function DispatchCenter() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500" />
-            </div>
-        );
-    }
-
     const priorityBg = (priority) => {
         if (priority === 'critical') return 'bg-red-700 text-white';
         if (priority === 'high') return 'bg-orange-600 text-white';
@@ -743,7 +735,7 @@ export default function DispatchCenter() {
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {allCalls.length === 0 ? (
-                                <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE CALLS</div>
+                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'LOADING CURRENT CALLS…' : 'NO ACTIVE CALLS'}</div>
                             ) : allCalls.map(call => (
                                 <div key={call.id} onClick={() => handleSelectCall(call)}
                                     className={`dispatch-call-card group grid grid-cols-12 cursor-pointer border-b border-[#172536] px-2 py-2.5 transition-all ${
