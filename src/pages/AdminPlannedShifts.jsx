@@ -107,7 +107,7 @@ export default function AdminPlannedShifts() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PlannedShift.delete(id),
+    mutationFn: async (id) => { const response = await base44.functions.invoke('managePlannedShifts', { action: 'delete', id }); const payload = response?.data || response || {}; if (payload.error) throw new Error(payload.error); return payload; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plannedShifts'] });
     },
