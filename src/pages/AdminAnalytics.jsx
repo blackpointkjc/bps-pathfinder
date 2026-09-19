@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { getAuthenticatedDirectoryUser } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,10 +39,7 @@ export default function AdminAnalytics() {
   const [summaryResult, setSummaryResult] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['authenticatedDirectoryUser'],
-    queryFn: () => getAuthenticatedDirectoryUser(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
   const sendCompanySummaryNow = async () => {
     setSummarySending(true);
@@ -465,7 +462,7 @@ export default function AdminAnalytics() {
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0), pending };
   }, [allComplaints, filteredUsers]);
 
-  if (!user || analyticsLoading) {
+  if (isLoadingAuth || (!user && analyticsLoading)) {
     return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
   }
 
