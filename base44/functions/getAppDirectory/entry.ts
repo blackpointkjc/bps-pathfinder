@@ -103,10 +103,10 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.User.list(undefined, 1000)
     );
     const rawLocations = await listWithRetry('locations', () =>
-      base44.asServiceRole.entities.Location.list('site_name', 1000), true
+      base44.asServiceRole.entities.Location.list('site_name', 1000)
     );
     const rawDivisions = await listWithRetry('divisions', () =>
-      base44.asServiceRole.entities.Division.list('division_name', 1000), true
+      base44.asServiceRole.entities.Division.list('division_name', 1000)
     );
     const rawTeamsLinks = await listWithRetry('Teams identities', () =>
       base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000), true
