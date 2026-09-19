@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, CalendarClock, Clock3, Building2, Users, ClipboardCheck, ArrowRight, UserCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -136,6 +137,28 @@ export default function HROverview() {
   const activeEntries = workforce.active_entries?.length ? workforce.active_entries : (data.active_entries || []);
   const pendingActions = data.tasks || [];
   const refreshAll = () => { refetch(); refetchWorkforce(); };
+
+  useEffect(() => {
+    let timer;
+    const refreshAttendance = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['hrOverviewSnapshot'] });
+        queryClient.invalidateQueries({ queryKey: ['workforceSnapshot'] });
+      }, 600);
+    };
+    const unsubscribers = [];
+    for (const entity of [base44.entities.TimeEntry, base44.entities.Schedule]) {
+      try {
+        const unsubscribe = entity.subscribe(refreshAttendance);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {}
+    }
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [queryClient]);
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
