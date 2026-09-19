@@ -267,10 +267,9 @@ export default function TimeClock() {
       // continues in the background so a slow secondary service cannot leave the
       // button spinning or make a successful punch look like a timeout.
       void (async () => {
-      const statusPayload = await persistOfficerStatus('Available').catch(error => ({ error }));
-      if (statusPayload?.error) {
-        console.warn('Clock-in saved, but Available status could not be synchronized:', statusPayload.error?.message || statusPayload.error);
-      }
+      // Clocking in records duty time and starts location tracking, but it does
+      // not make the officer Available. Status begins OOS and must be selected
+      // manually from the officer/CAD status control.
       await publishOfficerLocation({
         officer_email: submittedEntry.officer_email,
         current_location: submittedEntry.location,
@@ -280,10 +279,10 @@ export default function TimeClock() {
         latitude: submittedEntry.clock_in_latitude,
         longitude: submittedEntry.clock_in_longitude,
         accuracy: submittedEntry.clock_in_accuracy,
-        status: statusPayload?.error ? undefined : 'Available',
+        status: 'Out of Service',
         session_active: true,
       }).catch(error => console.warn('Clock-in saved, but live map synchronization is retrying:', error?.message));
-      window.dispatchEvent(new Event('bps-officer-status-changed'));
+      window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: 'Out of Service', source: 'time-clock' } }));
       })();
     },
   });
