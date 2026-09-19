@@ -19,7 +19,7 @@ import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBes
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
-import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { formatEasternTime } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
