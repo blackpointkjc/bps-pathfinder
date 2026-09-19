@@ -1,4 +1,8 @@
+import { base44 } from '@/api/base44Client';
+
 const STALE_AFTER_MS = 5 * 60 * 1000;
+const RECOVERY_COOLDOWN_MS = 5 * 60 * 1000;
+const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 
 function timestampMs(value) {
   if (!value) return 0;
@@ -25,17 +29,39 @@ export function cadCallFeedIsStale(calls = [], maxAgeMs = STALE_AFTER_MS) {
   return !newest || Date.now() - newest > maxAgeMs;
 }
 
+function lastRecoveryAt() {
+  try { return Number(localStorage.getItem(RECOVERY_STAMP_KEY) || 0) || 0; }
+  catch { return 0; }
+}
+
+function noteRecoveryAttempt() {
+  try { localStorage.setItem(RECOVERY_STAMP_KEY, String(Date.now())); } catch {}
+}
+
+async function runRecovery() {
+  const age = Date.now() - lastRecoveryAt();
+  if (age >= 0 && age < RECOVERY_COOLDOWN_MS) {
+    return { skipped: true, reason: 'recent_attempt', retry_after_ms: RECOVERY_COOLDOWN_MS - age };
+  }
+  noteRecoveryAttempt();
+  const response = await base44.functions.invoke('ingestGractivecalls', { recovery: true });
+  const payload = response?.data || response || {};
+  if (payload?.error) throw new Error(payload.error);
+  return payload;
+}
+
 /**
- * The scheduled Base44 ingestion job is the sole writer for the external CAD
- * feed. Browsers used to invoke ingestGractivecalls themselves whenever they
- * thought the feed was stale, which meant several officers could start the same
- * expensive ingestion at once and immediately consume the global request budget.
- *
- * Keep this compatibility helper for existing callers, but never launch a second
- * ingestion from the browser. Realtime DispatchCall updates deliver scheduled
- * ingestion results to every open workstation.
+ * The scheduled backend automation remains the normal ingestion owner. If it
+ * stops updating the feed for >5 minutes, exactly one browser recovery attempt is
+ * allowed per five minutes across open Pathfinder tabs. This prevents the old
+ * request storm while also preventing CAD from staying blank for hours when a
+ * scheduler run is missed.
  */
 export async function refreshCadIngestionIfStale(calls = [], { maxAgeMs = STALE_AFTER_MS } = {}) {
   if (!cadCallFeedIsStale(calls, maxAgeMs)) return { skipped: true, reason: 'feed_fresh' };
-  return { skipped: true, reason: 'scheduled_ingestion_pending' };
+
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request('bps-cad-ingestion-recovery', { mode: 'exclusive' }, runRecovery);
+  }
+  return runRecovery();
 }
