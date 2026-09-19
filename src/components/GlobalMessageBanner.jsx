@@ -56,6 +56,33 @@ export function CadAudioToggle() {
 }
 
 let notificationAudioContext;
+const LOCAL_CLAIM_TTL_MS = 6 * 60 * 60 * 1000;
+const localAnnouncementClaims = new Map();
+
+function localClaimKey(eventKey) {
+  return `bps:cad-audio-claim:${String(eventKey || '').slice(0, 240)}`;
+}
+
+function hasLocalAnnouncementClaim(eventKey) {
+  if (!eventKey) return false;
+  const memoryAt = Number(localAnnouncementClaims.get(eventKey) || 0);
+  if (memoryAt && Date.now() - memoryAt < LOCAL_CLAIM_TTL_MS) return true;
+  try {
+    const storedAt = Number(localStorage.getItem(localClaimKey(eventKey)) || 0);
+    if (storedAt && Date.now() - storedAt < LOCAL_CLAIM_TTL_MS) {
+      localAnnouncementClaims.set(eventKey, storedAt);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+function rememberLocalAnnouncementClaim(eventKey) {
+  if (!eventKey) return;
+  const at = Date.now();
+  localAnnouncementClaims.set(eventKey, at);
+  try { localStorage.setItem(localClaimKey(eventKey), String(at)); } catch {}
+}
 
 function audioContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -78,6 +105,10 @@ function speakNotification(text, options = {}) {
 }
 
 async function claimAnnouncementEvent(data) {
+  const eventKey = String(data?.event_key || '');
+  if (eventKey && hasLocalAnnouncementClaim(eventKey)) {
+    return { claimed: false, local_duplicate: true };
+  }
   const claim = async () => {
     const response = await base44.functions.invoke('claimCadAnnouncement', {
       ...data,
@@ -85,6 +116,7 @@ async function claimAnnouncementEvent(data) {
     });
     const payload = response?.data || response || {};
     if (payload.error) throw new Error(payload.error);
+    if (eventKey) rememberLocalAnnouncementClaim(eventKey);
     return payload;
   };
   if (navigator?.locks?.request) {
