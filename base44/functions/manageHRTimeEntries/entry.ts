@@ -1,6 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function readRowsWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`manageHRTimeEntries could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
 
 const PAYROLL_FIELDS = new Set([
   'payroll_adjustment_decision',
@@ -259,10 +276,17 @@ Deno.serve(async (req) => {
     const action = body.action || 'list';
 
     if (action === 'list') {
-      const [entries, callOuts] = await Promise.all([
-        base44.asServiceRole.entities.TimeEntry.list('-created_date', 5000),
-        base44.asServiceRole.entities.CallOut.list('-call_out_date', 5000).catch(() => []),
-      ]);
+      // Time entries are the required HR dataset. Load them first with retries;
+      // a temporary CallOut read failure must not blank the entire time-entry page.
+      const entries = await readRowsWithRetry(
+        'time entries',
+        () => base44.asServiceRole.entities.TimeEntry.list('-created_date', 5000),
+      );
+      const callOuts = await readRowsWithRetry(
+        'call-outs',
+        () => base44.asServiceRole.entities.CallOut.list('-call_out_date', 5000),
+        true,
+      );
       return Response.json({ success: true, entries: entries || [], call_outs: callOuts || [] });
     }
 
