@@ -96,7 +96,10 @@ export default function AdminAnalytics() {
     let timer = null;
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 750);
+      // The analytics snapshot reads many datasets. Coalesce operational bursts
+      // (GPS/CAD/report saves often arrive together) instead of rerunning the
+      // full company calculation after every individual entity event.
+      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 30_000);
     };
     const unsubscribers = [];
     const scoringEntities = [
