@@ -115,7 +115,7 @@ export default function AdminPortal({ embedded = false }) {
 
     const loadUsers = async () => {
         try {
-            const allUsers = await listDirectoryUsers();
+            const allUsers = await listDirectoryUsers(undefined, 1000, true);
             setUsers(allUsers || []);
         } catch (error) {
             console.error('Error loading users:', error);
