@@ -39,8 +39,8 @@ Deno.serve(async (req) => {
       if (officerEmail !== String(user.email || '').toLowerCase() && !reviewer) return Response.json({ error: 'Cannot create alert for another user' }, { status: 403 });
       const location = String(body.location || '');
       if (!location) return Response.json({ error: 'Location is required' }, { status: 400 });
-      const alerts = await allAlerts();
-      const existing = (alerts || []).find((a: any) => !a.acknowledged && String(a.officer_email || '').toLowerCase() === officerEmail && a.location === location && a.alert_type === 'outside_zone');
+      const alerts = await base44.asServiceRole.entities.GeofenceAlert.filter({ officer_email: officerEmail, location, alert_type: 'outside_zone', acknowledged: false }, '-created_date', 10).catch(() => []);
+      const existing = alerts?.[0] || null;
       const patch = {
         officer_email: officerEmail,
         officer_name: body.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email,
@@ -61,8 +61,11 @@ Deno.serve(async (req) => {
     if (action === 'resolve_mine') {
       const officerEmail = String(user.email || '').toLowerCase();
       const location = String(body.location || '');
-      const alerts = await allAlerts();
-      const open = (alerts || []).filter((a: any) => !a.acknowledged && String(a.officer_email || '').toLowerCase() === officerEmail && (!location || a.location === location));
+      const open = await base44.asServiceRole.entities.GeofenceAlert.filter(
+        location ? { officer_email: officerEmail, location, acknowledged: false } : { officer_email: officerEmail, acknowledged: false },
+        '-created_date',
+        100,
+      ).catch(() => []);
       const now = new Date().toISOString();
       for (const alert of open) {
         await base44.asServiceRole.entities.GeofenceAlert.update(alert.id, {
