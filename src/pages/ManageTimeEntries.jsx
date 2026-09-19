@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Briefcase, Plus, Trash2, Calendar, MapPin, Shield, Edit, X, Save, BadgeDollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { findDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { calculatePaidHours } from '@/lib/payrollCalculations';
 import { createPageUrl } from '@/utils';
@@ -66,10 +67,7 @@ export default function ManageTimeEntries() {
     }
   };
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
@@ -92,19 +90,26 @@ export default function ManageTimeEntries() {
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
     queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: isAdmin || isHR,
-    initialData: [],
+    placeholderData: [],
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
-  const { data: locations } = useQuery({
+  const { data: locations = [] } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await listDirectoryLocations('site_name');
-      return allLocations.filter(loc => loc.active !== false);
+      try {
+        const allLocations = await listDirectoryLocations('site_name', 1000);
+        if (Array.isArray(allLocations) && allLocations.length) return allLocations.filter(loc => loc.active !== false);
+      } catch {}
+      const direct = await base44.entities.Location.list('site_name', 1000);
+      return (direct || []).filter(loc => loc.active !== false);
     },
     enabled: isAdmin || isHR,
+    placeholderData: [],
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: hrTimeSnapshot = { entries: [], call_outs: [] } } = useQuery({
@@ -317,11 +322,9 @@ export default function ManageTimeEntries() {
   };
 
   const getOfficerName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (officer?.first_name && officer?.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    return email;
+    const officer = findDirectoryUser(allUsers, email);
+    if (officer?.first_name && officer?.last_name) return `${officer.first_name} ${officer.last_name}`;
+    return officer?.full_name || email;
   };
 
   const openPayrollDecision = (entry) => {
@@ -371,6 +374,7 @@ export default function ManageTimeEntries() {
     return grouped;
   };
 
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading HR access…</div>;
   if (!isAdmin && !isHR) {
     return (
       <div className="p-8 text-center">
