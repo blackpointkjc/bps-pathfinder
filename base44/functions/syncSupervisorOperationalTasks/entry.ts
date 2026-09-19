@@ -230,16 +230,19 @@ Deno.serve(async (req) => {
       if (canonical) stateByKey.set(key, canonical);
       duplicateStates.push(...openStates.slice(1));
     }
-    for (const duplicate of duplicateStates.slice(0, 250)) {
-      await base44.asServiceRole.entities.WorkQueueState.update(duplicate.id, {
-        status:'auto_completed', completed_at:nowIso, completed_by:'Pathfinder Supervisor Operations',
-        completion_note:'Duplicate supervisor task state consolidated automatically.', last_seen_at:nowIso,
-      }).catch(() => null);
-      if (duplicate.alert_notification_id) {
-        await base44.asServiceRole.entities.Notification.update(duplicate.alert_notification_id, {
-          is_read:true, acknowledged_at:nowIso,
+    const duplicateBatch = duplicateStates.slice(0, 250);
+    for (let index = 0; index < duplicateBatch.length; index += 10) {
+      await Promise.all(duplicateBatch.slice(index, index + 10).map(async (duplicate:any) => {
+        await base44.asServiceRole.entities.WorkQueueState.update(duplicate.id, {
+          status:'auto_completed', completed_at:nowIso, completed_by:'Pathfinder Supervisor Operations',
+          completion_note:'Duplicate supervisor task state consolidated automatically.', last_seen_at:nowIso,
         }).catch(() => null);
-      }
+        if (duplicate.alert_notification_id) {
+          await base44.asServiceRole.entities.Notification.update(duplicate.alert_notification_id, {
+            is_read:true, acknowledged_at:nowIso,
+          }).catch(() => null);
+        }
+      }));
     }
     const activeTaskKeys = new Set(tasks.map(task => task.key));
     const managedKinds = new Set(['missed_clock_in','missing_report','complaint','writeup','review','review_follow_up','inspection']);
