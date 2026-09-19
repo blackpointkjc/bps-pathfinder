@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
     const allowedKinds = queueRole === 'hr'
       ? new Set(['missed_clock_in', 'late_clock_out', 'pto', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
-        ? new Set(['missing_report', 'report_review'])
+        ? new Set(['report_review'])
         : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
       if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
