@@ -20,14 +20,23 @@ Deno.serve(async (req) => {
     if (!caller) {
       return Response.json({ error: 'Authentication required' }, { status: 401 });
     }
-    const isAdmin = caller.role === 'admin';
-    if (!isAdmin && caller.email !== officer_email) {
+    const roles = new Set((caller.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+    const canRecalculateOthers = caller.role === 'admin' || roles.has('hr') || roles.has('full_access') || String(caller.rank || '').trim().toLowerCase() === 'human resources';
+    if (!canRecalculateOthers && String(caller.email || '').toLowerCase() !== String(officer_email).toLowerCase()) {
       return Response.json({ error: 'Not authorized to calculate PTO for this officer' }, { status: 403 });
     }
 
-    // Get the officer
-    const users = await base44.asServiceRole.entities.User.list();
-    const officer = users.find(u => u.email === officer_email);
+    // Query only this officer's PTO/work ledgers. Loading every employee's full
+    // history on each balance refresh was unnecessarily expensive and made this
+    // function much more likely to collide with the global request allowance.
+    const normalizedEmail = String(officer_email).trim().toLowerCase();
+    const [users, allUsage, allAdjustments, allEntries] = await Promise.all([
+      base44.asServiceRole.entities.User.filter({ email: normalizedEmail }, '-updated_date', 5),
+      base44.asServiceRole.entities.PTOUsage.filter({ officer_email: normalizedEmail }, '-usage_date', 1000),
+      base44.asServiceRole.entities.PTOAdjustment.filter({ officer_email: normalizedEmail }, '-granted_at', 1000),
+      base44.asServiceRole.entities.TimeEntry.filter({ officer_email: normalizedEmail }, '-clock_in', 3000),
+    ]);
+    const officer = users?.[0];
 
     if (!officer) {
       return Response.json({ error: 'Officer not found' }, { status: 404 });
@@ -40,10 +49,6 @@ Deno.serve(async (req) => {
 
     // Leave requests and balance adjustments are separate ledgers. Only actual
     // approved paid leave counts as PTO used. Bonuses/grants never count as earned accrual.
-    const [allUsage, allAdjustments] = await Promise.all([
-      base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
-      base44.asServiceRole.entities.PTOAdjustment.list('-granted_at', 5000),
-    ]);
     const approvedPaidUsage = (allUsage || []).filter((usage: any) => {
       const requestDate = new Date(usage.usage_date || usage.recorded_at || 0);
       return String(usage.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() &&
@@ -61,8 +66,7 @@ Deno.serve(async (req) => {
     }));
 
     // Get completed time entries from this calendar year only.
-    const allEntries = await base44.asServiceRole.entities.TimeEntry.list();
-    const officerEntries = allEntries.filter(e => {
+    const officerEntries = (allEntries || []).filter(e => {
       const clockIn = new Date(e.clock_in || 0);
       return String(e.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() &&
         Boolean(e.clock_out) &&
