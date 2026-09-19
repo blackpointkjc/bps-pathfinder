@@ -50,9 +50,19 @@ L.Icon.Default.mergeOptions({
 function MapUpdater({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.setView(center, zoom);
-    }
+    if (!center) return undefined;
+    const syncMap = () => {
+      try {
+        map.invalidateSize({ animate: false, pan: false });
+        map.setView(center, zoom, { animate: false });
+      } catch (_) {}
+    };
+    const frame = requestAnimationFrame(syncMap);
+    const timer = window.setTimeout(syncMap, 180);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [center, zoom, map]);
   return null;
 }
@@ -384,11 +394,11 @@ export default function AdminLocations({ embedded = false }) {
       contract_start_date: location.contract_start_date || "",
       contract_end_date: location.contract_end_date || "",
       is_special_event: location.is_special_event || false,
-      site_bill_rate: location.site_bill_rate || null,
-      site_bill_rate_holiday_armed: location.site_bill_rate_holiday_armed || null,
-      site_bill_rate_holiday_unarmed: location.site_bill_rate_holiday_unarmed || null,
-      site_bill_rate_rush_armed: location.site_bill_rate_rush_armed || null,
-      site_bill_rate_rush_unarmed: location.site_bill_rate_rush_unarmed || null,
+      site_bill_rate: location.site_bill_rate ?? null,
+      site_bill_rate_holiday_armed: location.site_bill_rate_holiday_armed ?? null,
+      site_bill_rate_holiday_unarmed: location.site_bill_rate_holiday_unarmed ?? null,
+      site_bill_rate_rush_armed: location.site_bill_rate_rush_armed ?? null,
+      site_bill_rate_rush_unarmed: location.site_bill_rate_rush_unarmed ?? null,
       site_bill_rate_unarmed: location.site_bill_rate_unarmed ?? null,
       site_rate_history: Array.isArray(location.site_rate_history) ? location.site_rate_history : [],
       max_hours_per_week: location.max_hours_per_week ?? null,
@@ -498,7 +508,9 @@ export default function AdminLocations({ embedded = false }) {
       longitude: formData.longitude !== null && formData.longitude !== '' ? parseFloat(formData.longitude) : null,
       assigned_client_email: formData.assigned_client_email === "" ? "" : formData.assigned_client_email,
       assigned_supervisors: Array.isArray(formData.assigned_supervisors) ? formData.assigned_supervisors : [],
-      property_monitoring_radius_meters: Number(formData.property_monitoring_radius_meters || formData.geofence_radius_meters || 500),
+      // One canonical circular fallback for both officer geofencing and
+      // property-call monitoring when no polygon is drawn.
+      property_monitoring_radius_meters: Number(formData.geofence_radius_meters || formData.property_monitoring_radius_meters || 500),
       max_hours_per_week: formData.max_hours_per_week !== null && formData.max_hours_per_week !== '' ? parseFloat(formData.max_hours_per_week) : null,
       site_bill_rate: formData.site_bill_rate !== null && formData.site_bill_rate !== '' ? parseFloat(formData.site_bill_rate) : null,
       site_rate_history: siteRateHistory
