@@ -589,63 +589,10 @@ body::-webkit-scrollbar-button,
   max-width: 100%;
 }
 
-/* Keep component-level width and height contracts intact. Embedded maps,
-   dialogs, and center workspaces rely on their own max-width/min-height values. */
-
-/* Do not recolor arbitrary descendant cards/text here. Printable reports,
-   signatures, QR labels, legal forms, status chips, and embedded tools all carry
-   intentional light/dark color contracts. Modernization belongs in each page
-   shell/component rather than a blanket descendant override. */
-
-.pathfinder-modern-page [class*="shadow-lg"],
-.pathfinder-modern-page [class*="shadow-xl"],
-.pathfinder-modern-page [class*="shadow-md"] {
-  box-shadow: 0 12px 30px rgba(0,0,0,.22) !important;
-}
-
-.pathfinder-modern-page input,
-.pathfinder-modern-page textarea,
-.pathfinder-modern-page select,
-.pathfinder-modern-page [role="combobox"] {
-  color-scheme: dark;
-  background: #091521 !important;
-  color: #f4f8fc !important;
-  border-color: #38536d !important;
-}
-
-.pathfinder-modern-page input::placeholder,
-.pathfinder-modern-page textarea::placeholder {
-  color: #6f879e !important;
-}
-
-.pathfinder-modern-page [role="tablist"] {
-  height: auto !important;
-  border: 1px solid #2c4258 !important;
-  background: #07131f !important;
-  padding: .25rem !important;
-  border-radius: .75rem !important;
-}
-
-.pathfinder-modern-page [role="tab"] {
-  min-height: 2.25rem;
-  border-radius: .5rem !important;
-  color: #8fa7bd !important;
-  font-size: .68rem !important;
-  font-weight: 800 !important;
-}
-
-.pathfinder-modern-page [role="tab"][data-state="active"] {
-  background: #12304a !important;
-  color: #e8f5ff !important;
-  box-shadow: inset 0 0 0 1px rgba(34,211,238,.35), 0 6px 16px rgba(0,0,0,.18) !important;
-}
-
-@media (max-width: 767px) {
-  .pathfinder-modern-page [role="tab"] {
-    flex: 1 1 8rem;
-    white-space: normal;
-  }
-}
+/* Keep all descendant component contracts intact. Embedded maps, dialogs,
+   forms, tabs, printable reports, signatures, QR labels, and status components
+   own their own sizing and color rules. The shared modernization class intentionally
+   stops at the workspace shell so it cannot break child functionality again. */
 
 /* Officer weekly schedule — high-contrast CAD theme */
 .schedule-dark .bg-white,
