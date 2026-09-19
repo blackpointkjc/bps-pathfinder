@@ -15,7 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
-import { listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const DAYS = [
@@ -48,29 +49,42 @@ export default function AdminPlannedShifts() {
 
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const canManage = user?.role === 'admin' || roles.has('full_access');
 
-  const { data: locations } = useQuery({
+  const { data: locations = [] } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const locs = await listDirectoryLocations('site_name');
-      return locs.filter(l => l.active);
+      try {
+        const locs = await listDirectoryLocations('site_name', 1000);
+        if (Array.isArray(locs) && locs.length) return locs.filter(l => l.active !== false);
+      } catch {}
+      const direct = await base44.entities.Location.list('site_name', 1000);
+      return (direct || []).filter(l => l.active !== false);
     },
+    enabled: canManage,
+    placeholderData: [],
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['officerDirectory', 'adminPlannedShifts'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
-    enabled: user?.role === 'admin',
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['appDirectoryUsers', 'adminPlannedShifts'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
+    enabled: canManage,
+    placeholderData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: plannedShifts } = useQuery({
+  const { data: plannedShifts = [] } = useQuery({
     queryKey: ['plannedShifts'],
-    queryFn: () => base44.entities.PlannedShift.list(),
-    enabled: user?.role === 'admin',
+    queryFn: () => base44.entities.PlannedShift.list('location', 1000),
+    enabled: canManage,
+    placeholderData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({
@@ -247,7 +261,8 @@ export default function AdminPlannedShifts() {
     return preferredOfficers.map(email => getOfficerName(email)).join(", ");
   };
 
-  if (user?.role !== 'admin') {
+  if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading scheduling access…</div>;
+  if (!canManage) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
