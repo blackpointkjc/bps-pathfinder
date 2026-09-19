@@ -41,7 +41,7 @@ export default function AdminSupervisorReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listDirectoryUsers(undefined, 1000, true),
     enabled: user?.role === 'admin',
   });
 
