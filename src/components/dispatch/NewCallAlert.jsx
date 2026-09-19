@@ -11,7 +11,7 @@ export default function NewCallAlert({ call, onAcknowledge }) {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="fixed left-1/2 top-2 z-50 w-full max-w-lg -translate-x-1/2 px-2 sm:top-4 sm:px-4"
+                className="fixed left-1/2 top-2 z-[100015] w-full max-w-lg -translate-x-1/2 px-2 sm:top-4 sm:px-4"
             >
                 <div className="flex max-h-[calc(100dvh-1rem)] flex-col gap-3 overflow-y-auto rounded-xl border-2 border-red-500 bg-red-950 p-3 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4">
                     <div className="flex items-start gap-3">
