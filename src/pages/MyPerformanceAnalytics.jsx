@@ -63,7 +63,7 @@ export default function MyPerformanceAnalytics() {
     refetchOnReconnect: true,
     // One backend request refreshes the complete scoring snapshot. Keep a one-minute
     // repair interval while realtime entity subscriptions handle immediate changes.
-    refetchInterval: 60000,
+    refetchInterval: 5 * 60 * 1000,
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: previousData => previousData,
