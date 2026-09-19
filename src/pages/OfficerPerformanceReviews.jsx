@@ -8,6 +8,7 @@ import { ClipboardCheck, PenLine, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import SignaturePad from '@/components/SignaturePad';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
+import { getOfficerPerformanceReviewSnapshot, invalidateOfficerPerformanceReviewCache } from '@/lib/officerPerformanceReviewHub';
 
 const ratingFields = [
   { key: 'punctuality_rating', label: 'Punctuality' },
@@ -67,9 +68,7 @@ export default function OfficerPerformanceReviews() {
   const load = async () => {
     setLoading(true);
     try {
-      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list', ...getOfficerPreviewRequest() });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
+      const payload = await getOfficerPerformanceReviewSnapshot(getOfficerPreviewRequest());
       setReviews(payload.reviews || []);
       if (payload.recovered_count > 0) {
         toast.success(`${payload.recovered_count} missing performance review${payload.recovered_count === 1 ? '' : 's'} restored.`);
@@ -122,6 +121,7 @@ export default function OfficerPerformanceReviews() {
         officer_signed_at: new Date().toISOString(),
         workflow_stage: 'hr_approval_pending',
       };
+      invalidateOfficerPerformanceReviewCache(getOfficerPreviewRequest());
       setReviews(current => current.map(review => String(review.id) === String(reviewId) ? { ...review, ...updated } : review));
       setSigning(null);
       setComments('');
