@@ -336,13 +336,10 @@ export default function WelcomeBriefing({ user }) {
         || roles.has('cad_access')
         || roles.has('dispatch');
       if (operational) {
-        // Never automatically repeat a mutation after a 429. The first request
-        // may have committed even when its response was throttled; retrying could
-        // duplicate status events and worsen the rate-limit burst.
-        const payload = await persistOfficerStatus('Available');
-        if (payload?.error) throw new Error(payload.error);
-        localStorage.setItem(lastStatusKey, payload.status || 'Available');
-        window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: payload.status || 'Available', source: 'welcome-briefing' } }));
+        // Starting the briefing/session must never silently make a field user
+        // Available. Auth/session bootstrap already presets OOS; the officer must
+        // explicitly choose Available/Enroute/On Scene/etc. from the status bar.
+        localStorage.setItem(lastStatusKey, 'Out of Service');
       }
       sessionStorage.setItem(sessionKey, 'acknowledged');
       localStorage.setItem(storageKey, new Date().toISOString());
