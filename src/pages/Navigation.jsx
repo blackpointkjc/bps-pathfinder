@@ -22,6 +22,7 @@ import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
+import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
@@ -839,15 +840,13 @@ export default function Navigation() {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c => {
-                const createdAt = parseServerTimestamp(c.created_date)?.getTime() || 0;
-                const upstreamAt = parseServerTimestamp(c.time_received)?.getTime() || 0;
-                const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
-                    ? upstreamAt
-                    : (createdAt || upstreamAt);
-                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 61 * 60 * 1000;
-                return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
-            });
+            // DispatchCall is the current active-source table. Do not hide a call
+            // simply because it has been open longer than one hour; long-running
+            // police/fire incidents must remain visible until the ingest marks them
+            // Cleared/Cancelled or removes them from the active feed.
+            const active = dedupeOperationalCalls([...uniqueCalls.values()].filter(c =>
+                !['Cleared', 'Cancelled', 'Closed'].includes(String(c.status || ''))
+            )).slice(0, 250);
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
             setUnmappedCalls(unmapped);
