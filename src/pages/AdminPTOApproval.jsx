@@ -36,7 +36,7 @@ export default function AdminPTOApproval() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['appDirectoryUsers', 'ptoApproval'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000, true),
     enabled: hasHRAccess,
     initialData: [],
     staleTime: 0,
