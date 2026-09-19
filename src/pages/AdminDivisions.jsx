@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Shield, Layers, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { listDirectoryDivisions } from '@/lib/appDirectory';
+import { listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -31,35 +32,18 @@ export default function AdminDivisions() {
   const [expandedDivisions, setExpandedDivisions] = useState(new Set());
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user } = useAuth();
 
   const divisionRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasAccess = user?.role === 'admin' || divisionRoles.has('hr') || divisionRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
-  const { data: divisions = [] } = useQuery({
+  const { data: divisions = [], isLoading: divisionsLoading, error: divisionsError } = useQuery({
     queryKey: ['divisions'],
-    queryFn: async () => {
-      try {
-        const direct = await base44.entities.Division.list('division_name', 1000);
-        if (Array.isArray(direct) && direct.length) return direct;
-      } catch (directError) {
-        console.warn('Direct Division list failed, trying service role function:', directError?.message);
-      }
-      try {
-        const result = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
-        if (Array.isArray(payload.divisions) && payload.divisions.length) return payload.divisions;
-      } catch (error) {
-        console.warn('manageHRDivisions list failed:', error?.message);
-      }
-      return await listDirectoryDivisions('division_name', 1000);
-    },
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
     initialData: [],
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const createDivisionMutation = useMutation({
@@ -70,6 +54,7 @@ export default function AdminDivisions() {
       return payload.division;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
       setEditingDivision(null);
@@ -85,6 +70,7 @@ export default function AdminDivisions() {
       return payload.division;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
       setEditingDivision(null);
@@ -100,6 +86,7 @@ export default function AdminDivisions() {
       return payload;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
     },
   });
@@ -112,6 +99,7 @@ export default function AdminDivisions() {
       return payload.division;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
     },
   });
