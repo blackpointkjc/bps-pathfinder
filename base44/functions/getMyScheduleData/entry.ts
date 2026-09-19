@@ -1,5 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function readWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const rows = await loader();
+      return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
+    }
+  }
+  console.error(`getMyScheduleData could not load ${label}`, lastError);
+  if (optional) return [];
+  throw lastError || new Error(`Unable to load ${label}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -15,15 +32,43 @@ Deno.serve(async (req) => {
     }
     const officerEmail = String(officer.work_email || officer.pathfinder_email || officer.email || '').trim().toLowerCase();
 
-    const [schedules, weekStatuses, vehicleAssignments, dutySupervisorAssignments, locations, payrollPeriods, pto] = await Promise.all([
-      base44.asServiceRole.entities.Schedule.filter({ officer_email: officerEmail }, '-shift_date', 1000),
-      base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 500),
-      base44.asServiceRole.entities.VehicleAssignment.list('-assignment_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1000).catch(() => []),
-      base44.asServiceRole.entities.Location.list('site_name', 1000).catch(() => []),
-      base44.asServiceRole.entities.PayrollPeriod.list('-start_date', 200).catch(() => []),
-      base44.asServiceRole.entities.TimeOffRequest.filter({ created_by_id: officer.id, status: 'approved' }, '-created_date', 500).catch(() => []),
-    ]);
+    // Load the officer's core schedule first, then supporting datasets in a
+    // controlled sequence. The previous seven-read Promise.all burst could be
+    // throttled by Base44 and make the entire Schedule page fail even when only an
+    // optional vehicle/PTO lookup was temporarily unavailable.
+    const schedules = await readWithRetry(
+      'officer schedule',
+      () => base44.asServiceRole.entities.Schedule.filter({ officer_email: officerEmail }, '-shift_date', 1000),
+    );
+    const weekStatuses = await readWithRetry(
+      'schedule week status',
+      () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 500),
+    );
+    const vehicleAssignments = await readWithRetry(
+      'vehicle assignments',
+      () => base44.asServiceRole.entities.VehicleAssignment.list('-assignment_date', 1000),
+      true,
+    );
+    const dutySupervisorAssignments = await readWithRetry(
+      'duty supervisor assignments',
+      () => base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1000),
+      true,
+    );
+    const locations = await readWithRetry(
+      'locations',
+      () => base44.asServiceRole.entities.Location.list('site_name', 1000),
+      true,
+    );
+    const payrollPeriods = await readWithRetry(
+      'payroll periods',
+      () => base44.asServiceRole.entities.PayrollPeriod.list('-start_date', 200),
+      true,
+    );
+    const pto = await readWithRetry(
+      'approved PTO',
+      () => base44.asServiceRole.entities.TimeOffRequest.filter({ created_by_id: officer.id, status: 'approved' }, '-created_date', 500),
+      true,
+    );
 
     return Response.json({
       schedules: schedules || [],
