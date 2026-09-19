@@ -86,20 +86,57 @@ Deno.serve(async (req) => {
         if (!email || newestByEmail.has(email)) continue;
         newestByEmail.set(email, active);
       }
+      // Only fetch shift/site fallback data when at least one retained active
+      // session has no usable coordinate. This keeps the normal map request light
+      // while preventing a GPS-pending officer from disappearing completely.
+      const retainedRows = [...newestByEmail.values()].filter((active: any) => {
+        const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+        return active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff;
+      });
+      const needsFallback = retainedRows.some((active: any) =>
+        !hasValidCoordinates(active.latitude, active.longitude)
+        && !hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
+      );
+      const openByEmail = new Map<string, any>();
+      let fallbackLocations: any[] = [];
+      if (needsFallback) {
+        const openEntries = await readWithRetry(() => base44.asServiceRole.entities.TimeEntry.filter({
+          archived: { $ne: true },
+          $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
+        }, '-clock_in', 500), 'open time entries for location fallback');
+        for (const entry of openEntries || []) {
+          const email = lower(entry?.officer_email);
+          if (email && !openByEmail.has(email)) openByEmail.set(email, entry);
+        }
+        fallbackLocations = await readWithRetry(
+          () => base44.asServiceRole.entities.Location.list('site_name', 1000),
+          'configured site positions',
+        );
+      }
+      const siteFor = (value: unknown) => {
+        const raw = lower(value);
+        if (!raw) return null;
+        return (fallbackLocations || []).find((location: any) => {
+          const site = lower(location?.site_name);
+          return site && (raw === site || raw.startsWith(site + ':') || raw.startsWith(site + ' - '));
+        }) || null;
+      };
+
       const units = [...newestByEmail.values()]
         .filter((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          return adminMap || (active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionHealthyCutoff);
+          const retained = active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff;
+          return adminMap || retained;
         })
         .map((active: any) => {
           const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-          // "Signed in now" is presence, not a retained historical tracker row.
-          // Require a fresh heartbeat for live presence. Admin map mode still keeps
-          // older rows in the response so their coordinates can be shown as Last Known.
-          const sessionActive = active.session_active !== false
+          const retainedSession = active.session_active !== false
             && Number.isFinite(sessionTs)
-            && sessionTs >= sessionHealthyCutoff;
-          const connectionStale = sessionActive && sessionTs < sessionHealthyCutoff;
+            && sessionTs >= sessionRetentionCutoff;
+          // Current presence requires a fresh heartbeat. Retained sessions may
+          // remain map-visible as explicitly stale/last-known, never as "signed in now".
+          const sessionActive = retainedSession && sessionTs >= sessionHealthyCutoff;
+          const connectionStale = retainedSession && !sessionActive;
           const gpsTs = new Date(active.gps_updated_at || 0).getTime();
           const accuracy = Number(active.accuracy);
           const reliableAccuracy = Number(active.reliable_accuracy);
@@ -111,6 +148,36 @@ Deno.serve(async (req) => {
             && gpsTs >= gpsFreshCutoff
             && hasValidCoordinates(active.latitude, active.longitude)
             && usableGpsAccuracy(active.accuracy);
+          const email = lower(active.officer_email);
+          const openEntry = openByEmail.get(email) || null;
+          const clockInAccuracy = Number(openEntry?.clock_in_accuracy);
+          const hasClockInPosition = Boolean(openEntry)
+            && hasValidCoordinates(openEntry?.clock_in_latitude, openEntry?.clock_in_longitude)
+            && (!Number.isFinite(clockInAccuracy) || clockInAccuracy <= MAX_USABLE_GPS_ACCURACY_METERS);
+          const fallbackSite = siteFor(active.current_location || openEntry?.location);
+          const hasSitePosition = Boolean(fallbackSite)
+            && hasValidCoordinates(fallbackSite?.latitude, fallbackSite?.longitude);
+          const fallbackPosition = !hasReliablePosition && !hasGps
+            ? (hasClockInPosition
+              ? {
+                  latitude: Number(openEntry.clock_in_latitude),
+                  longitude: Number(openEntry.clock_in_longitude),
+                  accuracy: Number.isFinite(clockInAccuracy) ? clockInAccuracy : null,
+                  timestamp: openEntry.clock_in || active.clock_in_time || active.last_update,
+                  source: 'shift_clock_in',
+                  site_position: false,
+                }
+              : hasSitePosition
+                ? {
+                    latitude: Number(fallbackSite.latitude),
+                    longitude: Number(fallbackSite.longitude),
+                    accuracy: Number(fallbackSite.geofence_radius_meters || 0) || null,
+                    timestamp: active.last_update || active.updated_date || active.created_date,
+                    source: 'site_fallback',
+                    site_position: true,
+                  }
+                : null)
+            : null;
           return {
             id: active.id,
             officer_email: active.officer_email,
@@ -129,35 +196,53 @@ Deno.serve(async (req) => {
             accuracy: Number.isFinite(accuracy) ? accuracy : null,
             gps_updated_at: hasGps ? active.gps_updated_at : null,
             gps_source: hasGps ? (active.gps_source || 'browser_geolocation') : '',
-            last_gps_updated_at: hasReliablePosition ? active.reliable_gps_updated_at : (hasGps ? active.gps_updated_at : null),
-            last_known_latitude: hasReliablePosition ? Number(active.reliable_latitude) : (hasGps ? Number(active.latitude) : null),
-            last_known_longitude: hasReliablePosition ? Number(active.reliable_longitude) : (hasGps ? Number(active.longitude) : null),
-            last_known_accuracy: hasReliablePosition ? reliableAccuracy : (hasGps ? accuracy : null),
-            last_known_gps_source: hasReliablePosition ? (active.reliable_gps_source || active.gps_source || '') : (hasGps ? (active.gps_source || '') : ''),
-            // Show the officer's best available device position even when it isn't
-            // precise (Wi-Fi/indoor fixes). The session-key equality check formerly
-            // hid officers whose heartbeat desynced gps_session_key; any valid
-            // stored coordinate in the current record is a better marker than none.
+            last_gps_updated_at: hasReliablePosition
+              ? active.reliable_gps_updated_at
+              : (hasGps ? active.gps_updated_at : (fallbackPosition?.timestamp || null)),
+            last_known_latitude: hasReliablePosition
+              ? Number(active.reliable_latitude)
+              : (hasGps ? Number(active.latitude) : (fallbackPosition?.latitude ?? null)),
+            last_known_longitude: hasReliablePosition
+              ? Number(active.reliable_longitude)
+              : (hasGps ? Number(active.longitude) : (fallbackPosition?.longitude ?? null)),
+            last_known_accuracy: hasReliablePosition
+              ? reliableAccuracy
+              : (hasGps ? accuracy : (fallbackPosition?.accuracy ?? null)),
+            last_known_gps_source: hasReliablePosition
+              ? (active.reliable_gps_source || active.gps_source || '')
+              : (hasGps ? (active.gps_source || '') : (fallbackPosition?.source || '')),
+            position_fallback: Boolean(fallbackPosition),
+            site_position: Boolean(fallbackPosition?.site_position),
+            // Keep a stale stored device coordinate available even when it is not
+            // fresh enough to be called live GPS.
             coarse_latitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.latitude) : null,
             coarse_longitude: !hasGps && hasValidCoordinates(active.latitude, active.longitude) ? Number(active.longitude) : null,
             coarse_accuracy: !hasGps && Number.isFinite(accuracy) ? accuracy : null,
             coarse_gps_updated_at: !hasGps ? active.gps_updated_at || null : null,
             coarse_stale: !hasGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
-            gps_pending: sessionActive && !hasGps,
+            gps_pending: retainedSession && !hasGps,
             show_lights: active.show_lights,
             current_call_info: active.current_call_info || '',
-            current_location: sessionActive ? (active.current_location || 'Signed In') : (active.current_location || ''),
-            clock_in_time: active.clock_in_time || '',
+            current_location: sessionActive ? (active.current_location || openEntry?.location || 'Location pending') : (active.current_location || openEntry?.location || ''),
+            clock_in_time: openEntry?.clock_in || active.clock_in_time || '',
             last_update: active.last_update || active.updated_date || active.created_date || '',
             last_updated: active.last_update || active.updated_date || active.created_date || '',
             session_active: sessionActive,
+            map_visible: retainedSession,
             presence_online: sessionActive,
-            presence_state: sessionActive ? (connectionStale ? 'stale' : 'online') : 'offline',
+            presence_state: sessionActive ? 'online' : retainedSession ? 'stale' : 'offline',
             connection_stale: connectionStale,
             connection_age_seconds: Number.isFinite(sessionTs) ? Math.max(0, Math.floor((Date.now() - sessionTs) / 1000)) : null,
           };
         });
-      return Response.json({ success: true, units, signed_in_count: units.filter(unit => unit.session_active).length, location_only: true, includes_last_known: adminMap });
+      return Response.json({
+        success: true,
+        units,
+        signed_in_count: units.filter(unit => unit.session_active).length,
+        map_visible_count: units.filter(unit => unit.map_visible).length,
+        location_only: true,
+        includes_last_known: adminMap,
+      });
     }
 
     // Fetch independent roster inputs together; completed shifts are not needed.
