@@ -1252,7 +1252,7 @@ export default function Layout({ children, currentPageName }) {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
         const [alerts, receipts, calls, locations] = await Promise.all([
-          base44.entities.PropertyAlert.list('-created_date', 50).catch(() => []),
+          base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
           user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 100).catch(() => []) : Promise.resolve([]),
           base44.entities.DispatchCall.list('-created_date', 75).catch(() => []),
           base44.entities.Location.list('site_name', 100).catch(() => []),
