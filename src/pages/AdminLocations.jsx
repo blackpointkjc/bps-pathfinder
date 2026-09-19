@@ -109,6 +109,7 @@ export default function AdminLocations({ embedded = false }) {
     site_bill_rate_rush_armed: null,
     site_bill_rate_rush_unarmed: null,
     site_bill_rate_unarmed: null,
+    site_rate_history: [],
     max_hours_per_week: null,
     shift_start_time: "",
     shift_end_time: "",
@@ -126,6 +127,7 @@ export default function AdminLocations({ embedded = false }) {
     geofence_polygon: [],
     property_monitoring_enabled: false,
     property_monitoring_boundary_type: 'circle',
+    property_monitoring_radius_meters: 500,
     property_monitoring_description: '',
     auto_dispatch_enabled: false,
     auto_dispatch_mode: 'shadow',
@@ -142,6 +144,7 @@ export default function AdminLocations({ embedded = false }) {
     property_access_instructions: '',
   });
   const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMessage, setGeocodeMessage] = useState('');
   const [drawingBoundary, setDrawingBoundary] = useState(false);
   const [mapCenter, setMapCenter] = useState([37.5407, -77.4360]); // Richmond, VA default
   const queryClient = useQueryClient();
@@ -153,11 +156,23 @@ export default function AdminLocations({ embedded = false }) {
 
   const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support') || user?.additional_roles?.includes('support_staff') || user?.additional_roles?.includes('full_access');
 
-  const { data: divisions = [] } = useQuery({
-    queryKey: ['directoryDivisions', 'adminLocations'],
-    queryFn: () => listDirectoryDivisions('division_name', 1000),
+  const { data: divisions = [], error: divisionsError, refetch: refetchDivisions } = useQuery({
+    queryKey: ['adminLocationDivisions'],
+    queryFn: async () => {
+      try {
+        const response = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (Array.isArray(payload.divisions)) return payload.divisions;
+      } catch (error) {
+        console.warn('Division service unavailable, using directory fallback:', error?.message);
+      }
+      return await listDirectoryDivisions('division_name', 1000);
+    },
     enabled: hasAccess,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: locations = [], isLoading: locationsLoading, error: locationsError } = useQuery({
@@ -285,6 +300,7 @@ export default function AdminLocations({ embedded = false }) {
       site_bill_rate_rush_armed: null,
       site_bill_rate_rush_unarmed: null,
       site_bill_rate_unarmed: null,
+      site_rate_history: [],
       max_hours_per_week: null,
       shift_start_time: "",
       shift_end_time: "",
@@ -300,6 +316,7 @@ export default function AdminLocations({ embedded = false }) {
       geofence_polygon: [],
       property_monitoring_enabled: false,
       property_monitoring_boundary_type: 'circle',
+      property_monitoring_radius_meters: 500,
       property_monitoring_description: '',
       auto_dispatch_enabled: false,
       auto_dispatch_mode: 'shadow',
@@ -316,36 +333,35 @@ export default function AdminLocations({ embedded = false }) {
       property_access_instructions: '',
     });
     setDrawingBoundary(false);
+    setGeocodeMessage('');
     setMapCenter([37.5407, -77.4360]);
   };
 
   const geocodeAddress = async () => {
-    if (!formData.address) return;
+    const address = String(formData.address || '').trim();
+    if (!address) return;
 
     setGeocoding(true);
+    setGeocodeMessage('');
     try {
-      // Using Nominatim (OpenStreetMap) geocoding service - free and no API key needed
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`
-      );
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-
-        setFormData({
-          ...formData,
-          latitude: lat,
-          longitude: lng
-        });
-        setMapCenter([lat, lng]);
-      } else {
-        alert('Address not found. Please try a more specific address or enter coordinates manually.');
+      const response = await base44.functions.invoke('manageLocations', { action: 'geocode', address });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      const lat = Number(payload.latitude);
+      const lng = Number(payload.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error('The geocoder did not return valid coordinates.');
       }
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+      }));
+      setMapCenter([lat, lng]);
+      setGeocodeMessage(`Coordinates found via ${payload.provider || 'address lookup'}: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     } catch (error) {
       console.error('Geocoding error:', error);
-      alert('Failed to geocode address. Please enter coordinates manually.');
+      setGeocodeMessage(error?.message || 'Unable to find coordinates for this address.');
     } finally {
       setGeocoding(false);
     }
@@ -373,8 +389,9 @@ export default function AdminLocations({ embedded = false }) {
       site_bill_rate_holiday_unarmed: location.site_bill_rate_holiday_unarmed || null,
       site_bill_rate_rush_armed: location.site_bill_rate_rush_armed || null,
       site_bill_rate_rush_unarmed: location.site_bill_rate_rush_unarmed || null,
-      site_bill_rate_unarmed: location.site_bill_rate_unarmed || null,
-      max_hours_per_week: location.max_hours_per_week || null,
+      site_bill_rate_unarmed: location.site_bill_rate_unarmed ?? null,
+      site_rate_history: Array.isArray(location.site_rate_history) ? location.site_rate_history : [],
+      max_hours_per_week: location.max_hours_per_week ?? null,
       shift_start_time: location.shift_start_time || "",
       shift_end_time: location.shift_end_time || "",
       preferred_shift_length: location.preferred_shift_length || null,
@@ -389,8 +406,9 @@ export default function AdminLocations({ embedded = false }) {
       allow_clock_in_anywhere: location.allow_clock_in_anywhere || false,
       geofence_radius_meters: location.geofence_radius_meters || 100,
       geofence_polygon: location.geofence_polygon || location.property_monitoring_polygon || [],
-      property_monitoring_enabled: location.property_monitoring_enabled || false,
+      property_monitoring_enabled: location.property_monitoring_enabled === true,
       property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
+      property_monitoring_radius_meters: location.property_monitoring_radius_meters ?? location.geofence_radius_meters ?? 500,
       property_monitoring_description: location.property_monitoring_description || '',
       auto_dispatch_enabled: location.auto_dispatch_enabled === true,
       auto_dispatch_mode: location.auto_dispatch_mode || 'shadow',
@@ -409,6 +427,7 @@ export default function AdminLocations({ embedded = false }) {
     if (location.latitude && location.longitude) {
       setMapCenter([location.latitude, location.longitude]);
     }
+    setGeocodeMessage('');
     setShowDialog(true);
   };
 
@@ -476,10 +495,11 @@ export default function AdminLocations({ embedded = false }) {
       property_monitoring_boundary_type: sharedBoundary.length >= 3 ? 'polygon' : 'circle',
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
       longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-      assigned_client_email: formData.assigned_client_email === "" ? null : formData.assigned_client_email,
-      assigned_supervisors: formData.assigned_supervisors.length > 0 ? formData.assigned_supervisors : null,
-      max_hours_per_week: formData.max_hours_per_week ? parseFloat(formData.max_hours_per_week) : null,
-      site_bill_rate: formData.site_bill_rate ? parseFloat(formData.site_bill_rate) : null,
+      assigned_client_email: formData.assigned_client_email === "" ? "" : formData.assigned_client_email,
+      assigned_supervisors: Array.isArray(formData.assigned_supervisors) ? formData.assigned_supervisors : [],
+      property_monitoring_radius_meters: Number(formData.property_monitoring_radius_meters || formData.geofence_radius_meters || 500),
+      max_hours_per_week: formData.max_hours_per_week !== null && formData.max_hours_per_week !== '' ? parseFloat(formData.max_hours_per_week) : null,
+      site_bill_rate: formData.site_bill_rate !== null && formData.site_bill_rate !== '' ? parseFloat(formData.site_bill_rate) : null,
       site_rate_history: siteRateHistory
     };
 
