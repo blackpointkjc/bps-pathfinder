@@ -34,7 +34,7 @@ export default function AdminClientReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listDirectoryUsers(undefined, 1000, true),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('support'),
   });
 
