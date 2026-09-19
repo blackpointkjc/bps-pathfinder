@@ -9,7 +9,7 @@ function distanceMiles(lat1:number, lon1:number, lat2:number, lon2:number) {
 function isSupervisor(u:any) {
   const roles = new Set((u?.additional_roles || []).map(lower));
   const rank = lower(u?.rank);
-  return u?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
+  return u?.role === 'admin' || lower(u?.role) === 'supervisor' || u?.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank);
 }
 
 Deno.serve(async (req) => {
