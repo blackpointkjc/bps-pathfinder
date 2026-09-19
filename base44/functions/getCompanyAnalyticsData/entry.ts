@@ -4,6 +4,16 @@ function rolesOf(user: any) {
   return new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
 }
 
+const analyticsCache = new Map<string, { at: number; rows: any[] }>();
+const cacheRead = async (key: string, ttlMs: number, loader: () => Promise<any[]>) => {
+  const cached = analyticsCache.get(key);
+  if (cached && Date.now() - cached.at < ttlMs) return cached.rows;
+  const rows = await loader();
+  const normalized = Array.isArray(rows) ? rows : [];
+  analyticsCache.set(key, { at: Date.now(), rows: normalized });
+  return normalized;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
