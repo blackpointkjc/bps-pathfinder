@@ -2,6 +2,7 @@
  * ActiveCallMarkers — PURE RENDER ONLY.
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
  */
+import { Fragment } from 'react';
 import { CircleMarker, Marker, Pane, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -93,7 +94,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 const key = call.id || `call-${index}`;
                 const fillColor = priority.score >= 3 ? '#ef4444' : '#2563eb';
                 return (
-                    <span key={key}>
+                    <Fragment key={key}>
                         <CircleMarker
                             pane="active-cad-calls"
                             center={[call.latitude, call.longitude]}
@@ -113,7 +114,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                 <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
                             </Tooltip>
                         </Marker>
-                    </span>
+                    </Fragment>
                 );
             })}
         </Pane>
