@@ -24,6 +24,11 @@ const SOURCES = [
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
 const normalized = value => String(value || '').trim().toLowerCase();
+const SUPERVISORY_RANKS = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
+const hasSupervisorAccess = user => {
+  const roles = lowerRoles(user);
+  return user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || SUPERVISORY_RANKS.has(normalized(user?.rank));
+};
 
 export function CadAudioToggle() {
   const [audioEnabled, setAudioEnabled] = useState(() => isVoiceEnabled());
@@ -151,6 +156,12 @@ function bannerText(source, record) {
     return {
       sender: record.source_name || 'Dispatch',
       message: record.message || record.title || 'A call assignment changed.',
+    };
+  }
+  if (source.kind === 'supervisor_task') {
+    return {
+      sender: record.source_name || 'Supervisor Operations',
+      message: record.message || record.title || 'A supervisor task requires attention.',
     };
   }
   return {
@@ -740,7 +751,7 @@ export default function GlobalMessageBanner({ user }) {
     }
 
     for (const source of SOURCES) {
-      if (source.supervisorOnly && user.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) continue;
+      if (source.supervisorOnly && !hasSupervisorAccess(user)) continue;
       try {
         const unsubscribe = base44.entities[source.entity].subscribe(event => {
           if (source.mention && event?.type === 'update' && event.data?.read) {
@@ -757,7 +768,7 @@ export default function GlobalMessageBanner({ user }) {
     }
 
     const supervisorTaskSource = SOURCES.find(source => source.targeted === 'supervisor_task');
-    if (supervisorTaskSource && user.email && (user.role === 'admin' || roles.has('supervisor') || roles.has('full_access'))) {
+    if (supervisorTaskSource && user.email && hasSupervisorAccess(user)) {
       base44.entities.Notification.filter({
         recipient_email: normalized(user.email),
         type: 'supervisor_task',
