@@ -25,9 +25,9 @@ export default function AdminPropertyDutyRules() {
   const [editingRule,setEditingRule] = useState(null);
   const [ruleForm,setRuleForm] = useState(defaultRule);
   const { user } = useAuth();
-  const {data:rules=[]} = useQuery({queryKey:['jobDutyRules'],queryFn:()=>base44.entities.JobDutyRule.list('property_site',1000),initialData:[],staleTime:5*60*1000,refetchOnWindowFocus:false});
-  const {data:checkpoints=[]} = useQuery({queryKey:['qrCheckpoints'],queryFn:()=>base44.entities.QRCheckpoint.list('-created_date',1000),initialData:[],staleTime:5*60*1000,refetchOnWindowFocus:false});
-  const {data:locations=[]} = useQuery({queryKey:['activeLocations','dutyRules'],queryFn:async()=>{const rows=await listDirectoryLocations('site_name');return (rows||[]).filter(x=>x.active!==false);},initialData:[],staleTime:10*60*1000,refetchOnWindowFocus:false});
+  const {data:rules=[]} = useQuery({queryKey:['jobDutyRules'],queryFn:()=>base44.entities.JobDutyRule.list('property_site',1000),placeholderData:[],staleTime:5*60*1000,refetchOnWindowFocus:false});
+  const {data:checkpoints=[]} = useQuery({queryKey:['qrCheckpoints'],queryFn:()=>base44.entities.QRCheckpoint.list('-created_date',1000),placeholderData:[],staleTime:5*60*1000,refetchOnWindowFocus:false});
+  const {data:locations=[]} = useQuery({queryKey:['activeLocations','dutyRules'],queryFn:async()=>{const rows=await listDirectoryLocations('site_name');return (rows||[]).filter(x=>x.active!==false);},placeholderData:[],staleTime:10*60*1000,refetchOnWindowFocus:false});
 
   const saveRule = useMutation({mutationFn:async data=>{
     if(!String(data.property_site||'').trim()) throw new Error('Select a property before saving this rule.');
