@@ -259,14 +259,14 @@ export const AuthProvider = ({ children }) => {
       unsubscribe = base44.entities.UserSessionControl.subscribe(() => checkForcedSignOut());
     } catch (_) {}
     // Realtime is the primary path; this is only a dropped-subscription fallback.
-    const interval = window.setInterval(checkForcedSignOut, 2 * 60 * 1000);
-    window.addEventListener('focus', checkForcedSignOut);
+    // Do not re-query on every window focus/Alt-Tab because that created request
+    // bursts across several open Pathfinder windows.
+    const interval = window.setInterval(checkForcedSignOut, 5 * 60 * 1000);
 
     return () => {
       active = false;
       if (typeof unsubscribe === 'function') unsubscribe();
       window.clearInterval(interval);
-      window.removeEventListener('focus', checkForcedSignOut);
     };
   }, [isAuthenticated, user?.id, user?.email]);
 
