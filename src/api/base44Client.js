@@ -20,8 +20,8 @@ const MAX_CONCURRENT_READS = 2;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
-  if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 10 * 60_000;
-  if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 10 * 60_000;
+  if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
+  if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 30_000;
   if (meta?.kind === 'entity' && meta?.name === 'TimeEntry') return 20_000;
@@ -219,6 +219,7 @@ function invalidateReadCacheForWrite(meta = {}) {
       addFunction('getCompanyAnalyticsData');
       addFunction('getMyPerformanceData');
     }
+    if (meta.name === 'User') prefixes.add('auth:me:');
     if (['User','Location','Division','OfficerRoster'].includes(meta.name)) {
       addFunction('getAppDirectory');
       addFunction('getOfficerDirectory');
