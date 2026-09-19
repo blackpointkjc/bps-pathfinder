@@ -360,8 +360,9 @@ export function clearBase44RequestTrace() {
   try { window.dispatchEvent(new CustomEvent('bps-base44-request-trace-cleared')); } catch {}
 }
 
-export function getBase44RateLimitSummary() {
-  const rows = loadTrace();
+export function getBase44RateLimitSummary(windowMs = 15 * 60_000) {
+  const cutoff = windowMs ? Date.now() - windowMs : 0;
+  const rows = loadTrace().filter(row => !cutoff || new Date(row.at || 0).getTime() >= cutoff);
   const byLabel = new Map();
   for (const row of rows) {
     const key = row.label || 'unknown';
