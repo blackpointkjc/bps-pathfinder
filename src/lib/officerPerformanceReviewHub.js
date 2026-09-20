@@ -25,9 +25,20 @@ function persist(request, payload) {
 export function invalidateOfficerPerformanceReviewCache(request = null) {
   if (!request) {
     cache.clear();
+    if (typeof window !== 'undefined') {
+      try {
+        for (let i = window.localStorage.length - 1; i >= 0; i -= 1) {
+          const key = window.localStorage.key(i);
+          if (key?.startsWith(STORAGE_PREFIX)) window.localStorage.removeItem(key);
+        }
+      } catch {}
+    }
     return;
   }
   cache.delete(keyFor(request));
+  if (typeof window !== 'undefined') {
+    try { window.localStorage.removeItem(storageKeyFor(request)); } catch {}
+  }
 }
 
 export async function getOfficerPerformanceReviewSnapshot(request = {}, { force = false } = {}) {
