@@ -38,6 +38,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageHRTimeEntries' && meta?.action === 'list') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageOfficerPerformanceReviews' && meta?.action === 'list') return 10 * 60_000;
@@ -103,7 +104,7 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
-  if (meta?.kind === 'function' && ['getCallHistoryFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
+  if (meta?.kind === 'function' && ['getCallHistoryFeed','getDispatchCallLinkFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
   if (meta?.kind === 'function' && meta?.name === 'manageOfficerPerformanceReviews') return 70;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 74;
