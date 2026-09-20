@@ -88,12 +88,12 @@ Deno.serve(async (req) => {
         ...idFields.map(field => ({ [field]: officerId })),
       ],
     });
-    const activityCutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
     monthStart.setDate(monthStart.getDate() - 2);
     const monthDateCutoff = monthStart.toISOString().slice(0, 10);
+    const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
 
     // My Performance is a monthly officer view. Query officer-scoped collections
     // directly and only read recent company-wide operational records needed to
