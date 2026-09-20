@@ -124,13 +124,14 @@ Deno.serve(async (req) => {
     const incidentRequired = relevantDutyRules.some((rule:any) => rule.incident_report_required_for_property_calls === true);
     const trainingApplicable = (modulesAll || []).some((module:any) => module.active !== false);
 
-    const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll] = await Promise.all([
+    const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, partnerTimeEntriesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll] = await Promise.all([
       safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
       trainingApplicable ? safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500) : Promise.resolve([]),
       trainingApplicable ? safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500) : Promise.resolve([]),
       safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
-      qrRequired ? safeFilter('QRScanEvent', { $and: [officerEmailQuery(), { scanned_at: { $gte: activityCutoff } }] }, '-scanned_at', 500) : Promise.resolve([]),
+      qrRequired ? safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 1000) : Promise.resolve([]),
       qrRequired ? safeRead('QRCheckpoint', () => cachedRows('qrCheckpoints', 5 * 60 * 1000, () => base44.asServiceRole.entities.QRCheckpoint.list('property_site', 500))) : Promise.resolve([]),
+      qrRequired ? safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500) : Promise.resolve(timeEntriesAll),
       incidentRequired ? safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 500) : Promise.resolve([]),
       safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff } }] }, '-commendation_date', 250),
       safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff } }] }, '-complaint_date', 250),
@@ -174,7 +175,7 @@ Deno.serve(async (req) => {
       scanned_time: scan.scanned_time,
       scan_status: scan.scan_status,
     }));
-    const partnerTimeEntries = timeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
+    const partnerTimeEntries = partnerTimeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
     const myIncidents = incidentsAll.filter((r:any) => sameOfficer(r, ['officer_email', 'created_by'], aliases, officerId, ['officer_id', 'created_by_id']));
     const myCommendations = commendationsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myComplaints = complaintsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
