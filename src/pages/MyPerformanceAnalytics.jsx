@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
+import { useAuth } from '@/lib/AuthContext';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,15 +32,14 @@ export default function MyPerformanceAnalytics() {
   const currentMonthName = format(new Date(), 'MMMM yyyy');
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
-  });
+  const { user: authUser, isLoadingAuth } = useAuth();
 
   const previewRequest = getOfficerPreviewRequest();
+  const performanceIdentity = previewRequest?.officer_email || previewRequest?.email || authUser?.email || '';
+  const [manualRefreshMessage, setManualRefreshMessage] = React.useState('');
   const performanceSnapshot = readPerformanceSnapshot(previewRequest);
   const { data: performanceData = {}, isLoading: performanceLoading, isFetching: performanceFetching, error: performanceError, refetch: refetchPerformance } = useQuery({
-    queryKey: ['myPerformanceData', user?.email],
+    queryKey: ['myPerformanceData', performanceIdentity],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyPerformanceData', previewRequest);
       let payload = result?.data || result || {};
@@ -54,7 +53,7 @@ export default function MyPerformanceAnalytics() {
       savePerformanceSnapshot(previewRequest, payload);
       return payload;
     },
-    enabled: !!user?.email,
+    enabled: !!performanceIdentity,
     initialData: performanceSnapshot?.data,
     initialDataUpdatedAt: performanceSnapshot?.savedAt,
     staleTime: 2 * 60 * 1000,
