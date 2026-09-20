@@ -2,21 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
 
 const key = (value: unknown) => String(value || '').trim().toLowerCase();
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function readRowsWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
-  let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const rows = await loader();
-      return Array.isArray(rows) ? rows : [];
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2) await delay(450 * (attempt + 1));
-    }
+  try {
+    const rows = await loader();
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    console.error(`manageOfficerPerformanceReviews could not load ${label}`, error);
+    if (optional) return [];
+    throw error || new Error(`Unable to load ${label}`);
   }
-  console.error(`manageOfficerPerformanceReviews could not load ${label}`, lastError);
-  if (optional) return [];
-  throw lastError || new Error(`Unable to load ${label}`);
 }
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
 const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
