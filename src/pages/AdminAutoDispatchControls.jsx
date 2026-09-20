@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Radio, Eye, Hand, Power, Radar, Save, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 const modeLabel = location => location?.auto_dispatch_enabled === true ? (location.auto_dispatch_mode || 'shadow') : 'disabled';
 
@@ -19,8 +20,16 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
 
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
+  const { data: equipment = [] } = useQuery({
+    queryKey: ['autoDispatchEquipment'],
+    queryFn: () => base44.entities.Equipment.list('equipment_type', 500),
+    enabled: isAdmin,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const equipmentOptions = [...new Set((equipment || []).filter(item => String(item.status || '').toLowerCase() !== 'retired').map(item => String(item.equipment_type || '').trim().toLowerCase()).filter(Boolean))];
 
   const { data: locations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['autoDispatchManagedLocations'],
@@ -101,6 +110,13 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
       toast.error(message);
     },
   });
+
+  const toggleRequiredEquipment = equipmentType => {
+    if (!form) return;
+    const selected = String(form.auto_dispatch_required_equipment || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+    const next = selected.includes(equipmentType) ? selected.filter(value => value !== equipmentType) : [...selected, equipmentType];
+    setForm({ ...form, auto_dispatch_required_equipment: next.join(', ') });
+  };
 
   const editProperty = location => {
     setEditingId(location.id);
@@ -187,7 +203,7 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#09111d] p-3"><div><Label>Backup Required</Label><p className="text-[10px] text-slate-500">Require a backup recommendation/assignment.</p></div><Switch checked={form.auto_dispatch_backup_required} onCheckedChange={value=>setForm({...form,auto_dispatch_backup_required:value})}/></div>
                 <div><Label>Required Qualifications</Label><Input value={form.auto_dispatch_required_qualifications} onChange={e=>setForm({...form,auto_dispatch_required_qualifications:e.target.value})} placeholder="DCJS Armed, CPR"/></div>
-                <div><Label>Required Equipment</Label><Input value={form.auto_dispatch_required_equipment} onChange={e=>setForm({...form,auto_dispatch_required_equipment:e.target.value})} placeholder="Patrol vehicle, AED"/></div>
+                <div><Label>Required Equipment</Label><p className="mt-1 text-[10px] text-slate-500">Select equipment types from the live company inventory. Eligibility checks the equipment actually assigned to each officer.</p><div className="mt-2 flex flex-wrap gap-2">{equipmentOptions.map(type=>{const selected=String(form.auto_dispatch_required_equipment||'').split(',').map(value=>value.trim().toLowerCase()).includes(type);const count=equipment.filter(item=>String(item.equipment_type||'').toLowerCase()===type&&String(item.status||'').toLowerCase()!=='retired').length;return <button type="button" key={type} onClick={()=>toggleRequiredEquipment(type)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selected?'border-cyan-400 bg-cyan-950/60 text-cyan-100':'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'}`}>{type.replaceAll('_',' ').toUpperCase()} · {count}</button>})}{!equipmentOptions.length&&<span className="text-xs text-slate-500">No active equipment inventory is available.</span>}</div>{form.auto_dispatch_required_equipment&&<div className="mt-2 text-[10px] font-bold text-cyan-300">REQUIRED: {form.auto_dispatch_required_equipment}</div>}</div>
                 <div><Label>Allowed Ranks</Label><Input value={form.auto_dispatch_required_ranks} onChange={e=>setForm({...form,auto_dispatch_required_ranks:e.target.value})} placeholder="Officer, Corporal, Sergeant"/></div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div><Label>Ack Timer</Label><Input type="number" min="30" value={form.auto_dispatch_acknowledgement_seconds} onChange={e=>setForm({...form,auto_dispatch_acknowledgement_seconds:e.target.value})}/></div>
