@@ -1279,21 +1279,28 @@ Provide:
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Link to Call for Service (active + history)</Label>
-                    <CallLinkCombobox
-                      calls={activeDispatchCalls}
-                      value={formData.linked_call_id || ''}
-                      onSelect={selectDispatchCall}
-                      placeholder="Search active or cleared calls by CAD number…"
-                    />
+                    <Label>CAD Call Number</Label>
+                    <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select CAD call number" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-80">
+                        <SelectItem value="none">No linked CAD call</SelectItem>
+                        {activeDispatchCalls.map(call => {
+                          const cad = callDisplayNumber(call);
+                          const label = [cad, call.incident, call.location].filter(Boolean).join(' · ');
+                          return (
+                            <SelectItem key={String(call.id)} value={String(call.id)}>
+                              {label || String(call.id)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     {formData.linked_call_id && (
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="rounded-md border bg-slate-50 p-3 text-sm">
-                          <strong>CAD:</strong> {formData.linked_call_number} · <strong>Primary:</strong> {formData.primary_officer_name || 'Assigned unit pending'}
-                        </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => selectDispatchCall('none')} className="h-8 px-2 text-xs text-slate-500 hover:text-red-500">
-                          Clear
-                        </Button>
+                      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                        <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}
+                        {formData.primary_officer_name ? <> · <strong>Primary:</strong> {formData.primary_officer_name}</> : null}
                       </div>
                     )}
                   </div>
