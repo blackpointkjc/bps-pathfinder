@@ -331,18 +331,62 @@ Deno.serve(async (req) => {
       return lateMinutes > 0 ? [{ entry, scheduled, lateMinutes }] : [];
     }) : [];
 
-    const reportByShift = new Set((dailyReports || []).map((report: any) => String(report.shift_id || '')).filter(Boolean));
-    const legacyReportKeys = new Set((dailyReports || []).map((report: any) =>
-      `${normalized(report.officer_email || report.created_by)}|${String(report.report_date || '')}|${normalized(report.location)}`
-    ));
+    const dutyReports = [
+      ...(dailyReports || []).map((report:any) => ({ ...report, report_date: report.report_date, source_report_type:'daily_activity_report' })),
+      ...(shiftReports || []).map((report:any) => ({ ...report, report_date: report.report_date || report.shift_date, source_report_type:'shift_report' })),
+    ].filter((report:any) => !['draft','rejected'].includes(normalized(report.status)));
     const recentCutoff = Date.now() - 21 * 86400000;
-    const missingReports = queueRole !== 'hr' ? (entries || []).filter((entry: any) => {
-      if (!entry.clock_in || !entry.clock_out || entry.archived === true) return false;
-      if (new Date(entry.clock_out).getTime() < recentCutoff) return false;
-      if (reportByShift.has(String(entry.id))) return false;
-      const key = `${normalized(entry.officer_email)}|${easternParts(entry.clock_in).date}|${normalized(entry.location)}`;
-      return !legacyReportKeys.has(key);
-    }) : [];
+    const siteKey = (value:any) => normalized(String(value || '').split(':')[0].split(' - ')[0]);
+    const missingReports = queueRole !== 'hr' ? (() => {
+      const eligible = (entries || [])
+        .filter((entry:any) => entry.clock_in && entry.clock_out && entry.archived !== true && entry.performance_exception !== true)
+        .filter((entry:any) => new Date(entry.clock_out).getTime() >= recentCutoff)
+        .sort((a:any,b:any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+      const sessions:any[] = [];
+      const grouped = new Map<string, any[]>();
+      for (const entry of eligible) {
+        const email = normalized(entry.officer_email);
+        if (!email) continue;
+        if (!grouped.has(email)) grouped.set(email, []);
+        grouped.get(email)!.push(entry);
+      }
+      for (const [email, officerEntries] of grouped.entries()) {
+        let session:any = null;
+        for (const entry of officerEntries) {
+          const startMs = new Date(entry.clock_in).getTime();
+          const endMs = new Date(entry.clock_out).getTime();
+          if (!session || startMs > session.end_ms + 20*60*1000) {
+            session = { officer_email:email, start_ms:startMs, end_ms:endMs, entries:[], sites:new Set<string>(), dates:new Set<string>() };
+            sessions.push(session);
+          }
+          session.entries.push(entry);
+          session.end_ms = Math.max(session.end_ms, endMs);
+          session.sites.add(siteKey(entry.location));
+          session.dates.add(easternParts(entry.clock_in).date);
+        }
+      }
+      return sessions.flatMap((session:any) => {
+        const entryIds = new Set(session.entries.map((entry:any) => String(entry.id)));
+        const covered = dutyReports.some((report:any) => {
+          if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
+          const reportDate = String(report.report_date || report.shift_date || '');
+          return session.dates.has(reportDate) && session.sites.has(siteKey(report.location));
+        });
+        if (covered) return [];
+        const first = session.entries[0];
+        const last = session.entries[session.entries.length - 1];
+        return [{
+          ...first,
+          id:first.id,
+          officer_email:session.officer_email,
+          clock_in:first.clock_in,
+          clock_out:last.clock_out,
+          location:[...session.sites].filter(Boolean).join(' / ') || first.location,
+          break_periods:session.entries.flatMap((entry:any) => Array.isArray(entry.break_periods) ? entry.break_periods : []),
+          session_entry_ids:session.entries.map((entry:any) => entry.id),
+        }];
+      });
+    })() : [];
 
     const reportSources = [
       ['Shift Report', shiftReports, ['submitted']],
