@@ -158,6 +158,22 @@
       "type": "string",
       "description": "IP address of officer when submitting report"
     },
+    "reporting_officer_id": {
+      "type": "string",
+      "description": "User ID of the officer who authored/submitted the report"
+    },
+    "reporting_officer_email": {
+      "type": "string",
+      "description": "Cached reporting officer email for durable display and matching"
+    },
+    "reporting_officer_name": {
+      "type": "string",
+      "description": "Cached reporting officer display name"
+    },
+    "reporting_officer_signature": {
+      "type": "string",
+      "description": "Cached reporting officer rank/last-name/unit signature"
+    },
     "linked_call_id": {
       "type": "string",
       "description": "Linked Pathfinder DispatchCall record ID"
