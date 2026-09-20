@@ -34,7 +34,8 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getFleetScheduleData') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'managePlannedShifts' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 30_000;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getMyPerformanceData'].includes(meta?.name)) return 2 * 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 30_000;
+  if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
