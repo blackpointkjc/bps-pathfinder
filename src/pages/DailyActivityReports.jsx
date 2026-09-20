@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import {
@@ -60,6 +61,7 @@ export default function DailyActivityReports() {
     equipment_check: "",
     incidents: "",
     photo_urls: [],
+    attached_officer_ids: [],
   });
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
