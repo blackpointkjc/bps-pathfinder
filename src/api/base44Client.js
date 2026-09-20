@@ -21,6 +21,7 @@ const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
+  if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 30_000;
