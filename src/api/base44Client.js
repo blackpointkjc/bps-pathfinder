@@ -40,6 +40,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageHRTimeEntries' && meta?.action === 'list') return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'manageOfficerPerformanceReviews' && meta?.action === 'list') return 10 * 60_000;
   return READ_CACHE_MS;
 };
 const RATE_LIMIT_COOLDOWN_MS = 45_000;
@@ -104,6 +105,7 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCallHistoryFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
+  if (meta?.kind === 'function' && meta?.name === 'manageOfficerPerformanceReviews') return 70;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 74;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
