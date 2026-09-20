@@ -185,7 +185,7 @@ export default function AdminUsers({ embedded = false }) {
       if (result?.email_sent === false) {
         alert(`✅ Pending user created, but the Black Point welcome email could not be delivered. ${result?.email_error || 'Verify the email address and resend the invitation.'}`);
       } else {
-        alert('✅ Pending user created. Assign the person as Officer, Student, or Client from this page.');
+        alert('✅ Pending user created. Assign the person as Support Staff, Officer, Student, or Client from this page.');
       }
     },
     onError: (error) => {
@@ -629,17 +629,20 @@ export default function AdminUsers({ embedded = false }) {
   console.log('Error:', error);
   console.log('Users data:', users);
 
-  // Pending Users = NOT admin AND NOT has officer additional role AND NOT client AND NOT student
-  const isPendingUser = (u) =>
-    u.role !== 'admin' &&
-    !u.additional_roles?.includes('officer') &&
-    !u.additional_roles?.includes('client') &&
-    !u.additional_roles?.includes('student');
+  // Pending users have no assigned portal category. Support is an independent
+  // employee login and must never require an Officer/reporting-officer role.
+  const isPendingUser = (u) => {
+    const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
+    return u.role !== 'admin' &&
+      !['officer','client','student','support','support_staff','hr','accounting','trainer','dispatch','cad_access'].some(role => roles.has(role)) &&
+      !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
+  };
 
   const activeUsers = users?.filter(u => !u.termination_date && isPendingUser(u)) || [];
 
   const assignUserCategory = async (userData, category) => {
     const categoryConfig = {
+      support: { roles: ['support_staff'], rank: 'Support Staff', page: 'AdminSupportStaffClock' },
       student: { roles: ['student'], rank: 'Student', page: 'ManageStudents' },
       officer: { roles: ['officer', 'cad_access'], rank: 'Officer', page: 'ManageCompanyEmployees' },
       client: { roles: ['client'], rank: 'Client', page: 'ManageClients' },
@@ -707,7 +710,7 @@ export default function AdminUsers({ embedded = false }) {
             <Users className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-black text-white">Pending Users</h1>
-              <p className="text-slate-400">Create one user account, then assign the person as Officer, Student, or Client</p>
+              <p className="text-slate-400">Create one user account, then assign Support Staff, Officer, Student, or Client access</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -844,7 +847,19 @@ export default function AdminUsers({ embedded = false }) {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
+                        onClick={async () => {
+                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as Support Staff? This creates a Support login without an Officer/reporting role.`)) {
+                            await assignUserCategory(userData, 'support');
+                          }
+                        }}
+                      >
+                        Assign Support
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
