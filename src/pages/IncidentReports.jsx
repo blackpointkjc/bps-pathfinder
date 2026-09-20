@@ -138,7 +138,7 @@ export default function IncidentReports() {
 
   // Dispatchers document calls from the dispatch desk and are not required to be
   // clocked into a property before they can create or revise an Incident Report.
-  const canSubmit = isAdmin || isDispatcher || !!activeEntry;
+  const canSubmit = isAdmin || isDispatcher || !!activeEntry || formData.report_type === 'supplement';
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
 
   const { data: allReports = [], isLoading: reportsLoading, error: reportsError, refetch: refetchReports } = useQuery({
@@ -763,6 +763,8 @@ Provide:
             { label: `Time Occurred (${zoneLabel})`, value: formatReportClock(report.incident_time) },
             { label: `Time Discovered (${zoneLabel})`, value: formatReportClock(report.discovered_time) },
             { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
+            { label: 'Report Type', value: report.report_type === 'supplement' ? `Supplement ${report.supplement_number || ''} to ${report.parent_report_number || 'original report'}` : 'Original report', wide: true },
+            { label: 'Attached Officers', value: (report.attached_officer_names || []).join(', '), wide: true },
             { label: 'Linked BOLO', value: report.linked_bolo_number, wide: true },
           ],
         },
@@ -1180,7 +1182,7 @@ Provide:
           <Alert className="border-amber-200 bg-amber-50">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
-              You must be clocked in to submit an incident report. Please clock in at your assigned location first.
+              You must be clocked in to start a new incident report. Supplements to reports you authored or are attached to can still be added later from Incident History.
             </AlertDescription>
           </Alert>
         )}
@@ -1697,6 +1699,8 @@ Provide:
                         </p>
                         <p className="text-sm text-slate-600">Location: {report.location}</p>
                         <p className="text-sm text-slate-600">Reporting Officer: {getOfficerSignature(report.created_by_id)}</p>
+                        {(report.attached_officer_names || []).length > 0 && <p className="text-sm text-slate-600">Attached Officers: {report.attached_officer_names.join(', ')}</p>}
+                        {report.report_type === 'supplement' && <p className="text-sm font-semibold text-indigo-700">Supplement to {report.parent_report_number || 'original report'}</p>}
                       </div>
                     </div>
                     <p className="text-sm text-slate-700 mb-3">{report.description}</p>
