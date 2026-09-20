@@ -91,7 +91,6 @@ Deno.serve(async (req) => {
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
-    monthStart.setDate(monthStart.getDate() - 2);
     const monthDateCutoff = monthStart.toISOString().slice(0, 10);
     const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
 
