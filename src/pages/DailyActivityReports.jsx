@@ -486,6 +486,7 @@ export default function DailyActivityReports() {
           title: 'Assignment and Shift Statistics',
           fields: [
             { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Attached Officers', value: (report.attached_officer_names || []).join(', '), wide: true },
             { label: 'Weather', value: report.weather_conditions },
             { label: 'Patrols', value: report.patrol_count },
             { label: 'Visitors Logged', value: report.visitors_logged },
@@ -907,6 +908,14 @@ export default function DailyActivityReports() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <AttachedOfficerSelector
+                  users={allUsers || []}
+                  selectedIds={formData.attached_officer_ids || []}
+                  currentUserId={user?.id}
+                  onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
+                  label="Attach Other Officers Covered by This DAR"
+                />
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
