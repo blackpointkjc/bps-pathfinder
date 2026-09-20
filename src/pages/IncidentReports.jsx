@@ -1717,11 +1717,11 @@ Provide:
             </div>
           </CardHeader>
           <CardContent>
-            {!currentSiteName && !isAdmin && submittedReports.length === 0 ? (
+            {submittedReports.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 mx-auto mb-4 text-slate-400" />
                 <p className="text-slate-600 text-lg">No submitted incident reports are available yet</p>
-                <p className="text-slate-500 text-sm mt-2">Reports you author will remain here after you clock out or change sites.</p>
+                <p className="text-slate-500 text-sm mt-2">Reports you author or are attached to remain here after you clock out. Administrators can select an officer above to review that officer's incident history.</p>
               </div>
             ) : (
               <div className="space-y-4">
