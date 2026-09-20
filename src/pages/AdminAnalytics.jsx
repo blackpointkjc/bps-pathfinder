@@ -187,11 +187,13 @@ export default function AdminAnalytics() {
   // included only when their current generation is present.
   const performanceCriticalErrors = useMemo(() => ({
     ...(coreAnalytics.data?.service_errors || {}),
+    ...(trainingAnalytics.data?.service_errors || {}),
     ...(dutyAnalytics.data?.service_errors || {}),
     ...(callsAnalytics.data?.service_errors || {}),
-  }), [coreAnalytics.data, dutyAnalytics.data, callsAnalytics.data]);
+    ...(qualityAnalytics.data?.service_errors || {}),
+  }), [coreAnalytics.data, trainingAnalytics.data, dutyAnalytics.data, callsAnalytics.data, qualityAnalytics.data]);
   const performanceGenerationReady = Boolean(
-    coreAnalytics.data && dutyAnalytics.data && callsAnalytics.data
+    coreAnalytics.data && trainingAnalytics.data && dutyAnalytics.data && callsAnalytics.data && qualityAnalytics.data
     && Object.keys(performanceCriticalErrors).length === 0
   );
   const performanceAnalyticsData = useMemo(() => mergeAnalyticsSegments({}, {
@@ -511,7 +513,7 @@ export default function AdminAnalytics() {
       dailyReports: performanceDailyReports,
       incidentReports: performanceIncidentReports,
       dispatchCalls: performanceDispatchCalls,
-      callOuts: performanceCallOuts,
+      callOuts: officerCallOuts,
       qrScans: performanceQrScans,
       allTimeEntries: performanceTimeEntries,
       qrCheckpoints: performanceQrCheckpoints,
