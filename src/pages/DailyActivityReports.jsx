@@ -104,7 +104,11 @@ export default function DailyActivityReports() {
     ? []
     : isAdmin
       ? allReports
-      : allReports.filter(report => recordBelongsToDirectoryUser(user, report));
+      : allReports.filter(report =>
+          recordBelongsToDirectoryUser(user, report)
+          || (report.attached_officer_ids || []).map(String).includes(String(user.id || ''))
+          || (report.attached_officer_emails || []).some(email => String(email || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase())
+        );
 
   const { data: reportTodos } = useQuery({
     queryKey: ['myDARTodos'],
@@ -273,9 +277,18 @@ export default function DailyActivityReports() {
         locationToSubmit = "Unknown Location";
       }
 
-      // Strip client-only fields before saving, convert numeric strings to numbers
+      // Strip client-only fields before saving, convert numeric strings to numbers.
+      // Attached officers are persisted by stable ID plus cached email/name so
+      // scoring can still credit the team if a directory email changes later.
       const { hourly_entries_array: _hourlyEntriesArray, patrol_count, visitors_logged, doors_checked, starting_mileage, ending_mileage, ...restData } = data;
-      const saveData = { ...restData };
+      const attachedOfficerIds = [...new Set((data.attached_officer_ids || []).map(String).filter(Boolean))];
+      const attachedOfficers = (allUsers || []).filter(officer => attachedOfficerIds.includes(String(officer.id)));
+      const saveData = {
+        ...restData,
+        attached_officer_ids: attachedOfficerIds,
+        attached_officer_emails: attachedOfficers.map(officer => String(officer.email || '').trim().toLowerCase()).filter(Boolean),
+        attached_officer_names: attachedOfficers.map(officer => [officer.rank, officer.first_name, officer.last_name].filter(Boolean).join(' ').trim() || officer.email).filter(Boolean),
+      };
       if (patrol_count !== '' && patrol_count != null) saveData.patrol_count = Number(patrol_count);
       if (visitors_logged !== '' && visitors_logged != null) saveData.visitors_logged = Number(visitors_logged);
       if (doors_checked !== '' && doors_checked != null) saveData.doors_checked = Number(doors_checked);
@@ -361,6 +374,7 @@ export default function DailyActivityReports() {
         equipment_check: "",
         incidents: "",
         photo_urls: [],
+        attached_officer_ids: [],
       });
     },
     onError: (error) => {
@@ -438,6 +452,7 @@ export default function DailyActivityReports() {
       equipment_check: report.equipment_check || "",
       incidents: report.incidents || "",
       photo_urls: Array.isArray(report.photo_urls) ? report.photo_urls : (report.photo_url ? [report.photo_url] : []),
+      attached_officer_ids: report.attached_officer_ids || [],
     });
     setShowForm(true);
   };
@@ -804,6 +819,7 @@ export default function DailyActivityReports() {
                   equipment_check: "",
                   incidents: "",
                   photo_urls: [],
+                  attached_officer_ids: [],
                 });
                 setSignatureUrl("");
                 setShowSignaturePad(false);
