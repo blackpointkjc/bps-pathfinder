@@ -87,13 +87,10 @@ export default function AdminPerformanceReviews() {
 
   const { data: allReviews = [] } = useQuery({
     queryKey: ['allPerformanceReviews'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('managePerformanceReviews', { action: 'list' });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.reviews || [];
-    },
+    queryFn: () => base44.entities.PerformanceReview.list('-review_date', 1000),
     enabled: hasHRAccess,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const selectedOfficerRecord = useMemo(
