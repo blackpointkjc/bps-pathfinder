@@ -67,6 +67,27 @@ function mergeAnalyticsSegments(previous = {}, payloads = {}) {
   return merged;
 }
 
+function useAnalyticsSegment(name, enabled) {
+  const config = ANALYTICS_SEGMENTS[name];
+  return useQuery({
+    queryKey: ['companyAnalyticsSegment', name],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    enabled,
+    staleTime: 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchInterval: config?.interval || 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
+    retry: false,
+    placeholderData: previousData => previousData,
+  });
+}
+
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 const isPunctualityLeaderboardOfficer = (officer) => {
   const roles = new Set((officer?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
