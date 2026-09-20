@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
+import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { listAllDispatchCallsForLinking, createReportCallLink } from '@/lib/reportCallLinking';
@@ -79,6 +80,11 @@ export default function IncidentReports() {
     primary_officer_id: "",
     primary_officer_name: "",
     backup_officer_ids: [],
+    attached_officer_ids: [],
+    report_type: 'original',
+    parent_report_id: '',
+    parent_report_number: '',
+    supplement_number: null,
   });
 
   // Check if we're creating a report from a call for service
@@ -261,6 +267,7 @@ export default function IncidentReports() {
       primary_officer_id: primaryId,
       primary_officer_name: primary ? `${primary.rank || ''} ${primary.first_name || ''} ${primary.last_name || ''}`.replace(/\s+/g, ' ').trim() : '',
       backup_officer_ids: call.assigned_units?.slice(1) || [],
+      attached_officer_ids: [...new Set([...(prev.attached_officer_ids || []), ...(call.assigned_units?.slice(1) || [])])],
       location: call.location || prev.location,
       description: buildCallDescription(prev.description || call.description || '', call.call_id || ''),
     }));
