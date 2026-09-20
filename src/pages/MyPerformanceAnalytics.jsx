@@ -39,7 +39,7 @@ export default function MyPerformanceAnalytics() {
   const [manualRefreshMessage, setManualRefreshMessage] = React.useState('');
   const performanceSnapshot = readPerformanceSnapshot(previewRequest);
   const { data: performanceData = {}, isLoading: performanceLoading, isFetching: performanceFetching, error: performanceError, refetch: refetchPerformance } = useQuery({
-    queryKey: ['myPerformanceData', performanceIdentity],
+    queryKey: ['myPerformanceData', performanceIdentity, currentMonthStart],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyPerformanceData', previewRequest);
       let payload = result?.data || result || {};
