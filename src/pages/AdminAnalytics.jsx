@@ -159,11 +159,13 @@ export default function AdminAnalytics() {
   const companySnapshot = readCompanyAnalyticsSnapshot();
   const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
   const coreAnalytics = useAnalyticsSegment('core', !!user);
-  const secondaryEnabled = Boolean(user && (coreAnalytics.data || hasVerifiedCore));
-  const trainingAnalytics = useAnalyticsSegment('training', secondaryEnabled);
-  const dutyAnalytics = useAnalyticsSegment('duty', secondaryEnabled);
-  const callsAnalytics = useAnalyticsSegment('calls', secondaryEnabled);
-  const qualityAnalytics = useAnalyticsSegment('quality', secondaryEnabled);
+  // Load the current-month performance path first and serially. Enabling all
+  // four secondary functions together caused a read burst and left this page on
+  // its old persisted score when one of them was throttled.
+  const dutyAnalytics = useAnalyticsSegment('duty', Boolean(user && coreAnalytics.data));
+  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && dutyAnalytics.data));
+  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && callsAnalytics.data));
+  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && trainingAnalytics.data));
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
