@@ -96,7 +96,7 @@ export default function MyPerformanceAnalytics() {
       'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport',
       'CallOut', 'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion',
       'TrainingModule', 'ShiftBid', 'PerformanceReview', 'ClientFeedback',
-      'Commendation', 'Complaint', 'JobDutyRule',
+      'Commendation', 'Complaint', 'JobDutyRule', 'CallAssignment', 'DispatchCall', 'PropertyAlert',
     ];
     for (const entity of scoringEntities) {
       try {
