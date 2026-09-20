@@ -216,7 +216,9 @@ export async function runClientFunctionalAudit({ includeFunctionalProbes = true 
       run: async () => {
         const health = getBase44RequestHealth();
         if (health.queuedReads > 2 || health.activeReads >= 2 || health.rateLimitedUntil) return;
-        const payload = await getOfficerLocationSnapshot({ locationOnly: true });
+        // Reuse the canonical snapshot already loaded by the dashboard instead of
+        // creating a second getOnDutyUnits request shape just for diagnostics.
+        const payload = await getOfficerLocationSnapshot();
         if (!Array.isArray(payload.units)) throw new Error('The live-unit service returned an invalid response.');
       },
     },
