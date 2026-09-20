@@ -102,7 +102,8 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCallHistoryFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','runSystemAudit'].includes(meta?.name)) return 20;
+  if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 74;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
 const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
