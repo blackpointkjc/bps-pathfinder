@@ -7,7 +7,7 @@ import { base44 } from '@/api/base44Client';
 // Realtime ActiveOfficer subscriptions clear this cache immediately on an actual
 // location/status change. A 15-second read cache therefore reduces duplicate map,
 // health-check, and CAD fetches without delaying genuine live updates.
-const SNAPSHOT_TTL_MS = 15000;
+const SNAPSHOT_TTL_MS = 60_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const GPS_PUBLISH_MIN_MS = 2 * 60 * 1000;
 const HEARTBEAT_PUBLISH_MIN_MS = 8 * 60 * 1000;
