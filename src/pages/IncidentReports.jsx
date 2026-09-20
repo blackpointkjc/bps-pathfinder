@@ -1684,7 +1684,7 @@ Provide:
               </div>
             ) : (
               <div className="space-y-4">
-                {submittedReports.map((report) => (
+                {originalSubmittedReports.map((report) => (
                   <div key={report.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-red-500">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1">
@@ -1740,7 +1740,7 @@ Provide:
                           Time of Incident: {report.incident_time || 'N/A'}
                         </p>
                         <p className="text-sm text-slate-600">Location: {report.location}</p>
-                        <p className="text-sm text-slate-600">Reporting Officer: {getOfficerSignature(report.created_by_id)}</p>
+                        <p className="text-sm text-slate-600">Reporting Officer: {getOfficerSignature(report.created_by_id, report)}</p>
                         {(report.attached_officer_names || []).length > 0 && <p className="text-sm text-slate-600">Attached Officers: {report.attached_officer_names.join(', ')}</p>}
                         {report.report_type === 'supplement' && <p className="text-sm font-semibold text-indigo-700">Supplement to {report.parent_report_number || 'original report'}</p>}
                       </div>
@@ -1802,7 +1802,7 @@ Provide:
                     <div className="mt-4 pt-4 border-t-2 border-slate-300">
                       <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                       <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                        {getOfficerSignature(report.created_by_id)}
+                        {getOfficerSignature(report.created_by_id, report)}
                       </p>
                       {report.officer_ip_address && (
                         <p className="text-xs text-slate-400 mt-1">
@@ -1815,7 +1815,7 @@ Provide:
                       <span>•</span>
                       <span>Richmond, VA</span>
                       <span>•</span>
-                      <span>Reported by ${getOfficerEmail(report.created_by_id) || 'N/A'}</span>
+                      <span>Reported by {getOfficerEmail(report.created_by_id, report) || 'N/A'}</span>
                     </div>
                   </div>
                 ))}
