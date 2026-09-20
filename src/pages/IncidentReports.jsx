@@ -1230,7 +1230,7 @@ Provide:
           </Alert>
         )}
 
-        {showForm && canSubmit && (
+        {showForm && (canSubmit || formData.report_type === 'supplement') && (
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
               <CardTitle className="flex items-center gap-2">
