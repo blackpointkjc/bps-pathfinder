@@ -104,7 +104,7 @@ export function DashboardDataProvider({ children }) {
             // busy/rate-limited session, launching both together delayed the queue.
             let callsData = [];
             try {
-                callsData = await loadActiveDispatchCallRows(100);
+                callsData = await loadActiveDispatchCallRows(500);
                 if (cadCallFeedIsStale(callsData)) {
                     // Recovery can involve a full upstream ingestion and must never
                     // block the current queue from painting. Keep the rows we already
