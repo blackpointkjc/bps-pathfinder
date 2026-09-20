@@ -419,7 +419,7 @@ export default function MyPerformanceAnalytics() {
       call_number: performanceCadNumber(item) === 'Unavailable' ? '' : performanceCadNumber(item),
       location: String(item.call_location || item.property || ''),
       incident_type: 'other',
-      description: `${item.call_type || 'Property call'}${item.call_number ? ` · CAD ${item.call_number}` : ''}`,
+      description: `${item.call_type || 'Property call'}${performanceCadNumber(item) !== 'Unavailable' ? ` · CAD ${performanceCadNumber(item)}` : ''}`,
     });
     return `${createPageUrl('IncidentReports')}?${params.toString()}`;
   };
