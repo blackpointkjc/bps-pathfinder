@@ -181,10 +181,9 @@ export default function AdminAnalytics() {
     [currentSegmentPayloads]
   );
   // Officer performance must NEVER be calculated from the persisted company
-  // snapshot. It is a current-month compliance view, so wait for the current
-  // core + duty + calls segments that supply attendance, schedules, DAR/QR,
-  // call-outs and CAD/report obligations. Optional training/quality segments are
-  // included only when their current generation is present.
+  // snapshot. It is a current-month compliance view, so wait for all five current
+  // segments before calculating a percentage. This keeps Company Analytics on the
+  // same complete monthly generation used by Officer My Performance.
   const performanceCriticalErrors = useMemo(() => ({
     ...(coreAnalytics.data?.service_errors || {}),
     ...(trainingAnalytics.data?.service_errors || {}),
