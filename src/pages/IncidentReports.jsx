@@ -46,6 +46,7 @@ export default function IncidentReports() {
   const [showForm, setShowForm] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
   const [editingTodoId, setEditingTodoId] = useState(null);
+  const [historyOfficerEmail, setHistoryOfficerEmail] = useState('self');
   const [formData, setFormData] = useState({
     incident_date: format(new Date(), 'yyyy-MM-dd'),
     incident_time: format(new Date(), 'HH:mm'),
@@ -113,6 +114,14 @@ export default function IncidentReports() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['allUsers'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
+    initialData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const isAdmin = user?.role === 'admin';
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
   const isDispatcher = String(user?.role || '').trim().toLowerCase() === 'dispatch'
@@ -139,6 +148,21 @@ export default function IncidentReports() {
   // clocked into a property before they can create or revise an Incident Report.
   const canSubmit = isAdmin || isDispatcher || !!activeEntry || formData.report_type === 'supplement';
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
+  const historyOfficer = React.useMemo(() => {
+    if (!user) return null;
+    if (!isAdmin || historyOfficerEmail === 'self') return user;
+    return allUsers.find(person => String(person.email || '').toLowerCase() === String(historyOfficerEmail || '').toLowerCase()) || user;
+  }, [allUsers, historyOfficerEmail, isAdmin, user]);
+  const reportBelongsToOfficer = React.useCallback((person, report) => Boolean(person && report && (
+    String(report.reporting_officer_id || report.created_by_id || '') === String(person.id || '')
+    || String(report.primary_officer_id || '') === String(person.id || '')
+    || (report.backup_officer_ids || []).map(String).includes(String(person.id || ''))
+    || (report.attached_officer_ids || []).map(String).includes(String(person.id || ''))
+    || (report.attached_officer_emails || []).some(email => directoryUserMatches(person, email))
+    || directoryUserMatches(person, report.reporting_officer_email)
+    || directoryUserMatches(person, report.officer_email)
+    || directoryUserMatches(person, report.created_by)
+  )), []);
 
   const { data: allReports = [], isLoading: reportsLoading, error: reportsError, refetch: refetchReports } = useQuery({
     queryKey: ['allIncidentReports'],
@@ -171,33 +195,14 @@ export default function IncidentReports() {
     };
   }, [user?.id, refetchReports]);
 
-  // Safely filter reports based on user's role and active entry for display
+  // Default history is private to the signed-in officer. Admins may explicitly
+  // select another officer in Incident History; being assigned to the same site
+  // never exposes somebody else's report in the normal officer view.
   const reportsPotentiallyVisible = React.useMemo(() => {
-    if (!allReports || !user) return [];
-
-    if (isAdmin) {
-      // Admins see all reports (drafts and submitted)
-      return allReports;
-    } else {
-      // Officers always retain access to every report they authored, including
-      // submitted/approved reports after they clock out or move to another site.
-      // Current-site reports remain visible for operational continuity.
-      const officerReports = allReports.filter(report => {
-        const isMyReport = String(report.created_by_id || '') === String(user.id)
-          || String(report.primary_officer_id || '') === String(user.id)
-          || (report.backup_officer_ids || []).map(String).includes(String(user.id))
-          || (report.attached_officer_ids || []).map(String).includes(String(user.id))
-          || (report.attached_officer_emails || []).some(email => directoryUserMatches(user, email))
-          || directoryUserMatches(user, report.officer_email)
-          || directoryUserMatches(user, report.created_by);
-        const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
-        const activeSite = String(currentSiteName || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
-        const isSubmittedAtMySite = report.status !== 'draft' && activeSite && reportSite === activeSite;
-        return isMyReport || isSubmittedAtMySite;
-      });
-      return officerReports;
-    }
-  }, [allReports, currentSiteName, isAdmin, user]);
+    if (!allReports || !user || !historyOfficer) return [];
+    const target = isAdmin ? historyOfficer : user;
+    return allReports.filter(report => reportBelongsToOfficer(target, report));
+  }, [allReports, historyOfficer, isAdmin, reportBelongsToOfficer, user]);
 
   const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && (
     String(r.created_by_id || '') === String(user?.id || '') || directoryUserMatches(user, r.created_by || r.officer_email)
@@ -235,14 +240,6 @@ export default function IncidentReports() {
       return allLocations.filter(loc => loc.active !== false);
     },
     initialData: [],
-  });
-
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
-    initialData: [],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 
   const { data: activeBolos = [] } = useQuery({
