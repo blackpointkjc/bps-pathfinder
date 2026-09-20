@@ -99,7 +99,7 @@ export default function Dashboard({ embedded = false }) {
       return getOfficerPerformanceReviewSnapshot(getOfficerPreviewRequest());
     },
     enabled: !!user?.id,
-    staleTime: 90_000,
+    staleTime: 10 * 60_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
