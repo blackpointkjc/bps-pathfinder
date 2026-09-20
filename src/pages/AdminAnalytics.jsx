@@ -378,10 +378,8 @@ export default function AdminAnalytics() {
   const hoursBreakdown = useMemo(() => {
     if (!timeEntries || !filteredUsers) return [];
 
-    // Use current month instead of payroll period
-    const now = new Date();
-    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-    const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+    const monthStart = currentMonthStart;
+    const monthEnd = currentMonthEnd;
 
     const officerHours = {};
 
@@ -442,7 +440,7 @@ export default function AdminAnalytics() {
       }))
       .filter(o => o.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [timeEntries, filteredUsers]);
+  }, [timeEntries, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const trainingByOfficer = useMemo(() => {
     if (!trainingCompletions || !allTraining || !filteredUsers) return [];
@@ -563,9 +561,8 @@ export default function AdminAnalytics() {
   const commendationStats = useMemo(() => {
     if (!allCommendations || !filteredUsers) return { byOfficer: [], total: 0 };
 
-    const now = new Date();
-    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-    const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+    const monthStart = currentMonthStart;
+    const monthEnd = currentMonthEnd;
 
     const officerCommendations = {};
 
@@ -593,14 +590,13 @@ export default function AdminAnalytics() {
       .sort((a, b) => b.points - a.points);
 
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0) };
-  }, [allCommendations, filteredUsers]);
+  }, [allCommendations, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const complaintStats = useMemo(() => {
     if (!allComplaints || !filteredUsers) return { byOfficer: [], total: 0, pending: 0 };
 
-    const now = new Date();
-    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-    const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+    const monthStart = currentMonthStart;
+    const monthEnd = currentMonthEnd;
 
     const officerComplaints = {};
 
@@ -635,7 +631,7 @@ export default function AdminAnalytics() {
       .sort((a, b) => b.count - a.count);
 
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0), pending };
-  }, [allComplaints, filteredUsers]);
+  }, [allComplaints, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   if (isLoadingAuth || (analyticsLoading && !analyticsData?.generated_at)) {
     return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
