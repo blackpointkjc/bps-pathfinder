@@ -186,6 +186,9 @@ export default function IncidentReports() {
       const officerReports = allReports.filter(report => {
         const isMyReport = String(report.created_by_id || '') === String(user.id)
           || String(report.primary_officer_id || '') === String(user.id)
+          || (report.backup_officer_ids || []).map(String).includes(String(user.id))
+          || (report.attached_officer_ids || []).map(String).includes(String(user.id))
+          || (report.attached_officer_emails || []).some(email => directoryUserMatches(user, email))
           || directoryUserMatches(user, report.officer_email)
           || directoryUserMatches(user, report.created_by);
         const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
@@ -635,6 +638,57 @@ Provide:
       supplement_number: report.supplement_number || null,
     });
     setShowForm(true);
+  };
+
+  const handleAddSupplement = (report) => {
+    const related = (allReports || []).filter(item =>
+      String(item.parent_report_id || '') === String(report.id)
+      || (String(item.parent_report_number || '') && String(item.parent_report_number) === String(report.report_number || ''))
+    );
+    const nextNumber = Math.max(0, ...related.map(item => Number(item.supplement_number || 0))) + 1;
+    setEditingReportId(null);
+    setEditingTodoId(null);
+    setFormData({
+      incident_date: report.incident_date || format(new Date(), 'yyyy-MM-dd'),
+      incident_time: report.incident_time || format(new Date(), 'HH:mm'),
+      discovered_time: '',
+      location: report.location || '',
+      specific_location: report.specific_location || '',
+      incident_type: report.incident_type || 'other',
+      description: '',
+      suspect_description: '',
+      suspect_vehicle: report.suspect_vehicle || '',
+      persons_involved: '',
+      victims: '',
+      witnesses: '',
+      persons: [],
+      injuries_reported: false,
+      injury_details: '',
+      property_damage: false,
+      damage_details: '',
+      estimated_value: '',
+      action_taken: '',
+      police_notified: false,
+      ems_notified: false,
+      fire_notified: false,
+      police_report_number: report.police_report_number || '',
+      severity: report.severity || 'medium',
+      photo_url: '',
+      linked_call_id: report.linked_call_id || '',
+      linked_call_number: report.linked_call_number || report.call_number || '',
+      linked_bolo_id: report.linked_bolo_id || '',
+      linked_bolo_number: report.linked_bolo_number || '',
+      primary_officer_id: report.primary_officer_id || '',
+      primary_officer_name: report.primary_officer_name || '',
+      backup_officer_ids: report.backup_officer_ids || [],
+      attached_officer_ids: report.attached_officer_ids || [],
+      report_type: 'supplement',
+      parent_report_id: report.id,
+      parent_report_number: report.report_number || '',
+      supplement_number: nextNumber,
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getOfficerSignature = (officerRef) => {
