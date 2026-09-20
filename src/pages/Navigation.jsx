@@ -749,10 +749,11 @@ export default function Navigation() {
 
     const fetchOtherUnits = async (force = false) => {
         try {
-            // Navigation consumes the same canonical unit snapshot as CAD and the
-            // admin tracker. Never fall back to raw ActiveOfficer rows, because a
-            // stale stored coordinate must not become a live map marker.
-            const payload = await getOfficerLocationSnapshot({ locationOnly: true, force });
+            // Navigation shares the full canonical snapshot already used by CAD,
+            // Command, and the dashboard. Using a second location_only request body
+            // defeated request deduplication and caused two getOnDutyUnits calls at
+            // startup. Never fall back to raw ActiveOfficer rows.
+            const payload = await getOfficerLocationSnapshot({ force });
             const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
                 // Retained-session officers (map_visible) stay on the map with their
                 // last known position even when their live session recently ended.
