@@ -1189,7 +1189,12 @@ Provide:
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
               <CardTitle className="flex items-center gap-2">
-                {editingReportId ? (
+                {formData.report_type === 'supplement' ? (
+                  <>
+                    <Plus className="w-5 h-5 text-blue-600" />
+                    Add Supplement to {formData.parent_report_number || 'Incident Report'}
+                  </>
+                ) : editingReportId ? (
                   <>
                     <Pencil className="w-5 h-5 text-red-600" />
                     Edit Incident Report
@@ -1254,6 +1259,16 @@ Provide:
                         </Button>
                       </div>
                     )}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <AttachedOfficerSelector
+                      users={allUsers || []}
+                      selectedIds={formData.attached_officer_ids || []}
+                      currentUserId={user?.id}
+                      onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
+                      label="Attach Other Officers"
+                    />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
@@ -1636,6 +1651,9 @@ Provide:
                                 {report.report_number}
                               </Badge>
                             )}
+                            {report.report_type === 'supplement' && (
+                              <Badge className="bg-blue-600 text-white">SUPPLEMENT {report.supplement_number || ''}</Badge>
+                            )}
                             {report.call_number && (
                               <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 font-mono">
                                 {report.call_number}
@@ -1706,6 +1724,23 @@ Provide:
                             <Pencil className="w-4 h-4 mr-1" />
                             Edit Report
                             </Button>
+                        )}
+                        {(isAdmin
+                          || String(report.created_by_id || '') === String(user?.id || '')
+                          || String(report.primary_officer_id || '') === String(user?.id || '')
+                          || (report.backup_officer_ids || []).map(String).includes(String(user?.id || ''))
+                          || (report.attached_officer_ids || []).map(String).includes(String(user?.id || ''))) && (
+                          <Button
+                            onClick={() => handleAddSupplement(report.report_type === 'supplement'
+                              ? (allReports.find(item => String(item.id) === String(report.parent_report_id)) || report)
+                              : report)}
+                            size="sm"
+                            variant="outline"
+                            className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add Supplement
+                          </Button>
                         )}
                         <Button
                             onClick={() => printReport(report)}
