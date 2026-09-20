@@ -147,7 +147,6 @@ export default function IncidentReports() {
   // Dispatchers document calls from the dispatch desk and are not required to be
   // clocked into a property before they can create or revise an Incident Report.
   const canSubmit = isAdmin || isDispatcher || !!activeEntry || formData.report_type === 'supplement';
-  const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
   const historyOfficer = React.useMemo(() => {
     if (!user) return null;
     if (!isAdmin || historyOfficerEmail === 'self') return user;
@@ -1699,11 +1698,23 @@ Provide:
 
         <Card className="border-none shadow-lg">
           <CardHeader>
-            <CardTitle>
-              {isAdmin
-                ? `All Incident History (${submittedReports.length})`
-                : `My & Current Site Incident History (${submittedReports.length})`}
-            </CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Incident History ({submittedReports.length})</CardTitle>
+                <p className="mt-1 text-xs text-slate-500">{historyOfficerEmail === 'self' || !isAdmin ? 'Showing only reports you authored or are attached to.' : `Showing ${historyOfficer?.rank || ''} ${historyOfficer?.first_name || ''} ${historyOfficer?.last_name || historyOfficer?.email || ''}`}</p>
+              </div>
+              {isAdmin && (
+                <Select value={historyOfficerEmail} onValueChange={setHistoryOfficerEmail}>
+                  <SelectTrigger className="w-full sm:w-72"><SelectValue placeholder="Search officer history" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">My Reports</SelectItem>
+                    {allUsers.filter(person => person?.email && !person?.termination_date).map(person => (
+                      <SelectItem key={person.id || person.email} value={person.email}>{[person.rank, person.first_name, person.last_name].filter(Boolean).join(' ') || person.email}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {!currentSiteName && !isAdmin && submittedReports.length === 0 ? (
