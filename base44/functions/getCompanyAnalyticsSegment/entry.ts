@@ -228,11 +228,12 @@ Deno.serve(async (req) => {
     }
 
     if (segment === 'duty') {
-      const [users, qrScans, qrCheckpoints, dailyActivityReports, callOuts, dutyRules, locations] = await Promise.all([
+      const [users, qrScans, qrCheckpoints, dailyActivityReports, shiftReports, callOuts, dutyRules, locations] = await Promise.all([
         safe('User', getUsers),
         filter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 2000),
         safe('QRCheckpoint', () => cachedRows('qrCheckpoints', 60 * 1000, () => entity('QRCheckpoint').list('property_site', 1000))),
         filter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 2000),
+        filter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 2000),
         filter('CallOut', { call_out_date: { $gte: monthDateCutoff } }, '-call_out_date', 1000),
         safe('JobDutyRule', () => cachedRows('dutyRules', 60 * 1000, () => entity('JobDutyRule').list('property_site', 1000))),
         safe('Location', () => cachedRows('locations', 60 * 1000, () => entity('Location').list('site_name', 1000))),
@@ -241,7 +242,10 @@ Deno.serve(async (req) => {
       return Response.json({
         success:true, segment, generated_at:new Date().toISOString(),
         qrScans:c.rows(qrScans), qrCheckpoints,
-        dailyActivityReports:c.rows(dailyActivityReports),
+        dailyActivityReports:c.rows([
+          ...(dailyActivityReports || []).map((row:any) => ({ ...row, source_report_type:'daily_activity_report' })),
+          ...(shiftReports || []).map((row:any) => ({ ...row, source_report_type:'shift_report', report_date:row.report_date || row.shift_date, hourly_entries:row.hourly_entries || row.activities || '' })),
+        ]),
         callOuts:c.rows(callOuts), dutyRules, locations,
         service_errors:errors,
       });
