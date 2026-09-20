@@ -57,8 +57,8 @@ const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
 const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'importEntities']);
 const PERFORMANCE_ENTITY_NAMES = new Set([
-  'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport', 'CallOut',
-  'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion', 'TrainingModule',
+  'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport', 'CallOut',
+  'QRScanEvent', 'QRPatrolReport', 'CallAssignment', 'TrainingAssignment', 'TrainingCompletion', 'TrainingModule',
   'ShiftBid', 'PerformanceReview', 'ClientFeedback', 'Commendation', 'Complaint',
   'JobDutyRule', 'PropertyAlert', 'DispatchCall', 'CallHistory',
 ]);
