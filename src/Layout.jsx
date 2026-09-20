@@ -317,6 +317,7 @@ const DESKTOP_CENTER_PAGE = {
   officer: 'OfficerCenter',
   admin: 'AdminCenter',
   hr: 'HRCenter',
+  support: 'AdminSupportStaffClock',
   supervisor: 'SupervisorCenter',
   client: 'ClientCenter',
   training: 'TrainerCenter',
