@@ -766,7 +766,7 @@ Provide:
     const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date || report.incident_date);
     const creator = allUsers?.find(officer => String(officer.id) === String(report.created_by_id)
       || String(officer.email || '').toLowerCase() === String(report.created_by_id || '').toLowerCase());
-    const officerName = getOfficerFullName(report.created_by_id);
+    const officerName = getOfficerFullName(report.created_by_id, report);
     const people = Array.isArray(report.persons)
       ? report.persons.map(person => [
           person.role || person.type,
@@ -844,8 +844,8 @@ Provide:
       photos: report.photo_url ? [report.photo_url] : [],
       officer: {
         name: officerName,
-        signatureName: getOfficerSignature(report.created_by_id),
-        email: getOfficerEmail(report.created_by_id),
+        signatureName: getOfficerSignature(report.created_by_id, report),
+        email: getOfficerEmail(report.created_by_id, report),
         badge: creator?.badge_number || '',
         unit: creator?.unit_number || '',
         ip: report.officer_ip_address || '',
@@ -859,8 +859,8 @@ Provide:
   const legacyPrintReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
-    const officerName = getOfficerFullName(report.created_by_id);
-    const officerSig = getOfficerSignature(report.created_by_id);
+    const officerName = getOfficerFullName(report.created_by_id, report);
+    const officerSig = getOfficerSignature(report.created_by_id, report);
     
     // Convert to Zulu time
     const toZulu = (dateString) => {
@@ -900,7 +900,7 @@ Provide:
       police_report_number: esc(report.police_report_number),
       photo_url: esc(report.photo_url),
       officer_ip_address: esc(report.officer_ip_address),
-      created_by: esc(getOfficerEmail(report.created_by_id)),
+      created_by: esc(getOfficerEmail(report.created_by_id, report)),
       officer_name: esc(officerName),
       officer_sig: esc(officerSig),
     };
