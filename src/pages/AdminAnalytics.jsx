@@ -89,6 +89,19 @@ function useAnalyticsSegment(name, enabled) {
 }
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
+const officerIdentitySet = officer => new Set([
+  officer?.email,
+  officer?.work_email,
+  officer?.pathfinder_email,
+  officer?.microsoft_email,
+  officer?.outlook_email,
+  ...(Array.isArray(officer?.email_aliases) ? officer.email_aliases : []),
+].map(emailKey).filter(Boolean));
+const recordMatchesOfficer = (record, officer, emailFields = ['officer_email'], idFields = ['officer_id','created_by_id','user_id']) => {
+  const identities = officerIdentitySet(officer);
+  if (emailFields.some(field => identities.has(emailKey(record?.[field])))) return true;
+  return idFields.some(field => officer?.id && String(record?.[field] || '') === String(officer.id));
+};
 const isPunctualityLeaderboardOfficer = (officer) => {
   const roles = new Set((officer?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
   if (officer?.is_supervisor === true || roles.has('supervisor')) return false;
@@ -435,15 +448,14 @@ export default function AdminAnalytics() {
   const overallByOfficer = useMemo(() => {
     if (!performanceGenerationReady) return [];
     return filteredUsers.map(officer => {
-    const key = emailKey(officer.email);
-    const officerTimeEntries = timeEntries.filter(item => emailKey(item.officer_email) === key);
-    const officerSchedules = schedules.filter(item => emailKey(item.officer_email) === key);
-    const officerBids = allBids.filter(item => emailKey(item.officer_email) === key);
-    const officerCompletions = trainingCompletions.filter(item => emailKey(item.officer_email) === key);
-    const officerAssignments = trainingAssignments.filter(item => emailKey(item.officer_email) === key);
-    const officerFeedback = allClientFeedback.filter(item => emailKey(item.officer_email) === key);
-    const officerReviews = allPerformanceReviews.filter(item => emailKey(item.officer_email) === key);
-    const officerCommendations = allCommendations.filter(item => emailKey(item.officer_email) === key);
+    const officerTimeEntries = timeEntries.filter(item => recordMatchesOfficer(item, officer));
+    const officerSchedules = schedules.filter(item => recordMatchesOfficer(item, officer));
+    const officerBids = allBids.filter(item => recordMatchesOfficer(item, officer));
+    const officerCompletions = trainingCompletions.filter(item => recordMatchesOfficer(item, officer));
+    const officerAssignments = trainingAssignments.filter(item => recordMatchesOfficer(item, officer));
+    const officerFeedback = allClientFeedback.filter(item => recordMatchesOfficer(item, officer));
+    const officerReviews = allPerformanceReviews.filter(item => recordMatchesOfficer(item, officer));
+    const officerCommendations = allCommendations.filter(item => recordMatchesOfficer(item, officer));
 
     const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd, incidentReports, officer);
     const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
@@ -451,7 +463,7 @@ export default function AdminAnalytics() {
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
     const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
-    const officerCallOuts = allCallOuts.filter(item => emailKey(item.officer_email) === key);
+    const officerCallOuts = allCallOuts.filter(item => recordMatchesOfficer(item, officer));
     const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
     const jobDuty = calculateJobDutyCompliance({
       officer,
