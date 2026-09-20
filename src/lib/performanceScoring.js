@@ -640,7 +640,7 @@ export function calculateJobDutyCompliance({
         const callNumber = call.agency_cad_number || call.call_id || call.bps_reference || '';
         const callTypeLabel = call.incident || call.incident_type || call.call_type || 'Call for service';
         const callLocation = call.location || call.property_site || detail.property || '';
-        const callTime = call.time_received || call.created_date || '';
+        const callTimestamp = call.time_received || call.created_date || '';
         if (report && !['draft', 'rejected'].includes(String(report.status || '').toLowerCase())) {
           incidentCompleted++;
           detail.incidents.completed++;
