@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       safeFilter('Complaint', officerRecordQuery(), '-complaint_date', 500),
       safeFilter('ClientFeedback', officerRecordQuery(), '-feedback_date', 500),
       safeFilter('PerformanceReview', officerRecordQuery(), '-review_date', 500),
-      safeFilter('DailyActivityReport', { $and: [officerRecordQuery(['officer_email'], ['officer_id', 'created_by_id']), { report_date: { $gte: monthDateCutoff } }] }, '-report_date', 1000),
+      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 1000),
       safeList('DispatchCall', '-time_received', 500),
       safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
       safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1000),
@@ -164,6 +164,11 @@ Deno.serve(async (req) => {
     const myFeedback = feedbackAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myReviews = reviewsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myDailyReports = dailyReportsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']));
+    const sharedDailyReports = (dailyReportsAll || []).filter((r:any) => {
+      const attachedEmails = new Set((r.attached_officer_emails || []).map((value:any) => lower(value)));
+      const attachedIds = new Set((r.attached_officer_ids || []).map((value:any) => String(value)));
+      return myWorkedSites.has(siteKey(r.location)) || attachedEmails.has(email) || attachedIds.has(String(officerId || '')) || sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']);
+    });
 
     // PropertyAlert is the authoritative property-to-call link. DispatchCall rows are
     // archived after an hour, so rebuild one durable call feed from live + history + alerts.
@@ -279,7 +284,7 @@ Deno.serve(async (req) => {
       complaints: myComplaints.map(canonicalMyRow),
       clientFeedback: myFeedback.map(canonicalMyRow),
       performanceReviews: myReviews.map(canonicalMyRow),
-      dailyActivityReports: myDailyReports.map(canonicalMyRow),
+      dailyActivityReports: sharedDailyReports.map(canonicalPartnerRow),
       dispatchCalls: myPropertyCalls,
       jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
       locations: locationsAll,
@@ -300,7 +305,7 @@ Deno.serve(async (req) => {
         commendations: myCommendations.length,
         clientFeedback: myFeedback.length,
         performanceReviews: myReviews.length,
-        dailyActivityReports: myDailyReports.length,
+        dailyActivityReports: sharedDailyReports.length,
         jobDutyRules: dutyRulesAll.length,
         propertyCalls: myPropertyCalls.length,
         identityAliases: aliases.size,
