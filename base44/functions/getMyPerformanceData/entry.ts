@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     const incidentRequired = relevantDutyRules.some((rule:any) => rule.incident_report_required_for_property_calls === true);
     const trainingApplicable = (modulesAll || []).some((module:any) => module.active !== false);
 
-    const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, partnerTimeEntriesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll] = await Promise.all([
+    const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, partnerTimeEntriesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, callAssignmentsAll] = await Promise.all([
       safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
       trainingApplicable ? safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500) : Promise.resolve([]),
       trainingApplicable ? safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500) : Promise.resolve([]),
@@ -142,11 +142,13 @@ Deno.serve(async (req) => {
       incidentRequired ? safeList('DispatchCall', '-time_received', 300) : Promise.resolve([]),
       incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 300) : Promise.resolve([]),
       incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 500) : Promise.resolve([]),
+      incidentRequired ? safeFilter('CallAssignment', { $and: [{ unit_id: officerId }, { assigned_at: { $gte: activityCutoff } }] }, '-assigned_at', 500) : Promise.resolve([]),
     ]);
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const myCallAssignments = callAssignmentsAll.filter((r:any) => String(r?.unit_id || '') === officerId);
     const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     // Return every successful scan that occurred at the officer's property while
     // the officer was working there. The scoring engine itself determines whether
@@ -316,6 +318,7 @@ Deno.serve(async (req) => {
       performanceReviews: myReviews.map(canonicalMyRow),
       dailyActivityReports: sharedDailyReports.map(canonicalPartnerRow),
       dispatchCalls: myPropertyCalls,
+      callAssignments: myCallAssignments,
       jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
       locations: locationsAll,
       service_errors: serviceErrors,
@@ -340,6 +343,7 @@ Deno.serve(async (req) => {
         shiftReportRows: (shiftReportsAll || []).length,
         jobDutyRules: dutyRulesAll.length,
         propertyCalls: myPropertyCalls.length,
+        callAssignments: myCallAssignments.length,
         identityAliases: aliases.size,
         serviceErrors: Object.keys(serviceErrors).length,
       },
