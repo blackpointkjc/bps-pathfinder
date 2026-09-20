@@ -107,6 +107,20 @@ export default function MyPerformanceAnalytics() {
     };
   }, [queryClient, authUser?.id, performanceIdentity]);
 
+  const handleRefreshScore = React.useCallback(async () => {
+    if (performanceFetching) return;
+    setManualRefreshMessage('Refreshing from current Schedule and Time Clock records…');
+    clearBase44ReadCacheMatching('function:getMyPerformanceData:');
+    await queryClient.invalidateQueries({ queryKey: ['myPerformanceData', performanceIdentity], refetchType: 'none' });
+    const result = await refetchPerformance();
+    if (result?.error) {
+      setManualRefreshMessage(`Refresh failed: ${result.error.message || 'Unable to refresh performance data.'}`);
+      return;
+    }
+    const refreshedAt = result?.data?.generated_at ? new Date(result.data.generated_at) : new Date();
+    setManualRefreshMessage(`Score refreshed from current records at ${refreshedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}.`);
+  }, [performanceFetching, performanceIdentity, queryClient, refetchPerformance]);
+
   const timeEntries = performanceData.timeEntries || [];
   const schedules = performanceData.schedules || [];
   const myBids = performanceData.bids || [];
@@ -225,7 +239,7 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} performance exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} performance exempt` : 'No elapsed scheduled shifts') },
+    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts') },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Daily Activity Reports', score: jobDuty.dailyActivity.score, detail: jobDuty.dailyActivity.required > 0 ? `${jobDuty.dailyActivity.completed} complete • ${jobDuty.dailyActivity.missed} missing • ${jobDuty.dailyActivity.required} required` : 'No completed worked shifts in period' },
     { label: 'Incident Reports', score: jobDuty.incidentReports.score, detail: jobDuty.incidentReports.required > 0 ? `${jobDuty.incidentReports.completed} complete • ${jobDuty.incidentReports.missed} missing • ${jobDuty.incidentReports.excluded || 0} excluded` : 'No configured incident-report obligation' },
@@ -243,13 +257,13 @@ export default function MyPerformanceAnalytics() {
 
     if (onTimeStats.exempt > 0) {
       const exemptDetails = onTimeStats.details
-        .filter(detail => detail.status === 'exempt')
-        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: performance exempt${detail.performance_exception_reason ? ` — ${detail.performance_exception_reason}` : ''}.`);
+        .filter(detail => ['exempt', 'covered_elsewhere', 'reassigned'].includes(detail.status))
+        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: attendance-neutral${detail.performance_exception_reason ? ` — ${detail.performance_exception_reason}` : ''}.`);
       factors.push({
-        metric: 'Performance Exempt',
-        value: `${onTimeStats.exempt} exempt`,
+        metric: 'Attendance Adjustments',
+        value: `${onTimeStats.exempt} neutral`,
         severity: 'neutral',
-        reason: `HR approved ${onTimeStats.exempt} time entr${onTimeStats.exempt === 1 ? 'y' : 'ies'} as performance exempt. The exempt shift${onTimeStats.exempt === 1 ? '' : 's'} remain in payroll/time history but are excluded from punctuality and Job Duty scoring.`,
+        reason: `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} were excluded from punctuality penalties because the record reflects approved exemption, overlapping duty coverage, or a documented site reassignment/Switch Site action.`,
         details: exemptDetails,
       });
     }
@@ -386,13 +400,14 @@ export default function MyPerformanceAnalytics() {
               {performanceData.generated_at && <span className="text-[10px] font-bold text-slate-500">Updated {new Date(performanceData.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>}
             </div>
           </div>
-          <button type="button" onClick={() => refetchPerformance()} disabled={performanceFetching} className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-600/50 bg-cyan-950/30 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-900/40 disabled:opacity-50">
+          <button type="button" onClick={handleRefreshScore} disabled={performanceFetching || !performanceIdentity} className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-600/50 bg-cyan-950/30 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-900/40 disabled:opacity-50">
             <RefreshCw className={`h-4 w-4 ${performanceFetching ? 'animate-spin' : ''}`} />
             {performanceFetching ? 'REFRESHING' : 'REFRESH SCORE'}
           </button>
         </div>
 
-        {performanceLoading && (
+        {manualRefreshMessage && <div aria-live="polite" className="rounded-lg border border-cyan-700/40 bg-cyan-950/20 px-3 py-2 text-xs font-semibold text-cyan-100">{manualRefreshMessage}</div>}
+        {(isLoadingAuth || performanceLoading) && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Loading your performance records…</div>
         )}
         {performanceError && (
