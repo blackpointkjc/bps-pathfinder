@@ -489,7 +489,47 @@ export function calculateJobDutyCompliance({
 
   const activeRules = dutyRules.filter(rule => rule.active !== false);
   const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
-  const officerDailyReports = dailyReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
+
+  // DAR is a shift/session obligation, not a TimeEntry-row obligation. Switch Site
+  // creates a second TimeEntry for the destination property, so merge contiguous
+  // entries for the same officer into one duty session before counting DARs.
+  const sortedEntries = [...evaluatedShifts].sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+  const darSessions = [];
+  const darSessionByEntry = new Map();
+  for (const entry of sortedEntries) {
+    const start = new Date(entry.clock_in).getTime();
+    const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    const prior = darSessions[darSessions.length - 1];
+    const canMerge = prior && start <= prior.end_ms + 20 * 60 * 1000;
+    const session = canMerge ? prior : {
+      id: `session-${String(entry.id || start)}`,
+      start_ms: start,
+      end_ms: end,
+      entries: [],
+      sites: new Set(),
+      dates: new Set(),
+      active: !entry.clock_out,
+    };
+    if (!canMerge) darSessions.push(session);
+    session.entries.push(entry);
+    session.end_ms = Math.max(session.end_ms, end);
+    session.active = session.active || !entry.clock_out;
+    session.sites.add(siteKey(entry.location));
+    session.dates.add(easternDateKey(entry.clock_in));
+    darSessionByEntry.set(String(entry.id || ''), session);
+  }
+
+  const reportCreditsOfficer = report => {
+    const attachedEmails = new Set((report?.attached_officer_emails || []).map(emailKey));
+    const attachedIds = new Set((report?.attached_officer_ids || []).map(value => String(value)));
+    return !officer
+      || emailKey(report?.officer_email || report?.created_by || report?.created_by_email) === officerEmail
+      || String(report?.created_by_id || '') === String(officer?.id || '')
+      || attachedEmails.has(officerEmail)
+      || attachedIds.has(String(officer?.id || ''));
+  };
+
   // Incident compliance is tied to the property call itself. A submitted report linked to that call satisfies the call for all officers who were actively working that property at the time.
   const officerIncidents = incidentReports;
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
@@ -526,24 +566,39 @@ export function calculateJobDutyCompliance({
       qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
     };
 
-    // A Daily Activity Report is a company shift-close requirement for every
-    // completed worked shift. Do not make DAR scoring depend on a separate
-    // property rule/effective date; that was why the Missing Reports panel could
-    // show a real missing DAR while My Performance/Company Analytics ignored it.
-    const requiresDar = !isActiveShift;
+    // Count one DAR per continuous duty session. A Switch Site continuation
+    // may contain several TimeEntry rows but it is still one duty period.
+    const session = darSessionByEntry.get(String(entry.id || ''));
+    const sessionLead = session?.entries?.[0] === entry;
+    const requiresDar = Boolean(sessionLead && session && !session.active);
     if (requiresDar) {
       darRequired++;
       detail.daily_activity.required = true;
-      const matchingDar = officerDailyReports.find(report => {
-        if (report.status === 'draft' || usedDarIds.has(String(report.id))) return false;
-        if (report.shift_id && String(report.shift_id) === String(entry.id)) return true;
-        return !report.shift_id && report.report_date === shiftDate && siteKey(report.location) === site;
+      detail.daily_activity.session_entry_ids = session.entries.map(item => item.id).filter(Boolean);
+      detail.daily_activity.session_sites = [...session.sites].filter(Boolean);
+      const matchingDar = dailyReports.find(report => {
+        if (['draft', 'rejected'].includes(String(report?.status || '').toLowerCase()) || usedDarIds.has(String(report?.id || ''))) return false;
+        const reportId = String(report?.id || '');
+        const shiftIds = new Set(session.entries.map(item => String(item.id || '')));
+        if (report?.shift_id && shiftIds.has(String(report.shift_id))) return true;
+
+        const reportSite = siteKey(report?.location);
+        const reportDate = String(report?.report_date || '').slice(0, 10);
+        const siteDateMatch = session.sites.has(reportSite) && session.dates.has(reportDate);
+        if (!siteDateMatch) return false;
+
+        // A team DAR submitted by any officer working this post/session satisfies
+        // the shared operational reporting requirement. Attached officers are
+        // explicitly credited even when they moved sites before submission.
+        return reportCreditsOfficer(report) || Boolean(reportId);
       });
       if (matchingDar) {
         usedDarIds.add(String(matchingDar.id));
         darCompleted++;
         detail.daily_activity.completed = true;
         detail.daily_activity.report_id = matchingDar.id;
+        detail.daily_activity.report_author = matchingDar.officer_email || matchingDar.created_by_email || matchingDar.created_by || '';
+        detail.daily_activity.shared_report = !reportCreditsOfficer(matchingDar);
       }
     }
 
@@ -582,12 +637,36 @@ export function calculateJobDutyCompliance({
           callNumbers.includes(String(ir.linked_call_number || '')) ||
           callNumbers.includes(String(ir.call_number || ''))
         );
-        if (report && report.status !== 'draft') {
+        const callNumber = call.agency_cad_number || call.call_id || call.bps_reference || '';
+        const callTypeLabel = call.incident || call.incident_type || call.call_type || 'Call for service';
+        const callLocation = call.location || call.property_site || detail.property || '';
+        const callTime = call.time_received || call.created_date || '';
+        if (report && !['draft', 'rejected'].includes(String(report.status || '').toLowerCase())) {
           incidentCompleted++;
           detail.incidents.completed++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'completed', report_id: report.id });
+          detail.incidents.items.push({
+            call_id: call.id,
+            call_number: callNumber,
+            status: 'completed',
+            call_type: callTypeLabel,
+            call_location: callLocation,
+            call_time: callTime,
+            report_id: report.id,
+            report_number: report.report_number || report.id,
+            report_status: report.status,
+          });
         } else {
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'missing', call_type: call.incident || call.incident_type || call.call_type || 'Call for service' });
+          detail.incidents.items.push({
+            call_id: call.id,
+            call_number: callNumber,
+            status: 'missing',
+            call_type: callTypeLabel,
+            call_location: callLocation,
+            call_time: callTime,
+            report_id: null,
+            report_number: '',
+            report_status: 'missing',
+          });
         }
       });
     }
@@ -721,6 +800,15 @@ export function calculateJobDutyCompliance({
     incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
     qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
+    dutySessions: darSessions.map(session => ({
+      id: session.id,
+      start_ms: session.start_ms,
+      end_ms: session.end_ms,
+      active: session.active,
+      entry_ids: session.entries.map(entry => entry.id).filter(Boolean),
+      sites: [...session.sites].filter(Boolean),
+      dates: [...session.dates].filter(Boolean),
+    })),
   };
 }
 
