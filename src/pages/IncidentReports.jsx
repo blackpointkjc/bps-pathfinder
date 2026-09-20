@@ -864,7 +864,7 @@ Provide:
     });
   };
 
-  const legacyPrintReport = (report) => {
+  const _legacyPrintReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
     const officerName = getOfficerFullName(report.created_by_id, report);
