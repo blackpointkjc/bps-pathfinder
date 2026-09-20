@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,14 +142,29 @@ export default function AdminAnalytics() {
   const callsAnalytics = useAnalyticsSegment('calls', secondaryEnabled);
   const qualityAnalytics = useAnalyticsSegment('quality', secondaryEnabled);
 
+  const currentSegmentPayloads = useMemo(() => ({
+    core: coreAnalytics.data,
+    training: trainingAnalytics.data,
+    duty: dutyAnalytics.data,
+    calls: callsAnalytics.data,
+    quality: qualityAnalytics.data,
+  }), [coreAnalytics.data, trainingAnalytics.data, dutyAnalytics.data, callsAnalytics.data, qualityAnalytics.data]);
+
+  const currentSegmentsReady = Object.values(currentSegmentPayloads).every(Boolean);
+  const liveAnalyticsData = useMemo(
+    () => mergeAnalyticsSegments({}, currentSegmentPayloads),
+    [currentSegmentPayloads]
+  );
+
   const analyticsData = useMemo(() => {
-    const merged = mergeAnalyticsSegments(companySnapshot?.data || {}, {
-      core: coreAnalytics.data,
-      training: trainingAnalytics.data,
-      duty: dutyAnalytics.data,
-      calls: callsAnalytics.data,
-      quality: qualityAnalytics.data,
-    });
+    // Never calculate officer scores from a mixture of an old persisted snapshot
+    // and newly arrived segments. Until all five current segments are present,
+    // show the last coherent verified snapshot as a whole. Once ready, switch the
+    // entire dashboard to one current data generation.
+    const base = currentSegmentsReady
+      ? liveAnalyticsData
+      : (companySnapshot?.data || liveAnalyticsData || {});
+    const merged = { ...base, service_errors: { ...(base.service_errors || {}) } };
     const queryErrors = {
       core: coreAnalytics.error,
       training: trainingAnalytics.error,
@@ -160,14 +175,17 @@ export default function AdminAnalytics() {
     Object.entries(queryErrors).forEach(([segment, error]) => {
       if (error) merged.service_errors[`segment:${segment}`] = error.message || 'Segment could not be loaded';
     });
+    merged.is_updating = !currentSegmentsReady;
     return merged;
   }, [
     companySnapshot?.data,
-    coreAnalytics.data, coreAnalytics.error,
-    trainingAnalytics.data, trainingAnalytics.error,
-    dutyAnalytics.data, dutyAnalytics.error,
-    callsAnalytics.data, callsAnalytics.error,
-    qualityAnalytics.data, qualityAnalytics.error,
+    currentSegmentsReady,
+    liveAnalyticsData,
+    coreAnalytics.error,
+    trainingAnalytics.error,
+    dutyAnalytics.error,
+    callsAnalytics.error,
+    qualityAnalytics.error,
   ]);
 
   const analyticsLoading = isLoadingAuth || (!hasVerifiedCore && coreAnalytics.isLoading);
@@ -209,6 +227,9 @@ export default function AdminAnalytics() {
       const prior = timers.get(segment);
       if (prior) window.clearTimeout(prior);
       timers.set(segment, window.setTimeout(() => {
+        // A realtime change must bypass the shared function read cache or the
+        // query invalidation can immediately receive the same stale segment.
+        clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
         queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment] });
         timers.delete(segment);
       }, 1500));
