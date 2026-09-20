@@ -715,7 +715,7 @@ export default function AdminAnalytics() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9">
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
@@ -735,6 +735,13 @@ export default function AdminAnalytics() {
               <Users className="w-6 h-6 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-blue-600">{filteredUsers.length}</p>
               <p className="text-xs text-slate-400">Active Officers</p>
+            </CardContent>
+          </Card>
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+            <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
+              <Clock className="mb-2 h-6 w-6 text-blue-400" />
+              <p className="text-2xl font-bold text-blue-300">{hoursBreakdown.reduce((sum, officer) => sum + Number(officer.regular || 0) + Number(officer.overtime || 0), 0).toFixed(1)}h</p>
+              <p className="text-xs text-slate-400">Hours in Range</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
