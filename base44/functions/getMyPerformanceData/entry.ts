@@ -164,11 +164,6 @@ Deno.serve(async (req) => {
     const myFeedback = feedbackAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myReviews = reviewsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myDailyReports = dailyReportsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']));
-    const sharedDailyReports = (dailyReportsAll || []).filter((r:any) => {
-      const attachedEmails = new Set((r.attached_officer_emails || []).map((value:any) => lower(value)));
-      const attachedIds = new Set((r.attached_officer_ids || []).map((value:any) => String(value)));
-      return myWorkedSites.has(siteKey(r.location)) || attachedEmails.has(email) || attachedIds.has(String(officerId || '')) || sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']);
-    });
 
     // PropertyAlert is the authoritative property-to-call link. DispatchCall rows are
     // archived after an hour, so rebuild one durable call feed from live + history + alerts.
@@ -241,6 +236,14 @@ Deno.serve(async (req) => {
       });
     }
     const myWorkedSites = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
+    const sharedDailyReports = (dailyReportsAll || []).filter((r:any) => {
+      const attachedEmails = new Set((r.attached_officer_emails || []).map((value:any) => lower(value)));
+      const attachedIds = new Set((r.attached_officer_ids || []).map((value:any) => String(value)));
+      return myWorkedSites.has(siteKey(r.location))
+        || attachedEmails.has(email)
+        || attachedIds.has(String(officerId || ''))
+        || sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']);
+    });
     const myPropertyCalls = combinedPropertyCalls.filter((call:any) => myWorkedSites.has(siteKey(call.property_site)));
     const relevantCallIds = new Set(myPropertyCalls.flatMap((call:any) => [call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String)));
     const linkedPropertyIncidents = incidentsAll.filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
