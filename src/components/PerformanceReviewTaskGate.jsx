@@ -19,9 +19,9 @@ export default function PerformanceReviewTaskGate({ user }) {
     // PerformanceReview realtime events handle fast delivery. The five-minute
     // poll is only a fallback for a dropped subscription; 15-second function
     // polling from every signed-in user was a major source of request pressure.
-    refetchInterval: responseInProgress ? false : 5 * 60 * 1000,
+    refetchInterval: responseInProgress ? false : 15 * 60 * 1000,
     refetchOnWindowFocus: false,
-    staleTime: 90_000,
+    staleTime: 10 * 60_000,
     retry: false,
   });
 
