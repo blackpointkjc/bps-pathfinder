@@ -174,11 +174,23 @@ export default function AdminAnalytics() {
   }), [coreAnalytics.data, trainingAnalytics.data, dutyAnalytics.data, callsAnalytics.data, qualityAnalytics.data]);
 
   const currentSegmentsReady = Object.values(currentSegmentPayloads).every(Boolean);
-  const performanceGenerationReady = currentSegmentsReady || Boolean(companySnapshot?.data?.generated_at);
   const liveAnalyticsData = useMemo(
     () => mergeAnalyticsSegments({}, currentSegmentPayloads),
     [currentSegmentPayloads]
   );
+  // Officer performance must NEVER be calculated from the persisted company
+  // snapshot. It is a current-month compliance view, so wait for the current
+  // core + duty + calls segments that supply attendance, schedules, DAR/QR,
+  // call-outs and CAD/report obligations. Optional training/quality segments are
+  // included only when their current generation is present.
+  const performanceGenerationReady = Boolean(coreAnalytics.data && dutyAnalytics.data && callsAnalytics.data);
+  const performanceAnalyticsData = useMemo(() => mergeAnalyticsSegments({}, {
+    core: coreAnalytics.data,
+    duty: dutyAnalytics.data,
+    calls: callsAnalytics.data,
+    training: trainingAnalytics.data,
+    quality: qualityAnalytics.data,
+  }), [coreAnalytics.data, dutyAnalytics.data, callsAnalytics.data, trainingAnalytics.data, qualityAnalytics.data]);
 
   const analyticsData = useMemo(() => {
     // Never calculate officer scores from a mixture of an old persisted snapshot
@@ -279,6 +291,25 @@ export default function AdminAnalytics() {
   const divisions = analyticsData.divisions || [];
   const timeEntries = analyticsData.timeEntries || [];
   const schedules = analyticsData.schedules || [];
+
+  const performanceUsers = performanceAnalyticsData.users || [];
+  const performanceTimeEntries = performanceAnalyticsData.timeEntries || [];
+  const performanceSchedules = performanceAnalyticsData.schedules || [];
+  const performanceBids = performanceAnalyticsData.bids || [];
+  const performanceTrainingCompletions = performanceAnalyticsData.trainingCompletions || [];
+  const performanceTrainingAssignments = performanceAnalyticsData.trainingAssignments || [];
+  const performanceTrainingModules = (performanceAnalyticsData.trainingModules || []).filter(module => module.active !== false);
+  const performanceQrScans = performanceAnalyticsData.qrScans || [];
+  const performanceQrCheckpoints = performanceAnalyticsData.qrCheckpoints || [];
+  const performanceIncidentReports = performanceAnalyticsData.incidentReports || [];
+  const performanceDispatchCalls = performanceAnalyticsData.dispatchCalls || [];
+  const performanceCommendations = performanceAnalyticsData.commendations || [];
+  const performanceDailyReports = performanceAnalyticsData.dailyActivityReports || [];
+  const performanceCallOuts = performanceAnalyticsData.callOuts || [];
+  const performanceDutyRules = performanceAnalyticsData.dutyRules || [];
+  const performanceLocations = performanceAnalyticsData.locations || [];
+  const performanceFeedback = performanceAnalyticsData.clientFeedback || [];
+  const performanceReviews = performanceAnalyticsData.performanceReviews || [];
   const allBids = analyticsData.bids || [];
   const trainingCompletions = analyticsData.trainingCompletions || [];
   const trainingAssignments = analyticsData.trainingAssignments || [];
@@ -448,36 +479,40 @@ export default function AdminAnalytics() {
 
   const overallByOfficer = useMemo(() => {
     if (!performanceGenerationReady) return [];
-    return filteredUsers.map(officer => {
-    const officerTimeEntries = timeEntries.filter(item => recordMatchesOfficer(item, officer));
-    const officerSchedules = schedules.filter(item => recordMatchesOfficer(item, officer));
-    const officerBids = allBids.filter(item => recordMatchesOfficer(item, officer));
-    const officerCompletions = trainingCompletions.filter(item => recordMatchesOfficer(item, officer));
-    const officerAssignments = trainingAssignments.filter(item => recordMatchesOfficer(item, officer));
-    const officerFeedback = allClientFeedback.filter(item => recordMatchesOfficer(item, officer));
-    const officerReviews = allPerformanceReviews.filter(item => recordMatchesOfficer(item, officer));
-    const officerCommendations = allCommendations.filter(item => recordMatchesOfficer(item, officer));
+    const currentPerformanceUsers = performanceUsers.filter(isOperationalOfficer);
+    const selectedPerformanceUsers = selectedDivision === 'all'
+      ? currentPerformanceUsers
+      : currentPerformanceUsers.filter(u => String(u.division || '') === String(selectedDivision));
+    return selectedPerformanceUsers.map(officer => {
+    const officerTimeEntries = performanceTimeEntries.filter(item => recordMatchesOfficer(item, officer));
+    const officerSchedules = performanceSchedules.filter(item => recordMatchesOfficer(item, officer));
+    const officerBids = performanceBids.filter(item => recordMatchesOfficer(item, officer));
+    const officerCompletions = performanceTrainingCompletions.filter(item => recordMatchesOfficer(item, officer));
+    const officerAssignments = performanceTrainingAssignments.filter(item => recordMatchesOfficer(item, officer));
+    const officerFeedback = performanceFeedback.filter(item => recordMatchesOfficer(item, officer));
+    const officerReviews = performanceReviews.filter(item => recordMatchesOfficer(item, officer));
+    const officerCommendations = performanceCommendations.filter(item => recordMatchesOfficer(item, officer));
 
-    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd, incidentReports, officer);
-    const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
+    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd, performanceIncidentReports, officer);
+    const training = calculateTrainingScore(officer, performanceTrainingModules, officerCompletions, officerAssignments);
     const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
     const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
-    const officerCallOuts = allCallOuts.filter(item => recordMatchesOfficer(item, officer));
+    const officerCallOuts = performanceCallOuts.filter(item => recordMatchesOfficer(item, officer));
     const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
     const jobDuty = calculateJobDutyCompliance({
       officer,
       timeEntries: officerTimeEntries,
-      dailyReports: allDailyActivityReports,
-      incidentReports,
-      dispatchCalls,
-      callOuts: allCallOuts,
-      qrScans: allQrScans,
-      allTimeEntries: timeEntries,
-      qrCheckpoints: allQrCheckpoints,
-      dutyRules: allDutyRules,
-      locations: allLocations,
+      dailyReports: performanceDailyReports,
+      incidentReports: performanceIncidentReports,
+      dispatchCalls: performanceDispatchCalls,
+      callOuts: performanceCallOuts,
+      qrScans: performanceQrScans,
+      allTimeEntries: performanceTimeEntries,
+      qrCheckpoints: performanceQrCheckpoints,
+      dutyRules: performanceDutyRules,
+      locations: performanceLocations,
       monthStart: currentMonthStart,
       monthEnd: currentMonthEnd,
     });
@@ -497,7 +532,7 @@ export default function AdminAnalytics() {
       jobDuty,
     };
   }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
-  }, [performanceGenerationReady, filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, dispatchCalls, allCallOuts, allDailyActivityReports, allQrScans, allQrCheckpoints, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
+  }, [performanceGenerationReady, performanceUsers, performanceTimeEntries, performanceSchedules, performanceBids, performanceTrainingCompletions, performanceTrainingAssignments, performanceTrainingModules, performanceFeedback, performanceReviews, performanceCommendations, performanceIncidentReports, performanceDispatchCalls, performanceCallOuts, performanceDailyReports, performanceQrScans, performanceQrCheckpoints, performanceDutyRules, performanceLocations, selectedDivision, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
