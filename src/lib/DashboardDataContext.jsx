@@ -25,8 +25,7 @@ function readCachedActiveCalls() {
     try {
         const cached = JSON.parse(window.localStorage.getItem(ACTIVE_CALL_CACHE_KEY) || 'null');
         if (!cached || Date.now() - Number(cached.savedAt || 0) > ACTIVE_CALL_CACHE_MAX_AGE_MS || !Array.isArray(cached.calls)) return [];
-        const activeWindowStart = Date.now() - 8 * 60 * 60 * 1000;
-        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status) && (getReliableCallTimestamp(call) || 0) >= activeWindowStart));
+        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status)));
     } catch {
         return [];
     }
@@ -125,16 +124,9 @@ export function DashboardDataProvider({ children }) {
                 throw callsErr;
             }
 
-            // Keep the live CAD queue to the most recent hour. Preserve the 1-hour
-            // requirement, but use the same trustworthy timestamp logic as the UI.
-            const activeWindowStart = Date.now() - 8 * 60 * 60 * 1000;
-            const recentCalls = (callsData || []).filter(call => {
-                if (['Cleared', 'Cancelled'].includes(call.status)) return false;
-                const callTime = getReliableCallTimestamp(call);
-                return !callTime || callTime >= activeWindowStart;
-            });
-
-            const active = dedupeOperationalCalls(recentCalls);
+            // Active means operationally open, not merely recent. Never hide a
+            // still-open CAD call because it is older than an arbitrary hour window.
+            const active = dedupeOperationalCalls((callsData || []).filter(call => !['Cleared', 'Cancelled'].includes(call?.status)));
 
             // Paint calls immediately. This makes Active Calls independent of the
             // slower roster request while still allowing units to populate moments later.
@@ -250,7 +242,7 @@ export function DashboardDataProvider({ children }) {
                 return;
             }
             setCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 8 * 60 * 60_000, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: null, limit: 300 });
                 try {
                     window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
