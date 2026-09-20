@@ -160,9 +160,14 @@ export default function IncidentReports() {
   )), []);
 
   const { data: allReports = [], isLoading: reportsLoading, error: reportsError, refetch: refetchReports } = useQuery({
-    queryKey: ['allIncidentReports'],
-    queryFn: () => base44.entities.IncidentReport.list('-created_date'),
-    enabled: !!user,
+    queryKey: ['incidentReportHistory', historyOfficer?.email || user?.email || ''],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getIncidentReportHistory', { officer_email: historyOfficer?.email || user?.email || '' });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return Array.isArray(payload.reports) ? payload.reports : [];
+    },
+    enabled: !!user && !!historyOfficer,
     staleTime: 0,
     refetchOnMount: 'always',
   });
