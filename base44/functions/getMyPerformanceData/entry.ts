@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     // My Performance is a monthly officer view. Query officer-scoped collections
     // directly and only read recent company-wide operational records needed to
     // validate partner QR scans and property-call report obligations.
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
       safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500),
       safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 1000),
       safeFilter('ShiftBid', officerEmailQuery(), '-created_date', 1000),
@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
       safeFilter('ClientFeedback', officerRecordQuery(), '-feedback_date', 500),
       safeFilter('PerformanceReview', officerRecordQuery(), '-review_date', 500),
       safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 1000),
+      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 1000),
       safeList('DispatchCall', '-time_received', 500),
       safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
       safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1000),
@@ -163,7 +164,16 @@ Deno.serve(async (req) => {
     const myComplaints = complaintsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myFeedback = feedbackAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
     const myReviews = reviewsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
-    const myDailyReports = dailyReportsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']));
+    const normalizedDutyReports = [
+      ...(dailyReportsAll || []).map((r:any) => ({ ...r, source_report_type: 'daily_activity_report' })),
+      ...(shiftReportsAll || []).map((r:any) => ({
+        ...r,
+        source_report_type: 'shift_report',
+        report_date: r.report_date || r.shift_date,
+        hourly_entries: r.hourly_entries || r.activities || '',
+      })),
+    ];
+    const myDailyReports = normalizedDutyReports.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']));
 
     // PropertyAlert is the authoritative property-to-call link. DispatchCall rows are
     // archived after an hour, so rebuild one durable call feed from live + history + alerts.
@@ -236,7 +246,7 @@ Deno.serve(async (req) => {
       });
     }
     const myWorkedSites = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
-    const sharedDailyReports = (dailyReportsAll || []).filter((r:any) => {
+    const sharedDailyReports = normalizedDutyReports.filter((r:any) => {
       const attachedEmails = new Set((r.attached_officer_emails || []).map((value:any) => lower(value)));
       const attachedIds = new Set((r.attached_officer_ids || []).map((value:any) => String(value)));
       return myWorkedSites.has(siteKey(r.location))
@@ -309,6 +319,8 @@ Deno.serve(async (req) => {
         clientFeedback: myFeedback.length,
         performanceReviews: myReviews.length,
         dailyActivityReports: sharedDailyReports.length,
+        dailyActivityReportRows: (dailyReportsAll || []).length,
+        shiftReportRows: (shiftReportsAll || []).length,
         jobDutyRules: dutyRulesAll.length,
         propertyCalls: myPropertyCalls.length,
         identityAliases: aliases.size,
