@@ -6,7 +6,8 @@ const CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 30_000;
+const MEMORY_DEDUPE_MS = 60_000;
+const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 function normalizedText(value) {
@@ -116,7 +117,10 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       // reads depend on each viewer's RLS and were leaving Command Dashboard blank
       // for valid CAD/supervisor accounts even though active calls existed.
       const response = await withRequestTimeout(
-        base44.functions.invoke('getActiveDispatchCalls', { limit }),
+        // Every consumer uses the same backend request shape. Components ask for
+        // 100/200/500 rows, which previously produced separate cache keys and
+        // three network calls for the same feed during one page load.
+        base44.functions.invoke('getActiveDispatchCalls', { limit: BACKEND_FEED_LIMIT }),
         12000,
         'Active call feed',
       );
