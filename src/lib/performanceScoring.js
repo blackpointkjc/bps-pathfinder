@@ -501,7 +501,22 @@ export function calculateJobDutyCompliance({
     const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
     if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
     const prior = darSessions[darSessions.length - 1];
-    const canMerge = prior && start <= prior.end_ms + 20 * 60 * 1000;
+    const priorEntry = prior?.entries?.[prior.entries.length - 1] || null;
+    const priorSwitchTo = String(priorEntry?.notes || '').match(/\bswitched to\s+([^\n\r]+)/i)?.[1] || '';
+    const currentSwitchFrom = String(entry?.notes || '').match(/\bswitched from\s+([^\n\r]+)/i)?.[1] || '';
+    const explicitSwitchPair = Boolean(
+      priorEntry
+      && priorSwitchTo
+      && currentSwitchFrom
+      && siteKey(priorSwitchTo) === siteKey(entry.location)
+      && siteKey(currentSwitchFrom) === siteKey(priorEntry.location)
+      // A historical Time Clock bug could save the destination punch one calendar
+      // day late. The explicit reciprocal Switch Site notes are authoritative for
+      // pairing, but cap recovery at 30 hours so unrelated future shifts never merge.
+      && start >= prior.end_ms
+      && start - prior.end_ms <= 30 * 60 * 60 * 1000
+    );
+    const canMerge = prior && (start <= prior.end_ms + 20 * 60 * 1000 || explicitSwitchPair);
     const session = canMerge ? prior : {
       id: `session-${String(entry.id || start)}`,
       start_ms: start,
