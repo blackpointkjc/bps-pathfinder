@@ -67,13 +67,12 @@ function mergeAnalyticsSegments(previous = {}, payloads = {}) {
   return merged;
 }
 
-function useAnalyticsSegment(name, enabled) {
+function useAnalyticsSegment(name, enabled, startDate, endDate) {
   const config = ANALYTICS_SEGMENTS[name];
-  const monthKey = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   return useQuery({
-    queryKey: ['companyAnalyticsSegment', name, monthKey],
+    queryKey: ['companyAnalyticsSegment', name, startDate, endDate],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name });
+      const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name, start_date: startDate, end_date: endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
@@ -119,6 +118,8 @@ function breakMinutes(entry) {
 
 export default function AdminAnalytics() {
   const [selectedDivision, setSelectedDivision] = useState('all');
+  const [analyticsStartDate, setAnalyticsStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [analyticsEndDate, setAnalyticsEndDate] = useState(() => format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
   const [summarySending, setSummarySending] = useState(false);
   const [summaryResult, setSummaryResult] = useState(null);
@@ -158,14 +159,14 @@ export default function AdminAnalytics() {
 
   const companySnapshot = readCompanyAnalyticsSnapshot();
   const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
-  const coreAnalytics = useAnalyticsSegment('core', !!user);
+  const coreAnalytics = useAnalyticsSegment('core', !!user, analyticsStartDate, analyticsEndDate);
   // Load the current-month performance path first and serially. Enabling all
   // four secondary functions together caused a read burst and left this page on
   // its old persisted score when one of them was throttled.
-  const dutyAnalytics = useAnalyticsSegment('duty', Boolean(user && coreAnalytics.data));
-  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && dutyAnalytics.data));
-  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && callsAnalytics.data));
-  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && trainingAnalytics.data));
+  const dutyAnalytics = useAnalyticsSegment('duty', Boolean(user && coreAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && callsAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && trainingAnalytics.data), analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
@@ -339,8 +340,8 @@ export default function AdminAnalytics() {
     return active.filter(u => String(u.division || '') === String(selectedDivision));
   }, [allUsers, selectedDivision]);
 
-  const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-  const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+  const currentMonthStart = analyticsStartDate;
+  const currentMonthEnd = analyticsEndDate;
 
   const companyOnTimeStats = useMemo(() => {
     const coreErrors = coreAnalytics.data?.service_errors || {};
