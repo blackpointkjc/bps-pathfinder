@@ -31,7 +31,7 @@ export default function DutySupervisorScheduling() {
   const canManage = user?.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || user?.is_supervisor === true;
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
-  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:()=>base44.entities.DutySupervisorAssignment.list('-assignment_date',1000), refetchInterval:5 * 60 * 1000 });
+  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:async()=>{ const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'list'}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); return payload.assignments||[]; }, refetchInterval:5 * 60 * 1000 });
 
   useEffect(() => {
     let unsubscribe;
@@ -103,18 +103,12 @@ export default function DutySupervisorScheduling() {
           notes: form.notes || '',
           updated_by_email: user?.email || '',
         };
-        if (user?.role === 'admin') {
-          return id
-            ? base44.entities.DutySupervisorAssignment.update(id, payload)
-            : base44.entities.DutySupervisorAssignment.create({ ...payload, created_by_email: user?.email || '' });
-        }
         const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'save', assignment:{ ...payload, id } });
         const result = response?.data || response || {};
         if (result.error) throw new Error(result.error);
         return result.assignment;
       };
       const deleteAssignment = async row => {
-        if (user?.role === 'admin') return base44.entities.DutySupervisorAssignment.delete(row.id);
         const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'delete', id:row.id });
         const result = response?.data || response || {};
         if (result.error) throw new Error(result.error);
@@ -138,7 +132,7 @@ export default function DutySupervisorScheduling() {
       toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
     } catch(e){ toast.error(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
   };
-  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { if (user?.role === 'admin') await base44.entities.DutySupervisorAssignment.delete(row.id); else { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } } await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ toast.error(error?.message||'Unable to remove duty supervisor coverage.'); } };
+  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ toast.error(error?.message||'Unable to remove duty supervisor coverage.'); } };
   const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
 
   if (userLoading) return <div className="min-h-screen bg-[#080d16] p-8 text-center text-slate-300">Checking administrator access…</div>;
