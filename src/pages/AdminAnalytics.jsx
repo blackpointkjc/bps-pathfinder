@@ -183,7 +183,15 @@ export default function AdminAnalytics() {
   // core + duty + calls segments that supply attendance, schedules, DAR/QR,
   // call-outs and CAD/report obligations. Optional training/quality segments are
   // included only when their current generation is present.
-  const performanceGenerationReady = Boolean(coreAnalytics.data && dutyAnalytics.data && callsAnalytics.data);
+  const performanceCriticalErrors = useMemo(() => ({
+    ...(coreAnalytics.data?.service_errors || {}),
+    ...(dutyAnalytics.data?.service_errors || {}),
+    ...(callsAnalytics.data?.service_errors || {}),
+  }), [coreAnalytics.data, dutyAnalytics.data, callsAnalytics.data]);
+  const performanceGenerationReady = Boolean(
+    coreAnalytics.data && dutyAnalytics.data && callsAnalytics.data
+    && Object.keys(performanceCriticalErrors).length === 0
+  );
   const performanceAnalyticsData = useMemo(() => mergeAnalyticsSegments({}, {
     core: coreAnalytics.data,
     duty: dutyAnalytics.data,
@@ -343,17 +351,22 @@ export default function AdminAnalytics() {
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
   const companyOnTimeStats = useMemo(() => {
-    // Company-wide On-Time Rate must include every operational officer in the
-    // selected company/division. The separate leaderboard can exclude supervisors,
-    // but that exclusion must never zero-out the company KPI.
-    const byOfficer = filteredUsers.map(officer => {
-      const key = emailKey(officer.email);
+    const coreErrors = coreAnalytics.data?.service_errors || {};
+    if (!coreAnalytics.data || Object.keys(coreErrors).length > 0) return { rate: null, byOfficer: [], leaderboard: [] };
+    const coreUsers = (coreAnalytics.data.users || []).filter(isOperationalOfficer);
+    const selectedCoreUsers = selectedDivision === 'all'
+      ? coreUsers
+      : coreUsers.filter(u => String(u.division || '') === String(selectedDivision));
+    const coreEntries = coreAnalytics.data.timeEntries || [];
+    const coreSchedules = coreAnalytics.data.schedules || [];
+    const coreIncidents = coreAnalytics.data.incidentReports || [];
+    const byOfficer = selectedCoreUsers.map(officer => {
       const stats = calculatePunctuality(
-        timeEntries.filter(entry => emailKey(entry.officer_email) === key),
-        schedules.filter(schedule => emailKey(schedule.officer_email) === key),
+        coreEntries.filter(entry => recordMatchesOfficer(entry, officer)),
+        coreSchedules.filter(schedule => recordMatchesOfficer(schedule, officer)),
         currentMonthStart,
         currentMonthEnd,
-        incidentReports,
+        coreIncidents,
         officer
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
@@ -361,11 +374,11 @@ export default function AdminAnalytics() {
     const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
     const leaderboard = byOfficer.filter(item => {
-      const officer = filteredUsers.find(user => emailKey(user.email) === emailKey(item.email));
+      const officer = selectedCoreUsers.find(user => emailKey(user.email) === emailKey(item.email));
       return officer && isPunctualityLeaderboardOfficer(officer);
     }).slice(0, 3);
     return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, byOfficer, leaderboard };
-  }, [timeEntries, schedules, incidentReports, filteredUsers, currentMonthStart, currentMonthEnd]);
+  }, [coreAnalytics.data, selectedDivision, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
     if (!timeEntries || !filteredUsers) return [];
@@ -780,7 +793,15 @@ export default function AdminAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {overallByOfficer.map(officer => (
+              {!performanceGenerationReady && (
+                <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
+                  Loading the current month's attendance, duty/report, and CAD compliance data. Old saved officer percentages are intentionally not shown here.
+                  {Object.keys(performanceCriticalErrors).length > 0 && (
+                    <div className="mt-2 text-amber-200">Retrying: {Object.keys(performanceCriticalErrors).join(', ')}</div>
+                  )}
+                </div>
+              )}
+              {performanceGenerationReady && overallByOfficer.map(officer => (
                 <div key={officer.email} className="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -822,6 +843,9 @@ export default function AdminAnalytics() {
                   </div>
                 </div>
               ))}
+              {performanceGenerationReady && overallByOfficer.length === 0 && (
+                <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">No scoreable current-month officer records are available.</div>
+              )}
             </div>
           </CardContent>
         </Card>
