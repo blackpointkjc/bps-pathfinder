@@ -134,101 +134,96 @@ export default function AdminAnalytics() {
   };
 
   const companySnapshot = readCompanyAnalyticsSnapshot();
-  const { data: analyticsData = {}, isLoading: analyticsLoading, error: analyticsError } = useQuery({
-    queryKey: ['companyAnalyticsData'],
-    queryFn: async () => {
-      const previous = companySnapshot?.data || {};
-      const merged = { ...previous };
-      const serviceErrors = {};
-      const segments = [
-        {
-          name: 'core', required: true,
-          fields: { users: 'User', divisions: 'Division', timeEntries: ['User','TimeEntry'], schedules: ['User','Schedule'], incidentReports: ['User','IncidentReport'] },
-        },
-        {
-          name: 'training',
-          fields: { bids: ['User','ShiftBid'], trainingCompletions: ['User','TrainingCompletion'], trainingAssignments: ['User','TrainingAssignment'], trainingModules: ['User','TrainingModule'] },
-        },
-        {
-          name: 'duty',
-          fields: { qrScans: ['User','QRScanEvent'], qrCheckpoints: 'QRCheckpoint', dailyActivityReports: ['User','DailyActivityReport'], callOuts: ['User','CallOut'], dutyRules: 'JobDutyRule', locations: 'Location' },
-        },
-        {
-          name: 'calls',
-          fields: { dispatchCalls: ['DispatchCall', 'CallHistory', 'PropertyAlert'] },
-        },
-        {
-          name: 'quality',
-          fields: { commendations: ['User','Commendation'], complaints: ['User','Complaint'], clientFeedback: ['User','ClientFeedback'], performanceReviews: ['User','PerformanceReview'] },
-        },
-      ];
+  const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
+  const coreAnalytics = useAnalyticsSegment('core', !!user);
+  const secondaryEnabled = Boolean(user && (coreAnalytics.data || hasVerifiedCore));
+  const trainingAnalytics = useAnalyticsSegment('training', secondaryEnabled);
+  const dutyAnalytics = useAnalyticsSegment('duty', secondaryEnabled);
+  const callsAnalytics = useAnalyticsSegment('calls', secondaryEnabled);
+  const qualityAnalytics = useAnalyticsSegment('quality', secondaryEnabled);
 
-      let successfulSegments = 0;
-      for (const segment of segments) {
-        try {
-          const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: segment.name });
-          const payload = result?.data || result || {};
-          if (payload.error) throw new Error(payload.error);
-          const segmentErrors = payload.service_errors || {};
-          Object.entries(segment.fields || {}).forEach(([key, sources]) => {
-            const requiredSources = Array.isArray(sources) ? sources : [sources];
-            const sourceFailed = requiredSources.some(source => segmentErrors[source]);
-            if (!sourceFailed && Object.prototype.hasOwnProperty.call(payload, key)) merged[key] = payload[key];
-          });
-          Object.assign(serviceErrors, segmentErrors);
-          successfulSegments += 1;
-        } catch (error) {
-          serviceErrors[`segment:${segment.name}`] = error?.message || 'Segment could not be loaded';
-          if (segment.required && !previous?.users?.length) throw error;
-        }
-        // Yield between groups so analytics cannot monopolize the shared request
-        // allowance while command/CAD/location reads are waiting.
-        await new Promise(resolve => window.setTimeout(resolve, 350));
-      }
+  const analyticsData = useMemo(() => {
+    const merged = mergeAnalyticsSegments(companySnapshot?.data || {}, {
+      core: coreAnalytics.data,
+      training: trainingAnalytics.data,
+      duty: dutyAnalytics.data,
+      calls: callsAnalytics.data,
+      quality: qualityAnalytics.data,
+    });
+    const queryErrors = {
+      core: coreAnalytics.error,
+      training: trainingAnalytics.error,
+      duty: dutyAnalytics.error,
+      calls: callsAnalytics.error,
+      quality: qualityAnalytics.error,
+    };
+    Object.entries(queryErrors).forEach(([segment, error]) => {
+      if (error) merged.service_errors[`segment:${segment}`] = error.message || 'Segment could not be loaded';
+    });
+    return merged;
+  }, [
+    companySnapshot?.data,
+    coreAnalytics.data, coreAnalytics.error,
+    trainingAnalytics.data, trainingAnalytics.error,
+    dutyAnalytics.data, dutyAnalytics.error,
+    callsAnalytics.data, callsAnalytics.error,
+    qualityAnalytics.data, qualityAnalytics.error,
+  ]);
 
-      merged.generated_at = new Date().toISOString();
-      merged.service_errors = serviceErrors;
-      merged.analytics_segments_loaded = successfulSegments;
-      if (Object.keys(serviceErrors).length === 0) saveCompanyAnalyticsSnapshot(merged);
-      return merged;
-    },
-    enabled: !!user,
-    initialData: companySnapshot?.data,
-    initialDataUpdatedAt: companySnapshot?.savedAt,
-    staleTime: 2 * 60 * 1000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchInterval: 5 * 60 * 1000,
-    refetchIntervalInBackground: false,
-    retry: false,
-    placeholderData: previousData => previousData,
-  });
+  const analyticsLoading = isLoadingAuth || (!hasVerifiedCore && coreAnalytics.isLoading);
+  const analyticsError = !hasVerifiedCore ? coreAnalytics.error : null;
+
+  useEffect(() => {
+    if (analyticsData.analytics_segments_loaded === 5 && Object.keys(analyticsData.service_errors || {}).length === 0) {
+      saveCompanyAnalyticsSnapshot(analyticsData);
+    }
+  }, [analyticsData]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
-    let timer = null;
-    const refresh = () => {
-      if (timer) window.clearTimeout(timer);
-      // The analytics snapshot reads many datasets. Coalesce operational bursts
-      // (GPS/CAD/report saves often arrive together) instead of rerunning the
-      // full company calculation after every individual entity event.
-      timer = window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsData'] }), 30_000);
+    const timers = new Map();
+    const entitySegments = {
+      TimeEntry: ['core'],
+      Schedule: ['core'],
+      IncidentReport: ['core'],
+      DailyActivityReport: ['duty'],
+      CallOut: ['duty'],
+      QRScanEvent: ['duty'],
+      JobDutyRule: ['duty'],
+      QRCheckpoint: ['duty'],
+      Location: ['duty'],
+      TrainingCompletion: ['training'],
+      TrainingAssignment: ['training'],
+      TrainingModule: ['training'],
+      ShiftBid: ['training'],
+      ClientFeedback: ['quality'],
+      PerformanceReview: ['quality'],
+      Commendation: ['quality'],
+      Complaint: ['quality'],
+      DispatchCall: ['calls'],
+      CallHistory: ['calls'],
+      PropertyAlert: ['calls'],
     };
+
+    const scheduleSegmentRefresh = segment => {
+      const prior = timers.get(segment);
+      if (prior) window.clearTimeout(prior);
+      timers.set(segment, window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment] });
+        timers.delete(segment);
+      }, 1500));
+    };
+
     const unsubscribers = [];
-    const scoringEntities = [
-      'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
-      'CallOut', 'QRScanEvent', 'TrainingCompletion', 'TrainingAssignment',
-      'TrainingModule', 'ShiftBid', 'ClientFeedback', 'PerformanceReview',
-      'Commendation', 'Complaint', 'JobDutyRule',
-    ];
-    for (const entity of scoringEntities) {
+    Object.entries(entitySegments).forEach(([entity, segments]) => {
       try {
-        const stop = base44.entities[entity].subscribe(refresh);
+        const stop = base44.entities[entity].subscribe(() => segments.forEach(scheduleSegmentRefresh));
         if (typeof stop === 'function') unsubscribers.push(stop);
-      } catch { /* The scheduled authoritative refresh remains available. */ }
-    }
+      } catch { /* Segment polling remains available. */ }
+    });
+
     return () => {
-      if (timer) window.clearTimeout(timer);
+      timers.forEach(timer => window.clearTimeout(timer));
       unsubscribers.forEach(stop => stop());
     };
   }, [queryClient, user?.id]);
