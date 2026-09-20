@@ -1,8 +1,9 @@
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 
 const STATUS_KEY = 'bps:pathfinder:last-status-write:v1';
 const STATUS_ATTEMPT_KEY = 'bps:pathfinder:status-attempt:v1';
-const STATUS_RETRY_DELAY_MS = 8_000;
+const STATUS_RETRY_MIN_DELAY_MS = 8_000;
+const STATUS_RETRY_MAX_DELAY_MS = 46_000;
 const statusRuntime = globalThis.__BPS_OFFICER_STATUS_RUNTIME__ || { inflight: null };
 if (!globalThis.__BPS_OFFICER_STATUS_RUNTIME__) globalThis.__BPS_OFFICER_STATUS_RUNTIME__ = statusRuntime;
 
@@ -24,6 +25,12 @@ function isRateLimit(error) {
 }
 
 const wait = milliseconds => new Promise(resolve => window.setTimeout(resolve, milliseconds));
+
+function statusRetryDelay() {
+  const limitedUntil = new Date(getBase44RequestHealth()?.rateLimitedUntil || 0).getTime();
+  const cooldownRemaining = Number.isFinite(limitedUntil) ? Math.max(0, limitedUntil - Date.now() + 250) : 0;
+  return Math.min(STATUS_RETRY_MAX_DELAY_MS, Math.max(STATUS_RETRY_MIN_DELAY_MS, cooldownRemaining));
+}
 
 export function getLastOfficerStatus() {
   return readLast()?.status || '';
@@ -49,9 +56,10 @@ export async function persistOfficerStatus(status, { force = false } = {}) {
       response = await base44.functions.invoke('updateOfficerStatus', { status: normalized });
     } catch (error) {
       if (!isRateLimit(error)) throw error;
-      // Status updates are idempotent. One delayed retry is safe and prevents a
-      // short app-wide 429 burst from losing the officer's selected status.
-      await wait(STATUS_RETRY_DELAY_MS);
+      // Status updates are idempotent. Wait for the shared Base44 cooldown before
+      // retrying; the former fixed eight-second retry landed inside the 45-second
+      // cooldown and turned one throttle into two failed updateOfficerStatus calls.
+      await wait(statusRetryDelay());
       response = await base44.functions.invoke('updateOfficerStatus', { status: normalized });
     }
     const payload = response?.data || response || {};
