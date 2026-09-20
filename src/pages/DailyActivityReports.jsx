@@ -1369,6 +1369,7 @@ export default function DailyActivityReports() {
                           <p className="text-sm text-slate-600">
                             {report.start_time} to {report.end_time}
                           </p>
+                          {(report.attached_officer_names || []).length > 0 && <p className="mt-1 text-xs font-semibold text-blue-700">Attached Officers: {report.attached_officer_names.join(', ')}</p>}
                         </div>
                         <div className="flex items-center gap-2">
                           <StatusBadge status={report.status} />
@@ -1449,6 +1450,7 @@ export default function DailyActivityReports() {
                           <p className="text-sm text-slate-600">
                             {report.start_time} to {report.end_time}
                           </p>
+                          {(report.attached_officer_names || []).length > 0 && <p className="mt-1 text-xs font-semibold text-blue-700">Attached Officers: {report.attached_officer_names.join(', ')}</p>}
                         </div>
                         <div className="flex items-center gap-2">
                           <StatusBadge status={report.status} />
