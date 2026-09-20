@@ -179,11 +179,16 @@ Deno.serve(async (req) => {
     const list = (name:string, sort?:string, limit=1000) => safe(name, () => entity(name).list(sort, limit));
     const filter = (name:string, query:any, sort?:string, limit=1000) => safe(name, () => entity(name).filter(query, sort, limit));
 
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0,0,0,0);
-    const monthDateCutoff = monthStart.toISOString().slice(0,10);
-    const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
+    const today = new Date();
+    const defaultStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+    const defaultEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);
+    const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date || '')) ? String(body.start_date) : defaultStart;
+    const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : defaultEnd;
+    if (startDate > endDate) return Response.json({ error:'Start date must be on or before end date.' }, { status:400 });
+    const activityCutoff = `${startDate}T00:00:00.000Z`;
+    const endExclusive = new Date(`${endDate}T00:00:00.000Z`);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const activityEndExclusive = endExclusive.toISOString();
 
     const getUsers = () => cachedRows('users', 30 * 1000, () => entity('User').list('-updated_date', 1000));
 
@@ -191,9 +196,9 @@ Deno.serve(async (req) => {
       const [users, divisions, timeEntries, schedules, incidentReports] = await Promise.all([
         safe('User', getUsers),
         safe('Division', () => cachedRows('divisions', 60 * 1000, () => entity('Division').list('division_name', 500))),
-        filter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 2000),
-        filter('Schedule', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 2000),
-        filter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1500),
+        filter('TimeEntry', { clock_in: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-clock_in', 2000),
+        filter('Schedule', { shift_date: { $gte: startDate, $lte: endDate } }, '-shift_date', 2000),
+        filter('IncidentReport', { incident_date: { $gte: startDate, $lte: endDate } }, '-incident_date', 1500),
       ]);
       const c = canonicalizer(users);
       return Response.json({
@@ -207,7 +212,7 @@ Deno.serve(async (req) => {
     if (segment === 'training') {
       const [users, bids, trainingCompletions, trainingAssignments, trainingModules] = await Promise.all([
         safe('User', getUsers),
-        filter('ShiftBid', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
+        filter('ShiftBid', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 1500),
         list('TrainingCompletion', '-completion_date', 1500),
         list('TrainingAssignment', '-assigned_date', 1500),
         safe('TrainingModule', () => cachedRows('trainingModules', 60 * 1000, () => entity('TrainingModule').list('-created_date', 1000))),
@@ -229,11 +234,11 @@ Deno.serve(async (req) => {
     if (segment === 'duty') {
       const [users, qrScans, qrCheckpoints, dailyActivityReports, shiftReports, callOuts, dutyRules, locations] = await Promise.all([
         safe('User', getUsers),
-        filter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 2000),
+        filter('QRScanEvent', { scanned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-scanned_at', 2000),
         safe('QRCheckpoint', () => cachedRows('qrCheckpoints', 60 * 1000, () => entity('QRCheckpoint').list('property_site', 1000))),
-        filter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 2000),
-        filter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 2000),
-        filter('CallOut', { call_out_date: { $gte: monthDateCutoff } }, '-call_out_date', 1000),
+        filter('DailyActivityReport', { report_date: { $gte: startDate, $lte: endDate } }, '-report_date', 2000),
+        filter('ShiftReport', { shift_date: { $gte: startDate, $lte: endDate } }, '-shift_date', 2000),
+        filter('CallOut', { call_out_date: { $gte: startDate, $lte: endDate } }, '-call_out_date', 1000),
         safe('JobDutyRule', () => cachedRows('dutyRules', 60 * 1000, () => entity('JobDutyRule').list('property_site', 1000))),
         safe('Location', () => cachedRows('locations', 60 * 1000, () => entity('Location').list('site_name', 1000))),
       ]);
@@ -252,9 +257,9 @@ Deno.serve(async (req) => {
 
     if (segment === 'calls') {
       const [dispatchCallsLive, callHistory, propertyAlerts] = await Promise.all([
-        filter('DispatchCall', { time_received: { $gte: activityCutoff } }, '-time_received', 750),
-        filter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
-        filter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
+        filter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 750),
+        filter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500),
+        filter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 1500),
       ]);
       return Response.json({
         success:true, segment, generated_at:new Date().toISOString(),
@@ -266,10 +271,10 @@ Deno.serve(async (req) => {
     if (segment === 'quality') {
       const [users, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
         safe('User', getUsers),
-        filter('Commendation', { commendation_date: { $gte: monthDateCutoff } }, '-commendation_date', 1000),
-        filter('Complaint', { complaint_date: { $gte: monthDateCutoff } }, '-complaint_date', 1000),
-        filter('ClientFeedback', { feedback_date: { $gte: monthDateCutoff } }, '-feedback_date', 1000),
-        filter('PerformanceReview', { review_date: { $gte: monthDateCutoff } }, '-review_date', 1000),
+        filter('Commendation', { commendation_date: { $gte: startDate, $lte: endDate } }, '-commendation_date', 1000),
+        filter('Complaint', { complaint_date: { $gte: startDate, $lte: endDate } }, '-complaint_date', 1000),
+        filter('ClientFeedback', { feedback_date: { $gte: startDate, $lte: endDate } }, '-feedback_date', 1000),
+        filter('PerformanceReview', { review_date: { $gte: startDate, $lte: endDate } }, '-review_date', 1000),
       ]);
       const c = canonicalizer(users);
       return Response.json({
