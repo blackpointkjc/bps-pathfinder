@@ -154,10 +154,6 @@ export default function IncidentReports() {
   }, [allUsers, historyOfficerEmail, isAdmin, user]);
   const reportBelongsToOfficer = React.useCallback((person, report) => Boolean(person && report && (
     String(report.reporting_officer_id || report.created_by_id || '') === String(person.id || '')
-    || String(report.primary_officer_id || '') === String(person.id || '')
-    || (report.backup_officer_ids || []).map(String).includes(String(person.id || ''))
-    || (report.attached_officer_ids || []).map(String).includes(String(person.id || ''))
-    || (report.attached_officer_emails || []).some(email => directoryUserMatches(person, email))
     || directoryUserMatches(person, report.reporting_officer_email)
     || directoryUserMatches(person, report.officer_email)
     || directoryUserMatches(person, report.created_by)
@@ -194,9 +190,10 @@ export default function IncidentReports() {
     };
   }, [user?.id, refetchReports]);
 
-  // Default history is private to the signed-in officer. Admins may explicitly
-  // select another officer in Incident History; being assigned to the same site
-  // never exposes somebody else's report in the normal officer view.
+  // Default history is private to reports authored by the signed-in officer.
+  // Being attached as a backup/secondary officer does not place another author's
+  // report in My Reports. Administrators must explicitly select that author in
+  // Incident History to review the report.
   const reportsPotentiallyVisible = React.useMemo(() => {
     if (!allReports || !user || !historyOfficer) return [];
     const target = isAdmin ? historyOfficer : user;
@@ -1721,7 +1718,7 @@ Provide:
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 mx-auto mb-4 text-slate-400" />
                 <p className="text-slate-600 text-lg">No submitted incident reports are available yet</p>
-                <p className="text-slate-500 text-sm mt-2">Reports you author or are attached to remain here after you clock out. Administrators can select an officer above to review that officer's incident history.</p>
+                <p className="text-slate-500 text-sm mt-2">My Reports shows only reports you authored. Administrators can select another officer above to search that officer's Incident History.</p>
               </div>
             ) : (
               <div className="space-y-4">
