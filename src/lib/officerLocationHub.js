@@ -5,8 +5,8 @@ import { base44 } from '@/api/base44Client';
 // All consumers share the same in-memory snapshot/in-flight request so opening
 // several CAD/map panels does not multiply live-location backend reads.
 // Realtime ActiveOfficer subscriptions clear this cache immediately on an actual
-// location/status change. A 15-second read cache therefore reduces duplicate map,
-// health-check, and CAD fetches without delaying genuine live updates.
+// location/status change. A one-minute read cache therefore reduces duplicate map,
+// health-check, and CAD fetches without delaying genuine realtime invalidation.
 const SNAPSHOT_TTL_MS = 60_000;
 const FORCE_REFRESH_DEDUPE_MS = 15_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
