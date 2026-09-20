@@ -54,18 +54,22 @@ export async function getOfficerPerformanceReviewSnapshot(request = {}, { force 
   if (!force && cached && Date.now() - cached.at < TTL_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
 
-  const pending = base44.functions.invoke('manageOfficerPerformanceReviews', {
-    action: 'list',
-    ...(request || {}),
-  }).then(response => {
-    const payload = response?.data || response || {};
-    if (payload.error) throw new Error(payload.error);
-    const normalized = { ...payload, reviews: Array.isArray(payload.reviews) ? payload.reviews : [] };
+  const pending = (async () => {
+    const previewUserId = String(request?.preview_user_id || '').trim();
+    let rows = [];
+    if (previewUserId) {
+      rows = await base44.entities.PerformanceReview.filter({ officer_id: previewUserId }, '-review_date', 250);
+    } else {
+      const me = await base44.auth.me();
+      if (!me?.email) return { success: true, reviews: [] };
+      rows = await base44.entities.PerformanceReview.filter({ officer_email: me.email }, '-review_date', 250);
+    }
+    const normalized = { success: true, reviews: Array.isArray(rows) ? rows : [] };
     const item = { at: Date.now(), payload: normalized };
     cache.set(key, item);
     persist(request, normalized);
     return normalized;
-  }).finally(() => inflight.delete(key));
+  })().finally(() => inflight.delete(key));
 
   inflight.set(key, pending);
   return pending;
