@@ -26,6 +26,27 @@
       "type": "string",
       "description": "Officer email cached for duty-compliance matching"
     },
+    "attached_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer user IDs covered by this DAR"
+    },
+    "attached_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer emails covered by this DAR"
+    },
+    "attached_officer_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Display names of additional officers covered by this DAR"
+    },
     "report_date": {
       "type": "string",
       "format": "date",
