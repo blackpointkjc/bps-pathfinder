@@ -27,7 +27,7 @@ const ANALYTICS_SEGMENTS = {
     interval: 5 * 60 * 1000,
   },
   duty: {
-    fields: { qrScans: ['User','QRScanEvent'], qrCheckpoints: 'QRCheckpoint', dailyActivityReports: ['User','DailyActivityReport'], callOuts: ['User','CallOut'], dutyRules: 'JobDutyRule', locations: 'Location' },
+    fields: { qrScans: ['User','QRScanEvent'], qrCheckpoints: 'QRCheckpoint', dailyActivityReports: ['User','DailyActivityReport','ShiftReport'], callOuts: ['User','CallOut'], dutyRules: 'JobDutyRule', locations: 'Location' },
     interval: 3 * 60 * 1000,
   },
   calls: {
@@ -217,6 +217,7 @@ export default function AdminAnalytics() {
       Schedule: ['core'],
       IncidentReport: ['core'],
       DailyActivityReport: ['duty'],
+      ShiftReport: ['duty'],
       CallOut: ['duty'],
       QRScanEvent: ['duty'],
       JobDutyRule: ['duty'],
