@@ -76,13 +76,14 @@ export default function MyPerformanceAnalytics() {
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
+        clearBase44ReadCacheMatching('function:getMyPerformanceData:');
         queryClient.invalidateQueries({ queryKey: ['myPerformanceData', performanceIdentity] });
         queryClient.refetchQueries({ queryKey: ['myPerformanceData', performanceIdentity], type: 'active' });
       }, 250);
     };
     const unsubscribers = [];
     const scoringEntities = [
-      'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
+      'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport',
       'CallOut', 'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion',
       'TrainingModule', 'ShiftBid', 'PerformanceReview', 'ClientFeedback',
       'Commendation', 'Complaint', 'JobDutyRule',
