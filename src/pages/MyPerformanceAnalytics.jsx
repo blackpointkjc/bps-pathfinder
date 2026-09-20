@@ -407,6 +407,18 @@ export default function MyPerformanceAnalytics() {
     return factors;
   }, [onTimeStats, jobDuty, incidentObligations, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
 
+  const incidentReportLink = item => {
+    const params = new URLSearchParams({
+      from_call: 'true',
+      call_id: String(item.call_id || ''),
+      call_number: String(item.call_number || ''),
+      location: String(item.call_location || item.property || ''),
+      incident_type: 'other',
+      description: `${item.call_type || 'Property call'}${item.call_number ? ` · CAD ${item.call_number}` : ''}`,
+    });
+    return `${createPageUrl('IncidentReports')}?${params.toString()}`;
+  };
+
   const calculateShiftHours = (start, end) => {
     const [sh = 0, sm = 0] = String(start || '00:00').split(':').map(Number);
     const [eh = 0, em = 0] = String(end || '00:00').split(':').map(Number);
@@ -503,6 +515,42 @@ export default function MyPerformanceAnalytics() {
             </Card>
           ))}
         </div>
+
+        {incidentObligations.length > 0 && (
+          <Card className="overflow-hidden border border-slate-200 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-slate-950 to-slate-900 text-white">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-300" /> Incident Report Obligations</span>
+                <Badge className={missingIncidentObligations.length ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}>
+                  {jobDuty.incidentReports.completed}/{jobDuty.incidentReports.required} COMPLETE
+                </Badge>
+              </CardTitle>
+              <p className="text-xs text-slate-300">Each required property call is tied to its CAD. A submitted linked report from any officer satisfies the call for every officer working that property at the time.</p>
+            </CardHeader>
+            <CardContent className="divide-y divide-slate-200 p-0">
+              {incidentObligations.map((item, index) => (
+                <div key={`${item.call_id || item.call_number}-${index}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className={item.status === 'completed' ? 'bg-green-600 text-white' : item.status.startsWith('excluded') ? 'bg-slate-500 text-white' : 'bg-red-600 text-white'}>
+                        {item.status === 'completed' ? 'REPORT ON FILE' : item.status.startsWith('excluded') ? 'EXCLUDED' : 'MISSING REPORT'}
+                      </Badge>
+                      <span className="text-sm font-black text-slate-900">CAD {item.call_number || item.call_id || 'Unavailable'}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">{item.call_type || 'Call for service'}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.call_location || item.property || 'Property location'}{item.call_time ? ` · ${new Date(item.call_time).toLocaleString()}` : ''}</p>
+                    {item.status === 'completed' && <p className="mt-1 text-xs font-semibold text-green-700">Satisfied by report {item.report_number || item.report_id} · {item.report_status || 'submitted'}</p>}
+                  </div>
+                  {item.status === 'missing' && (
+                    <Link to={incidentReportLink(item)} className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-red-600 px-4 text-xs font-black text-white hover:bg-red-700">
+                      Create Incident Report
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="overflow-hidden border border-slate-200 shadow-lg">
           <CardHeader className="bg-slate-900 text-white">
