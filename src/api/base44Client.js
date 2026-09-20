@@ -30,7 +30,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'entity' && meta?.name === 'BOLOAlert') return 2 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'Schedule') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getOnDutyUnits') return 60_000;
-  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getSupervisorWelfareBoard'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getSupervisorWelfareBoard'].includes(meta?.name)) return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getWorkforceSnapshot') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getRoleWorkQueue') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getFleetScheduleData') return 2 * 60_000;
@@ -149,18 +149,25 @@ function pumpReads() {
   const cooldown = sharedRateLimitUntil() - Date.now();
   const criticalPriority = 90;
 
-  // A 429 from a background/admin/analytics request must never freeze login,
-  // CAD, live officer location, or current time-entry reads for the entire
-  // cooldown window. Critical operational reads may still attempt immediately;
-  // lower-priority work continues to back off.
-  if (cooldown > 0 && Number(readQueue[0]?.priority || 0) < criticalPriority) {
-    schedulePump(cooldown + 25);
+  // After any 429, even operational reads need a short recovery window. The
+  // previous critical bypass immediately retried CAD/location calls and converted
+  // one throttle into repeated getActiveDispatchCalls/getOnDutyUnits failures.
+  // Critical feeds wait eight seconds; background work honors the full cooldown.
+  const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
+  const criticalRecovery = Math.max(0, 8_000 - (Date.now() - cooldownStartedAt));
+  const waitForHead = cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
+    ? criticalRecovery
+    : cooldown;
+  if (waitForHead > 0) {
+    schedulePump(waitForHead + 25);
     return;
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
-    if (cooldown > 0 && Number(readQueue[0]?.priority || 0) < criticalPriority) {
-      schedulePump(cooldown + 25);
+    const nextPriority = Number(readQueue[0]?.priority || 0);
+    const nextWait = cooldown > 0 && nextPriority >= criticalPriority ? criticalRecovery : cooldown;
+    if (nextWait > 0) {
+      schedulePump(nextWait + 25);
       break;
     }
     const job = readQueue.shift();
