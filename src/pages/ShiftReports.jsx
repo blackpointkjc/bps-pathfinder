@@ -768,6 +768,7 @@ export default function ShiftReports() {
                   persons_of_interest: "",
                   equipment_check: "",
                   photo_url: "",
+                  attached_officer_ids: [],
                 });
               }
             }}
@@ -862,6 +863,14 @@ export default function ShiftReports() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <AttachedOfficerSelector
+                  users={allUsers || []}
+                  selectedIds={formData.attached_officer_ids || []}
+                  currentUserId={user?.id}
+                  onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
+                  label="Attach Other Officers Covered by This Shift/DAR Report"
+                />
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
