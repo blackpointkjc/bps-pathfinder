@@ -225,6 +225,7 @@ export default function MyPerformanceAnalytics() {
     dailyReports: performanceData.dailyActivityReports || [],
     incidentReports: performanceData.incidents || [],
     dispatchCalls: performanceData.dispatchCalls || [],
+    callAssignments: performanceData.callAssignments || [],
     callOuts: myCallOuts,
     qrScans: performanceData.sharedQrScanEvents || performanceData.qrScanEvents || [],
     allTimeEntries: performanceData.partnerTimeEntries || timeEntries,
@@ -233,7 +234,7 @@ export default function MyPerformanceAnalytics() {
     locations: performanceData.locations || [],
     monthStart: currentMonthStart,
     monthEnd: currentMonthEnd,
-  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, currentMonthStart, currentMonthEnd]);
+  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.callAssignments, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, currentMonthStart, currentMonthEnd]);
 
   const incidentObligations = useMemo(
     () => (jobDuty.shifts || []).flatMap(shift =>
