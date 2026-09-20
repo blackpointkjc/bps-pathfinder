@@ -1,6 +1,6 @@
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const COMPANY_PREFIX = 'bps:analytics:company:last-verified:v4:';
-const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v4:';
+const COMPANY_PREFIX = 'bps:analytics:company:last-verified:v5:';
+const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v5:';
 
 function monthKey() {
   try {
@@ -35,13 +35,19 @@ function previewKey(request = {}) {
   return String(request?.preview_user_id || 'self').trim() || 'self';
 }
 
-export function readCompanyAnalyticsSnapshot() {
-  return safeRead(`${COMPANY_PREFIX}${monthKey()}`);
+function companyRangeKey(request = {}) {
+  const start = String(request?.start_date || request?.startDate || '').trim();
+  const end = String(request?.end_date || request?.endDate || '').trim();
+  return start && end ? `${start}:${end}` : monthKey();
 }
 
-export function saveCompanyAnalyticsSnapshot(data) {
+export function readCompanyAnalyticsSnapshot(request = {}) {
+  return safeRead(`${COMPANY_PREFIX}${companyRangeKey(request)}`);
+}
+
+export function saveCompanyAnalyticsSnapshot(request = {}, data) {
   if (data?.service_errors && Object.keys(data.service_errors).length) return;
-  safeWrite(`${COMPANY_PREFIX}${monthKey()}`, data);
+  safeWrite(`${COMPANY_PREFIX}${companyRangeKey(request)}`, data);
 }
 
 export function readPerformanceSnapshot(request = {}) {
