@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, Users, Clock, AlertTriangle, 
-  CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X
+  CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X, RefreshCw
 } from "lucide-react";
 import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -133,6 +133,17 @@ export default function AdminAnalytics() {
     }
   };
 
+  const refreshCompanyAnalytics = async () => {
+    clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'core'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'training'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'duty'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'calls'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'quality'], refetchType: 'active' }),
+    ]);
+  };
+
   const companySnapshot = readCompanyAnalyticsSnapshot();
   const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
   const coreAnalytics = useAnalyticsSegment('core', !!user);
@@ -189,6 +200,7 @@ export default function AdminAnalytics() {
   ]);
 
   const analyticsLoading = isLoadingAuth || (!hasVerifiedCore && coreAnalytics.isLoading);
+  const analyticsRefreshing = [coreAnalytics, trainingAnalytics, dutyAnalytics, callsAnalytics, qualityAnalytics].some(query => query.isFetching);
   const analyticsError = !hasVerifiedCore ? coreAnalytics.error : null;
 
   useEffect(() => {
@@ -597,6 +609,15 @@ export default function AdminAnalytics() {
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <button
               type="button"
+              onClick={refreshCompanyAnalytics}
+              disabled={analyticsRefreshing}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-900/50 disabled:opacity-50 sm:flex-none"
+            >
+              <RefreshCw className={`h-4 w-4 ${analyticsRefreshing ? 'animate-spin' : ''}`} />
+              {analyticsRefreshing ? 'Updating' : 'Refresh Analytics'}
+            </button>
+            <button
+              type="button"
               onClick={() => { setSummaryResult(null); setShowSummaryDialog(true); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-2 text-sm font-black text-slate-950 shadow-lg shadow-amber-950/20 transition hover:from-amber-400 hover:to-yellow-400 sm:flex-none"
             >
@@ -616,6 +637,12 @@ export default function AdminAnalytics() {
             </Select>
           </div>
         </div>
+
+        {analyticsData.is_updating && (
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-100">
+            Updating all five analytics data groups. Officer percentages stay on the last coherent verified generation until the current generation is complete.
+          </div>
+        )}
 
         {analyticsError && analyticsData?.generated_at && (
           <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
