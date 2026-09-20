@@ -719,7 +719,7 @@ export function calculateJobDutyCompliance({
       }
     }
     const qrIsRequired = effectiveQrRule ? effectiveQrRule.qr_required === true : requiredCheckpoints.length > 0;
-    if (qrIsRequired && requiredCheckpoints.length > 0) {
+    if (qrIsRequired) {
       const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
       const windowMinutes = Math.max(1, Number(effectiveQrRule?.qr_window_minutes || 30));
       const siteSuccessfulScans = qrScans.filter(scan => {
