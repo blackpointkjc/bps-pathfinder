@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 // location/status change. A 15-second read cache therefore reduces duplicate map,
 // health-check, and CAD fetches without delaying genuine live updates.
 const SNAPSHOT_TTL_MS = 60_000;
+const FORCE_REFRESH_DEDUPE_MS = 15_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const GPS_PUBLISH_MIN_MS = 2 * 60 * 1000;
 const HEARTBEAT_PUBLISH_MIN_MS = 8 * 60 * 1000;
@@ -16,6 +17,7 @@ const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
 const PUBLISH_STAMP_PREFIX = 'bps:pathfinder:location-publish-at:';
 const snapshotCache = new Map();
 const inflight = new Map();
+const lastForcedAt = new Map();
 let localPublishPromise = Promise.resolve();
 
 function cacheKey(locationOnly, includeLastKnown) { if (includeLastKnown) return 'admin-location'; return locationOnly ? 'location' : 'full'; }
@@ -159,10 +161,17 @@ export async function endOfficerLocationSession() {
 
 export async function getOfficerLocationSnapshot({ locationOnly = false, force = false, includeLastKnown = false } = {}) {
   const key = cacheKey(locationOnly, includeLastKnown);
+  const now = Date.now();
   const cached = snapshotCache.get(key);
-  if (!force && cached && Date.now() - cached.at < SNAPSHOT_TTL_MS) return cached.payload;
+  // The administrator location feed is a superset of the ordinary live-map feed.
+  // Reuse it instead of spending another getOnDutyUnits request for the same units.
+  const compatibleCached = locationOnly && !includeLastKnown ? snapshotCache.get('admin-location') : null;
+  if (!force && cached && now - cached.at < SNAPSHOT_TTL_MS) return cached.payload;
+  if (!force && compatibleCached && now - compatibleCached.at < SNAPSHOT_TTL_MS) return compatibleCached.payload;
+  if (force && cached && now - Number(lastForcedAt.get(key) || 0) < FORCE_REFRESH_DEDUPE_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
 
+  if (force) lastForcedAt.set(key, now);
   const request = base44.functions.invoke('getOnDutyUnits', locationOnly ? { location_only: true, include_last_known: includeLastKnown } : {})
     .then(response => {
       const rawPayload = response?.data || response || {};
