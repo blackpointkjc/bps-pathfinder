@@ -31,26 +31,20 @@ const parseClock = (value: unknown) => {
 };
 const clockLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-async function readAll(entity: any, query: any, sort: string) {
-  const rows: any[] = [];
-  for (let skip = 0; skip < 20000; skip += 1000) {
-    let page: any[] | null = null;
-    let lastError: any = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const result = await entity.filter(query, sort, 1000, skip);
-        page = Array.isArray(result) ? result : [];
-        break;
-      } catch (error) {
-        lastError = error;
-        if (attempt < 2) await delay(450 * (attempt + 1));
-      }
+async function readAll(entity: any, query: any, sort: string, limit = 5000) {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const result = await entity.filter(query, sort, limit);
+      const rows = Array.isArray(result) ? result : [];
+      if (rows.length >= limit) throw new Error(`This report reached the ${limit}-record safety limit. Narrow the time window to avoid omitting records.`);
+      return rows;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await delay(450 * (attempt + 1));
     }
-    if (page === null) throw lastError || new Error('Unable to load location audit records');
-    rows.push(...page);
-    if (page.length < 1000) return rows;
   }
-  throw new Error('This date exceeds the report limit. The report was not generated to avoid omitting records.');
+  throw lastError || new Error('Unable to load location audit records');
 }
 Deno.serve(async req => {
   try {
@@ -87,9 +81,9 @@ Deno.serve(async req => {
       : 'Full day';
     const entities = base44.asServiceRole.entities;
     const results = await Promise.allSettled([
-      readAll(entities.LocationHistory, { officer_email: email, timestamp: { $gte: start.toISOString(), $lt: end } }, 'timestamp'),
-      readAll(entities.GeofenceAlert, { officer_email: email, created_date: { $gte: start.toISOString(), $lt: end } }, 'created_date'),
-      readAll(entities.TimeEntry, { officer_email: email, clock_in: { $lt: end }, $or: [{ clock_out: { $gte: start.toISOString() } }, { clock_out: null }, { clock_out: { $exists: false } }] }, 'clock_in'),
+      readAll(entities.LocationHistory, { officer_email: email, timestamp: { $gte: start.toISOString(), $lt: end } }, 'timestamp', 5000),
+      readAll(entities.GeofenceAlert, { officer_email: email, created_date: { $gte: start.toISOString(), $lt: end } }, 'created_date', 2000),
+      readAll(entities.TimeEntry, { officer_email: email, clock_in: { $lt: end }, $or: [{ clock_out: { $gte: start.toISOString() } }, { clock_out: null }, { clock_out: { $exists: false } }] }, 'clock_in', 1000),
     ]);
     if (results[0].status === 'rejected') throw results[0].reason;
     const historyRows = results[0].value;
@@ -99,7 +93,8 @@ Deno.serve(async req => {
     const history = historyRows.filter(inWindow).sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
     const geofenceAlerts = alertRows.filter(inWindow);
     const entries = timeEntries.filter(row => dayKey(row.clock_in) <= date && (!row.clock_out || dayKey(row.clock_out) >= date))
-      .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }));
+      .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }))
+      .sort((a:any,b:any) => stamp(a.clock_in) - stamp(b.clock_in));
     return Response.json({ history, geofenceAlerts, entries, warnings, date, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error('Location audit report failed', error);
