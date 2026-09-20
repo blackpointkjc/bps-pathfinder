@@ -227,6 +227,21 @@ export default function MyPerformanceAnalytics() {
     monthEnd: currentMonthEnd,
   }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, currentMonthStart, currentMonthEnd]);
 
+  const incidentObligations = useMemo(
+    () => (jobDuty.shifts || []).flatMap(shift =>
+      (shift.incidents?.items || []).map(item => ({
+        ...item,
+        shift_date: shift.shift_date,
+        property: shift.property,
+      }))
+    ),
+    [jobDuty.shifts]
+  );
+  const missingIncidentObligations = useMemo(
+    () => incidentObligations.filter(item => item.status === 'missing'),
+    [incidentObligations]
+  );
+
   const overallPerformance = useMemo(() => buildOverallPerformance({
     punctuality: onTimeStats,
     trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
@@ -297,15 +312,34 @@ export default function MyPerformanceAnalytics() {
     if (jobDuty.dailyActivity.required > 0) {
       const missingDarDetails = jobDuty.shifts
         .filter(shift => shift.daily_activity?.required && !shift.daily_activity?.completed)
-        .map(shift => `${shift.shift_date}: missing DAR at ${shift.property || 'assigned post'}.`);
+        .map(shift => `${shift.shift_date}: missing DAR for the continuous duty session covering ${(shift.daily_activity?.session_sites || [shift.property]).join(' / ') || 'assigned post'}.`);
       factors.push({
         metric: 'Daily Activity Reports',
         value: `${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required}`,
         severity: jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
         reason: jobDuty.dailyActivity.missed > 0
-          ? `${jobDuty.dailyActivity.missed} required DAR${jobDuty.dailyActivity.missed === 1 ? ' is' : 's are'} missing and this now lowers the Job Duty portion of your performance score.`
-          : `All ${jobDuty.dailyActivity.required} required DAR${jobDuty.dailyActivity.required === 1 ? '' : 's'} are complete.`,
+          ? `${jobDuty.dailyActivity.missed} continuous duty session${jobDuty.dailyActivity.missed === 1 ? ' is' : 's are'} missing a DAR. Switch Site segments are merged, and a submitted team DAR for the same session counts for all covered officers.`
+          : `All ${jobDuty.dailyActivity.required} continuous duty session${jobDuty.dailyActivity.required === 1 ? '' : 's'} have a submitted DAR.`,
         details: missingDarDetails,
+      });
+    }
+
+    if (jobDuty.incidentReports.required > 0) {
+      const incidentDetails = incidentObligations.map(item => {
+        const cad = item.call_number || item.call_id || 'CAD unavailable';
+        const when = item.call_time ? new Date(item.call_time).toLocaleString() : item.shift_date;
+        return item.status === 'completed'
+          ? `CAD ${cad} · ${item.call_type} · ${item.call_location || item.property || ''} · report ${item.report_number || item.report_id} (${item.report_status || 'submitted'})`
+          : `MISSING: CAD ${cad} · ${item.call_type} · ${item.call_location || item.property || ''} · ${when}`;
+      });
+      factors.push({
+        metric: 'Incident Reports',
+        value: `${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required}`,
+        severity: jobDuty.incidentReports.missed > 0 ? 'negative' : 'positive',
+        reason: jobDuty.incidentReports.missed > 0
+          ? `${jobDuty.incidentReports.missed} property CAD call${jobDuty.incidentReports.missed === 1 ? '' : 's'} still need a linked Incident Report. A submitted report from any officer linked to that CAD satisfies the shared call obligation.`
+          : 'Every required property CAD call has a submitted linked Incident Report.',
+        details: incidentDetails,
       });
     }
 
@@ -371,7 +405,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, jobDuty, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
+  }, [onTimeStats, jobDuty, incidentObligations, trainingStats, bidStats, myCallOuts, myComplaints, clientFeedbackStats, supervisorRatingStats, recognitionStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
 
   const calculateShiftHours = (start, end) => {
     const [sh = 0, sm = 0] = String(start || '00:00').split(':').map(Number);
