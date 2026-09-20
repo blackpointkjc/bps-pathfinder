@@ -256,14 +256,16 @@ Deno.serve(async (req) => {
     }
 
     if (segment === 'calls') {
-      const [dispatchCallsLive, callHistory, propertyAlerts] = await Promise.all([
+      const [dispatchCallsLive, callHistory, propertyAlerts, callAssignments] = await Promise.all([
         filter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 750),
         filter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500),
         filter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 1500),
+        filter('CallAssignment', { assigned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-assigned_at', 1500),
       ]);
       return Response.json({
         success:true, segment, generated_at:new Date().toISOString(),
         dispatchCalls:buildDispatchCalls(dispatchCallsLive, callHistory, propertyAlerts),
+        callAssignments,
         service_errors:errors,
       });
     }
