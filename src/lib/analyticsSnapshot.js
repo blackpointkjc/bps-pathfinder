@@ -1,6 +1,6 @@
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const COMPANY_KEY = 'bps:analytics:company:last-verified:v1';
-const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v1:';
+const COMPANY_KEY = 'bps:analytics:company:last-verified:v2';
+const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v2:';
 
 function safeRead(key) {
   try {
