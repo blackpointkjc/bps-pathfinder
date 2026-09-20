@@ -1759,7 +1759,35 @@ Provide:
                         <p className="text-sm text-slate-700">{report.action_taken}</p>
                       </div>
                     )}
-                    <div className="mt-3 flex gap-2">
+                    {(() => {
+                      const linkedSupplements = [
+                        ...(supplementsByParent.get(String(report.id)) || []),
+                        ...(supplementsByParent.get(String(report.report_number || '')) || []),
+                      ].filter((item, index, rows) => rows.findIndex(other => String(other.id) === String(item.id)) === index);
+                      if (!linkedSupplements.length) return null;
+                      return (
+                        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                          <p className="mb-2 text-xs font-black uppercase tracking-wide text-indigo-800">Linked Supplements ({linkedSupplements.length})</p>
+                          <div className="space-y-2">
+                            {linkedSupplements.map(supplement => (
+                              <div key={supplement.id} className="rounded-md border border-indigo-200 bg-white p-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge className="bg-indigo-600 text-white">Supplement {supplement.supplement_number || ''}</Badge>
+                                  <span className="font-mono text-xs font-bold text-slate-700">{supplement.report_number || supplement.id}</span>
+                                  {supplement.linked_call_number && <Badge variant="outline" className="font-mono">CAD {supplement.linked_call_number}</Badge>}
+                                </div>
+                                <p className="mt-2 text-sm text-slate-700">{supplement.description || 'Supplemental narrative'}</p>
+                                <p className="mt-1 text-xs text-slate-500">By {getOfficerSignature(supplement.created_by_id, supplement)}</p>
+                                <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => printReport(supplement)}>
+                                  <Printer className="mr-1 h-4 w-4" /> Print Supplement
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div className="mt-3 flex flex-wrap gap-2">
                         {String(report.created_by_id || '') === String(user?.id || '') && report.status !== 'approved' && (
                             <Button
                             onClick={() => handleEditReport(report)}
