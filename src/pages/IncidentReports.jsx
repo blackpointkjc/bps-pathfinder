@@ -723,9 +723,19 @@ Provide:
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const resolveReportOfficer = (officerRef, report = null) => {
+    const directory = [...(allUsers || []), user].filter(Boolean);
+    const refs = [officerRef, report?.reporting_officer_id, report?.reporting_officer_email, report?.created_by_id, report?.created_by, report?.officer_email].filter(Boolean);
+    for (const ref of refs) {
+      const officer = findDirectoryUser(directory, ref);
+      if (officer) return officer;
+    }
+    return null;
+  };
+
   const getOfficerSignature = (officerRef, report = null) => {
     if (report?.reporting_officer_signature) return report.reporting_officer_signature;
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
+    const officer = resolveReportOfficer(officerRef, report);
     if (!officer) return report?.reporting_officer_name || report?.reporting_officer_email || 'Unknown Officer';
     
     const rank = officer.rank || '';
@@ -743,13 +753,13 @@ Provide:
 
   const getOfficerFullName = (officerRef, report = null) => {
     if (report?.reporting_officer_name) return report.reporting_officer_name;
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
+    const officer = resolveReportOfficer(officerRef, report);
     return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || report?.reporting_officer_email || officer?.email || 'Unknown Officer';
   };
 
   const getOfficerEmail = (officerRef, report = null) => {
     if (report?.reporting_officer_email) return report.reporting_officer_email;
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
+    const officer = resolveReportOfficer(officerRef, report);
     return officer?.email || '';
   };
 
@@ -1805,9 +1815,7 @@ Provide:
                           || (report.backup_officer_ids || []).map(String).includes(String(user?.id || ''))
                           || (report.attached_officer_ids || []).map(String).includes(String(user?.id || ''))) && (
                           <Button
-                            onClick={() => handleAddSupplement(report.report_type === 'supplement'
-                              ? (allReports.find(item => String(item.id) === String(report.parent_report_id)) || report)
-                              : report)}
+                            onClick={() => handleAddSupplement(report)}
                             size="sm"
                             variant="outline"
                             className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
