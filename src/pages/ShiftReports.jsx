@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import {
   formatReportClock,
   formatReportDate,
@@ -54,6 +55,7 @@ export default function ShiftReports() {
     persons_of_interest: "",
     equipment_check: "",
     photo_url: "",
+    attached_officer_ids: [],
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false); // New state for 'saving as draft'
@@ -99,7 +101,11 @@ export default function ShiftReports() {
     ? []
     : isAdmin
       ? allReports
-      : allReports.filter(report => recordBelongsToDirectoryUser(user, report));
+      : allReports.filter(report =>
+          recordBelongsToDirectoryUser(user, report)
+          || (report.attached_officer_ids || []).map(String).includes(String(user.id || ''))
+          || (report.attached_officer_emails || []).some(email => String(email || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase())
+        );
 
   const { data: reportTodos } = useQuery({
     queryKey: ['myReportTodos'],
@@ -236,9 +242,16 @@ export default function ShiftReports() {
       }
 
       const { patrol_count, visitors_logged, doors_checked, starting_mileage, ending_mileage, ...restData } = data;
+      const attachedOfficerIds = [...new Set((data.attached_officer_ids || []).map(String).filter(Boolean))];
+      const attachedOfficers = (allUsers || []).filter(officer => attachedOfficerIds.includes(String(officer.id)));
       const saveData = {
         ...restData,
         location: locationToSubmit,
+        shift_id: activeEntry?.id || editingReport?.shift_id || '',
+        officer_email: user?.email || editingReport?.officer_email || '',
+        attached_officer_ids: attachedOfficerIds,
+        attached_officer_emails: attachedOfficers.map(officer => String(officer.email || '').trim().toLowerCase()).filter(Boolean),
+        attached_officer_names: attachedOfficers.map(officer => [officer.rank, officer.first_name, officer.last_name].filter(Boolean).join(' ').trim() || officer.email).filter(Boolean),
         activities: isDraft && !String(data.activities || "").trim()
           ? "Draft - Activities pending"
           : data.activities,
@@ -345,6 +358,7 @@ export default function ShiftReports() {
         persons_of_interest: "",
         equipment_check: "",
         photo_url: "",
+        attached_officer_ids: [],
       });
       setSaving(false);
     },
@@ -422,6 +436,7 @@ export default function ShiftReports() {
       persons_of_interest: report.persons_of_interest || "",
       equipment_check: report.equipment_check || "",
       photo_url: report.photo_url || "",
+      attached_officer_ids: report.attached_officer_ids || [],
     });
     setShowForm(true);
   };
@@ -455,6 +470,7 @@ export default function ShiftReports() {
           title: 'Assignment and Statistics',
           fields: [
             { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Attached Officers', value: (report.attached_officer_names || []).join(', '), wide: true },
             { label: 'Weather', value: report.weather_conditions },
             { label: 'Patrol Count', value: report.patrol_count },
             { label: 'Visitors Logged', value: report.visitors_logged },
