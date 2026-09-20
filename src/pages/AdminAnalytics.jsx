@@ -17,6 +17,56 @@ import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, cal
 import { toast } from 'sonner';
 import { readCompanyAnalyticsSnapshot, saveCompanyAnalyticsSnapshot } from '@/lib/analyticsSnapshot';
 
+const ANALYTICS_SEGMENTS = {
+  core: {
+    fields: { users: 'User', divisions: 'Division', timeEntries: ['User','TimeEntry'], schedules: ['User','Schedule'], incidentReports: ['User','IncidentReport'] },
+    interval: 2 * 60 * 1000,
+  },
+  training: {
+    fields: { bids: ['User','ShiftBid'], trainingCompletions: ['User','TrainingCompletion'], trainingAssignments: ['User','TrainingAssignment'], trainingModules: ['User','TrainingModule'] },
+    interval: 5 * 60 * 1000,
+  },
+  duty: {
+    fields: { qrScans: ['User','QRScanEvent'], qrCheckpoints: 'QRCheckpoint', dailyActivityReports: ['User','DailyActivityReport'], callOuts: ['User','CallOut'], dutyRules: 'JobDutyRule', locations: 'Location' },
+    interval: 3 * 60 * 1000,
+  },
+  calls: {
+    fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert'] },
+    interval: 2 * 60 * 1000,
+  },
+  quality: {
+    fields: { commendations: ['User','Commendation'], complaints: ['User','Complaint'], clientFeedback: ['User','ClientFeedback'], performanceReviews: ['User','PerformanceReview'] },
+    interval: 5 * 60 * 1000,
+  },
+};
+
+function mergeAnalyticsSegments(previous = {}, payloads = {}) {
+  const merged = { ...previous };
+  const serviceErrors = {};
+  let latestGeneratedAt = previous?.generated_at || '';
+  let loaded = 0;
+
+  Object.entries(ANALYTICS_SEGMENTS).forEach(([segmentName, config]) => {
+    const payload = payloads[segmentName];
+    if (!payload) return;
+    loaded += 1;
+    const segmentErrors = payload.service_errors || {};
+    Object.entries(config.fields).forEach(([field, sources]) => {
+      const dependencies = Array.isArray(sources) ? sources : [sources];
+      if (!dependencies.some(source => segmentErrors[source]) && Object.prototype.hasOwnProperty.call(payload, field)) {
+        merged[field] = payload[field];
+      }
+    });
+    Object.assign(serviceErrors, segmentErrors);
+    if (payload.generated_at && (!latestGeneratedAt || payload.generated_at > latestGeneratedAt)) latestGeneratedAt = payload.generated_at;
+  });
+
+  merged.generated_at = latestGeneratedAt || new Date().toISOString();
+  merged.service_errors = serviceErrors;
+  merged.analytics_segments_loaded = loaded;
+  return merged;
+}
+
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 const isPunctualityLeaderboardOfficer = (officer) => {
   const roles = new Set((officer?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
