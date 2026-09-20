@@ -415,6 +415,14 @@ export function clearBase44ReadCache() {
   readCache.clear();
 }
 
+export function clearBase44ReadCacheMatching(prefix) {
+  const target = String(prefix || '');
+  if (!target) return clearBase44ReadCache();
+  for (const key of [...readCache.keys()]) {
+    if (String(key).startsWith(target)) readCache.delete(key);
+  }
+}
+
 export function getBase44RequestHealth() {
   const until = sharedRateLimitUntil();
   return {
