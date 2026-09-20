@@ -470,6 +470,7 @@ export function calculateJobDutyCompliance({
   dailyReports = [],
   incidentReports = [],
   dispatchCalls = [],
+  callAssignments = [],
   callOuts = [],
   qrScans = [],
   allTimeEntries = [],
@@ -547,6 +548,13 @@ export function calculateJobDutyCompliance({
 
   // Incident compliance is tied to the property call itself. A submitted report linked to that call satisfies the call for all officers who were actively working that property at the time.
   const officerIncidents = incidentReports;
+  const completedAssignmentCallIds = new Set(callAssignments
+    .filter(assignment => {
+      if (officer?.id && String(assignment?.unit_id || '') !== String(officer.id)) return false;
+      return String(assignment?.status || '').toLowerCase() === 'cleared' && Boolean(assignment?.cleared_at);
+    })
+    .map(assignment => String(assignment.call_id || ''))
+    .filter(Boolean));
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
   const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
   const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
@@ -618,6 +626,11 @@ export function calculateJobDutyCompliance({
     }
 
     const calls = dispatchCalls.filter(call => {
+      const callIds = [call.id, call.original_call_id, call.call_id].filter(Boolean).map(String);
+      // An incident-report obligation exists only after this officer's dispatched
+      // assignment is resolved. Nearby public calls and still-open assignments
+      // are operational awareness, not completed reporting obligations.
+      if (!callIds.some(id => completedAssignmentCallIds.has(id))) return false;
       const stamp = new Date(call.time_received || call.created_date).getTime();
       if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs) return false;
       return callMatchesProperty(call, site, locations);
@@ -718,7 +731,11 @@ export function calculateJobDutyCompliance({
         });
       }
     }
-    const qrIsRequired = effectiveQrRule ? effectiveQrRule.qr_required === true : requiredCheckpoints.length > 0;
+    // QR compliance cannot be scored when the site has no active checkpoint
+    // records. A numeric scans-per-shift rule without a scannable code created
+    // impossible obligations (for example Sherrill's false 0/32 result).
+    const qrIsRequired = requiredCheckpoints.length > 0
+      && (effectiveQrRule ? effectiveQrRule.qr_required === true : true);
     if (qrIsRequired) {
       const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
       const windowMinutes = Math.max(1, Number(effectiveQrRule?.qr_window_minutes || 30));
