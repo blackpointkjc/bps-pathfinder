@@ -182,9 +182,11 @@ export default function FleetVehicleAssignments() {
         notes: currentAssignment?.notes || '',
         created_by_email: user?.email || ''
       };
-      if (currentAssignment?.id) await base44.entities.VehicleAssignment.update(currentAssignment.id, payload);
-      else await base44.entities.VehicleAssignment.create(payload);
+      const response = await base44.functions.invoke('getFleetScheduleData', { action: 'save', assignment: { ...payload, id: currentAssignment?.id || '' } });
+      const result = response?.data || response || {};
+      if (result.error) throw new Error(result.error);
       setVehicleChoice(prev => ({ ...prev, [shift.id]: vehicle.id }));
+      await qc.invalidateQueries({ queryKey: ['fleetScheduleData'] });
       await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
       await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
     } catch (error) {
@@ -212,21 +214,22 @@ export default function FleetVehicleAssignments() {
     const partner = users.find(item => String(item.email || '').toLowerCase() === String(manualForm.partner_officer_email || '').toLowerCase());
     setSavingManual(true);
     try {
-      await base44.entities.VehicleAssignment.create({
-        assignment_date: manualForm.assignment_date,
-        start_time: manualForm.start_time,
-        end_time: manualForm.end_time,
-        vehicle_id: vehicle.id,
-        vehicle_label: vehicle.vehicle_id,
-        primary_officer_email: primary.email,
-        primary_officer_name: getName(primary.email),
-        partner_officer_email: partner?.email || '',
-        partner_officer_name: partner?.email ? getName(partner.email) : '',
-        location: manualForm.location || '',
-        status: 'scheduled',
-        notes: manualForm.notes || '',
-        created_by_email: user?.email || '',
+      const response = await base44.functions.invoke('getFleetScheduleData', {
+        action: 'save',
+        assignment: {
+          assignment_date: manualForm.assignment_date,
+          start_time: manualForm.start_time,
+          end_time: manualForm.end_time,
+          vehicle_id: vehicle.id,
+          primary_officer_email: primary.email,
+          partner_officer_email: partner?.email || '',
+          location: manualForm.location || '',
+          status: 'scheduled',
+          notes: manualForm.notes || '',
+        },
       });
+      const result = response?.data || response || {};
+      if (result.error) throw new Error(result.error);
       setManualForm({ assignment_date: manualForm.assignment_date, start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' });
       setShowNewAssignment(false);
       await qc.invalidateQueries({ queryKey: ['fleetScheduleData'] });
@@ -241,7 +244,9 @@ export default function FleetVehicleAssignments() {
 
   const removeAssignment = async (shift, assignment) => {
     if (!isAdmin || !assignment?.id || !await confirmInApp(`Remove ${assignment.vehicle_label} from ${getName(shift.officer_email)}?`)) return;
-    await base44.entities.VehicleAssignment.delete(assignment.id);
+    const response = await base44.functions.invoke('getFleetScheduleData', { action: 'delete', id: assignment.id });
+    const result = response?.data || response || {};
+    if (result.error) throw new Error(result.error);
     setVehicleChoice(prev => ({ ...prev, [shift.id]: '' }));
     await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
     await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
