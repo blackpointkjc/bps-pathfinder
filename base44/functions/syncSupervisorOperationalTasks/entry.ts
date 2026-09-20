@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
     const schedules = await readRows('today schedules', () => base44.asServiceRole.entities.Schedule.filter({ shift_date: current.date }, 'start_time', 1500), true);
     const timeEntries = await readRows('recent time entries', () => base44.asServiceRole.entities.TimeEntry.filter({ clock_in: { $gte: recentCutoffIso } }, '-clock_in', 5000), true);
     const dailyReports = await readRows('recent daily reports', () => base44.asServiceRole.entities.DailyActivityReport.filter({ report_date: { $gte: recentCutoffDate } }, '-report_date', 5000), true);
+    const shiftReports = await readRows('recent shift reports', () => base44.asServiceRole.entities.ShiftReport.filter({ shift_date: { $gte: recentCutoffDate } }, '-shift_date', 5000), true);
     const complaints = await readRows('complaints', () => base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000), true);
     const writeups = await readRows('write-ups', () => base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000), true);
     const reviews = await readRows('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000), true);
@@ -144,8 +145,11 @@ Deno.serve(async (req) => {
     };
 
     const attendanceEntries = (timeEntries || []).filter((entry:any) => entry.archived !== true && entry.clock_in);
-    const reportShiftIds = new Set((dailyReports || []).map((report:any)=>String(report.shift_id || '')).filter(Boolean));
-    const reportLegacyKeys = new Set((dailyReports || []).map((report:any)=>`${lower(report.officer_email || report.created_by)}|${clean(report.report_date)}|${lower(siteNameFrom(report.location))}`));
+    const dutyReports = [
+      ...(dailyReports || []).map((report:any) => ({ ...report, report_date: report.report_date, source_report_type:'daily_activity_report' })),
+      ...(shiftReports || []).map((report:any) => ({ ...report, report_date: report.report_date || report.shift_date, source_report_type:'shift_report' })),
+    ];
+    const validDutyReports = dutyReports.filter((report:any) => !['draft','rejected'].includes(lower(report.status)));
     const tasks:any[] = [];
 
     for (const shift of schedules || []) {
@@ -173,18 +177,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    for (const entry of timeEntries || []) {
-      if (!entry?.id || !entry.clock_in || !entry.clock_out || entry.archived === true) continue;
-      if (new Date(entry.clock_out).getTime() < now - 21*86400000) continue;
-      if (reportShiftIds.has(String(entry.id))) continue;
-      const legacyKey = `${lower(entry.officer_email)}|${dayKey(entry.clock_in)}|${lower(siteNameFrom(entry.location))}`;
-      if (reportLegacyKeys.has(legacyKey)) continue;
-      const officer = userByEmail.get(lower(entry.officer_email));
+    // One continuous duty session creates one DAR obligation. Switch Site
+    // creates additional TimeEntry rows, so merge contiguous rows for the same
+    // officer before creating missing-report work. Either DailyActivityReport or
+    // ShiftReport can satisfy the obligation, including a submitted team report
+    // from another officer for the same property/session.
+    const sessionSourceEntries = (timeEntries || [])
+      .filter((entry:any) => entry?.id && entry.clock_in && entry.clock_out && entry.archived !== true && entry.performance_exception !== true)
+      .filter((entry:any) => new Date(entry.clock_out).getTime() >= now - 21*86400000)
+      .sort((a:any,b:any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+    const sessions:any[] = [];
+    const byOfficerSessions = new Map<string, any[]>();
+    for (const entry of sessionSourceEntries) {
+      const email = lower(entry.officer_email);
+      if (!email) continue;
+      if (!byOfficerSessions.has(email)) byOfficerSessions.set(email, []);
+      byOfficerSessions.get(email)!.push(entry);
+    }
+    for (const [email, entries] of byOfficerSessions.entries()) {
+      let session:any = null;
+      for (const entry of entries) {
+        const startMs = new Date(entry.clock_in).getTime();
+        const endMs = new Date(entry.clock_out).getTime();
+        if (!session || startMs > session.end_ms + 20*60*1000) {
+          session = { officer_email:email, start_ms:startMs, end_ms:endMs, entries:[], sites:new Set<string>(), dates:new Set<string>() };
+          sessions.push(session);
+        }
+        session.entries.push(entry);
+        session.end_ms = Math.max(session.end_ms, endMs);
+        session.sites.add(lower(siteNameFrom(entry.location)));
+        session.dates.add(dayKey(entry.clock_in));
+      }
+    }
+
+    for (const session of sessions) {
+      const entryIds = new Set(session.entries.map((entry:any) => String(entry.id)));
+      const covered = validDutyReports.some((report:any) => {
+        if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
+        const reportDate = clean(report.report_date || report.shift_date);
+        const reportSite = lower(siteNameFrom(report.location));
+        return session.dates.has(reportDate) && session.sites.has(reportSite);
+      });
+      if (covered) continue;
+      const first = session.entries[0];
+      const officer = userByEmail.get(session.officer_email);
+      const siteLabel = [...session.sites].filter(Boolean).join(' / ') || siteNameFrom(first.location) || 'assigned site';
       tasks.push({
-        key:`missing-report-${entry.id}`, kind:'missing_report', source_id:String(entry.id), officer_id:String(officer?.id || ''), officer_email:lower(entry.officer_email),
-        title:'Required Daily Report Missing', person:displayName(officer || { email:entry.officer_email }), location:clean(entry.location),
-        detail:`${dayKey(entry.clock_in)} · ${siteNameFrom(entry.location) || 'assigned site'}`, priority:'high',
-        speech:`Attention supervisor. A required daily activity report is missing for ${displayName(officer || { email:entry.officer_email })} at ${siteNameFrom(entry.location) || 'the assigned site'}. Follow-up is assigned to you.`,
+        key:`missing-report-${first.id}`, kind:'missing_report', source_id:String(first.id), officer_id:String(officer?.id || ''), officer_email:session.officer_email,
+        title:'Required Daily Report Missing', person:displayName(officer || { email:session.officer_email }), location:siteLabel,
+        detail:`${dayKey(first.clock_in)} · ${siteLabel}`, priority:'high',
+        speech:`Attention supervisor. A required daily activity report is missing for ${displayName(officer || { email:session.officer_email })} at ${siteLabel}. Follow-up is assigned to you.`,
       });
     }
 
