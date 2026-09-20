@@ -241,19 +241,16 @@ export default function IncidentReports() {
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
     initialData: [],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: activeBolos = [] } = useQuery({
     queryKey: ['activeBolosForReports'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('manageBolo', { action: 'list' });
-      const payload = result?.data || result || {};
-      const rows = Array.isArray(payload.bolos) ? payload.bolos : Array.isArray(payload.rows) ? payload.rows : Array.isArray(payload) ? payload : [];
-      return rows.filter(bolo => bolo.status === 'active');
-    },
+    queryFn: () => base44.entities.BOLOAlert.filter({ status: 'active' }, '-updated_date', 100),
     initialData: [],
-    staleTime: 60 * 1000,
-    refetchInterval: 2 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -269,10 +266,11 @@ export default function IncidentReports() {
 
   const { data: activeDispatchCalls = [] } = useQuery({
     queryKey: ['dispatchCallsForIncidentReports'],
-    queryFn: () => listAllDispatchCallsForLinking(1000),
+    queryFn: () => listAllDispatchCallsForLinking(350),
     initialData: [],
-    refetchInterval: 60000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const selectDispatchCall = (callId) => {
