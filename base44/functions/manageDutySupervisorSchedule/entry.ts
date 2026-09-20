@@ -14,6 +14,10 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = lower(body.action || 'save');
+    if (action === 'list') {
+      const assignments = await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1500);
+      return Response.json({ success: true, assignments: assignments || [] });
+    }
     if (action === 'delete') {
       const id = String(body.id || '');
       if (!id) return Response.json({ error: 'Assignment id is required.' }, { status: 400 });
