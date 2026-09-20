@@ -135,13 +135,11 @@ export default function AdminAnalytics() {
 
   const refreshCompanyAnalytics = async () => {
     clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'core'], refetchType: 'active' }),
-      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'training'], refetchType: 'active' }),
-      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'duty'], refetchType: 'active' }),
-      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'calls'], refetchType: 'active' }),
-      queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', 'quality'], refetchType: 'active' }),
-    ]);
+    for (const segment of ['core', 'training', 'duty', 'calls', 'quality']) {
+      await queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' });
+      await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', segment], type: 'active' });
+      await new Promise(resolve => window.setTimeout(resolve, 250));
+    }
   };
 
   const companySnapshot = readCompanyAnalyticsSnapshot();
@@ -162,6 +160,7 @@ export default function AdminAnalytics() {
   }), [coreAnalytics.data, trainingAnalytics.data, dutyAnalytics.data, callsAnalytics.data, qualityAnalytics.data]);
 
   const currentSegmentsReady = Object.values(currentSegmentPayloads).every(Boolean);
+  const performanceGenerationReady = currentSegmentsReady || Boolean(companySnapshot?.data?.generated_at);
   const liveAnalyticsData = useMemo(
     () => mergeAnalyticsSegments({}, currentSegmentPayloads),
     [currentSegmentPayloads]
@@ -433,7 +432,9 @@ export default function AdminAnalytics() {
       .sort((a, b) => a.percentage - b.percentage);
   }, [trainingCompletions, allTraining, filteredUsers]);
 
-  const overallByOfficer = useMemo(() => filteredUsers.map(officer => {
+  const overallByOfficer = useMemo(() => {
+    if (!performanceGenerationReady) return [];
+    return filteredUsers.map(officer => {
     const key = emailKey(officer.email);
     const officerTimeEntries = timeEntries.filter(item => emailKey(item.officer_email) === key);
     const officerSchedules = schedules.filter(item => emailKey(item.officer_email) === key);
@@ -482,7 +483,8 @@ export default function AdminAnalytics() {
       callOutAttendance,
       jobDuty,
     };
-  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, dispatchCalls, allCallOuts, allDailyActivityReports, allQrScans, allQrCheckpoints, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
+  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
+  }, [performanceGenerationReady, filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, dispatchCalls, allCallOuts, allDailyActivityReports, allQrScans, allQrCheckpoints, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
