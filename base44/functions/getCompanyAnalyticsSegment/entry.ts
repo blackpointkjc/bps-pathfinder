@@ -186,12 +186,12 @@ Deno.serve(async (req) => {
     monthStart.setDate(monthStart.getDate() - 2);
     const monthDateCutoff = monthStart.toISOString().slice(0,10);
 
-    const getUsers = () => cachedRows('users', 2 * 60 * 1000, () => entity('User').list('-updated_date', 1000));
+    const getUsers = () => cachedRows('users', 30 * 1000, () => entity('User').list('-updated_date', 1000));
 
     if (segment === 'core') {
       const [users, divisions, timeEntries, schedules, incidentReports] = await Promise.all([
         safe('User', getUsers),
-        safe('Division', () => cachedRows('divisions', 10 * 60 * 1000, () => entity('Division').list('division_name', 500))),
+        safe('Division', () => cachedRows('divisions', 60 * 1000, () => entity('Division').list('division_name', 500))),
         filter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 2000),
         filter('Schedule', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 2000),
         filter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1500),
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
         filter('ShiftBid', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
         list('TrainingCompletion', '-completion_date', 1500),
         list('TrainingAssignment', '-assigned_date', 1500),
-        safe('TrainingModule', () => cachedRows('trainingModules', 10 * 60 * 1000, () => entity('TrainingModule').list('-created_date', 1000))),
+        safe('TrainingModule', () => cachedRows('trainingModules', 60 * 1000, () => entity('TrainingModule').list('-created_date', 1000))),
       ]);
       const c = canonicalizer(users);
       return Response.json({
@@ -231,11 +231,11 @@ Deno.serve(async (req) => {
       const [users, qrScans, qrCheckpoints, dailyActivityReports, callOuts, dutyRules, locations] = await Promise.all([
         safe('User', getUsers),
         filter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 2000),
-        safe('QRCheckpoint', () => cachedRows('qrCheckpoints', 10 * 60 * 1000, () => entity('QRCheckpoint').list('property_site', 1000))),
+        safe('QRCheckpoint', () => cachedRows('qrCheckpoints', 60 * 1000, () => entity('QRCheckpoint').list('property_site', 1000))),
         filter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 2000),
         filter('CallOut', { call_out_date: { $gte: monthDateCutoff } }, '-call_out_date', 1000),
-        safe('JobDutyRule', () => cachedRows('dutyRules', 10 * 60 * 1000, () => entity('JobDutyRule').list('property_site', 1000))),
-        safe('Location', () => cachedRows('locations', 10 * 60 * 1000, () => entity('Location').list('site_name', 1000))),
+        safe('JobDutyRule', () => cachedRows('dutyRules', 60 * 1000, () => entity('JobDutyRule').list('property_site', 1000))),
+        safe('Location', () => cachedRows('locations', 60 * 1000, () => entity('Location').list('site_name', 1000))),
       ]);
       const c = canonicalizer(users);
       return Response.json({
