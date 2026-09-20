@@ -6,6 +6,35 @@
       "type": "string",
       "description": "Linked DispatchCall record ID"
     },
+    "shift_id": {
+      "type": "string",
+      "description": "TimeEntry ID for the worked duty segment/session"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Reporting officer email cached for compliance matching"
+    },
+    "attached_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer user IDs covered by this shift/DAR report"
+    },
+    "attached_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer emails covered by this shift/DAR report"
+    },
+    "attached_officer_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Display names of additional officers covered by this shift/DAR report"
+    },
     "linked_call_number": {
       "type": "string",
       "description": "Linked CAD call number"
