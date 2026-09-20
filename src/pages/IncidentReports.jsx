@@ -361,10 +361,19 @@ Provide:
           : ((isAdmin || isDispatcher) ? "Dispatch - Remote Submission" : "Unknown Location");
       }
 
+      const attachedOfficerIds = [...new Set((data.attached_officer_ids || []).map(String).filter(Boolean))];
+      const attachedOfficers = (allUsers || []).filter(officer => attachedOfficerIds.includes(String(officer.id)));
+      const attachedOfficerEmails = attachedOfficers.map(officer => String(officer.email || '').trim().toLowerCase()).filter(Boolean);
+      const attachedOfficerNames = attachedOfficers.map(officer => [officer.rank, officer.first_name, officer.last_name].filter(Boolean).join(' ').trim() || officer.email).filter(Boolean);
+
       // Drafts must satisfy the entity schema even when the officer has only
       // started the report. Placeholder values are removed when the draft is reopened.
       const dataToSave = {
         ...data,
+        attached_officer_ids: attachedOfficerIds,
+        attached_officer_emails: attachedOfficerEmails,
+        attached_officer_names: attachedOfficerNames,
+        report_type: data.report_type || 'original',
         location: locationToSubmit,
         incident_time: isDraft ? (data.incident_time || "00:00") : data.incident_time,
         incident_type: isDraft ? (data.incident_type || "other") : data.incident_type,
@@ -415,8 +424,14 @@ Provide:
         }
         return updated;
       } else {
-        const newReportNumber = generateReportNumber();
-        const newCallNumber = generateCallNumber();
+        const isSupplement = dataToSave.report_type === 'supplement' && dataToSave.parent_report_id;
+        const nextSupplement = Math.max(1, Number(dataToSave.supplement_number || 1));
+        const newReportNumber = isSupplement && dataToSave.parent_report_number
+          ? `${dataToSave.parent_report_number}-S${String(nextSupplement).padStart(2, '0')}`
+          : generateReportNumber();
+        const newCallNumber = isSupplement && dataToSave.linked_call_number
+          ? dataToSave.linked_call_number
+          : generateCallNumber();
         const report = await base44.entities.IncidentReport.create({
           ...dataToSave,
           severity: aiSeverity,
@@ -517,6 +532,11 @@ Provide:
       primary_officer_id: "",
       primary_officer_name: "",
       backup_officer_ids: [],
+      attached_officer_ids: [],
+      report_type: 'original',
+      parent_report_id: '',
+      parent_report_number: '',
+      supplement_number: null,
     });
   };
 
@@ -608,6 +628,11 @@ Provide:
       primary_officer_id: report.primary_officer_id || "",
       primary_officer_name: report.primary_officer_name || "",
       backup_officer_ids: report.backup_officer_ids || [],
+      attached_officer_ids: report.attached_officer_ids || [],
+      report_type: report.report_type || 'original',
+      parent_report_id: report.parent_report_id || '',
+      parent_report_number: report.parent_report_number || '',
+      supplement_number: report.supplement_number || null,
     });
     setShowForm(true);
   };
