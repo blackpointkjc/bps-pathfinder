@@ -46,7 +46,7 @@ const readCacheTtl = meta => {
 };
 const RATE_LIMIT_COOLDOWN_MS = 45_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
-const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v1';
+const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
 const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
 const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'importEntities']);
@@ -107,8 +107,9 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && ['getCallHistoryFeed','getDispatchCallLinkFeed','manageBolo','manageHRTimeEntries'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
   if (meta?.kind === 'function' && meta?.name === 'manageOfficerPerformanceReviews') return 70;
-  if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 74;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','runSystemAudit'].includes(meta?.name)) return 20;
+  if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 84;
+  if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 55;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
 const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
