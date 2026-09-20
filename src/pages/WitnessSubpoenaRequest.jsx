@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { loadLegalRecordHistory, updateLegalRecord } from '@/lib/legalRecordHistory';
