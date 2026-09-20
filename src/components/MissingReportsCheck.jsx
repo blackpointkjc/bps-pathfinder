@@ -14,7 +14,7 @@ const officerLabel = officer => {
   return [rank, last].filter(Boolean).join(' ') || officer?.email || 'Unknown officer';
 };
 
-export default function MissingReportsCheck({ schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd }) {
+export default function MissingReportsCheck({ schedules: _schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd }) {
   const periodStart = weekStart || startOfMonth(new Date());
   const periodEnd = weekEnd || endOfMonth(new Date());
 
