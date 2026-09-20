@@ -77,9 +77,8 @@ export default function MyPerformanceAnalytics() {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         clearBase44ReadCacheMatching('function:getMyPerformanceData:');
-        queryClient.invalidateQueries({ queryKey: ['myPerformanceData', performanceIdentity] });
-        queryClient.refetchQueries({ queryKey: ['myPerformanceData', performanceIdentity], type: 'active' });
-      }, 250);
+        queryClient.invalidateQueries({ queryKey: ['myPerformanceData', performanceIdentity], refetchType: 'active' });
+      }, 3000);
     };
     const unsubscribers = [];
     const scoringEntities = [
@@ -95,16 +94,13 @@ export default function MyPerformanceAnalytics() {
       } catch { /* The scheduled authoritative refresh remains available. */ }
     }
     const onPerformanceRefresh = () => refresh();
-    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
     window.addEventListener('bps-performance-refresh', onPerformanceRefresh);
     window.addEventListener('online', onPerformanceRefresh);
-    document.addEventListener('visibilitychange', onVisible);
     return () => {
       if (timer) window.clearTimeout(timer);
       unsubscribers.forEach(unsubscribe => unsubscribe());
       window.removeEventListener('bps-performance-refresh', onPerformanceRefresh);
       window.removeEventListener('online', onPerformanceRefresh);
-      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [queryClient, authUser?.id, performanceIdentity]);
 
