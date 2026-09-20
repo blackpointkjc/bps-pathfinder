@@ -641,7 +641,7 @@ export function calculateJobDutyCompliance({
         if (reassignment) {
           incidentExcluded++;
           detail.incidents.excluded++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'excluded_reassignment', reason: reassignment.call_out_type === 'reassigned' ? `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` : `Excluded after officer was ${reassignment.call_out_type === 'sent_home' ? 'sent home' : 'called out'}` });
+          detail.incidents.items.push({ call_id: call.id, call_number: call.bps_reference || call.agency_cad_number || call.call_id || '', status: 'excluded_reassignment', reason: reassignment.call_out_type === 'reassigned' ? `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` : `Excluded after officer was ${reassignment.call_out_type === 'sent_home' ? 'sent home' : 'called out'}` });
           return;
         }
         incidentRequired++;
@@ -652,7 +652,7 @@ export function calculateJobDutyCompliance({
           callNumbers.includes(String(ir.linked_call_number || '')) ||
           callNumbers.includes(String(ir.call_number || ''))
         );
-        const callNumber = call.agency_cad_number || call.call_id || call.bps_reference || '';
+        const callNumber = call.bps_reference || call.agency_cad_number || call.call_id || '';
         const callTypeLabel = call.incident || call.incident_type || call.call_type || 'Call for service';
         const callLocation = call.location || call.property_site || detail.property || '';
         const callTimestamp = call.time_received || call.created_date || '';
