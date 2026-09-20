@@ -14,7 +14,7 @@ export default function GPSAuditReport({ data, officerName, onBack }) {
   const [mapZoom,setMapZoom]=useState(0);
   const [focusedPing,setFocusedPing]=useState('');
   const route=useMemo(()=>buildRouteMap(model.points,model.segments,760,480,{zoomOffset:mapZoom,centerPoint:focusedPing === '' ? null : model.points[Number(focusedPing)]}),[model,mapZoom,focusedPing]);
-  const entries=data.entries||[],alerts=data.geofenceAlerts||[];
+  const entries=[...(data.entries||[])].sort((a,b)=>auditTimestamp(a.clock_in)-auditTimestamp(b.clock_in)),alerts=data.geofenceAlerts||[];
   const timeline = [...model.pings.map((ping,index)=>({kind:'ping',record:ping,index,time:auditTimestamp(ping.timestamp)})), ...alerts.map(alert=>({kind:'alert',record:alert,time:auditTimestamp(alert.created_date)}))].sort((a,b)=>a.time-b.time);
   const firstEntry=entries[0],lastEntry=entries[entries.length-1];
   const hasOpenEntry=entries.some(entry=>!entry.clock_out);
