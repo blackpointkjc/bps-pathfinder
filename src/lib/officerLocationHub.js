@@ -179,7 +179,15 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
       // Defense in depth: never let a legacy backend/client return an IP/network
       // estimate (for example ±50,000m) to any Pathfinder map as a live officer fix.
       const payload = scrubSnapshot(rawPayload);
-      snapshotCache.set(key, { at: Date.now(), payload });
+      const cachedAt = Date.now();
+      snapshotCache.set(key, { at: cachedAt, payload });
+      // A full roster contains the live-location fields required by ordinary map
+      // consumers. Cache a live-only derivative so a simultaneous map request does
+      // not spend a second getOnDutyUnits call with a different request body.
+      if (key === 'full') {
+        const liveOnlyPayload = scrubSnapshot({ ...payload, location_only: true, includes_last_known: false });
+        snapshotCache.set('location', { at: cachedAt, payload: liveOnlyPayload });
+      }
       return payload;
     })
     .finally(() => inflight.delete(key));
