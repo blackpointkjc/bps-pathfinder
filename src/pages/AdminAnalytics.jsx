@@ -320,22 +320,11 @@ export default function AdminAnalytics() {
   const performanceLocations = performanceAnalyticsData.locations || [];
   const performanceFeedback = performanceAnalyticsData.clientFeedback || [];
   const performanceReviews = performanceAnalyticsData.performanceReviews || [];
-  const allBids = analyticsData.bids || [];
   const trainingCompletions = analyticsData.trainingCompletions || [];
-  const trainingAssignments = analyticsData.trainingAssignments || [];
   const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
-  const allQrScans = analyticsData.qrScans || [];
-  const allQrCheckpoints = analyticsData.qrCheckpoints || [];
-  const incidentReports = analyticsData.incidentReports || [];
   const dispatchCalls = analyticsData.dispatchCalls || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
-  const allDailyActivityReports = analyticsData.dailyActivityReports || [];
-  const allCallOuts = analyticsData.callOuts || [];
-  const allDutyRules = analyticsData.dutyRules || [];
-  const allLocations = analyticsData.locations || [];
-  const allClientFeedback = analyticsData.clientFeedback || [];
-  const allPerformanceReviews = analyticsData.performanceReviews || [];
   const analyticsServiceErrors = analyticsData.service_errors || {};
   const analyticsServiceErrorNames = Object.keys(analyticsServiceErrors);
 
