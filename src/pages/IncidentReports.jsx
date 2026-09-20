@@ -22,7 +22,6 @@ import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelecto
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { listAllDispatchCallsForLinking, createReportCallLink, callDisplayNumber } from '@/lib/reportCallLinking';
-import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
   formatReportClock,
   formatReportDate,
@@ -210,6 +209,24 @@ export default function IncidentReports() {
     () => (reportsPotentiallyVisible || []).filter(report => report.status !== 'draft'),
     [reportsPotentiallyVisible],
   );
+  const originalSubmittedReports = React.useMemo(
+    () => submittedReports.filter(report => report.report_type !== 'supplement'),
+    [submittedReports],
+  );
+  const supplementsByParent = React.useMemo(() => {
+    const map = new Map();
+    for (const report of submittedReports) {
+      if (report.report_type !== 'supplement') continue;
+      const key = String(report.parent_report_id || report.parent_report_number || '');
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(report);
+    }
+    for (const rows of map.values()) {
+      rows.sort((a, b) => Number(a.supplement_number || 0) - Number(b.supplement_number || 0));
+    }
+    return map;
+  }, [submittedReports]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
@@ -375,8 +392,19 @@ Provide:
 
       // Drafts must satisfy the entity schema even when the officer has only
       // started the report. Placeholder values are removed when the draft is reopened.
+      const reportingSignature = [
+        user?.rank || '',
+        user?.last_name || '',
+        user?.unit_number ? `Unit ${user.unit_number}` : '',
+      ].filter(Boolean).join(' ').trim();
+      const reportingName = user?.full_name || [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || user?.email || '';
+
       const dataToSave = {
         ...data,
+        reporting_officer_id: user?.id || data.reporting_officer_id || '',
+        reporting_officer_email: user?.email || data.reporting_officer_email || '',
+        reporting_officer_name: reportingName || data.reporting_officer_name || '',
+        reporting_officer_signature: reportingSignature || reportingName || data.reporting_officer_signature || '',
         attached_officer_ids: attachedOfficerIds,
         attached_officer_emails: attachedOfficerEmails,
         attached_officer_names: attachedOfficerNames,
@@ -695,9 +723,10 @@ Provide:
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const getOfficerSignature = (officerRef) => {
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
-    if (!officer) return 'Unknown Officer';
+  const getOfficerSignature = (officerRef, report = null) => {
+    if (report?.reporting_officer_signature) return report.reporting_officer_signature;
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
+    if (!officer) return report?.reporting_officer_name || report?.reporting_officer_email || 'Unknown Officer';
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -712,13 +741,15 @@ Provide:
     return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || officer?.email || 'Unknown Officer';
   };
 
-  const getOfficerFullName = (officerRef) => {
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
-    return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || officer?.email || 'Unknown Officer';
+  const getOfficerFullName = (officerRef, report = null) => {
+    if (report?.reporting_officer_name) return report.reporting_officer_name;
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
+    return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || report?.reporting_officer_email || officer?.email || 'Unknown Officer';
   };
 
-  const getOfficerEmail = (officerRef) => {
-    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
+  const getOfficerEmail = (officerRef, report = null) => {
+    if (report?.reporting_officer_email) return report.reporting_officer_email;
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef || report?.reporting_officer_id || report?.reporting_officer_email || report?.created_by);
     return officer?.email || '';
   };
 
