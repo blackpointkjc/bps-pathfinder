@@ -68,14 +68,16 @@ export default function MyPerformanceAnalytics() {
     placeholderData: previousData => previousData,
   });
 
+  const user = performanceData.officer || authUser;
+
   React.useEffect(() => {
-    if (!user?.id || !user?.email) return undefined;
+    if (!authUser?.id || !performanceIdentity) return undefined;
     let timer = null;
     const refresh = () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['myPerformanceData', user.email] });
-        queryClient.refetchQueries({ queryKey: ['myPerformanceData', user.email], type: 'active' });
+        queryClient.invalidateQueries({ queryKey: ['myPerformanceData', performanceIdentity] });
+        queryClient.refetchQueries({ queryKey: ['myPerformanceData', performanceIdentity], type: 'active' });
       }, 250);
     };
     const unsubscribers = [];
@@ -83,8 +85,7 @@ export default function MyPerformanceAnalytics() {
       'TimeEntry', 'Schedule', 'DailyActivityReport', 'IncidentReport',
       'CallOut', 'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion',
       'TrainingModule', 'ShiftBid', 'PerformanceReview', 'ClientFeedback',
-      'Commendation', 'Complaint', 'JobDutyRule', 'PropertyAlert',
-      'DispatchCall', 'CallHistory',
+      'Commendation', 'Complaint', 'JobDutyRule',
     ];
     for (const entity of scoringEntities) {
       try {
@@ -104,7 +105,7 @@ export default function MyPerformanceAnalytics() {
       window.removeEventListener('online', onPerformanceRefresh);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [queryClient, user?.id, user?.email]);
+  }, [queryClient, authUser?.id, performanceIdentity]);
 
   const timeEntries = performanceData.timeEntries || [];
   const schedules = performanceData.schedules || [];
