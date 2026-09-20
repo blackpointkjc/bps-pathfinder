@@ -25,6 +25,17 @@ function breakMinutes(entry) {
   }, 0);
 }
 
+function performanceCadNumber(item = {}) {
+  const values = [item.bps_reference, item.call_number, item.agency_cad_number, item.call_id];
+  for (const value of values) {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+    const bps = raw.match(/BPS-\d{6}-\d+/i)?.[0];
+    if (bps) return bps.replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2').toUpperCase();
+  }
+  const fallback = values.find(value => typeof value === 'string' || typeof value === 'number');
+  return String(fallback || '').trim() || 'Unavailable';
+}
+
 export default function MyPerformanceAnalytics() {
   // Define month boundaries first — used in query keys below
   const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
@@ -35,7 +46,7 @@ export default function MyPerformanceAnalytics() {
   const { user: authUser, isLoadingAuth } = useAuth();
 
   const previewRequest = getOfficerPreviewRequest();
-  const performanceIdentity = previewRequest?.officer_email || previewRequest?.email || authUser?.email || '';
+  const performanceIdentity = previewRequest?.preview_user_id || previewRequest?.officer_email || previewRequest?.email || authUser?.email || '';
   const [manualRefreshMessage, setManualRefreshMessage] = React.useState('');
   const performanceSnapshot = readPerformanceSnapshot(previewRequest);
   const { data: performanceData = {}, isLoading: performanceLoading, isFetching: performanceFetching, error: performanceError, refetch: refetchPerformance } = useQuery({
@@ -320,7 +331,7 @@ export default function MyPerformanceAnalytics() {
 
     if (jobDuty.incidentReports.required > 0) {
       const incidentDetails = incidentObligations.map(item => {
-        const cad = item.call_number || item.call_id || 'CAD unavailable';
+        const cad = performanceCadNumber(item);
         const when = item.call_time ? new Date(item.call_time).toLocaleString() : item.shift_date;
         return item.status === 'completed'
           ? `CAD ${cad} · ${item.call_type} · ${item.call_location || item.property || ''} · report ${item.report_number || item.report_id} (${item.report_status || 'submitted'})`
@@ -405,7 +416,7 @@ export default function MyPerformanceAnalytics() {
     const params = new URLSearchParams({
       from_call: 'true',
       call_id: String(item.call_id || ''),
-      call_number: String(item.call_number || ''),
+      call_number: performanceCadNumber(item) === 'Unavailable' ? '' : performanceCadNumber(item),
       location: String(item.call_location || item.property || ''),
       incident_type: 'other',
       description: `${item.call_type || 'Property call'}${item.call_number ? ` · CAD ${item.call_number}` : ''}`,
@@ -535,13 +546,13 @@ export default function MyPerformanceAnalytics() {
             </CardHeader>
             <CardContent className="divide-y divide-slate-200 p-0">
               {incidentObligations.map((item, index) => (
-                <div key={`${item.call_id || item.call_number}-${index}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div key={`${item.call_id || performanceCadNumber(item)}-${index}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge className={item.status === 'completed' ? 'bg-green-600 text-white' : item.status.startsWith('excluded') ? 'bg-slate-500 text-white' : 'bg-red-600 text-white'}>
                         {item.status === 'completed' ? 'REPORT ON FILE' : item.status.startsWith('excluded') ? 'EXCLUDED' : 'MISSING REPORT'}
                       </Badge>
-                      <span className="text-sm font-black text-slate-900">CAD {item.call_number || item.call_id || 'Unavailable'}</span>
+                      <span className="text-sm font-black text-slate-900">CAD {performanceCadNumber(item)}</span>
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-800">{item.call_type || 'Call for service'}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.call_location || item.property || 'Property location'}{item.call_time ? ` · ${new Date(item.call_time).toLocaleString()}` : ''}</p>
