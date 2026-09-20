@@ -6,7 +6,8 @@ import { CheckCircle2, Clock3, FileText, AlertTriangle } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const normalizeSite = value => String(value || '').split(':')[0].trim().toLowerCase();
+const normalizeSite = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+const emailKey = value => String(value || '').trim().toLowerCase();
 const officerLabel = officer => {
   const rank = String(officer?.rank || '').trim();
   const last = String(officer?.last_name || '').trim();
@@ -18,8 +19,22 @@ export default function MissingReportsCheck({ schedules, allUsers = [], filtered
   const periodEnd = weekEnd || endOfMonth(new Date());
 
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: ['allDailyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
-    queryFn: () => base44.entities.DailyActivityReport.list('-report_date'),
+    queryKey: ['allDutyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
+    queryFn: async () => {
+      const [daily, shift] = await Promise.all([
+        base44.entities.DailyActivityReport.list('-report_date', 500),
+        base44.entities.ShiftReport.list('-shift_date', 500),
+      ]);
+      return [
+        ...(daily || []).map(report => ({ ...report, source_report_type: 'daily_activity_report' })),
+        ...(shift || []).map(report => ({
+          ...report,
+          source_report_type: 'shift_report',
+          report_date: report.report_date || report.shift_date,
+          hourly_entries: report.hourly_entries || report.activities || '',
+        })),
+      ];
+    },
     refetchInterval: 60000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
@@ -37,45 +52,85 @@ export default function MissingReportsCheck({ schedules, allUsers = [], filtered
     const end = format(periodEnd, 'yyyy-MM-dd');
     const usersByEmail = new Map((allUsers.length ? allUsers : filteredUsers).map(user => [String(user.email || '').toLowerCase(), user]));
 
-    return timeEntries
-      .filter(entry => entry.clock_in && entry.clock_out && entry.officer_email)
+    const completedEntries = timeEntries
+      .filter(entry => entry.clock_in && entry.clock_out && entry.officer_email && entry.archived !== true && entry.performance_exception !== true)
       .map(entry => ({ ...entry, worked_date: format(parseISO(entry.clock_in), 'yyyy-MM-dd') }))
       .filter(entry => entry.worked_date >= start && entry.worked_date <= end)
-      .map(entry => {
-        const email = String(entry.officer_email || '').toLowerCase();
-        const officer = usersByEmail.get(email);
-        const matching = reports
-          .filter(report => {
-            const sameOfficer = String(report.officer_email || '').toLowerCase() === email || (officer?.id && String(report.created_by_id || '') === String(officer.id));
-            const exactShift = report.shift_id && String(report.shift_id) === String(entry.id);
-            const legacyMatch = !report.shift_id && report.report_date === entry.worked_date && normalizeSite(report.location) === normalizeSite(entry.location);
-            return sameOfficer && (exactShift || legacyMatch);
-          })
-          .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
+      .sort((a, b) => new Date(a.clock_in) - new Date(b.clock_in));
 
-        const rawStatus = String(matching?.status || '').toLowerCase();
-        const status = !matching
-          ? 'missing'
-          : ['approved', 'accepted'].includes(rawStatus)
-            ? 'accepted'
-            : ['submitted', 'pending', 'pending_approval', 'under_review'].includes(rawStatus)
-              ? 'pending'
-              : rawStatus === 'draft'
-                ? 'draft'
-                : 'pending';
+    // Merge contiguous TimeEntry rows created by Switch Site into one duty
+    // session so the report checker cannot require two DARs for one continuous shift.
+    const sessions = [];
+    const byOfficer = new Map();
+    completedEntries.forEach(entry => {
+      const email = emailKey(entry.officer_email);
+      if (!byOfficer.has(email)) byOfficer.set(email, []);
+      byOfficer.get(email).push(entry);
+    });
+    byOfficer.forEach((entries, email) => {
+      let current = null;
+      entries.forEach(entry => {
+        const startMs = new Date(entry.clock_in).getTime();
+        const endMs = new Date(entry.clock_out).getTime();
+        if (!current || startMs > current.endMs + 20 * 60 * 1000) {
+          current = { id: `session-${entry.id}`, email, startMs, endMs, entries: [], sites: new Set(), dates: new Set() };
+          sessions.push(current);
+        }
+        current.entries.push(entry);
+        current.endMs = Math.max(current.endMs, endMs);
+        current.sites.add(normalizeSite(entry.location));
+        current.dates.add(entry.worked_date);
+      });
+    });
 
-        return {
-          id: String(entry.id),
-          officer: officerLabel(officer) || email,
-          email,
-          date: entry.worked_date,
-          location: String(entry.location || '').split(':')[0],
-          time: `${format(parseISO(entry.clock_in), 'HH:mm')}-${format(parseISO(entry.clock_out), 'HH:mm')}`,
-          status,
-          reportId: matching?.id,
-        };
-      })
-      .sort((a, b) => b.date.localeCompare(a.date) || a.officer.localeCompare(b.officer));
+    return sessions.map(session => {
+      const officer = usersByEmail.get(session.email);
+      const entryIds = new Set(session.entries.map(entry => String(entry.id)));
+      const matching = reports
+        .filter(report => {
+          if (String(report?.status || '').toLowerCase() === 'rejected') return false;
+          if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
+          const reportDate = String(report.report_date || report.shift_date || '').slice(0, 10);
+          const sameDate = session.dates.has(reportDate);
+          const sameSite = session.sites.has(normalizeSite(report.location));
+          if (!sameDate || !sameSite) return false;
+
+          // Team reports satisfy the shared duty-session requirement. Explicit
+          // attachment is strongest evidence, but a submitted report for the same
+          // site/session also prevents every partner officer being marked missing.
+          const attachedIds = new Set((report.attached_officer_ids || []).map(String));
+          const attachedEmails = new Set((report.attached_officer_emails || []).map(emailKey));
+          const explicitCredit = (officer?.id && attachedIds.has(String(officer.id)))
+            || attachedEmails.has(session.email)
+            || emailKey(report.officer_email) === session.email
+            || (officer?.id && String(report.created_by_id || '') === String(officer.id));
+          return explicitCredit || !['draft', 'rejected'].includes(String(report.status || '').toLowerCase());
+        })
+        .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
+
+      const rawStatus = String(matching?.status || '').toLowerCase();
+      const status = !matching
+        ? 'missing'
+        : ['approved', 'accepted'].includes(rawStatus)
+          ? 'accepted'
+          : ['submitted', 'pending', 'pending_approval', 'under_review'].includes(rawStatus)
+            ? 'pending'
+            : rawStatus === 'draft'
+              ? 'draft'
+              : 'pending';
+
+      return {
+        id: session.id,
+        officer: officerLabel(officer) || session.email,
+        email: session.email,
+        date: format(new Date(session.startMs), 'yyyy-MM-dd'),
+        location: [...session.sites].filter(Boolean).join(' / '),
+        time: `${format(new Date(session.startMs), 'HH:mm')}-${format(new Date(session.endMs), 'HH:mm')}`,
+        status,
+        reportId: matching?.id,
+        reportType: matching?.source_report_type,
+      };
+    }).sort((a, b) => b.date.localeCompare(a.date) || a.officer.localeCompare(b.officer));
   }, [timeEntries, allUsers, filteredUsers, reports, periodStart, periodEnd]);
 
   const counts = checks.reduce((acc, item) => {
