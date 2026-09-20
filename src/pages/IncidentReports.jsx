@@ -21,7 +21,7 @@ import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor'
 import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import { listAllDispatchCallsForLinking, createReportCallLink } from '@/lib/reportCallLinking';
+import { listAllDispatchCallsForLinking, createReportCallLink, callDisplayNumber } from '@/lib/reportCallLinking';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
   formatReportClock,
@@ -226,14 +226,18 @@ export default function IncidentReports() {
     initialData: [],
   });
 
-  const { data: activeBolos } = useQuery({
+  const { data: activeBolos = [] } = useQuery({
     queryKey: ['activeBolosForReports'],
     queryFn: async () => {
-      const rows = await base44.entities.BOLOAlert.list('-created_date', 200);
-      return (rows || []).filter(bolo => bolo.status === 'active');
+      const result = await base44.functions.invoke('manageBolo', { action: 'list' });
+      const payload = result?.data || result || {};
+      const rows = Array.isArray(payload.bolos) ? payload.bolos : Array.isArray(payload.rows) ? payload.rows : Array.isArray(payload) ? payload : [];
+      return rows.filter(bolo => bolo.status === 'active');
     },
     initialData: [],
-    refetchInterval: 60000,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const selectBolo = (boloId) => {
@@ -259,20 +263,20 @@ export default function IncidentReports() {
       setFormData(prev => ({ ...prev, linked_call_id: '', linked_call_number: '', primary_officer_id: '', primary_officer_name: '', backup_officer_ids: [] }));
       return;
     }
-    const call = activeDispatchCalls.find(item => item.id === callId);
+    const call = activeDispatchCalls.find(item => String(item.id) === String(callId) || String(item.original_call_id || '') === String(callId));
     if (!call) return;
     const primaryId = call.assigned_units?.[0] || '';
-    const primary = allUsers.find(item => item.id === primaryId);
+    const primary = allUsers.find(item => String(item.id) === String(primaryId));
     setFormData(prev => ({
       ...prev,
       linked_call_id: call.id,
-      linked_call_number: call.call_id || call.id,
+      linked_call_number: callDisplayNumber(call),
       primary_officer_id: primaryId,
       primary_officer_name: primary ? `${primary.rank || ''} ${primary.first_name || ''} ${primary.last_name || ''}`.replace(/\s+/g, ' ').trim() : '',
       backup_officer_ids: call.assigned_units?.slice(1) || [],
       attached_officer_ids: [...new Set([...(prev.attached_officer_ids || []), ...(call.assigned_units?.slice(1) || [])])],
       location: call.location || prev.location,
-      description: buildCallDescription(prev.description || call.description || '', call.call_id || ''),
+      description: buildCallDescription(prev.description || call.description || '', callDisplayNumber(call)),
     }));
   };
 
@@ -693,7 +697,7 @@ Provide:
 
   const getOfficerSignature = (officerRef) => {
     const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
-    if (!officer) return String(officerRef || 'Unknown Officer');
+    if (!officer) return 'Unknown Officer';
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -710,7 +714,7 @@ Provide:
 
   const getOfficerFullName = (officerRef) => {
     const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
-    return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || officer?.email || String(officerRef || 'Unknown Officer');
+    return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || officer?.email || 'Unknown Officer';
   };
 
   const getOfficerEmail = (officerRef) => {
