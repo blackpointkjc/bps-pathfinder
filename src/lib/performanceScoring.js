@@ -97,6 +97,8 @@ function hasQualifyingIncident(incidents, officer, windowStart, windowEnd) {
   });
 }
 
+const isReassignmentClockIn = entry => /\b(switched from|reassigned from|site switch|transferred from)\b/i.test(String(entry?.notes || ''));
+
 export function calculatePunctuality(timeEntries = [], schedules = [], monthStart, monthEnd, incidents = [], officer = null) {
   const details = [];
   let onTime = 0;
@@ -183,6 +185,31 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     }
 
     usedEntries.add(String(entry.id || ''));
+
+    // A destination TimeEntry created by the Time Clock "Switch Site" workflow is
+    // a continuation/reassignment of an already-started duty period. Its new
+    // clock_in timestamp is the reassignment time, not a fresh arrival time. Never
+    // penalize that destination entry as "late" against an older schedule block.
+    if (isReassignmentClockIn(entry)) {
+      exempt++;
+      details.push({
+        status: 'reassigned',
+        shift_date: schedule.shift_date,
+        scheduled_start: schedule.start_time,
+        scheduled_end: schedule.end_time,
+        actual_clock_in: easternTimeKey(entry.clock_in),
+        actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+        minutes_late: null,
+        performance_exception: true,
+        performance_overage_counted: false,
+        performance_exception_reason: 'Site reassignment / Switch Site entry. Destination clock-in is not a new arrival.',
+        location: schedule.location || '',
+        schedule_id: schedule.id,
+        time_entry_id: entry.id,
+      });
+      continue;
+    }
+
     if (entry.performance_exception === true) {
       exempt++;
       details.push({
