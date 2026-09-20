@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       // Keep this bounded, but do not serialize 20+ monthly reads one-by-one.
       // Two service-role reads at a time cuts the long blank load substantially
       // without recreating the large fan-out that previously caused 429s.
-      if (activeReads >= 4) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -98,27 +98,27 @@ Deno.serve(async (req) => {
     // directly and only read recent company-wide operational records needed to
     // validate partner QR scans and property-call report obligations.
     const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
-      safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500),
-      safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 1000),
-      safeFilter('ShiftBid', officerEmailQuery(), '-created_date', 1000),
-      safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 1000),
-      safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 1000),
+      safeFilter('TimeEntry', { $and: [officerEmailQuery(), { clock_in: { $gte: activityCutoff } }] }, '-clock_in', 500),
+      safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 500),
+      safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
+      safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500),
+      safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500),
       safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
-      safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 1500),
-      safeList('QRCheckpoint', 'property_site', 1000),
-      safeList('TrainingModule', '-created_date', 1000),
-      safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 1000),
-      safeFilter('Commendation', officerRecordQuery(), '-commendation_date', 500),
-      safeFilter('Complaint', officerRecordQuery(), '-complaint_date', 500),
-      safeFilter('ClientFeedback', officerRecordQuery(), '-feedback_date', 500),
-      safeFilter('PerformanceReview', officerRecordQuery(), '-review_date', 500),
-      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 1000),
-      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 1000),
-      safeList('DispatchCall', '-time_received', 500),
-      safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
-      safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1000),
-      safeList('JobDutyRule', 'property_site', 1000),
-      safeList('Location', 'site_name', 1000),
+      safeFilter('QRScanEvent', { $and: [officerEmailQuery(), { scanned_at: { $gte: activityCutoff } }] }, '-scanned_at', 500),
+      safeList('QRCheckpoint', 'property_site', 500),
+      safeList('TrainingModule', '-created_date', 500),
+      safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 500),
+      safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff } }] }, '-commendation_date', 250),
+      safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff } }] }, '-complaint_date', 250),
+      safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff } }] }, '-feedback_date', 250),
+      safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff } }] }, '-review_date', 250),
+      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 500),
+      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 500),
+      safeList('DispatchCall', '-time_received', 300),
+      safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 300),
+      safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 500),
+      safeList('JobDutyRule', 'property_site', 500),
+      safeList('Location', 'site_name', 500),
     ]);
 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) || String(r?.created_by_id || '') === officerId);
