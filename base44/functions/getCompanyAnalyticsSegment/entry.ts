@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
 
     if (segment === 'calls') {
       const [dispatchCallsLive, callHistory, propertyAlerts] = await Promise.all([
-        list('DispatchCall', '-time_received', 750),
+        filter('DispatchCall', { time_received: { $gte: activityCutoff } }, '-time_received', 750),
         filter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 500),
         filter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 1500),
       ]);
