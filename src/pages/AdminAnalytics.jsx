@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   BarChart3, Users, Clock, AlertTriangle, 
   CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X, RefreshCw
@@ -681,6 +683,10 @@ export default function AdminAnalytics() {
               <Send className="h-4 w-4" />
               Send Company Summary
             </button>
+            <div className="grid min-w-[310px] grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-900/70 p-2">
+              <div><Label className="text-[10px] uppercase tracking-wide text-slate-400">Start</Label><Input type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={e=>setAnalyticsStartDate(e.target.value)} className="mt-1 h-9 border-slate-700 bg-slate-950"/></div>
+              <div><Label className="text-[10px] uppercase tracking-wide text-slate-400">End</Label><Input type="date" value={analyticsEndDate} min={analyticsStartDate} onChange={e=>setAnalyticsEndDate(e.target.value)} className="mt-1 h-9 border-slate-700 bg-slate-950"/></div>
+            </div>
             <Select value={selectedDivision} onValueChange={setSelectedDivision}>
               <SelectTrigger className="min-h-11 flex-1 border-slate-700 bg-slate-900 sm:w-48 sm:flex-none">
                 <SelectValue placeholder="All Divisions" />
@@ -780,7 +786,7 @@ export default function AdminAnalytics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-cyan-400" />
-              Officer Overall Performance — Current Month
+              Officer Overall Performance — {format(parseISO(currentMonthStart), 'MMM d, yyyy')} to {format(parseISO(currentMonthEnd), 'MMM d, yyyy')}
             </CardTitle>
             <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Job Duty includes DAR, required Incident Reports, and QR compliance. When there is no obligation, the count is shown as 0/0 and does not create a fake 100% score.</p>
           </CardHeader>
@@ -788,7 +794,7 @@ export default function AdminAnalytics() {
             <div className="space-y-3">
               {!performanceGenerationReady && (
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
-                  Loading the current month's attendance, duty/report, and CAD compliance data. Old saved officer percentages are intentionally not shown here.
+                  Loading attendance, duty/report, CAD, training, and quality data for the selected period. Old saved officer percentages are intentionally not shown here.
                   {Object.keys(performanceCriticalErrors).length > 0 && (
                     <div className="mt-2 text-amber-200">Retrying: {Object.keys(performanceCriticalErrors).join(', ')}</div>
                   )}
@@ -814,7 +820,7 @@ export default function AdminAnalytics() {
                         {category.label}: <strong>{category.score}%</strong>
                       </span>
                     ))}
-                    {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
+                    {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records in this period.</span>}
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
                     <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
@@ -845,7 +851,7 @@ export default function AdminAnalytics() {
 
         <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
           <CardHeader>
-            <CardTitle>Hours by Officer (Current Month - {format(new Date(), 'MMMM yyyy')})</CardTitle>
+            <CardTitle>Hours by Officer ({format(parseISO(currentMonthStart), 'MMM d')} – {format(parseISO(currentMonthEnd), 'MMM d, yyyy')})</CardTitle>
           </CardHeader>
           <CardContent>
             {hoursBreakdown.length > 0 ? (
@@ -874,7 +880,7 @@ export default function AdminAnalytics() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Punctuality Leaderboard (Current Month)
+                Punctuality Leaderboard (Selected Period)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -902,7 +908,7 @@ export default function AdminAnalytics() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-green-600" />
-                Top Commendations (Current Month)
+                Top Commendations (Selected Period)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -968,7 +974,7 @@ export default function AdminAnalytics() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
-                Complaints Status (Current Month)
+                Complaints Status (Selected Period)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -999,7 +1005,7 @@ export default function AdminAnalytics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
-              Officers Missing Shift Reports (Current Month)
+              Officers Missing Shift Reports (Selected Period)
             </CardTitle>
           </CardHeader>
           <CardContent>
