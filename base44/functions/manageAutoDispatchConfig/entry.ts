@@ -17,9 +17,13 @@ Deno.serve(async (req) => {
     const action = normalizeRole(body.action || 'list');
 
     if (action === 'list') {
-      const rows = await base44.asServiceRole.entities.Location.list('site_name', 1000);
+      const [rows, equipment] = await Promise.all([
+        base44.asServiceRole.entities.Location.list('site_name', 1000),
+        base44.asServiceRole.entities.Equipment.list('equipment_type', 1000).catch(() => []),
+      ]);
       const locations = (rows || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
-      return Response.json({ success: true, locations });
+      const activeEquipment = (equipment || []).filter((item: any) => normalizeRole(item.status) !== 'retired');
+      return Response.json({ success: true, locations, equipment: activeEquipment });
     }
 
     if (action === 'update_mode') {
