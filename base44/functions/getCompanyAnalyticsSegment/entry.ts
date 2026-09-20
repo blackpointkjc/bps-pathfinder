@@ -179,12 +179,12 @@ Deno.serve(async (req) => {
     const list = (name:string, sort?:string, limit=1000) => safe(name, () => entity(name).list(sort, limit));
     const filter = (name:string, query:any, sort?:string, limit=1000) => safe(name, () => entity(name).filter(query, sort, limit));
 
-    const activityCutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0,0,0,0);
     monthStart.setDate(monthStart.getDate() - 2);
     const monthDateCutoff = monthStart.toISOString().slice(0,10);
+    const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
 
     const getUsers = () => cachedRows('users', 30 * 1000, () => entity('User').list('-updated_date', 1000));
 
