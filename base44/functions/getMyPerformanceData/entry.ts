@@ -94,41 +94,48 @@ Deno.serve(async (req) => {
     const monthDateCutoff = monthStart.toISOString().slice(0, 10);
     const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
 
-    // My Performance is a monthly officer view. Query officer-scoped collections
-    // directly and only read recent company-wide operational records needed to
-    // validate partner QR scans and property-call report obligations.
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, dutyRulesAll, locationsAll] = await Promise.all([
+    // Load the officer's core current-month duty context first. That tells us
+    // which expensive operational datasets are actually relevant before we fan
+    // out into secondary scoring sources.
+    const [timeEntriesAll, schedulesAll, dutyRulesAll, locationsAll] = await Promise.all([
       safeFilter('TimeEntry', { $and: [officerEmailQuery(), { clock_in: { $gte: activityCutoff } }] }, '-clock_in', 500),
       safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 500),
-      safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
-      safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500),
-      safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500),
-      safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
-      safeFilter('QRScanEvent', { $and: [officerEmailQuery(), { scanned_at: { $gte: activityCutoff } }] }, '-scanned_at', 500),
-      safeList('QRCheckpoint', 'property_site', 500),
-      safeList('TrainingModule', '-created_date', 500),
-      safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 500),
-      safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff } }] }, '-commendation_date', 250),
-      safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff } }] }, '-complaint_date', 250),
-      safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff } }] }, '-feedback_date', 250),
-      safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff } }] }, '-review_date', 250),
-      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 500),
-      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 500),
-      safeList('DispatchCall', '-time_received', 300),
-      safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 300),
-      safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 500),
       safeList('JobDutyRule', 'property_site', 500),
       safeList('Location', 'site_name', 500),
     ]);
 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) || String(r?.created_by_id || '') === officerId);
     const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
+    const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+    const relevantSiteKeys = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
+    const relevantDutyRules = (dutyRulesAll || []).filter((rule:any) => rule.active !== false && relevantSiteKeys.has(siteKey(rule.property_site)));
+    const qrRequired = relevantDutyRules.some((rule:any) => rule.qr_required === true);
+    const incidentRequired = relevantDutyRules.some((rule:any) => rule.incident_report_required_for_property_calls === true);
+
+    const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll] = await Promise.all([
+      safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
+      safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500),
+      safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500),
+      safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
+      qrRequired ? safeFilter('QRScanEvent', { $and: [officerEmailQuery(), { scanned_at: { $gte: activityCutoff } }] }, '-scanned_at', 500) : Promise.resolve([]),
+      qrRequired ? safeList('QRCheckpoint', 'property_site', 500) : Promise.resolve([]),
+      safeList('TrainingModule', '-created_date', 500),
+      incidentRequired ? safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 500) : Promise.resolve([]),
+      safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff } }] }, '-commendation_date', 250),
+      safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff } }] }, '-complaint_date', 250),
+      safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff } }] }, '-feedback_date', 250),
+      safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff } }] }, '-review_date', 250),
+      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 500),
+      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 500),
+      incidentRequired ? safeList('DispatchCall', '-time_received', 300) : Promise.resolve([]),
+      incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 300) : Promise.resolve([]),
+      incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 500) : Promise.resolve([]),
+    ]);
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
-    const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
     // Return every successful scan that occurred at the officer's property while
     // the officer was working there. The scoring engine itself determines whether
     // the scanner was also clocked in at that property, so invalid partner scans
@@ -156,7 +163,6 @@ Deno.serve(async (req) => {
       scanned_time: scan.scanned_time,
       scan_status: scan.scan_status,
     }));
-    const relevantSiteKeys = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
     const partnerTimeEntries = timeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
     const myIncidents = incidentsAll.filter((r:any) => sameOfficer(r, ['officer_email', 'created_by'], aliases, officerId, ['officer_id', 'created_by_id']));
     const myCommendations = commendationsAll.filter((r:any) => sameOfficer(r, ['officer_email'], aliases, officerId));
