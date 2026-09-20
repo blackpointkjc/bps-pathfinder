@@ -324,6 +324,7 @@ export default function AdminAnalytics() {
   const performanceQrCheckpoints = performanceAnalyticsData.qrCheckpoints || [];
   const performanceIncidentReports = performanceAnalyticsData.incidentReports || [];
   const performanceDispatchCalls = performanceAnalyticsData.dispatchCalls || [];
+  const performanceCallAssignments = performanceAnalyticsData.callAssignments || [];
   const performanceCommendations = performanceAnalyticsData.commendations || [];
   const performanceDailyReports = performanceAnalyticsData.dailyActivityReports || [];
   const performanceCallOuts = performanceAnalyticsData.callOuts || [];
@@ -521,6 +522,7 @@ export default function AdminAnalytics() {
       dailyReports: performanceDailyReports,
       incidentReports: performanceIncidentReports,
       dispatchCalls: performanceDispatchCalls,
+      callAssignments: performanceCallAssignments,
       callOuts: officerCallOuts,
       qrScans: performanceQrScans,
       allTimeEntries: performanceTimeEntries,
@@ -546,7 +548,7 @@ export default function AdminAnalytics() {
       jobDuty,
     };
   }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
-  }, [performanceGenerationReady, performanceUsers, performanceTimeEntries, performanceSchedules, performanceBids, performanceTrainingCompletions, performanceTrainingAssignments, performanceTrainingModules, performanceFeedback, performanceReviews, performanceCommendations, performanceIncidentReports, performanceDispatchCalls, performanceCallOuts, performanceDailyReports, performanceQrScans, performanceQrCheckpoints, performanceDutyRules, performanceLocations, selectedDivision, currentMonthStart, currentMonthEnd]);
+  }, [performanceGenerationReady, performanceUsers, performanceTimeEntries, performanceSchedules, performanceBids, performanceTrainingCompletions, performanceTrainingAssignments, performanceTrainingModules, performanceFeedback, performanceReviews, performanceCommendations, performanceIncidentReports, performanceDispatchCalls, performanceCallAssignments, performanceCallOuts, performanceDailyReports, performanceQrScans, performanceQrCheckpoints, performanceDutyRules, performanceLocations, selectedDivision, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
@@ -576,7 +578,9 @@ export default function AdminAnalytics() {
       .map(([callId, assignment]) => {
         const call = callById.get(callId);
         if (!call?.time_on_scene) return null;
-        const minutes = differenceInMinutes(parseISO(call.time_on_scene), parseISO(assignment.assigned_at));
+        const sceneAt = parseISO(call.time_on_scene).getTime();
+        const assignedAt = parseISO(assignment.assigned_at).getTime();
+        const minutes = (sceneAt - assignedAt) / 60000;
         return Number.isFinite(minutes) && minutes >= 0 && minutes <= 240 ? minutes : null;
       })
       .filter(minutes => minutes != null);
