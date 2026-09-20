@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { loadLegalRecordHistory } from '@/lib/legalRecordHistory';
 import { Badge } from '@/components/ui/badge';
