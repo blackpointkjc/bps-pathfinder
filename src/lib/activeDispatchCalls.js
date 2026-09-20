@@ -112,13 +112,17 @@ export async function loadActiveDispatchCallRows(limit = 100) {
   inFlight = (async () => {
     let primaryError;
     try {
-      // DispatchCall is already the persisted source of truth. Reading it directly
-      // avoids an extra function invocation/auth hop on every command startup.
-      const calls = await withRequestTimeout(
-        base44.entities.DispatchCall.list('-created_date', limit),
-        10000,
+      // Read the operational queue through the service-role function. Direct entity
+      // reads depend on each viewer's RLS and were leaving Command Dashboard blank
+      // for valid CAD/supervisor accounts even though active calls existed.
+      const response = await withRequestTimeout(
+        base44.functions.invoke('getActiveDispatchCalls', { limit }),
+        12000,
         'Active call feed',
       );
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      const calls = payload.calls;
       if (!Array.isArray(calls)) throw new Error('Active call feed returned an invalid response.');
       const deduped = dedupeOperationalCalls(calls);
       saveLastGoodCalls(deduped);
@@ -128,6 +132,19 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     } catch (error) {
       primaryError = error;
     }
+
+    // Preserve a direct-read compatibility fallback while an updated backend
+    // function is warming up, then fall back to the last verified local queue.
+    try {
+      const rows = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', limit), 10000, 'Active call fallback');
+      if (Array.isArray(rows)) {
+        const deduped = dedupeOperationalCalls(rows);
+        saveLastGoodCalls(deduped);
+        memoryRows = deduped;
+        memoryRowsAt = Date.now();
+        return deduped;
+      }
+    } catch {}
 
     const cached = readLastGoodCalls();
     if (cached.length) return cached;
