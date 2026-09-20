@@ -54,7 +54,7 @@ Deno.serve(async req => {
     // Matches the management location-history page; never expose a service-role report to a broader audience.
     if (user.role !== 'admin') return Response.json({ error: 'Administrator access required' }, { status: 403 });
     const input = await req.json();
-    const email = String(input.officer_email || '').trim();
+    const email = String(input.officer_email || '').trim().toLowerCase();
     const date = String(input.date || '');
     const start = new Date(date + 'T00:00:00Z');
     if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(start.getTime()) || start.toISOString().slice(0,10) !== date) {
@@ -80,10 +80,19 @@ Deno.serve(async req => {
       ? `${clockLabel(startTime)}-${clockLabel(endTime)} ET${startTime > endTime ? ' (overnight)' : ''}`
       : 'Full day';
     const entities = base44.asServiceRole.entities;
+    const directory = await readAll(entities.User, {}, '-updated_date', 1500);
+    const aliasesFor = (person: any) => [
+      person?.email, person?.work_email, person?.pathfinder_email,
+      person?.microsoft_email, person?.outlook_email,
+      ...(Array.isArray(person?.email_aliases) ? person.email_aliases : []),
+    ].map((value: unknown) => String(value || '').trim().toLowerCase()).filter(Boolean);
+    const officer = (directory || []).find((person: any) => aliasesFor(person).includes(email));
+    const officerEmails = [...new Set(officer ? aliasesFor(officer) : [email])];
+    const emailFilter = officerEmails.length === 1 ? officerEmails[0] : { $in: officerEmails };
     const results = await Promise.allSettled([
-      readAll(entities.LocationHistory, { officer_email: email, timestamp: { $gte: start.toISOString(), $lt: end } }, 'timestamp', 5000),
-      readAll(entities.GeofenceAlert, { officer_email: email, created_date: { $gte: start.toISOString(), $lt: end } }, 'created_date', 2000),
-      readAll(entities.TimeEntry, { officer_email: email, clock_in: { $lt: end }, $or: [{ clock_out: { $gte: start.toISOString() } }, { clock_out: null }, { clock_out: { $exists: false } }] }, 'clock_in', 1000),
+      readAll(entities.LocationHistory, { officer_email: emailFilter, timestamp: { $gte: start.toISOString(), $lt: end } }, 'timestamp', 5000),
+      readAll(entities.GeofenceAlert, { officer_email: emailFilter, created_date: { $gte: start.toISOString(), $lt: end } }, 'created_date', 2000),
+      readAll(entities.TimeEntry, { officer_email: emailFilter, clock_in: { $lt: end }, $or: [{ clock_out: { $gte: start.toISOString() } }, { clock_out: null }, { clock_out: { $exists: false } }] }, 'clock_in', 1000),
     ]);
     if (results[0].status === 'rejected') throw results[0].reason;
     const historyRows = results[0].value;
@@ -95,7 +104,7 @@ Deno.serve(async req => {
     const entries = timeEntries.filter(row => dayKey(row.clock_in) <= date && (!row.clock_out || dayKey(row.clock_out) >= date))
       .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }))
       .sort((a:any,b:any) => stamp(a.clock_in) - stamp(b.clock_in));
-    return Response.json({ history, geofenceAlerts, entries, warnings, date, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
+    return Response.json({ history, geofenceAlerts, entries, warnings, date, officer_email: officer?.email || email, matched_email_aliases: officerEmails, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error('Location audit report failed', error);
     return Response.json({ error: 'Unable to load the complete GPS audit report. Please retry.' }, { status: 500 });
