@@ -1,10 +1,26 @@
 import { base44 } from '@/api/base44Client';
 
-const TTL_MS = 90_000;
+const TTL_MS = 10 * 60_000;
+const STORAGE_PREFIX = 'bps:performance-reviews:last-good:v2:';
 const cache = new Map();
 const inflight = new Map();
 
 const keyFor = request => String(request?.preview_user_id || 'self');
+const storageKeyFor = request => `${STORAGE_PREFIX}${keyFor(request)}`;
+
+function readPersisted(request) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKeyFor(request)) || 'null');
+    if (!parsed?.payload || !parsed?.at || Date.now() - Number(parsed.at) > 24 * 60 * 60_000) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function persist(request, payload) {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(storageKeyFor(request), JSON.stringify({ at: Date.now(), payload })); } catch {}
+}
 
 export function invalidateOfficerPerformanceReviewCache(request = null) {
   if (!request) {
@@ -16,7 +32,14 @@ export function invalidateOfficerPerformanceReviewCache(request = null) {
 
 export async function getOfficerPerformanceReviewSnapshot(request = {}, { force = false } = {}) {
   const key = keyFor(request);
-  const cached = cache.get(key);
+  let cached = cache.get(key);
+  if (!cached) {
+    const persisted = readPersisted(request);
+    if (persisted) {
+      cached = persisted;
+      cache.set(key, persisted);
+    }
+  }
   if (!force && cached && Date.now() - cached.at < TTL_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
 
@@ -27,7 +50,9 @@ export async function getOfficerPerformanceReviewSnapshot(request = {}, { force 
     const payload = response?.data || response || {};
     if (payload.error) throw new Error(payload.error);
     const normalized = { ...payload, reviews: Array.isArray(payload.reviews) ? payload.reviews : [] };
-    cache.set(key, { at: Date.now(), payload: normalized });
+    const item = { at: Date.now(), payload: normalized };
+    cache.set(key, item);
+    persist(request, normalized);
     return normalized;
   }).finally(() => inflight.delete(key));
 
