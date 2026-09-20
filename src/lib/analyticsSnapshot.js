@@ -1,6 +1,6 @@
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const COMPANY_PREFIX = 'bps:analytics:company:last-verified:v3:';
-const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v3:';
+const COMPANY_PREFIX = 'bps:analytics:company:last-verified:v4:';
+const PERFORMANCE_PREFIX = 'bps:analytics:performance:last-verified:v4:';
 
 function monthKey() {
   try {
