@@ -1254,6 +1254,15 @@ Provide:
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                {formData.report_type === 'supplement' && (
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
+                    <div className="font-black">Linked Supplement</div>
+                    <div className="mt-1">Original report: <span className="font-mono font-bold">{formData.parent_report_number || formData.parent_report_id}</span></div>
+                    {formData.linked_call_number && <div>CAD: <span className="font-mono font-bold">{formData.linked_call_number}</span></div>}
+                    {formData.linked_bolo_number && <div>BOLO: <span className="font-mono font-bold">{formData.linked_bolo_number}</span></div>}
+                    <p className="mt-2 text-xs text-indigo-700">The supplement remains attached to the original report and does not replace or reopen it.</p>
+                  </div>
+                )}
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="incident_date">Date of Incident *</Label>
@@ -1288,28 +1297,36 @@ Provide:
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
                     <Label>CAD Call Number</Label>
-                    <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select CAD call number" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-80">
-                        <SelectItem value="none">No linked CAD call</SelectItem>
-                        {activeDispatchCalls.map(call => {
-                          const cad = callDisplayNumber(call);
-                          const label = [cad, call.incident, call.location].filter(Boolean).join(' · ');
-                          return (
-                            <SelectItem key={String(call.id)} value={String(call.id)}>
-                              {label || String(call.id)}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {formData.linked_call_id && (
+                    {formData.report_type === 'supplement' ? (
                       <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-                        <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}
-                        {formData.primary_officer_name ? <> · <strong>Primary:</strong> {formData.primary_officer_name}</> : null}
+                        <strong>Inherited from original:</strong> {formData.linked_call_number || 'No linked CAD'}
                       </div>
+                    ) : (
+                      <>
+                        <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select CAD call number" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-80">
+                            <SelectItem value="none">No linked CAD call</SelectItem>
+                            {activeDispatchCalls.map(call => {
+                              const cad = callDisplayNumber(call);
+                              const label = [cad, call.incident, call.location].filter(Boolean).join(' · ');
+                              return (
+                                <SelectItem key={String(call.id)} value={String(call.id)}>
+                                  {label || String(call.id)}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        {formData.linked_call_id && (
+                          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                            <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}
+                            {formData.primary_officer_name ? <> · <strong>Primary:</strong> {formData.primary_officer_name}</> : null}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -1325,21 +1342,29 @@ Provide:
 
                   <div className="space-y-2 md:col-span-2">
                     <Label>Attach Active BOLO</Label>
-                    <Select value={formData.linked_bolo_id || 'none'} onValueChange={selectBolo}>
-                      <SelectTrigger><SelectValue placeholder="Select an active BOLO" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No linked BOLO</SelectItem>
-                        {activeBolos.map(bolo => (
-                          <SelectItem key={bolo.id} value={bolo.id}>
-                            {bolo.bolo_number || bolo.id.slice(-8)} — {bolo.title} {bolo.subject_name ? `— ${bolo.subject_name}` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formData.linked_bolo_id && (
+                    {formData.report_type === 'supplement' ? (
                       <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-                        <strong>BOLO:</strong> {formData.linked_bolo_number}
+                        <strong>Inherited from original:</strong> {formData.linked_bolo_number || 'No linked BOLO'}
                       </div>
+                    ) : (
+                      <>
+                        <Select value={formData.linked_bolo_id || 'none'} onValueChange={selectBolo}>
+                          <SelectTrigger><SelectValue placeholder="Select an active BOLO" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No linked BOLO</SelectItem>
+                            {activeBolos.map(bolo => (
+                              <SelectItem key={bolo.id} value={bolo.id}>
+                                {bolo.bolo_number || bolo.id.slice(-8)} — {bolo.title} {bolo.subject_name ? `— ${bolo.subject_name}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {formData.linked_bolo_id && (
+                          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                            <strong>BOLO:</strong> {formData.linked_bolo_number}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
