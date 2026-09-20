@@ -11,6 +11,7 @@ import { ShieldCheck, ChevronLeft, ChevronRight, CalendarClock, MapPin, Trash2, 
 import { openBlackPointReport } from '@/lib/reportPrint';
 import { toast } from 'sonner';
 import { confirmInApp } from '@/lib/inAppDialog';
+import { useAuth } from '@/lib/AuthContext';
 
 const lower = value => String(value || '').trim().toLowerCase();
 const minutes = value => { const [h=0,m=0] = String(value || '00:00').split(':').map(Number); return h*60+m; };
@@ -25,8 +26,9 @@ export default function DutySupervisorScheduling() {
   const [editing,setEditing] = useState(null);
   const [saving,setSaving] = useState(false);
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
-  const { data:user, isLoading:userLoading } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
-  const canManage = user?.role === 'admin';
+  const { user, isLoadingAuth:userLoading } = useAuth();
+  const roles = new Set((user?.additional_roles || []).map(lower));
+  const canManage = user?.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || user?.is_supervisor === true;
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
   const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:()=>base44.entities.DutySupervisorAssignment.list('-assignment_date',1000), refetchInterval:5 * 60 * 1000 });
@@ -86,31 +88,57 @@ export default function DutySupervisorScheduling() {
     if(duplicate) return toast.error(`${duplicate.supervisor_name||personLabel(duplicate.supervisor_email)} is already assigned to ${duplicate.location==='ALL'?'All Sites':duplicate.location} during this time.`);
     setSaving(true);
     try {
+      const writeAssignment = async (supervisor_email, location, id = null) => {
+        const supervisor = users.find(person => lower(person.email) === lower(supervisor_email));
+        if (!supervisor) throw new Error('Selected duty supervisor was not found.');
+        const payload = {
+          assignment_date: form.assignment_date,
+          start_time: form.start_time,
+          end_time: form.end_time,
+          location: location || 'ALL',
+          supervisor_email: lower(supervisor.email),
+          supervisor_name: [supervisor.rank, supervisor.last_name || supervisor.first_name].filter(Boolean).join(' '),
+          supervisor_rank: supervisor.rank || '',
+          status: 'scheduled',
+          notes: form.notes || '',
+          updated_by_email: user?.email || '',
+        };
+        if (user?.role === 'admin') {
+          return id
+            ? base44.entities.DutySupervisorAssignment.update(id, payload)
+            : base44.entities.DutySupervisorAssignment.create({ ...payload, created_by_email: user?.email || '' });
+        }
+        const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'save', assignment:{ ...payload, id } });
+        const result = response?.data || response || {};
+        if (result.error) throw new Error(result.error);
+        return result.assignment;
+      };
+      const deleteAssignment = async row => {
+        if (user?.role === 'admin') return base44.entities.DutySupervisorAssignment.delete(row.id);
+        const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'delete', id:row.id });
+        const result = response?.data || response || {};
+        if (result.error) throw new Error(result.error);
+        return result;
+      };
       if (editing) {
         const supervisor_email = requestedSupervisors[0];
         const existingByArea = new Map((editing.rows || []).map(row => [lower(row.location || 'ALL'), row]));
-        const results = [];
         for (const location of requestedAreas) {
           const existing = existingByArea.get(lower(location));
-          results.push(await base44.functions.invoke('manageDutySupervisorSchedule',{ action:'save', assignment:{...form,supervisor_email,location,id:existing?.id,status:'scheduled'} }));
+          await writeAssignment(supervisor_email, location, existing?.id || null);
         }
-        for (const row of (editing.rows || []).filter(row => !requestedAreas.some(area => lower(area) === lower(row.location || 'ALL')))) {
-          results.push(await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}));
-        }
-        const failed = results.map(response => response?.data||response||{}).find(payload => payload.error);
-        if(failed?.error) throw new Error(failed.error);
+        for (const row of (editing.rows || []).filter(row => !requestedAreas.some(area => lower(area) === lower(row.location || 'ALL')))) await deleteAssignment(row);
       } else {
-        const combinations = requestedSupervisors.flatMap(supervisor_email => requestedAreas.map(location => ({ supervisor_email, location })));
-        const results = await Promise.all(combinations.map(({supervisor_email,location}) => base44.functions.invoke('manageDutySupervisorSchedule',{ action:'save', assignment:{...form,supervisor_email,location,status:'scheduled'} })));
-        const failed = results.map(response => response?.data||response||{}).find(payload => payload.error);
-        if(failed?.error) throw new Error(failed.error);
+        for (const supervisor_email of requestedSupervisors) {
+          for (const location of requestedAreas) await writeAssignment(supervisor_email, location);
+        }
       }
       await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']});
       await qc.invalidateQueries({queryKey:['myScheduleData']});
       toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
     } catch(e){ toast.error(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
   };
-  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; const results=await Promise.all((group.rows||[group]).map(row=>base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}))); const failed=results.map(response=>response?.data||response||{}).find(payload=>payload.error); if(failed?.error)return toast.error(failed.error); await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); };
+  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { if (user?.role === 'admin') await base44.entities.DutySupervisorAssignment.delete(row.id); else { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } } await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ toast.error(error?.message||'Unable to remove duty supervisor coverage.'); } };
   const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
 
   if (userLoading) return <div className="min-h-screen bg-[#080d16] p-8 text-center text-slate-300">Checking administrator access…</div>;
