@@ -31,7 +31,6 @@ import {
   reportTimeZoneLabel,
   resolveReportTimeZone,
 } from '@/lib/reportPrint';
-import LegalCaseHistoryPanel from '@/components/reports/LegalCaseHistoryPanel';
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
