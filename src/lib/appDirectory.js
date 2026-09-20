@@ -339,7 +339,7 @@ export const listDirectoryUsers = async (sort, limit, strict = false) => {
   // entity itself before collapsing to only the signed-in identity. Officer
   // pickers, HR dropdowns, planned shifts, fleet, and rank structure all require
   // the complete roster to remain usable during a directory-function outage.
-  if (!rows.length) {
+  if (rows.length <= 1) {
     try {
       const direct = await withRequestTimeout(
         base44.entities.User.list(sort || 'last_name', Number(limit) || 1000),
