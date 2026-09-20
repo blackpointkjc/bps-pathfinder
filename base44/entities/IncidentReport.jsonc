@@ -215,6 +215,48 @@
         "type": "string"
       },
       "description": "Backup officer IDs from the linked call"
+    },
+    "attached_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer user IDs attached to this report"
+    },
+    "attached_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional officer emails attached to this report"
+    },
+    "attached_officer_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Display names of additional officers attached to this report"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "original",
+        "supplement"
+      ],
+      "default": "original",
+      "description": "Whether this is the original incident report or a supplemental report"
+    },
+    "parent_report_id": {
+      "type": "string",
+      "description": "Original IncidentReport ID when this record is a supplement"
+    },
+    "parent_report_number": {
+      "type": "string",
+      "description": "Original report number when this record is a supplement"
+    },
+    "supplement_number": {
+      "type": "number",
+      "description": "Sequential supplement number for the original incident report"
     }
   },
   "required": [
