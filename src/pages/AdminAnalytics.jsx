@@ -165,16 +165,18 @@ export default function AdminAnalytics() {
     ]);
   };
 
-  const companySnapshot = readCompanyAnalyticsSnapshot();
+  const companySnapshotRequest = { start_date: analyticsStartDate, end_date: analyticsEndDate };
+  const companySnapshot = readCompanyAnalyticsSnapshot(companySnapshotRequest);
   const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
   const coreAnalytics = useAnalyticsSegment('core', !!user, analyticsStartDate, analyticsEndDate);
-  // Load in two controlled parallel waves after the core directory/time data.
-  // This cuts the former five-request serial chain without recreating the large
-  // all-at-once burst that previously triggered Base44 throttling.
-  const dutyAnalytics = useAnalyticsSegment('duty', Boolean(user && coreAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && coreAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && callsAnalytics.data), analyticsStartDate, analyticsEndDate);
+  // Once core is available, enqueue the four independent segments together. The
+  // shared Base44 client limits reads to two at a time, so this remains a controlled
+  // two-wave load without the extra React render/dependency delay between waves.
+  const secondarySegmentsEnabled = Boolean(user && coreAnalytics.data);
+  const dutyAnalytics = useAnalyticsSegment('duty', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const trainingAnalytics = useAnalyticsSegment('training', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
@@ -250,7 +252,7 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     if (analyticsData.analytics_segments_loaded === 5 && Object.keys(analyticsData.service_errors || {}).length === 0) {
-      saveCompanyAnalyticsSnapshot(analyticsData);
+      saveCompanyAnalyticsSnapshot(companySnapshotRequest, analyticsData);
     }
   }, [analyticsData]);
 
