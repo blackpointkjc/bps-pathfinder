@@ -33,7 +33,7 @@ const ANALYTICS_SEGMENTS = {
     interval: 3 * 60 * 1000,
   },
   calls: {
-    fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert'] },
+    fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert'], callAssignments: 'CallAssignment' },
     interval: 2 * 60 * 1000,
   },
   quality: {
@@ -80,8 +80,8 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
       return payload;
     },
     enabled,
-    staleTime: 60 * 1000,
-    refetchOnMount: true,
+    staleTime: config?.interval || 2 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchInterval: config?.interval || 5 * 60 * 1000,
     refetchIntervalInBackground: false,
@@ -152,23 +152,29 @@ export default function AdminAnalytics() {
 
   const refreshCompanyAnalytics = async () => {
     clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
-    for (const segment of ['core', 'training', 'duty', 'calls', 'quality']) {
-      await queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' });
-      await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', segment], type: 'active' });
-      await new Promise(resolve => window.setTimeout(resolve, 250));
-    }
+    const segments = ['core', 'training', 'duty', 'calls', 'quality'];
+    await Promise.all(segments.map(segment => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' })));
+    await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'core'], type: 'active' });
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'duty'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'calls'], type: 'active' }),
+    ]);
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'training'], type: 'active' }),
+      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'quality'], type: 'active' }),
+    ]);
   };
 
   const companySnapshot = readCompanyAnalyticsSnapshot();
   const hasVerifiedCore = Boolean(companySnapshot?.data?.users?.length);
   const coreAnalytics = useAnalyticsSegment('core', !!user, analyticsStartDate, analyticsEndDate);
-  // Load the current-month performance path first and serially. Enabling all
-  // four secondary functions together caused a read burst and left this page on
-  // its old persisted score when one of them was throttled.
+  // Load in two controlled parallel waves after the core directory/time data.
+  // This cuts the former five-request serial chain without recreating the large
+  // all-at-once burst that previously triggered Base44 throttling.
   const dutyAnalytics = useAnalyticsSegment('duty', Boolean(user && coreAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && callsAnalytics.data), analyticsStartDate, analyticsEndDate);
-  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && trainingAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const callsAnalytics = useAnalyticsSegment('calls', Boolean(user && coreAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const trainingAnalytics = useAnalyticsSegment('training', Boolean(user && dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', Boolean(user && callsAnalytics.data), analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
@@ -273,6 +279,7 @@ export default function AdminAnalytics() {
       DispatchCall: ['calls'],
       CallHistory: ['calls'],
       PropertyAlert: ['calls'],
+      CallAssignment: ['calls'],
     };
 
     const scheduleSegmentRefresh = segment => {
@@ -327,6 +334,7 @@ export default function AdminAnalytics() {
   const trainingCompletions = analyticsData.trainingCompletions || [];
   const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
   const dispatchCalls = analyticsData.dispatchCalls || [];
+  const callAssignments = analyticsData.callAssignments || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
   const analyticsServiceErrors = analyticsData.service_errors || {};
@@ -546,17 +554,39 @@ export default function AdminAnalytics() {
   }, [overallByOfficer]);
 
   const responseTimeStats = useMemo(() => {
-    const responseTimes = dispatchCalls
-      .filter(call => call.time_received && call.time_on_scene)
-      .map(call => differenceInMinutes(parseISO(call.time_on_scene), parseISO(call.time_received)))
-      .filter(minutes => Number.isFinite(minutes) && minutes >= 0 && minutes <= 240);
+    const callById = new Map();
+    dispatchCalls.forEach(call => {
+      [call.id, call.original_call_id, call.call_id].filter(Boolean).forEach(id => callById.set(String(id), call));
+    });
+
+    // Response time begins when Black Point actually receives an assignment—not
+    // when the public agency first receives the call. Only completed assignments
+    // with a recorded on-scene action are scoreable.
+    const earliestCompletedAssignment = new Map();
+    callAssignments
+      .filter(assignment => String(assignment.status || '').toLowerCase() === 'cleared' && assignment.assigned_at && assignment.cleared_at)
+      .forEach(assignment => {
+        const key = String(assignment.call_id || '');
+        if (!key) return;
+        const prior = earliestCompletedAssignment.get(key);
+        if (!prior || new Date(assignment.assigned_at).getTime() < new Date(prior.assigned_at).getTime()) earliestCompletedAssignment.set(key, assignment);
+      });
+
+    const responseTimes = [...earliestCompletedAssignment.entries()]
+      .map(([callId, assignment]) => {
+        const call = callById.get(callId);
+        if (!call?.time_on_scene) return null;
+        const minutes = differenceInMinutes(parseISO(call.time_on_scene), parseISO(assignment.assigned_at));
+        return Number.isFinite(minutes) && minutes >= 0 && minutes <= 240 ? minutes : null;
+      })
+      .filter(minutes => minutes != null);
 
     const avg = responseTimes.length > 0
       ? Math.round(responseTimes.reduce((sum, minutes) => sum + minutes, 0) / responseTimes.length)
-      : 0;
+      : null;
 
     return { avg, total: responseTimes.length };
-  }, [dispatchCalls]);
+  }, [dispatchCalls, callAssignments]);
 
   const commendationStats = useMemo(() => {
     if (!allCommendations || !filteredUsers) return { byOfficer: [], total: 0 };
@@ -756,8 +786,9 @@ export default function AdminAnalytics() {
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Clock className="w-6 h-6 text-amber-600 mb-2" />
-              <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg || 0}m</p>
-              <p className="text-xs text-slate-400">Avg Response</p>
+              <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg != null ? `${responseTimeStats.avg}m` : '—'}</p>
+              <p className="text-xs text-slate-400">Avg Dispatch-to-Scene</p>
+              <p className="mt-1 text-[10px] text-slate-500">{responseTimeStats.total} resolved call{responseTimeStats.total === 1 ? '' : 's'}</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
