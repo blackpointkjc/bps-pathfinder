@@ -69,8 +69,9 @@ function mergeAnalyticsSegments(previous = {}, payloads = {}) {
 
 function useAnalyticsSegment(name, enabled) {
   const config = ANALYTICS_SEGMENTS[name];
+  const monthKey = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   return useQuery({
-    queryKey: ['companyAnalyticsSegment', name],
+    queryKey: ['companyAnalyticsSegment', name, monthKey],
     queryFn: async () => {
       const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name });
       const payload = result?.data || result || {};
