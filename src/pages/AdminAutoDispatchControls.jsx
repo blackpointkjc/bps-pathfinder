@@ -22,27 +22,24 @@ export default function AdminAutoDispatchControls({ embedded = false }) {
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
-  const { data: equipment = [] } = useQuery({
-    queryKey: ['autoDispatchEquipment'],
-    queryFn: () => base44.entities.Equipment.list('equipment_type', 500),
-    enabled: isAdmin,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-  const equipmentOptions = [...new Set((equipment || []).filter(item => String(item.status || '').toLowerCase() !== 'retired').map(item => String(item.equipment_type || '').trim().toLowerCase()).filter(Boolean))];
-
-  const { data: locations = [], isLoading, error, refetch } = useQuery({
+  const { data: autoDispatchData = { locations: [], equipment: [] }, isLoading, error, refetch } = useQuery({
     queryKey: ['autoDispatchManagedLocations'],
     queryFn: async () => {
       const response = await base44.functions.invoke('manageAutoDispatchConfig', { action: 'list' });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-      return (payload.locations || []).filter(location => location.active !== false && location.property_monitoring_enabled === true);
+      return {
+        locations: (payload.locations || []).filter(location => location.active !== false && location.property_monitoring_enabled === true),
+        equipment: Array.isArray(payload.equipment) ? payload.equipment : [],
+      };
     },
     enabled: isAdmin,
     staleTime: 0,
     refetchOnMount: 'always',
   });
+  const locations = autoDispatchData.locations || [];
+  const equipment = autoDispatchData.equipment || [];
+  const equipmentOptions = [...new Set((equipment || []).filter(item => String(item.status || '').toLowerCase() !== 'retired').map(item => String(item.equipment_type || '').trim().toLowerCase()).filter(Boolean))];
 
   const refreshAll = async () => {
     await Promise.all([
