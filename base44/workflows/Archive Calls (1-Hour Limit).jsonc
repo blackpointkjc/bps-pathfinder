@@ -31,7 +31,9 @@
           "call": "invoke_backend_function",
           "with": {
             "function_name": "archiveOldCalls",
-            "args": {}
+            "args": {
+              "scheduled": true
+            }
           },
           "then": "end"
         }
