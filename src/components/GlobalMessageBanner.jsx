@@ -635,8 +635,16 @@ export default function GlobalMessageBanner({ user }) {
       // Claim the canonical property+call+status event so multiple tabs/devices
       // still speak it only once for this user.
       if (!announcedPropertySpeech.current.has(propertyEventKey)) {
+        const settings = audioSettings.current;
+        const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
+        const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
         const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id || '';
         const announcementText = `Active call for service at ${monitoredProperty.site_name || monitoredProperty.address || record.propertyName || 'monitored property'}. ${cleanIncident(call) || call.incident || 'Call for service'} at ${call.location || monitoredProperty.address || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
+        if (!propertyAudioEnabled) {
+          announcedPropertyCallStatuses.current.set(callKey, currentStatus);
+          knownIds.current.add(key);
+          return;
+        }
         const claim = await claimAnnouncementEvent({
           event_key: propertyEventKey,
           event_id: record.id,
@@ -711,7 +719,6 @@ export default function GlobalMessageBanner({ user }) {
         if (settings.enabled === false || (enabledTypes.length && !enabledTypes.includes(record.event_type))) return;
         const key = `CallStatusLog:${record.event_key}`;
         if (knownIds.current.has(key)) return;
-        knownIds.current.add(key);
         const email = normalized(user.email);
         if (!email) return;
         const claim = await claimAnnouncementEvent({
@@ -720,7 +727,13 @@ export default function GlobalMessageBanner({ user }) {
           cad_number: record.cad_number || '',
           event_type: record.event_type || '',
         }).catch(error => ({ claimed: false, error }));
-        if (!claim?.claimed) return;
+        if (!claim?.claimed) {
+          // Existing/local claims are complete. Transient claim errors are NOT
+          // marked known so recovery/realtime can try the announcement again.
+          if (claim?.local_duplicate || (!claim?.error && claim?.receipt)) knownIds.current.add(key);
+          return;
+        }
+        knownIds.current.add(key);
         if (record.event_type === 'property_alert') playNotificationChime(true);
         const accepted = speakNotification(record.announcement_text, {
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
