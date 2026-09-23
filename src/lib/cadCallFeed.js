@@ -2,7 +2,7 @@ import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STALE_AFTER_MS = 5 * 60 * 1000;
-const RECOVERY_COOLDOWN_MS = 15 * 60 * 1000;
+const RECOVERY_COOLDOWN_MS = 3 * 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
@@ -106,18 +106,11 @@ async function performCadLiveSync() {
 }
 
 export async function requestCadLiveSync() {
-  if (liveSyncInFlight) return liveSyncInFlight;
-
-  liveSyncInFlight = (async () => {
-    if (typeof navigator !== 'undefined' && navigator.locks?.request) {
-      return navigator.locks.request('bps-cad-live-source-sync', { mode: 'exclusive' }, performCadLiveSync);
-    }
-    return performCadLiveSync();
-  })().finally(() => {
-    liveSyncInFlight = null;
-  });
-
-  return liveSyncInFlight;
+  // The dedicated ingestGractivecalls function automation runs every minute and
+  // is the single normal owner of upstream polling. Visible browsers must not
+  // compete with it; realtime DispatchCall events move the UI as soon as that
+  // automation writes. Browser invocation is reserved for stale-feed recovery.
+  return { skipped: true, reason: 'scheduled_automation_owns_feed' };
 }
 
 async function runRecovery() {
@@ -126,10 +119,12 @@ async function runRecovery() {
     return { skipped: true, reason: 'recent_attempt', retry_after_ms: RECOVERY_COOLDOWN_MS - age };
   }
   noteRecoveryAttempt();
-  // The scheduled workflow is the five-minute safety net. Visible CAD screens
-  // use requestCadLiveSync for a guarded one-minute refresh, so this separate
-  // stale-feed recovery path must not create another competing request loop.
-  return { skipped: true, reason: 'scheduled_ingestion_owns_feed' };
+  // Normal ingestion is owned by the one-minute function automation. Only when
+  // persisted calls are genuinely stale do we permit one browser recovery call,
+  // protected by the same cross-tab lock, request cooldown, and 429 backoff.
+  if (liveSyncInFlight) return liveSyncInFlight;
+  liveSyncInFlight = performCadLiveSync().finally(() => { liveSyncInFlight = null; });
+  return liveSyncInFlight;
 }
 
 /**
