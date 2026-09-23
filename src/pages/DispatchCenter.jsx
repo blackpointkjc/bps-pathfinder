@@ -21,7 +21,7 @@ import 'leaflet/dist/leaflet.css';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
-import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
@@ -137,9 +137,17 @@ export default function DispatchCenter() {
             lastActiveCallsLoadRef.current = Date.now();
         });
         let unitRefreshTimer;
-        const scheduleUnitRefresh = () => {
+        const scheduleUnitRefresh = (event) => {
+            setUnits(current => applyOfficerLocationEvent(current, event)
+                .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
+                .map(unit => ({
+                    ...unit,
+                    email: unit.email || unit.officer_email,
+                    label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
+                }))
+                .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || ''))));
             window.clearTimeout(unitRefreshTimer);
-            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 750);
+            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 1500);
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
