@@ -1216,7 +1216,7 @@ Deno.serve(async (req) => {
         const bpsReference = cadNumbers[cadIndex++];
         const officialCad = String(callData.agency_cad_number || '').trim();
         const createdRecord = await base44.asServiceRole.entities.DispatchCall.create({
-          ...callData,
+          ...persistableCall(callData),
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference,
           cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
@@ -1242,7 +1242,7 @@ Deno.serve(async (req) => {
         const bpsReference = String(existing.bps_reference || '').trim();
         const manuallyCleared = existing.manual_dismissed === true;
         const incomingWithCad = {
-          ...callData,
+          ...persistableCall(callData),
           // A Pathfinder manual clear is authoritative for this exact upstream call
           // ID. GRAC may continue publishing it, but ingestion must keep it dismissed.
           status: manuallyCleared ? 'Cleared' : callData.status,
