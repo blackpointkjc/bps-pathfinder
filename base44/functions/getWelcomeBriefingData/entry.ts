@@ -19,16 +19,17 @@ Deno.serve(async (req) => {
     const supervisorLike = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access');
     const sourceErrors: string[] = [];
 
-    async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean } = {}) {
+    async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean; attempts?: number } = {}) {
       const fallback = options.fallback ?? [];
+      const attempts = Math.max(1, Number(options.attempts || 3));
       let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
           const result = await loader();
           return result ?? fallback;
         } catch (error) {
           lastError = error;
-          if (attempt < 2) await delay(500 * (attempt + 1));
+          if (attempt < attempts - 1) await delay(500 * (attempt + 1));
         }
       }
       console.error(`getWelcomeBriefingData could not load ${label}`, lastError);
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
           }, '-created_date', 200),
           // PropertyAlert stores its own call/lifecycle snapshot, so a transient
           // verification failure must not mark the entire briefing incomplete.
-          { reportError: false },
+          { reportError: false, attempts: 1 },
         )
       : [];
 
