@@ -23,6 +23,85 @@ let localPublishPromise = Promise.resolve();
 function cacheKey(locationOnly, includeLastKnown) { if (includeLastKnown) return 'admin-location'; return locationOnly ? 'location' : 'full'; }
 function clearSnapshotCache() { snapshotCache.clear(); }
 
+function realtimeOfficerRecord(event) {
+  return event?.data || event?.record || null;
+}
+
+export function applyOfficerLocationEvent(rows = [], event) {
+  const current = Array.isArray(rows) ? rows : [];
+  const type = String(event?.type || '').toLowerCase();
+  const record = realtimeOfficerRecord(event);
+  const eventId = String(event?.id || record?.id || '');
+  if (!eventId && !record) return current;
+
+  if (type === 'delete') {
+    // A deleted ActiveOfficer session means the live session ended. Canonical
+    // roster rows are user-backed, so keep the officer but resolve the live state
+    // immediately instead of making the row disappear until the next full fetch.
+    return current.map(row => {
+      const activeId = String(row?.active_officer_id || '');
+      const rowId = String(row?.id || '');
+      if (activeId !== eventId && rowId !== eventId) return row;
+      return {
+        ...row,
+        status: 'Out of Service',
+        session_active: false,
+        presence_online: false,
+        presence_state: 'offline',
+        connection_stale: false,
+        current_call_info: '',
+        last_update: new Date().toISOString(),
+        last_updated: new Date().toISOString(),
+      };
+    });
+  }
+
+  if (!record) return current;
+  const eventEmail = String(record.officer_email || record.email || '').trim().toLowerCase();
+  return current.map(row => {
+    const rowEmail = String(row?.officer_email || row?.email || '').trim().toLowerCase();
+    const activeId = String(row?.active_officer_id || '');
+    const rowId = String(row?.id || '');
+    const matches = (eventEmail && rowEmail === eventEmail)
+      || (eventId && (activeId === eventId || rowId === eventId));
+    if (!matches) return row;
+
+    const next = { ...row };
+    const fields = [
+      'status','session_active','current_call_info','current_location','unit_number',
+      'officer_name','first_name','last_name','rank','profile_photo_url','latitude',
+      'longitude','heading','speed','accuracy','gps_updated_at','gps_source','last_update',
+      'clock_in_time','tracking_session_key'
+    ];
+    for (const field of fields) {
+      if (record[field] !== undefined) next[field] = record[field];
+    }
+    if (record.last_update !== undefined) next.last_updated = record.last_update;
+    if (record.session_active !== undefined) {
+      next.presence_online = record.session_active === true;
+      next.presence_state = record.session_active === true ? 'online' : 'offline';
+      if (record.session_active === false) next.connection_stale = false;
+    }
+    return next;
+  });
+}
+
+function applyRealtimeEventToSnapshotCache(event) {
+  for (const [key, cached] of snapshotCache.entries()) {
+    if (!cached?.payload) continue;
+    const payload = cached.payload;
+    snapshotCache.set(key, {
+      ...cached,
+      at: Date.now(),
+      payload: {
+        ...payload,
+        units: Array.isArray(payload.units) ? applyOfficerLocationEvent(payload.units, event) : payload.units,
+        users: Array.isArray(payload.users) ? applyOfficerLocationEvent(payload.users, event) : payload.users,
+      },
+    });
+  }
+}
+
 function publishKind(data = {}) {
   if (data.end_session === true) return 'end';
   const hasGps = Number.isFinite(Number(data.latitude)) && Number.isFinite(Number(data.longitude));
@@ -217,7 +296,10 @@ export function subscribeOfficerLocationChanges(listener) {
   if (typeof listener !== 'function') return () => {};
   try {
     const unsubscribe = base44.entities.ActiveOfficer.subscribe(event => {
-      clearSnapshotCache();
+      // Apply the realtime ActiveOfficer event to every cached roster snapshot
+      // before notifying UI consumers. Components can now paint the new status
+      // immediately instead of waiting for another getOnDutyUnits round trip.
+      applyRealtimeEventToSnapshotCache(event);
       listener(event);
     });
     return typeof unsubscribe === 'function' ? unsubscribe : () => {};
