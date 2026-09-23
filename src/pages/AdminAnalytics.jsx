@@ -110,6 +110,85 @@ const isPunctualityLeaderboardOfficer = (officer) => {
   return roles.has('officer') || String(officer?.role || '').trim().toLowerCase() === 'officer';
 };
 
+
+function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
+  const officer = snapshot?.officer;
+  if (!officer?.id && !officer?.email) return null;
+  const timeEntries = snapshot.timeEntries || [];
+  const schedules = snapshot.schedules || [];
+  const bids = snapshot.bids || [];
+  const completions = snapshot.trainingCompletions || [];
+  const assignments = snapshot.trainingAssignments || [];
+  const modules = (snapshot.trainingModules || []).filter(module => module.active !== false);
+  const callOuts = snapshot.callOuts || [];
+  const feedback = snapshot.clientFeedback || [];
+  const reviews = snapshot.performanceReviews || [];
+  const commendations = snapshot.commendations || [];
+
+  const punctuality = calculatePunctuality(timeEntries, schedules, monthStart, monthEnd, snapshot.incidents || [], officer);
+  const training = calculateTrainingScore(officer, modules, completions, assignments);
+  const bidStanding = calculateBidStanding(bids, monthStart, monthEnd);
+  const clientFeedback = calculateClientFeedback(feedback, monthStart, monthEnd);
+  const supervisorRating = calculateSupervisorRating(reviews, monthStart, monthEnd);
+  const recognition = calculateRecognition(commendations, feedback, monthStart, monthEnd);
+  const callOutAttendance = calculateCallOutAttendance(callOuts, schedules, monthStart, monthEnd);
+  const jobDuty = calculateJobDutyCompliance({
+    officer,
+    timeEntries,
+    dailyReports: snapshot.dailyActivityReports || [],
+    incidentReports: snapshot.incidents || [],
+    dispatchCalls: snapshot.dispatchCalls || [],
+    callAssignments: snapshot.callAssignments || [],
+    callOuts,
+    qrScans: snapshot.sharedQrScanEvents || snapshot.qrScanEvents || [],
+    allTimeEntries: snapshot.partnerTimeEntries || timeEntries,
+    qrCheckpoints: snapshot.checkpoints || [],
+    dutyRules: snapshot.jobDutyRules || [],
+    locations: snapshot.locations || [],
+    monthStart,
+    monthEnd,
+  });
+  const overall = buildOverallPerformance({
+    punctuality,
+    trainingScore: training.total > 0 ? training.percentage : null,
+    jobDuty,
+    callOutAttendance,
+    bidStanding,
+    clientFeedback,
+    supervisorRating,
+    recognition,
+  });
+  const categoryRatings = [
+    { label: 'On-Time Arrival', score: punctuality.total > 0 ? punctuality.rate : null, detail: punctuality.total > 0 ? `${punctuality.onTime} on time · ${punctuality.late} late · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts') },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} · Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} · QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
+    { label: 'Training Completion', score: training.total > 0 ? training.percentage : null, detail: training.total > 0 ? `${training.completed} complete · ${training.pending} pending · ${training.total} assigned` : 'No assigned training/compliance records' },
+    { label: 'Bid Standing', score: bidStanding.score, detail: bidStanding.score != null ? `${bidStanding.accepted} assigned bid${bidStanding.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
+    { label: 'Client Feedback', score: clientFeedback.score, detail: clientFeedback.score != null ? `${clientFeedback.avgRating.toFixed(1)}/5 average · ${clientFeedback.count} rating${clientFeedback.count === 1 ? '' : 's'}` : 'No client ratings this month' },
+    { label: 'Supervisor Rating', score: supervisorRating.score, detail: supervisorRating.score != null ? `${supervisorRating.avgRating.toFixed(1)}/5 average · ${supervisorRating.count} review${supervisorRating.count === 1 ? '' : 's'}` : 'No supervisor rating this month' },
+    { label: 'Recognition', score: recognition.score, detail: recognition.score != null ? `${recognition.commendations.length} commendation${recognition.commendations.length === 1 ? '' : 's'} · ${recognition.positiveFeedback.length} positive client recognition` : 'No recognition record this month' },
+  ];
+
+  return {
+    email: officer.email,
+    user_id: officer.id,
+    name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
+    overall,
+    punctuality,
+    training,
+    bidStanding,
+    clientFeedback,
+    supervisorRating,
+    recognition,
+    callOutAttendance,
+    jobDuty,
+    categoryRatings,
+    dataHealth: snapshot.data_health || 'verified',
+    serviceErrors: snapshot.service_errors || {},
+    generatedAt: snapshot.generated_at || null,
+  };
+}
+
 function breakMinutes(entry) {
   return (entry?.break_periods || []).reduce((total, period) => {
     const start = period?.start ? new Date(period.start).getTime() : NaN;
