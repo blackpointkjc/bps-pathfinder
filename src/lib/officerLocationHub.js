@@ -172,7 +172,17 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
   if (inflight.has(key)) return inflight.get(key);
 
   if (force) lastForcedAt.set(key, now);
-  const request = base44.functions.invoke('getOnDutyUnits', locationOnly ? { location_only: true, include_last_known: includeLastKnown } : {})
+  const requestPayload = locationOnly
+    ? { location_only: true, include_last_known: includeLastKnown }
+    : {};
+  if (force) {
+    // base44Client intentionally caches getOnDutyUnits reads for one minute.
+    // Realtime status/location events must bypass that cache or the UI simply
+    // reloads the pre-change roster. A unique read token changes only the client
+    // cache key; getOnDutyUnits ignores unknown fields.
+    requestPayload.live_refresh_id = `units-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  const request = base44.functions.invoke('getOnDutyUnits', requestPayload)
     .then(response => {
       const rawPayload = response?.data || response || {};
       if (rawPayload.error) throw new Error(rawPayload.error);
