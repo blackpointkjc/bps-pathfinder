@@ -139,7 +139,7 @@ export default function DispatchCenter() {
         let unitRefreshTimer;
         const scheduleUnitRefresh = () => {
             window.clearTimeout(unitRefreshTimer);
-            unitRefreshTimer = window.setTimeout(loadUnits, 750);
+            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 750);
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
@@ -170,7 +170,7 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadUnits();
         }, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
-        const onStatusChanged = () => loadUnits();
+        const onStatusChanged = () => loadUnits(true);
         let wakeRefreshTimer;
         const onOperationalResume = () => {
             window.clearTimeout(wakeRefreshTimer);
