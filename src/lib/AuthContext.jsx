@@ -24,6 +24,32 @@ const microsoftSessionError = error => {
   return /microsoft_built_in|AADSTS700084|refresh token|microsoft.*authentication failed/i.test(message);
 };
 
+const FORCED_SIGN_OUT_NOTICE_KEY = 'bps:forced-sign-out-notice';
+
+const playForcedSignOutBeep = () => {
+  try {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) return;
+    const context = new AudioContextCtor();
+    const tone = (delaySeconds, frequency) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, context.currentTime + delaySeconds);
+      gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + delaySeconds + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + delaySeconds + 0.18);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(context.currentTime + delaySeconds);
+      oscillator.stop(context.currentTime + delaySeconds + 0.2);
+    };
+    tone(0, 880);
+    tone(0.28, 660);
+    window.setTimeout(() => context.close().catch(() => null), 900);
+  } catch (_) {}
+};
+
 const withTimeout = (promise, milliseconds, label) => {
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -265,6 +291,14 @@ export const AuthProvider = ({ children }) => {
         } catch (_) {}
 
         forcedSessionLogoutInProgress.current = true;
+        const forcedNotice = {
+          reason: control.reason || 'An administrator ended your Pathfinder session.',
+          issuedBy: control.issued_by_name || control.issued_by_email || 'Administrator',
+          issuedAt: control.issued_at || new Date().toISOString(),
+        };
+        try { localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY, JSON.stringify(forcedNotice)); } catch (_) {}
+        playForcedSignOutBeep();
+        await new Promise(resolve => window.setTimeout(resolve, 650));
         await logout(true);
       } catch (error) {
         console.warn('[AUTH] Force sign-out check unavailable:', error?.message);
