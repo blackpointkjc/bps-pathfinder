@@ -146,17 +146,16 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadActiveCalls();
         }, 180000);
 
-        // While Dispatch Center is visible, actively poll the upstream CAD source.
-        // Base44 scheduled workflows have a 5-minute minimum, which is too slow for
-        // a live dispatch screen. This 30-second browser heartbeat is globally
-        // serialized per browser and the backend ingestion lease prevents duplicate
-        // writes across simultaneous dispatchers. New/changed DispatchCall rows are
-        // then painted immediately by the realtime subscription above.
+        // While Dispatch Center is visible, actively refresh the upstream CAD source.
+        // Base44 scheduled workflows have a 5-minute minimum, so the visible CAD
+        // screen uses one guarded live sync per minute. cadCallFeed de-duplicates
+        // same-browser attempts, cache-busts the permitted request, and backs off on
+        // 429s. New/changed DispatchCall rows then paint immediately through realtime.
         const liveSourceSync = async () => {
             if (document.visibilityState !== 'visible' || !navigator.onLine) return;
             try {
                 const result = await requestCadLiveSync();
-                if (result?.reason === 'recent_live_sync') return;
+                if (['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
                 clearActiveDispatchCallMemoryCache();
                 lastActiveCallsLoadRef.current = 0;
                 await loadActiveCalls(true);
@@ -164,7 +163,7 @@ export default function DispatchCenter() {
                 console.warn('Live CAD source sync failed:', error?.message || error);
             }
         };
-        const liveSourceTimer = setInterval(liveSourceSync, 30000);
+        const liveSourceTimer = setInterval(liveSourceSync, 60000);
         window.setTimeout(liveSourceSync, 1200);
 
         const unitsInterval = setInterval(() => {
