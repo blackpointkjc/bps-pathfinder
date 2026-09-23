@@ -38,6 +38,9 @@ export default function Personnel({ embedded = false }) {
     const [signOutDialog, setSignOutDialog] = useState(null);
     const [signOutReason, setSignOutReason] = useState('');
     const [signOutUpdatingId, setSignOutUpdatingId] = useState(null);
+    const [signOutAllOpen, setSignOutAllOpen] = useState(false);
+    const [signOutAllReason, setSignOutAllReason] = useState('');
+    const [signOutAllBusy, setSignOutAllBusy] = useState(false);
 
     useEffect(() => {
         init();
@@ -209,6 +212,27 @@ export default function Personnel({ embedded = false }) {
         }
     };
 
+    const handleForceSignOutAll = async () => {
+        if (currentUser?.role !== 'admin' || signOutAllBusy) return;
+        const reason = signOutAllReason.trim();
+        if (!reason) return;
+        setSignOutAllBusy(true);
+        try {
+            const response = await base44.functions.invoke('forceUserSignOut', { all_except_caller: true, reason });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
+            setSignOutAllOpen(false);
+            setSignOutAllReason('');
+            toast.success(`Signed out ${Number(payload.signed_out_users || 0)} active unit(s); your admin session stayed signed in.`);
+            invalidateAppDirectory();
+            await loadPersonnel();
+        } catch (error) {
+            toast.error(error?.response?.data?.error || error?.message || 'Unable to sign out all active units');
+        } finally {
+            setSignOutAllBusy(false);
+        }
+    };
+
     const handleForceStatus = async () => {
         if (!statusDialog) return;
         const { person, action } = statusDialog;
@@ -250,6 +274,24 @@ export default function Personnel({ embedded = false }) {
 
     return (
         <div className={`bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-full'} flex flex-col font-mono`}>
+            <Dialog open={signOutAllOpen} onOpenChange={open => { if (!signOutAllBusy) { setSignOutAllOpen(open); if (!open) setSignOutAllReason(''); } }}>
+                <DialogContent className="max-w-lg border-red-800 bg-slate-950 text-white">
+                    <DialogHeader><DialogTitle>Force Sign Out All Active Units</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                        <p className="rounded-lg border border-red-900/70 bg-red-950/40 p-3 text-sm text-red-200">This signs out every currently active unit except your own administrator session and places those units Out of Service.</p>
+                        <div>
+                            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Required reason shown to signed-out users</label>
+                            <textarea autoFocus value={signOutAllReason} onChange={event => setSignOutAllReason(event.target.value)} placeholder="Why are all active units being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={signOutAllBusy} onClick={() => setSignOutAllOpen(false)}>Cancel</Button>
+                        <Button className="bg-red-700 hover:bg-red-600" disabled={signOutAllBusy || !signOutAllReason.trim()} onClick={handleForceSignOutAll}>
+                            <LogOut className="mr-2 h-4 w-4" />{signOutAllBusy ? 'Signing Out Units…' : 'Sign Out All Except Me'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Dialog open={!!signOutDialog} onOpenChange={open => { if (!open && !signOutUpdatingId) { setSignOutDialog(null); setSignOutReason(''); } }}>
                 <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
                     <DialogHeader><DialogTitle>Force Sign Out of Pathfinder</DialogTitle></DialogHeader>
@@ -302,7 +344,11 @@ export default function Personnel({ embedded = false }) {
                 <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
                 <div className="flex-1" />
                 <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-                <button onClick={() => { setRefreshing(true); loadPersonnel(); }} disabled={refreshing}
+                {currentUser?.role === 'admin' && <button onClick={() => { setSignOutAllReason(''); setSignOutAllOpen(true); }} disabled={signOutAllBusy}
+                    className="flex items-center gap-1.5 rounded border border-red-700 bg-red-950/60 px-2.5 py-1.5 text-[10px] font-bold text-red-200 transition-all hover:bg-red-900 disabled:opacity-50">
+                    <LogOut className="h-3 w-3" />SIGN OUT ALL EXCEPT ME
+                </button>}
+                <button onClick={() => { setRefreshing(true); invalidateAppDirectory(); loadPersonnel(); }} disabled={refreshing}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
                     <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
                 </button>
