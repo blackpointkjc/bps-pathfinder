@@ -1,6 +1,4 @@
 {
-  "name": "Ingest gractivecalls.com",
-  "description": "Ingests active calls from gractivecalls.com every 5 minutes for Richmond, Henrico, and Chesterfield",
   "definition": {
     "document": {
       "dsl": "1.0.0",
@@ -23,6 +21,8 @@
       }
     ]
   },
+  "description": "Ingests active calls from gractivecalls.com every 5 minutes for Richmond, Henrico, and Chesterfield",
+  "name": "Ingest gractivecalls.com",
   "trigger": {
     "condition": null,
     "config": {
