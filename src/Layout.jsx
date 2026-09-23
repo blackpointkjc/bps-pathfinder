@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -1480,7 +1481,7 @@ export default function Layout({ children, currentPageName }) {
       </motion.section>
     </motion.div>}</AnimatePresence>
 
-    <AnimatePresence>{propertyAlert && (
+    {typeof document !== 'undefined' ? createPortal(<AnimatePresence>{propertyAlert && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1534,7 +1535,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </motion.div>
       </motion.div>
-    )}</AnimatePresence>
+    )}</AnimatePresence>, document.body) : null}
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
