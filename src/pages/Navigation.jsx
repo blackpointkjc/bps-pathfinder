@@ -17,7 +17,7 @@ import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
-import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
@@ -160,13 +160,48 @@ export default function Navigation() {
         if (!currentUser?.id) return;
         fetchOtherUnits();
         let refreshTimer;
-        const scheduleUnitRefresh = () => {
-            window.clearTimeout(refreshTimer);
-            refreshTimer = window.setTimeout(() => {
-                if (document.visibilityState === 'visible') fetchOtherUnits();
-            }, 1000);
-        };
-        const unsubscribe = subscribeOfficerLocationChanges(scheduleUnitRefresh);
+        const unsubscribe = subscribeOfficerLocationChanges((event) => {
+            const type = String(event?.type || '').toLowerCase();
+            const record = event?.data || event?.record || null;
+            const currentEmail = String(currentUser?.email || '').toLowerCase();
+            const eventEmail = String(record?.officer_email || record?.email || '').toLowerCase();
+
+            // Realtime ActiveOfficer payloads already contain status/GPS updates.
+            // Paint them directly instead of spending a getOnDutyUnits request for
+            // every officer movement. Full roster reads are reconciliation only.
+            if (eventEmail && eventEmail !== currentEmail) {
+                setOtherUnits(current => {
+                    if (type === 'delete' || record?.session_active === false) {
+                        return current.filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== eventEmail);
+                    }
+                    const exists = current.some(unit => String(unit.officer_email || unit.email || '').toLowerCase() === eventEmail);
+                    const patched = applyOfficerLocationEvent(current, event);
+                    if (exists) return patched;
+                    const hasPosition = validPosition(record?.latitude, record?.longitude)
+                        || validPosition(record?.last_known_latitude, record?.last_known_longitude)
+                        || validPosition(record?.coarse_latitude, record?.coarse_longitude);
+                    if (!hasPosition || record?.session_active !== true) return patched;
+                    return [...patched, {
+                        ...record,
+                        email: record.officer_email || record.email,
+                        latitude: record.latitude === null || record.latitude === undefined ? null : Number(record.latitude),
+                        longitude: record.longitude === null || record.longitude === undefined ? null : Number(record.longitude),
+                        heading: Number(record.heading) || 0,
+                        isUnionLead: record.is_union_lead === true || record.isUnionLead === true,
+                        unionMembers: Number(record.union_member_count || record.unionMembers) || 1,
+                        show_on_map: record.show_on_map !== false,
+                    }];
+                });
+            }
+
+            // Only unusual/incomplete realtime events need a quick roster repair.
+            if (!record || type === 'delete') {
+                window.clearTimeout(refreshTimer);
+                refreshTimer = window.setTimeout(() => {
+                    if (document.visibilityState === 'visible') fetchOtherUnits();
+                }, 5000);
+            }
+        });
         const recoverUnits = () => {
             window.clearTimeout(refreshTimer);
             refreshTimer = window.setTimeout(() => fetchOtherUnits(true), 200);
@@ -175,7 +210,7 @@ export default function Navigation() {
         // publishing GPS at once cannot trigger a full roster read for each event.
         const fallback = setInterval(() => {
             if (document.visibilityState === 'visible') fetchOtherUnits();
-        }, 20000);
+        }, 120000);
         window.addEventListener('bps-operational-resume', recoverUnits);
         window.addEventListener('online', recoverUnits);
         window.addEventListener('pageshow', recoverUnits);
