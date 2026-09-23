@@ -244,6 +244,7 @@ export default function AdminAnalytics() {
       queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'training'], type: 'active' }),
       queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'quality'], type: 'active' }),
     ]);
+    await queryClient.refetchQueries({ queryKey: ['companyOfficerPerformanceSnapshots'], type: 'active' });
   };
 
   const companySnapshotRequest = { start_date: analyticsStartDate, end_date: analyticsEndDate };
@@ -373,6 +374,8 @@ export default function AdminAnalytics() {
         // query invalidation can immediately receive the same stale segment.
         clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
         queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment] });
+        clearBase44ReadCacheMatching('function:getMyPerformanceData:');
+        queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'] });
         timers.delete(segment);
       }, 1500));
     };
@@ -614,62 +617,19 @@ export default function AdminAnalytics() {
   }, [trainingCompletions, allTraining, filteredUsers]);
 
   const overallByOfficer = useMemo(() => {
-    if (!performanceGenerationReady) return [];
-    const currentPerformanceUsers = performanceUsers.filter(isOperationalOfficer);
-    const selectedPerformanceUsers = selectedDivision === 'all'
-      ? currentPerformanceUsers
-      : currentPerformanceUsers.filter(u => String(u.division || '') === String(selectedDivision));
-    return selectedPerformanceUsers.map(officer => {
-    const officerTimeEntries = performanceTimeEntries.filter(item => recordMatchesOfficer(item, officer));
-    const officerSchedules = performanceSchedules.filter(item => recordMatchesOfficer(item, officer));
-    const officerBids = performanceBids.filter(item => recordMatchesOfficer(item, officer));
-    const officerCompletions = performanceTrainingCompletions.filter(item => recordMatchesOfficer(item, officer));
-    const officerAssignments = performanceTrainingAssignments.filter(item => recordMatchesOfficer(item, officer));
-    const officerFeedback = performanceFeedback.filter(item => recordMatchesOfficer(item, officer));
-    const officerReviews = performanceReviews.filter(item => recordMatchesOfficer(item, officer));
-    const officerCommendations = performanceCommendations.filter(item => recordMatchesOfficer(item, officer));
+    const snapshots = officerPerformanceSnapshots.data?.snapshots || {};
+    return performanceOfficerUsers
+      .map(officer => buildOfficerPerformanceFromSnapshot(snapshots[officer.id], currentMonthStart, currentMonthEnd))
+      .filter(Boolean)
+      .sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
+  }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd]);
 
-    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd, performanceIncidentReports, officer);
-    const training = calculateTrainingScore(officer, performanceTrainingModules, officerCompletions, officerAssignments);
-    const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
-    const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
-    const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
-    const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
-    const officerCallOuts = performanceCallOuts.filter(item => recordMatchesOfficer(item, officer));
-    const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
-    const jobDuty = calculateJobDutyCompliance({
-      officer,
-      timeEntries: officerTimeEntries,
-      dailyReports: performanceDailyReports,
-      incidentReports: performanceIncidentReports,
-      dispatchCalls: performanceDispatchCalls,
-      callAssignments: performanceCallAssignments,
-      callOuts: officerCallOuts,
-      qrScans: performanceQrScans,
-      allTimeEntries: performanceTimeEntries,
-      qrCheckpoints: performanceQrCheckpoints,
-      dutyRules: performanceDutyRules,
-      locations: performanceLocations,
-      monthStart: currentMonthStart,
-      monthEnd: currentMonthEnd,
-    });
-    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
-
-    return {
-      email: officer.email,
-      name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
-      overall,
-      punctuality,
-      training,
-      bidStanding,
-      clientFeedback,
-      supervisorRating,
-      recognition,
-      callOutAttendance,
-      jobDuty,
-    };
-  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
-  }, [performanceGenerationReady, performanceUsers, performanceTimeEntries, performanceSchedules, performanceBids, performanceTrainingCompletions, performanceTrainingAssignments, performanceTrainingModules, performanceFeedback, performanceReviews, performanceCommendations, performanceIncidentReports, performanceDispatchCalls, performanceCallAssignments, performanceCallOuts, performanceDailyReports, performanceQrScans, performanceQrCheckpoints, performanceDutyRules, performanceLocations, selectedDivision, currentMonthStart, currentMonthEnd]);
+  const performanceCardsReady = Boolean(
+    performanceGenerationReady
+    && !officerPerformanceSnapshots.isLoading
+    && !officerPerformanceSnapshots.isFetching
+    && performanceOfficerUsers.length === overallByOfficer.length
+  );
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
