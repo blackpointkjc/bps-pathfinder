@@ -911,15 +911,18 @@ export default function AdminAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {!performanceGenerationReady && (
+              {!performanceCardsReady && (
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
-                  Loading attendance, duty/report, CAD, training, and quality data for the selected period. Old saved officer percentages are intentionally not shown here.
+                  Loading each officer from the same My Performance snapshot used on their officer page. Old or partially merged percentages are intentionally not shown.
                   {Object.keys(performanceCriticalErrors).length > 0 && (
-                    <div className="mt-2 text-amber-200">Retrying: {Object.keys(performanceCriticalErrors).join(', ')}</div>
+                    <div className="mt-2 text-amber-200">Retrying company sources: {Object.keys(performanceCriticalErrors).join(', ')}</div>
+                  )}
+                  {Object.keys(officerPerformanceSnapshots.data?.errors || {}).length > 0 && (
+                    <div className="mt-2 text-amber-200">Retrying officer snapshots: {Object.values(officerPerformanceSnapshots.data.errors).join(' · ')}</div>
                   )}
                 </div>
               )}
-              {performanceGenerationReady && overallByOfficer.map(officer => (
+              {performanceCardsReady && overallByOfficer.map(officer => (
                 <div key={officer.email} className="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -933,13 +936,16 @@ export default function AdminAnalytics() {
                       </Badge>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {officer.overall.categories.map(category => (
-                      <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
-                        {category.label}: <strong>{category.score}%</strong>
-                      </span>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {officer.categoryRatings.map(category => (
+                      <div key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-2 text-xs text-slate-200">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-white">{category.label}</span>
+                          <strong className={category.score == null ? 'text-slate-500' : 'text-cyan-300'}>{category.score == null ? 'Not scored' : `${category.score}%`}</strong>
+                        </div>
+                        <div className="mt-1 text-[11px] leading-relaxed text-slate-400">{category.detail}</div>
+                      </div>
                     ))}
-                    {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records in this period.</span>}
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
                     <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
@@ -961,8 +967,8 @@ export default function AdminAnalytics() {
                   </div>
                 </div>
               ))}
-              {performanceGenerationReady && overallByOfficer.length === 0 && (
-                <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">No scoreable current-month officer records are available.</div>
+              {performanceCardsReady && overallByOfficer.length === 0 && (
+                <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">No operational officer performance snapshots are available for this period.</div>
               )}
             </div>
           </CardContent>
