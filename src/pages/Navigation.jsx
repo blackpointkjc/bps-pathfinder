@@ -487,7 +487,8 @@ export default function Navigation() {
             const payload = await persistOfficerStatus(newStatus);
             if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: stamp, status_since: stamp } : prev);
-            window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
+            // officerStatusService already broadcasts the canonical status event
+            // with officer id/email. Do not emit a duplicate event/read burst here.
             fetchOtherUnits();
         } catch (e) {
             console.warn('[NAV] direct status update failed:', e?.message);
