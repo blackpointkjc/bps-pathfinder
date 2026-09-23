@@ -21,7 +21,7 @@
       }
     ]
   },
-  "description": "Ingests active calls from gractivecalls.com every 1 minute for Richmond, Henrico, and Chesterfield",
+  "description": "Ingests active calls from gractivecalls.com every 5 minutes for Richmond, Henrico, and Chesterfield; visible CAD screens perform guarded 30-second live syncs",
   "name": "Ingest gractivecalls.com",
   "trigger": {
     "condition": null,
@@ -32,7 +32,7 @@
       "cron_expression": null,
       "one_time_date": null,
       "timezone": "UTC",
-      "interval_value": 1,
+      "interval_value": 5,
       "interval_unit": "minutes",
       "interval_anchor": "2026-02-16T21:24:58.839000",
       "ends_type": "never",
