@@ -42,11 +42,13 @@ const pointToSegmentMeters = (lat, lng, a, b) => {
   return Math.sqrt(x * x + y * y);
 };
 
-export const evaluatePropertyMatch = (call, property, nearbyFeet = 0) => {
+export const evaluatePropertyMatch = (call, property, nearbyFeet = 328.084) => {
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !property?.enabled) return null;
-  const nearbyMeters = nearbyFeet * 0.3048;
+  // The tolerance applies only to polygon edges. Circle mode already has an
+  // explicit configured radius and should not be expanded a second time.
+  const nearbyMeters = property.boundary_type === 'polygon' ? nearbyFeet * 0.3048 : 0;
 
   if (property.boundary_type === 'polygon' && Array.isArray(property.polygon) && property.polygon.length >= 3) {
     if (pointInPolygon(lat, lng, property.polygon)) {
@@ -76,27 +78,33 @@ export const evaluatePropertyMatch = (call, property, nearbyFeet = 0) => {
 export const locationToMonitoredProperty = (location) => {
   if (!location?.property_monitoring_enabled) return null;
 
-  // Property-call matching uses ONLY the custom Property Monitoring polygon saved
-  // on the Location page. Never fall back to the officer clock-in geofence or a
-  // site-center radius; outside the drawn boundary means no property alert.
   const rawPolygon = Array.isArray(location.property_monitoring_polygon)
     ? location.property_monitoring_polygon
     : [];
   const polygon = rawPolygon
     .map(point => Array.isArray(point) ? [Number(point[0]), Number(point[1])] : [Number(point.lat), Number(point.lng)])
     .filter(pair => pair.every(Number.isFinite));
+  const requestedType = String(location.property_monitoring_boundary_type || '').toLowerCase();
+  const boundaryType = requestedType === 'circle' ? 'circle' : (polygon.length >= 3 ? 'polygon' : 'circle');
+  const latitude = Number(location.latitude);
+  const longitude = Number(location.longitude);
+  const radiusMeters = Number(location.property_monitoring_radius_meters || 0);
+  const hasCircle = Number.isFinite(latitude) && Number.isFinite(longitude) && radiusMeters > 0;
+  const hasPolygon = polygon.length >= 3;
 
   return {
     id: location.id,
     location_id: location.id,
     name: location.site_name,
     address: location.address,
-    latitude: Number(location.latitude),
-    longitude: Number(location.longitude),
-    enabled: location.active !== false && location.property_monitoring_enabled === true && polygon.length >= 3,
-    boundary_type: 'polygon',
-    radiusMeters: 0,
-    polygon,
+    latitude,
+    longitude,
+    enabled: location.active !== false
+      && location.property_monitoring_enabled === true
+      && (boundaryType === 'polygon' ? hasPolygon : hasCircle),
+    boundary_type: boundaryType,
+    radiusMeters: boundaryType === 'circle' ? radiusMeters : 0,
+    polygon: boundaryType === 'polygon' ? polygon : [],
     description: location.property_monitoring_description || '',
   };
 };
