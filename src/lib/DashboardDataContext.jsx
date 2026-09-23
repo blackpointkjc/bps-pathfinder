@@ -6,8 +6,8 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
-import { dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 
@@ -180,11 +180,35 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // GRAC ingestion is owned by one scheduled backend automation. Browsers only
-    // read persisted DispatchCall rows and receive realtime updates. This prevents
-    // every open dashboard from invoking the same ingestion job concurrently.
+    // First paint from persisted Base44 rows, then keep a visible CAD dashboard
+    // close to the upstream source. Base44 scheduled workflows cannot run more often
+    // than every five minutes, so the active browser performs a lightweight source
+    // sync every 30 seconds. cadCallFeed serializes same-browser attempts and the
+    // backend ingestion lease prevents duplicate writes across different dispatchers.
     useEffect(() => {
         loadData(true);
+
+        let stopped = false;
+        const liveSync = async () => {
+            if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
+            try {
+                const result = await requestCadLiveSync();
+                if (stopped || result?.reason === 'recent_live_sync') return;
+                clearActiveDispatchCallMemoryCache();
+                lastRefreshTime.current = 0;
+                await loadData(true);
+            } catch (error) {
+                console.warn('[CAD] Live upstream sync failed', error?.message || error);
+            }
+        };
+
+        const timer = window.setInterval(liveSync, 30_000);
+        const startup = window.setTimeout(liveSync, 1_500);
+        return () => {
+            stopped = true;
+            window.clearInterval(timer);
+            window.clearTimeout(startup);
+        };
     }, [loadData]);
 
     // Old-call archival is owned by the scheduled Base44 workflow. Browsers do not
