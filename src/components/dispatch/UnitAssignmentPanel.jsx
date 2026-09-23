@@ -15,22 +15,26 @@ const displayUnitName = (unit) => {
 };
 const displayProperty = (unit) => String(unit?.current_location || unit?.assigned_location || unit?.location || 'No current property').split(':')[0].trim();
 
-export default function UnitAssignmentPanel({ call, units, onUpdate }) {
+export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
     
-    const assignedUnitIds = call?.assigned_units || [];
-    const assignedUnits = units.filter(u => assignedUnitIds.includes(u.id) && isOperationalUnit(u));
+    const assignedUnitIds = (call?.assigned_units || []).map(String);
+    const isAssigned = unit => assignedUnitIds.includes(String(unit.id)) || Boolean(unit.active_officer_id && assignedUnitIds.includes(String(unit.active_officer_id)));
+    const assignedUnits = units.filter(u => isAssigned(u) && isOperationalUnit(u));
     
     const availableUnits = units.filter(u => 
         isOperationalUnit(u) &&
-        !assignedUnitIds.includes(u.id) &&
-        u.status === 'Available' &&
+        !isAssigned(u) &&
+        String(u.status || '').trim().toLowerCase() === 'available' &&
         u.connection_stale !== true &&
         (searchTerm === '' || 
             u.unit_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.rank?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    const otherActiveUnits = units.filter(u => isOperationalUnit(u) && !isAssigned(u)
+        && String(u.status || '').trim().toLowerCase() !== 'available');
 
     const handleAssignUnit = async (unit) => {
         if (!call) return;
