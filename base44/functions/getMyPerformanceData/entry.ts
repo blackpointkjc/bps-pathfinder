@@ -98,18 +98,23 @@ Deno.serve(async (req) => {
         ...idFields.map(field => ({ [field]: officerId })),
       ],
     });
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const monthDateCutoff = monthStart.toISOString().slice(0, 10);
+    const now = new Date();
+    const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const defaultEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const monthDateCutoff = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date || '')) ? String(body.start_date) : defaultStartDate;
+    const monthDateEnd = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : defaultEndDate;
+    if (monthDateCutoff > monthDateEnd) return Response.json({ error: 'Start date must be on or before end date.' }, { status: 400 });
     const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
+    const endExclusive = new Date(`${monthDateEnd}T00:00:00.000Z`);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const activityEndExclusive = endExclusive.toISOString();
 
     // Load the officer's core current-month duty context first. That tells us
     // which expensive operational datasets are actually relevant before we fan
     // out into secondary scoring sources.
     const [timeEntriesAll, schedulesAll, dutyRulesAll, locationsAll, modulesAll] = await Promise.all([
-      safeFilter('TimeEntry', { $and: [officerEmailQuery(), { clock_in: { $gte: activityCutoff } }] }, '-clock_in', 500),
-      safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff } }] }, '-shift_date', 500),
+      safeFilter('TimeEntry', { $and: [officerEmailQuery(), { clock_in: { $gte: activityCutoff, $lt: activityEndExclusive } }] }, '-clock_in', 500),
+      safeFilter('Schedule', { $and: [officerEmailQuery(), { shift_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-shift_date', 500),
       safeRead('JobDutyRule', () => cachedRows('dutyRules', 2 * 60 * 1000, () => base44.asServiceRole.entities.JobDutyRule.list('property_site', 500))),
       safeRead('Location', () => cachedRows('locations', 5 * 60 * 1000, () => base44.asServiceRole.entities.Location.list('site_name', 500))),
       safeRead('TrainingModule', () => cachedRows('trainingModules', 5 * 60 * 1000, () => base44.asServiceRole.entities.TrainingModule.list('-created_date', 500))),
@@ -125,24 +130,24 @@ Deno.serve(async (req) => {
     const trainingApplicable = (modulesAll || []).some((module:any) => module.active !== false);
 
     const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, partnerTimeEntriesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, callAssignmentsAll] = await Promise.all([
-      safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff } }] }, '-created_date', 500),
+      safeFilter('ShiftBid', { $and: [officerEmailQuery(), { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }] }, '-created_date', 500),
       trainingApplicable ? safeFilter('TrainingCompletion', officerEmailQuery(), '-completion_date', 500) : Promise.resolve([]),
       trainingApplicable ? safeFilter('TrainingAssignment', officerEmailQuery(), '-assigned_date', 500) : Promise.resolve([]),
-      safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff } }] }, '-call_out_date', 500),
-      qrRequired ? safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff } }, '-scanned_at', 1000) : Promise.resolve([]),
+      safeFilter('CallOut', { $and: [officerEmailQuery(), { call_out_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-call_out_date', 500),
+      qrRequired ? safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-scanned_at', 1000) : Promise.resolve([]),
       qrRequired ? safeRead('QRCheckpoint', () => cachedRows('qrCheckpoints', 5 * 60 * 1000, () => base44.asServiceRole.entities.QRCheckpoint.list('property_site', 500))) : Promise.resolve([]),
-      qrRequired ? safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff } }, '-clock_in', 1500) : Promise.resolve(timeEntriesAll),
-      incidentRequired ? safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff } }, '-incident_date', 500) : Promise.resolve([]),
-      safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff } }] }, '-commendation_date', 250),
-      safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff } }] }, '-complaint_date', 250),
-      safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff } }] }, '-feedback_date', 250),
-      safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff } }] }, '-review_date', 250),
-      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff } }, '-report_date', 500),
-      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff } }, '-shift_date', 500),
-      incidentRequired ? safeList('DispatchCall', '-time_received', 300) : Promise.resolve([]),
-      incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff } }, '-archived_date', 300) : Promise.resolve([]),
-      incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff } }, '-created_date', 500) : Promise.resolve([]),
-      incidentRequired ? safeFilter('CallAssignment', { $and: [{ unit_id: officerId }, { assigned_at: { $gte: activityCutoff } }] }, '-assigned_at', 500) : Promise.resolve([]),
+      qrRequired ? safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-clock_in', 1500) : Promise.resolve(timeEntriesAll),
+      incidentRequired ? safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-incident_date', 500) : Promise.resolve([]),
+      safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-commendation_date', 250),
+      safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-complaint_date', 250),
+      safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-feedback_date', 250),
+      safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-review_date', 250),
+      safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-report_date', 500),
+      safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-shift_date', 500),
+      incidentRequired ? safeFilter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 500) : Promise.resolve([]),
+      incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500) : Promise.resolve([]),
+      incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 750) : Promise.resolve([]),
+      incidentRequired ? safeFilter('CallAssignment', { $and: [{ unit_id: officerId }, { assigned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }] }, '-assigned_at', 500) : Promise.resolve([]),
     ]);
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
