@@ -251,7 +251,7 @@ export default function CallHistory() {
         else { setSortField(field); setSortDir('desc'); }
     };
 
-    const agencies = ['ALL', 'RPD', 'CCPD', 'HPD', 'HCPD', 'RFD', 'CCFD', 'EMS', 'BPS'];
+    const agencies = ['ALL', 'RPD', 'CCPD', 'HPD', 'HCPD', 'RFD', 'CCFD', 'EMS', 'BPS', 'MONITORING'];
     const statuses = ['ALL', 'New', 'Dispatched', 'Enroute', 'On Scene', 'Cleared', 'Closed', 'Cancelled'];
 
     const filtered = rows.filter(r => {
@@ -404,6 +404,11 @@ export default function CallHistory() {
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
                                     {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
+                                    {row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName) && (
+                                        <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-amber-300">
+                                            <Building2 className="h-3 w-3" />{row._propertyName || row._propertyAlert?.propertyName}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="w-full break-words text-slate-400 md:w-56 lg:flex-shrink-0 md:truncate md:pr-2">
                                     <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
@@ -435,6 +440,9 @@ export default function CallHistory() {
                                     {row.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{row.caller_phone}</span></div>}
                                     {row.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{row.zone}</span></div>}
                                     {row.cross_street && <div><span className="text-slate-500">CROSS ST: </span><span className="text-white">{row.cross_street}</span></div>}
+                                    {row._propertyCall && <div><span className="text-slate-500">MONITORED PROPERTY: </span><span className="font-bold text-amber-300">{row._propertyName || row._propertyAlert?.propertyName || 'Monitored property'}</span></div>}
+                                    {row._propertyCall && row._propertyLifecycle && <div><span className="text-slate-500">PROPERTY ALERT STATUS: </span><span className="text-white">{String(row._propertyLifecycle).replaceAll('_', ' ')}</span></div>}
+                                    {row._propertyCall && Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0 && <div><span className="text-slate-500">BOUNDARY DISTANCE: </span><span className="text-white">{Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft</span></div>}
                                     {row.time_dispatched && <div><span className="text-slate-500">DISPATCHED: </span><span className="text-white">{fmtDT(row.time_dispatched)}</span></div>}
                                     {row.time_on_scene && <div><span className="text-slate-500">ON SCENE: </span><span className="text-white">{fmtDT(row.time_on_scene)}</span></div>}
                                     {row.time_cleared && <div><span className="text-slate-500">CLEARED: </span><span className="text-white">{fmtDT(row.time_cleared)}</span></div>}
@@ -470,6 +478,7 @@ export default function CallHistory() {
                 <span>TOTAL: <span className="text-white">{sorted.length}</span></span>
                 <span>ACTIVE: <span className="text-cyan-300">{activeCount}</span></span>
                 <span>ARCHIVED: <span className="text-slate-300">{archivedCount}</span></span>
+                <span>PROPERTY CALLS: <span className="text-amber-300">{propertyCount}</span></span>
                 <div className="flex-1" />
                 <span className="text-green-500">● LIVE</span>
             </div>
