@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
 import { normalizeRank } from '@/utils/rankDisplay';
-import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const STATUS_ORDER = ['All','Available','Dispatched','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
@@ -63,9 +63,11 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
       if (document.visibilityState === 'visible') sync();
     }, 60000);
     let realtimeTimer;
-    const unsubscribeLocations = subscribeOfficerLocationChanges(() => {
+    const unsubscribeLocations = subscribeOfficerLocationChanges((event) => {
+      setCanonicalUnits(prev => applyOfficerLocationEvent(prev, event));
+      setCanonicalLoaded(true);
       window.clearTimeout(realtimeTimer);
-      realtimeTimer = window.setTimeout(() => sync(true), 500);
+      realtimeTimer = window.setTimeout(() => sync(true), 1500);
     });
     const onOperationalResume = () => sync(true);
     const onStatusChanged = (event) => {
@@ -73,7 +75,9 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
       window.clearTimeout(realtimeTimer);
       realtimeTimer = window.setTimeout(() => sync(true), 250);
       if (detail.email && detail.status) {
-        setCanonicalUnits(prev => prev.map(unit => String(unit.email || '').toLowerCase() === String(detail.email).toLowerCase() ? { ...unit, status: detail.status, session_active: detail.status !== 'Out of Service', last_updated: new Date().toISOString() } : unit));
+        setCanonicalUnits(prev => prev.map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
+          ? { ...unit, status: detail.status, last_updated: new Date().toISOString(), last_update: new Date().toISOString() }
+          : unit));
       }
     };
     window.addEventListener('bps-officer-status-changed', onStatusChanged);
