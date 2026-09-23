@@ -4,8 +4,10 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 const STALE_AFTER_MS = 5 * 60 * 1000;
 const RECOVERY_COOLDOWN_MS = 15 * 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
-const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v1';
-const LIVE_SYNC_COOLDOWN_MS = 30_000;
+const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
+const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
+const LIVE_SYNC_COOLDOWN_MS = 60_000;
+const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
 let liveSyncInFlight = null;
 
 function timestampMs(value) {
@@ -51,21 +53,56 @@ function noteLiveSyncAttempt() {
   try { localStorage.setItem(LIVE_SYNC_STAMP_KEY, String(Date.now())); } catch {}
 }
 
+function liveSyncBackoffUntil() {
+  try { return Number(localStorage.getItem(LIVE_SYNC_BACKOFF_KEY) || 0) || 0; }
+  catch { return 0; }
+}
+
+function noteLiveSyncBackoff(milliseconds = LIVE_SYNC_RATE_LIMIT_BACKOFF_MS) {
+  try { localStorage.setItem(LIVE_SYNC_BACKOFF_KEY, String(Date.now() + milliseconds)); } catch {}
+}
+
+function clearLiveSyncBackoff() {
+  try { localStorage.removeItem(LIVE_SYNC_BACKOFF_KEY); } catch {}
+}
+
+function isRateLimitError(error) {
+  return /rate limit|too many requests|\b429\b/i.test(String(error?.message || error || ''));
+}
+
 async function performCadLiveSync() {
-  const age = Date.now() - lastLiveSyncAt();
+  const now = Date.now();
+  const backoffUntil = liveSyncBackoffUntil();
+  if (backoffUntil > now) {
+    return { skipped: true, reason: 'rate_limit_backoff', retry_after_ms: backoffUntil - now };
+  }
+
+  const age = now - lastLiveSyncAt();
   if (age >= 0 && age < LIVE_SYNC_COOLDOWN_MS) {
     return { skipped: true, reason: 'recent_live_sync', retry_after_ms: LIVE_SYNC_COOLDOWN_MS - age };
   }
 
   noteLiveSyncAttempt();
-  const response = await withRequestTimeout(
-    base44.functions.invoke('ingestGractivecalls', {}),
-    25_000,
-    'Live CAD source sync',
-  );
-  const payload = response?.data || response || {};
-  if (payload?.error) throw new Error(payload.error);
-  return payload;
+  try {
+    // Include a unique request id so the SDK/network layer never serves a stale
+    // function result for a live-source poll. The backend intentionally ignores
+    // this field; it exists only to make each permitted network sync distinct.
+    const response = await withRequestTimeout(
+      base44.functions.invoke('ingestGractivecalls', {
+        live_sync: true,
+        request_id: `cad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      }),
+      25_000,
+      'Live CAD source sync',
+    );
+    const payload = response?.data || response || {};
+    if (payload?.error) throw new Error(payload.error);
+    clearLiveSyncBackoff();
+    return payload;
+  } catch (error) {
+    if (isRateLimitError(error)) noteLiveSyncBackoff();
+    throw error;
+  }
 }
 
 export async function requestCadLiveSync() {
@@ -89,10 +126,9 @@ async function runRecovery() {
     return { skipped: true, reason: 'recent_attempt', retry_after_ms: RECOVERY_COOLDOWN_MS - age };
   }
   noteRecoveryAttempt();
-  // ingestGractivecalls already runs as a backend automation every minute. The
-  // absence of a new CAD call for five minutes does not mean ingestion is stale;
-  // it can simply mean no agency posted a new call. Browsers therefore never
-  // invoke the ingestion function themselves, eliminating another source of 429s.
+  // The scheduled workflow is the five-minute safety net. Visible CAD screens
+  // use requestCadLiveSync for a guarded one-minute refresh, so this separate
+  // stale-feed recovery path must not create another competing request loop.
   return { skipped: true, reason: 'scheduled_ingestion_owns_feed' };
 }
 
