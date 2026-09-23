@@ -185,10 +185,9 @@ function CommandDashboardInner({ embedded = false }) {
     const handleStatusChange = async (newStatus) => {
         const previousStatus = currentUser?.status;
         try {
+            setCurrentUser(prev => ({ ...prev, status: newStatus }));
             const payload = await persistOfficerStatus(newStatus);
             if (payload.error) throw new Error(payload.error);
-            setCurrentUser(prev => ({ ...prev, status: newStatus }));
-            window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
         } catch (e) {
             console.warn('[CAD] status persist failed:', e?.message);
             setCurrentUser(prev => ({ ...prev, status: previousStatus || 'Out of Service' }));
