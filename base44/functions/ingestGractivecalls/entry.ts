@@ -639,12 +639,18 @@ async function reserveCadNumbers(base44: any, count: number) {
   const counterKey = `bps_dispatch_call:${period}`;
   const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: counterKey });
   let counter = counters?.[0];
-  const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
-  const highest = (calls || []).reduce((max: number, call: any) => {
-    const match = String(call.bps_reference || call.call_id || '').match(/^BPS-(\d{6})-(\d{1,8})$/i);
-    return Math.max(max, match && match[1] === period ? Number(match[2]) : 0);
-  }, Number(counter?.last_number || 0));
-  if (!counter) counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: counterKey, last_number: highest });
+  // The monthly counter is authoritative after first creation. Scanning up to
+  // 1,000 DispatchCall rows on every live poll added needless latency and read
+  // pressure before a new website call could be published to BPSPF.
+  let highest = Number(counter?.last_number || 0);
+  if (!counter) {
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
+    highest = (calls || []).reduce((max: number, call: any) => {
+      const match = String(call.bps_reference || call.call_id || '').match(/^BPS-(\d{6})-(\d{1,8})$/i);
+      return Math.max(max, match && match[1] === period ? Number(match[2]) : 0);
+    }, 0);
+    counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: counterKey, last_number: highest });
+  }
   const first = Math.max(highest, Number(counter.last_number || 0)) + 1;
   const last = first + count - 1;
   if (last > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
@@ -873,7 +879,21 @@ Deno.serve(async (req) => {
     }
 
     try {
-    const response = await fetch(GRAC_API_URL, { headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.0' }, signal: AbortSignal.timeout(12_000) });
+    // Never accept a CDN/browser intermediary cache for the live source. GRAC's
+    // website can update while a cached /api/active response remains older; a
+    // unique query plus no-cache headers makes each BPSPF poll ask for the current
+    // source snapshot.
+    const liveSourceUrl = `${GRAC_API_URL}?bpspf=${Date.now()}-${crypto.randomUUID()}`;
+    const response = await fetch(liveSourceUrl, {
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'BPS-Pathfinder-CAD/4.1',
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        Pragma: 'no-cache',
+      },
+      signal: AbortSignal.timeout(12_000),
+    });
     if (!response.ok) return Response.json({ success: false, error: `GRAC API returned HTTP ${response.status}` }, { status: 502 });
     const payload = await response.json();
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
