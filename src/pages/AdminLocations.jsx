@@ -1213,7 +1213,7 @@ export default function AdminLocations({ embedded = false }) {
                     </div>
                     {(formData.geofence_polygon || []).length >= 3 && (
                       <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-200">
-                        Synced boundary active: CAD property monitoring and officer geofencing both use the exact polygon drawn on the map.
+                        Synced boundary active: officer geofencing uses the drawn polygon; CAD property monitoring uses that polygon with a small 100 m coordinate-accuracy buffer so roadway/address-centroid pins are not missed.
                       </div>
                     )}
                   </div>
