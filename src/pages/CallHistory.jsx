@@ -118,39 +118,101 @@ export default function CallHistory() {
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
             let feedRows = Array.isArray(payload.rows) ? payload.rows : [];
-            // PropertyAlert is authoritative property-call history. If the backend
-            // enrichment was degraded or produced no property rows, recover those
-            // alerts directly instead of showing an empty Property filter.
-            if (!feedRows.some(row => row._propertyCall)) {
-                try {
-                    const alerts = await withRequestTimeout(base44.entities.PropertyAlert.list('-created_date', 500), 10000, 'Property call history fallback');
-                    const represented = new Set(feedRows.flatMap(row => [row.id, row.original_call_id].filter(Boolean).map(String)));
-                    const synthetic = (alerts || []).filter(alert => alert?.callId && !represented.has(String(alert.callId))).map(alert => ({
+
+            // PropertyAlert is authoritative property-call history. Always merge it,
+            // not only when the backend returned zero property rows. This preserves
+            // every monitored-property event even when a linked CAD record was
+            // archived, deduped, or omitted by a bounded history read.
+            try {
+                const alerts = await withRequestTimeout(base44.entities.PropertyAlert.list('-created_date', 1000), 12000, 'Property call history');
+                const alertsByCall = new Map();
+                for (const alert of alerts || []) {
+                    const callId = String(alert?.callId || '').trim();
+                    if (!callId) continue;
+                    const prior = alertsByCall.get(callId);
+                    const priorStamp = parseServerDate(prior?.created_date)?.getTime() || 0;
+                    const nextStamp = parseServerDate(alert?.created_date)?.getTime() || 0;
+                    if (!prior || nextStamp >= priorStamp) alertsByCall.set(callId, alert);
+                }
+
+                const represented = new Set();
+                feedRows = feedRows.map(row => {
+                    const identities = [
+                        row.original_call_id,
+                        row._source === 'active' ? row.id : '',
+                        row.id,
+                    ].filter(Boolean).map(String);
+                    const alert = row._propertyAlert || identities.map(id => alertsByCall.get(id)).find(Boolean) || null;
+                    const originalCallId = String(alert?.callId || row.original_call_id || (row._source === 'active' ? row.id : '') || '');
+                    if (originalCallId) represented.add(originalCallId);
+                    if (!alert) return row;
+                    return {
+                        ...row,
+                        original_call_id: row.original_call_id || originalCallId,
+                        _propertyCall: true,
+                        _propertyAlert: alert,
+                        _propertyName: alert.propertyName || row._propertyName || '',
+                        _propertyId: alert.propertyId || row._propertyId || '',
+                        _propertyLifecycle: alert.lifecycle_status || row._propertyLifecycle || '',
+                        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : row._propertyDistanceMeters,
+                    };
+                });
+
+                const synthetic = [];
+                for (const [callId, alert] of alertsByCall.entries()) {
+                    if (represented.has(callId)) continue;
+                    synthetic.push({
                         id: `property-alert-${alert.id}`,
-                        original_call_id: String(alert.callId || ''),
-                        call_id: String(alert.cadNumber || alert.callId || ''),
+                        original_call_id: callId,
+                        call_id: String(alert.cadNumber || callId),
                         time_received: alert.callTime || alert.time_received || alert.created_date,
                         created_date: alert.created_date,
                         incident: alert.callIncident || 'Monitored Property Call',
                         location: alert.callLocation || alert.propertyName || 'Monitored property',
                         agency: 'MONITORING',
-                        status: alert.acknowledged ? 'Closed' : 'Pending',
+                        status: alert.callStatus || (['resolved', 'false_alarm', 'test'].includes(String(alert.lifecycle_status || '').toLowerCase()) ? 'Closed' : (alert.acknowledged ? 'Closed' : 'Pending')),
                         description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
                         assigned_units: [],
                         _source: 'property_alert',
                         _propertyCall: true,
                         _propertyAlert: alert,
-                    }));
-                    feedRows = [...feedRows, ...synthetic];
-                } catch (propertyError) {
-                    console.warn('[HISTORY] Property history fallback unavailable:', propertyError?.message || propertyError);
+                        _propertyName: alert.propertyName || '',
+                        _propertyId: alert.propertyId || '',
+                        _propertyLifecycle: alert.lifecycle_status || '',
+                        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : null,
+                    });
                 }
+                feedRows = [...feedRows, ...synthetic];
+            } catch (propertyError) {
+                console.warn('[HISTORY] Property history merge unavailable:', propertyError?.message || propertyError);
             }
-            const activeRows = feedRows.filter(row => row._source === 'active');
-            const archivedRows = feedRows.filter(row => row._source !== 'active');
-            const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
-            const dedupedArchived = archivedRows.filter(c => !seenIds.has(c.call_id));
-            setRows([...activeRows, ...dedupedArchived]);
+
+            // Collapse active/archive copies by the original CAD entity id while
+            // preserving property metadata from either copy. Prefer the active row
+            // when it exists so current status remains authoritative.
+            const mergedByCall = new Map();
+            for (const row of feedRows) {
+                const identity = String(row.original_call_id || (row._source === 'active' ? row.id : '') || row.call_id || row.id);
+                const current = mergedByCall.get(identity);
+                if (!current) {
+                    mergedByCall.set(identity, row);
+                    continue;
+                }
+                const preferRow = row._source === 'active' && current._source !== 'active';
+                const primary = preferRow ? row : current;
+                const secondary = preferRow ? current : row;
+                mergedByCall.set(identity, {
+                    ...secondary,
+                    ...primary,
+                    _propertyCall: Boolean(primary._propertyCall || secondary._propertyCall),
+                    _propertyAlert: primary._propertyAlert || secondary._propertyAlert || null,
+                    _propertyName: primary._propertyName || secondary._propertyName || primary._propertyAlert?.propertyName || secondary._propertyAlert?.propertyName || '',
+                    _propertyId: primary._propertyId || secondary._propertyId || '',
+                    _propertyLifecycle: primary._propertyLifecycle || secondary._propertyLifecycle || '',
+                    _propertyDistanceMeters: primary._propertyDistanceMeters ?? secondary._propertyDistanceMeters ?? null,
+                });
+            }
+            setRows([...mergedByCall.values()]);
             setWarnings(Array.isArray(payload.warnings) ? payload.warnings.filter(Boolean) : []);
             setLastRefresh(new Date());
         } catch (e) {
@@ -194,7 +256,17 @@ export default function CallHistory() {
 
     const filtered = rows.filter(r => {
         const q = search.toLowerCase();
-        if (q && !r.incident?.toLowerCase().includes(q) && !r.location?.toLowerCase().includes(q) && !r.agency?.toLowerCase().includes(q)) return false;
+        if (q && ![
+            r.incident,
+            r.location,
+            r.agency,
+            r.call_id,
+            r.bps_reference,
+            r.agency_cad_number,
+            r._propertyName,
+            r._propertyAlert?.propertyName,
+            r._propertyAlert?.description,
+        ].some(value => String(value || '').toLowerCase().includes(q))) return false;
         if (agencyFilter !== 'ALL' && !r.agency?.includes(agencyFilter)) return false;
         if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
         const isPropertyCall = Boolean(r._propertyCall);
