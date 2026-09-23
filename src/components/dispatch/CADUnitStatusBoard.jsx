@@ -73,7 +73,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     const onStatusChanged = (event) => {
       const detail = event?.detail || {};
       window.clearTimeout(realtimeTimer);
-      realtimeTimer = window.setTimeout(() => sync(true), 250);
+      realtimeTimer = window.setTimeout(() => sync(true), 1500);
       if (detail.email && detail.status) {
         setCanonicalUnits(prev => prev.map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
           ? { ...unit, status: detail.status, last_updated: new Date().toISOString(), last_update: new Date().toISOString() }
