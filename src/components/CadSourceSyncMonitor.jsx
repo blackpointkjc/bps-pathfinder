@@ -17,7 +17,11 @@ export default function CadSourceSyncMonitor({ user }) {
     let active = true;
     let running = false;
     const sync = async () => {
-      if (!active || running || !navigator.onLine || document.visibilityState === 'hidden') return;
+      // Continue guarded best-effort checks in background browser tabs. A hidden
+      // Dispatch Center must not intentionally stop all source updates. Mobile
+      // operating systems may still suspend web pages; server scheduling is needed
+      // for guaranteed unattended delivery.
+      if (!active || running || !navigator.onLine) return;
       running = true;
       try {
         const result = await requestCadLiveSync();
@@ -32,7 +36,7 @@ export default function CadSourceSyncMonitor({ user }) {
     };
     const first = window.setTimeout(sync, 2200);
     const timer = window.setInterval(sync, 60_000);
-    const resume = () => { if (document.visibilityState === 'visible') void sync(); };
+    const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
     document.addEventListener('visibilitychange', resume);
