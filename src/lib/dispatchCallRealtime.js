@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 
 const listeners = new Set();
 let entityUnsubscribe = null;
@@ -12,6 +12,7 @@ function startEntitySubscription() {
   if (entityUnsubscribe || connectError) return;
   try {
     const unsubscribe = base44.entities.DispatchCall.subscribe(event => {
+      clearActiveDispatchCallMemoryCache();
       for (const listener of [...listeners]) {
         try { listener(event); } catch (error) { console.warn('[CAD realtime] listener failed', error); }
       }
