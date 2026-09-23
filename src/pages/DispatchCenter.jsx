@@ -24,7 +24,6 @@ import { cleanIncident } from '@/utils/callUtils';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
-import { requestCadLiveSync } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
@@ -164,25 +163,15 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadActiveCalls();
         }, 60000);
 
-        // A guarded one-minute upstream sync keeps an open Dispatch Center
-        // current even when the scheduled backend automation stops running.
-        // One shared cross-tab lock and rate-limit backoff prevent request storms.
-        // Backend live_sync takes the lightweight ingestion path before any
-        // optional full feed reconciliation.
-        const liveSourceSync = async () => {
-            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
-            try {
-                const result = await requestCadLiveSync();
-                if (['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
-            } catch (error) {
-                console.warn('Guarded CAD source sync failed:', error?.message || error);
-            }
+        // Layout owns the single app-wide one-minute upstream poll. Repaint
+        // Dispatch immediately after its persisted writes complete rather than
+        // launching a competing network ingestion from this page.
+        const onCadIngestFinished = () => {
             clearActiveDispatchCallMemoryCache();
             lastActiveCallsLoadRef.current = 0;
-            await loadActiveCalls(true);
+            void loadActiveCalls(true);
         };
-        const liveSourceTimer = setInterval(liveSourceSync, 60 * 1000);
-        window.setTimeout(liveSourceSync, 1500);
+        window.addEventListener('bps-cad-ingest-finished', onCadIngestFinished);
 
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
@@ -219,7 +208,7 @@ export default function DispatchCenter() {
             unsubscribeUnits?.();
             window.clearTimeout(wakeRefreshTimer);
             clearInterval(localInterval);
-            clearInterval(liveSourceTimer);
+            window.removeEventListener('bps-cad-ingest-finished', onCadIngestFinished);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
