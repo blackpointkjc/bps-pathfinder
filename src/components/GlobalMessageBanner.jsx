@@ -6,6 +6,8 @@ import { createPageUrl } from '../utils';
 import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
+import { parseServerTimestamp } from '@/lib/easternTime';
+import { clearBase44ReadCacheMatching } from '@/api/base44Client';
 
 const SOURCES = [
   // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
@@ -796,7 +798,7 @@ export default function GlobalMessageBanner({ user }) {
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
-          const created = new Date(record.created_date || 0).getTime();
+          const created = parseServerTimestamp(record.created_date)?.getTime() || 0;
           if (record.event_type === 'property_alert' && Number.isFinite(created) && created >= statusLogRecoveryCutoff) {
             void showCadAnnouncementEvent(record);
             return;
