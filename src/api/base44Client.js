@@ -51,8 +51,8 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && ['manageOfficerPerformanceReviews','managePerformanceReviews'].includes(meta?.name) && meta?.action === 'list') return 10 * 60_000;
   return READ_CACHE_MS;
 };
-const RATE_LIMIT_COOLDOWN_MS = 45_000;
-const CRITICAL_RATE_LIMIT_RECOVERY_MS = 25_000;
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+const CRITICAL_RATE_LIMIT_RECOVERY_MS = 60_000;
 const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
@@ -446,9 +446,36 @@ const functions = new Proxy(rawBase44.functions, {
     const value = Reflect.get(target, property, receiver);
     if (property !== 'invoke' || typeof value !== 'function') return typeof value === 'function' ? value.bind(target) : value;
     return (name, payload) => {
-      const key = `function:${String(name)}:${stableKey(payload || {})}`;
+      const functionName = String(name);
+      const key = `function:${functionName}:${stableKey(payload || {})}`;
       const task = () => value.call(target, name, payload);
-      const meta = { kind: 'function', name: String(name), action: String(payload?.action || '').toLowerCase() || '' };
+      const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '' };
+
+      // logLocation is background telemetry, not a user-initiated save. Once the
+      // backend has throttled this browser, suppress additional GPS/heartbeat
+      // writes for the shared cooldown instead of producing a chain of 429s.
+      if (functionName === 'logLocation'
+          && payload?.end_session !== true
+          && payload?.force_publish !== true
+          && sharedRateLimitUntil() > Date.now()) {
+        const retryAfter = sharedRateLimitUntil();
+        recordRequestTrace({
+          label: requestLabel(meta),
+          kind: 'function',
+          mode: 'write',
+          outcome: 'cooldown_suppressed',
+          duration_ms: 0,
+        });
+        return Promise.resolve({
+          data: {
+            success: true,
+            suppressed: true,
+            suppressed_reason: 'api_rate_limit_cooldown',
+            retry_after: retryAfter,
+          },
+        });
+      }
+
       return isReadOnlyFunction(name, payload) ? queuedRead(key, task, meta) : protectedWrite(key, task, meta);
     };
   },
