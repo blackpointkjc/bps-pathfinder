@@ -6,6 +6,7 @@ const CHESTERFIELD_CALLS_URL = 'https://api.chesterfield.gov/api/Police/V1.1/Cal
 const CHESTERFIELD_PUBLIC_API_KEY = Deno.env.has('CHESTERFIELD_PUBLIC_API_KEY') ? Deno.env.get('CHESTERFIELD_PUBLIC_API_KEY') : null;
 const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
+const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
 
 const normalizeStatus = (raw: unknown) => {
   const value = String(raw || '').trim().toUpperCase();
@@ -259,10 +260,6 @@ function sameStreetBlock(callLocation: unknown, propertyAddress: unknown) {
 function propertyMatch(call: any, location: any) {
   if (location?.active === false || location?.property_monitoring_enabled !== true) return null;
 
-  // Property calls are STRICTLY controlled by the custom Property Monitoring
-  // boundary saved on the Location page. Address text, street blocks, nearby
-  // distance, site-center radius, and the officer clock-in geofence must never
-  // substitute for this boundary.
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
@@ -270,9 +267,36 @@ function propertyMatch(call: any, location: any) {
   const polygon = Array.isArray(location.property_monitoring_polygon)
     ? location.property_monitoring_polygon
     : [];
-  if (polygon.length < 3) return null;
+  const boundaryType = String(location.property_monitoring_boundary_type || (polygon.length >= 3 ? 'polygon' : 'circle')).toLowerCase();
 
-  return pointInPolygon(lat, lng, polygon)
+  if (boundaryType === 'polygon' && polygon.length >= 3) {
+    if (pointInPolygon(lat, lng, polygon)) return { relation: 'inside', distanceMeters: 0 };
+
+    // Public CAD coordinates are frequently pinned to a roadway/address centroid
+    // instead of the exact parcel/building. Allow a small 100m buffer around the
+    // SAVED custom polygon so legitimate property calls are not lost, while still
+    // rejecting the much wider nearby-area matches that caused prior false alerts.
+    let edgeDistance = Infinity;
+    for (let i = 0; i < polygon.length; i += 1) {
+      edgeDistance = Math.min(
+        edgeDistance,
+        pointToSegmentMeters(lat, lng, polygon[i], polygon[(i + 1) % polygon.length]),
+      );
+    }
+    return edgeDistance <= PROPERTY_MONITORING_EDGE_TOLERANCE_METERS
+      ? { relation: 'nearby', distanceMeters: edgeDistance }
+      : null;
+  }
+
+  // Circle mode is an explicit administrator choice. Honor the configured
+  // property-monitoring radius exactly; never substitute the officer clock-in
+  // geofence radius.
+  const centerLat = Number(location.latitude);
+  const centerLng = Number(location.longitude);
+  const radiusMeters = Number(location.property_monitoring_radius_meters || 0);
+  if (![centerLat, centerLng, radiusMeters].every(Number.isFinite) || radiusMeters <= 0) return null;
+  const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
+  return centerDistance <= radiusMeters
     ? { relation: 'inside', distanceMeters: 0 }
     : null;
 }
