@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -19,7 +19,7 @@ import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
-import { listDirectoryLocations } from '@/lib/appDirectory';
+import { findDirectoryUser, getAppDirectory, listDirectoryLocations } from '@/lib/appDirectory';
 import { cleanIncident } from '@/utils/callUtils';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
@@ -295,7 +295,7 @@ export default function DispatchCenter() {
             // is an ActiveOfficer session ID; CallAssignment and the officer queue
             // require the immutable User id. The full snapshot returns live status,
             // GPS, profile fields, and user IDs together.
-            const payload = await getOfficerLocationSnapshot({ force });
+            const payload = await withRequestTimeout(getOfficerLocationSnapshot({ force }), 12000, 'Dispatch on-duty unit roster');
             const eligibleUnits = (payload.units || payload.users || [])
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
                 .map(unit => ({
@@ -307,11 +307,46 @@ export default function DispatchCenter() {
             setUnits(eligibleUnits);
             setUnitLoadStatus('ready');
         } catch (error) {
-            setUnitLoadStatus('error');
             console.error('Error loading canonical CAD units:', error);
-            // A transient backend/rate-limit failure must not make every officer
-            // disappear from the tactical map. Keep the last confirmed snapshot
-            // and let realtime/polling recover on the next successful refresh.
+            // If the expensive full roster times out, recover using one live
+            // ActiveOfficer read and the shared cached directory. Join against
+            // immutable User IDs: session IDs must never be sent to assignment.
+            // During a real 429 cooldown, do not make extra fallback requests.
+            if (!getBase44RequestHealth().rateLimitedUntil) {
+                try {
+                    const [live, directory] = await Promise.all([
+                        withRequestTimeout(getOfficerLocationSnapshot({ locationOnly: true }), 9000, 'Live officer fallback'),
+                        withRequestTimeout(getAppDirectory(), 9000, 'Cached officer directory'),
+                    ]);
+                    const recovered = (live.units || []).map(session => {
+                        const user = findDirectoryUser(directory.users || [], session.officer_email || session.email);
+                        if (!user?.id) return null;
+                        return {
+                            ...user, ...session, id: user.id, user_id: user.id,
+                            active_officer_id: session.id,
+                            email: user.email,
+                            officer_email: user.email,
+                            additional_roles: user.additional_roles || [],
+                            rank: user.rank || session.rank || '',
+                            last_name: user.last_name || session.last_name || '',
+                            full_name: user.full_name || session.officer_name || '',
+                            session_active: session.session_active === true,
+                            status: session.status,
+                            label: session.unit_number || user.unit_number || user.full_name || user.email,
+                        };
+                    }).filter(unit => unit?.session_active && unit.status !== 'Out of Service');
+                    if (recovered.length || !(live.units || []).some(session => session.session_active && session.status !== 'Out of Service')) {
+                        setUnits(recovered);
+                        setUnitLoadStatus('ready');
+                        return;
+                    }
+                } catch (fallbackError) {
+                    console.warn('Dispatch lightweight unit-roster fallback failed:', fallbackError);
+                }
+            }
+            setUnitLoadStatus('error');
+            // Preserve any previously confirmed roster instead of turning an
+            // API failure into a false report that there are zero field units.
         }
     };
 
