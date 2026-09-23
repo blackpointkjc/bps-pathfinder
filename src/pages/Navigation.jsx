@@ -96,6 +96,8 @@ export default function Navigation() {
     const [addressQuery, setAddressQuery] = useState('');
     const [addressResults, setAddressResults] = useState([]);
     const [addressSearching, setAddressSearching] = useState(false);
+    const [addressSearchError, setAddressSearchError] = useState('');
+    const [navigationFallbackAddress, setNavigationFallbackAddress] = useState('');
     const [showAddressSearch, setShowAddressSearch] = useState(false);
     const [streetViewUrl, setStreetViewUrl] = useState('');
     const [fitBounds, setFitBounds] = useState(null);
@@ -626,6 +628,8 @@ export default function Navigation() {
             return;
         }
         setRouting(true);
+        setAddressSearchError('');
+        setNavigationFallbackAddress(destination.name || destination.address || coords.join(','));
         try {
             const recentFix = getLiveLocation(90_000);
             const freshLocation = recentFix && validPosition(recentFix.latitude, recentFix.longitude)
@@ -667,6 +671,8 @@ export default function Navigation() {
             setShowAddressSearch(false);
             setAddressResults([]);
             setAddressQuery('');
+            setNavigationFallbackAddress('');
+            setAddressSearchError('');
             setMapCenter(null);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
             if (options.reroute) toast.success('Route updated');
