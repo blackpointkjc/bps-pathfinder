@@ -6,7 +6,7 @@ const CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 60_000;
+const MEMORY_DEDUPE_MS = 10_000;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
@@ -158,6 +158,11 @@ export async function loadActiveDispatchCallRows(limit = 100) {
   });
 
   return inFlight;
+}
+
+export function clearActiveDispatchCallMemoryCache() {
+  memoryRows = null;
+  memoryRowsAt = 0;
 }
 
 export { readLastGoodCalls };
