@@ -34,7 +34,6 @@ const withTimeout = (promise, milliseconds, label) => {
 
 export const AuthProvider = ({ children }) => {
   const requestSequence = useRef(0);
-  const dutyStatusBootstrappedRef = useRef(false);
   const operationalSessionHeartbeatRef = useRef(Date.now());
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -68,18 +67,15 @@ export const AuthProvider = ({ children }) => {
         email_aliases: [...new Set([authEmail, workEmail, microsoftEmail, ...(currentUser.email_aliases || [])].map(cleanEmail).filter(Boolean))],
       };
 
-      // A newly loaded Pathfinder session starts field personnel Out of Service.
-      // Officers/supervisors explicitly choose Available/Enroute/etc. themselves.
+      // Authentication refresh/page reload is not a duty-status transition.
+      // Preserve the authoritative server status so a browser refresh cannot turn
+      // an Available/Enroute/On Scene officer OOS or retire a valid live session.
+      // Explicit logout/clock-out and the stale-session backend sweep still enforce
+      // Out of Service when the officer actually leaves duty.
       const roleSet = new Set([currentUser.role, ...(currentUser.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
       const fieldRank = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(String(currentUser.rank || '').trim().toLowerCase());
       const operational = roleSet.has('officer') || roleSet.has('cad_access') || roleSet.has('supervisor') || currentUser.is_supervisor === true || fieldRank;
-      if (operational && !dutyStatusBootstrappedRef.current) {
-        dutyStatusBootstrappedRef.current = true;
-        currentUser = { ...currentUser, status: 'Out of Service' };
-        cacheOfficerStatus('Out of Service');
-        void base44.functions.invoke('enforceOfficerDutyStatus', { action: 'session_start' })
-          .catch(error => console.warn('[AUTH] Unable to initialize Out of Service status:', error?.message || error));
-      }
+      if (operational) cacheOfficerStatus(currentUser.status || 'Out of Service');
 
       setUser(currentUser);
       setIsAuthenticated(true);
