@@ -182,9 +182,9 @@ export function DashboardDataProvider({ children }) {
 
     // First paint from persisted Base44 rows, then keep a visible CAD dashboard
     // close to the upstream source. Base44 scheduled workflows cannot run more often
-    // than every five minutes, so the active browser performs a lightweight source
-    // sync every 30 seconds. cadCallFeed serializes same-browser attempts and the
-    // backend ingestion lease prevents duplicate writes across different dispatchers.
+    // than every five minutes, so the active browser performs one guarded live
+    // source sync per minute. cadCallFeed serializes same-browser attempts, sends a
+    // unique request id to avoid stale function responses, and backs off on 429s.
     useEffect(() => {
         loadData(true);
 
@@ -193,7 +193,7 @@ export function DashboardDataProvider({ children }) {
             if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
             try {
                 const result = await requestCadLiveSync();
-                if (stopped || result?.reason === 'recent_live_sync') return;
+                if (stopped || ['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
                 clearActiveDispatchCallMemoryCache();
                 lastRefreshTime.current = 0;
                 await loadData(true);
@@ -202,7 +202,7 @@ export function DashboardDataProvider({ children }) {
             }
         };
 
-        const timer = window.setInterval(liveSync, 30_000);
+        const timer = window.setInterval(liveSync, 60_000);
         const startup = window.setTimeout(liveSync, 1_500);
         return () => {
             stopped = true;
