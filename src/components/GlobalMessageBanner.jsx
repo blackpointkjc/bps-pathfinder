@@ -521,37 +521,43 @@ export default function GlobalMessageBanner({ user }) {
         if (HIDDEN_EXISTING_CALL_STATUSES.has(normalized(record.callStatus))) return;
         if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
 
-        const propertyEventKey = `property:${callKey}:${currentStatus}`;
+        // Use the exact same durable event key written by ingestGractivecalls.
+        // PropertyAlert realtime and CallStatusLog are two delivery paths for ONE
+        // announcement; whichever arrives first claims it and the other becomes
+        // a fallback instead of producing duplicate speech.
+        const propertyEventKey = `property-alert:${record.id}:created`;
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
         if (!announcedPropertySpeech.current.has(propertyEventKey)) {
-          announcedPropertySpeech.current.add(propertyEventKey);
-          const accepted = speakNotification(announcementText, {
-            dedupeMs: 6000,
-            eventId: propertyEventKey,
-            // New monitored-property calls must cut through routine/high chatter
-            // immediately, while officer-distress emergency traffic stays above it.
-            priority: 'critical',
-            volume: audioSettings.current.volume,
-            voiceProfile: audioSettings.current.voice_profile,
-          });
-
-          // Record/dedupe across devices after audio has already been queued.
-          // The remote claim must never delay the first spoken word.
-          void claimAnnouncementEvent({
-            event_key: propertyEventKey,
-            event_id: record.id,
-            cad_number: cadNumber,
-            event_type: 'property_alert',
-          }).then(claim => {
-            if (!claim?.claimed) return null;
-            return finalizeAnnouncementEvent(
-              claim,
-              propertyEventKey,
-              accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
-            );
-          }).catch(() => null);
+          const settings = audioSettings.current;
+          const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
+          const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
+          if (propertyAudioEnabled) {
+            void (async () => {
+              const claim = await claimAnnouncementEvent({
+                event_key: propertyEventKey,
+                event_id: record.id,
+                cad_number: cadNumber,
+                event_type: 'property_alert',
+              }).catch(error => ({ claimed: false, error }));
+              if (!claim?.claimed) return;
+              announcedPropertySpeech.current.add(propertyEventKey);
+              playNotificationChime(true);
+              const accepted = speakNotification(announcementText, {
+                dedupeMs: 6000,
+                eventId: propertyEventKey,
+                priority: 'critical',
+                volume: settings.volume,
+                voiceProfile: settings.voice_profile,
+              });
+              await finalizeAnnouncementEvent(
+                claim,
+                propertyEventKey,
+                accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
+              );
+            })();
+          }
         }
 
         announcedPropertyCallStatuses.current.set(callKey, currentStatus);
@@ -603,7 +609,7 @@ export default function GlobalMessageBanner({ user }) {
       if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
 
       const summary = propertyCallSummary(record, call);
-      const propertyEventKey = `property:${callKey}:${currentStatus}`;
+      const propertyEventKey = `property-alert:${record.id}:created`;
       const email = normalized(user.email);
       const priorAcknowledgements = email
         ? await Promise.all([
@@ -690,9 +696,10 @@ export default function GlobalMessageBanner({ user }) {
 
       const showCadAnnouncementEvent = async record => {
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
-        // PropertyAlert and BOLOAlert own their own reliable speech paths.
-        // CallStatusLog remains an audit trail but must not speak a second copy.
-        if (record.event_type === 'property_alert' || record.event_type === 'bolo_published') return;
+        // BOLOAlert owns its own reliable speech path. Property alerts deliberately
+        // remain enabled here as the durable fallback when the raw PropertyAlert
+        // realtime create is missed. Both paths share the same claim/event key.
+        if (record.event_type === 'bolo_published') return;
         if (record.sensitive === true && !cadAuthorized) return;
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
@@ -709,10 +716,11 @@ export default function GlobalMessageBanner({ user }) {
           event_type: record.event_type || '',
         }).catch(error => ({ claimed: false, error }));
         if (!claim?.claimed) return;
+        if (record.event_type === 'property_alert') playNotificationChime(true);
         const accepted = speakNotification(record.announcement_text, {
-          dedupeMs: 4000,
+          dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
-          priority: record.announcement_priority || 'normal',
+          priority: record.event_type === 'property_alert' ? 'critical' : (record.announcement_priority || 'normal'),
           volume: settings.volume,
           voiceProfile: settings.voice_profile,
         });
@@ -757,10 +765,20 @@ export default function GlobalMessageBanner({ user }) {
       });
       if (typeof statusLogUnsubscribe === 'function') unsubscribers.push(statusLogUnsubscribe);
 
-      // Seed existing rows as known. Refresh/reconnect must not replay history.
+      // Recover property announcements created while the realtime subscription was
+      // connecting. Older history is seeded as known and never replayed. The server
+      // claim also prevents a refresh from repeating a call already announced to
+      // this user.
+      const statusLogRecoveryCutoff = Date.now() - 5 * 60 * 1000;
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
-        (records || []).forEach(record => {
-          if (record?.event_key) knownIds.current.add(`CallStatusLog:${record.event_key}`);
+        (records || []).slice().reverse().forEach(record => {
+          if (!record?.event_key) return;
+          const created = new Date(record.created_date || 0).getTime();
+          if (record.event_type === 'property_alert' && Number.isFinite(created) && created >= statusLogRecoveryCutoff) {
+            void showCadAnnouncementEvent(record);
+            return;
+          }
+          knownIds.current.add(`CallStatusLog:${record.event_key}`);
         });
       }).catch(() => null);
 
