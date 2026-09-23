@@ -678,7 +678,10 @@ export default function Navigation() {
             if (options.reroute) toast.success('Route updated');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
-            toast.error(error?.message || 'Unable to build route');
+            const message = error?.message || 'Unable to build route';
+            setAddressSearchError(message + ' The destination is retained below so you can open driving directions.');
+            setShowAddressSearch(true);
+            toast.error(message, { duration: 9000 });
         } finally {
             setRouting(false);
         }
@@ -739,11 +742,15 @@ export default function Navigation() {
         const query = addressQuery.trim();
         if (query.length < 3) return;
         setAddressSearching(true);
+        setAddressSearchError('');
+        setAddressResults([]);
+        setNavigationFallbackAddress(query);
         try {
             const results = await lookupNavigationDestinations(query, currentLocation);
             setAddressResults(results);
             if (!results.length) {
-                toast.error('Address not found. Try the full street and city or Open in Google Maps.');
+                setAddressSearchError('No mapped address was returned. Check the street and city, or open Google Maps below.');
+                toast.error('Address not found. Try the full street and city.');
             } else {
                 const houseNumber = query.match(/^\d{1,6}\b/)?.[0] || '';
                 const exactStreetNumber = houseNumber && new RegExp(`\\b${houseNumber}\\b`).test(results[0].name);
@@ -756,7 +763,9 @@ export default function Navigation() {
                 }
             }
         } catch (error) {
-            toast.error(error?.message || 'Unable to search addresses');
+            const message = error?.message || 'Unable to search addresses';
+            setAddressSearchError(message + '. Use Google Maps below if the address services are unavailable.');
+            toast.error(message);
         } finally {
             setAddressSearching(false);
         }
