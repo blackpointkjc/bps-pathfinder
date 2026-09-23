@@ -24,9 +24,9 @@ import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
-import { loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
@@ -145,6 +145,28 @@ export default function DispatchCenter() {
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadActiveCalls();
         }, 180000);
+
+        // While Dispatch Center is visible, actively poll the upstream CAD source.
+        // Base44 scheduled workflows have a 5-minute minimum, which is too slow for
+        // a live dispatch screen. This 30-second browser heartbeat is globally
+        // serialized per browser and the backend ingestion lease prevents duplicate
+        // writes across simultaneous dispatchers. New/changed DispatchCall rows are
+        // then painted immediately by the realtime subscription above.
+        const liveSourceSync = async () => {
+            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            try {
+                const result = await requestCadLiveSync();
+                if (result?.reason === 'recent_live_sync') return;
+                clearActiveDispatchCallMemoryCache();
+                lastActiveCallsLoadRef.current = 0;
+                await loadActiveCalls(true);
+            } catch (error) {
+                console.warn('Live CAD source sync failed:', error?.message || error);
+            }
+        };
+        const liveSourceTimer = setInterval(liveSourceSync, 30000);
+        window.setTimeout(liveSourceSync, 1200);
+
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
         }, 60000);
@@ -170,6 +192,7 @@ export default function DispatchCenter() {
             window.clearTimeout(unitRefreshTimer);
             window.clearTimeout(wakeRefreshTimer);
             clearInterval(localInterval);
+            clearInterval(liveSourceTimer);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
