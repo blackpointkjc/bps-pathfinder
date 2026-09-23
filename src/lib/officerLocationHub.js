@@ -1,4 +1,4 @@
-import { base44, getBase44RequestHealth } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching, getBase44RequestHealth } from '@/api/base44Client';
 
 // Single client gateway for Pathfinder live officer location.
 // No page/component should read/write ActiveOfficer or invoke getOnDutyUnits/logLocation directly.
@@ -8,7 +8,7 @@ import { base44, getBase44RequestHealth } from '@/api/base44Client';
 // location/status change. A one-minute read cache therefore reduces duplicate map,
 // health-check, and CAD fetches without delaying genuine realtime invalidation.
 const SNAPSHOT_TTL_MS = 60_000;
-const FORCE_REFRESH_DEDUPE_MS = 15_000;
+const FORCE_REFRESH_DEDUPE_MS = 45_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const GPS_PUBLISH_MIN_MS = 2 * 60 * 1000;
 const HEARTBEAT_PUBLISH_MIN_MS = 8 * 60 * 1000;
@@ -271,17 +271,21 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
   if (force && cached && now - Number(lastForcedAt.get(key) || 0) < FORCE_REFRESH_DEDUPE_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
 
-  if (force) lastForcedAt.set(key, now);
+  // Never turn a known API throttle into another getOnDutyUnits request. Realtime
+  // ActiveOfficer events already update the cached roster locally; keep using that
+  // verified snapshot until the shared cooldown expires.
+  if (force && cached && getBase44RequestHealth().rateLimitedUntil) return cached.payload;
+
+  if (force) {
+    lastForcedAt.set(key, now);
+    // A force refresh should invalidate the existing stable request key, not create
+    // a brand-new random key. Random cache-busting made every status/location event
+    // count as a separate network call and defeated the app-wide dedupe layer.
+    clearBase44ReadCacheMatching('function:getOnDutyUnits:');
+  }
   const requestPayload = locationOnly
     ? { location_only: true, include_last_known: includeLastKnown }
     : {};
-  if (force) {
-    // base44Client intentionally caches getOnDutyUnits reads for one minute.
-    // Realtime status/location events must bypass that cache or the UI simply
-    // reloads the pre-change roster. A unique read token changes only the client
-    // cache key; getOnDutyUnits ignores unknown fields.
-    requestPayload.live_refresh_id = `units-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  }
   const request = base44.functions.invoke('getOnDutyUnits', requestPayload)
     .then(response => {
       const rawPayload = response?.data || response || {};
