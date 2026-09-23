@@ -358,6 +358,11 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
   return (calls || []).map(call => replacements.get(liveMergeKey(call)) || call);
 }
 
+function persistableCall(call: any) {
+  const { source_channel: _sourceChannel, ...persistable } = call || {};
+  return persistable;
+}
+
 function changed(existing: any, incoming: any) {
   const fields = ['external_call_id','agency_cad_number','bps_reference','cad_number_source','official_cad_verified','call_id','incident','location','agency','zone','status','priority','time_received','source','description','latitude','longitude','geo_confidence','geo_method','geo_approximate'];
   return fields.some(field => existing?.[field] !== incoming?.[field]);
@@ -941,7 +946,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     await Promise.all(newCalls.slice(offset, offset + 4).map(async (row, index) => {
       const reference = numbers[offset + index], official = String(row.agency_cad_number || '').trim();
       const call = await base44.asServiceRole.entities.DispatchCall.create({
-        ...row, bps_reference: reference, call_id: official || reference,
+        ...persistableCall(row), bps_reference: reference, call_id: official || reference,
         cad_number_source: official ? 'official_government_feed' : 'bps_internal',
         official_cad_verified: Boolean(official),
       });
@@ -966,7 +971,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async row => {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
       const patch = {
-        ...row,
+        ...persistableCall(row),
         agency_cad_number: previous.official_cad_verified ? previous.agency_cad_number : (row.agency_cad_number || ''),
         bps_reference: previous.bps_reference, call_id: previous.call_id,
         cad_number_source: previous.cad_number_source || 'bps_internal',
@@ -1056,26 +1061,43 @@ Deno.serve(async (req) => {
     }
 
     try {
-    // Never accept a CDN/browser intermediary cache for the live source. GRAC's
-    // website can update while a cached /api/active response remains older; a
-    // unique query plus no-cache headers makes each BPSPF poll ask for the current
-    // source snapshot.
+    // The website table is the live source of truth. Pull it every run and merge
+    // the JSON API only as an enrichment source for stable IDs/coordinates. This
+    // prevents a lagging /api/active cache from holding a website-visible call for
+    // 10-20 minutes before BPSPF can see it.
     const liveSourceUrl = `${GRAC_API_URL}?bpspf=${Date.now()}-${crypto.randomUUID()}`;
-    const response = await fetch(liveSourceUrl, {
-      cache: 'no-store',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'BPS-Pathfinder-CAD/4.1',
-        'Cache-Control': 'no-cache, no-store, max-age=0',
-        Pragma: 'no-cache',
-      },
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) return Response.json({ success: false, error: `GRAC API returned HTTP ${response.status}` }, { status: 502 });
-    const payload = await response.json();
-    if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
-    let incoming = payload.map(normalizeCall).filter(Boolean) as any[];
-    if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
+    const [websiteResult, apiResult] = await Promise.allSettled([
+      fetchLiveWebsiteCalls(),
+      fetch(liveSourceUrl, {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'BPS-Pathfinder-CAD/4.2',
+          'Cache-Control': 'no-cache, no-store, max-age=0',
+          Pragma: 'no-cache',
+        },
+        signal: AbortSignal.timeout(10_000),
+      }).then(async response => {
+        if (!response.ok) throw new Error(`GRAC API returned HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload)) throw new Error('Unexpected GRAC API response');
+        return payload.map(normalizeCall).filter(Boolean) as any[];
+      }),
+    ]);
+    const websiteIncoming = websiteResult.status === 'fulfilled' ? websiteResult.value : [];
+    const apiIncoming = apiResult.status === 'fulfilled' ? apiResult.value : [];
+    if (!websiteIncoming.length && !apiIncoming.length) {
+      console.error('No GRAC live source available', {
+        website: websiteResult.status === 'rejected' ? websiteResult.reason?.message || String(websiteResult.reason) : 'empty',
+        api: apiResult.status === 'rejected' ? apiResult.reason?.message || String(apiResult.reason) : 'empty',
+      });
+      return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
+    }
+    let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming);
+    // Website-only rows do not carry map coordinates. Geocode only the newest
+    // unmatched rows immediately so monitored-property alerts can be evaluated in
+    // the same minute rather than waiting for the slower API to catch up.
+    incoming = await geocodeFreshWebsiteOnlyCalls(incoming);
     // Publish new calls and monitored-property speech before lengthy enrichment.
     if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
       return Response.json(await ingestFastPublishedCalls(base44, incoming));
