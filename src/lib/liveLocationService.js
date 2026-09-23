@@ -96,7 +96,7 @@ function movementMetrics(previous, next) {
   const lat2 = Number(next.latitude);
   const lon2 = Number(next.longitude);
   const elapsedSeconds = (Number(next.timestamp) - Number(previous.timestamp)) / 1000;
-  if (![lat1, lon1, lat2, lon2, elapsedSeconds].every(Number.isFinite) || elapsedSeconds < 0.5 || elapsedSeconds > 45) {
+  if (![lat1, lon1, lat2, lon2, elapsedSeconds].every(Number.isFinite) || elapsedSeconds < 0.5 || elapsedSeconds > 180) {
     return { speed: null, heading: null, distance: 0 };
   }
   const toRad = value => value * Math.PI / 180;
@@ -113,7 +113,7 @@ function movementMetrics(previous, next) {
   const heading = (toDeg(Math.atan2(y, x)) + 360) % 360;
   // Ignore tiny GPS jitter. Clamp implausible derived vehicle speed rather than
   // letting a bad fix briefly show hundreds of MPH.
-  const speed = distance < 4 ? 0 : Math.min(120, (distance / elapsedSeconds) * 2.236936);
+  const speed = distance < 3 ? 0 : Math.min(120, (distance / elapsedSeconds) * 2.236936);
   return { speed, heading, distance };
 }
 
