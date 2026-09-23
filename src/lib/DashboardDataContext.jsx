@@ -6,7 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
 import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
@@ -180,19 +180,31 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // First paint from persisted Base44 rows. The one-minute backend automation
-    // owns upstream ingestion; realtime DispatchCall events update this dashboard
-    // immediately, while this one-minute read is only a missed-event safety net.
+    // First paint from persisted Base44 rows. Until the one-minute backend
+    // automation is confirmed deployed, visible command screens provide a guarded
+    // two-minute recovery sync. Same-browser attempts are shared and 429s back off.
     useEffect(() => {
         loadData(true);
+        let stopped = false;
         const refresh = async () => {
-            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
+            try {
+                const result = await requestCadLiveSync();
+                if (stopped || ['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
+            } catch (error) {
+                console.warn('[CAD] Guarded upstream sync failed', error?.message || error);
+            }
             clearActiveDispatchCallMemoryCache();
             lastRefreshTime.current = 0;
             await loadData(true);
         };
-        const timer = window.setInterval(refresh, 60_000);
-        return () => window.clearInterval(timer);
+        const timer = window.setInterval(refresh, 2 * 60_000);
+        const startup = window.setTimeout(refresh, 2_000);
+        return () => {
+            stopped = true;
+            window.clearInterval(timer);
+            window.clearTimeout(startup);
+        };
     }, [loadData]);
 
     // Old-call archival is owned by the scheduled Base44 workflow. Browsers do not
