@@ -19,6 +19,32 @@
       "type": "string",
       "format": "date-time",
       "description": "Expiration time for the GRAC ingestion lease"
+    },
+    "last_source_poll_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent completed GRAC source poll"
+    },
+    "last_source_poll_status": {
+      "type": "string",
+      "description": "Outcome of the most recent GRAC source poll"
+    },
+    "last_website_row_count": {
+      "type": "number",
+      "description": "Rows observed on the live GRAC website during the most recent source poll"
+    },
+    "last_api_row_count": {
+      "type": "number",
+      "description": "Rows observed from the GRAC JSON API during the most recent source poll"
+    },
+    "last_website_latest_received": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Newest call-received timestamp present on the live GRAC website at the most recent poll"
+    },
+    "last_source_poll_duration_ms": {
+      "type": "number",
+      "description": "Duration of the most recent source poll and fast ingest"
     }
   },
   "required": [
