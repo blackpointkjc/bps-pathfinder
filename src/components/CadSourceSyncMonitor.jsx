@@ -29,13 +29,16 @@ export default function CadSourceSyncMonitor({ user }) {
           window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished', { detail: result }));
         }
       } catch (error) {
-        console.warn('[CAD] Guarded one-minute feed sync failed:', error?.message || error);
+        console.warn('[CAD] Guarded live-source sync failed:', error?.message || error);
       } finally {
         running = false;
       }
     };
     const first = window.setTimeout(sync, 2200);
-    const timer = window.setInterval(sync, 60_000);
+    // Tick frequently enough to retry a collided server lease within seconds.
+    // cadCallFeed performs at most one successful source sync per ~minute across
+    // this browser's tabs; intermediate ticks are cheap local cooldown checks.
+    const timer = window.setInterval(sync, 15_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
