@@ -716,6 +716,103 @@ async function releaseIngestionLease(base44: any, lease: any) {
   }
 }
 
+// Minute-cadence, alert-first ingestion. Keep expensive official source
+// enrichment and long history reconciliation out of the live notification path.
+async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
+  const started = Date.now();
+  const [saved, history, locations, alerts] = await Promise.all([
+    base44.asServiceRole.entities.DispatchCall.list('-created_date', 500),
+    base44.asServiceRole.entities.CallHistory.list('-archived_date', 500).catch(() => []),
+    base44.asServiceRole.entities.Location.list('site_name', 100).catch(() => []),
+    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
+  ]);
+  const byExternal = new Map<string, any>();
+  const byLegacy = new Map<string, any>();
+  for (const row of saved || []) {
+    if (externalKey(row) && !byExternal.has(externalKey(row))) byExternal.set(externalKey(row), row);
+    if (legacyKey(row) && !byLegacy.has(legacyKey(row))) byLegacy.set(legacyKey(row), row);
+  }
+  const archivedExternal = new Set((history || []).map((row: any) => externalKey(row)).filter(Boolean));
+  const archivedLegacy = new Set((history || []).map((row: any) => legacyKey(row)).filter(Boolean));
+  const monitored = (locations || []).filter((row: any) => row.active !== false && row.property_monitoring_enabled === true);
+  const callPropertyKeys = new Set((alerts || []).map((row: any) => String(row.propertyId || '') + '|' + String(row.callId || '')));
+  const alertKeys = new Set((alerts || []).map((row: any) => String(row.source_key ||
+    [row.propertyId || '', row.callTime || row.time_received || row.created_date || '',
+      String(row.callIncident || '').toUpperCase(), String(row.callLocation || '').toUpperCase()].join('|'))));
+  const now = Date.now();
+  const recent = incoming.filter(row => new Date(row.time_received || 0).getTime() >= now - 3 * 60 * 60_000)
+    .sort((a, b) => new Date(b.time_received).getTime() - new Date(a.time_received).getTime());
+  const seen = new Set<string>();
+  const newCalls = recent.filter(row => {
+    const external = externalKey(row), legacy = legacyKey(row), key = external || legacy;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return !byExternal.has(external) && !byLegacy.has(legacy)
+      && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
+  }).slice(0, 40);
+  const numbers = await reserveCadNumbers(base44, newCalls.length);
+  const sideEffects: Promise<any>[] = [];
+  let created = 0, updated = 0, propertyAlertsCreated = 0;
+  // New records and their PropertyAlert realtime events precede all updates.
+  for (let offset = 0; offset < newCalls.length; offset += 4) {
+    await Promise.all(newCalls.slice(offset, offset + 4).map(async (row, index) => {
+      const reference = numbers[offset + index], official = String(row.agency_cad_number || '').trim();
+      const call = await base44.asServiceRole.entities.DispatchCall.create({
+        ...row, bps_reference: reference, call_id: official || reference,
+        cad_number_source: official ? 'official_government_feed' : 'bps_internal',
+        official_cad_verified: Boolean(official),
+      });
+      created++;
+      propertyAlertsCreated += await createImmediatePropertyAlerts(
+        base44, call, monitored, callPropertyKeys, alertKeys, sideEffects
+      );
+    }));
+  }
+  const updateQueue = recent.filter(row => {
+    const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+    return existing && existing.manual_dismissed !== true &&
+      ['incident','location','agency','zone','status','priority','time_received','latitude','longitude']
+        .some(field => row[field] !== undefined && row[field] !== existing[field]);
+  }).slice(0, 60);
+  for (let offset = 0; offset < updateQueue.length; offset += 4) {
+    await Promise.all(updateQueue.slice(offset, offset + 4).map(async row => {
+      const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+      const patch = {
+        ...row,
+        agency_cad_number: previous.official_cad_verified ? previous.agency_cad_number : (row.agency_cad_number || ''),
+        bps_reference: previous.bps_reference, call_id: previous.call_id,
+        cad_number_source: previous.cad_number_source || 'bps_internal',
+        official_cad_verified: previous.official_cad_verified === true,
+      };
+      await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
+      updated++;
+      if (!['Cleared', 'Cancelled'].includes(String(patch.status || ''))) {
+        propertyAlertsCreated += await createImmediatePropertyAlerts(
+          base44, { ...previous, ...patch }, monitored, callPropertyKeys, alertKeys, sideEffects
+        );
+      }
+    }));
+  }
+  const liveKeys = new Set(incoming.flatMap(row => [externalKey(row), legacyKey(row)]).filter(Boolean));
+  const disappeared = (saved || []).filter(row => {
+    const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
+    return receivedAt >= now - 3 * 60 * 60_000 && receivedAt <= now &&
+      !['Cleared','Cancelled'].includes(String(row.status || '')) &&
+      row.manual_dismissed !== true && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
+  }).slice(0, 20);
+  for (let offset = 0; offset < disappeared.length; offset += 4) {
+    await Promise.all(disappeared.slice(offset, offset + 4).map(row =>
+      base44.asServiceRole.entities.DispatchCall.update(row.id, {
+        status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
+      }).catch(error => console.warn('Fast CAD close failed', error?.message || error))
+    ));
+  }
+  await Promise.allSettled(sideEffects);
+  return { success: true, lightweight: true, active: incoming.length,
+    created, updated, removed: disappeared.length, property_alerts_created: propertyAlertsCreated,
+    synced_at: new Date().toISOString(), duration_ms: Date.now() - started };
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   try {
@@ -757,8 +854,11 @@ Deno.serve(async (req) => {
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
     let incoming = payload.map(normalizeCall).filter(Boolean) as any[];
     if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
-    // GRAC is the source of truth for whether a call is still active. Do not discard
-    // a call merely because it has been open longer than one hour.
+    // Publish new calls and monitored-property speech before lengthy enrichment.
+    if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
+      return Response.json(await ingestFastPublishedCalls(base44, incoming));
+    }
+    // The full historical reconciliation remains available for maintenance.
     incoming = await enrichOfficialIdentifiers(incoming);
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
