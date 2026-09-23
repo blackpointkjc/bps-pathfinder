@@ -1136,9 +1136,12 @@ export default function Navigation() {
                             <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
                         </button>
                     </form>
-                    {addressQuery.trim().length >= 3 && (
-                        <button type="button" className="mt-2 rounded-lg border border-emerald-600/60 bg-emerald-950/90 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-900" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressQuery.trim())}&travelmode=driving`, '_blank', 'noopener,noreferrer')}>
-                            Open in Google Maps instead
+                    {addressSearchError && (
+                        <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>
+                    )}
+                    {(addressQuery.trim().length >= 3 || navigationFallbackAddress) && (
+                        <button type="button" className="mt-2 rounded-lg border border-emerald-600/60 bg-emerald-950/90 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-900" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navigationFallbackAddress || addressQuery.trim())}&travelmode=driving`, '_blank', 'noopener,noreferrer')}>
+                            Open driving directions in Google Maps
                         </button>
                     )}
                     {addressResults.length > 0 && (
