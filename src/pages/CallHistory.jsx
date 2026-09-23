@@ -71,6 +71,49 @@ export default function CallHistory() {
     const loadInFlightRef = useRef(false);
     const monitoredPropertiesRef = useRef([]);
 
+    const decorateRealtimePropertyMatch = (row) => {
+        if (!row) return row;
+        if (row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName)) return row;
+        const match = findPropertyMatch(row, monitoredPropertiesRef.current || []);
+        if (!match) return row;
+        return {
+            ...row,
+            _propertyCall: true,
+            _propertyProvisional: !row._propertyAlert,
+            _propertyName: match.property?.name || row._propertyName || '',
+            _propertyId: match.property?.id || row._propertyId || '',
+            _propertyDistanceMeters: Number.isFinite(Number(match.distanceMeters)) ? Number(match.distanceMeters) : null,
+        };
+    };
+
+    const applyRealtimeDispatchEvent = (event) => {
+        const type = String(event?.type || '').toLowerCase();
+        const record = event?.data || event?.record || null;
+        if (!record || type === 'delete') return;
+        const liveRow = decorateRealtimePropertyMatch({ ...record, _source: 'active' });
+        setRows(current => {
+            const next = [...current];
+            const index = next.findIndex(row => String(row.id || '') === String(record.id || '') || String(row.original_call_id || '') === String(record.id || ''));
+            if (index >= 0) {
+                const existing = next[index];
+                next[index] = {
+                    ...existing,
+                    ...liveRow,
+                    _propertyCall: Boolean(existing._propertyCall || liveRow._propertyCall),
+                    _propertyAlert: existing._propertyAlert || liveRow._propertyAlert || null,
+                    _propertyName: existing._propertyName || liveRow._propertyName || existing._propertyAlert?.propertyName || '',
+                    _propertyId: existing._propertyId || liveRow._propertyId || '',
+                    _propertyLifecycle: existing._propertyLifecycle || liveRow._propertyLifecycle || '',
+                    _propertyDistanceMeters: existing._propertyDistanceMeters ?? liveRow._propertyDistanceMeters ?? null,
+                };
+            } else {
+                next.unshift(liveRow);
+            }
+            return next;
+        });
+        setLastRefresh(new Date());
+    };
+
     useEffect(() => {
         init();
         intervalRef.current = setInterval(() => {
@@ -78,21 +121,30 @@ export default function CallHistory() {
         }, 120000);
 
         const subscriptions = [];
-        const scheduleRealtimeRefresh = (entity) => {
+        const scheduleRealtimeRefresh = (entity, delay = 900) => {
             // Realtime tells us the underlying data changed. Clear only the CAD
-            // history caches affected by that event so refresh cannot return a
-            // stale 5-minute PropertyAlert list or 60-second history feed.
+            // history caches affected by that event so reconciliation cannot return
+            // stale PropertyAlert/history data.
             clearBase44ReadCacheMatching(`entity:${entity}:`);
             clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
             if (entity === 'PropertyAlert') clearBase44ReadCacheMatching('entity:PropertyAlert:');
             window.clearTimeout(realtimeTimerRef.current);
             realtimeTimerRef.current = window.setTimeout(() => {
                 if (document.visibilityState === 'visible') loadAll();
-            }, 300);
+            }, delay);
         };
-        for (const entity of ['DispatchCall', 'CallHistory', 'PropertyAlert']) {
+        try {
+            const unsubscribe = base44.entities.DispatchCall.subscribe(event => {
+                // Paint the CAD call immediately from the realtime payload. The
+                // backend history fetch below is reconciliation only.
+                applyRealtimeDispatchEvent(event);
+                scheduleRealtimeRefresh('DispatchCall', 1500);
+            });
+            if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
+        } catch {}
+        for (const entity of ['CallHistory', 'PropertyAlert', 'Location']) {
             try {
-                const unsubscribe = base44.entities[entity].subscribe(() => scheduleRealtimeRefresh(entity));
+                const unsubscribe = base44.entities[entity].subscribe(() => scheduleRealtimeRefresh(entity, 900));
                 if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
             } catch {}
         }
@@ -123,6 +175,16 @@ export default function CallHistory() {
         if (loadInFlightRef.current) return;
         loadInFlightRef.current = true;
         try {
+            // Keep a current in-memory copy of monitored property boundaries so
+            // active CAD rows can be classified immediately even before the
+            // durable PropertyAlert write arrives.
+            try {
+                const locations = await withRequestTimeout(base44.entities.Location.list('site_name', 300), 10000, 'Property monitoring boundaries');
+                monitoredPropertiesRef.current = monitoredPropertiesFromLocations(locations || []);
+            } catch (locationError) {
+                console.warn('[HISTORY] Property boundary refresh unavailable:', locationError?.message || locationError);
+            }
+
             const result = await withRequestTimeout(
                 base44.functions.invoke('getCallHistoryFeed', {}),
                 15000,
@@ -132,6 +194,10 @@ export default function CallHistory() {
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
             let feedRows = Array.isArray(payload.rows) ? payload.rows : [];
+            // Independently classify the current CAD rows by live property geometry.
+            // This makes Call History update immediately even if PropertyAlert
+            // persistence is briefly delayed by ingestion or rate limiting.
+            feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
 
             // PropertyAlert is authoritative property-call history. Always merge it,
             // not only when the backend returned zero property rows. This preserves
