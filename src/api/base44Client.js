@@ -51,6 +51,8 @@ const readCacheTtl = meta => {
   return READ_CACHE_MS;
 };
 const RATE_LIMIT_COOLDOWN_MS = 45_000;
+const CRITICAL_RATE_LIMIT_RECOVERY_MS = 25_000;
+const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
 const TRACE_MAX = 300;
@@ -154,7 +156,7 @@ function pumpReads() {
   // one throttle into repeated getActiveDispatchCalls/getOnDutyUnits failures.
   // Critical feeds wait eight seconds; background work honors the full cooldown.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
-  const criticalRecovery = Math.max(0, 8_000 - (Date.now() - cooldownStartedAt));
+  const criticalRecovery = Math.max(0, CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt));
   const waitForHead = cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
     ? criticalRecovery
     : cooldown;
@@ -229,21 +231,33 @@ function queuedRead(key, task, meta = {}) {
       meta,
       queuedAt: Date.now(),
     };
-    job.queueTimer = window.setTimeout(() => {
-      const index = readQueue.indexOf(job);
-      if (index < 0) return;
-      readQueue.splice(index, 1);
-      const error = new Error('Data request queue is busy. Please retry.');
-      recordRequestTrace({
-        label: requestLabel(meta),
-        kind: meta.kind || 'read',
-        mode: 'read',
-        outcome: 'queue_timeout',
-        queue_ms: Date.now() - job.queuedAt,
-        error: error.message,
-      });
-      reject(error);
-    }, 60000);
+    const armQueueTimeout = delayMs => {
+      window.clearTimeout(job.queueTimer);
+      job.queueTimer = window.setTimeout(() => {
+        const index = readQueue.indexOf(job);
+        if (index < 0) return;
+        const cooldownRemaining = sharedRateLimitUntil() - Date.now();
+        if (cooldownRemaining > 0) {
+          // Waiting for our own deliberate API cooldown is not a failed request.
+          // Re-arm the watchdog after the cooldown instead of turning a throttle
+          // into dozens of misleading queue_timeout/fatal errors.
+          armQueueTimeout(cooldownRemaining + 30_000);
+          return;
+        }
+        readQueue.splice(index, 1);
+        const error = new Error('Data request queue remained busy after recovery. Please retry.');
+        recordRequestTrace({
+          label: requestLabel(meta),
+          kind: meta.kind || 'read',
+          mode: 'read',
+          outcome: 'queue_timeout',
+          queue_ms: Date.now() - job.queuedAt,
+          error: error.message,
+        });
+        reject(error);
+      }, Math.max(5_000, delayMs));
+    };
+    armQueueTimeout(READ_QUEUE_TIMEOUT_MS);
     job.priority = readPriority(meta);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
