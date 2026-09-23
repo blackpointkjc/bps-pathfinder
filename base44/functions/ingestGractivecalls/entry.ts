@@ -404,6 +404,12 @@ async function reconcilePropertyAlerts(base44: any) {
     base44.asServiceRole.entities.AutoDispatchEvaluation.list('-evaluated_at', 1000).catch(() => []),
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
+  const recentHistoryCutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const recentClearedCalls = (calls || []).filter((call: any) => {
+    if (!['Cleared', 'Cancelled'].includes(String(call.status || ''))) return false;
+    const stamp = new Date(call.time_received || call.created_date || 0).getTime();
+    return Number.isFinite(stamp) && stamp >= recentHistoryCutoff;
+  });
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
   // A CAD source can recycle an old active call with a new internal row ID. Use
   // the call's source-time/incident/location fingerprint as the alert identity so
@@ -430,6 +436,41 @@ async function reconcilePropertyAlerts(base44: any) {
     ].join('|');
   }));
   let propertyAlertsCreated = 0;
+
+  // Backfill recently-cleared property calls into durable history. These rows are
+  // intentionally silent: no audio, SMS, or dispatch assignment is replayed for
+  // an incident that has already ended.
+  for (const call of recentClearedCalls) {
+    for (const location of monitored) {
+      const match = propertyMatch(call, location);
+      if (!match) continue;
+      const key = alertFingerprint(call, location.id);
+      const callPropertyKey = `${String(location.id || '')}|${String(call.id || '')}`;
+      if (existingCallPropertyKeys.has(callPropertyKey) || existingKeys.has(key)) continue;
+      await base44.asServiceRole.entities.PropertyAlert.create({
+        callId: call.id,
+        propertyId: location.id,
+        propertyName: location.site_name || 'Monitored Property',
+        callIncident: call.incident || 'Unknown incident',
+        callLocation: call.location || '',
+        callPriority: call.priority || 'medium',
+        callStatus: call.status || 'Cleared',
+        cadNumber: String(call.agency_cad_number || call.bps_reference || call.call_id || call.id || ''),
+        callTime: call.time_received || call.created_date,
+        time_received: call.time_received || call.created_date,
+        source_key: key,
+        distanceMeters: Number(match.distanceMeters || 0),
+        acknowledged: true,
+        lifecycle_status: 'resolved',
+        description: match.relation === 'inside'
+          ? `Historical property call was inside the ${location.site_name || 'monitored'} property boundary.`
+          : `Historical property call was within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
+      });
+      existingKeys.add(key);
+      existingCallPropertyKeys.add(callPropertyKey);
+      propertyAlertsCreated += 1;
+    }
+  }
 
   for (const call of activeCalls) {
     for (const location of monitored) {
