@@ -12,7 +12,7 @@ import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataCont
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
-import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
+import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -142,12 +142,20 @@ function CommandDashboardInner({ embedded = false }) {
         // startup burst. This is only a delayed safety refresh.
         const initialTimer = window.setTimeout(syncUnitStatus, 30000);
         const timer = setInterval(syncUnitStatus, 60000);
+        let realtimeTimer;
         const onStatusChanged = () => syncUnitStatus();
+        const onLiveOfficerChanged = () => {
+            window.clearTimeout(realtimeTimer);
+            realtimeTimer = window.setTimeout(syncUnitStatus, 500);
+        };
+        const unsubscribeLiveOfficers = subscribeOfficerLocationChanges(onLiveOfficerChanged);
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
         return () => {
             active = false;
             window.clearTimeout(initialTimer);
+            window.clearTimeout(realtimeTimer);
             clearInterval(timer);
+            unsubscribeLiveOfficers?.();
             window.removeEventListener('bps-officer-status-changed', onStatusChanged);
         };
     }, []);
