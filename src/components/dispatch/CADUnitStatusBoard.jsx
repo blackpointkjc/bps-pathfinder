@@ -65,11 +65,13 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     let realtimeTimer;
     const unsubscribeLocations = subscribeOfficerLocationChanges(() => {
       window.clearTimeout(realtimeTimer);
-      realtimeTimer = window.setTimeout(() => sync(), 500);
+      realtimeTimer = window.setTimeout(() => sync(true), 500);
     });
     const onOperationalResume = () => sync(true);
     const onStatusChanged = (event) => {
       const detail = event?.detail || {};
+      window.clearTimeout(realtimeTimer);
+      realtimeTimer = window.setTimeout(() => sync(true), 250);
       if (detail.email && detail.status) {
         setCanonicalUnits(prev => prev.map(unit => String(unit.email || '').toLowerCase() === String(detail.email).toLowerCase() ? { ...unit, status: detail.status, session_active: detail.status !== 'Out of Service', last_updated: new Date().toISOString() } : unit));
       }
