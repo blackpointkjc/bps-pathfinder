@@ -18,6 +18,9 @@ import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
+import { clearOfficerLocationSnapshotCache } from '@/lib/officerLocationHub';
+import { clearActiveDispatchCallMemoryCache } from '@/lib/activeDispatchCalls';
+import { invalidateAppDirectory } from '@/lib/appDirectory';
 import { disconnectExternalGps, getExternalGpsStatus, lockExternalGpsToCurrentAntenna, requestExternalGpsConnection, subscribeExternalGpsStatus, unlockExternalGpsAntenna } from '@/lib/externalGpsService';
 import GlobalMessageBanner, { CadAudioToggle } from '@/components/GlobalMessageBanner';
 import SupervisorOperationsMonitor from '@/components/SupervisorOperationsMonitor';
@@ -872,6 +875,7 @@ export default function Layout({ children, currentPageName }) {
   const [gpsChanging, setGpsChanging] = useState(false);
   const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
   const gpsMenuRef = useRef(null);
+  const gpsPopupRef = useRef(null);
   const [search, setSearch] = useState('');
   // The user's primary role owns the initial workspace. Do not bootstrap from a
   // stale browser-wide CAD selection left by a previous page or role.
@@ -911,7 +915,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     if (!gpsMenuOpen) return undefined;
     const closeIfOutside = event => {
-      if (!gpsMenuRef.current?.contains(event.target)) setGpsMenuOpen(false);
+      if (!gpsMenuRef.current?.contains(event.target) && !gpsPopupRef.current?.contains(event.target)) setGpsMenuOpen(false);
     };
     const closeOnEscape = event => {
       if (event.key === 'Escape') setGpsMenuOpen(false);
@@ -987,6 +991,9 @@ export default function Layout({ children, currentPageName }) {
     stopAllAlerts();
     stopVoice();
     clearBase44ReadCache();
+    clearOfficerLocationSnapshotCache();
+    clearActiveDispatchCallMemoryCache();
+    invalidateAppDirectory();
     try {
       // A stale service worker/cache can keep an older Pathfinder bundle alive
       // after a new Base44 release. Remove only browser asset caches; application
@@ -1549,7 +1556,7 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>, document.body) : null}
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="pathfinder-header flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button type="button" onClick={openMobileToolsMenu} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
@@ -1599,8 +1606,8 @@ export default function Layout({ children, currentPageName }) {
               <span className="md:hidden">GPS</span>
               <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-            {gpsMenuOpen && (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-[180] w-[min(92vw,330px)] overflow-hidden rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.65)]">
+            {gpsMenuOpen && typeof document !== 'undefined' && createPortal(
+              <div ref={gpsPopupRef} className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
                 <div className="border-b border-[#233b55] bg-[#0b1c2b] px-3 py-3">
                   <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">GPS / External Antenna</div>
                   <div className="mt-1 text-[11px] font-bold text-white">
@@ -1669,7 +1676,8 @@ export default function Layout({ children, currentPageName }) {
                   )}
 
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
           <CadAudioToggle />
