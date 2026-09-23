@@ -1,5 +1,8 @@
-// Browser-safe multi-provider navigation lookup. A blocked geocoder must never
-// leave the Search/Go button spinning indefinitely.
+import { base44 } from '@/api/base44Client';
+import { withRequestTimeout } from '@/lib/requestTimeout';
+
+// Try the app's server-side geocoder first so browser CORS/provider blocking
+// cannot silently turn Search back to GO. Public browser services remain backup.
 const fetchJson = async (url, timeoutMs = 6500) => {
   const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Geocoding service returned ${response.status}`);
@@ -60,15 +63,24 @@ export async function lookupNavigationDestinations(query, location) {
       }));
     },
   ];
-  let lastError;
-  for (const search of searches) {
-    try {
-      const matches = unique(await search());
-      if (matches.length) return matches;
-    } catch (error) {
-      lastError = error;
-    }
+  try {
+    const response = await withRequestTimeout(base44.functions.invoke('geocodeNavigationDestination', {
+      query: value,
+      ...(valid(location) ? { latitude: Number(location[0]), longitude: Number(location[1]) } : {}),
+    }), 10_000, 'Navigation address lookup');
+    const payload = response?.data || response || {};
+    const matches = unique(payload.results || []);
+    if (matches.length) return matches;
+  } catch (error) {
+    console.warn('[NAV] Server address lookup failed; trying public services:', error?.message || error);
   }
-  if (lastError) console.warn('[NAV] Public geocoders did not resolve an address:', lastError?.message);
+  // Parallel backup: a failed provider no longer blocks the other two for
+  // another 6.5 seconds each. Always return only valid mapped coordinates.
+  const settled = await Promise.allSettled(searches.map(search => search()));
+  for (const result of settled) {
+    if (result.status !== 'fulfilled') continue;
+    const matches = unique(result.value);
+    if (matches.length) return matches;
+  }
   return [];
 }
