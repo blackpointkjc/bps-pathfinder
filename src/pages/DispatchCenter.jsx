@@ -24,7 +24,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
@@ -146,17 +146,24 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadActiveCalls();
         }, 180000);
 
-        // The backend ingestGractivecalls automation owns upstream polling every
-        // minute. The browser only refreshes persisted Base44 rows as a fallback;
-        // realtime DispatchCall subscriptions above normally paint changes first.
-        const liveRowsRefresh = async () => {
+        // Until the one-minute server automation is deployed/healthy, an open
+        // Dispatch Center performs one guarded upstream sync every two minutes.
+        // cadCallFeed shares a browser-wide cooldown, adds a unique request id,
+        // and backs off automatically on 429s. Realtime events paint changes first.
+        const liveSourceSync = async () => {
             if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            try {
+                const result = await requestCadLiveSync();
+                if (['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
+            } catch (error) {
+                console.warn('Guarded CAD source sync failed:', error?.message || error);
+            }
             clearActiveDispatchCallMemoryCache();
             lastActiveCallsLoadRef.current = 0;
             await loadActiveCalls(true);
         };
-        const liveSourceTimer = setInterval(liveRowsRefresh, 60000);
-        window.setTimeout(liveRowsRefresh, 1200);
+        const liveSourceTimer = setInterval(liveSourceSync, 2 * 60 * 1000);
+        window.setTimeout(liveSourceSync, 1500);
 
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
