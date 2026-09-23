@@ -24,7 +24,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
@@ -146,25 +146,17 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadActiveCalls();
         }, 180000);
 
-        // While Dispatch Center is visible, actively refresh the upstream CAD source.
-        // Base44 scheduled workflows have a 5-minute minimum, so the visible CAD
-        // screen uses one guarded live sync per minute. cadCallFeed de-duplicates
-        // same-browser attempts, cache-busts the permitted request, and backs off on
-        // 429s. New/changed DispatchCall rows then paint immediately through realtime.
-        const liveSourceSync = async () => {
+        // The backend ingestGractivecalls automation owns upstream polling every
+        // minute. The browser only refreshes persisted Base44 rows as a fallback;
+        // realtime DispatchCall subscriptions above normally paint changes first.
+        const liveRowsRefresh = async () => {
             if (document.visibilityState !== 'visible' || !navigator.onLine) return;
-            try {
-                const result = await requestCadLiveSync();
-                if (['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
-                clearActiveDispatchCallMemoryCache();
-                lastActiveCallsLoadRef.current = 0;
-                await loadActiveCalls(true);
-            } catch (error) {
-                console.warn('Live CAD source sync failed:', error?.message || error);
-            }
+            clearActiveDispatchCallMemoryCache();
+            lastActiveCallsLoadRef.current = 0;
+            await loadActiveCalls(true);
         };
-        const liveSourceTimer = setInterval(liveSourceSync, 60000);
-        window.setTimeout(liveSourceSync, 1200);
+        const liveSourceTimer = setInterval(liveRowsRefresh, 60000);
+        window.setTimeout(liveRowsRefresh, 1200);
 
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
