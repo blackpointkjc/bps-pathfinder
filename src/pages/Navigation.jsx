@@ -1121,6 +1121,11 @@ export default function Navigation() {
                             <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
                         </button>
                     </form>
+                    {addressQuery.trim().length >= 3 && (
+                        <button type="button" className="mt-2 rounded-lg border border-emerald-600/60 bg-emerald-950/90 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-900" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressQuery.trim())}&travelmode=driving`, '_blank', 'noopener,noreferrer')}>
+                            Open in Google Maps instead
+                        </button>
+                    )}
                     {addressResults.length > 0 && (
                         <div className="relative z-[1220] mt-2 max-h-[55vh] overflow-y-auto rounded-xl border border-[#45637f] bg-[#07111f] shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
                             <div className="border-b border-[#1e2d4a] px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -1363,6 +1368,7 @@ export default function Navigation() {
                             >
                                 {routing ? 'ROUTING...' : '🧭 START GPS'}
                             </button>
+                            <button type="button" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(validPosition(selectedCall.latitude, selectedCall.longitude) ? `${selectedCall.latitude},${selectedCall.longitude}` : (selectedCall.location || ''))}&travelmode=driving`, '_blank', 'noopener,noreferrer')} className="px-2 py-1 rounded border border-emerald-500/40 text-emerald-300 text-[9px] font-mono font-bold hover:bg-emerald-500/10">GOOGLE MAPS</button>
                             <button onClick={openInAppStreetView} disabled={!selectedCall.latitude || !selectedCall.longitude}
                                 className="px-2 py-1 rounded border border-purple-500/40 text-purple-300 text-[9px] font-mono font-bold hover:bg-purple-500/10 disabled:opacity-40">
                                 STREET VIEW
