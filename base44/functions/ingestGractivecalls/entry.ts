@@ -752,7 +752,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   }).slice(0, 40);
   const numbers = await reserveCadNumbers(base44, newCalls.length);
   const sideEffects: Promise<any>[] = [];
-  let created = 0, updated = 0, propertyAlertsCreated = 0;
+  let created = 0, updated = 0, propertyAlertsCreated = 0, alertFailures = 0;
   // New records and their PropertyAlert realtime events precede all updates.
   for (let offset = 0; offset < newCalls.length; offset += 4) {
     await Promise.all(newCalls.slice(offset, offset + 4).map(async (row, index) => {
@@ -763,9 +763,14 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         official_cad_verified: Boolean(official),
       });
       created++;
-      propertyAlertsCreated += await createImmediatePropertyAlerts(
-        base44, call, monitored, callPropertyKeys, alertKeys, sideEffects
-      );
+      try {
+        propertyAlertsCreated += await createImmediatePropertyAlerts(
+          base44, call, monitored, callPropertyKeys, alertKeys, sideEffects
+        );
+      } catch (error) {
+        alertFailures++;
+        console.error('Fast CAD property-alert creation failed; next sync will retry', error?.message || error);
+      }
     }));
   }
   const updateQueue = recent.filter(row => {
@@ -787,11 +792,31 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
       updated++;
       if (!['Cleared', 'Cancelled'].includes(String(patch.status || ''))) {
-        propertyAlertsCreated += await createImmediatePropertyAlerts(
-          base44, { ...previous, ...patch }, monitored, callPropertyKeys, alertKeys, sideEffects
-        );
+        try {
+          propertyAlertsCreated += await createImmediatePropertyAlerts(
+            base44, { ...previous, ...patch }, monitored, callPropertyKeys, alertKeys, sideEffects
+          );
+        } catch (error) {
+          alertFailures++;
+          console.error('Fast CAD updated-call alert failed; next sync will retry', error?.message || error);
+        }
       }
     }));
+  }
+  // An earlier alert write or geocoder may have failed after DispatchCall was
+  // already saved. Recheck recent persisted calls on every minute run, even if
+  // the call's upstream fields did not change, so the warning cannot be lost.
+  for (const row of recent.slice(0, 80)) {
+    const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+    if (!previous || previous.manual_dismissed === true || ['Cleared', 'Cancelled'].includes(String(previous.status || ''))) continue;
+    try {
+      propertyAlertsCreated += await createImmediatePropertyAlerts(
+        base44, { ...previous, ...row, id: previous.id }, monitored, callPropertyKeys, alertKeys, sideEffects
+      );
+    } catch (error) {
+      alertFailures++;
+      console.error('Fast CAD missing-property-alert retry failed', error?.message || error);
+    }
   }
   const liveKeys = new Set(incoming.flatMap(row => [externalKey(row), legacyKey(row)]).filter(Boolean));
   const disappeared = (saved || []).filter(row => {
@@ -810,7 +835,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   await Promise.allSettled(sideEffects);
   return { success: true, lightweight: true, active: incoming.length,
     created, updated, removed: disappeared.length, property_alerts_created: propertyAlertsCreated,
-    synced_at: new Date().toISOString(), duration_ms: Date.now() - started };
+    alert_failures: alertFailures, synced_at: new Date().toISOString(), duration_ms: Date.now() - started };
 }
 
 Deno.serve(async (req) => {
