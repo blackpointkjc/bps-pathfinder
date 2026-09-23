@@ -292,7 +292,7 @@ function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
     const key = liveMergeKey(api);
     const web = byKey.get(key);
     if (!web) {
-      byKey.set(key, api);
+      byKey.set(key, { ...api, source_channel: api.source_channel || 'grac_api' });
       continue;
     }
     // Website owns what is currently visible/status; API enriches stable id/GPS.
@@ -892,6 +892,13 @@ async function acquireIngestionLease(base44: any) {
   return verified?.ingestion_lock_token === token ? { id: verified.id, token } : null;
 }
 
+async function recordSourcePoll(base44: any, lease: any, data: any) {
+  if (!lease?.id) return;
+  await base44.asServiceRole.entities.CadCounter.update(lease.id, data).catch(error => {
+    console.warn('Unable to record CAD source heartbeat', error?.message || error);
+  });
+}
+
 async function releaseIngestionLease(base44: any, lease: any) {
   if (!lease) return;
   const current = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' }))?.[0];
@@ -1089,21 +1096,45 @@ Deno.serve(async (req) => {
     ]);
     const websiteIncoming = websiteResult.status === 'fulfilled' ? websiteResult.value : [];
     const apiIncoming = apiResult.status === 'fulfilled' ? apiResult.value : [];
+    const sourceObservedAt = new Date().toISOString();
+    const latestWebsiteReceived = websiteIncoming.reduce((latest: string, call: any) => {
+      const value = String(call?.time_received || '');
+      return !latest || new Date(value).getTime() > new Date(latest).getTime() ? value : latest;
+    }, '');
     if (!websiteIncoming.length && !apiIncoming.length) {
       console.error('No GRAC live source available', {
         website: websiteResult.status === 'rejected' ? websiteResult.reason?.message || String(websiteResult.reason) : 'empty',
         api: apiResult.status === 'rejected' ? apiResult.reason?.message || String(apiResult.reason) : 'empty',
       });
+      await recordSourcePoll(base44, lease, {
+        last_source_poll_at: sourceObservedAt,
+        last_source_poll_status: 'failed:no_source_rows',
+        last_website_row_count: 0,
+        last_api_row_count: 0,
+        last_source_poll_duration_ms: Date.now() - startedAt,
+      });
       return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
     }
-    let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming);
+    let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming).map(call => ({
+      ...call,
+      source_first_seen_at: call.source_first_seen_at || sourceObservedAt,
+    }));
     // Website-only rows do not carry map coordinates. Geocode only the newest
     // unmatched rows immediately so monitored-property alerts can be evaluated in
     // the same minute rather than waiting for the slower API to catch up.
     incoming = await geocodeFreshWebsiteOnlyCalls(incoming);
     // Publish new calls and monitored-property speech before lengthy enrichment.
     if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
-      return Response.json(await ingestFastPublishedCalls(base44, incoming));
+      const result = await ingestFastPublishedCalls(base44, incoming);
+      await recordSourcePoll(base44, lease, {
+        last_source_poll_at: sourceObservedAt,
+        last_source_poll_status: 'success',
+        last_website_row_count: websiteIncoming.length,
+        last_api_row_count: apiIncoming.length,
+        ...(latestWebsiteReceived ? { last_website_latest_received: latestWebsiteReceived } : {}),
+        last_source_poll_duration_ms: Date.now() - startedAt,
+      });
+      return Response.json({ ...result, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length });
     }
     // The full historical reconciliation remains available for maintenance.
     incoming = await enrichOfficialIdentifiers(incoming);
@@ -1327,7 +1358,15 @@ Deno.serve(async (req) => {
     // scheduled backend automation. Do not invoke it again from every GRAC ingest;
     // the duplicate nested run was one of the largest avoidable request bursts.
 
-    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
+    await recordSourcePoll(base44, lease, {
+      last_source_poll_at: sourceObservedAt,
+      last_source_poll_status: 'success:full_reconcile',
+      last_website_row_count: websiteIncoming.length,
+      last_api_row_count: apiIncoming.length,
+      ...(latestWebsiteReceived ? { last_website_latest_received: latestWebsiteReceived } : {}),
+      last_source_poll_duration_ms: Date.now() - startedAt,
+    });
+    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
     } finally {
       await releaseIngestionLease(base44, lease);
     }
