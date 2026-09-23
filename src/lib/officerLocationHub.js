@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 
 // Single client gateway for Pathfinder live officer location.
 // No page/component should read/write ActiveOfficer or invoke getOnDutyUnits/logLocation directly.
@@ -198,6 +198,27 @@ export async function publishOfficerLocation(data = {}) {
   const minimumGap = forcePublish ? 0 : (kind === 'gps' ? GPS_PUBLISH_MIN_MS : kind === 'heartbeat' ? HEARTBEAT_PUBLISH_MIN_MS : 0);
 
   return withPublishLock(email || 'current-user', async () => {
+    if (!forcePublish) {
+      const requestHealth = getBase44RequestHealth();
+      if (requestHealth.rateLimitedUntil) {
+        // GPS/heartbeat is background operational traffic. If Base44 has already
+        // told this browser to cool down, do not spend another write just to learn
+        // the same 429. The next live fix/heartbeat will retry automatically.
+        return {
+          success: true,
+          suppressed: true,
+          suppressed_reason: 'api_rate_limit_cooldown',
+          retry_after: requestHealth.rateLimitedUntil,
+        };
+      }
+      if (kind === 'heartbeat' && Number(requestHealth.queuedReads || 0) >= 8) {
+        return {
+          success: true,
+          suppressed: true,
+          suppressed_reason: 'api_read_pressure',
+        };
+      }
+    }
     if (minimumGap > 0) {
       const identity = email || 'current-user';
       const ownLastAt = lastPublishAt(identity, kind);
