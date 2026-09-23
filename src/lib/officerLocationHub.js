@@ -22,6 +22,10 @@ let localPublishPromise = Promise.resolve();
 
 function cacheKey(locationOnly, includeLastKnown) { if (includeLastKnown) return 'admin-location'; return locationOnly ? 'location' : 'full'; }
 function clearSnapshotCache() { snapshotCache.clear(); }
+export function clearOfficerLocationSnapshotCache() {
+  snapshotCache.clear();
+  lastForcedAt.clear();
+}
 
 function realtimeOfficerRecord(event) {
   return event?.data || event?.record || null;
