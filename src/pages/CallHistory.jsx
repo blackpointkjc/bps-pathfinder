@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { findPropertyMatch, monitoredPropertiesFromLocations } from '@/utils/alertUtils';
 
 const AGENCY_COLORS = {
     RPD: 'bg-blue-800 text-blue-200 border-blue-700',
@@ -68,6 +69,7 @@ export default function CallHistory() {
     const intervalRef = useRef(null);
     const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
+    const monitoredPropertiesRef = useRef([]);
 
     useEffect(() => {
         init();
