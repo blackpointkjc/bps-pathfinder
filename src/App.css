@@ -671,3 +671,10 @@ body::-webkit-scrollbar-button,
 .leaflet-tooltip-pane { z-index: 5 !important; }
 .leaflet-popup-pane { z-index: 6 !important; }
 .leaflet-control-container { position: relative; z-index: 7 !important; }
+
+/* Application-level operational overlays must always render above the map. */
+#pathfinder-overlay-root,
+.pathfinder-operational-overlay,
+.bps-dialog[role="dialog"] {
+  z-index: 2147483000 !important;
+}
