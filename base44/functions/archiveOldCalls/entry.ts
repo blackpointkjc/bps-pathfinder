@@ -5,14 +5,16 @@ const ARCHIVE_AFTER_MS = 60 * 60 * 1000;
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+        const scheduledRun = body?.scheduled === true;
 
         const user = await base44.auth.me().catch(() => null);
-        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-        const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        if (!scheduledRun && !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
         // Any authenticated operational user may trigger the archive pass. The
         // actual archive/delete writes use service role, so normal users never
         // receive direct write access to DispatchCall or CallHistory.
-        const authorized = user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
+        const authorized = scheduledRun || user?.role === 'admin' || user?.role === 'dispatch' || user?.role === 'supervisor' || user?.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         // Keep each scheduled run below the function timeout. Remaining calls are
@@ -24,7 +26,7 @@ Deno.serve(async (req) => {
 
         const archiveCandidates = activeCalls.filter(call => {
             const callTime = new Date(call.time_received || call.created_date);
-            return !Number.isNaN(callTime.getTime()) && now.getTime() - callTime.getTime() >= oneHourMs;
+            return !Number.isNaN(callTime.getTime()) && now.getTime() - callTime.getTime() >= ARCHIVE_AFTER_MS;
         }).slice(0, 30);
 
         for (const call of archiveCandidates) {
