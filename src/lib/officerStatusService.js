@@ -66,7 +66,17 @@ export async function persistOfficerStatus(status, { force = false } = {}) {
     if (payload.error) throw new Error(payload.error);
     const savedStatus = payload.status || normalized;
     writeLast(savedStatus);
-    try { window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { status: savedStatus, source: 'status-service' } })); } catch {}
+    try {
+      window.dispatchEvent(new CustomEvent('bps-officer-status-changed', {
+        detail: {
+          status: savedStatus,
+          source: 'status-service',
+          email: payload.email || '',
+          officer_id: payload.officer_id || '',
+          last_updated: payload.last_updated || new Date().toISOString(),
+        },
+      }));
+    } catch {}
     return payload;
   };
 
