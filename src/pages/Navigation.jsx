@@ -24,6 +24,7 @@ import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFee
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
+import { lookupNavigationDestinations } from '@/lib/navigationGeocoding';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -612,7 +613,8 @@ export default function Navigation() {
                     setIsLiveTracking(false);
                 }
                 console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
-                return null;
+                // A valid recent cached fix can start a route while device GPS recovers.
+                return fallback ? [fallback.latitude, fallback.longitude] : null;
             }
         }
     };
@@ -625,16 +627,31 @@ export default function Navigation() {
         }
         setRouting(true);
         try {
-            const freshLocation = await getFreshDeviceLocation();
-            if (!freshLocation) throw new Error('Waiting for a current GPS location');
+            const recentFix = getLiveLocation(90_000);
+            const freshLocation = recentFix && validPosition(recentFix.latitude, recentFix.longitude)
+                ? [recentFix.latitude, recentFix.longitude]
+                : currentLocation && validPosition(currentLocation[0], currentLocation[1])
+                    ? currentLocation
+                    : await getFreshDeviceLocation();
+            if (!freshLocation) throw new Error('GPS unavailable. Enable precise location or use Open in Google Maps below.');
             const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
-            const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true&annotations=true`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Route service unavailable');
-            const data = await response.json();
-            const route = data.routes?.[0];
-            if (!route) throw new Error('No driving route found');
+            const routePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+            let route = null;
+            for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
+                try {
+                    const response = await fetch(`${host}${routePath}`, { signal: AbortSignal.timeout(9000) });
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    if (data.routes?.[0]?.geometry?.coordinates?.length > 1) {
+                        route = data.routes[0];
+                        break;
+                    }
+                } catch (serviceError) {
+                    console.warn('[NAV] Route provider failed:', serviceError?.message || serviceError);
+                }
+            }
+            if (!route) throw new Error('In-app routing is unavailable. Use Open in Google Maps below for driving directions.');
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
@@ -717,16 +734,21 @@ export default function Navigation() {
         if (query.length < 3) return;
         setAddressSearching(true);
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=us&addressdetails=1&q=${encodeURIComponent(query)}`, { headers: { 'Accept-Language': 'en-US' } });
-            if (!response.ok) throw new Error('Address search unavailable');
-            const results = await response.json();
-            setAddressResults((results || []).map(item => ({
-                coords: [Number(item.lat), Number(item.lon)],
-                name: item.display_name,
-                address: item.display_name,
-                type: item.type,
-            })));
-            if (!results?.length) toast.error('No matching address found');
+            const results = await lookupNavigationDestinations(query, currentLocation);
+            setAddressResults(results);
+            if (!results.length) {
+                toast.error('Address not found. Try the full street and city or Open in Google Maps.');
+            } else {
+                const houseNumber = query.match(/^\d{1,6}\b/)?.[0] || '';
+                const exactStreetNumber = houseNumber && new RegExp(`\\b${houseNumber}\\b`).test(results[0].name);
+                if (results.length === 1 || exactStreetNumber) {
+                    // GO starts a route for a clear street address instead of
+                    // silently going back to GO with an unexplained result list.
+                    await startNavigationToPoint(results[0]);
+                } else {
+                    toast.info('Select a destination below to begin navigation.');
+                }
+            }
         } catch (error) {
             toast.error(error?.message || 'Unable to search addresses');
         } finally {
