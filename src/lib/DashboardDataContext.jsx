@@ -6,7 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
@@ -180,35 +180,19 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // First paint from persisted Base44 rows, then keep a visible CAD dashboard
-    // close to the upstream source. Base44 scheduled workflows cannot run more often
-    // than every five minutes, so the active browser performs one guarded live
-    // source sync per minute. cadCallFeed serializes same-browser attempts, sends a
-    // unique request id to avoid stale function responses, and backs off on 429s.
+    // First paint from persisted Base44 rows. The one-minute backend automation
+    // owns upstream ingestion; realtime DispatchCall events update this dashboard
+    // immediately, while this one-minute read is only a missed-event safety net.
     useEffect(() => {
         loadData(true);
-
-        let stopped = false;
-        const liveSync = async () => {
-            if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
-            try {
-                const result = await requestCadLiveSync();
-                if (stopped || ['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
-                clearActiveDispatchCallMemoryCache();
-                lastRefreshTime.current = 0;
-                await loadData(true);
-            } catch (error) {
-                console.warn('[CAD] Live upstream sync failed', error?.message || error);
-            }
+        const refresh = async () => {
+            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            clearActiveDispatchCallMemoryCache();
+            lastRefreshTime.current = 0;
+            await loadData(true);
         };
-
-        const timer = window.setInterval(liveSync, 60_000);
-        const startup = window.setTimeout(liveSync, 1_500);
-        return () => {
-            stopped = true;
-            window.clearInterval(timer);
-            window.clearTimeout(startup);
-        };
+        const timer = window.setInterval(refresh, 60_000);
+        return () => window.clearInterval(timer);
     }, [loadData]);
 
     // Old-call archival is owned by the scheduled Base44 workflow. Browsers do not
