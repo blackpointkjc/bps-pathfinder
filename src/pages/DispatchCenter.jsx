@@ -24,7 +24,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
+import { requestCadLiveSync } from '@/lib/cadCallFeed';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
@@ -53,6 +53,7 @@ export default function DispatchCenter() {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
+    const [unitLoadStatus, setUnitLoadStatus] = useState('loading');
     const [activeCalls, setActiveCalls] = useState(() => readCachedDispatchCalls());
     const [callDistrict, setCallDistrict] = useState(null);
     const [selectedCall, setSelectedCall] = useState(null);
@@ -152,12 +153,13 @@ export default function DispatchCenter() {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadActiveCalls();
-        }, 180000);
+        }, 60000);
 
-        // Until the one-minute server automation is deployed/healthy, an open
-        // Dispatch Center performs one guarded upstream sync every two minutes.
-        // cadCallFeed shares a browser-wide cooldown, adds a unique request id,
-        // and backs off automatically on 429s. Realtime events paint changes first.
+        // A guarded one-minute upstream sync keeps an open Dispatch Center
+        // current even when the scheduled backend automation stops running.
+        // One shared cross-tab lock and rate-limit backoff prevent request storms.
+        // Backend live_sync takes the lightweight ingestion path before any
+        // optional full feed reconciliation.
         const liveSourceSync = async () => {
             if (document.visibilityState !== 'visible' || !navigator.onLine) return;
             try {
@@ -170,7 +172,7 @@ export default function DispatchCenter() {
             lastActiveCallsLoadRef.current = 0;
             await loadActiveCalls(true);
         };
-        const liveSourceTimer = setInterval(liveSourceSync, 2 * 60 * 1000);
+        const liveSourceTimer = setInterval(liveSourceSync, 60 * 1000);
         window.setTimeout(liveSourceSync, 1500);
 
         const unitsInterval = setInterval(() => {
@@ -274,9 +276,11 @@ export default function DispatchCenter() {
             // Active calls are the first-render payload. Paint the queue before
             // starting the heavier live-unit snapshot so GPS/roster latency can
             // never hold Dispatch Center behind its full-page spinner.
+            // Start unit discovery without waiting for the call-feed network request.
+            // A slow or failed CAD feed must not leave assignment stuck on Loading units.
+            void loadUnits();
             await loadActiveCalls(true);
             setLoading(false);
-            loadUnits();
         } catch (error) {
             console.error('Error initializing:', error);
             toast.error('Failed to load dispatch center');
@@ -286,6 +290,7 @@ export default function DispatchCenter() {
     };
 
     const loadUnits = async (force = false) => {
+        setUnitLoadStatus(current => units.length === 0 ? 'loading' : current);
         try {
             // Dispatch actions must use the user-backed canonical roster. The
             // lightweight location-only feed is appropriate for maps, but its row ID
@@ -302,7 +307,9 @@ export default function DispatchCenter() {
                 }))
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
             setUnits(eligibleUnits);
+            setUnitLoadStatus('ready');
         } catch (error) {
+            setUnitLoadStatus('error');
             console.error('Error loading canonical CAD units:', error);
             // A transient backend/rate-limit failure must not make every officer
             // disappear from the tactical map. Keep the last confirmed snapshot
@@ -316,19 +323,8 @@ export default function DispatchCenter() {
        activeCallsLoadingRef.current = true;
        try {
             let calls = await loadActiveDispatchCallRows(100);
-            if (cadCallFeedIsStale(calls)) {
-                // Never hold the Dispatch Center loading screen open while the
-                // upstream recovery job runs. Paint cached/persisted rows first.
-                void refreshCadIngestionIfStale(calls).then(recovery => {
-                    if (recovery?.reason === 'feed_fresh' || recovery?.reason === 'recent_attempt') return;
-                    window.setTimeout(() => {
-                        lastActiveCallsLoadRef.current = 0;
-                        loadActiveCalls(true);
-                    }, 1500);
-                }).catch(recoveryError => {
-                    console.warn('Background CAD stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
-                });
-            }
+            // Source ingestion is owned by one guarded timer, not triggered by
+            // each feed reader; simultaneous retries previously competed for locks.
 
             // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
             const uniqueCalls = new Map();
@@ -950,7 +946,7 @@ export default function DispatchCenter() {
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">CALL SELECTED</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
-                                    <UnitAssignmentPanel call={selectedCall} units={units} onUpdate={handleUpdate} />
+                                    <UnitAssignmentPanel call={selectedCall} units={units} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
                                 </div>
                             </div>
                         ) : mobileView === 'assignment' ? (
