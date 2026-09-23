@@ -12,7 +12,7 @@ import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataCont
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
-import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -131,9 +131,9 @@ function CommandDashboardInner({ embedded = false }) {
 
     useEffect(() => {
         let active = true;
-        const syncUnitStatus = async () => {
+        const syncUnitStatus = async (force = false) => {
             try {
-                const payload = await getOfficerLocationSnapshot();
+                const payload = await getOfficerLocationSnapshot({ force });
                 if (active) setCanonicalStatusUsers(Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []));
             } catch {}
         };
@@ -143,10 +143,20 @@ function CommandDashboardInner({ embedded = false }) {
         const initialTimer = window.setTimeout(syncUnitStatus, 30000);
         const timer = setInterval(syncUnitStatus, 60000);
         let realtimeTimer;
-        const onStatusChanged = () => syncUnitStatus();
-        const onLiveOfficerChanged = () => {
+        const onStatusChanged = (event) => {
+            const detail = event?.detail || {};
+            if (detail.email && detail.status) {
+                setCanonicalStatusUsers(prev => prev.map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
+                    ? { ...unit, status: detail.status, last_updated: new Date().toISOString(), last_update: new Date().toISOString() }
+                    : unit));
+            }
             window.clearTimeout(realtimeTimer);
-            realtimeTimer = window.setTimeout(syncUnitStatus, 500);
+            realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
+        };
+        const onLiveOfficerChanged = (event) => {
+            setCanonicalStatusUsers(prev => applyOfficerLocationEvent(prev, event));
+            window.clearTimeout(realtimeTimer);
+            realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
         };
         const unsubscribeLiveOfficers = subscribeOfficerLocationChanges(onLiveOfficerChanged);
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
