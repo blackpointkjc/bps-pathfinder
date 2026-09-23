@@ -231,6 +231,8 @@ export default function AdminAnalytics() {
 
   const refreshCompanyAnalytics = async () => {
     clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
+    clearBase44ReadCacheMatching('function:getMyPerformanceData:');
+    await queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'], refetchType: 'none' });
     const segments = ['core', 'training', 'duty', 'calls', 'quality'];
     await Promise.all(segments.map(segment => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' })));
     await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'core'], type: 'active' });
@@ -395,6 +397,44 @@ export default function AdminAnalytics() {
   const schedules = analyticsData.schedules || [];
 
   const performanceUsers = performanceAnalyticsData.users || [];
+  const performanceOfficerUsers = useMemo(() => {
+    const officers = performanceUsers.filter(isOperationalOfficer);
+    return (selectedDivision === 'all' ? officers : officers.filter(u => String(u.division || '') === String(selectedDivision)))
+      .filter(officer => officer?.id)
+      .sort((a, b) => String(a.last_name || a.full_name || a.email || '').localeCompare(String(b.last_name || b.full_name || b.email || '')));
+  }, [performanceUsers, selectedDivision]);
+  const performanceOfficerKey = performanceOfficerUsers.map(officer => officer.id).join(',');
+  const officerPerformanceSnapshots = useQuery({
+    queryKey: ['companyOfficerPerformanceSnapshots', performanceOfficerKey, currentMonthStart, currentMonthEnd],
+    queryFn: async () => {
+      const snapshots = {};
+      const errors = {};
+      // This deliberately uses the exact backend payload that powers each
+      // officer's My Performance page. Load sequentially to avoid a burst of
+      // 20+ entity reads per officer and the 429s the old analytics fan-out caused.
+      for (const officer of performanceOfficerUsers) {
+        try {
+          const result = await base44.functions.invoke('getMyPerformanceData', { preview_user_id: officer.id });
+          let payload = result?.data || result || {};
+          if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
+          if (payload?.error) throw new Error(payload.error);
+          snapshots[officer.id] = payload;
+        } catch (error) {
+          errors[officer.id] = error?.message || 'Unable to load officer performance';
+        }
+      }
+      return { snapshots, errors, generated_at: new Date().toISOString() };
+    },
+    enabled: Boolean(user && performanceGenerationReady && performanceOfficerUsers.length),
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchInterval: 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
+    retry: false,
+    placeholderData: previousData => previousData,
+  });
   const performanceTimeEntries = performanceAnalyticsData.timeEntries || [];
   const performanceSchedules = performanceAnalyticsData.schedules || [];
   const performanceBids = performanceAnalyticsData.bids || [];
