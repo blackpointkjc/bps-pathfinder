@@ -136,8 +136,10 @@ export default function DispatchCenter() {
             });
             lastActiveCallsLoadRef.current = Date.now();
         });
-        let unitRefreshTimer;
         const scheduleUnitRefresh = (event) => {
+            // ActiveOfficer realtime carries the changed unit row. Paint it directly
+            // and do not immediately follow the event with another getOnDutyUnits
+            // network request; that duplicate read was a major source of 429s.
             setUnits(current => applyOfficerLocationEvent(current, event)
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
                 .map(unit => ({
@@ -146,8 +148,6 @@ export default function DispatchCenter() {
                     label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
                 }))
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || ''))));
-            window.clearTimeout(unitRefreshTimer);
-            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 1500);
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
@@ -175,7 +175,7 @@ export default function DispatchCenter() {
 
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
-        }, 60000);
+        }, 2 * 60 * 1000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
         const onStatusChanged = (event) => {
             const detail = event?.detail || {};
@@ -186,8 +186,8 @@ export default function DispatchCenter() {
                         : unit)
                     .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true));
             }
-            window.clearTimeout(unitRefreshTimer);
-            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 1500);
+            // Realtime status event already updated the visible row. The two-minute
+            // fallback reconciliation below will recover any missed related fields.
         };
         let wakeRefreshTimer;
         const onOperationalResume = () => {
@@ -195,7 +195,7 @@ export default function DispatchCenter() {
             wakeRefreshTimer = window.setTimeout(() => {
                 lastActiveCallsLoadRef.current = 0;
                 loadActiveCalls(true);
-                loadUnits(true);
+                loadUnits();
             }, 300);
         };
         window.addEventListener('bps-officer-status-changed', onStatusChanged);
@@ -206,7 +206,6 @@ export default function DispatchCenter() {
         return () => {
             unsubscribeCalls?.();
             unsubscribeUnits?.();
-            window.clearTimeout(unitRefreshTimer);
             window.clearTimeout(wakeRefreshTimer);
             clearInterval(localInterval);
             clearInterval(liveSourceTimer);
