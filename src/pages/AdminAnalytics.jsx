@@ -970,7 +970,16 @@ export default function AdminAnalytics() {
                   </div>
                 </div>
               ))}
-              {performanceCardsReady && overallByOfficer.length === 0 && (
+              {performanceCardsReady && Object.entries(officerPerformanceSnapshots.data?.errors || {}).map(([officerId, message]) => {
+                const officer = performanceOfficerUsers.find(item => String(item.id) === String(officerId));
+                return (
+                  <div key={officerId} className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3 text-sm text-amber-100">
+                    <div className="font-semibold">{officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email : 'Officer performance'} could not be refreshed.</div>
+                    <div className="mt-1 text-xs text-amber-200/80">{message}</div>
+                  </div>
+                );
+              })}
+              {performanceCardsReady && overallByOfficer.length === 0 && Object.keys(officerPerformanceSnapshots.data?.errors || {}).length === 0 && (
                 <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">No operational officer performance snapshots are available for this period.</div>
               )}
             </div>
