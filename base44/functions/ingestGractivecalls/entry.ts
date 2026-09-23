@@ -281,6 +281,39 @@ async function fetchLiveWebsiteCalls() {
   return calls;
 }
 
+async function fetchLiveApiCalls() {
+  const liveSourceUrl = `${GRAC_API_URL}?bpspf=${Date.now()}-${crypto.randomUUID()}`;
+  const response = await fetch(liveSourceUrl, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'BPS-Pathfinder-CAD/4.3',
+      'Cache-Control': 'no-cache, no-store, max-age=0',
+      Pragma: 'no-cache',
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`GRAC API returned HTTP ${response.status}`);
+  const payload = await response.json();
+  if (!Array.isArray(payload)) throw new Error('Unexpected GRAC API response');
+  return payload.map(normalizeCall).filter(Boolean) as any[];
+}
+
+async function fetchNonEmptySource(loader: () => Promise<any[]>, label: string) {
+  let firstError: any = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const rows = await loader();
+      if (Array.isArray(rows) && rows.length) return rows;
+      firstError = new Error(`${label} returned zero rows`);
+    } catch (error) {
+      firstError = error;
+    }
+    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 650));
+  }
+  throw firstError || new Error(`${label} unavailable`);
+}
+
 function liveMergeKey(call: any) {
   return [String(call?.agency || '').toUpperCase(), String(call?.time_received || ''), cleanMatchText(call?.incident), cleanMatchText(call?.location)].join('|');
 }
@@ -857,6 +890,7 @@ function chooseCanonical(records: any[]) {
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 45_000;
 
 async function acquireIngestionLease(base44: any) {
   const token = crypto.randomUUID();
@@ -876,6 +910,16 @@ async function acquireIngestionLease(base44: any) {
       ingestion_lock_token: '',
       ingestion_locked_until: new Date(0).toISOString(),
     });
+  }
+
+  const lastPollAt = new Date(counter.last_source_poll_at || 0).getTime();
+  const lastPollSucceeded = String(counter.last_source_poll_status || '').startsWith('success');
+  if (lastPollSucceeded && Number.isFinite(lastPollAt) && now - lastPollAt >= 0 && now - lastPollAt < GLOBAL_SOURCE_POLL_MIN_GAP_MS) {
+    return {
+      skip: true,
+      reason: 'recent_source_poll',
+      retry_after_ms: GLOBAL_SOURCE_POLL_MIN_GAP_MS - (now - lastPollAt),
+    };
   }
 
   const lockedUntil = new Date(counter.ingestion_locked_until || 0).getTime();
@@ -1069,30 +1113,23 @@ Deno.serve(async (req) => {
     if (!lease) {
       return Response.json({ success: true, skipped: true, reason: 'GRAC synchronization already in progress' });
     }
+    if (lease.skip) {
+      return Response.json({
+        success: true,
+        skipped: true,
+        reason: lease.reason,
+        retry_after_ms: lease.retry_after_ms,
+      });
+    }
 
     try {
     // The website table is the live source of truth. Pull it every run and merge
     // the JSON API only as an enrichment source for stable IDs/coordinates. This
     // prevents a lagging /api/active cache from holding a website-visible call for
     // 10-20 minutes before BPSPF can see it.
-    const liveSourceUrl = `${GRAC_API_URL}?bpspf=${Date.now()}-${crypto.randomUUID()}`;
     const [websiteResult, apiResult] = await Promise.allSettled([
-      fetchLiveWebsiteCalls(),
-      fetch(liveSourceUrl, {
-        cache: 'no-store',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'BPS-Pathfinder-CAD/4.2',
-          'Cache-Control': 'no-cache, no-store, max-age=0',
-          Pragma: 'no-cache',
-        },
-        signal: AbortSignal.timeout(10_000),
-      }).then(async response => {
-        if (!response.ok) throw new Error(`GRAC API returned HTTP ${response.status}`);
-        const payload = await response.json();
-        if (!Array.isArray(payload)) throw new Error('Unexpected GRAC API response');
-        return payload.map(normalizeCall).filter(Boolean) as any[];
-      }),
+      fetchNonEmptySource(fetchLiveWebsiteCalls, 'GRAC website'),
+      fetchNonEmptySource(fetchLiveApiCalls, 'GRAC API'),
     ]);
     const websiteIncoming = websiteResult.status === 'fulfilled' ? websiteResult.value : [];
     const apiIncoming = apiResult.status === 'fulfilled' ? apiResult.value : [];
@@ -1106,9 +1143,11 @@ Deno.serve(async (req) => {
         website: websiteResult.status === 'rejected' ? websiteResult.reason?.message || String(websiteResult.reason) : 'empty',
         api: apiResult.status === 'rejected' ? apiResult.reason?.message || String(apiResult.reason) : 'empty',
       });
+      const websiteFailure = websiteResult.status === 'rejected' ? (websiteResult.reason?.message || String(websiteResult.reason)) : 'empty';
+      const apiFailure = apiResult.status === 'rejected' ? (apiResult.reason?.message || String(apiResult.reason)) : 'empty';
       await recordSourcePoll(base44, lease, {
         last_source_poll_at: sourceObservedAt,
-        last_source_poll_status: 'failed:no_source_rows',
+        last_source_poll_status: `failed:web=${websiteFailure};api=${apiFailure}`.slice(0, 240),
         last_website_row_count: 0,
         last_api_row_count: 0,
         last_source_poll_duration_ms: Date.now() - startedAt,
