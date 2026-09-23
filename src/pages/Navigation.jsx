@@ -25,6 +25,7 @@ import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/disp
 import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations } from '@/lib/navigationGeocoding';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -642,20 +643,30 @@ export default function Navigation() {
             const [destLat, destLng] = coords.map(Number);
             const routePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
             let route = null;
-            for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
-                try {
-                    const response = await fetch(`${host}${routePath}`, { signal: AbortSignal.timeout(9000) });
-                    if (!response.ok) continue;
-                    const data = await response.json();
-                    if (data.routes?.[0]?.geometry?.coordinates?.length > 1) {
-                        route = data.routes[0];
-                        break;
+            // Server-side routing avoids browser CORS/network policies that were
+            // causing Search to finish and simply return to GO without starting.
+            try {
+                const routed = await withRequestTimeout(base44.functions.invoke('routeNavigation', {
+                    origin_lat: lat, origin_lng: lng, dest_lat: destLat, dest_lng: destLng,
+                }), 12_000, 'Navigation route');
+                const payload = routed?.data || routed || {};
+                if (payload?.route?.geometry?.coordinates?.length > 1) route = payload.route;
+            } catch (serverRouteError) {
+                console.warn('[NAV] Server route failed; trying browser providers:', serverRouteError?.message || serverRouteError);
+            }
+            if (!route) {
+                for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
+                    try {
+                        const response = await fetch(`${host}${routePath}`, { signal: AbortSignal.timeout(7000) });
+                        if (!response.ok) continue;
+                        const data = await response.json();
+                        if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; break; }
+                    } catch (serviceError) {
+                        console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
                     }
-                } catch (serviceError) {
-                    console.warn('[NAV] Route provider failed:', serviceError?.message || serviceError);
                 }
             }
-            if (!route) throw new Error('In-app routing is unavailable. Use Open in Google Maps below for driving directions.');
+            if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
@@ -752,15 +763,9 @@ export default function Navigation() {
                 setAddressSearchError('No mapped address was returned. Check the street and city, or open Google Maps below.');
                 toast.error('Address not found. Try the full street and city.');
             } else {
-                const houseNumber = query.match(/^\d{1,6}\b/)?.[0] || '';
-                const exactStreetNumber = houseNumber && new RegExp(`\\b${houseNumber}\\b`).test(results[0].name);
-                if (results.length === 1 || exactStreetNumber) {
-                    // GO starts a route for a clear street address instead of
-                    // silently going back to GO with an unexplained result list.
-                    await startNavigationToPoint(results[0]);
-                } else {
-                    toast.info('Select a destination below to begin navigation.');
-                }
+                // GO means go: use the best geocoder result immediately. Keep the
+                // result list visible only as alternatives if routing fails.
+                await startNavigationToPoint(results[0]);
             }
         } catch (error) {
             const message = error?.message || 'Unable to search addresses';
