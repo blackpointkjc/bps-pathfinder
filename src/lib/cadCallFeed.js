@@ -6,7 +6,7 @@ const RECOVERY_COOLDOWN_MS = 3 * 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 60_000;
+const LIVE_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
 let liveSyncInFlight = null;
 
@@ -106,11 +106,14 @@ async function performCadLiveSync() {
 }
 
 export async function requestCadLiveSync() {
-  // The dedicated ingestGractivecalls function automation runs every minute and
-  // is the single normal owner of upstream polling. Visible browsers must not
-  // compete with it; realtime DispatchCall events move the UI as soon as that
-  // automation writes. Browser invocation is reserved for stale-feed recovery.
-  return { skipped: true, reason: 'scheduled_automation_owns_feed' };
+  if (liveSyncInFlight) return liveSyncInFlight;
+  liveSyncInFlight = (async () => {
+    if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+      return navigator.locks.request('bps-cad-live-source-sync', { mode: 'exclusive' }, performCadLiveSync);
+    }
+    return performCadLiveSync();
+  })().finally(() => { liveSyncInFlight = null; });
+  return liveSyncInFlight;
 }
 
 async function runRecovery() {
