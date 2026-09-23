@@ -1,4 +1,4 @@
-import { GeoJSON } from 'react-leaflet';
+import { GeoJSON, Pane } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 // Validate GeoJSON data
@@ -819,8 +819,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
 
     return (
-        <>
-            {/* Chesterfield County Districts - render first so they're on top */}
+        <Pane name="jurisdiction-boundaries" style={{ zIndex: 2 }}>
+            {/* Jurisdiction geometry always stays below operational markers/icons. */}
+            {/* Chesterfield County Districts */}
             {filteredChesterfieldDistricts && (
                 <GeoJSON
                     key={`chesterfield-districts-${chesterfieldDistrict}`}
@@ -993,6 +994,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     onEachFeature={onEachManassasParkFeature}
                 />
             )}
-        </>
+        </Pane>
     );
 }
