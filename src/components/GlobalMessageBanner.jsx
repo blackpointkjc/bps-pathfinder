@@ -548,13 +548,17 @@ export default function GlobalMessageBanner({ user }) {
                 dedupeMs: 6000,
                 eventId: propertyEventKey,
                 priority: 'critical',
+                // Verified monitored-property calls are mandatory operational
+                // traffic when global property-alert audio is enabled. A stale
+                // device-local quiet flag must not silently suppress the call.
+                force: true,
                 volume: settings.volume,
                 voiceProfile: settings.voice_profile,
               });
               await finalizeAnnouncementEvent(
                 claim,
                 propertyEventKey,
-                accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
+                accepted ? 'played' : 'blocked',
               );
             })();
           }
@@ -644,11 +648,12 @@ export default function GlobalMessageBanner({ user }) {
           const accepted = speakNotification(announcementText, {
             dedupeMs: 6000,
             eventId: propertyEventKey,
-            priority: ['critical', 'high'].includes(normalized(call.priority)) ? normalized(call.priority) : 'high',
+            priority: 'critical',
+            force: true,
             volume: audioSettings.current.volume,
             voiceProfile: audioSettings.current.voice_profile,
           });
-          await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+          await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : 'blocked');
         }
       }
 
@@ -721,10 +726,15 @@ export default function GlobalMessageBanner({ user }) {
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
           priority: record.event_type === 'property_alert' ? 'critical' : (record.announcement_priority || 'normal'),
+          force: record.event_type === 'property_alert',
           volume: settings.volume,
           voiceProfile: settings.voice_profile,
         });
-        await finalizeAnnouncementEvent(claim, record.event_key, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
+        await finalizeAnnouncementEvent(
+          claim,
+          record.event_key,
+          accepted ? 'played' : (record.event_type === 'property_alert' ? 'blocked' : (isVoiceEnabled() ? 'blocked' : 'quiet')),
+        );
         // Officer distress already has the full-width main emergency banner.
         // Keep this durable event as the one audio owner without drawing the
         // second floating red card shown over the CAD workspace.
