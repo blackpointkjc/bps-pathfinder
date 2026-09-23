@@ -1,12 +1,12 @@
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const STALE_AFTER_MS = 5 * 60 * 1000;
-const RECOVERY_COOLDOWN_MS = 3 * 60 * 1000;
+const STALE_AFTER_MS = 2 * 60 * 1000;
+const RECOVERY_COOLDOWN_MS = 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 60 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
 let liveSyncInFlight = null;
 
@@ -92,7 +92,7 @@ async function performCadLiveSync() {
         live_sync: true,
         request_id: `cad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       }),
-      25_000,
+      40_000,
       'Live CAD source sync',
     );
     const payload = response?.data || response || {};
@@ -122,12 +122,9 @@ async function runRecovery() {
     return { skipped: true, reason: 'recent_attempt', retry_after_ms: RECOVERY_COOLDOWN_MS - age };
   }
   noteRecoveryAttempt();
-  // Normal ingestion is owned by the one-minute function automation. Only when
-  // persisted calls are genuinely stale do we permit one browser recovery call,
-  // protected by the same cross-tab lock, request cooldown, and 429 backoff.
-  if (liveSyncInFlight) return liveSyncInFlight;
-  liveSyncInFlight = performCadLiveSync().finally(() => { liveSyncInFlight = null; });
-  return liveSyncInFlight;
+  // Use the same cross-tab live-sync lock, minute cooldown, and 429 backoff
+  // as Dispatch Center. Recovery must not create a second competing ingestion.
+  return requestCadLiveSync();
 }
 
 /**
