@@ -417,7 +417,11 @@ export default function AdminAnalytics() {
       // 20+ entity reads per officer and the 429s the old analytics fan-out caused.
       for (const officer of performanceOfficerUsers) {
         try {
-          const result = await base44.functions.invoke('getMyPerformanceData', { preview_user_id: officer.id });
+          const result = await base44.functions.invoke('getMyPerformanceData', {
+            preview_user_id: officer.id,
+            start_date: analyticsStartDate,
+            end_date: analyticsEndDate,
+          });
           let payload = result?.data || result || {};
           if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
           if (payload?.error) throw new Error(payload.error);
@@ -628,7 +632,6 @@ export default function AdminAnalytics() {
     performanceGenerationReady
     && !officerPerformanceSnapshots.isLoading
     && !officerPerformanceSnapshots.isFetching
-    && performanceOfficerUsers.length === overallByOfficer.length
   );
 
   const companyOverallScore = useMemo(() => {
