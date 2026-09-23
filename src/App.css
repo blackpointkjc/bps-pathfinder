@@ -665,12 +665,20 @@ body::-webkit-scrollbar-button,
 }
 .leaflet-pane { z-index: 1 !important; }
 .leaflet-tile-pane { z-index: 1 !important; }
-.leaflet-overlay-pane { z-index: 2 !important; }
-.leaflet-shadow-pane { z-index: 3 !important; }
-.leaflet-marker-pane { z-index: 4 !important; }
-.leaflet-tooltip-pane { z-index: 5 !important; }
-.leaflet-popup-pane { z-index: 6 !important; }
-.leaflet-control-container { position: relative; z-index: 7 !important; }
+
+/* Geometry belongs below symbols. Jurisdiction/district polygons get their own
+   pane so their strokes can never cut across CAD calls, officers, stations,
+   jails, fire/EMS, destination pins, or other operational markers. */
+.leaflet-jurisdiction-boundaries-pane { z-index: 2 !important; }
+.leaflet-overlay-pane { z-index: 3 !important; }
+.leaflet-shadow-pane { z-index: 4 !important; }
+
+/* All map icons/markers render above every line/fill layer. */
+.leaflet-marker-pane { z-index: 6 !important; }
+.leaflet-active-cad-calls-pane { z-index: 7 !important; }
+.leaflet-tooltip-pane { z-index: 8 !important; }
+.leaflet-popup-pane { z-index: 9 !important; }
+.leaflet-control-container { position: relative; z-index: 10 !important; }
 
 /* Application-level operational overlays must always render above the map. */
 #pathfinder-overlay-root,
