@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -53,7 +53,13 @@ export default function CallHistory() {
     const [search, setSearch] = useState('');
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
-    const [propertyFilter, setPropertyFilter] = useState('ALL');
+    const [propertyFilter, setPropertyFilter] = useState(() => {
+        try {
+            return new URLSearchParams(window.location.search).get('class')?.toLowerCase() === 'property' ? 'PROPERTY' : 'ALL';
+        } catch {
+            return 'ALL';
+        }
+    });
     const [sortField, setSortField] = useState('time');
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
@@ -70,7 +76,13 @@ export default function CallHistory() {
         }, 120000);
 
         const subscriptions = [];
-        const scheduleRealtimeRefresh = () => {
+        const scheduleRealtimeRefresh = (entity) => {
+            // Realtime tells us the underlying data changed. Clear only the CAD
+            // history caches affected by that event so refresh cannot return a
+            // stale 5-minute PropertyAlert list or 60-second history feed.
+            clearBase44ReadCacheMatching(`entity:${entity}:`);
+            clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+            if (entity === 'PropertyAlert') clearBase44ReadCacheMatching('entity:PropertyAlert:');
             window.clearTimeout(realtimeTimerRef.current);
             realtimeTimerRef.current = window.setTimeout(() => {
                 if (document.visibilityState === 'visible') loadAll();
@@ -78,7 +90,7 @@ export default function CallHistory() {
         };
         for (const entity of ['DispatchCall', 'CallHistory', 'PropertyAlert']) {
             try {
-                const unsubscribe = base44.entities[entity].subscribe(scheduleRealtimeRefresh);
+                const unsubscribe = base44.entities[entity].subscribe(() => scheduleRealtimeRefresh(entity));
                 if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
             } catch {}
         }
@@ -229,6 +241,10 @@ export default function CallHistory() {
 
     const handleRefresh = async () => {
         setRefreshing(true);
+        clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+        clearBase44ReadCacheMatching('entity:PropertyAlert:');
+        clearBase44ReadCacheMatching('entity:DispatchCall:');
+        clearBase44ReadCacheMatching('entity:CallHistory:');
         await loadAll();
     };
 
@@ -252,7 +268,7 @@ export default function CallHistory() {
     };
 
     const agencies = ['ALL', 'RPD', 'CCPD', 'HPD', 'HCPD', 'RFD', 'CCFD', 'EMS', 'BPS', 'MONITORING'];
-    const statuses = ['ALL', 'New', 'Dispatched', 'Enroute', 'On Scene', 'Cleared', 'Closed', 'Cancelled'];
+    const statuses = ['ALL', 'New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Cleared', 'Closed', 'Cancelled'];
 
     const filtered = rows.filter(r => {
         const q = search.toLowerCase();
