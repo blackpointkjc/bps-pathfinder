@@ -359,8 +359,7 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
 }
 
 function persistableCall(call: any) {
-  const { source_channel: _sourceChannel, ...persistable } = call || {};
-  return persistable;
+  return call || {};
 }
 
 function changed(existing: any, incoming: any) {
@@ -945,8 +944,10 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   for (let offset = 0; offset < newCalls.length; offset += 4) {
     await Promise.all(newCalls.slice(offset, offset + 4).map(async (row, index) => {
       const reference = numbers[offset + index], official = String(row.agency_cad_number || '').trim();
+      const firstSeenAt = row.source_first_seen_at || new Date().toISOString();
       const call = await base44.asServiceRole.entities.DispatchCall.create({
-        ...persistableCall(row), bps_reference: reference, call_id: official || reference,
+        ...persistableCall(row), source_first_seen_at: firstSeenAt,
+        bps_reference: reference, call_id: official || reference,
         cad_number_source: official ? 'official_government_feed' : 'bps_internal',
         official_cad_verified: Boolean(official),
       });
@@ -972,6 +973,8 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
       const patch = {
         ...persistableCall(row),
+        source_first_seen_at: previous.source_first_seen_at || previous.created_date || row.source_first_seen_at || new Date().toISOString(),
+        source_channel: row.source_channel || previous.source_channel || 'grac_api',
         agency_cad_number: previous.official_cad_verified ? previous.agency_cad_number : (row.agency_cad_number || ''),
         bps_reference: previous.bps_reference, call_id: previous.call_id,
         cad_number_source: previous.cad_number_source || 'bps_internal',
@@ -1217,6 +1220,7 @@ Deno.serve(async (req) => {
         const officialCad = String(callData.agency_cad_number || '').trim();
         const createdRecord = await base44.asServiceRole.entities.DispatchCall.create({
           ...persistableCall(callData),
+          source_first_seen_at: callData.source_first_seen_at || new Date().toISOString(),
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference,
           cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
@@ -1243,6 +1247,8 @@ Deno.serve(async (req) => {
         const manuallyCleared = existing.manual_dismissed === true;
         const incomingWithCad = {
           ...persistableCall(callData),
+          source_first_seen_at: existing.source_first_seen_at || existing.created_date || callData.source_first_seen_at || new Date().toISOString(),
+          source_channel: callData.source_channel || existing.source_channel || 'grac_api',
           // A Pathfinder manual clear is authoritative for this exact upstream call
           // ID. GRAC may continue publishing it, but ingestion must keep it dismissed.
           status: manuallyCleared ? 'Cleared' : callData.status,
