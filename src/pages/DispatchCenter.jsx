@@ -383,7 +383,8 @@ export default function DispatchCenter() {
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
-            setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || current) : null);
+            // Don't leave an incident assignable after it clears or leaves the live queue.
+            setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || null) : null);
             try {
                 window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: recentCalls }));
             } catch {
