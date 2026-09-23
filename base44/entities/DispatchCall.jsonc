@@ -185,6 +185,15 @@
         "chesterfield"
       ],
       "description": "Data source (richmond, henrico, or chesterfield)"
+    },
+    "source_channel": {
+      "type": "string",
+      "description": "Live ingestion channel that first supplied or enriched this call"
+    },
+    "source_first_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When BPSPF first observed this call in a live upstream source poll"
     }
   },
   "required": [
