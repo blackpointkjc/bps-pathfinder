@@ -405,7 +405,7 @@ export default function AdminAnalytics() {
   }, [performanceUsers, selectedDivision]);
   const performanceOfficerKey = performanceOfficerUsers.map(officer => officer.id).join(',');
   const officerPerformanceSnapshots = useQuery({
-    queryKey: ['companyOfficerPerformanceSnapshots', performanceOfficerKey, currentMonthStart, currentMonthEnd],
+    queryKey: ['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate],
     queryFn: async () => {
       const snapshots = {};
       const errors = {};
