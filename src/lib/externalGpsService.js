@@ -661,8 +661,14 @@ export function lockExternalGpsToCurrentAntenna() {
 }
 
 export function unlockExternalGpsAntenna() {
-  try { localStorage.removeItem(STORAGE_LOCK_KEY); } catch (_) {}
-  emit({ lockedToAntenna: false, lockedSelector: storedSelector() });
+  // Unlock means the next receiver chooser must be free to select a different
+  // device. Clear both the lock flag and saved selector so a stale USB ID cannot
+  // silently steer reconnection back to the old antenna.
+  try {
+    localStorage.removeItem(STORAGE_LOCK_KEY);
+    localStorage.removeItem(STORAGE_SELECTOR_KEY);
+  } catch (_) {}
+  emit({ lockedToAntenna: false, lockedSelector: null, activeSelector: state.connected ? state.activeSelector : null });
   return getExternalGpsStatus();
 }
 
