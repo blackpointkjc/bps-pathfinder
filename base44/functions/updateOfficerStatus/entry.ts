@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        return Response.json({ success: true, status, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length, active_record_created: false, unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
+        return Response.json({ success: true, status, officer_id: user.id, email: user.email, last_updated: now, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length, active_record_created: false, unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
