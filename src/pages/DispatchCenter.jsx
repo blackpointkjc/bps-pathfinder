@@ -135,6 +135,15 @@ export default function DispatchCenter() {
                 } catch {}
                 return next;
             });
+            // The detail/assignment pane must track the same live call record.
+            // Previously it held the object selected minutes ago, so newly
+            // assigned units still displayed as "Assigned Units (0)".
+            setSelectedCall(current => {
+                if (!current) return current;
+                const eventId = String(event?.id || event?.data?.id || '');
+                if (String(current.id) !== eventId) return current;
+                return String(event.type).toLowerCase() === 'delete' ? null : { ...current, ...(event.data || {}) };
+            });
             lastActiveCallsLoadRef.current = Date.now();
         });
         const scheduleUnitRefresh = (event) => {
@@ -290,7 +299,7 @@ export default function DispatchCenter() {
     };
 
     const loadUnits = async (force = false) => {
-        setUnitLoadStatus(current => units.length === 0 ? 'loading' : current);
+        setUnitLoadStatus(current => current === 'ready' && !force ? 'ready' : 'loading');
         try {
             // Dispatch actions must use the user-backed canonical roster. The
             // lightweight location-only feed is appropriate for maps, but its row ID
@@ -374,6 +383,7 @@ export default function DispatchCenter() {
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
+            setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || current) : null);
             try {
                 window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: recentCalls }));
             } catch {
@@ -567,13 +577,11 @@ export default function DispatchCenter() {
     }, [sortOrder]);
 
     const handleUpdate = async () => {
-        await loadActiveCalls();
-        await loadUnits();
-        
-        if (selectedCall) {
-            const updatedCall = activeCalls.find(c => c.id === selectedCall.id);
-            if (updatedCall) setSelectedCall(updatedCall);
-        }
+        // Force a fresh read; the ordinary 30-second throttle previously made
+        // assignment confirmation reuse the old detail-pane object.
+        clearActiveDispatchCallMemoryCache();
+        lastActiveCallsLoadRef.current = 0;
+        await Promise.all([loadActiveCalls(true), loadUnits()]);
     };
 
     const priorityBg = (priority) => {
