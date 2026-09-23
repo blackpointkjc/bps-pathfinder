@@ -5,8 +5,10 @@ const STALE_AFTER_MS = 2 * 60 * 1000;
 const RECOVERY_COOLDOWN_MS = 60 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
+const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:v1';
+const BUSY_LEASE_RETRY_MS = 18_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 60 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 50 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
 let liveSyncInFlight = null;
 
@@ -31,7 +33,14 @@ export function newestCadCallTime(calls = []) {
 }
 
 export function cadCallFeedIsStale(calls = [], maxAgeMs = STALE_AFTER_MS) {
-  const newest = newestCadCallTime(calls);
+  // An incident's time_received is not the time the public source was last
+  // checked. If there have been no new incidents, the successful source poll
+  // still proves the feed is current and prevents duplicate recovery ingest jobs.
+  const lastPoll = (() => {
+    try { return Number(localStorage.getItem(LAST_SUCCESSFUL_SOURCE_POLL_KEY) || 0) || 0; }
+    catch { return 0; }
+  })();
+  const newest = Math.max(newestCadCallTime(calls), lastPoll);
   return !newest || Date.now() - newest > maxAgeMs;
 }
 
@@ -97,6 +106,17 @@ async function performCadLiveSync() {
     );
     const payload = response?.data || response || {};
     if (payload?.error) throw new Error(payload.error);
+    if (payload?.skipped && /already in progress|ingestion_in_progress/i.test(String(payload.reason || ''))) {
+      // Another authorized session or scheduled run owns the one global server
+      // lease. Retry promptly instead of counting its work as OUR successful
+      // poll and waiting a whole minute. The browser-wide cooldown still
+      // protects against concurrent local tabs.
+      try { localStorage.setItem(LIVE_SYNC_STAMP_KEY, String(Date.now() - LIVE_SYNC_COOLDOWN_MS + BUSY_LEASE_RETRY_MS)); } catch {}
+      return { ...payload, retry_after_ms: BUSY_LEASE_RETRY_MS };
+    }
+    if (payload?.success && !payload?.skipped) {
+      try { localStorage.setItem(LAST_SUCCESSFUL_SOURCE_POLL_KEY, String(Date.now())); } catch {}
+    }
     clearLiveSyncBackoff();
     return payload;
   } catch (error) {
