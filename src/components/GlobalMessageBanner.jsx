@@ -813,14 +813,29 @@ export default function GlobalMessageBanner({ user }) {
       });
       if (typeof propertyUnsubscribe === 'function') unsubscribers.push(propertyUnsubscribe);
 
-      // Match BOLO reliability: recover a call created while realtime was connecting.
-      const propertyCutoff = Date.now() - 6 * 60 * 60 * 1000;
-      base44.entities.PropertyAlert.list('-created_date', 100).then(records => {
-        (records || []).slice().reverse().forEach(record => {
-          const created = new Date(record.created_date || 0).getTime();
-          if (created >= propertyCutoff) showPropertyCall(record);
-        });
-      }).catch(() => null);
+      // Recover only genuinely fresh property calls. The old six-hour recovery
+      // window could announce a call 15+ minutes late after a refresh/reconnect,
+      // which made BPSPF sound delayed even though the alert row was old.
+      const recoverRecentPropertyCalls = () => {
+        const propertyCutoff = Date.now() - 3 * 60 * 1000;
+        return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
+          (records || []).slice().reverse().forEach(record => {
+            if (!record?.id) return;
+            const created = new Date(record.created_date || 0).getTime();
+            if (Number.isFinite(created) && created >= propertyCutoff) {
+              void showPropertyCall(record);
+            } else {
+              // Old alerts stay available in history but are never replayed as a
+              // new live voice/banner event.
+              knownIds.current.add(`PropertyAlert:${record.id}`);
+            }
+          });
+        }).catch(() => null);
+      };
+      void recoverRecentPropertyCalls();
+      const onCadIngestFinished = () => { void recoverRecentPropertyCalls(); };
+      window.addEventListener('bps-cad-ingest-finished', onCadIngestFinished);
+      unsubscribers.push(() => window.removeEventListener('bps-cad-ingest-finished', onCadIngestFinished));
 
       const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
         if (!['create', 'update'].includes(event?.type) || !event.data?.id) return;
