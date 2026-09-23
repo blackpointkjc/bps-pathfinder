@@ -181,6 +181,183 @@ function normalizeCall(row: any) {
   };
 }
 
+
+const GRAC_WEBSITE_URL = 'https://gractivecalls.com/';
+
+function decodeHtmlText(value: unknown) {
+  return String(value || '')
+    .replace(/<br\s*\/?\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_m, code) => String.fromCharCode(Number(code)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function easternWebsiteTimeToIso(value: unknown) {
+  const text = String(value || '').trim();
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (!match) {
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+  }
+  const month = Number(match[1]), day = Number(match[2]), year = Number(match[3]);
+  let hour = Number(match[4]) % 12;
+  if (match[6].toUpperCase() === 'PM') hour += 12;
+  const minute = Number(match[5]);
+  const desiredWallClock = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  let utc = desiredWallClock;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const parts = formatter.formatToParts(new Date(utc));
+    const part = (type: string) => Number(parts.find(item => item.type === type)?.value || 0);
+    const renderedWallClock = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour') % 24, part('minute'), 0, 0);
+    const delta = desiredWallClock - renderedWallClock;
+    utc += delta;
+    if (Math.abs(delta) < 1000) break;
+  }
+  return new Date(utc).toISOString();
+}
+
+async function websiteCallId(row: { agency: string; time_received: string; incident: string; location: string }) {
+  const seed = [row.agency, row.time_received, cleanMatchText(row.incident), cleanMatchText(row.location)].join('|');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed));
+  return 'web-' + Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function fetchLiveWebsiteCalls() {
+  const url = `${GRAC_WEBSITE_URL}?bpspf_live=${Date.now()}-${crypto.randomUUID()}`;
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'text/html',
+      'User-Agent': 'BPS-Pathfinder-CAD/4.2',
+      'Cache-Control': 'no-cache, no-store, max-age=0',
+      Pragma: 'no-cache',
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`GRAC website returned HTTP ${response.status}`);
+  const html = await response.text();
+  const calls: any[] = [];
+  for (const rowMatch of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = [...rowMatch[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(match => decodeHtmlText(match[1]));
+    if (cells.length < 5) continue;
+    const [receivedText, incident, location, agencyRaw, statusText] = cells;
+    const agency = String(agencyRaw || '').trim().toUpperCase();
+    if (!ALLOWED_AGENCIES.has(agency) || !incident || !location) continue;
+    const time_received = easternWebsiteTimeToIso(receivedText);
+    if (!time_received) continue;
+    const base = {
+      agency,
+      incident: String(incident).trim(),
+      location: String(location).trim(),
+      time_received,
+    };
+    calls.push({
+      external_call_id: await websiteCallId(base),
+      incident: base.incident,
+      location: base.location,
+      agency,
+      zone: '',
+      status: normalizeStatus(statusText),
+      priority: normalizePriority(base.incident),
+      time_received,
+      source: AGENCY_SOURCE[agency],
+      description: `${base.incident} at ${base.location} [GRAC-WEBSITE]`,
+      cad_number_source: 'bps_internal',
+      official_cad_verified: false,
+      source_channel: 'grac_website_live',
+    });
+  }
+  return calls;
+}
+
+function liveMergeKey(call: any) {
+  return [String(call?.agency || '').toUpperCase(), String(call?.time_received || ''), cleanMatchText(call?.incident), cleanMatchText(call?.location)].join('|');
+}
+
+function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
+  const byKey = new Map<string, any>();
+  for (const web of websiteCalls || []) byKey.set(liveMergeKey(web), web);
+  for (const api of apiCalls || []) {
+    const key = liveMergeKey(api);
+    const web = byKey.get(key);
+    if (!web) {
+      byKey.set(key, api);
+      continue;
+    }
+    // Website owns what is currently visible/status; API enriches stable id/GPS.
+    byKey.set(key, {
+      ...api,
+      ...web,
+      external_call_id: api.external_call_id || web.external_call_id,
+      ...(Number.isFinite(Number(api.latitude)) && Number.isFinite(Number(api.longitude)) ? {
+        latitude: Number(api.latitude), longitude: Number(api.longitude),
+        geo_confidence: api.geo_confidence || 'high', geo_method: api.geo_method || 'grac',
+        geo_approximate: api.geo_approximate === true,
+      } : {}),
+      agency_cad_number: api.agency_cad_number || web.agency_cad_number || '',
+      official_cad_verified: api.official_cad_verified === true,
+      cad_number_source: api.official_cad_verified === true ? (api.cad_number_source || 'upstream_public_feed') : 'bps_internal',
+      source_channel: 'grac_website_live+api',
+    });
+  }
+  return [...byKey.values()];
+}
+
+async function fastGeocodeWebsiteCall(call: any) {
+  if (Number.isFinite(Number(call?.latitude)) && Number.isFinite(Number(call?.longitude))) return call;
+  const agency = String(call?.agency || '').toUpperCase();
+  const area = ['HPD','HFD'].includes(agency) ? 'Henrico County, VA'
+    : ['CCPD','CCFD'].includes(agency) ? 'Chesterfield County, VA'
+      : 'Richmond, VA';
+  const address = `${String(call?.location || '').replace(/^RICH:\s*/i, '')}, ${area}`;
+  const photon = fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=3&lang=en`, {
+    headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.2' }, signal: AbortSignal.timeout(4500),
+  }).then(async response => {
+    if (!response.ok) return null;
+    const data = await response.json();
+    const feature = (data?.features || []).find((item: any) => {
+      const p = item?.properties || {};
+      return !p.state || p.state === 'Virginia' || p.state === 'VA';
+    }) || data?.features?.[0];
+    return feature ? { latitude: Number(feature.geometry?.coordinates?.[1]), longitude: Number(feature.geometry?.coordinates?.[0]) } : null;
+  }).catch(() => null);
+  const census = fetch(`https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`, {
+    headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4500),
+  }).then(async response => {
+    if (!response.ok) return null;
+    const data = await response.json();
+    const match = data?.result?.addressMatches?.[0];
+    return match ? { latitude: Number(match.coordinates?.y), longitude: Number(match.coordinates?.x) } : null;
+  }).catch(() => null);
+  const settled = await Promise.all([census, photon]);
+  const coords = settled.find(value => value && Number.isFinite(value.latitude) && Number.isFinite(value.longitude));
+  return coords ? { ...call, ...coords, geo_confidence: 'medium', geo_method: 'street', geo_approximate: true } : call;
+}
+
+async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
+  const now = Date.now();
+  const candidates = (calls || []).filter(call => call?.source_channel === 'grac_website_live'
+    && !Number.isFinite(Number(call.latitude))
+    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 12);
+  const replacements = new Map<string, any>();
+  for (let offset = 0; offset < candidates.length; offset += 3) {
+    const batch = await Promise.all(candidates.slice(offset, offset + 3).map(fastGeocodeWebsiteCall));
+    batch.forEach(call => replacements.set(liveMergeKey(call), call));
+  }
+  return (calls || []).map(call => replacements.get(liveMergeKey(call)) || call);
+}
+
 function changed(existing: any, incoming: any) {
   const fields = ['external_call_id','agency_cad_number','bps_reference','cad_number_source','official_cad_verified','call_id','incident','location','agency','zone','status','priority','time_received','source','description','latitude','longitude','geo_confidence','geo_method','geo_approximate'];
   return fields.some(field => existing?.[field] !== incoming?.[field]);
