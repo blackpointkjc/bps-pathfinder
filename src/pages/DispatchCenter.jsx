@@ -177,7 +177,18 @@ export default function DispatchCenter() {
             if (document.visibilityState === 'visible') loadUnits();
         }, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
-        const onStatusChanged = () => loadUnits(true);
+        const onStatusChanged = (event) => {
+            const detail = event?.detail || {};
+            if (detail.email && detail.status) {
+                setUnits(current => current
+                    .map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
+                        ? { ...unit, status: detail.status, last_updated: detail.last_updated || new Date().toISOString() }
+                        : unit)
+                    .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true));
+            }
+            window.clearTimeout(unitRefreshTimer);
+            unitRefreshTimer = window.setTimeout(() => loadUnits(true), 1500);
+        };
         let wakeRefreshTimer;
         const onOperationalResume = () => {
             window.clearTimeout(wakeRefreshTimer);
