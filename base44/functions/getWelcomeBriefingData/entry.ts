@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const supervisorLike = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access');
     const sourceErrors: string[] = [];
 
-    async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any } = {}) {
+    async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean } = {}) {
       const fallback = options.fallback ?? [];
       let lastError: any = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
         }
       }
       console.error(`getWelcomeBriefingData could not load ${label}`, lastError);
-      sourceErrors.push(label);
+      if (options.reportError !== false) sourceErrors.push(label);
       if (options.required) throw lastError || new Error(`Unable to load ${label}`);
       return fallback;
     }
@@ -97,8 +97,25 @@ Deno.serve(async (req) => {
     const propertyAlerts = operational
       ? await loadSource('property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 150))
       : [];
-    const dispatchCalls = operational
-      ? await loadSource('dispatch calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 200))
+
+    // The briefing only needs DispatchCall rows to verify the current status of
+    // property-alert calls. Pulling the latest 200 calls on every login was wasteful
+    // and made this optional enrichment the most common source of briefing warnings.
+    // Query only the call IDs referenced by the already-loaded PropertyAlert rows.
+    const propertyCallIds = Array.from(new Set((propertyAlerts || [])
+      .map((alert: any) => String(alert?.callId || '').trim())
+      .filter(Boolean)))
+      .slice(0, 150);
+    const dispatchCalls = operational && propertyCallIds.length
+      ? await loadSource(
+          'dispatch calls',
+          () => base44.asServiceRole.entities.DispatchCall.filter({
+            id: propertyCallIds.length === 1 ? propertyCallIds[0] : { $in: propertyCallIds },
+          }, '-created_date', 200),
+          // PropertyAlert stores its own call/lifecycle snapshot, so a transient
+          // verification failure must not mark the entire briefing incomplete.
+          { reportError: false },
+        )
       : [];
 
     const units = officerLike ? (allUnits || []).filter((unit: any) => String(unit.user_id || '') === String(me.id)) : [];
