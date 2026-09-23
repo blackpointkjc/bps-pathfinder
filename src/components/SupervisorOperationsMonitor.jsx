@@ -15,14 +15,15 @@ const isSupervisorUser = user => {
   );
 };
 
-export default function SupervisorOperationsMonitor({ user }) {
+export default function SupervisorOperationsMonitor({ user, enabled = true }) {
   const running = useRef(false);
   const pending = useRef(false);
   const timer = useRef(null);
   const lastReportQueueRefresh = useRef(0);
+  const authBackoffUntil = useRef(0);
 
   useEffect(() => {
-    if (!isSupervisorUser(user)) return undefined;
+    if (!enabled || !isSupervisorUser(user)) return undefined;
     let active = true;
     const unsubscribers = [];
 
@@ -38,20 +39,32 @@ export default function SupervisorOperationsMonitor({ user }) {
     };
 
     const run = async ({ refreshReports = false } = {}) => {
-      if (!active) return;
+      if (!active || Date.now() < authBackoffUntil.current || document.visibilityState !== 'visible') return;
       if (running.current) {
         pending.current = true;
         return;
       }
       running.current = true;
       try {
+        // Verify the authenticated session before starting the expensive multi-table
+        // supervisor reconciliation. During login/preview transitions the UI can
+        // still hold the previous user object for a moment even though function auth
+        // is not ready yet; skip that window instead of generating repeated 401s.
+        const authenticated = await base44.auth.me().catch(() => null);
+        if (!authenticated?.id) {
+          authBackoffUntil.current = Date.now() + 5 * 60 * 1000;
+          return;
+        }
         await refreshReportQueue(refreshReports);
         const response = await base44.functions.invoke('syncSupervisorOperationalTasks', {});
         const payload = response?.data || response || {};
         if (payload?.error) throw new Error(payload.error);
         window.dispatchEvent(new CustomEvent('bps-supervisor-tasks-synced', { detail: payload }));
       } catch (error) {
-        console.warn('[Supervisor Operations] Task synchronization failed:', error?.message || error);
+        const message = String(error?.message || error || '');
+        const status = Number(error?.response?.status || error?.status || 0);
+        if (status === 401 || /unauthorized/i.test(message)) authBackoffUntil.current = Date.now() + 5 * 60 * 1000;
+        console.warn('[Supervisor Operations] Task synchronization failed:', message);
       } finally {
         running.current = false;
         if (pending.current && active) {
@@ -129,7 +142,7 @@ export default function SupervisorOperationsMonitor({ user }) {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('bps-operational-resume', resume);
     };
-  }, [user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
+  }, [enabled, user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
 
   return null;
 }
