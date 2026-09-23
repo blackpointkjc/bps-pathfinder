@@ -143,11 +143,16 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
                 </div>
                 
                 <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-                    {units.length === 0 ? (
-                        <div className="text-xs text-amber-500 text-center p-2">⚠️ Loading units...</div>
+                    {units.length === 0 && unitLoadStatus === 'loading' ? (
+                        <div role="status" className="text-xs text-amber-400 text-center p-2">Loading on-duty units…</div>
+                    ) : units.length === 0 && unitLoadStatus === 'error' ? (
+                        <div role="alert" className="rounded-lg border border-red-800/60 bg-red-950/20 p-3 text-center">
+                            <p className="text-xs text-red-300">Unable to load the live unit roster. This is a connection error, not proof there are no units.</p>
+                            <Button size="sm" variant="outline" className="mt-2" onClick={onRetryUnits}>Retry unit roster</Button>
+                        </div>
                     ) : availableUnits.length === 0 ? (
-                        <div className="text-xs text-slate-500 text-center p-2">
-                            {searchTerm ? 'No units found' : 'No available units'}
+                        <div className="text-xs text-slate-400 text-center p-2">
+                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No units are currently available for a new dispatch.'}
                         </div>
                     ) : (
                         availableUnits.map(unit => {
@@ -178,6 +183,20 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
                         })
                     )}
                 </div>
+                {otherActiveUnits.length > 0 && !searchTerm && (
+                    <div className="mt-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-2">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">On duty but unavailable ({otherActiveUnits.length})</p>
+                        {otherActiveUnits.map(unit => (
+                            <div key={unit.id} className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-300">
+                                <span className="truncate">{unit.unit_number ? 'Unit ' + unit.unit_number + ' · ' : ''}{displayUnitName(unit)}</span>
+                                <span className="shrink-0 text-amber-400">{unit.status || 'Busy'}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {unitLoadStatus === 'error' && units.length > 0 && (
+                    <Button size="sm" variant="outline" className="mt-2" onClick={onRetryUnits}>Roster may be outdated · Retry</Button>
+                )}
             </div>
         </div>
     );
