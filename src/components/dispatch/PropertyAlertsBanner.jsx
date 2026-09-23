@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, MapPin, CheckCircle, Clock3 } from 'lucide-react';
+import { AlertTriangle, MapPin, CheckCircle, Clock3, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
 import { formatEasternTime } from '@/lib/easternTime';
 import AutoDispatchRecommendation from '@/components/dispatch/AutoDispatchRecommendation';
+import { createPageUrl } from '../../utils';
 
 const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const normalizedStatus = value => String(value || '').trim().toLowerCase();
 
 export default function PropertyAlertsBanner() {
+    const navigate = useNavigate();
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const loadingRef = useRef(false);
@@ -126,6 +129,14 @@ export default function PropertyAlertsBanner() {
                         <AlertTriangle className="w-5 h-5 text-orange-400 animate-pulse" />
                         <h3 className="text-sm font-bold text-white font-mono">PROPERTY ALERTS</h3>
                         <Badge className="bg-orange-500 text-white font-mono">{alerts.length}</Badge>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`${createPageUrl('CallHistory')}?class=property`)}
+                            className="ml-auto h-7 border-amber-500/50 bg-amber-500/10 px-2 text-[9px] font-black text-amber-200 hover:bg-amber-500/20"
+                        >
+                            <History className="mr-1 h-3 w-3" /> PROPERTY HISTORY
+                        </Button>
                     </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         {alerts.map((alert) => (
