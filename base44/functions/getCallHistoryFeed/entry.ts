@@ -88,6 +88,10 @@ Deno.serve(async (req) => {
         _source: source,
         _propertyCall: Boolean(alert),
         _propertyAlert: alert || null,
+        _propertyName: alert?.propertyName || '',
+        _propertyId: alert?.propertyId || '',
+        _propertyLifecycle: alert?.lifecycle_status || '',
+        _propertyDistanceMeters: Number.isFinite(Number(alert?.distanceMeters)) ? Number(alert.distanceMeters) : null,
       };
     };
 
@@ -135,12 +139,16 @@ Deno.serve(async (req) => {
         incident: alert.callIncident || 'Monitored Property Call',
         location: alert.callLocation || alert.propertyName || 'Monitored property',
         agency: 'MONITORING',
-        status: alert.acknowledged ? 'Closed' : 'Pending',
+        status: alert.callStatus || (['resolved', 'false_alarm', 'test'].includes(String(alert.lifecycle_status || '').toLowerCase()) ? 'Closed' : (alert.acknowledged ? 'Closed' : 'Pending')),
         description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
         assigned_units: [],
         _source: 'property_alert',
         _propertyCall: true,
         _propertyAlert: alert,
+        _propertyName: alert.propertyName || '',
+        _propertyId: alert.propertyId || '',
+        _propertyLifecycle: alert.lifecycle_status || '',
+        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : null,
       });
     }
 
