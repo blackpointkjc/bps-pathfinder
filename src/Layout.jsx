@@ -867,6 +867,7 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [refreshingApp, setRefreshingApp] = useState(false);
+  const [backgroundServicesReady, setBackgroundServicesReady] = useState(false);
   const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
   const [gpsChanging, setGpsChanging] = useState(false);
   const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
@@ -888,6 +889,16 @@ export default function Layout({ children, currentPageName }) {
     }
   }
   const unreadStorageKey = `bps-unread-counts:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
+
+  useEffect(() => {
+    setBackgroundServicesReady(false);
+    if (!user?.id) return undefined;
+    // Give CAD, authentication, officer presence, and the active workspace the
+    // startup request lane first. Mail/PTO/Teams monitors are important but not
+    // allowed to create a login-time API burst that starves live operations.
+    const timer = window.setTimeout(() => setBackgroundServicesReady(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [user?.id]);
 
   const setActiveCenter = center => {
     setActiveCenterState(center);
@@ -1474,7 +1485,7 @@ export default function Layout({ children, currentPageName }) {
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
-  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><SupervisorOperationsMonitor user={user} enabled={activeCenter === 'supervisor' || currentPageName === 'SupervisorCenter' || currentPageName === 'SupervisorFieldOversight'} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={activeCenter === 'supervisor' || currentPageName === 'SupervisorCenter' || currentPageName === 'SupervisorFieldOversight'} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-2 backdrop-blur-[4px] sm:p-5" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
       <motion.section initial={{ scale: 0.96, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.97, y: 12, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[min(80dvh,640px)] w-[min(94vw,620px)] overflow-hidden rounded-2xl border border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
@@ -1486,7 +1497,7 @@ export default function Layout({ children, currentPageName }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100010] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+        className="pathfinder-operational-overlay fixed inset-0 z-[2147483000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       >
         <motion.div
           initial={{ scale: 0.94, y: 24, opacity: 0 }}
