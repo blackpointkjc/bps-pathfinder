@@ -100,7 +100,7 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
             </div>
             {/* Assigned Units */}
             <div>
-                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Units ({assignedUnits.length})</p>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Units ({assignedUnitIds.length})</p>
                 {assignedUnits.length > 0 ? (
                     <div className="space-y-1">
                         {assignedUnits.map(unit => {
@@ -124,6 +124,8 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
                             );
                         })}
                     </div>
+                ) : assignedUnitIds.length > 0 ? (
+                    <div className="text-xs text-amber-300 text-center p-2">{assignedUnitIds.length} unit(s) assigned in CAD. Waiting for live roster details.</div>
                 ) : (
                     <div className="text-xs text-slate-500 text-center p-2">No units assigned</div>
                 )}
