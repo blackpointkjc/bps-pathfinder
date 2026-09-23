@@ -23,14 +23,15 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
-  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 5 * 60_000;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 30_000;
   if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 30_000;
   if (meta?.kind === 'entity' && meta?.name === 'TimeEntry') return 20_000;
   if (meta?.kind === 'entity' && ['Vehicle','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'BOLOAlert') return 2 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'Schedule') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getOnDutyUnits') return 60_000;
-  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getSupervisorWelfareBoard'].includes(meta?.name)) return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getActiveDispatchCalls') return 20_000;
+  if (meta?.kind === 'function' && meta?.name === 'getSupervisorWelfareBoard') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getWorkforceSnapshot') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getRoleWorkQueue') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getFleetScheduleData') return 2 * 60_000;
@@ -373,6 +374,26 @@ function protectedWrite(key, task, meta = {}) {
   writeInflight.set(key, request);
   return request;
 }
+function invalidateReadCacheForRealtimeEntity(name) {
+  const prefixes = new Set([`entity:${name}:`]);
+  if (name === 'DispatchCall') {
+    prefixes.add('function:getActiveDispatchCalls:');
+    prefixes.add('function:getCallHistoryFeed:');
+    prefixes.add('function:getDispatchCallLinkFeed:');
+  }
+  if (name === 'PropertyAlert') {
+    prefixes.add('function:getCallHistoryFeed:');
+    prefixes.add('function:getWelcomeBriefingData:');
+  }
+  if (name === 'CallHistory') prefixes.add('function:getCallHistoryFeed:');
+  if (name === 'GeofenceAlert') prefixes.add('function:manageGeofenceAlerts:');
+  if (name === 'ActiveOfficer' || name === 'Unit') prefixes.add('function:getOnDutyUnits:');
+
+  for (const cacheKey of [...readCache.keys()]) {
+    if ([...prefixes].some(prefix => String(cacheKey).startsWith(prefix))) readCache.delete(cacheKey);
+  }
+}
+
 function wrappedEntity(name) {
   if (entityWrappers.has(name)) return entityWrappers.get(name);
   const entity = rawBase44.entities[name];
@@ -380,6 +401,12 @@ function wrappedEntity(name) {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
+      if (property === 'subscribe') {
+        return (callback, ...args) => value.call(target, event => {
+          invalidateReadCacheForRealtimeEntity(name);
+          return typeof callback === 'function' ? callback(event) : undefined;
+        }, ...args);
+      }
       if (READ_METHODS.has(property)) {
         return (...args) => queuedRead(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
       }
