@@ -349,10 +349,10 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
   const now = Date.now();
   const candidates = (calls || []).filter(call => call?.source_channel === 'grac_website_live'
     && !Number.isFinite(Number(call.latitude))
-    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 12);
+    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 8);
   const replacements = new Map<string, any>();
-  for (let offset = 0; offset < candidates.length; offset += 3) {
-    const batch = await Promise.all(candidates.slice(offset, offset + 3).map(fastGeocodeWebsiteCall));
+  for (let offset = 0; offset < candidates.length; offset += 4) {
+    const batch = await Promise.all(candidates.slice(offset, offset + 4).map(fastGeocodeWebsiteCall));
     batch.forEach(call => replacements.set(liveMergeKey(call), call));
   }
   return (calls || []).map(call => replacements.get(liveMergeKey(call)) || call);
