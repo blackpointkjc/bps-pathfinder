@@ -291,7 +291,14 @@ Deno.serve(async (req) => {
     for (const decision of decisions) if (!decisionByCall.has(String(decision.call_id))) decisionByCall.set(String(decision.call_id), decision);
     for (const call of myPropertyCalls) call.performance_decision = decisionByCall.get(String(call.id)) || null;
     const relevantCallIds = new Set(myPropertyCalls.flatMap((call:any) => [call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String)));
-    const linkedPropertyIncidents = incidentsAll.filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
+    // A report submitted later (or with a missing incident_date) still satisfies
+    // its linked call. Resolve by durable IDs/numbers, not only the month filter.
+    const linkedReports = relevantCallIds.size ? await safeFilter('IncidentReport', { $or: [
+      { linked_call_id: { $in: [...relevantCallIds] } },
+      { linked_call_number: { $in: [...relevantCallIds] } },
+      { call_number: { $in: [...relevantCallIds] } },
+    ] }, '-created_date', 1000) : [];
+    const linkedPropertyIncidents = [...incidentsAll, ...linkedReports].filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
     const relevantIncidents = [...new Map([...myIncidents, ...linkedPropertyIncidents].map((report:any) => [String(report.id), report])).values()];
 
     // Return one canonical officer identity so schedule, time, training, and
