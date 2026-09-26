@@ -616,6 +616,9 @@ export default function DispatchCenter() {
         return 'bg-slate-600 text-slate-200';
     };
 
+    const isPulsePointCall = (call) => String(call?.source_channel || call?.external_call_id || call?.source || '').toLowerCase().includes('pulsepoint');
+    const pulsePointCalls = activeCalls.filter(isPulsePointCall);
+
     const allCalls = activeCalls.filter(call => {
         const matchesFilter = queueFilter === 'all' ||
             (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
@@ -707,6 +710,9 @@ export default function DispatchCenter() {
                     <div className="flex items-center gap-1 px-3 py-1 border border-blue-500/40 bg-blue-500/10 rounded text-[10px] text-blue-300 font-bold">
                         <Radio className="w-2.5 h-2.5" /> GRAC LIVE SOURCE
                     </div>
+                    <div className="flex items-center gap-1 px-3 py-1 border border-red-500/50 bg-red-500/15 rounded text-[10px] text-red-200 font-bold">
+                        <Activity className="w-2.5 h-2.5" /> PULSEPOINT {pulsePointCalls.length}
+                    </div>
                 </div>
             </div>
 
@@ -733,6 +739,7 @@ export default function DispatchCenter() {
             <div className="dispatch-kpis grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
+                    { label: 'PULSEPOINT', value: pulsePointCalls.length, tone: pulsePointCalls.length ? 'text-red-300' : 'text-slate-300', icon: Radio },
                     { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
                     { label: 'HIGH PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
                     { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
@@ -792,8 +799,9 @@ export default function DispatchCenter() {
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">GRAC ACTIVE CALLS</span>
-                            <span className="ml-auto text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
+                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">ACTIVE CALLS · GRAC + PULSEPOINT</span>
+                            <span className="ml-auto text-[10px] bg-red-500/20 text-red-200 px-2 rounded-full border border-red-500/40">PP {pulsePointCalls.length}</span>
+                            <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
                         {/* Table header */}
                         <div className="dispatch-call-headings flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
@@ -804,12 +812,14 @@ export default function DispatchCenter() {
                         <div className="flex-1 overflow-y-auto">
                             {allCalls.length === 0 ? (
                                 <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'LOADING CURRENT CALLS…' : 'NO ACTIVE CALLS'}</div>
-                            ) : allCalls.map(call => (
+                            ) : allCalls.map(call => {
+                                const pulsePoint = isPulsePointCall(call);
+                                return (
                                 <div key={call.id} onClick={() => handleSelectCall(call)}
-                                    className={`dispatch-call-card group grid grid-cols-12 cursor-pointer border-b border-[#172536] px-2 py-2.5 transition-all ${
+                                    className={`dispatch-call-card group grid grid-cols-12 cursor-pointer border-b px-2 py-2.5 transition-all ${
                                         selectedCall?.id === call.id
-                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
-                                            : 'hover:bg-[#111827]'
+                                            ? pulsePoint ? 'bg-red-950/70 border-l-2 border-l-red-400 border-red-700/70' : 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'
+                                            : pulsePoint ? 'border-red-900/70 bg-red-950/25 hover:bg-red-900/35' : 'border-[#172536] hover:bg-[#111827]'
                                     }`}>
                                     <div className="col-span-2">
                                         <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(call.priority)}`}>
@@ -820,7 +830,9 @@ export default function DispatchCenter() {
                                         <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
                                         <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
-                                        <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
+                                        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${pulsePoint ? 'border border-red-500/40 bg-red-500/20 text-red-100' : 'text-slate-600'}`}>
+                                            {pulsePoint ? 'PULSEPOINT' : (call.agency || 'AGENCY N/A')}
+                                        </div>
                                     </div>
                                     <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
                                         <div>{formatEasternTime(call.time_received || call.created_date)}</div>
@@ -829,11 +841,12 @@ export default function DispatchCenter() {
                                                 {callAgeMinutes(call)} MIN AGO · PROPERTY
                                             </div>
                                         ) : (
-                                            <div className="mt-1 font-bold text-slate-700">AGENCY CALL</div>
+                                            <div className={`mt-1 font-bold ${pulsePoint ? 'text-red-200' : 'text-slate-700'}`}>{pulsePoint ? 'PULSEPOINT CALL' : 'AGENCY CALL'}</div>
                                         )}
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                     </div>
@@ -850,6 +863,7 @@ export default function DispatchCenter() {
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
+                                        {isPulsePointCall(selectedCall) && <span className="rounded border border-red-500/50 bg-red-500/20 px-2 py-0.5 text-[9px] font-black text-red-100">PULSEPOINT</span>}
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
                                             RECV: {formatEasternDateTime(selectedCall.time_received || selectedCall.created_date)} ET
                                         </span>
