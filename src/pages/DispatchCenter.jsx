@@ -827,7 +827,7 @@ export default function DispatchCenter() {
                                         </span>
                                     </div>
                                     <div className="col-span-5">
-                                        <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
+                                        <div className={`text-[9px] font-mono font-bold truncate ${pulsePoint ? 'text-red-200' : call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{pulsePoint ? 'PP' : (call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
                                         <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
                                         <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${pulsePoint ? 'border border-red-500/40 bg-red-500/20 text-red-100' : 'text-slate-600'}`}>
@@ -859,7 +859,7 @@ export default function DispatchCenter() {
                                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
-                                            {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
+                                            {isPulsePointCall(selectedCall) ? 'PP' : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
