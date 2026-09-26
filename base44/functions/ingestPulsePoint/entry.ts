@@ -11,7 +11,7 @@ const DEFAULT_AREAS = [
 ];
 
 const DEFAULT_AGENCIES = [
-  { agencyId: '76000', agencyKey: '76000', name: 'City of Richmond', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
+  { agencyId: '04290', agencyKey: '04290', name: 'City of Richmond [VA]', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
   { agencyId: '37090', agencyKey: '37090', name: 'Chesterfield Co [VA]', shortName: 'Chesterfield Co', type: 'Fire/EMS', source: 'chesterfield', area: 'Chesterfield County, VA', areaLat: 37.3771, areaLng: -77.50499 },
 ];
 
@@ -117,8 +117,10 @@ async function resolveAgencies(body: any) {
   const requestedAreaKeys = new Set(parseList(body?.area_keys || body?.areaKeys));
   const keys = requestedAreaKeys.size ? requestedAreaKeys : new Set(DEFAULT_AREAS.map(area => area.key));
   const resolved: any[] = [];
-  if (keys.has('richmond_va')) resolved.push(...DEFAULT_AGENCIES);
-  const discoveryAreas = DEFAULT_AREAS.filter(area => keys.has(area.key) && area.key !== 'richmond_va');
+  if (keys.has('richmond_va')) resolved.push(...DEFAULT_AGENCIES.filter(agency => agency.source === 'richmond'));
+  if (keys.has('chesterfield_va')) resolved.push(...DEFAULT_AGENCIES.filter(agency => agency.source === 'chesterfield'));
+  const knownSources = new Set(DEFAULT_AGENCIES.map(agency => agency.source));
+  const discoveryAreas = DEFAULT_AREAS.filter(area => keys.has(area.key) && !knownSources.has(area.source));
   const discovered = (await Promise.all(discoveryAreas.map(area => agencyIdsFromArea(area).catch(error => {
     console.warn('PulsePoint agency discovery failed', area.key, error?.message || error);
     return [];
