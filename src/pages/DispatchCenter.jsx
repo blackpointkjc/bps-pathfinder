@@ -378,10 +378,9 @@ export default function DispatchCenter() {
                 const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
                     ? upstreamAt
                     : (createdAt || upstreamAt);
-                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < 8 * 60 * 60 * 1000;
-                // Keep Pathfinder CAD lifecycle authoritative for the live queue. The
-                // upstream agency may publish time_closed before our assigned officer
-                // clears the Pathfinder assignment, so time_closed alone must not hide it.
+                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < ACTIVE_CALL_MAX_AGE_MS;
+                // Keep Dispatch Center aligned with the one-hour active-call window.
+                // Older rows belong in Call History even if an upstream status lags.
                 return isFresh && !['Cleared', 'Cancelled'].includes(call.status) && call.manual_dismissed !== true;
             });
 
