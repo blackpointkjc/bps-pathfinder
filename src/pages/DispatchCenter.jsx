@@ -27,6 +27,7 @@ import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
+import { requestCadLiveSync } from '@/lib/cadCallFeed';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -160,9 +161,13 @@ export default function DispatchCenter() {
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || ''))));
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
-        const localInterval = setInterval(() => {
-            if (document.visibilityState === 'visible') loadActiveCalls();
-        }, 60000);
+        const localInterval = setInterval(async () => {
+            if (document.visibilityState !== 'visible') return;
+            try { await requestCadLiveSync(); } catch (error) { console.warn('[Dispatch] guarded upstream sync failed', error?.message || error); }
+            clearActiveDispatchCallMemoryCache();
+            lastActiveCallsLoadRef.current = 0;
+            loadActiveCalls(true);
+        }, 20000);
 
         // Layout owns the single app-wide one-minute upstream poll. Repaint
         // Dispatch immediately after its persisted writes complete rather than
@@ -353,7 +358,7 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async (force = false) => {
        const now = Date.now();
-       if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 30000)) return;
+       if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 10000)) return;
        activeCallsLoadingRef.current = true;
        try {
             let calls = await loadActiveDispatchCallRows(100);
