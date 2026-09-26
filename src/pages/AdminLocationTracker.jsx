@@ -303,9 +303,18 @@ export default function AdminLocationTracker({ embedded = false }) {
   useEffect(() => {
     if (!hasAccess || viewMode !== 'history' || !selectedOfficerEmail || !selectedDate) return undefined;
     let refreshTimer;
-    const queueAuditRefresh = () => {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(() => retryAudit(), 500);
+    let lastRefreshAt = Date.now();
+    const officerEmails = new Set([selectedOfficerEmail, ...(auditData?.matched_email_aliases || [])].map(email => String(email).toLowerCase()));
+    const queueAuditRefresh = event => {
+      const email = String(event?.data?.officer_email || '').toLowerCase();
+      if (email && !officerEmails.has(email)) return;
+      // Coalesce this officer's realtime changes; never refetch on every fleet ping.
+      if (refreshTimer) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        lastRefreshAt = Date.now();
+        retryAudit({ cancelRefetch: false });
+      }, Math.max(500, 30000 - (Date.now() - lastRefreshAt)));
     };
     const unsubscribers = [];
     for (const entity of [base44.entities.LocationHistory, base44.entities.GeofenceAlert, base44.entities.TimeEntry]) {
@@ -321,7 +330,7 @@ export default function AdminLocationTracker({ embedded = false }) {
       window.clearTimeout(refreshTimer);
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [hasAccess, viewMode, selectedOfficerEmail, selectedDate, retryAudit]);
+  }, [hasAccess, viewMode, selectedOfficerEmail, selectedDate, retryAudit, JSON.stringify(auditData?.matched_email_aliases || [])]);
 
   const getOfficerName = (email) => {
     const officer = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
@@ -995,7 +1004,7 @@ export default function AdminLocationTracker({ embedded = false }) {
             <strong>Historical Tracking:</strong> Select a user and Eastern Time date to view the complete GPS audit trail, route map, time entries, geofence alerts, estimated stops, and ping log. Use Print / Save PDF to print the same report.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Tracking Scope:</strong> Location tracking is active for every authenticated internal app session and ends when the app session is no longer active. Moving units publish live position about every 7 seconds; historical movement records speed and heading about every 20 seconds while moving and about once per minute while stationary.
+            <strong>Tracking Scope:</strong> Location tracking is active for every authenticated internal app session and ends when the app session is no longer active. Live position and historical pings are saved about every 30 seconds with an external GPS receiver or while moving, and every minute while idle on browser GPS. Fresh device fixes are required; GPS outages are shown as gaps.
           </p>
         </div>
       </div>
