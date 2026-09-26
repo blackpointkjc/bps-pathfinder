@@ -261,6 +261,8 @@ export default function BackgroundLocationTracker({ user }) {
         const recordHistory = now - lastHistoryPushRef.current >= historyIntervalMs;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
+        // When a history point is due, force this telemetry write through the
+        // shared background throttle so movement reports do not end up blank.
         const liveResult = await persistLiveState({
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -276,7 +278,8 @@ export default function BackgroundLocationTracker({ user }) {
           speed: speedMph,
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
-          record_history: true,
+          record_history: recordHistory,
+          force_publish: recordHistory,
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
