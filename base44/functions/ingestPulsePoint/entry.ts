@@ -267,6 +267,115 @@ async function publishAudioEvent(base44: any, call: any) {
   return true;
 }
 
+function pointInPolygon(lat: number, lng: number, polygon: any[] = []) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const yi = Number(Array.isArray(polygon[i]) ? polygon[i][0] : polygon[i]?.lat);
+    const xi = Number(Array.isArray(polygon[i]) ? polygon[i][1] : polygon[i]?.lng);
+    const yj = Number(Array.isArray(polygon[j]) ? polygon[j][0] : polygon[j]?.lat);
+    const xj = Number(Array.isArray(polygon[j]) ? polygon[j][1] : polygon[j]?.lng);
+    if (![yi, xi, yj, xj].every(Number.isFinite)) continue;
+    if (((yi > lat) !== (yj > lat)) && (lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const radius = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function propertyMatch(call: any, location: any) {
+  const lat = Number(call?.latitude);
+  const lng = Number(call?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
+  const boundaryType = String(location.property_monitoring_boundary_type || '').toLowerCase();
+  const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
+  if ((boundaryType === 'polygon' || polygon.length >= 3) && polygon.length >= 3) {
+    return pointInPolygon(lat, lng, polygon) ? { relation: 'inside', distanceMeters: 0 } : null;
+  }
+  const centerLat = Number(location.latitude);
+  const centerLng = Number(location.longitude);
+  const radius = Number(location.property_monitoring_radius_meters || 0);
+  if (![centerLat, centerLng, radius].every(Number.isFinite) || radius <= 0) return null;
+  return distanceMeters(lat, lng, centerLat, centerLng) <= radius ? { relation: 'inside', distanceMeters: 0 } : null;
+}
+
+function propertyAlertFingerprint(call: any, propertyId: any) {
+  return [
+    String(propertyId || ''),
+    String(call?.external_call_id || call?.agency_cad_number || call?.bps_reference || call?.call_id || call?.id || ''),
+    String(call?.incident || '').trim().toUpperCase(),
+    String(call?.location || '').trim().toUpperCase(),
+  ].join('|');
+}
+
+async function createPulsePointPropertyAlerts(base44: any, call: any) {
+  if (!call?.id || ['Cleared', 'Cancelled'].includes(String(call.status || ''))) return 0;
+  const [locations, existingAlerts] = await Promise.all([
+    base44.asServiceRole.entities.Location.list('site_name', 500).catch(() => []),
+    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+  ]);
+  const existingCallPropertyKeys = new Set((existingAlerts || []).map((alert: any) => `${String(alert?.propertyId || '')}|${String(alert?.callId || '')}`));
+  const existingKeys = new Set((existingAlerts || []).map((alert: any) => String(alert?.source_key || '')));
+  let created = 0;
+  for (const location of locations || []) {
+    if (location.active === false || location.property_monitoring_enabled !== true) continue;
+    const match = propertyMatch(call, location);
+    if (!match) continue;
+    const key = propertyAlertFingerprint(call, location.id);
+    const callPropertyKey = `${String(location.id || '')}|${String(call.id || '')}`;
+    if (existingCallPropertyKeys.has(callPropertyKey) || existingKeys.has(key)) continue;
+    const propertyAlert = await base44.asServiceRole.entities.PropertyAlert.create({
+      callId: call.id,
+      propertyId: location.id,
+      propertyName: location.site_name || 'Monitored Property',
+      callIncident: call.incident || 'PulsePoint incident',
+      callLocation: call.location || '',
+      callPriority: call.priority || 'medium',
+      callStatus: call.status || 'New',
+      cadNumber: String(call.agency_cad_number || call.bps_reference || call.call_id || call.id || ''),
+      callTime: call.time_received || call.created_date || new Date().toISOString(),
+      time_received: call.time_received || call.created_date || new Date().toISOString(),
+      source_key: key,
+      distanceMeters: Number(match.distanceMeters || 0),
+      acknowledged: false,
+      description: `PulsePoint call is inside the ${location.site_name || 'monitored'} property boundary.`,
+    });
+    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+    const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
+    await base44.asServiceRole.entities.CallStatusLog.create({
+      call_id: String(call.id),
+      incident_type: call.incident || 'PulsePoint incident',
+      location: call.location || location.address || '',
+      old_status: '',
+      new_status: call.status || 'New',
+      notes: `PulsePoint monitored-property active call detected for ${location.site_name || location.address || 'property'}.`,
+      latitude: call.latitude,
+      longitude: call.longitude,
+      event_key: propertyEventKey,
+      event_type: 'property_alert',
+      announcement_text: `PulsePoint property alert at ${location.site_name || location.address || 'monitored property'}. ${call.incident || 'Call for service'} at ${call.location || location.address || 'address unavailable'}. CAD number ${cadNumber}.`,
+      announcement_priority: ['critical', 'high'].includes(String(call.priority || '').toLowerCase()) ? String(call.priority).toLowerCase() : 'high',
+      cad_number: String(cadNumber),
+      triggering_action: 'ingestPulsePoint.property_alert_created',
+      audio_enabled: true,
+      sensitive: false,
+    }).catch((error: any) => console.error('Unable to publish PulsePoint property alert audio event', error?.message || error));
+    await Promise.all([
+      base44.asServiceRole.functions.invoke('notifyPropertyAlertSms', { property_alert_id: propertyAlert.id }).catch((error: any) => console.error('PulsePoint property SMS notification failed', error?.message || error)),
+      base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', { call_id: call.id, property_alert_id: propertyAlert.id }).catch((error: any) => console.error('PulsePoint property auto-dispatch failed', error?.message || error)),
+    ]);
+    existingKeys.add(key);
+    existingCallPropertyKeys.add(callPropertyKey);
+    created += 1;
+  }
+  return created;
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   try {
