@@ -51,6 +51,7 @@ const CENTER_CONFIG = {
         ['Dispatch Center', 'DispatchCenter', Radio],
         ['Officer Queue', 'OfficerDispatchQueue', Radio],
         ['Live Map', 'Navigation', MapIcon],
+        ['PulsePoint Respond', 'PulsePointRespond', Radio],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
       { label: 'History & Intelligence', items: [
@@ -333,7 +334,7 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 });
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
-  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
+  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], PulsePointRespond: ['cad','live','pulsepoint'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
   Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','reports','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','messages','law'], VATrespassNotices: ['officer','messages','trespass'], VACriminalComplaints: ['officer','messages','complaint'], Summons: ['officer','messages','summons'], WitnessSubpoenaRequest: ['officer','messages','subpoena'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','today','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankStructure: ['officer','profile','rank'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'],
   AdminLocationTracker: ['admin','sites','locationdispatch','admin_location_dispatch_tool','tracker'], AdminGeofenceAlerts: ['admin','sites','locationdispatch','admin_location_dispatch_tool','geofence'], AdminAutoDispatchControls: ['admin','sites','locationdispatch','admin_location_dispatch_tool','autodispatch'], AdminLocations: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'],
@@ -411,7 +412,7 @@ const HIDDEN_PROPERTY_ALERT_STATUSES = new Set(['cleared', 'cancelled', 'cancele
 const normalizedCallStatus = value => String(value || '').trim().toLowerCase();
 
 const DARK_WORKSPACE_PAGES = new Set([
-  'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
+  'CommandDashboard', 'DispatchCenter', 'PulsePointRespond', 'CallHistory', 'ClientCallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal', 'CADCenter'
 ]);
 
