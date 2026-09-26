@@ -6,10 +6,18 @@ import { Fragment } from 'react';
 import { CircleMarker, Marker, Pane, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
+const isPulsePointCall = (call) => {
+    const sourceChannel = String(call?.source_channel || '').toLowerCase();
+    const externalId = String(call?.external_call_id || '').toLowerCase();
+    const source = String(call?.source || '').toLowerCase();
+    return sourceChannel.includes('pulsepoint') || externalId.startsWith('pulsepoint:') || source === 'pulsepoint';
+};
+
 const createCallIcon = (call, isHighPriority = false) => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
     const isApproximate = call.geo_approximate === true;
+    const isPulsePoint = isPulsePointCall(call);
 
     const isEMS = incident.includes('ems') || incident.includes('medical') ||
         incident.includes('ambulance') || incident.includes('unconscious') ||
@@ -29,7 +37,10 @@ const createCallIcon = (call, isHighPriority = false) => {
     let iconSvg = '';
     let bgColor = '#1E40AF';
 
-    if (isEMS) {
+    if (isPulsePoint) {
+        bgColor = '#B91C1C';
+        iconSvg = `<text x="20" y="25" font-size="14" text-anchor="middle" font-family="Arial" fill="white" font-weight="900">PP</text>`;
+    } else if (isEMS) {
         bgColor = '#D97706';
         iconSvg = `<text x="20" y="26" font-size="18" text-anchor="middle" font-family="Arial">🚑</text>`;
     } else if (isFire) {
@@ -92,7 +103,8 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
             {renderable.map((call, index) => {
                 const priority = assessCallPriority(call);
                 const key = call.id || `call-${index}`;
-                const fillColor = priority.score >= 3 ? '#ef4444' : '#2563eb';
+                const isPulsePoint = isPulsePointCall(call);
+                const fillColor = isPulsePoint ? '#dc2626' : priority.score >= 3 ? '#ef4444' : '#2563eb';
                 return (
                     <Fragment key={key}>
                         <CircleMarker
@@ -106,10 +118,11 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                             pane="active-cad-calls"
                             position={[call.latitude, call.longitude]}
                             icon={createCallIcon(call, priority.score >= 3)}
-                            zIndexOffset={priority.score >= 3 ? 1200 : 900}
+                            zIndexOffset={isPulsePoint ? 1300 : priority.score >= 3 ? 1200 : 900}
                             eventHandlers={{ click: () => onCallClick?.(call) }}
                         >
                             <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
+                                {isPulsePoint && <div style={{ color: '#dc2626', fontWeight: 900, fontSize: 10, letterSpacing: 1 }}>PULSEPOINT</div>}
                                 <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
                                 <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
                             </Tooltip>
