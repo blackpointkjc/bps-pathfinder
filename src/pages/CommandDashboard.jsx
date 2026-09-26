@@ -560,7 +560,7 @@ function CommandDashboardInner({ embedded = false }) {
                                             {isPulsePoint && <span className="mt-0.5 rounded border border-red-500/60 bg-red-950/80 px-1 py-0.5 text-[8px] font-black leading-none tracking-wider text-red-200">PULSEPOINT</span>}
                                             <span className="break-words">{cleanIncident(call)}</span>
                                         </div>
-                                        <div className={`${isPulsePoint ? 'text-red-200/80' : 'text-slate-400'} font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5">
+                                        <div className={`${isPulsePoint ? 'text-red-200/80' : 'text-slate-400'} font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5`}>
                                             <MapPin className={`w-2.5 h-2.5 flex-shrink-0 ${isPulsePoint ? 'text-red-400' : 'text-slate-600'} mt-0.5`} />
                                             <span className="break-words">{call.location}{call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}</span>
                                         </div>
