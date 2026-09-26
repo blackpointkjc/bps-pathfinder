@@ -265,6 +265,12 @@ function CommandDashboardInner({ embedded = false }) {
     };
 
     const pulsePointCalls = calls.filter(isPulsePointCall);
+    const showPulsePointControls = pulsePointCalls.length > 0;
+
+    useEffect(() => {
+        if (agencyFilter === 'PULSEPOINT' && !showPulsePointControls) setAgencyFilter('ALL');
+    }, [agencyFilter, showPulsePointControls]);
+
     const visibleCalls = agencyFilter === 'ALL'
         ? calls
         : agencyFilter === 'PULSEPOINT'
@@ -382,7 +388,7 @@ function CommandDashboardInner({ embedded = false }) {
             <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-9">
                 {[
                     { label: 'ACTIVE CALLS', val: loading && calls.length === 0 ? '—' : calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
-                    { label: 'PULSEPOINT', val: loading && calls.length === 0 ? '—' : pulsePointCalls.length, color: pulsePointCalls.length > 0 ? 'text-red-300' : 'text-slate-500', bg: pulsePointCalls.length > 0 ? 'bg-red-950/45' : '', border: 'border-r border-red-900/50' },
+                    ...(showPulsePointControls ? [{ label: 'PULSEPOINT', val: pulsePointCalls.length, color: 'text-red-300', bg: 'bg-red-950/45', border: 'border-r border-red-900/50' }] : []),
                     { label: 'P1 CRITICAL', val: loading && calls.length === 0 ? '—' : criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
                     { label: 'P2 HIGH', val: loading && calls.length === 0 ? '—' : highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
                     { label: 'UNASSIGNED', val: loading && calls.length === 0 ? '—' : unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
@@ -498,7 +504,7 @@ function CommandDashboardInner({ embedded = false }) {
                     <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span>{pulsePointCalls.length > 0 && <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-red-950/70 border border-red-500/60 text-red-200 rounded">{pulsePointCalls.length} PULSEPOINT</span>}</div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
-                            <option value="ALL">ALL AGENCIES</option><option value="PULSEPOINT">PULSEPOINT</option><option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
+                            <option value="ALL">ALL AGENCIES</option>{showPulsePointControls && <option value="PULSEPOINT">PULSEPOINT</option>}<option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
                         </select>
                     </div>
 
