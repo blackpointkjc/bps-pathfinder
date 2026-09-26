@@ -387,6 +387,7 @@ function invalidateReadCacheForRealtimeEntity(name) {
   }
   if (name === 'CallHistory') prefixes.add('function:getCallHistoryFeed:');
   if (name === 'GeofenceAlert') prefixes.add('function:manageGeofenceAlerts:');
+  if (['LocationHistory', 'GeofenceAlert', 'TimeEntry'].includes(name)) prefixes.add('function:getLocationAuditReport:');
   if (name === 'ActiveOfficer' || name === 'Unit') prefixes.add('function:getOnDutyUnits:');
 
   for (const cacheKey of [...readCache.keys()]) {
