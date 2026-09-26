@@ -19,7 +19,7 @@ const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
 // Keep the last good queue through a long minimized/idle period. Individual calls
 // are still filtered to the one-hour operational window before they are rendered.
-const ACTIVE_CALL_CACHE_MAX_AGE_MS = 8 * 60 * 60_000;
+const ACTIVE_CALL_CACHE_MAX_AGE_MS = 65 * 60_000;
 
 function readCachedActiveCalls() {
     try {
@@ -262,7 +262,7 @@ export function DashboardDataProvider({ children }) {
                 return;
             }
             setCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: null, limit: 300 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 60 * 60_000, limit: 300 });
                 try {
                     window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
