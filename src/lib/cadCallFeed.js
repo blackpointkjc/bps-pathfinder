@@ -10,8 +10,10 @@ const BUSY_LEASE_RETRY_MS = 18_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
 const LIVE_SYNC_COOLDOWN_MS = 50 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
-const PULSEPOINT_AGENCY_IDS = ['76000', '37090'];
+const PULSEPOINT_AGENCY_IDS = ['04290', '37090'];
+const PULSEPOINT_API_URL = 'https://api.pulsepoint.org/v1/webapp?resource=incidents&agencyid=';
 const PULSEPOINT_GIBA_URL = 'https://web.pulsepoint.org/DB/giba.php?agency_id=';
+const PULSEPOINT_WAF_SCRIPT_URL = 'https://aac9c7b4c5f6.us-west-2.captcha-sdk.awswaf.com/aac9c7b4c5f6/jsapi.js';
 let liveSyncInFlight = null;
 let pulsePointSyncInFlight = null;
 
@@ -91,6 +93,47 @@ async function invokePulsePointIngest(payload, label = 'PulsePoint source sync')
   return response?.data || response || {};
 }
 
+async function loadPulsePointWafFetch() {
+  if (typeof window === 'undefined') return null;
+  if (window.AwsWafIntegration?.fetch) return window.AwsWafIntegration.fetch.bind(window.AwsWafIntegration);
+  await new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${PULSEPOINT_WAF_SCRIPT_URL}"]`);
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      window.setTimeout(resolve, 1500);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = PULSEPOINT_WAF_SCRIPT_URL;
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  const started = Date.now();
+  while (!window.AwsWafIntegration?.fetch && Date.now() - started < 3000) {
+    await new Promise(resolve => window.setTimeout(resolve, 100));
+  }
+  return window.AwsWafIntegration?.fetch ? window.AwsWafIntegration.fetch.bind(window.AwsWafIntegration) : null;
+}
+
+async function fetchPulsePointWebappIncidents(agencyIds = PULSEPOINT_AGENCY_IDS) {
+  const wafFetch = await loadPulsePointWafFetch();
+  const fetchImpl = wafFetch || fetch;
+  if (typeof fetchImpl !== 'function') throw new Error('Browser fetch is not available for PulsePoint sync');
+  const response = await fetchImpl(`${PULSEPOINT_API_URL}${encodeURIComponent(agencyIds.join(','))}`, {
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+  });
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!response.ok) throw new Error(`PulsePoint webapp feed failed HTTP ${response.status}`);
+  const payload = contentType.includes('application/json') ? await response.json() : JSON.parse(await response.text());
+  const active = Array.isArray(payload?.incidents?.active) ? payload.incidents.active : [];
+  return { payload, active };
+}
+
 async function fetchPulsePointEncodedResponse(agencyIds = PULSEPOINT_AGENCY_IDS) {
   if (typeof fetch !== 'function') throw new Error('Browser fetch is not available for PulsePoint sync');
   const response = await fetch(`${PULSEPOINT_GIBA_URL}${encodeURIComponent(agencyIds.join(','))}`, {
@@ -128,22 +171,33 @@ async function performPulsePointLiveSync(requestId) {
     }
 
     try {
-      const encoded = await fetchPulsePointEncodedResponse(PULSEPOINT_AGENCY_IDS);
+      const { active } = await fetchPulsePointWebappIncidents(PULSEPOINT_AGENCY_IDS);
       return invokePulsePointIngest({
         ...basePayload,
-        encoded_response: encoded,
-        request_id: `pulsepoint-browser-${requestId}`,
-      }, 'PulsePoint browser-assisted source sync');
-    } catch (browserError) {
-      const backendMessage = backendError?.response?.data?.error || backendError?.message || backendError;
-      const browserMessage = browserError?.message || browserError;
-      console.warn('[CAD] PulsePoint sync failed', { backend: backendMessage, browser: browserMessage });
-      return {
-        success: false,
-        source: 'pulsepoint',
-        error: String(browserMessage || backendMessage || 'PulsePoint sync failed'),
-        backend_error: String(backendMessage || ''),
-      };
+        incidents: active,
+        request_id: `pulsepoint-webapp-${requestId}`,
+      }, 'PulsePoint webapp browser-assisted source sync');
+    } catch (webappError) {
+      try {
+        const encoded = await fetchPulsePointEncodedResponse(PULSEPOINT_AGENCY_IDS);
+        return invokePulsePointIngest({
+          ...basePayload,
+          encoded_response: encoded,
+          request_id: `pulsepoint-browser-${requestId}`,
+        }, 'PulsePoint browser-assisted source sync');
+      } catch (browserError) {
+        const backendMessage = backendError?.response?.data?.error || backendError?.message || backendError;
+        const webappMessage = webappError?.message || webappError;
+        const browserMessage = browserError?.message || browserError;
+        console.warn('[CAD] PulsePoint sync failed', { backend: backendMessage, webapp: webappMessage, browser: browserMessage });
+        return {
+          success: false,
+          source: 'pulsepoint',
+          error: String(webappMessage || browserMessage || backendMessage || 'PulsePoint sync failed'),
+          backend_error: String(backendMessage || ''),
+          browser_error: String(browserMessage || ''),
+        };
+      }
     }
   })().finally(() => { pulsePointSyncInFlight = null; });
   return pulsePointSyncInFlight;
