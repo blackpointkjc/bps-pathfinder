@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
-const ACTIVE_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
 function callTimestamp(call: any) {
@@ -12,10 +11,8 @@ function callTimestamp(call: any) {
   return Number.isFinite(received) && received > 0 ? received : 0;
 }
 
-function isVisibleActiveCall(call: any, now = Date.now()) {
-  if (TERMINAL_STATUSES.has(lower(call?.status))) return false;
-  const stamp = callTimestamp(call);
-  return stamp > 0 && now - stamp < ACTIVE_MAX_AGE_MS;
+function isVisibleActiveCall(call: any) {
+  return !TERMINAL_STATUSES.has(lower(call?.status));
 }
 
 Deno.serve(async (req) => {
@@ -33,9 +30,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(50, Math.min(200, Number(body?.limit || 100)));
     const rows = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
-    const now = Date.now();
     const calls = (Array.isArray(rows) ? rows : [])
-      .filter(call => isVisibleActiveCall(call, now))
+      .filter(call => isVisibleActiveCall(call))
       .sort((a, b) => callTimestamp(b) - callTimestamp(a))
       .slice(0, limit);
 
@@ -43,7 +39,7 @@ Deno.serve(async (req) => {
       success: true,
       calls,
       filtered_out: Math.max(0, (Array.isArray(rows) ? rows.length : 0) - calls.length),
-      max_age_minutes: 60,
+      max_age_minutes: null,
       fetched_at: new Date().toISOString(),
     });
   } catch (error) {
