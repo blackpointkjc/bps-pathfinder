@@ -123,7 +123,8 @@ async function fetchPulsePointWebappIncidents(agencyIds = PULSEPOINT_AGENCY_IDS)
   const wafFetch = await loadPulsePointWafFetch();
   const fetchImpl = wafFetch || fetch;
   if (typeof fetchImpl !== 'function') throw new Error('Browser fetch is not available for PulsePoint sync');
-  const response = await fetchImpl(`${PULSEPOINT_API_URL}${encodeURIComponent(agencyIds.join(','))}`, {
+  const agencyParam = agencyIds.map(id => encodeURIComponent(id)).join(',');
+  const response = await fetchImpl(`${PULSEPOINT_API_URL}${agencyParam}`, {
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
   });
