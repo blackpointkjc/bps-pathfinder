@@ -9,7 +9,9 @@ export function auditTime(value) {
   return Number.isFinite(time) ? new Intl.DateTimeFormat('en-US', {timeZone:AUDIT_TIME_ZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(time) : 'Not recorded';
 }
 export function auditDay(value = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:AUDIT_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value);
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not recorded';
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:AUDIT_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
   return ['year','month','day'].map(type=>parts.find(p=>p.type===type)?.value).join('-');
 }
 const numberValue = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
