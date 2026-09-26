@@ -50,6 +50,7 @@
       "type": "string",
       "enum": [
         "new_call",
+        "call_updated",
         "priority_call",
         "bolo_published",
         "unit_dispatched",
