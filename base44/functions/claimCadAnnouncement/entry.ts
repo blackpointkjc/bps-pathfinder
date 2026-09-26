@@ -30,6 +30,43 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, receipt: updated });
     }
 
+
+    // Routine call changes are private to the assigned officers. Resolve legacy
+    // Unit/ActiveOfficer IDs as well as the canonical User ID, on the server.
+    const routineTypes = new Set(['unit_dispatched', 'additional_unit', 'unit_reassigned',
+      'unit_acknowledged', 'unit_enroute', 'unit_on_scene', 'unit_cleared',
+      'unit_available', 'priority_upgraded', 'call_cancelled', 'call_cleared', 'call_updated']);
+    let announcementText = '';
+    if (routineTypes.has(clean(body.event_type))) {
+      const event = await base44.asServiceRole.entities.CallStatusLog.get(clean(body.event_id)).catch(() => null);
+      if (!event || clean(event.event_key) !== eventKey || !routineTypes.has(clean(event.event_type))) {
+        return Response.json({ success: true, claimed: false, not_recipient: true });
+      }
+      const call = await base44.asServiceRole.entities.DispatchCall.get(event.call_id).catch(() => null);
+      const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: event.call_id });
+      const ids = new Set((call?.assigned_units || []).map(String));
+      for (const assignment of assignments || []) {
+        if (!['cleared', 'cancelled'].includes(clean(assignment.status).toLowerCase())) ids.add(String(assignment.unit_id));
+      }
+      // The departing officer must still hear their own unassignment/clear.
+      if (['unit_reassigned', 'unit_cleared', 'call_cleared'].includes(event.event_type) && event.unit_id) ids.add(String(event.unit_id));
+      let assigned = ids.has(String(user.id)) || ids.has(userEmail);
+      for (const id of assigned ? [] : ids) {
+        const unit = await base44.asServiceRole.entities.Unit.get(id).catch(() => null);
+        if (String(unit?.user_id || '') === String(user.id) || clean(unit?.user_email).toLowerCase() === userEmail) { assigned = true; break; }
+        const session = await base44.asServiceRole.entities.ActiveOfficer.get(id).catch(() => null);
+        if (clean(session?.officer_email).toLowerCase() === userEmail) { assigned = true; break; }
+      }
+      if (!assigned) return Response.json({ success: true, claimed: false, not_recipient: true });
+      announcementText = event.event_type === 'unit_reassigned'
+        ? 'You have been unassigned from the call.'
+        : event.event_type === 'call_cancelled'
+          ? 'Your assigned call has been cancelled. Return 10-8.'
+          : event.event_type === 'call_cleared'
+            ? 'Your assigned call has been cleared.'
+            : 'Your assigned call has been updated. Check your mobile data terminal.';
+    }
+
     const existing = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
       { event_key: eventKey, user_email: userEmail },
       '-processed_at',
@@ -68,9 +105,9 @@ Deno.serve(async (req) => {
       // A concurrent request whose newly-created receipt was removed must return
       // claimed:false or two devices can both speak the same event.
       const ownsClaim = String(earliest.id) === String(receipt.id);
-      return Response.json({ success: true, claimed: ownsClaim, receipt: earliest, deduplicated: extras.length });
+      return Response.json({ success: true, claimed: ownsClaim, announcement_text: announcementText, receipt: earliest, deduplicated: extras.length });
     }
-    return Response.json({ success: true, claimed: true, receipt });
+    return Response.json({ success: true, claimed: true, announcement_text: announcementText, receipt });
   } catch (error) {
     console.error('claimCadAnnouncement failed', error);
     return Response.json({ error: error?.message || 'Unable to claim announcement' }, { status: 500 });
