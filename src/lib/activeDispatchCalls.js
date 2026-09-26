@@ -8,7 +8,7 @@ const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed',
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 10_000;
+const MEMORY_DEDUPE_MS = 3_000;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
