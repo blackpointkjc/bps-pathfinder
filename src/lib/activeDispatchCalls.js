@@ -2,7 +2,9 @@ import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v2';
-const CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
+const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
@@ -21,6 +23,17 @@ function callTimestamp(call) {
   return Number.isFinite(created) && created > 0 ? created : (Number.isFinite(received) ? received : 0);
 }
 
+function isVisibleActiveCall(call, now = Date.now()) {
+  const status = String(call?.status || '').trim().toLowerCase();
+  const stamp = callTimestamp(call);
+  return !TERMINAL_STATUSES.has(status) && stamp > 0 && now - stamp < ACTIVE_CALL_MAX_AGE_MS;
+}
+
+function filterVisibleActiveCalls(rows = []) {
+  const now = Date.now();
+  return (rows || []).filter(call => isVisibleActiveCall(call, now));
+}
+
 function preferCall(current, candidate) {
   if (!current) return candidate;
   const score = call =>
@@ -36,7 +49,7 @@ function preferCall(current, candidate) {
 }
 
 export function dedupeOperationalCalls(rows = []) {
-  const sorted = [...(rows || [])].sort((a, b) => callTimestamp(b) - callTimestamp(a));
+  const sorted = filterVisibleActiveCalls(rows).sort((a, b) => callTimestamp(b) - callTimestamp(a));
   const stable = new Map();
   const unkeyed = [];
 
@@ -80,7 +93,7 @@ function readLastGoodCalls() {
     const cached = JSON.parse(window.localStorage.getItem(CACHE_KEY) || 'null');
     if (!cached || !Array.isArray(cached.calls)) return [];
     if (Date.now() - Number(cached.savedAt || 0) > CACHE_MAX_AGE_MS) return [];
-    return cached.calls;
+    return filterVisibleActiveCalls(cached.calls);
   } catch {
     return [];
   }
