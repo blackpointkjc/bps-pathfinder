@@ -17,6 +17,7 @@ import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
+import IncidentPerformanceDetails from '@/components/admin/IncidentPerformanceDetails';
 import { readCompanyAnalyticsSnapshot, saveCompanyAnalyticsSnapshot } from '@/lib/analyticsSnapshot';
 
 const ANALYTICS_SEGMENTS = {
@@ -961,6 +962,7 @@ export default function AdminAnalytics() {
                       <span className="font-bold text-white">QR:</span> <span className="text-slate-300">{officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>{officer.jobDuty.qrCompliance.score != null && <span className="text-slate-500"> · {officer.jobDuty.qrCompliance.score}%</span>}
                     </div>
                   </div>
+                  <IncidentPerformanceDetails jobDuty={officer.jobDuty} isAdmin={user?.role === "admin"} onChanged={refreshCompanyAnalytics} />
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
                     {officer.callOutAttendance.score != null && <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>}
                     {officer.bidStanding.score != null && <span>Bid Standing: {officer.bidStanding.score}% ({officer.bidStanding.accepted} assigned bid{officer.bidStanding.accepted === 1 ? '' : 's'})</span>}
