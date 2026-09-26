@@ -10,6 +10,10 @@ const DEFAULT_AREAS = [
   { key: 'chesterfield_va', label: 'Chesterfield County, VA', lat: 37.3771, lng: -77.50499, source: 'chesterfield' },
 ];
 
+const DEFAULT_AGENCIES = [
+  { agencyId: '76000', agencyKey: '76000', name: 'City of Richmond', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
+];
+
 const CALL_TYPES: Record<string, string> = {
   AA: 'Auto Aid', MU: 'Mutual Aid', ST: 'Strike Team/Task Force', AC: 'Aircraft Crash', AE: 'Aircraft Emergency', AES: 'Aircraft Emergency Standby',
   LZ: 'Landing Zone', AED: 'AED Alarm', OA: 'Alarm', CMA: 'Carbon Monoxide', FA: 'Fire Alarm', MA: 'Manual Alarm', SD: 'Smoke Detector', TRBL: 'Trouble Alarm',
@@ -59,7 +63,17 @@ async function fetchJson(url: string) {
     headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-PulsePoint/1.0' },
     signal: AbortSignal.timeout(15000),
   });
+  const contentType = response.headers.get('content-type') || '';
+  if (response.status === 202 && response.headers.get('x-amzn-waf-action') === 'challenge') {
+    const error = new Error('PulsePoint API requires an AWS WAF browser challenge; backend sync cannot read the feed directly right now.');
+    (error as any).code = 'PULSEPOINT_WAF_CHALLENGE';
+    throw error;
+  }
   if (!response.ok) throw new Error(`PulsePoint request failed HTTP ${response.status}`);
+  if (!contentType.includes('application/json')) {
+    const preview = (await response.text()).slice(0, 120).replace(/\s+/g, ' ');
+    throw new Error(`PulsePoint returned ${contentType || 'non-JSON'} instead of JSON: ${preview}`);
+  }
   return response.json();
 }
 
@@ -100,7 +114,10 @@ async function resolveAgencies(body: any) {
     return explicit.map(id => ({ agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency', areaLat: null, areaLng: null }));
   }
   const requestedAreaKeys = new Set(parseList(body?.area_keys || body?.areaKeys));
-  const areas = requestedAreaKeys.size ? DEFAULT_AREAS.filter(area => requestedAreaKeys.has(area.key)) : DEFAULT_AREAS;
+  if (!requestedAreaKeys.size || requestedAreaKeys.has('richmond_va')) {
+    return DEFAULT_AGENCIES;
+  }
+  const areas = DEFAULT_AREAS.filter(area => requestedAreaKeys.has(area.key));
   const found = (await Promise.all(areas.map(agencyIdsFromArea))).flat();
   const unique = new Map<string, any>();
   for (const agency of found) unique.set(agency.agencyId, agency);
@@ -335,6 +352,12 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('PulsePoint ingestion failed', error);
-    return Response.json({ success: false, error: error?.message || 'PulsePoint ingestion failed' }, { status: 500 });
+    const wafBlocked = error?.code === 'PULSEPOINT_WAF_CHALLENGE';
+    return Response.json({
+      success: false,
+      source: 'pulsepoint',
+      blocked: wafBlocked,
+      error: error?.message || 'PulsePoint ingestion failed',
+    }, { status: wafBlocked ? 409 : 500 });
   }
 });
