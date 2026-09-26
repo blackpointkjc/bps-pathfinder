@@ -29,7 +29,7 @@ export default function PropertyAlertsBanner() {
         };
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') loadAlerts();
-        }, 180000);
+        }, 30000);
         const unsubscribe = base44.entities.PropertyAlert.subscribe(scheduleLoad);
         return () => {
             clearInterval(interval);
