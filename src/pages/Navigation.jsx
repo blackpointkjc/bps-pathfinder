@@ -22,7 +22,7 @@ import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer
 import { formatEasternTime } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
-import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -249,7 +249,7 @@ export default function Navigation() {
         };
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
-        }, 180000);
+        }, 30000);
         window.addEventListener('bps-operational-resume', recoverCalls);
         window.addEventListener('online', recoverCalls);
         window.addEventListener('pageshow', recoverCalls);
@@ -899,12 +899,13 @@ export default function Navigation() {
 
     const fetchCalls = async () => {
         try {
-            let all = await base44.entities.DispatchCall.list('-created_date', 500);
+            let all = await loadActiveDispatchCallRows(500);
             if (cadCallFeedIsStale(all)) {
                 try {
                     const recovery = await refreshCadIngestionIfStale(all);
                     if (recovery?.reason !== 'feed_fresh') {
-                        all = await base44.entities.DispatchCall.list('-created_date', 500);
+                        clearActiveDispatchCallMemoryCache();
+                        all = await loadActiveDispatchCallRows(500);
                     }
                 } catch (recoveryError) {
                     console.warn('[NAV] stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
