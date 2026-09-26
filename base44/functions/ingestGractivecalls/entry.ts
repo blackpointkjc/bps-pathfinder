@@ -7,6 +7,13 @@ const CHESTERFIELD_PUBLIC_API_KEY = Deno.env.has('CHESTERFIELD_PUBLIC_API_KEY') 
 const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
 const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
+const LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1000;
+
+function isFreshLivePropertyCall(call: any) {
+  const callAt = new Date(call?.time_received || call?.created_date || 0).getTime();
+  const ageMs = Date.now() - callAt;
+  return Number.isFinite(callAt) && callAt > 0 && ageMs >= 0 && ageMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS;
+}
 
 const normalizeStatus = (raw: unknown) => {
   const value = String(raw || '').trim().toUpperCase();
@@ -560,9 +567,20 @@ async function createImmediatePropertyAlerts(
         : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
     });
 
-    // The PropertyAlert create above is the realtime audio trigger. Everything
-    // below starts immediately but is deliberately kept off the critical path so
-    // SMS/provider latency and assignment evaluation can never delay speech.
+    // The PropertyAlert create above is the realtime audio trigger only for calls
+    // that are genuinely fresh. Reconciliation can discover older active calls;
+    // keep those rows for dashboard/history, but never make them sound like a new
+    // property emergency minutes after the call started.
+    if (!isFreshLivePropertyCall(call)) {
+      existingKeys.add(key);
+      existingCallPropertyKeys.add(callPropertyKey);
+      created += 1;
+      continue;
+    }
+
+    // Everything below starts immediately but is deliberately kept off the
+    // critical path so SMS/provider latency and assignment evaluation can never
+    // delay speech.
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
     const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
     sideEffects.push(
@@ -711,6 +729,14 @@ async function reconcilePropertyAlerts(base44: any) {
           ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
           : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
       });
+      const freshLivePropertyCall = isFreshLivePropertyCall(call);
+      if (!freshLivePropertyCall) {
+        existingKeys.add(key);
+        existingCallPropertyKeys.add(callPropertyKey);
+        propertyAlertsCreated += 1;
+        continue;
+      }
+
       // Every newly verified monitored-property alert owns one durable CAD audio
       // event. Auto-dispatch may later create assignment/escalation events, but a
       // staffing shortage or disabled auto-dispatch must never make the original
