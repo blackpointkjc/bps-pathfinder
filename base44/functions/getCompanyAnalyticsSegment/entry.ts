@@ -179,6 +179,12 @@ Deno.serve(async (req) => {
     const list = (name:string, sort?:string, limit=1000) => safe(name, () => entity(name).list(sort, limit));
     const filter = (name:string, query:any, sort?:string, limit=1000) => safe(name, () => entity(name).filter(query, sort, limit));
 
+    const validDate = (value:any) => {
+      const raw = String(value || '');
+      const date = new Date(raw + 'T00:00:00.000Z');
+      return /^\d{4}-\d{2}-\d{2}$/.test(raw) && Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === raw;
+    };
+    if ((body.start_date && !validDate(body.start_date)) || (body.end_date && !validDate(body.end_date))) return Response.json({ error:'Enter valid start and end dates.' }, { status:400 });
     const today = new Date();
     const defaultStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
     const defaultEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0,10);

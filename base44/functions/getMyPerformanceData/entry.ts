@@ -286,6 +286,7 @@ Deno.serve(async (req) => {
     });
     const myPropertyCalls = combinedPropertyCalls.filter((call:any) => myWorkedSites.has(siteKey(call.property_site)));
     const decisions = myPropertyCalls.length ? await safeFilter('CallPerformanceDecision', { call_id: { $in: myPropertyCalls.map((call:any) => String(call.id)) } }, '-created_date', 5000) : [];
+    if (serviceErrors.CallPerformanceDecision) throw new Error('Unable to verify incident performance exclusions: ' + serviceErrors.CallPerformanceDecision);
     const decisionByCall = new Map<string, any>();
     for (const decision of decisions) if (!decisionByCall.has(String(decision.call_id))) decisionByCall.set(String(decision.call_id), decision);
     for (const call of myPropertyCalls) call.performance_decision = decisionByCall.get(String(call.id)) || null;

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 
+const parseISO = value => typeof value === 'string' ? dateFnsParseISO(value) : new Date(NaN);
 const format = (value, pattern) => value instanceof Date && Number.isFinite(value.getTime()) ? dateFnsFormat(value, pattern) : 'Unknown date';
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useAuth } from '@/lib/AuthContext';
@@ -13,7 +14,7 @@ import {
   BarChart3, Clock, CheckCircle2, Calendar, Star, AlertTriangle,
   MapPin, ChevronRight, GraduationCap, UserX, RefreshCw
 } from "lucide-react";
-import { format as dateFnsFormat, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
+import { format as dateFnsFormat, parseISO as dateFnsParseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';

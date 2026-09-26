@@ -11,13 +11,14 @@ import {
   BarChart3, Users, Clock, AlertTriangle, 
   CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X, RefreshCw
 } from "lucide-react";
-import { format as dateFnsFormat, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
+import { format as dateFnsFormat, parseISO as dateFnsParseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
 
+const parseISO = value => typeof value === 'string' ? dateFnsParseISO(value) : new Date(NaN);
 const format = (value, pattern) => value instanceof Date && Number.isFinite(value.getTime()) ? dateFnsFormat(value, pattern) : 'Unknown date';
 import IncidentPerformanceDetails from '@/components/admin/IncidentPerformanceDetails';
 import { readCompanyAnalyticsSnapshot, saveCompanyAnalyticsSnapshot } from '@/lib/analyticsSnapshot';
