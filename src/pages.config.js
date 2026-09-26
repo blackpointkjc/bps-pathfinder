@@ -198,6 +198,7 @@ import BOLOAlerts from './pages/BOLOAlerts';
 import PathfinderReports from './pages/Reports';
 import CallHistory from './pages/CallHistory';
 import Navigation from './pages/Navigation';
+import PulsePointRespond from './pages/PulsePointRespond';
 import RecordsAssistant from './pages/RecordsAssistant';
 import RecordViewer from './pages/RecordViewer';
 import DispatchCenter from './pages/DispatchCenter';
@@ -350,6 +351,7 @@ export const PAGES = {
     "PathfinderReports": PathfinderReports,
     "CallHistory": CallHistory,
     "Navigation": Navigation,
+    "PulsePointRespond": PulsePointRespond,
     "RecordsAssistant": RecordsAssistant,
     "RecordViewer": RecordViewer,
     "DispatchCenter": DispatchCenter,
