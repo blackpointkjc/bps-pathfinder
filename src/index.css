@@ -213,6 +213,16 @@
 }
 
 /* Pathfinder CAD/RMS design system */
+.current-officer-marker,
+.current-officer-marker.leaflet-marker-icon {
+  transition: transform 650ms linear;
+  will-change: transform;
+}
+
+.bps-navigation-drive-hud {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 :root {
   --bps-command-950: #050b12;
   --bps-command-900: #07111f;
