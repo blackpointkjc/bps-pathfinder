@@ -253,11 +253,11 @@ export default function BackgroundLocationTracker({ user }) {
         // Moving vehicles need a near-realtime operational map. Stationary units
         // can publish more slowly. This cadence is intentionally independent from
         // history persistence so faster map motion does not multiply history writes.
-        const livePushIntervalMs = moving ? 45000 : 90000;
+        const livePushIntervalMs = moving ? 15000 : 60000;
         if (now - lastGpsPushRef.current < livePushIntervalMs) return;
         lastGpsPushRef.current = now;
 
-        const historyIntervalMs = moving ? 20000 : 55000;
+        const historyIntervalMs = moving ? 18000 : 55000;
         const recordHistory = now - lastHistoryPushRef.current >= historyIntervalMs;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
@@ -276,7 +276,7 @@ export default function BackgroundLocationTracker({ user }) {
           speed: speedMph,
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
-          record_history: recordHistory,
+          record_history: true,
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
