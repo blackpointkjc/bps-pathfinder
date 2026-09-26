@@ -3,7 +3,6 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v2';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
-const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 let inFlight = null;
 let memoryRows = null;
@@ -23,15 +22,13 @@ function callTimestamp(call) {
   return Number.isFinite(created) && created > 0 ? created : (Number.isFinite(received) ? received : 0);
 }
 
-function isVisibleActiveCall(call, now = Date.now()) {
+function isVisibleActiveCall(call) {
   const status = String(call?.status || '').trim().toLowerCase();
-  const stamp = callTimestamp(call);
-  return !TERMINAL_STATUSES.has(status) && stamp > 0 && now - stamp < ACTIVE_CALL_MAX_AGE_MS;
+  return !TERMINAL_STATUSES.has(status);
 }
 
 function filterVisibleActiveCalls(rows = []) {
-  const now = Date.now();
-  return (rows || []).filter(call => isVisibleActiveCall(call, now));
+  return (rows || []).filter(call => isVisibleActiveCall(call));
 }
 
 function preferCall(current, candidate) {
