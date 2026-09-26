@@ -1,6 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const ARCHIVE_AFTER_MS = 60 * 60 * 1000;
+const ARCHIVE_SCAN_LIMIT = 1000;
+const ARCHIVE_BATCH_LIMIT = 100;
+
+function callTimestamp(call: any) {
+    const created = call?.created_date ? new Date(call.created_date).getTime() : 0;
+    const received = call?.time_received ? new Date(call.time_received).getTime() : 0;
+    if (Number.isFinite(received) && received > 0 && Number.isFinite(created) && created > 0 && Math.abs(received - created) < 24 * 60 * 60 * 1000) return received;
+    if (Number.isFinite(created) && created > 0) return created;
+    return Number.isFinite(received) && received > 0 ? received : 0;
+}
 
 Deno.serve(async (req) => {
     try {
@@ -17,21 +27,21 @@ Deno.serve(async (req) => {
         const authorized = scheduledRun || user?.role === 'admin' || user?.role === 'dispatch' || user?.role === 'supervisor' || user?.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-        // Keep each scheduled run below the function timeout. Remaining calls are
-        // picked up by the next 15-minute cycle instead of losing the whole batch.
-        const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 150);
+        // Scan a broad oldest-first window. The old newest-only scan could miss
+        // stale calls whenever the active table had enough newer rows in front of them.
+        const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('created_date', ARCHIVE_SCAN_LIMIT);
 
         const now = new Date();
         let archivedCount = 0;
 
-        const archiveCandidates = activeCalls.filter(call => {
-            const callTime = new Date(call.time_received || call.created_date);
-            return !Number.isNaN(callTime.getTime()) && now.getTime() - callTime.getTime() >= ARCHIVE_AFTER_MS;
-        }).slice(0, 30);
+        const archiveCandidates = (activeCalls || [])
+            .map(call => ({ call, stamp: callTimestamp(call) }))
+            .filter(item => item.stamp > 0 && now.getTime() - item.stamp >= ARCHIVE_AFTER_MS)
+            .sort((a, b) => a.stamp - b.stamp)
+            .slice(0, ARCHIVE_BATCH_LIMIT);
 
-        for (const call of archiveCandidates) {
-            const callTime = new Date(call.time_received || call.created_date);
-            const ageMs = now - callTime;
+        for (const { call, stamp } of archiveCandidates) {
+            const ageMs = now.getTime() - stamp;
 
             if (ageMs >= ARCHIVE_AFTER_MS) {
                 try {
@@ -96,6 +106,8 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             archivedCount,
+            scanned: Array.isArray(activeCalls) ? activeCalls.length : 0,
+            candidates: archiveCandidates.length,
             message: `Archived ${archivedCount} calls at 1 hour elapsed`
         });
 
