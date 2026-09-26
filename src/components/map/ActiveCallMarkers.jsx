@@ -124,7 +124,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                             <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
                                 {isPulsePoint && <div style={{ color: '#dc2626', fontWeight: 900, fontSize: 10, letterSpacing: 1 }}>PULSEPOINT</div>}
                                 <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
-                                <div>{call.call_id || call.agency_cad_number || call.bps_reference || ''}</div>
+                                <div>{isPulsePoint ? 'PP' : (call.call_id || call.agency_cad_number || call.bps_reference || '')}</div>
                             </Tooltip>
                         </Marker>
                     </Fragment>
