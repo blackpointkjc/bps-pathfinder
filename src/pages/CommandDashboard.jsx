@@ -253,6 +253,7 @@ function CommandDashboardInner({ embedded = false }) {
     };
 
     const getCallIdentifier = (call) => {
+        if (isPulsePointCall(call)) return { value: 'PP', type: 'pulsepoint' };
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
         const bps = compactBps(call?.bps_reference);
@@ -356,7 +357,7 @@ function CommandDashboardInner({ embedded = false }) {
                         const params = new URLSearchParams({ new: '1' });
                         if (selectedCall?.id) {
                             params.set('call_id', selectedCall.id);
-                            params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
+                            params.set('call_number', isPulsePointCall(selectedCall) ? 'PP' : (selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id));
                         }
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
                     }} className="command-dashboard-action h-8 flex min-w-0 items-center justify-center gap-1 px-2.5 bg-red-800/90 border border-red-600/80 text-white font-mono font-bold text-[9px] rounded-lg hover:bg-red-700 transition-colors">
@@ -542,7 +543,7 @@ function CommandDashboardInner({ embedded = false }) {
                                     <div className="cad-call-time w-36 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
                                         <div
                                             className={`font-bold whitespace-nowrap overflow-hidden text-ellipsis ${isPulsePoint ? 'text-red-200' : identifier.type === 'bps' ? 'text-[#f5c451]' : identifier.type === 'official' ? 'text-[#7ec1ff]' : 'text-slate-500'}`}
-                                            title={isPulsePoint ? `PulsePoint Respond incident: ${identifier.value}` : identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
+                                            title={isPulsePoint ? 'PulsePoint Respond incident' : identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
                                         >
                                             {identifier.value}
                                         </div>
