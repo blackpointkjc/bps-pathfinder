@@ -114,13 +114,17 @@ async function resolveAgencies(body: any) {
     return explicit.map(id => ({ agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency', areaLat: null, areaLng: null }));
   }
   const requestedAreaKeys = new Set(parseList(body?.area_keys || body?.areaKeys));
-  if (!requestedAreaKeys.size || requestedAreaKeys.has('richmond_va')) {
-    return DEFAULT_AGENCIES;
-  }
-  const areas = DEFAULT_AREAS.filter(area => requestedAreaKeys.has(area.key));
-  const found = (await Promise.all(areas.map(agencyIdsFromArea))).flat();
+  const keys = requestedAreaKeys.size ? requestedAreaKeys : new Set(DEFAULT_AREAS.map(area => area.key));
+  const resolved: any[] = [];
+  if (keys.has('richmond_va')) resolved.push(...DEFAULT_AGENCIES);
+  const discoveryAreas = DEFAULT_AREAS.filter(area => keys.has(area.key) && area.key !== 'richmond_va');
+  const discovered = (await Promise.all(discoveryAreas.map(area => agencyIdsFromArea(area).catch(error => {
+    console.warn('PulsePoint agency discovery failed', area.key, error?.message || error);
+    return [];
+  })))).flat();
+  resolved.push(...discovered);
   const unique = new Map<string, any>();
-  for (const agency of found) unique.set(agency.agencyId, agency);
+  for (const agency of resolved) unique.set(String(agency.agencyId), agency);
   return [...unique.values()];
 }
 
