@@ -295,17 +295,19 @@ Deno.serve(async (req) => {
     const shouldRecordHistory = body.record_history !== false;
     if (shouldRecordHistory && acceptedForPosition && hasCoordinates(latitude, longitude)) {
       try {
+        const historySessionId = String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`);
         const latestHistory = await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
-          { officer_email: officerEmail },
+          { officer_email: officerEmail, time_entry_id: historySessionId },
           '-timestamp',
           1,
         ));
         const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
+        const latestIsUsable = Number.isFinite(latestAt) && latestAt <= receivedAt + 30000;
         const speedMph = Math.max(0, finiteNumber(body.speed));
         const historyIntervalMs = speedMph >= 3 ? 18000 : 55000;
-        if (!Number.isFinite(latestAt) || deviceFixAt - latestAt >= historyIntervalMs) {
+        if (!latestIsUsable || deviceFixAt - latestAt >= historyIntervalMs) {
           await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.create({
-            time_entry_id: String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`),
+            time_entry_id: historySessionId,
             officer_email: officerEmail,
             officer_name: String(liveData.officer_name),
             location: String(liveData.current_location),
