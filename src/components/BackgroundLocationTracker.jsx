@@ -253,7 +253,7 @@ export default function BackgroundLocationTracker({ user }) {
         // Moving vehicles need a near-realtime operational map. Stationary units
         // can publish more slowly. This cadence is intentionally independent from
         // history persistence so faster map motion does not multiply history writes.
-        const livePushIntervalMs = moving ? 15000 : 60000;
+        const livePushIntervalMs = moving ? 7000 : 60000;
         if (now - lastGpsPushRef.current < livePushIntervalMs) return;
         lastGpsPushRef.current = now;
 
