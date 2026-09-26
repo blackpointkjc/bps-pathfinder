@@ -97,11 +97,14 @@ function hasQualifyingIncident(incidents, officer, windowStart, windowEnd) {
   });
 }
 
+const isReassignmentClockIn = entry => /\b(switched from|reassigned from|site switch|transferred from)\b/i.test(String(entry?.notes || ''));
+
 export function calculatePunctuality(timeEntries = [], schedules = [], monthStart, monthEnd, incidents = [], officer = null) {
   const details = [];
   let onTime = 0;
   let late = 0;
   let missed = 0;
+  let overrun = 0;
   let exempt = 0;
   const nowParts = dateParts(new Date());
   const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
@@ -126,7 +129,46 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       .map(entry => ({ entry, matched: matchTimeEntryToSchedule(entry, [schedule]) }))
       .filter(item => item.matched)
       .sort((a, b) => new Date(a.entry.clock_in).getTime() - new Date(b.entry.clock_in).getTime());
-    const entry = candidates[0]?.entry || null;
+    let entry = candidates[0]?.entry || null;
+    // An officer can already be on duty when another scheduled block begins
+    // (overnight coverage, site reassignment, split coverage, or a corrected
+    // schedule). Treat a time entry that spans the scheduled start as worked
+    // coverage instead of falsely recording a missed/no-clock-in shift.
+    if (!entry) {
+      const scheduledStartWall = wallClockMinute(schedule.shift_date, schedule.start_time);
+      const spanning = timeEntries
+        .filter(candidate => candidate?.clock_in)
+        .filter(candidate => emailKey(candidate.officer_email) === emailKey(schedule.officer_email))
+        .map(candidate => {
+          const inWall = wallClockMinute(easternDateKey(candidate.clock_in), easternTimeKey(candidate.clock_in));
+          const outWall = candidate.clock_out
+            ? wallClockMinute(easternDateKey(candidate.clock_out), easternTimeKey(candidate.clock_out))
+            : nowWall;
+          return { candidate, inWall, outWall };
+        })
+        .filter(item => scheduledStartWall != null && item.inWall != null && item.outWall != null
+          && item.inWall <= scheduledStartWall + 5 && item.outWall >= scheduledStartWall - 5)
+        .sort((a,b) => Math.abs(a.inWall - scheduledStartWall) - Math.abs(b.inWall - scheduledStartWall))[0];
+      if (spanning?.candidate) {
+        entry = spanning.candidate;
+        exempt++;
+        details.push({
+          status: 'covered_elsewhere',
+          shift_date: schedule.shift_date,
+          scheduled_start: schedule.start_time,
+          scheduled_end: schedule.end_time,
+          actual_clock_in: easternTimeKey(entry.clock_in),
+          actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+          minutes_late: null,
+          performance_exception: true,
+          performance_exception_reason: 'Officer was already clocked in when this scheduled block began.',
+          location: schedule.location || '',
+          schedule_id: schedule.id,
+          time_entry_id: entry.id,
+        });
+        continue;
+      }
+    }
     if (!entry) {
       missed++;
       details.push({
@@ -143,6 +185,31 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     }
 
     usedEntries.add(String(entry.id || ''));
+
+    // A destination TimeEntry created by the Time Clock "Switch Site" workflow is
+    // a continuation/reassignment of an already-started duty period. Its new
+    // clock_in timestamp is the reassignment time, not a fresh arrival time. Never
+    // penalize that destination entry as "late" against an older schedule block.
+    if (isReassignmentClockIn(entry)) {
+      exempt++;
+      details.push({
+        status: 'reassigned',
+        shift_date: schedule.shift_date,
+        scheduled_start: schedule.start_time,
+        scheduled_end: schedule.end_time,
+        actual_clock_in: easternTimeKey(entry.clock_in),
+        actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+        minutes_late: null,
+        performance_exception: true,
+        performance_overage_counted: false,
+        performance_exception_reason: 'Site reassignment / Switch Site entry. Destination clock-in is not a new arrival.',
+        location: schedule.location || '',
+        schedule_id: schedule.id,
+        time_entry_id: entry.id,
+      });
+      continue;
+    }
+
     if (entry.performance_exception === true) {
       exempt++;
       details.push({
@@ -152,7 +219,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
         scheduled_end: schedule.end_time,
         actual_clock_in: easternTimeKey(entry.clock_in),
         actual_clock_out: entry.clock_out ? easternTimeKey(entry.clock_out) : '',
+        minutes_late: null,
         performance_exception: true,
+        performance_overage_counted: false,
         performance_exception_reason: entry.payroll_adjustment_reason || '',
         location: schedule.location || '',
         schedule_id: schedule.id,
@@ -179,17 +248,21 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       lateClockOutMinutes = actualOutWall != null && scheduledEndWall != null ? Math.max(0, actualOutWall - scheduledEndWall) : 0;
     }
 
-    // This metric is specifically On-Time Arrival. Clocking in early or staying
-    // past scheduled end is not an arrival failure and must never lower it.
-    // Those facts remain available below for audit/display but are neutral here.
+    // Clocking out late is neutral unless an administrator explicitly records
+    // that the overrun should count toward performance. Approved relief delays
+    // remain visible in the audit record but never lower the officer's score.
     const earlyIncidentException = false;
     const lateIncidentException = false;
     const earlyViolation = false;
-    const lateClockOutViolation = false;
+    const lateClockOutViolation = lateClockOutMinutes > 5
+      && entry.performance_overage_counted === true
+      && entry.performance_exception !== true;
     const arrivalViolation = minutesLate > 5;
-    const status = arrivalViolation ? 'late' : 'on_time';
+    const status = arrivalViolation ? 'late' : lateClockOutViolation ? 'overrun' : 'on_time';
 
-    if (status === 'on_time') onTime++; else late++;
+    if (status === 'on_time') onTime++;
+    else if (status === 'overrun') overrun++;
+    else late++;
     details.push({
       status,
       shift_date: schedule.shift_date,
@@ -204,14 +277,16 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       late_clock_out_violation: lateClockOutViolation,
       early_incident_exception: earlyIncidentException,
       late_incident_exception: lateIncidentException,
+      performance_exception: entry.performance_exception === true,
+      performance_overage_counted: entry.performance_overage_counted === true,
       location: schedule.location || '',
       schedule_id: schedule.id,
       time_entry_id: entry.id,
     });
   }
 
-  const total = onTime + late + missed;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, exempt, total, details };
+  const total = onTime + late + missed + overrun;
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, exempt, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -304,9 +379,17 @@ export function calculateClientFeedback(feedback = [], monthStart, monthEnd) {
 export function calculateSupervisorRating(reviews = [], monthStart, monthEnd) {
   const monthly = reviews.filter(review => {
     const date = review.review_date || easternDateKey(review.created_date);
-    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && Number(review.overall_rating) > 0;
-  });
-  const avgRating = monthly.length ? monthly.reduce((sum, review) => sum + Number(review.overall_rating || 0), 0) / monthly.length : null;
+    const effectiveRating = review.hr_approved === true && Number(review.final_rating) > 0
+      ? Number(review.final_rating)
+      : Number(review.overall_rating);
+    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && effectiveRating > 0;
+  }).map(review => ({
+    ...review,
+    effective_rating: review.hr_approved === true && Number(review.final_rating) > 0
+      ? Number(review.final_rating)
+      : Number(review.overall_rating),
+  }));
+  const avgRating = monthly.length ? monthly.reduce((sum, review) => sum + Number(review.effective_rating || 0), 0) / monthly.length : null;
   return { count: monthly.length, avgRating, score: avgRating == null ? null : Math.round((avgRating / 5) * 100), items: monthly };
 }
 
@@ -406,9 +489,65 @@ export function calculateJobDutyCompliance({
 
   const activeRules = dutyRules.filter(rule => rule.active !== false);
   const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
-  const officerDailyReports = dailyReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
+
+  // DAR is a shift/session obligation, not a TimeEntry-row obligation. Switch Site
+  // creates a second TimeEntry for the destination property, so merge contiguous
+  // entries for the same officer into one duty session before counting DARs.
+  const sortedEntries = [...evaluatedShifts].sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+  const darSessions = [];
+  const darSessionByEntry = new Map();
+  for (const entry of sortedEntries) {
+    const start = new Date(entry.clock_in).getTime();
+    const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    const prior = darSessions[darSessions.length - 1];
+    const priorEntry = prior?.entries?.[prior.entries.length - 1] || null;
+    const priorSwitchTo = String(priorEntry?.notes || '').match(/\bswitched to\s+([^\n\r]+)/i)?.[1] || '';
+    const currentSwitchFrom = String(entry?.notes || '').match(/\bswitched from\s+([^\n\r]+)/i)?.[1] || '';
+    const explicitSwitchPair = Boolean(
+      priorEntry
+      && priorSwitchTo
+      && currentSwitchFrom
+      && siteKey(priorSwitchTo) === siteKey(entry.location)
+      && siteKey(currentSwitchFrom) === siteKey(priorEntry.location)
+      // A historical Time Clock bug could save the destination punch one calendar
+      // day late. The explicit reciprocal Switch Site notes are authoritative for
+      // pairing, but cap recovery at 30 hours so unrelated future shifts never merge.
+      && start >= prior.end_ms
+      && start - prior.end_ms <= 30 * 60 * 60 * 1000
+    );
+    const canMerge = prior && (start <= prior.end_ms + 20 * 60 * 1000 || explicitSwitchPair);
+    const session = canMerge ? prior : {
+      id: `session-${String(entry.id || start)}`,
+      start_ms: start,
+      end_ms: end,
+      entries: [],
+      sites: new Set(),
+      dates: new Set(),
+      active: !entry.clock_out,
+    };
+    if (!canMerge) darSessions.push(session);
+    session.entries.push(entry);
+    session.end_ms = Math.max(session.end_ms, end);
+    session.active = session.active || !entry.clock_out;
+    session.sites.add(siteKey(entry.location));
+    session.dates.add(easternDateKey(entry.clock_in));
+    darSessionByEntry.set(String(entry.id || ''), session);
+  }
+
+  const reportCreditsOfficer = report => {
+    const attachedEmails = new Set((report?.attached_officer_emails || []).map(emailKey));
+    const attachedIds = new Set((report?.attached_officer_ids || []).map(value => String(value)));
+    return !officer
+      || emailKey(report?.officer_email || report?.created_by || report?.created_by_email) === officerEmail
+      || String(report?.created_by_id || '') === String(officer?.id || '')
+      || attachedEmails.has(officerEmail)
+      || attachedIds.has(String(officer?.id || ''));
+  };
+
   // Incident compliance is tied to the property call itself. A submitted report linked to that call satisfies the call for all officers who were actively working that property at the time.
   const officerIncidents = incidentReports;
+  const countedIncidentCalls = new Set();
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
   const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
   const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
@@ -443,24 +582,39 @@ export function calculateJobDutyCompliance({
       qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
     };
 
-    // A Daily Activity Report is a company shift-close requirement for every
-    // completed worked shift. Do not make DAR scoring depend on a separate
-    // property rule/effective date; that was why the Missing Reports panel could
-    // show a real missing DAR while My Performance/Company Analytics ignored it.
-    const requiresDar = !isActiveShift;
+    // Count one DAR per continuous duty session. A Switch Site continuation
+    // may contain several TimeEntry rows but it is still one duty period.
+    const session = darSessionByEntry.get(String(entry.id || ''));
+    const sessionLead = session?.entries?.[0] === entry;
+    const requiresDar = Boolean(sessionLead && session && !session.active);
     if (requiresDar) {
       darRequired++;
       detail.daily_activity.required = true;
-      const matchingDar = officerDailyReports.find(report => {
-        if (report.status === 'draft' || usedDarIds.has(String(report.id))) return false;
-        if (report.shift_id && String(report.shift_id) === String(entry.id)) return true;
-        return !report.shift_id && report.report_date === shiftDate && siteKey(report.location) === site;
+      detail.daily_activity.session_entry_ids = session.entries.map(item => item.id).filter(Boolean);
+      detail.daily_activity.session_sites = [...session.sites].filter(Boolean);
+      const matchingDar = dailyReports.find(report => {
+        if (['draft', 'rejected'].includes(String(report?.status || '').toLowerCase()) || usedDarIds.has(String(report?.id || ''))) return false;
+        const reportId = String(report?.id || '');
+        const shiftIds = new Set(session.entries.map(item => String(item.id || '')));
+        if (report?.shift_id && shiftIds.has(String(report.shift_id))) return true;
+
+        const reportSite = siteKey(report?.location);
+        const reportDate = String(report?.report_date || '').slice(0, 10);
+        const siteDateMatch = session.sites.has(reportSite) && session.dates.has(reportDate);
+        if (!siteDateMatch) return false;
+
+        // A team DAR submitted by any officer working this post/session satisfies
+        // the shared operational reporting requirement. Attached officers are
+        // explicitly credited even when they moved sites before submission.
+        return reportCreditsOfficer(report) || Boolean(reportId);
       });
       if (matchingDar) {
         usedDarIds.add(String(matchingDar.id));
         darCompleted++;
         detail.daily_activity.completed = true;
         detail.daily_activity.report_id = matchingDar.id;
+        detail.daily_activity.report_author = matchingDar.officer_email || matchingDar.created_by_email || matchingDar.created_by || '';
+        detail.daily_activity.shared_report = !reportCreditsOfficer(matchingDar);
       }
     }
 
@@ -476,6 +630,15 @@ export function calculateJobDutyCompliance({
       calls.forEach(call => {
         const callType = String(call.incident || call.incident_type || call.call_type || call.type || '').toLowerCase();
         if (allowedTypes.length && !allowedTypes.includes(callType)) return;
+        const identity = String(call.original_call_id || call.id || call.call_id || '');
+        if (!identity || countedIncidentCalls.has(identity)) return;
+        countedIncidentCalls.add(identity);
+        if (call.performance_decision?.excluded === true) {
+          incidentExcluded++;
+          detail.incidents.excluded++;
+          detail.incidents.items.push({ call_id: identity, call_number: call.bps_reference || call.agency_cad_number || call.call_id || identity, call_type: call.incident || call.incident_type || 'Call for service', call_location: call.location || detail.property, status: 'excluded_admin', reason: call.performance_decision.reason === 'off_property' ? 'Off property' : 'Offsite', decision_by: call.performance_decision.created_by, decision_at: call.performance_decision.created_date });
+          return;
+        }
         const callDate = easternDateKey(call.time_received || call.created_date);
         const callTime = easternTimeKey(call.time_received || call.created_date);
         const callWall = localWallMinute(callDate, callTime);
@@ -488,23 +651,47 @@ export function calculateJobDutyCompliance({
         if (reassignment) {
           incidentExcluded++;
           detail.incidents.excluded++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'excluded_reassignment', reason: reassignment.call_out_type === 'reassigned' ? `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` : `Excluded after officer was ${reassignment.call_out_type === 'sent_home' ? 'sent home' : 'called out'}` });
+          detail.incidents.items.push({ call_id: call.id, call_number: call.bps_reference || call.agency_cad_number || call.call_id || '', status: 'excluded_reassignment', reason: reassignment.call_out_type === 'reassigned' ? `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` : `Excluded after officer was ${reassignment.call_out_type === 'sent_home' ? 'sent home' : 'called out'}` });
           return;
         }
         incidentRequired++;
         detail.incidents.required++;
         const callNumbers = [call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String);
-        const report = officerIncidents.find(ir =>
+        const report = officerIncidents.filter(ir => !['draft', 'rejected'].includes(String(ir.status || '').toLowerCase())).find(ir =>
           String(ir.linked_call_id || '') === String(call.id || '') ||
           callNumbers.includes(String(ir.linked_call_number || '')) ||
           callNumbers.includes(String(ir.call_number || ''))
         );
-        if (report && report.status !== 'draft') {
+        const callNumber = call.bps_reference || call.agency_cad_number || call.call_id || '';
+        const callTypeLabel = call.incident || call.incident_type || call.call_type || 'Call for service';
+        const callLocation = call.location || call.property_site || detail.property || '';
+        const callTimestamp = call.time_received || call.created_date || '';
+        if (report && !['draft', 'rejected'].includes(String(report.status || '').toLowerCase())) {
           incidentCompleted++;
           detail.incidents.completed++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'completed', report_id: report.id });
+          detail.incidents.items.push({
+            call_id: call.id,
+            call_number: callNumber,
+            status: 'completed',
+            call_type: callTypeLabel,
+            call_location: callLocation,
+            call_time: callTimestamp,
+            report_id: report.id,
+            report_number: report.report_number || report.id,
+            report_status: report.status,
+          });
         } else {
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'missing', call_type: call.incident || call.incident_type || call.call_type || 'Call for service' });
+          detail.incidents.items.push({
+            call_id: call.id,
+            call_number: callNumber,
+            status: 'missing',
+            call_type: callTypeLabel,
+            call_location: callLocation,
+            call_time: callTimestamp,
+            report_id: null,
+            report_number: '',
+            report_status: 'missing',
+          });
         }
       });
     }
@@ -541,8 +728,12 @@ export function calculateJobDutyCompliance({
         });
       }
     }
-    const qrIsRequired = effectiveQrRule ? effectiveQrRule.qr_required === true : requiredCheckpoints.length > 0;
-    if (qrIsRequired && requiredCheckpoints.length > 0) {
+    // QR compliance cannot be scored when the site has no active checkpoint
+    // records. A numeric scans-per-shift rule without a scannable code created
+    // impossible obligations (for example Sherrill's false 0/32 result).
+    const qrIsRequired = requiredCheckpoints.length > 0
+      && (effectiveQrRule ? effectiveQrRule.qr_required === true : true);
+    if (qrIsRequired) {
       const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
       const windowMinutes = Math.max(1, Number(effectiveQrRule?.qr_window_minutes || 30));
       const siteSuccessfulScans = qrScans.filter(scan => {
@@ -638,6 +829,15 @@ export function calculateJobDutyCompliance({
     incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
     qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
+    dutySessions: darSessions.map(session => ({
+      id: session.id,
+      start_ms: session.start_ms,
+      end_ms: session.end_ms,
+      active: session.active,
+      entry_ids: session.entries.map(entry => entry.id).filter(Boolean),
+      sites: [...session.sites].filter(Boolean),
+      dates: [...session.dates].filter(Boolean),
+    })),
   };
 }
 

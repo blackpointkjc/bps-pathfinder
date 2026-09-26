@@ -457,7 +457,7 @@ Deno.serve(async (req) => {
       users, metricData, reportTodos, trainingAssignments, trainingModules,
       trainingCompletions, certificationAlerts, dailyReports, shiftBids,
       qrScans, qrCheckpoints, callOuts, dutyRules, locations, clientFeedback,
-      performanceReviews, propertyAlerts,
+      performanceReviews, propertyAlerts, performanceDecisions,
     ] = await Promise.all([
       safeList(base44, 'User', 'last_name'),
       loadPerformanceMetricData(base44),
@@ -476,6 +476,7 @@ Deno.serve(async (req) => {
       safeList(base44, 'ClientFeedback', '-feedback_date'),
       safeList(base44, 'PerformanceReview', '-review_date'),
       safeList(base44, 'PropertyAlert', '-created_date'),
+      base44.asServiceRole.entities.CallPerformanceDecision.list('-created_date', 5000),
     ]);
 
     const recipients = (users || []).filter(isInternalActiveUser);
@@ -499,10 +500,13 @@ Deno.serve(async (req) => {
       const priorStamp = new Date(prior?.created_date || 0).getTime();
       if (!prior || stamp >= priorStamp) alertByCall.set(callId, alert);
     }
+    const decisionByCall = new Map<string, any>();
+    for (const decision of performanceDecisions) if (!decisionByCall.has(String(decision.call_id))) decisionByCall.set(String(decision.call_id), decision);
     const dispatchCalls = [...alertByCall.entries()].map(([callId, alert]) => ({
       id: callId,
       original_call_id: callId,
-      call_id: callId,
+      performance_decision: decisionByCall.get(callId) || null,
+      call_id: alert.cadNumber || callId,
       property_id: alert.propertyId || '',
       property_site: alert.propertyName || '',
       incident: alert.callIncident || 'Property call',

@@ -262,9 +262,13 @@ Deno.serve(async (req) => {
         filter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 1500),
         filter('CallAssignment', { assigned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-assigned_at', 1500),
       ]);
+      const calls = buildDispatchCalls(dispatchCallsLive, callHistory, propertyAlerts);
+      const decisions = calls.length ? await filter('CallPerformanceDecision', { call_id: { $in: calls.map((call:any) => String(call.id)) } }, '-created_date', 5000) : [];
+      const decisionByCall = new Map<string, any>();
+      for (const decision of decisions) if (!decisionByCall.has(String(decision.call_id))) decisionByCall.set(String(decision.call_id), decision);
       return Response.json({
         success:true, segment, generated_at:new Date().toISOString(),
-        dispatchCalls:buildDispatchCalls(dispatchCallsLive, callHistory, propertyAlerts),
+        dispatchCalls:calls.map((call:any) => ({ ...call, performance_decision:decisionByCall.get(String(call.id)) || null })),
         callAssignments,
         service_errors:errors,
       });

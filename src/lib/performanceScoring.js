@@ -470,7 +470,6 @@ export function calculateJobDutyCompliance({
   dailyReports = [],
   incidentReports = [],
   dispatchCalls = [],
-  callAssignments = [],
   callOuts = [],
   qrScans = [],
   allTimeEntries = [],
@@ -548,13 +547,7 @@ export function calculateJobDutyCompliance({
 
   // Incident compliance is tied to the property call itself. A submitted report linked to that call satisfies the call for all officers who were actively working that property at the time.
   const officerIncidents = incidentReports;
-  const completedAssignmentCallIds = new Set(callAssignments
-    .filter(assignment => {
-      if (officer?.id && String(assignment?.unit_id || '') !== String(officer.id)) return false;
-      return String(assignment?.status || '').toLowerCase() === 'cleared' && Boolean(assignment?.cleared_at);
-    })
-    .map(assignment => String(assignment.call_id || ''))
-    .filter(Boolean));
+  const countedIncidentCalls = new Set();
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
   const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
   const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
@@ -626,11 +619,6 @@ export function calculateJobDutyCompliance({
     }
 
     const calls = dispatchCalls.filter(call => {
-      const callIds = [call.id, call.original_call_id, call.call_id].filter(Boolean).map(String);
-      // An incident-report obligation exists only after this officer's dispatched
-      // assignment is resolved. Nearby public calls and still-open assignments
-      // are operational awareness, not completed reporting obligations.
-      if (!callIds.some(id => completedAssignmentCallIds.has(id))) return false;
       const stamp = new Date(call.time_received || call.created_date).getTime();
       if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs) return false;
       return callMatchesProperty(call, site, locations);
@@ -642,6 +630,15 @@ export function calculateJobDutyCompliance({
       calls.forEach(call => {
         const callType = String(call.incident || call.incident_type || call.call_type || call.type || '').toLowerCase();
         if (allowedTypes.length && !allowedTypes.includes(callType)) return;
+        const identity = String(call.original_call_id || call.id || call.call_id || '');
+        if (!identity || countedIncidentCalls.has(identity)) return;
+        countedIncidentCalls.add(identity);
+        if (call.performance_decision?.excluded === true) {
+          incidentExcluded++;
+          detail.incidents.excluded++;
+          detail.incidents.items.push({ call_id: identity, call_number: call.bps_reference || call.agency_cad_number || call.call_id || identity, call_type: call.incident || call.incident_type || 'Call for service', call_location: call.location || detail.property, status: 'excluded_admin', reason: call.performance_decision.reason === 'off_property' ? 'Off property' : 'Offsite', decision_by: call.performance_decision.created_by, decision_at: call.performance_decision.created_date });
+          return;
+        }
         const callDate = easternDateKey(call.time_received || call.created_date);
         const callTime = easternTimeKey(call.time_received || call.created_date);
         const callWall = localWallMinute(callDate, callTime);
@@ -660,7 +657,7 @@ export function calculateJobDutyCompliance({
         incidentRequired++;
         detail.incidents.required++;
         const callNumbers = [call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String);
-        const report = officerIncidents.find(ir =>
+        const report = officerIncidents.filter(ir => !['draft', 'rejected'].includes(String(ir.status || '').toLowerCase())).find(ir =>
           String(ir.linked_call_id || '') === String(call.id || '') ||
           callNumbers.includes(String(ir.linked_call_number || '')) ||
           callNumbers.includes(String(ir.call_number || ''))

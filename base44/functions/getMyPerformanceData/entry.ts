@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
       combinedPropertyCalls.push({
         id: originalId,
         original_call_id: originalId,
-        call_id: originalId,
+        call_id: alert.cadNumber || originalId,
         property_id: alert.propertyId || '',
         property_site: alert.propertyName || '',
         incident: alert.callIncident || historyMatch?.incident || 'Property call',
@@ -279,6 +279,10 @@ Deno.serve(async (req) => {
         || sameOfficer(r, ['officer_email'], aliases, officerId, ['officer_id', 'created_by_id']);
     });
     const myPropertyCalls = combinedPropertyCalls.filter((call:any) => myWorkedSites.has(siteKey(call.property_site)));
+    const decisions = myPropertyCalls.length ? await safeFilter('CallPerformanceDecision', { call_id: { $in: myPropertyCalls.map((call:any) => String(call.id)) } }, '-created_date', 5000) : [];
+    const decisionByCall = new Map<string, any>();
+    for (const decision of decisions) if (!decisionByCall.has(String(decision.call_id))) decisionByCall.set(String(decision.call_id), decision);
+    for (const call of myPropertyCalls) call.performance_decision = decisionByCall.get(String(call.id)) || null;
     const relevantCallIds = new Set(myPropertyCalls.flatMap((call:any) => [call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String)));
     const linkedPropertyIncidents = incidentsAll.filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
     const relevantIncidents = [...new Map([...myIncidents, ...linkedPropertyIncidents].map((report:any) => [String(report.id), report])).values()];
