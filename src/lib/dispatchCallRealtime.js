@@ -6,7 +6,6 @@ let entityUnsubscribe = null;
 let connectError = null;
 
 const HIDDEN = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const statusOf = call => String(call?.status || '').trim().toLowerCase();
 
 function startEntitySubscription() {
@@ -44,7 +43,7 @@ export function subscribeDispatchCallChanges(listener) {
 
 export function applyDispatchCallEvent(currentCalls, event, {
   hideClosed = true,
-  maxAgeMs = ACTIVE_CALL_MAX_AGE_MS,
+  maxAgeMs = null,
   limit = 250,
 } = {}) {
   const current = Array.isArray(currentCalls) ? currentCalls : [];
