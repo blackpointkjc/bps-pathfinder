@@ -390,7 +390,9 @@ async function createPulsePointPropertyAlerts(base44: any, call: any) {
       source_key: key,
       distanceMeters: Number(match.distanceMeters || 0),
       acknowledged: false,
-      description: `PulsePoint call is inside the ${location.site_name || 'monitored'} property boundary.`,
+      description: match.relation === 'inside'
+        ? `PulsePoint call is inside the ${location.site_name || 'monitored'} property boundary.`
+        : `PulsePoint call is on or near the ${location.site_name || 'monitored'} property block.`, 
     });
     const cadNumber = 'PP';
     const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
