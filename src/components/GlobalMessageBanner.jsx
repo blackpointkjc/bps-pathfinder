@@ -7,7 +7,6 @@ import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, 
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 import { parseServerTimestamp } from '@/lib/easternTime';
-import { clearBase44ReadCacheMatching } from '@/api/base44Client';
 
 const SOURCES = [
   // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
@@ -535,7 +534,7 @@ export default function GlobalMessageBanner({ user }) {
         if (HIDDEN_EXISTING_CALL_STATUSES.has(normalized(record.callStatus))) return;
         if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
 
-        // Use the exact same durable event key written by ingestGractivecalls.
+        // Normalize every initial delivery path to the same call identity.
         // PropertyAlert realtime and CallStatusLog are two delivery paths for ONE
         // announcement; whichever arrives first claims it and the other becomes
         // a fallback instead of producing duplicate speech.
