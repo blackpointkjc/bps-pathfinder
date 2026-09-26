@@ -48,7 +48,7 @@ export default function CadCriticalIncidentBanner() {
     });
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') load();
-    }, 60_000);
+    }, 15_000);
     return () => {
       mounted = false;
       window.clearInterval(timer);
