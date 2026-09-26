@@ -12,6 +12,7 @@ let freshRequest = null;
 let lifecycleListenersInstalled = false;
 let lastSchedulerTickAt = Date.now();
 let lastOperationalResumeAt = 0;
+let lastDeviceRefreshAt = 0;
 
 export const TACTICAL_GPS_MAX_ACCURACY_METERS = 100;
 export const PRECISION_GPS_TARGET_METERS = 50;
@@ -19,10 +20,10 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 // request every few seconds while the shared watch remains active so the map
 // stays close to a driving-navigation cadence. The background tracker separately
 // rate-limits server persistence.
-export const DEVICE_GPS_REFRESH_MS = 7_000;
+export const DEVICE_GPS_REFRESH_MS = 30_000;
 export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
 export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
-export const GPS_WATCH_STALE_MS = 30_000;
+export const GPS_WATCH_STALE_MS = 90_000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
@@ -131,7 +132,7 @@ export function publishLiveLocation(fix) {
     source: String(fix.source || 'browser_geolocation'),
   };
   const derived = movementMetrics(latestFix, candidate);
-  if (!Number.isFinite(Number(candidate.speed))) candidate.speed = derived.speed ?? 0;
+  if (candidate.speed === null || !Number.isFinite(Number(candidate.speed))) candidate.speed = derived.speed ?? 0;
   if (!Number.isFinite(Number(candidate.heading)) && Number(candidate.speed) >= 2) candidate.heading = derived.heading;
 
   // Smooth obviously noisy speed spikes without making the vehicle feel delayed.
@@ -250,6 +251,9 @@ function requestWhenUsable() {
   // Do NOT stop simply because the app is minimized/hidden. That was causing the
   // CF-33 to rely only on Chromium's throttled watchPosition stream. A fresh
   // high-accuracy request is intentionally attempted in the background as well.
+  const now = Date.now();
+  if (now - lastDeviceRefreshAt < DEVICE_GPS_REFRESH_MS) return;
+  lastDeviceRefreshAt = now;
   requestFreshLiveLocation().catch(() => null);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('bps-background-location-tick', {
