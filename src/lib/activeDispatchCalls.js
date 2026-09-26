@@ -1,7 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const CACHE_KEY = 'bps-cad-active-calls-v2';
+const CACHE_KEY = 'bps-cad-active-calls-v3';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
 const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
