@@ -6,6 +6,7 @@ function finiteNumber(value: unknown, fallback = 0) {
 }
 
 function hasCoordinates(latitude: unknown, longitude: unknown) {
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined || latitude === '' || longitude === '') return false;
   const lat = Number(latitude);
   const lng = Number(longitude);
   return Number.isFinite(lat) && Number.isFinite(lng)
@@ -26,16 +27,21 @@ function distanceMeters(lat1: unknown, lng1: unknown, lat2: unknown, lng2: unkno
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const isTransientHistoryError = (error: any) => /rate limit|too many requests|\b429\b|timed out|timeout|server selection|temporar|connection/i.test(String(error?.message || error));
+// Never immediately retry throttled or timed-out writes: a timed-out create may
+// already have committed. The next scheduled ping checks history before writing.
+const isTransientHistoryError = (error: any) => {
+  const message = String(error?.message || error);
+  return !/rate limit|too many requests|\b429\b|timed out|timeout/i.test(message) && /temporar|connection/i.test(message);
+};
 
 async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
   let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       lastError = error;
-      if (!isTransientHistoryError(error) || attempt === 2) break;
+      if (!isTransientHistoryError(error) || attempt === 1) break;
       await delay(300 * (attempt + 1));
     }
   }
@@ -52,8 +58,8 @@ Deno.serve(async (req) => {
     const heartbeatOnly = body.heartbeat_only === true;
     const latitude = Number(body.latitude);
     const longitude = Number(body.longitude);
-    const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
-    if (!heartbeatOnly && !hasGps) {
+    const hasGps = !heartbeatOnly && hasCoordinates(body.latitude, body.longitude);
+    if (!heartbeatOnly && !hasGps && body.end_session !== true) {
       return Response.json({ error: 'Valid latitude and longitude are required' }, { status: 400 });
     }
 
@@ -277,8 +283,8 @@ Deno.serve(async (req) => {
 
     // Persist movement history in the authenticated backend so browser
     // background throttling and client-side RLS cannot silently stop the trail.
-    // One row per officer per minute is sufficient for the map and prevents
-    // multiple tabs/devices from producing a duplicate history stream.
+    // One history stream per officer across tabs/devices: every 30 seconds
+    // with an external receiver or movement, every 60 seconds for idle browser GPS.
     //
     // History must follow the SAME acceptance rule as the live marker. The live
     // map intentionally accepts coarse device/network coordinates when that is
@@ -297,14 +303,17 @@ Deno.serve(async (req) => {
       try {
         const historySessionId = String(body.time_entry_id || body.clock_in_time || `login-session:${activeOfficer.clock_in_time || now}`);
         const latestHistory = await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.filter(
-          { officer_email: officerEmail, time_entry_id: historySessionId },
+          { officer_email: officerEmail },
           '-timestamp',
           1,
         ));
         const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
         const latestIsUsable = Number.isFinite(latestAt) && latestAt <= receivedAt + 30000;
         const speedMph = Math.max(0, finiteNumber(body.speed));
-        const historyIntervalMs = speedMph >= 3 ? 18000 : 55000;
+        const movedMeters = latestHistory?.[0]
+          ? distanceMeters(latestHistory[0].latitude, latestHistory[0].longitude, latitude, longitude)
+          : 0;
+        const historyIntervalMs = externalCandidate || speedMph >= 3 || movedMeters >= 18 ? 30000 : 60000;
         if (!latestIsUsable || deviceFixAt - latestAt >= historyIntervalMs) {
           await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.create({
             time_entry_id: historySessionId,
