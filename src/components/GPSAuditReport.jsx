@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { buildAuditModel, buildRouteMap, auditTimestamp, auditTime, durationLabel, signalQuality, validAuditPoint } from '@/lib/locationAudit';
+import { buildAuditModel, buildRouteMap, auditTimestamp, auditTime, auditDay, durationLabel, signalQuality, validAuditPoint } from '@/lib/locationAudit';
 import auditStyles from './GPSAuditReport.css?inline';
 import './GPSAuditReport.css';
 
@@ -86,7 +86,7 @@ export default function GPSAuditReport({ data, officerName, onBack }) {
         </section><section className="gps-report-card"><h2>Stop Summary ({model.stops.length})</h2>
         {model.stops.length?<AuditTable label="Estimated stop events" headings={['#','Location','Arrived (ET)','Last observed (ET)','Duration']}>{model.stops.map((stop,i)=><tr key={i}><td>{i+1}</td><td>{stop.location}</td><td className="gps-time">{auditTime(stop.first.timestamp)}</td><td className="gps-time">{auditTime(stop.last.timestamp)}</td><td className="gps-time">{durationLabel(stop.duration)}</td></tr>)}</AuditTable>:<p className="gps-note">No qualifying stops detected.</p>}
         <p className="gps-note">Stops are estimates: at least five minutes within 50m, with accuracy of 50m or better and no gap over five minutes. Last observed is not a verified departure time.</p>
-        </section>{entries.length>0&&<section className="gps-report-card"><h2>TIME ENTRIES ({entries.length})</h2><AuditTable label="Recorded time entries" headings={['Entry','Clock in (ET)','Clock out (ET)','Location']}>{entries.map(entry=><tr key={entry.id}><td>{entry.id}</td><td>{entry.clock_in?.slice(0,10)} {auditTime(entry.clock_in)}</td><td>{entry.clock_out?auditTime(entry.clock_out):'Open entry'}</td><td>{entry.location||'Not recorded'}</td></tr>)}</AuditTable></section>}
+        </section>{entries.length>0&&<section className="gps-report-card"><h2>TIME ENTRIES ({entries.length})</h2><AuditTable label="Recorded time entries" headings={['Entry','Clock in (ET)','Clock out (ET)','Location']}>{entries.map(entry=><tr key={entry.id}><td>{entry.id}</td><td>{auditDay(entry.clock_in)} {auditTime(entry.clock_in)}</td><td>{entry.clock_out?`${auditDay(entry.clock_out)} ${auditTime(entry.clock_out)}`:'Open entry'}</td><td>{entry.location||'Not recorded'}</td></tr>)}</AuditTable></section>}
         <section className="gps-report-card"><h2>GPS Timeline ({model.pings.length} pings)</h2>
         {timeline.length?<AuditTable label="Full GPS timeline, scroll horizontally on small screens" headings={['#','Time (ET)','Event / Location','Coordinates','Speed','Heading','Accuracy','Signal']}>{timeline.map(event=>{
           if(event.kind==='alert') { const alert=event.record; return <tr className="gps-event" key={'alert-'+alert.id}><td>!</td><td className="gps-time">{auditTime(alert.created_date)}</td><td colSpan={6}><strong>{{entered:'Entered zone',exited:'Exited zone',outside_zone:'Outside zone'}[alert.alert_type]||alert.alert_type||'Geofence event'}</strong> · {alert.location||'Zone not recorded'} · {alert.acknowledged?'Acknowledged':'Not acknowledged'}</td></tr>; }
