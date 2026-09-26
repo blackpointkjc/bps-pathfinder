@@ -87,6 +87,8 @@ async function agencyIdsFromArea(area: any) {
       type: detail?.agencytype || '',
       source: area.source,
       area: area.label,
+      areaLat: area.lat,
+      areaLng: area.lng,
     });
   }
   return resolved;
@@ -95,7 +97,7 @@ async function agencyIdsFromArea(area: any) {
 async function resolveAgencies(body: any) {
   const explicit = parseList(body?.agency_ids || body?.agencyIds || Deno.env.get('PULSEPOINT_AGENCY_IDS'));
   if (explicit.length) {
-    return explicit.map(id => ({ agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency' }));
+    return explicit.map(id => ({ agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency', areaLat: null, areaLng: null }));
   }
   const requestedAreaKeys = new Set(parseList(body?.area_keys || body?.areaKeys));
   const areas = requestedAreaKeys.size ? DEFAULT_AREAS.filter(area => requestedAreaKeys.has(area.key)) : DEFAULT_AREAS;
@@ -126,7 +128,27 @@ function validNumber(value: unknown) {
   return Number.isFinite(number) && number !== 0 ? number : null;
 }
 
-function normalizeIncident(row: any, agency: any) {
+async function geocodePulsePointAddress(address: string, agency: any) {
+  const cleanAddress = String(address || '').trim();
+  if (!cleanAddress || /address unavailable/i.test(cleanAddress)) return null;
+  const suffix = String(agency?.area || agency?.name || 'Virginia').trim();
+  const query = /\bVA\b|Virginia/i.test(cleanAddress) ? cleanAddress : `${cleanAddress}, ${suffix}`;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(query)}`;
+    const results = await fetchJson(url);
+    const match = Array.isArray(results) ? results[0] : null;
+    const latitude = validNumber(match?.lat);
+    const longitude = validNumber(match?.lon);
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude, geo_confidence: 'medium', geo_method: 'street', geo_approximate: true };
+    }
+  } catch (error) {
+    console.warn('PulsePoint address geocode failed', cleanAddress, error?.message || error);
+  }
+  return null;
+}
+
+async function normalizeIncident(row: any, agency: any) {
   const id = String(row?.ID || '').trim();
   if (!id) return null;
   const incident = CALL_TYPES[String(row?.PulsePointIncidentCallType || '').trim()] || String(row?.PulsePointIncidentCallType || 'PulsePoint Incident').trim();
@@ -135,13 +157,22 @@ function normalizeIncident(row: any, agency: any) {
   const longitude = validNumber(row?.Longitude);
   const units = Array.isArray(row?.Unit) ? row.Unit : [];
   const assignedUnits = units.map(unit => String(unit?.UnitID || '').trim()).filter(Boolean);
+  const location = String(row?.FullDisplayAddress || 'PulsePoint address unavailable').trim();
+  const fallbackLatitude = validNumber(agency?.areaLat);
+  const fallbackLongitude = validNumber(agency?.areaLng);
+  let geo = latitude !== null && longitude !== null
+    ? { latitude, longitude, geo_confidence: 'high', geo_method: 'pulsepoint', geo_approximate: true }
+    : await geocodePulsePointAddress(location, agency);
+  if (!geo && fallbackLatitude !== null && fallbackLongitude !== null) {
+    geo = { latitude: fallbackLatitude, longitude: fallbackLongitude, geo_confidence: 'low', geo_method: 'pulsepoint', geo_approximate: true };
+  }
   return {
     external_call_id: `pulsepoint:${agency.agencyId}:${id}`,
     agency_cad_number: id,
     cad_number_source: 'upstream_public_feed',
     official_cad_verified: false,
     incident,
-    location: String(row?.FullDisplayAddress || 'PulsePoint address unavailable').trim(),
+    location,
     agency: agency.shortName || agency.agencyId,
     zone: agency.area || agency.name || '',
     status: statusFromUnits(units),
@@ -149,9 +180,9 @@ function normalizeIncident(row: any, agency: any) {
     time_received: Number.isNaN(received.getTime()) ? new Date().toISOString() : received.toISOString(),
     source: agency.source || 'pulsepoint',
     source_channel: 'pulsepoint_respond',
-    description: `${incident} at ${String(row?.FullDisplayAddress || 'address unavailable').trim()} (${agency.name || agency.agencyId})`,
+    description: `${incident} at ${location || 'address unavailable'} (${agency.name || agency.agencyId})`,
     assigned_units: assignedUnits,
-    ...(latitude !== null && longitude !== null ? { latitude, longitude, geo_confidence: 'high', geo_method: 'pulsepoint', geo_approximate: true } : { geo_confidence: 'unmappable', geo_method: 'none', geo_approximate: true }),
+    ...(geo || { geo_confidence: 'unmappable', geo_method: 'none', geo_approximate: true }),
   };
 }
 
@@ -238,7 +269,7 @@ Deno.serve(async (req) => {
     const decoded = decodePulsePoint(encoded);
     const active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
     const agencyById = new Map(agencies.map(agency => [String(agency.agencyId), agency]));
-    const incoming = active.map(row => normalizeIncident(row, agencyById.get(String(row?.AgencyID)) || { agencyId: row?.AgencyID || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' })).filter(Boolean);
+    const incoming = (await Promise.all(active.map(row => normalizeIncident(row, agencyById.get(String(row?.AgencyID)) || { agencyId: row?.AgencyID || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' })))).filter(Boolean);
 
     const [existingCalls, history] = await Promise.all([
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
