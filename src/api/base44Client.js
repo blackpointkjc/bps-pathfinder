@@ -23,14 +23,14 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
-  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 30_000;
-  if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 8_000;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 3_000;
+  if (meta?.kind === 'entity' && meta?.name === 'DispatchCall') return 3_000;
   if (meta?.kind === 'entity' && meta?.name === 'TimeEntry') return 20_000;
   if (meta?.kind === 'entity' && ['Vehicle','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'BOLOAlert') return 2 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'Schedule') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getOnDutyUnits') return 60_000;
-  if (meta?.kind === 'function' && meta?.name === 'getActiveDispatchCalls') return 5_000;
+  if (meta?.kind === 'function' && meta?.name === 'getActiveDispatchCalls') return 3_000;
   if (meta?.kind === 'function' && meta?.name === 'getSupervisorWelfareBoard') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getWorkforceSnapshot') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getRoleWorkQueue') return 60_000;
