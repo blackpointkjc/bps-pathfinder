@@ -44,7 +44,7 @@ export default function CadCriticalIncidentBanner() {
     };
     load();
     const unsubscribe = subscribeDispatchCallChanges(event => {
-      setCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 8 * 60 * 60 * 1000, limit: 200 }));
+      setCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 60 * 60 * 1000, limit: 200 }));
     });
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') load();
