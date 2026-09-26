@@ -12,9 +12,9 @@ import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/disp
 
 
 const DashboardDataContext = createContext(null);
-const POLL_INTERVAL_MS = 15_000;       // Realtime subscriptions handle most updates; this is only a fallback
+const POLL_INTERVAL_MS = 8_000;        // Realtime subscriptions handle most updates; this is only a fallback
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
-const MIN_REFRESH_MS = 10_000;          // Full-list reads are fallback only; realtime events update the queue directly
+const MIN_REFRESH_MS = 5_000;           // Full-list reads are fallback only; realtime events update the queue directly
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v3';
 // Keep the last good queue through a long minimized/idle period. Individual calls
@@ -199,7 +199,7 @@ export function DashboardDataProvider({ children }) {
             lastRefreshTime.current = 0;
             await loadData(true);
         };
-        const timer = window.setInterval(refresh, 20_000);
+        const timer = window.setInterval(refresh, 8_000);
         const startup = window.setTimeout(refresh, 1_000);
         return () => {
             stopped = true;
