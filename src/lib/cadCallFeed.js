@@ -96,15 +96,33 @@ async function performCadLiveSync() {
     // Include a unique request id so the SDK/network layer never serves a stale
     // function result for a live-source poll. The backend intentionally ignores
     // this field; it exists only to make each permitted network sync distinct.
+    const requestId = `cad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const response = await withRequestTimeout(
       base44.functions.invoke('ingestGractivecalls', {
         live_sync: true,
-        request_id: `cad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        request_id: requestId,
       }),
       40_000,
       'Live CAD source sync',
     );
     const payload = response?.data || response || {};
+    void withRequestTimeout(
+      base44.functions.invoke('ingestPulsePoint', {
+        scheduled: true,
+        include_audio: true,
+        area_keys: ['richmond_va', 'chesterfield_va'],
+        request_id: `pulsepoint-${requestId}`,
+      }),
+      35_000,
+      'PulsePoint source sync',
+    ).then(result => {
+      const pulsePointPayload = result?.data || result || {};
+      if (pulsePointPayload?.success) {
+        window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished', { detail: { source: 'pulsepoint', result: pulsePointPayload } }));
+      }
+    }).catch(error => {
+      console.warn('[CAD] Hidden PulsePoint sync did not complete', error?.response?.data?.error || error?.message || error);
+    });
     if (payload?.error) throw new Error(payload.error);
     if (payload?.skipped && /already in progress|ingestion_in_progress/i.test(String(payload.reason || ''))) {
       // Another authorized session or scheduled run owns the one global server
