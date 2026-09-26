@@ -16,9 +16,10 @@ const POLL_INTERVAL_MS = 60_000;       // Realtime subscriptions handle most upd
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
 const MIN_REFRESH_MS = 30_000;          // Full-list reads are fallback only; realtime events update the queue directly
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
-const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
+const ACTIVE_CALL_CACHE_KEY = 'bps-cad-active-calls-v3';
 // Keep the last good queue through a long minimized/idle period. Individual calls
-// are still filtered to the one-hour operational window before they are rendered.
+// are filtered before they are rendered, and the cache version is bumped when that
+// visibility rule changes.
 const ACTIVE_CALL_CACHE_MAX_AGE_MS = 65 * 60_000;
 
 function readCachedActiveCalls() {
