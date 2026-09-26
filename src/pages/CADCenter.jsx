@@ -6,6 +6,7 @@ import CenterToolSection from '@/components/CenterToolSection';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
+import PulsePointRespond from './PulsePointRespond';
 import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
@@ -23,6 +24,7 @@ const TOOLS = {
     { id: 'dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'officerqueue', label: 'Officer Queue', component: OfficerDispatchQueue },
     { id: 'map', label: 'Live Map', component: Navigation },
+    { id: 'pulsepoint', label: 'PulsePoint Respond', component: PulsePointRespond },
   ],
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
