@@ -411,7 +411,7 @@ Deno.serve(async (req) => {
     const newRows = incoming.filter((row: any) => !existingByExternal.has(row.external_call_id) && !archived.has(row.external_call_id));
     const references = await reserveCadNumbers(base44, newRows.length);
 
-    let created = 0, updated = 0, closed = 0, audio_events = 0;
+    let created = 0, updated = 0, closed = 0, audio_events = 0, property_alerts_created = 0;
     for (let index = 0; index < newRows.length; index += 1) {
       const row = newRows[index];
       const bpsReference = references[index];
@@ -423,6 +423,10 @@ Deno.serve(async (req) => {
       });
       created += 1;
       if (body?.include_audio !== false && await publishAudioEvent(base44, call)) audio_events += 1;
+      property_alerts_created += await createPulsePointPropertyAlerts(base44, call).catch(error => {
+        console.error('PulsePoint property alert creation failed', error?.message || error);
+        return 0;
+      });
     }
 
     for (const row of incoming) {
@@ -434,10 +438,15 @@ Deno.serve(async (req) => {
         call_id: existing.call_id || existing.bps_reference,
         source_first_seen_at: existing.source_first_seen_at || existing.created_date || new Date().toISOString(),
       };
+      let currentCall = existing;
       if (changed(existing, patch)) {
-        await base44.asServiceRole.entities.DispatchCall.update(existing.id, patch);
+        currentCall = await base44.asServiceRole.entities.DispatchCall.update(existing.id, patch);
         updated += 1;
       }
+      property_alerts_created += await createPulsePointPropertyAlerts(base44, currentCall).catch(error => {
+        console.error('PulsePoint property alert creation failed', error?.message || error);
+        return 0;
+      });
     }
 
     const recentCutoff = Date.now() - 4 * 60 * 60_000;
@@ -460,6 +469,7 @@ Deno.serve(async (req) => {
       updated,
       closed,
       audio_events,
+      property_alerts_created,
       synced_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
     });
