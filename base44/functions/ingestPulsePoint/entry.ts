@@ -12,6 +12,7 @@ const DEFAULT_AREAS = [
 
 const DEFAULT_AGENCIES = [
   { agencyId: '76000', agencyKey: '76000', name: 'City of Richmond', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
+  { agencyId: '37090', agencyKey: '37090', name: 'Chesterfield Co [VA]', shortName: 'Chesterfield Co', type: 'Fire/EMS', source: 'chesterfield', area: 'Chesterfield County, VA', areaLat: 37.3771, areaLng: -77.50499 },
 ];
 
 const CALL_TYPES: Record<string, string> = {
@@ -149,6 +150,18 @@ function validNumber(value: unknown) {
   return Number.isFinite(number) && number !== 0 ? number : null;
 }
 
+function firstValue(source: any, keys: string[], fallback: any = '') {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+  return fallback;
+}
+
+function rowAgencyId(row: any) {
+  return String(firstValue(row, ['AgencyID', 'agencyId', 'agency_id', 'AgencyId', 'agencyID'], '')).trim();
+}
+
 async function geocodePulsePointAddress(address: string, agency: any) {
   const cleanAddress = String(address || '').trim();
   if (!cleanAddress || /address unavailable/i.test(cleanAddress)) return null;
@@ -170,15 +183,17 @@ async function geocodePulsePointAddress(address: string, agency: any) {
 }
 
 async function normalizeIncident(row: any, agency: any) {
-  const id = String(row?.ID || '').trim();
+  const id = String(firstValue(row, ['ID', 'id', 'IncidentID', 'incidentId', 'PulsePointIncidentID', 'pulsePointIncidentId'], '')).trim();
   if (!id) return null;
-  const incident = CALL_TYPES[String(row?.PulsePointIncidentCallType || '').trim()] || String(row?.PulsePointIncidentCallType || 'PulsePoint Incident').trim();
-  const received = new Date(row?.CallReceivedDateTime || Date.now());
-  const latitude = validNumber(row?.Latitude);
-  const longitude = validNumber(row?.Longitude);
-  const units = Array.isArray(row?.Unit) ? row.Unit : [];
-  const assignedUnits = units.map(unit => String(unit?.UnitID || '').trim()).filter(Boolean);
-  const location = String(row?.FullDisplayAddress || 'PulsePoint address unavailable').trim();
+  const typeCode = String(firstValue(row, ['PulsePointIncidentCallType', 'CallType', 'callType', 'incidentType', 'type', 'Type'], '')).trim();
+  const incident = CALL_TYPES[typeCode] || typeCode || 'PulsePoint Incident';
+  const received = new Date(firstValue(row, ['CallReceivedDateTime', 'callReceivedDateTime', 'received_at', 'receivedAt', 'timestamp', 'time'], Date.now()));
+  const latitude = validNumber(firstValue(row, ['Latitude', 'latitude', 'lat', 'Lat']));
+  const longitude = validNumber(firstValue(row, ['Longitude', 'longitude', 'lng', 'lon', 'Long']));
+  const unitsRaw = firstValue(row, ['Unit', 'Units', 'units'], []);
+  const units = Array.isArray(unitsRaw) ? unitsRaw : [];
+  const assignedUnits = units.map(unit => String(firstValue(unit, ['UnitID', 'unitId', 'id', 'name'], '')).trim()).filter(Boolean);
+  const location = String(firstValue(row, ['FullDisplayAddress', 'fullDisplayAddress', 'address', 'Address', 'Location', 'location'], 'PulsePoint address unavailable')).trim();
   const fallbackLatitude = validNumber(agency?.areaLat);
   const fallbackLongitude = validNumber(agency?.areaLng);
   let geo = latitude !== null && longitude !== null
@@ -412,7 +427,10 @@ Deno.serve(async (req) => {
       active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
     }
 
-    const incoming = (await Promise.all(active.map(row => normalizeIncident(row, agencyById.get(String(row?.AgencyID)) || { agencyId: row?.AgencyID || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' })))).filter(Boolean);
+    const incoming = (await Promise.all(active.map(row => {
+      const agencyId = rowAgencyId(row);
+      return normalizeIncident(row, agencyById.get(agencyId) || { agencyId: agencyId || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' });
+    }))).filter(Boolean);
 
     const [existingCalls, history] = await Promise.all([
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
@@ -477,6 +495,8 @@ Deno.serve(async (req) => {
       success: true,
       source: 'pulsepoint',
       agencies,
+      feed_source: feedSource,
+      raw_active_rows: active.length,
       active: incoming.length,
       created,
       updated,
