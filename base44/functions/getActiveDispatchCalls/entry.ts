@@ -1,6 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const ACTIVE_MAX_AGE_MS = 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+
+function callTimestamp(call: any) {
+  const created = call?.created_date ? new Date(call.created_date).getTime() : 0;
+  const received = call?.time_received ? new Date(call.time_received).getTime() : 0;
+  if (Number.isFinite(received) && received > 0 && Number.isFinite(created) && created > 0 && Math.abs(received - created) < 24 * 60 * 60 * 1000) return received;
+  if (Number.isFinite(created) && created > 0) return created;
+  return Number.isFinite(received) && received > 0 ? received : 0;
+}
+
+function isVisibleActiveCall(call: any, now = Date.now()) {
+  if (TERMINAL_STATUSES.has(lower(call?.status))) return false;
+  const stamp = callTimestamp(call);
+  return stamp > 0 && now - stamp < ACTIVE_MAX_AGE_MS;
+}
 
 Deno.serve(async (req) => {
   try {
@@ -16,11 +32,18 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(50, Math.min(200, Number(body?.limit || 100)));
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', limit);
+    const rows = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
+    const now = Date.now();
+    const calls = (Array.isArray(rows) ? rows : [])
+      .filter(call => isVisibleActiveCall(call, now))
+      .sort((a, b) => callTimestamp(b) - callTimestamp(a))
+      .slice(0, limit);
 
     return Response.json({
       success: true,
-      calls: Array.isArray(calls) ? calls : [],
+      calls,
+      filtered_out: Math.max(0, (Array.isArray(rows) ? rows.length : 0) - calls.length),
+      max_age_minutes: 60,
       fetched_at: new Date().toISOString(),
     });
   } catch (error) {
