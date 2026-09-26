@@ -539,7 +539,7 @@ export default function GlobalMessageBanner({ user }) {
         // PropertyAlert realtime and CallStatusLog are two delivery paths for ONE
         // announcement; whichever arrives first claims it and the other becomes
         // a fallback instead of producing duplicate speech.
-        const propertyEventKey = `property-alert:${record.id}:created`;
+        const propertyEventKey = `call:${callKey}:initial`;
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
@@ -627,7 +627,7 @@ export default function GlobalMessageBanner({ user }) {
       if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
 
       const summary = propertyCallSummary(record, call);
-      const propertyEventKey = `property-alert:${record.id}:created`;
+      const propertyEventKey = `call:${callKey}:initial`;
       const email = normalized(user.email);
       const priorAcknowledgements = email
         ? await Promise.all([
@@ -721,7 +721,12 @@ export default function GlobalMessageBanner({ user }) {
         || roles.has('supervisor')
         || roles.has('cad_access');
 
-      const showCadAnnouncementEvent = async record => {
+      const showCadAnnouncementEvent = async incoming => {
+        // All initial delivery paths share one identity, even duplicate property rows.
+        const initial = ['property_alert', 'new_call', 'priority_call'].includes(incoming?.event_type);
+        const record = initial && incoming.call_id
+          ? { ...incoming, event_key: `call:${incoming.call_id}:initial` }
+          : incoming;
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
         // BOLOAlert owns its own reliable speech path. Property alerts deliberately
         // remain enabled here as the durable fallback when the raw PropertyAlert
@@ -730,7 +735,7 @@ export default function GlobalMessageBanner({ user }) {
         if (record.sensitive === true && !cadAuthorized) return;
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
-        if (settings.enabled === false || (enabledTypes.length && !enabledTypes.includes(record.event_type))) return;
+        if (settings.enabled === false || (enabledTypes.length && record.event_type !== 'call_updated' && !enabledTypes.includes(record.event_type))) return;
         const key = `CallStatusLog:${record.event_key}`;
         if (knownIds.current.has(key)) return;
         const email = normalized(user.email);
@@ -744,12 +749,13 @@ export default function GlobalMessageBanner({ user }) {
         if (!claim?.claimed) {
           // Existing/local claims are complete. Transient claim errors are NOT
           // marked known so recovery/realtime can try the announcement again.
-          if (claim?.local_duplicate || (!claim?.error && claim?.receipt)) knownIds.current.add(key);
+          if (claim?.not_recipient || claim?.local_duplicate || (!claim?.error && claim?.receipt)) knownIds.current.add(key);
           return;
         }
         knownIds.current.add(key);
         if (record.event_type === 'property_alert') playNotificationChime(true);
-        const accepted = speakNotification(record.announcement_text, {
+        const announcementText = claim.announcement_text || record.announcement_text;
+        const accepted = speakNotification(announcementText, {
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
           priority: record.event_type === 'property_alert' ? 'critical' : (record.announcement_priority || 'normal'),
@@ -787,7 +793,7 @@ export default function GlobalMessageBanner({ user }) {
           fingerprint: record.event_key,
           sender: record.cad_number ? `CAD ${record.cad_number}` : 'CAD Operations',
           photo: '',
-          message: record.announcement_text,
+          message: announcementText,
         };
         setBanners(current => [...current.slice(-4), banner]);
         const timer = window.setTimeout(() => {
