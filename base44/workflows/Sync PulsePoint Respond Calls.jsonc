@@ -1,6 +1,4 @@
 {
-  "name": "Sync PulsePoint Respond Calls",
-  "description": "Imports active Richmond and Chesterfield PulsePoint Respond incidents into BPS CAD and creates CAD audio events for new incidents.",
   "trigger": {
     "condition": null,
     "config": {
@@ -12,12 +10,13 @@
       "timezone": "UTC",
       "interval_value": 5,
       "interval_unit": "minutes",
-      "interval_anchor": "2026-09-26T00:00:00.000000",
+      "interval_anchor": "2026-09-26T00:00:00",
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null
     }
   },
+  "description": "Imports active Richmond and Chesterfield PulsePoint Respond incidents into BPS CAD and creates CAD audio events for new incidents.",
   "definition": {
     "document": {
       "dsl": "1.0.0",
@@ -45,5 +44,5 @@
       }
     ]
   },
-  "x-base44-created-by": "codex"
+  "name": "Sync PulsePoint Respond Calls"
 }
