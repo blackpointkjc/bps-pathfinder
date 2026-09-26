@@ -112,7 +112,8 @@ async function agencyIdsFromArea(area: any) {
 async function resolveAgencies(body: any) {
   const explicit = parseList(body?.agency_ids || body?.agencyIds || Deno.env.get('PULSEPOINT_AGENCY_IDS'));
   if (explicit.length) {
-    return explicit.map(id => ({ agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency', areaLat: null, areaLng: null }));
+    const knownById = new Map(DEFAULT_AGENCIES.map(agency => [String(agency.agencyId), agency]));
+    return explicit.map(id => knownById.get(String(id)) || { agencyId: id, agencyKey: '', name: id, shortName: id, type: '', source: 'pulsepoint', area: 'Configured PulsePoint agency', areaLat: null, areaLng: null });
   }
   const requestedAreaKeys = new Set(parseList(body?.area_keys || body?.areaKeys));
   const keys = requestedAreaKeys.size ? requestedAreaKeys : new Set(DEFAULT_AREAS.map(area => area.key));
