@@ -394,11 +394,24 @@ Deno.serve(async (req) => {
     const agencies = await resolveAgencies(body);
     if (!agencies.length) return Response.json({ success: false, error: 'No PulsePoint agencies found. Pass agency_ids or configure PULSEPOINT_AGENCY_IDS.' }, { status: 400 });
 
-    const agencyIds = agencies.map(agency => agency.agencyId).join(',');
-    const encoded = await fetchJson(`${GIBA_URL}${encodeURIComponent(agencyIds)}`);
-    const decoded = decodePulsePoint(encoded);
-    const active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
     const agencyById = new Map(agencies.map(agency => [String(agency.agencyId), agency]));
+    let active: any[] = [];
+    let feedSource = 'server';
+
+    if (Array.isArray(body?.incidents)) {
+      active = body.incidents;
+      feedSource = 'browser_payload';
+    } else if (body?.encoded_response && typeof body.encoded_response === 'object') {
+      const decoded = decodePulsePoint(body.encoded_response);
+      active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
+      feedSource = 'browser_encoded_payload';
+    } else {
+      const agencyIds = agencies.map(agency => agency.agencyId).join(',');
+      const encoded = await fetchJson(`${GIBA_URL}${encodeURIComponent(agencyIds)}`);
+      const decoded = decodePulsePoint(encoded);
+      active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
+    }
+
     const incoming = (await Promise.all(active.map(row => normalizeIncident(row, agencyById.get(String(row?.AgencyID)) || { agencyId: row?.AgencyID || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' })))).filter(Boolean);
 
     const [existingCalls, history] = await Promise.all([
