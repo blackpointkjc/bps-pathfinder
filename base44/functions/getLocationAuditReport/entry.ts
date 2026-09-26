@@ -99,8 +99,8 @@ Deno.serve(async req => {
     const alertRows = results[1].status === 'fulfilled' ? results[1].value : [];
     const timeEntries = results[2].status === 'fulfilled' ? results[2].value : [];
     const warnings = results.slice(1).flatMap((result, index) => result.status === 'rejected' ? [index === 0 ? 'Geofence alerts could not load. Retry to include them.' : 'Time entries could not load. Retry to include shift times.'] : []);
-    const history = historyRows.filter(inWindow).sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
-    const geofenceAlerts = alertRows.filter(inWindow);
+    const history = historyRows.filter(row => inWindow(row.timestamp)).sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
+    const geofenceAlerts = alertRows.filter(row => inWindow(row.created_date));
     const entries = timeEntries.filter(row => dayKey(row.clock_in) <= date && (!row.clock_out || dayKey(row.clock_out) >= date))
       .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }))
       .sort((a:any,b:any) => stamp(a.clock_in) - stamp(b.clock_in));
