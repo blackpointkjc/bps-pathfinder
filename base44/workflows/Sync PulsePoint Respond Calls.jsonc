@@ -33,9 +33,8 @@
             "args": {
               "scheduled": true,
               "include_audio": true,
-              "area_keys": [
-                "richmond_va",
-                "chesterfield_va"
+              "agency_ids": [
+                "76000"
               ]
             }
           },
