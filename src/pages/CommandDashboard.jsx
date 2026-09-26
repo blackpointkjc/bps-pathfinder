@@ -43,6 +43,13 @@ function getCallPriority(call) {
     return call.priority || 'medium';
 }
 
+function isPulsePointCall(call) {
+    const sourceChannel = String(call?.source_channel || '').toLowerCase();
+    const externalId = String(call?.external_call_id || '').toLowerCase();
+    const source = String(call?.source || '').toLowerCase();
+    return sourceChannel.includes('pulsepoint') || externalId.startsWith('pulsepoint:') || source === 'pulsepoint';
+}
+
 // Display time in ET, 12-hour format
 function fmtTime(dateStr) {
     if (!dateStr) return '----';
@@ -256,7 +263,12 @@ function CommandDashboardInner({ embedded = false }) {
         return { value: 'REFERENCE PENDING', type: 'pending' };
     };
 
-    const visibleCalls = agencyFilter === 'ALL' ? calls : calls.filter(call => call.agency === agencyFilter);
+    const pulsePointCalls = calls.filter(isPulsePointCall);
+    const visibleCalls = agencyFilter === 'ALL'
+        ? calls
+        : agencyFilter === 'PULSEPOINT'
+            ? pulsePointCalls
+            : calls.filter(call => call.agency === agencyFilter);
     const sortedCalls = [...visibleCalls].sort((a, b) => {
         const getRef = (c) => {
             const created = c.created_date ? parseServerTimestamp(c.created_date)?.getTime() || 0 : 0;
@@ -366,9 +378,10 @@ function CommandDashboardInner({ embedded = false }) {
             )}
 
             {/* ── MASTER STATUS TILES ── */}
-            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-8">
+            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-9">
                 {[
                     { label: 'ACTIVE CALLS', val: loading && calls.length === 0 ? '—' : calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
+                    { label: 'PULSEPOINT', val: loading && calls.length === 0 ? '—' : pulsePointCalls.length, color: pulsePointCalls.length > 0 ? 'text-red-300' : 'text-slate-500', bg: pulsePointCalls.length > 0 ? 'bg-red-950/45' : '', border: 'border-r border-red-900/50' },
                     { label: 'P1 CRITICAL', val: loading && calls.length === 0 ? '—' : criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
                     { label: 'P2 HIGH', val: loading && calls.length === 0 ? '—' : highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
                     { label: 'UNASSIGNED', val: loading && calls.length === 0 ? '—' : unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
@@ -481,9 +494,9 @@ function CommandDashboardInner({ embedded = false }) {
             <div className="flex-1 min-h-0 p-1.5 md:p-2">
                 <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
                     <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
-                        <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span></div>
+                        <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span>{pulsePointCalls.length > 0 && <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-red-950/70 border border-red-500/60 text-red-200 rounded">{pulsePointCalls.length} PULSEPOINT</span>}</div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
-                            <option value="ALL">ALL AGENCIES</option><option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
+                            <option value="ALL">ALL AGENCIES</option><option value="PULSEPOINT">PULSEPOINT</option><option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
                         </select>
                     </div>
 
@@ -506,12 +519,13 @@ function CommandDashboardInner({ embedded = false }) {
                         ) : sortedCalls.map((call) => {
                             const priority = getCallPriority(call);
                             const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
+                            const isPulsePoint = isPulsePointCall(call);
                             const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
                             const identifier = getCallIdentifier(call);
                             return (
                                 <div key={call.id}
                                     onClick={() => openCallOnMap(call)}
-                                    className={`cad-call-row flex items-start px-3 py-1.5 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
+                                    className={`cad-call-row flex items-start px-3 py-1.5 border-b border-slate-800/60 cursor-pointer transition-colors ${isPulsePoint ? 'bg-red-950/35 hover:bg-red-950/55 ring-1 ring-inset ring-red-900/35' : cfg.row} ${isPulsePoint ? 'border-l-2 border-l-red-500' : priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
                                     <div className="cad-call-priority w-8 flex-shrink-0 pt-0.5">
                                         {isAdmin ? (
@@ -526,8 +540,8 @@ function CommandDashboardInner({ embedded = false }) {
 
                                     <div className="cad-call-time w-36 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
                                         <div
-                                            className={`font-bold whitespace-nowrap overflow-hidden text-ellipsis ${identifier.type === 'bps' ? 'text-[#f5c451]' : identifier.type === 'official' ? 'text-[#7ec1ff]' : 'text-slate-500'}`}
-                                            title={identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
+                                            className={`font-bold whitespace-nowrap overflow-hidden text-ellipsis ${isPulsePoint ? 'text-red-200' : identifier.type === 'bps' ? 'text-[#f5c451]' : identifier.type === 'official' ? 'text-[#7ec1ff]' : 'text-slate-500'}`}
+                                            title={isPulsePoint ? `PulsePoint Respond incident: ${identifier.value}` : identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
                                         >
                                             {identifier.value}
                                         </div>
@@ -543,16 +557,17 @@ function CommandDashboardInner({ embedded = false }) {
                                             {(!call.latitude || !call.longitude) && (
                                                 <CircleX className="w-3 h-3 flex-shrink-0 text-red-500 mt-0.5" title="Not geocoded" />
                                             )}
+                                            {isPulsePoint && <span className="mt-0.5 rounded border border-red-500/60 bg-red-950/80 px-1 py-0.5 text-[8px] font-black leading-none tracking-wider text-red-200">PULSEPOINT</span>}
                                             <span className="break-words">{cleanIncident(call)}</span>
                                         </div>
-                                        <div className="text-slate-400 font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5">
-                                            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600 mt-0.5" />
+                                        <div className={`${isPulsePoint ? 'text-red-200/80' : 'text-slate-400'} font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5">
+                                            <MapPin className={`w-2.5 h-2.5 flex-shrink-0 ${isPulsePoint ? 'text-red-400' : 'text-slate-600'} mt-0.5`} />
                                             <span className="break-words">{call.location}{call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}</span>
                                         </div>
                                     </div>
 
                                     <div className="cad-call-agency w-24 flex-shrink-0 hidden lg:block pt-0.5">
-                                        <span className="text-slate-500 font-mono text-[10px] break-words">{call.agency || '—'}</span>
+                                        <span className={`${isPulsePoint ? 'text-red-200' : 'text-slate-500'} font-mono text-[10px] break-words`}>{isPulsePoint ? `PP · ${call.agency || '—'}` : (call.agency || '—')}</span>
                                     </div>
 
                                     <div className="cad-call-status w-20 flex-shrink-0 text-center pt-0.5">
