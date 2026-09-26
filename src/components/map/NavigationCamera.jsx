@@ -94,9 +94,9 @@ export default function NavigationCamera({
         const currentZoom = map.getZoom();
         const roundedTargetZoom = Math.round(targetZoom * 2) / 2;
         if (Math.abs(currentZoom - roundedTargetZoom) >= 0.45) {
-            map.setView(cameraCenter, roundedTargetZoom, { animate: false });
+            map.setView(cameraCenter, roundedTargetZoom, { animate: true, duration: 0.55, easeLinearity: 1, noMoveStart: true });
         } else {
-            map.panTo(cameraCenter, { animate: false, noMoveStart: true });
+            map.panTo(cameraCenter, { animate: true, duration: 0.65, easeLinearity: 1, noMoveStart: true });
         }
 
     }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
