@@ -1289,14 +1289,16 @@ export default function Layout({ children, currentPageName }) {
         }
         const callById = new Map((calls || []).map(call => [String(call.id), call]));
         const locationById = new Map((locations || []).map(location => [String(location.id), location]));
-        const recentCutoff = Date.now() - (6 * 60 * 60 * 1000);
+        const recentCutoff = Date.now() - (3 * 60 * 1000);
         const seenPairs = new Set();
         const record = (alerts || []).find(item => {
           const pair = `${item.callId}:${item.propertyId}`;
           const linkedCall = callById.get(String(item.callId));
           const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
-          const eventTime = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
+          const callTime = new Date(item.callTime || item.time_received || 0).getTime();
+          const createdTime = new Date(item.created_date || 0).getTime();
+          const eventTime = Number.isFinite(callTime) && callTime > 0 ? callTime : createdTime;
           const location = locationById.get(String(item.propertyId));
           const inactiveProperty = !location || location.active === false || location.property_monitoring_enabled !== true;
           const inactiveCall = !linkedCall || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
@@ -1364,7 +1366,7 @@ export default function Layout({ children, currentPageName }) {
     // Let the dashboard's Active Calls request own the startup lane. Realtime is
     // already connected below, so delaying this history reconciliation does not
     // prevent newly-created property alerts from being observed.
-    const initialMonitorTimer = window.setTimeout(monitor, 5000);
+    const initialMonitorTimer = window.setTimeout(monitor, 1000);
     // Realtime owns fast delivery. Use one slow fallback poll and debounce entity
     // events so a burst of alert writes cannot fan out into four list requests per event.
     let refreshTimer;
@@ -1376,7 +1378,7 @@ export default function Layout({ children, currentPageName }) {
     };
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') monitor();
-    }, 120000);
+    }, 30000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
