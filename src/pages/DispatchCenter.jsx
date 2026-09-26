@@ -122,8 +122,8 @@ export default function DispatchCenter() {
         init();
         loadMonitoredProperties();
 
-        // GRAC ingestion is owned by the scheduled backend automation. Dispatch
-        // Center only reads persisted calls and reacts to realtime entity changes.
+        // GRAC ingestion is owned by the scheduled backend automation plus guarded visible-screen sync.
+        // Dispatch Center reads persisted calls and reacts to realtime entity changes.
         const unsubscribeCalls = subscribeDispatchCallChanges(event => {
             if (!event?.data && event?.type !== 'delete') {
                 loadActiveCalls();
@@ -167,7 +167,7 @@ export default function DispatchCenter() {
             clearActiveDispatchCallMemoryCache();
             lastActiveCallsLoadRef.current = 0;
             loadActiveCalls(true);
-        }, 20000);
+        }, 8000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does
