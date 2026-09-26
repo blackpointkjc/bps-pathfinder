@@ -29,7 +29,8 @@ import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
-const DISPATCH_CALL_CACHE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
+const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 
 function readCachedDispatchCalls() {
     try {
@@ -39,7 +40,7 @@ function readCachedDispatchCalls() {
             const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
             const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
             const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000 ? upstreamAt : (createdAt || upstreamAt);
-            return receivedAt > 0 && Date.now() - receivedAt < 8 * 60 * 60 * 1000
+            return receivedAt > 0 && Date.now() - receivedAt < ACTIVE_CALL_MAX_AGE_MS
                 && !['Cleared', 'Cancelled'].includes(call.status)
                 && call.manual_dismissed !== true;
         });
