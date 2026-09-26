@@ -10,7 +10,7 @@ import { base44, clearBase44ReadCacheMatching, getBase44RequestHealth } from '@/
 const SNAPSHOT_TTL_MS = 60_000;
 const FORCE_REFRESH_DEDUPE_MS = 45_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
-const GPS_PUBLISH_MIN_MS = 30 * 1000;
+const GPS_PUBLISH_MIN_MS = 7 * 1000;
 const HEARTBEAT_PUBLISH_MIN_MS = 8 * 60 * 1000;
 const CROSS_KIND_BURST_GAP_MS = 20 * 1000;
 const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
