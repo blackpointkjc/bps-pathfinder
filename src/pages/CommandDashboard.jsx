@@ -35,6 +35,7 @@ const UNIT_STATUS_COLORS = {
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
+const PULSEPOINT_RESPOND_URL = 'https://web.pulsepoint.org/?agencies=76000';
 
 function getCallPriority(call) {
     if (call.priority_override && call.priority) return call.priority;
@@ -428,6 +429,24 @@ function CommandDashboardInner({ embedded = false }) {
                             );
                         })}
                     </div>
+                </div>
+            )}
+
+            {pulsePointCalls.length === 0 && (
+                <div className="flex-none border-b border-red-900/60 bg-red-950/20 px-2 py-2">
+                    <div className="mb-1.5 flex items-center justify-between gap-2 font-mono">
+                        <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-red-100">PulsePoint Live Feed</span>
+                            <span className="rounded border border-red-500/50 bg-red-950/70 px-1.5 py-0.5 text-[8px] font-black text-red-200">CITY OF RICHMOND</span>
+                        </div>
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-red-200/70">Official feed shown here until backend API challenge clears</span>
+                    </div>
+                    <iframe
+                        title="PulsePoint Respond City of Richmond"
+                        src={PULSEPOINT_RESPOND_URL}
+                        className="h-72 w-full rounded-lg border border-red-900/60 bg-slate-950"
+                    />
                 </div>
             )}
 
