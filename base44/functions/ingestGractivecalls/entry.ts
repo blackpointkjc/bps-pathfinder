@@ -483,7 +483,15 @@ function propertyMatch(call: any, location: any) {
 
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
+  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+  if (!hasCoordinates) {
+    // Website rows can arrive before the API/GIS coordinates. Do not delay a
+    // monitored-property alert until geocoding finishes when the call address is
+    // already on the same property block.
+    return sameStreetBlock(call?.location, location?.address)
+      ? { relation: 'nearby', distanceMeters: 0, addressFallback: true }
+      : null;
+  }
 
   const polygon = Array.isArray(location.property_monitoring_polygon)
     ? location.property_monitoring_polygon
