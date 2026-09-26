@@ -141,9 +141,6 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
           didInitialRosterFitRef.current = true;
           rosterKeyRef.current = rosterKey;
-        } else if (liveOfficers.length === 1) {
-          const unit = liveOfficers[0];
-          map.panTo([Number(unit.latitude), Number(unit.longitude)], { animate: false, noMoveStart: true });
         }
       }
     }
