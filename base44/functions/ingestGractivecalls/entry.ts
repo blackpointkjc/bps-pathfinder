@@ -1,5 +1,32 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+
+// Feed refresh timestamps and CAD-number enrichment are not spoken updates.
+async function announceAssignedCallUpdate(base44: any, previous: any, saved: any) {
+  const fields = ['incident', 'location', 'priority', 'status', 'description'];
+  if (!fields.some(field => saved[field] !== undefined && String(saved[field] || '') !== String(previous[field] || ''))) return;
+  const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: previous.id });
+  if (!(previous.assigned_units || []).length && !(assignments || []).some((row: any) => !['cleared', 'cancelled'].includes(String(row.status || '').toLowerCase()))) return;
+  const eventKey = `call:${previous.id}:updated:${saved.updated_date || new Date().toISOString()}`;
+  const existing = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: eventKey }, '-created_date', 1);
+  if (existing?.length) return;
+  await base44.asServiceRole.entities.CallStatusLog.create({
+    call_id: previous.id,
+    old_status: previous.status || '',
+    new_status: saved.status || previous.status || 'New',
+    incident_type: saved.incident || previous.incident || '',
+    location: saved.location || previous.location || '',
+    event_key: eventKey,
+    event_type: 'call_updated',
+    announcement_text: 'Your assigned call has been updated. Check your mobile data terminal.',
+    announcement_priority: 'normal',
+    cad_number: String(saved.agency_cad_number || previous.agency_cad_number || previous.bps_reference || previous.call_id || ''),
+    triggering_action: 'ingestGractivecalls.call_updated',
+    audio_enabled: true,
+    sensitive: false,
+  });
+}
+
 const GRAC_API_URL = 'https://gractivecalls.com/api/active';
 const HENRICO_ACTIVE_URL = 'https://activecalls.henrico.gov/';
 const CHESTERFIELD_CALLS_URL = 'https://api.chesterfield.gov/api/Police/V1.1/Calls/CallsForService';
@@ -1065,7 +1092,8 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         cad_number_source: previous.cad_number_source || 'bps_internal',
         official_cad_verified: previous.official_cad_verified === true,
       };
-      await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
+      const saved = await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
+      await announceAssignedCallUpdate(base44, previous, { ...previous, ...patch, ...saved }).catch(error => console.error('Assigned call update announcement failed', error?.message));
       updated++;
       if (!['Cleared', 'Cancelled'].includes(String(patch.status || ''))) {
         try {
@@ -1367,7 +1395,8 @@ Deno.serve(async (req) => {
           ...(manuallyCleared ? { time_cleared: existing.time_cleared || existing.manual_dismissed_at || new Date().toISOString() } : {}),
         };
         if (changed(existing, incomingWithCad)) {
-          await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          const saved = await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          await announceAssignedCallUpdate(base44, existing, { ...existing, ...incomingWithCad, ...saved }).catch(error => console.error('Assigned call update announcement failed', error?.message));
           const updatedRecord = { ...existing, ...incomingWithCad, id: existing.id };
           updated += 1;
           immediatePropertyAlertsCreated += await createImmediatePropertyAlerts(
