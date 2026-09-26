@@ -415,7 +415,8 @@ export default function AdminAnalytics() {
   const officerPerformanceSnapshots = useQuery({
     queryKey: ['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate],
     queryFn: async () => {
-      const snapshots = {};
+      const previous = queryClient.getQueryData(['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate]);
+      const snapshots = { ...(previous?.snapshots || {}) };
       const errors = {};
       // This deliberately uses the exact backend payload that powers each
       // officer's My Performance page. Load sequentially to avoid a burst of
@@ -430,6 +431,7 @@ export default function AdminAnalytics() {
           let payload = result?.data || result || {};
           if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
           if (payload?.error) throw new Error(payload.error);
+          if (payload.is_partial || Object.keys(payload.service_errors || {}).length) throw new Error('Refresh incomplete; last verified figures remain visible.');
           snapshots[officer.id] = payload;
         } catch (error) {
           errors[officer.id] = error?.message || 'Unable to load officer performance';
@@ -437,7 +439,7 @@ export default function AdminAnalytics() {
       }
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
-    enabled: Boolean(user && performanceGenerationReady && performanceOfficerUsers.length),
+    enabled: Boolean(user && coreAnalytics.data && performanceOfficerUsers.length),
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -630,18 +632,14 @@ export default function AdminAnalytics() {
     return performanceOfficerUsers
       .map(officer => buildOfficerPerformanceFromSnapshot(snapshots[officer.id], currentMonthStart, currentMonthEnd))
       .filter(Boolean)
-      .sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
+      .sort((a, b) => a.name.localeCompare(b.name) || String(a.user_id).localeCompare(String(b.user_id)));
   }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd]);
 
   // Keep the officer windows mounted during background refreshes. The previous
   // isFetching check removed the entire section every refresh cycle, which made
   // the page flash and jump. Existing snapshots stay visible and only the
   // numbers update in place when the new generation lands.
-  const performanceCardsReady = Boolean(
-    performanceGenerationReady
-    && !officerPerformanceSnapshots.isLoading
-    && (Boolean(officerPerformanceSnapshots.data) || !officerPerformanceSnapshots.isFetching)
-  );
+  const performanceCardsReady = Boolean(officerPerformanceSnapshots.data);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
