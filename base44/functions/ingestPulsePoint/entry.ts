@@ -11,8 +11,8 @@ const DEFAULT_AREAS = [
 ];
 
 const DEFAULT_AGENCIES = [
-  { agencyId: '04290', agencyKey: '04290', name: 'City of Richmond [VA]', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
-  { agencyId: '37090', agencyKey: '37090', name: 'Chesterfield Co [VA]', shortName: 'Chesterfield Co', type: 'Fire/EMS', source: 'chesterfield', area: 'Chesterfield County, VA', areaLat: 37.3771, areaLng: -77.50499 },
+  { agencyId: '76000', agencyKey: '76000', name: 'City of Richmond [VA]', shortName: 'City of Richmond', type: 'Fire/EMS', source: 'richmond', area: 'Richmond, VA', areaLat: 37.5407, areaLng: -77.4360 },
+  { agencyId: 'EMS1402', agencyKey: 'EMS1402', name: 'Chesterfield Co [VA]', shortName: 'Chesterfield Co', type: 'Fire/EMS', source: 'chesterfield', area: 'Chesterfield County, VA', areaLat: 37.3771, areaLng: -77.50499 },
 ];
 
 const CALL_TYPES: Record<string, string> = {
