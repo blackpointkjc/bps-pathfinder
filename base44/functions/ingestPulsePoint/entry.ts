@@ -72,7 +72,13 @@ async function fetchJson(url: string) {
   }
   if (!response.ok) throw new Error(`PulsePoint request failed HTTP ${response.status}`);
   if (!contentType.includes('application/json')) {
-    const preview = (await response.text()).slice(0, 120).replace(/\s+/g, ' ');
+    const text = await response.text();
+    if (/captcha-sdk\.awswaf|awswaf\.com/i.test(text.slice(0, 600))) {
+      const error = new Error('PulsePoint API requires an AWS WAF browser challenge; backend sync cannot read the feed directly right now.');
+      (error as any).code = 'PULSEPOINT_WAF_CHALLENGE';
+      throw error;
+    }
+    const preview = text.slice(0, 120).replace(/\s+/g, ' ');
     throw new Error(`PulsePoint returned ${contentType || 'non-JSON'} instead of JSON: ${preview}`);
   }
   return response.json();

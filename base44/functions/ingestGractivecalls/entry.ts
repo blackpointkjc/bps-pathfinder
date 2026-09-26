@@ -607,6 +607,20 @@ async function createImmediatePropertyAlerts(
     // keep those rows for dashboard/history, but never make them sound like a new
     // property emergency minutes after the call started.
     if (!isFreshLivePropertyCall(call)) {
+      // A call discovered minutes after it was received is still an active
+      // emergency for automatic dispatch. Only the live audio/SMS announcement
+      // is freshness-gated; the evaluator's permanent assigned receipt keeps
+      // this invocation idempotent.
+      sideEffects.push(
+        base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+          call_id: call.id,
+          property_alert_id: propertyAlert.id,
+        }).catch((error: any) => console.error('Automatic property-dispatch evaluation failed', {
+          call_id: call.id,
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        })),
+      );
       existingKeys.add(key);
       existingCallPropertyKeys.add(callPropertyKey);
       created += 1;
@@ -766,6 +780,16 @@ async function reconcilePropertyAlerts(base44: any) {
       });
       const freshLivePropertyCall = isFreshLivePropertyCall(call);
       if (!freshLivePropertyCall) {
+        // Late-discovered calls still need an automatic-dispatch decision while
+        // their call is active. Only the live audio/SMS announcement is gated.
+        await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', {
+          call_id: call.id,
+          property_alert_id: propertyAlert.id,
+        }).catch((error: any) => console.error('Automatic property-dispatch evaluation failed', {
+          call_id: call.id,
+          property_alert_id: propertyAlert.id,
+          error: error?.message || String(error),
+        }));
         existingKeys.add(key);
         existingCallPropertyKeys.add(callPropertyKey);
         propertyAlertsCreated += 1;

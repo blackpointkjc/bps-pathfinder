@@ -633,10 +633,14 @@ export default function AdminAnalytics() {
       .sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1));
   }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd]);
 
+  // Keep the officer windows mounted during background refreshes. The previous
+  // isFetching check removed the entire section every refresh cycle, which made
+  // the page flash and jump. Existing snapshots stay visible and only the
+  // numbers update in place when the new generation lands.
   const performanceCardsReady = Boolean(
     performanceGenerationReady
     && !officerPerformanceSnapshots.isLoading
-    && !officerPerformanceSnapshots.isFetching
+    && (Boolean(officerPerformanceSnapshots.data) || !officerPerformanceSnapshots.isFetching)
   );
 
   const companyOverallScore = useMemo(() => {

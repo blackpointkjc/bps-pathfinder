@@ -136,10 +136,17 @@ async function fetchPulsePointWebappIncidents(agencyIds = PULSEPOINT_AGENCY_IDS)
 }
 
 async function fetchPulsePointEncodedResponse(agencyIds = PULSEPOINT_AGENCY_IDS) {
-  if (typeof fetch !== 'function') throw new Error('Browser fetch is not available for PulsePoint sync');
-  const response = await fetch(`${PULSEPOINT_GIBA_URL}${encodeURIComponent(agencyIds.join(','))}`, {
+  // web.pulsepoint.org sits behind an AWS WAF challenge whose captcha SDK is
+  // exactly the script loaded by loadPulsePointWafFetch. Plain fetch receives
+  // the challenge HTML; the WAF-aware fetch solves it and returns the JSON.
+  const wafFetch = await loadPulsePointWafFetch();
+  const fetchImpl = wafFetch || fetch;
+  if (typeof fetchImpl !== 'function') throw new Error('Browser fetch is not available for PulsePoint sync');
+  const response = await fetchImpl(`${PULSEPOINT_GIBA_URL}${encodeURIComponent(agencyIds.join(','))}`, {
     cache: 'no-store',
-    credentials: 'omit',
+    // The solved AWS WAF token travels in a pulsepoint.org cookie; the WAF-aware
+    // fetch needs it attached for the challenge to be accepted cross-origin.
+    credentials: wafFetch ? 'include' : 'omit',
     headers: { Accept: 'application/json' },
   });
   const contentType = response.headers.get('content-type') || '';
@@ -172,21 +179,21 @@ async function performPulsePointLiveSync(requestId) {
     }
 
     try {
-      const { active } = await fetchPulsePointWebappIncidents(PULSEPOINT_AGENCY_IDS);
+      const encoded = await fetchPulsePointEncodedResponse(PULSEPOINT_AGENCY_IDS);
       return invokePulsePointIngest({
         ...basePayload,
-        incidents: active,
-        request_id: `pulsepoint-webapp-${requestId}`,
-      }, 'PulsePoint webapp browser-assisted source sync');
-    } catch (webappError) {
+        encoded_response: encoded,
+        request_id: `pulsepoint-browser-${requestId}`,
+      }, 'PulsePoint browser-assisted source sync');
+    } catch (browserError) {
       try {
-        const encoded = await fetchPulsePointEncodedResponse(PULSEPOINT_AGENCY_IDS);
+        const { active } = await fetchPulsePointWebappIncidents(PULSEPOINT_AGENCY_IDS);
         return invokePulsePointIngest({
           ...basePayload,
-          encoded_response: encoded,
-          request_id: `pulsepoint-browser-${requestId}`,
-        }, 'PulsePoint browser-assisted source sync');
-      } catch (browserError) {
+          incidents: active,
+          request_id: `pulsepoint-webapp-${requestId}`,
+        }, 'PulsePoint webapp browser-assisted source sync');
+      } catch (webappError) {
         const backendMessage = backendError?.response?.data?.error || backendError?.message || backendError;
         const webappMessage = webappError?.message || webappError;
         const browserMessage = browserError?.message || browserError;
