@@ -1,0 +1,35 @@
+{
+  "name": "CallPerformanceDecision",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string"
+    },
+    "excluded": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "off_property",
+        "offsite",
+        "restored"
+      ]
+    }
+  },
+  "required": [
+    "call_id",
+    "excluded",
+    "reason"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": false,
+    "delete": false
+  }
+}
