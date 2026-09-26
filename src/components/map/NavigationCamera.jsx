@@ -27,7 +27,7 @@ export default function NavigationCamera({
             interactionTimeoutRef.current = setTimeout(() => {
                 userInteractingRef.current = false;
                 if (onUserInteraction) onUserInteraction(false);
-            }, 8000);
+            }, 60000);
         };
         
         // Only genuine manual interaction pauses follow mode. Leaflet zoomstart
@@ -56,7 +56,9 @@ export default function NavigationCamera({
     useEffect(() => {
         if (!isNavigating || !currentLocation) return;
         
-        // If user is manually panning, don't auto-follow
+        // If user is manually panning/zooming, don't auto-follow. Keep this long
+        // enough that an officer can zoom out for situational awareness without
+        // Pathfinder immediately snapping back in on the next GPS fix.
         if (userInteractingRef.current) return;
 
         // Google-style follow camera: look slightly ahead of the moving unit so
