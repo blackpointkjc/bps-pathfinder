@@ -252,7 +252,8 @@ async function nextQueuedSpeech() {
     utterance.onend = () => finish(true);
     utterance.onerror = event => {
       const reason = event?.error || 'playback_failed';
-      const retryable = !['canceled', 'cancelled', 'interrupted'].includes(String(reason).toLowerCase());
+      // Once speech starts, never replay it from the beginning after an engine error.
+      const retryable = !started && !['canceled', 'cancelled', 'interrupted'].includes(String(reason).toLowerCase());
       if (retryable && cancelGeneration === speechCancelGeneration) {
         lastBlockedSpeech = item;
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason } }));
@@ -310,7 +311,7 @@ function speakQueued(clean, options = {}, resolve = null) {
 
 function retryPendingSpeech() {
   const blocked = pendingSpeech || lastBlockedSpeech;
-  if (!blocked || !isVoiceSupported() || !isVoiceEnabled()) return false;
+  if (!blocked || activeSpeech || !isVoiceSupported() || !isVoiceEnabled()) return false;
   const retryItem = { ...blocked, resolve: null };
   pendingSpeech = null;
   lastBlockedSpeech = null;
