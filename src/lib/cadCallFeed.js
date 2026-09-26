@@ -10,7 +10,7 @@ const BUSY_LEASE_RETRY_MS = 18_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
 const LIVE_SYNC_COOLDOWN_MS = 50 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
-const PULSEPOINT_AGENCY_IDS = ['04290', '37090'];
+const PULSEPOINT_AGENCY_IDS = ['76000', 'EMS1402'];
 const PULSEPOINT_API_URL = 'https://api.pulsepoint.org/v1/webapp?resource=incidents&agencyid=';
 const PULSEPOINT_GIBA_URL = 'https://web.pulsepoint.org/DB/giba.php?agency_id=';
 const PULSEPOINT_WAF_SCRIPT_URL = 'https://aac9c7b4c5f6.us-west-2.captcha-sdk.awswaf.com/aac9c7b4c5f6/jsapi.js';
