@@ -389,10 +389,10 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
   const now = Date.now();
   const candidates = (calls || []).filter(call => call?.source_channel === 'grac_website_live'
     && !Number.isFinite(Number(call.latitude))
-    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 8);
+    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 30);
   const replacements = new Map<string, any>();
-  for (let offset = 0; offset < candidates.length; offset += 4) {
-    const batch = await Promise.all(candidates.slice(offset, offset + 4).map(fastGeocodeWebsiteCall));
+  for (let offset = 0; offset < candidates.length; offset += 6) {
+    const batch = await Promise.all(candidates.slice(offset, offset + 6).map(fastGeocodeWebsiteCall));
     batch.forEach(call => replacements.set(liveMergeKey(call), call));
   }
   return (calls || []).map(call => replacements.get(liveMergeKey(call)) || call);
@@ -916,7 +916,7 @@ function chooseCanonical(records: any[]) {
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 45_000;
+const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 10_000;
 
 async function acquireIngestionLease(base44: any) {
   const token = crypto.randomUUID();
