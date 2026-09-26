@@ -1,14 +1,14 @@
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const STALE_AFTER_MS = 2 * 60 * 1000;
-const RECOVERY_COOLDOWN_MS = 60 * 1000;
+const STALE_AFTER_MS = 30 * 1000;
+const RECOVERY_COOLDOWN_MS = 20 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:v1';
 const BUSY_LEASE_RETRY_MS = 18_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 50 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 15 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 2 * 60 * 1000;
 const PULSEPOINT_AGENCY_IDS = ['76000', 'EMS1402'];
 const PULSEPOINT_API_URL = 'https://api.pulsepoint.org/v1/webapp?resource=incidents&agencyid=';
@@ -283,11 +283,10 @@ async function runRecovery() {
 }
 
 /**
- * The scheduled backend automation remains the normal ingestion owner. If it
- * stops updating the feed for >5 minutes, exactly one browser recovery attempt is
- * allowed per five minutes across open Pathfinder tabs. This prevents the old
- * request storm while also preventing CAD from staying blank for hours when a
- * scheduler run is missed.
+ * Visible command screens keep the upstream source warm. If persisted CAD rows
+ * fall behind, exactly one browser recovery attempt is allowed per short cooldown
+ * across open Pathfinder tabs. This prevents request storms while keeping active
+ * calls from sitting several minutes behind the public source.
  */
 export async function refreshCadIngestionIfStale(calls = [], { maxAgeMs = STALE_AFTER_MS } = {}) {
   if (!cadCallFeedIsStale(calls, maxAgeMs)) return { skipped: true, reason: 'feed_fresh' };
