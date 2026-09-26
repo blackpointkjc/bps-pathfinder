@@ -169,9 +169,9 @@ export default function DispatchCenter() {
             loadActiveCalls(true);
         }, 20000);
 
-        // Layout owns the single app-wide one-minute upstream poll. Repaint
-        // Dispatch immediately after its persisted writes complete rather than
-        // launching a competing network ingestion from this page.
+        // Visible Dispatch Center screens share the guarded upstream sync lock.
+        // Repaint immediately after persisted writes complete so the queue does
+        // not wait for a slow fallback timer.
         const onCadIngestFinished = () => {
             clearActiveDispatchCallMemoryCache();
             lastActiveCallsLoadRef.current = 0;
