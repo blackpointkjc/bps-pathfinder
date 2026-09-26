@@ -18,10 +18,10 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 // Browser/device GPS reads do not consume Base44 credits. Force one fresh device
 // request per minute while the shared watch remains active; the background
 // tracker separately rate-limits server persistence.
-export const DEVICE_GPS_REFRESH_MS = 30_000;
+export const DEVICE_GPS_REFRESH_MS = 7_000;
 export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
 export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
-export const GPS_WATCH_STALE_MS = 90_000;
+export const GPS_WATCH_STALE_MS = 30_000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
