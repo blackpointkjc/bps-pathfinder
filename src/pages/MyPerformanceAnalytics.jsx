@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+
+const format = (value, pattern) => value instanceof Date && Number.isFinite(value.getTime()) ? dateFnsFormat(value, pattern) : 'Unknown date';
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useAuth } from '@/lib/AuthContext';
 import { getOfficerPreviewRequest } from '@/utils/officerPreview';
@@ -11,7 +13,7 @@ import {
   BarChart3, Clock, CheckCircle2, Calendar, Star, AlertTriangle,
   MapPin, ChevronRight, GraduationCap, UserX, RefreshCw
 } from "lucide-react";
-import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
+import { format as dateFnsFormat, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
@@ -96,7 +98,7 @@ export default function MyPerformanceAnalytics() {
       'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport',
       'CallOut', 'QRScanEvent', 'TrainingAssignment', 'TrainingCompletion',
       'TrainingModule', 'ShiftBid', 'PerformanceReview', 'ClientFeedback',
-      'Commendation', 'Complaint', 'JobDutyRule', 'CallAssignment', 'DispatchCall', 'PropertyAlert',
+      'Commendation', 'Complaint', 'JobDutyRule', 'CallAssignment', 'DispatchCall', 'PropertyAlert', 'CallPerformanceDecision',
     ];
     for (const entity of scoringEntities) {
       try {
@@ -170,7 +172,7 @@ export default function MyPerformanceAnalytics() {
 
     const weeklyHours = {};
     timeEntries.filter(entry => {
-      if (!entry.clock_in || !entry.clock_out) return false;
+      if (!entry.clock_in || !entry.clock_out || !Number.isFinite(new Date(entry.clock_in).getTime()) || !Number.isFinite(new Date(entry.clock_out).getTime())) return false;
       const date = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
       return date >= currentMonthStart && date <= currentMonthEnd;
     }).forEach(entry => {

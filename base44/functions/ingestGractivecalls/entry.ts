@@ -1137,6 +1137,30 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     ));
   }
   await Promise.allSettled(sideEffects);
+  // Recover existing alerts after a transient first-evaluation failure. The
+  // ingestion lease serializes runs; cap work to keep the minute poll bounded.
+  const closedIds = new Set(disappeared.map((call:any) => String(call.id)));
+  const activeIds = new Set(saved.filter((call:any) => !closedIds.has(String(call.id)) && !['Cleared','Cancelled'].includes(String(call.status))).map((call:any) => String(call.id)));
+  const properties = new Map(monitored.map((property:any) => [String(property.id), property]));
+  const candidates = alerts.filter((alert:any) => activeIds.has(String(alert.callId)) && alert.is_test !== true && !['resolved','false_alarm','test'].includes(String(alert.lifecycle_status || '').toLowerCase()) && properties.get(String(alert.propertyId))?.auto_dispatch_enabled === true && properties.get(String(alert.propertyId))?.auto_dispatch_mode === 'live');
+  if (candidates.length) {
+    try {
+      const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: { $in: candidates.map((alert:any) => String(alert.id)) } }, '-evaluated_at', 1000);
+      const latest = new Map<string, any>();
+      for (const evaluation of evaluations) if (!latest.has(String(evaluation.property_alert_id))) latest.set(String(evaluation.property_alert_id), evaluation);
+      const due = candidates.filter((alert:any) => {
+        const evaluation = latest.get(String(alert.id));
+        if (evaluation?.mode === 'live' && evaluation?.decision === 'assigned') return false;
+        const last = new Date(evaluation?.evaluated_at || 0).getTime();
+        const interval = Math.max(60, Number(properties.get(String(alert.propertyId))?.auto_dispatch_recheck_seconds) || 60) * 1000;
+        return !Number.isFinite(last) || now - last >= interval;
+      }).sort((a:any,b:any) => new Date(latest.get(String(a.id))?.evaluated_at || 0).getTime() - new Date(latest.get(String(b.id))?.evaluated_at || 0).getTime());
+      for (const alert of due.slice(0, 2)) {
+        const response = await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', { call_id: alert.callId, property_alert_id: alert.id });
+        if (response?.data?.error) throw new Error(response.data.error);
+      }
+    } catch (error) { alertFailures++; console.error('Automatic dispatch recovery deferred to next poll', error?.message || error); }
+  }
   return { success: true, lightweight: true, active: incoming.length,
     created, updated, removed: disappeared.length, property_alerts_created: propertyAlertsCreated,
     alert_failures: alertFailures, synced_at: new Date().toISOString(), duration_ms: Date.now() - started };

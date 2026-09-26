@@ -334,11 +334,24 @@ Deno.serve(async (req) => {
     const activeLivePropertyAlerts = alerts.filter(alert => {
       if (!activeCallIdSet.has(String(alert.callId))) return false;
       const lifecycle = String(alert.lifecycle_status || 'active').toLowerCase();
-      if (['resolved', 'false_alarm', 'test'].includes(lifecycle)) return false;
+      if (alert.is_test === true || ['resolved', 'false_alarm', 'test'].includes(lifecycle)) return false;
       const property = locationByIdForDispatch.get(String(alert.propertyId));
       return property?.auto_dispatch_enabled === true && property?.auto_dispatch_mode === 'live';
     });
-    const missingLiveEvaluations = activeLivePropertyAlerts.filter(alert => !latestEvaluationByAlert.has(String(alert.id)));
+    // Allow initial processing, and query exact IDs before treating a capped
+    // history list as proof that an evaluation does not exist.
+    const unchecked = activeLivePropertyAlerts.filter(alert => !latestEvaluationByAlert.has(String(alert.id)) && Date.now() - new Date(alert.created_date || 0).getTime() >= 120000);
+    let evaluationLookupFailed = false;
+    if (unchecked.length) {
+      try {
+        const exact = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: { $in: unchecked.map(alert => String(alert.id)) } }, '-evaluated_at', 1000);
+        for (const evaluation of exact) latestEvaluationByAlert.set(String(evaluation.property_alert_id), evaluation);
+      } catch (error) {
+        evaluationLookupFailed = true;
+        add(findings, { key:'auto-dispatch:evaluation-read', area:'Automatic Dispatch', severity:'degraded', title:'Automatic-dispatch decisions could not be verified', description:error?.message || 'Evaluation lookup failed' });
+      }
+    }
+    const missingLiveEvaluations = evaluationLookupFailed ? [] : unchecked.filter(alert => !latestEvaluationByAlert.has(String(alert.id)));
     if (missingLiveEvaluations.length) add(findings, {
       key: 'auto-dispatch:missing-live-evaluation',
       area: 'Automatic Dispatch',

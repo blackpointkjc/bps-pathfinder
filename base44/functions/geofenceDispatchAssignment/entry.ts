@@ -44,7 +44,16 @@ function isFieldOfficer(user: any) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
+    let user = await base44.auth.me().catch(() => null);
+    // Service-to-service calls have no interactive user. Validate the caller's
+    // actual Authorization token against an admin-only entity through the
+    // ordinary client, never the elevated client or a caller-supplied flag.
+    if (!user && req.headers.get('Authorization')) {
+      try {
+        await base44.entities.SystemScanRun.list('-created_date', 1);
+        user = { id: 'automatic-dispatch-service', role: 'dispatch', additional_roles: [] };
+      } catch { /* Missing or unprivileged credentials remain unauthorized. */ }
+    }
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const authorized = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
       || hasRole(user, 'full_access') || hasRole(user, 'cad_access') || hasRole(user, 'supervisor') || hasRole(user, 'dispatch');
@@ -65,6 +74,7 @@ Deno.serve(async (req) => {
     // made a healthy dispatch decision vulnerable to rate limits and generic 500s.
     // Resolve the exact alert/property first, then load only operational datasets.
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
+    if (!simulation && ['cleared', 'cancelled', 'canceled', 'closed', 'resolved'].includes(lower(call.status))) return Response.json({ success: true, skipped: true, reason: 'Call is no longer active' });
     const alert = input.property_alert_id
       ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
       : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)).catch(() => []))?.[0] || null;

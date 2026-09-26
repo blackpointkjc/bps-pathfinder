@@ -11,12 +11,14 @@ import {
   BarChart3, Users, Clock, AlertTriangle, 
   CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X, RefreshCw
 } from "lucide-react";
-import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
+import { format as dateFnsFormat, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
+
+const format = (value, pattern) => value instanceof Date && Number.isFinite(value.getTime()) ? dateFnsFormat(value, pattern) : 'Unknown date';
 import IncidentPerformanceDetails from '@/components/admin/IncidentPerformanceDetails';
 import { readCompanyAnalyticsSnapshot, saveCompanyAnalyticsSnapshot } from '@/lib/analyticsSnapshot';
 
@@ -34,7 +36,7 @@ const ANALYTICS_SEGMENTS = {
     interval: 3 * 60 * 1000,
   },
   calls: {
-    fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert'], callAssignments: 'CallAssignment' },
+    fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert','CallPerformanceDecision'], callAssignments: 'CallAssignment' },
     interval: 2 * 60 * 1000,
   },
   quality: {
@@ -364,6 +366,7 @@ export default function AdminAnalytics() {
       DispatchCall: ['calls'],
       CallHistory: ['calls'],
       PropertyAlert: ['calls'],
+      CallPerformanceDecision: ['calls'],
       CallAssignment: ['calls'],
     };
 
@@ -533,7 +536,7 @@ export default function AdminAnalytics() {
     // Calculate hours from actual completed time entries, deducting recorded breaks.
     timeEntries.forEach(entry => {
       const key = emailKey(entry.officer_email);
-      if (!entry.clock_in || !entry.clock_out || !officerHours[key]) return;
+      if (!entry.clock_in || !entry.clock_out || !officerHours[key] || !Number.isFinite(new Date(entry.clock_in).getTime()) || !Number.isFinite(new Date(entry.clock_out).getTime())) return;
       
       const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
       if (clockInDate < monthStart || clockInDate > monthEnd) return;

@@ -63,7 +63,7 @@ const PERFORMANCE_ENTITY_NAMES = new Set([
   'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport', 'CallOut',
   'QRScanEvent', 'QRPatrolReport', 'CallAssignment', 'TrainingAssignment', 'TrainingCompletion', 'TrainingModule',
   'ShiftBid', 'PerformanceReview', 'ClientFeedback', 'Commendation', 'Complaint',
-  'JobDutyRule', 'PropertyAlert', 'DispatchCall', 'CallHistory',
+  'JobDutyRule', 'PropertyAlert', 'DispatchCall', 'CallHistory', 'CallPerformanceDecision',
 ]);
 const entityWrappers = new Map();
 const readCache = new Map();
