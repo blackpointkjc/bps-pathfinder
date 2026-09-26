@@ -207,7 +207,7 @@ async function normalizeIncident(row: any, agency: any) {
   }
   return {
     external_call_id: `pulsepoint:${agency.agencyId}:${id}`,
-    agency_cad_number: id,
+    agency_cad_number: '',
     cad_number_source: 'upstream_public_feed',
     official_cad_verified: false,
     incident,
@@ -263,7 +263,7 @@ async function publishAudioEvent(base44: any, call: any) {
   const eventKey = `pulsepoint:${call.external_call_id}:new`;
   const existing = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: eventKey }, '-created_date', 1).catch(() => []);
   if (existing?.length) return false;
-  const cadNumber = call.call_id || call.agency_cad_number || call.bps_reference || call.id;
+  const cadNumber = 'PP';
   await base44.asServiceRole.entities.CallStatusLog.create({
     call_id: String(call.id),
     incident_type: call.incident || 'PulsePoint incident',
@@ -275,7 +275,7 @@ async function publishAudioEvent(base44: any, call: any) {
     longitude: call.longitude,
     event_key: eventKey,
     event_type: ['critical', 'high'].includes(String(call.priority || '').toLowerCase()) ? 'priority_call' : 'new_call',
-    announcement_text: `PulsePoint incident. ${call.incident || 'Call for service'} at ${call.location || 'address unavailable'}. CAD number ${cadNumber}.`,
+    announcement_text: `PulsePoint incident. ${call.incident || 'Call for service'} at ${call.location || 'address unavailable'}. Reference ${cadNumber}.`,
     announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
     cad_number: String(cadNumber || ''),
     triggering_action: 'ingestPulsePoint.new_call',
@@ -355,7 +355,7 @@ async function createPulsePointPropertyAlerts(base44: any, call: any) {
       callLocation: call.location || '',
       callPriority: call.priority || 'medium',
       callStatus: call.status || 'New',
-      cadNumber: String(call.agency_cad_number || call.bps_reference || call.call_id || call.id || ''),
+      cadNumber: 'PP',
       callTime: call.time_received || call.created_date || new Date().toISOString(),
       time_received: call.time_received || call.created_date || new Date().toISOString(),
       source_key: key,
@@ -363,7 +363,7 @@ async function createPulsePointPropertyAlerts(base44: any, call: any) {
       acknowledged: false,
       description: `PulsePoint call is inside the ${location.site_name || 'monitored'} property boundary.`,
     });
-    const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+    const cadNumber = 'PP';
     const propertyEventKey = `property-alert:${propertyAlert.id}:created`;
     await base44.asServiceRole.entities.CallStatusLog.create({
       call_id: String(call.id),
@@ -376,7 +376,7 @@ async function createPulsePointPropertyAlerts(base44: any, call: any) {
       longitude: call.longitude,
       event_key: propertyEventKey,
       event_type: 'property_alert',
-      announcement_text: `PulsePoint property alert at ${location.site_name || location.address || 'monitored property'}. ${call.incident || 'Call for service'} at ${call.location || location.address || 'address unavailable'}. CAD number ${cadNumber}.`,
+      announcement_text: `PulsePoint property alert at ${location.site_name || location.address || 'monitored property'}. ${call.incident || 'Call for service'} at ${call.location || location.address || 'address unavailable'}. Reference ${cadNumber}.`,
       announcement_priority: ['critical', 'high'].includes(String(call.priority || '').toLowerCase()) ? String(call.priority).toLowerCase() : 'high',
       cad_number: String(cadNumber),
       triggering_action: 'ingestPulsePoint.property_alert_created',
@@ -443,16 +443,14 @@ Deno.serve(async (req) => {
     const archived = new Set((history || []).map((row: any) => String(row.external_call_id || '')).filter((key: string) => key.startsWith('pulsepoint:')));
     const incomingKeys = new Set(incoming.map((row: any) => String(row.external_call_id)));
     const newRows = incoming.filter((row: any) => !existingByExternal.has(row.external_call_id) && !archived.has(row.external_call_id));
-    const references = await reserveCadNumbers(base44, newRows.length);
 
     let created = 0, updated = 0, closed = 0, audio_events = 0, property_alerts_created = 0;
     for (let index = 0; index < newRows.length; index += 1) {
       const row = newRows[index];
-      const bpsReference = references[index];
       const call = await base44.asServiceRole.entities.DispatchCall.create({
         ...row,
-        bps_reference: bpsReference,
-        call_id: bpsReference,
+        bps_reference: '',
+        call_id: 'PP',
         source_first_seen_at: new Date().toISOString(),
       });
       created += 1;
@@ -468,8 +466,8 @@ Deno.serve(async (req) => {
       if (!existing) continue;
       const patch = {
         ...row,
-        bps_reference: existing.bps_reference,
-        call_id: existing.call_id || existing.bps_reference,
+        bps_reference: '',
+        call_id: 'PP',
         source_first_seen_at: existing.source_first_seen_at || existing.created_date || new Date().toISOString(),
       };
       let currentCall = existing;
