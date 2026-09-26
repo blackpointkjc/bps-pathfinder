@@ -30,7 +30,7 @@
     },
     "external_call_id": {
       "type": "string",
-      "description": "Stable upstream GRAC call identifier used for idempotent synchronization"
+      "description": "Stable upstream public-feed call identifier used for idempotent synchronization"
     },
     "incident": {
       "type": "string",
@@ -74,6 +74,7 @@
         "intersection",
         "street",
         "grac",
+        "pulsepoint",
         "none"
       ],
       "description": "Method used to geocode the location"
@@ -182,7 +183,8 @@
       "enum": [
         "richmond",
         "henrico",
-        "chesterfield"
+        "chesterfield",
+        "pulsepoint"
       ],
       "description": "Data source (richmond, henrico, or chesterfield)"
     },
