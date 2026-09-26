@@ -55,13 +55,13 @@ function isPointInsideBoundary(lat, lng, rawPolygon = []) {
 
 export default function BackgroundLocationTracker({ user }) {
   const lastGpsPushRef = useRef(0);
-  const lastHistoryPushRef = useRef(0);
+  const lastGpsAttemptRef = useRef(0);
   const lastPushedFixRef = useRef(null);
   const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const geofenceStateRef = useRef(new Map());
   const activeOfficerRecordRef = useRef(null);
-  const uploadChainRef = useRef(Promise.resolve());
+  const uploadInFlightRef = useRef(null);
   const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
   const trackingDeviceIdRef = useRef(getTrackingDeviceId());
@@ -145,10 +145,12 @@ export default function BackgroundLocationTracker({ user }) {
   // one serialized uploader. It prevents a heartbeat and GPS fix from racing each
   // other and guarantees the backend sees location events in order.
   const persistLiveState = (data) => {
-    const request = uploadChainRef.current
-      .catch(() => null)
+    // Drop concurrent opportunities instead of accumulating stale GPS requests.
+    // The sensor stream supplies a current fix at the next scheduled opportunity.
+    if (uploadInFlightRef.current) return Promise.resolve({ suppressed: true });
+    const request = Promise.resolve()
       .then(async () => {
-        if (Date.now() < rateLimitBackoffUntilRef.current) return null;
+        if (Date.now() < rateLimitBackoffUntilRef.current) return { suppressed: true };
         try {
           const payload = await publishOfficerLocation(data);
           if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
@@ -163,8 +165,10 @@ export default function BackgroundLocationTracker({ user }) {
           throw error;
         }
       });
-    uploadChainRef.current = request;
-    return request;
+    uploadInFlightRef.current = request;
+    return request.finally(() => {
+      if (uploadInFlightRef.current === request) uploadInFlightRef.current = null;
+    });
   };
 
   // Establish the live session through the same backend upsert used by GPS/heartbeat.
@@ -177,7 +181,7 @@ export default function BackgroundLocationTracker({ user }) {
 
     const establishSession = async () => {
       try {
-        await persistLiveState({
+        const result = await persistLiveState({
           heartbeat_only: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -189,6 +193,7 @@ export default function BackgroundLocationTracker({ user }) {
           session_active: true,
           device_id: trackingDeviceIdRef.current,
         });
+        if (!result?.success || result.suppressed) return;
         lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
@@ -207,7 +212,8 @@ export default function BackgroundLocationTracker({ user }) {
       const lat = Number(fix.latitude);
       const lng = Number(fix.longitude);
       const accuracy = Number(fix.accuracy);
-      const fixTimestamp = Number(fix.timestamp) || Date.now();
+      const fixTimestamp = Number(fix.timestamp);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0) || !Number.isFinite(fixTimestamp)) return;
       // A cached browser result is not a live officer location. Keep the signed-in
       // heartbeat active, but wait for a genuinely current device fix before
       // updating gps_updated_at or the movement trail.
@@ -250,19 +256,15 @@ export default function BackgroundLocationTracker({ user }) {
             )
           : Infinity;
         const moving = speedMph >= 3 || movedMeters >= 18;
-        // Moving vehicles need a near-realtime operational map. Stationary units
-        // can publish more slowly. This cadence is intentionally independent from
-        // history persistence so faster map motion does not multiply history writes.
-        const livePushIntervalMs = moving ? 7000 : 60000;
-        if (now - lastGpsPushRef.current < livePushIntervalMs) return;
-        lastGpsPushRef.current = now;
+        // A dedicated GPS receiver or moving unit records every 30 seconds.
+        // Idle browser GPS records every minute, even at unchanged coordinates.
+        const livePushIntervalMs = moving || fix.source === 'external_serial' ? 30000 : 60000;
+        if (uploadInFlightRef.current || now < rateLimitBackoffUntilRef.current) return;
+        if (now - Math.max(lastGpsPushRef.current, lastGpsAttemptRef.current) < livePushIntervalMs) return;
+        lastGpsAttemptRef.current = now;
 
-        const historyIntervalMs = moving ? 18000 : 55000;
-        const recordHistory = now - lastHistoryPushRef.current >= historyIntervalMs;
-
-        // Always update ActiveOfficer for the app-wide authoritative live position.
-        // When a history point is due, force this telemetry write through the
-        // shared background throttle so movement reports do not end up blank.
+        // One request updates both the live position and the durable history.
+        // Honor shared backoff; never force history through a rate-limit cooldown.
         const liveResult = await persistLiveState({
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -278,15 +280,20 @@ export default function BackgroundLocationTracker({ user }) {
           speed: speedMph,
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
-          record_history: recordHistory,
-          force_publish: recordHistory,
+          record_history: true,
+          publish_interval_ms: livePushIntervalMs,
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
           session_active: true,
         });
-        lastPushedFixRef.current = { latitude: lat, longitude: lng, timestamp: fixTimestamp };
-        if (recordHistory && liveResult?.history_recorded) lastHistoryPushRef.current = now;
+        if (!liveResult?.success || liveResult.suppressed) return;
         lastLivePushRef.current = Date.now();
+        if (!liveResult.gps_accepted) return;
+        lastGpsPushRef.current = now;
+        lastPushedFixRef.current = { latitude: lat, longitude: lng, timestamp: fixTimestamp };
+        if (liveResult.history_error) {
+          console.warn('GPS saved, but movement history needs retry:', liveResult.history_error);
+        }
 
         // Broadcast immediately so every mounted Pathfinder map can move the unit
         // without waiting for its recovery poll.
@@ -413,7 +420,7 @@ export default function BackgroundLocationTracker({ user }) {
         // signed-in session about every 90 seconds so the officer does not become
         // connection-stale while the Worker continues trying for a fresh fix.
         if (Date.now() - lastLivePushRef.current < 4 * 60 * 1000) return;
-        await persistLiveState({
+        const result = await persistLiveState({
           heartbeat_only: true,
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -425,6 +432,7 @@ export default function BackgroundLocationTracker({ user }) {
           session_active: true,
           device_id: trackingDeviceIdRef.current,
         });
+        if (!result?.success || result.suppressed) return;
         lastLivePushRef.current = Date.now();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
@@ -442,7 +450,10 @@ export default function BackgroundLocationTracker({ user }) {
       window.clearTimeout(recoveryTimer);
       recoveryTimer = window.setTimeout(async () => {
         const inactiveMs = Number(event?.detail?.inactive_ms || 0);
-        if (inactiveMs >= 90_000) lastGpsPushRef.current = 0;
+        if (inactiveMs >= 90_000) {
+          lastGpsPushRef.current = 0;
+          lastGpsAttemptRef.current = 0;
+        }
         // A frozen Chromium geolocation watch can survive in JS without producing
         // fixes. Re-register it, reconnect an approved USB GPS, and immediately
         // renew the signed-in presence heartbeat when Pathfinder wakes.
