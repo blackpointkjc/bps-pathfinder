@@ -59,6 +59,7 @@ export function CadAudioToggle() {
 
 let notificationAudioContext;
 const LOCAL_CLAIM_TTL_MS = 6 * 60 * 60 * 1000;
+const LIVE_PROPERTY_ALERT_MAX_AGE_MS = 3 * 60 * 1000;
 const localAnnouncementClaims = new Map();
 
 function localClaimKey(eventKey) {
@@ -510,6 +511,17 @@ export default function GlobalMessageBanner({ user }) {
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
+      const callStartedAt = new Date(record.callTime || record.time_received || 0).getTime();
+      const alertCreatedAt = new Date(record.created_date || 0).getTime();
+      const liveReferenceAt = Number.isFinite(callStartedAt) && callStartedAt > 0 ? callStartedAt : alertCreatedAt;
+      const liveAgeMs = Date.now() - liveReferenceAt;
+      const isFreshLivePropertyAlert = Number.isFinite(liveReferenceAt)
+        && liveAgeMs >= 0
+        && liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS;
+      if (!isFreshLivePropertyAlert) {
+        knownIds.current.add(key);
+        return;
+      }
 
       // A freshly-created PropertyAlert is emitted only after the backend has
       // verified that the CAD call is inside an active monitored property. Use
@@ -794,7 +806,7 @@ export default function GlobalMessageBanner({ user }) {
       // connecting. Older history is seeded as known and never replayed. The server
       // claim also prevents a refresh from repeating a call already announced to
       // this user.
-      const statusLogRecoveryCutoff = Date.now() - 5 * 60 * 1000;
+      const statusLogRecoveryCutoff = Date.now() - LIVE_PROPERTY_ALERT_MAX_AGE_MS;
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
@@ -817,7 +829,7 @@ export default function GlobalMessageBanner({ user }) {
       // window could announce a call 15+ minutes late after a refresh/reconnect,
       // which made BPSPF sound delayed even though the alert row was old.
       const recoverRecentPropertyCalls = () => {
-        const propertyCutoff = Date.now() - 3 * 60 * 1000;
+        const propertyCutoff = Date.now() - LIVE_PROPERTY_ALERT_MAX_AGE_MS;
         return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
