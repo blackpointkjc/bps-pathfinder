@@ -2,7 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 import { createDecipheriv, createHash } from 'node:crypto';
 
 const HASH_PASSWORD = 'tombrady5rings';
-const GIBA_URL = 'https://web.pulsepoint.org/DB/giba.php?agency_id=';
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';
 const AGENCY_DATA_URL = 'https://web.pulsepoint.org/DB/GeolocationAgency.php?id=';
 const DEFAULT_AREAS = [
@@ -58,10 +57,10 @@ function decodePulsePoint(data: any) {
   return JSON.parse(text);
 }
 
-async function fetchJson(url: string) {
+async function fetchJson(url: string, token = "") {
   const response = await fetch(url, {
     cache: 'no-store',
-    headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-PulsePoint/1.0' },
+    headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     signal: AbortSignal.timeout(15000),
   });
   const contentType = response.headers.get('content-type') || '';
@@ -436,15 +435,17 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const scheduledRun = body?.scheduled === true;
-    const user = await base44.auth.me().catch(() => null);
-    if (!scheduledRun) {
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
-      const primaryRole = String(user.role || '').trim().toLowerCase();
-      const hasCadAccess = primaryRole === 'admin' || primaryRole === 'dispatch' || user.dispatch_role === true || roles.has('dispatch') || roles.has('cad_access') || roles.has('full_access');
-      if (!hasCadAccess) return Response.json({ error: 'CAD access required' }, { status: 403 });
+    const approvedFeed = Deno.env.get('PULSEPOINT_FEED_URL') || '';
+    if (!approvedFeed) return Response.json({ success:false, configured:false, skipped:true, reason:'approved_feed_required', source:'pulsepoint', message:'Automatic import is not configured. Use the official PulsePoint live feed view.' });
+    const feedUrl = new URL(approvedFeed);
+    if (feedUrl.protocol !== 'https:') return Response.json({ error:'Approved feed must use HTTPS' }, { status:400 });
+    let user = await base44.auth.me().catch(() => null);
+    if (!user && req.headers.get('Authorization')) {
+      try { await base44.entities.SystemScanRun.list('-created_date', 1); user = { role:'dispatch', additional_roles:[] }; } catch {}
     }
+    if (!user) return Response.json({ error:'Unauthorized' }, { status:401 });
+    const roles = new Set((user.additional_roles || []).map((role:any) => String(role).toLowerCase()));
+    if (!['admin','dispatch'].includes(user.role) && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access') && !roles.has('dispatch')) return Response.json({ error:'CAD access required' }, { status:403 });
 
     const agencies = await resolveAgencies(body);
     if (!agencies.length) return Response.json({ success: false, error: 'No PulsePoint agencies found. Pass agency_ids or configure PULSEPOINT_AGENCY_IDS.' }, { status: 400 });
@@ -453,19 +454,11 @@ Deno.serve(async (req) => {
     let active: any[] = [];
     let feedSource = 'server';
 
-    if (Array.isArray(body?.incidents)) {
-      active = body.incidents;
-      feedSource = 'browser_payload';
-    } else if (body?.encoded_response && typeof body.encoded_response === 'object') {
-      const decoded = decodePulsePoint(body.encoded_response);
-      active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
-      feedSource = 'browser_encoded_payload';
-    } else {
-      const agencyIds = agencies.map(agency => agency.agencyId).join(',');
-      const encoded = await fetchJson(`${GIBA_URL}${encodeURIComponent(agencyIds)}`);
-      const decoded = decodePulsePoint(encoded);
-      active = Array.isArray(decoded?.incidents?.active) ? decoded.incidents.active : [];
-    }
+    const payload = await fetchJson(feedUrl.toString(), Deno.env.get('PULSEPOINT_FEED_TOKEN') || '');
+    const decoded = payload?.ct ? decodePulsePoint(payload) : payload;
+    if (!Array.isArray(decoded?.incidents?.active)) throw new Error('Approved feed response is missing the active incidents array');
+    active = decoded.incidents.active;
+    feedSource = 'approved_feed';
 
     const incoming = (await Promise.all(active.map(row => {
       const agencyId = rowAgencyId(row);
