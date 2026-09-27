@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
 import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
 import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
@@ -30,6 +30,8 @@ export default function SystemStatus() {
   const [issues, setIssues] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [, setHealthTick] = useState(0);
+  useEffect(() => { const timer = setInterval(() => setHealthTick(value => value + 1), 15000); return () => clearInterval(timer); }, []);
   const [apiTraceOpen, setApiTraceOpen] = useState(false);
   const [diagnosticFindings, setDiagnosticFindings] = useState([]);
   const [lastCheckedAt, setLastCheckedAt] = useState(null);
@@ -47,13 +49,8 @@ export default function SystemStatus() {
 
       let findings = [];
       let checkedAt = scanRuns?.[0]?.scanned_at || null;
-      if (scanRuns?.[0]?.audit_json) {
-        try {
-          const previous = JSON.parse(scanRuns[0].audit_json);
-          findings = Array.isArray(previous?.findings) ? previous.findings : [];
-        } catch {}
-      }
-
+      // Current durable outage rows own active status. Old scan JSON is history,
+      // and must not resurrect an issue that has already been resolved.
       if (runChecks && user?.role === 'admin') {
         // A manual System Status refresh is a real functional check, not just a
         // reread of SystemOutage rows. Run server and browser probes sequentially
@@ -69,6 +66,11 @@ export default function SystemStatus() {
         }
         findings = [...merged.values()];
         checkedAt = new Date().toISOString();
+        const audit = { ...serverAudit, findings, scanned_at:checkedAt, client_summary:clientAudit.summary, summary:{ ...serverAudit.summary, issues_found:findings.length, outages:findings.filter(item => item.severity === 'outage').length, degraded:findings.filter(item => item.severity === 'degraded').length } };
+        const published = await base44.functions.invoke('publishSystemScan', { audit });
+        if (published?.data?.error) throw new Error(published.data.error);
+        clearBase44ReadCacheMatching('entity:SystemOutage:');
+        setIssues(await base44.entities.SystemOutage.filter({ resolved_at:null }, '-created_date', 100));
       }
 
       setDiagnosticFindings(findings);
@@ -121,7 +123,7 @@ export default function SystemStatus() {
     source: 'functional_audit',
     occurrence_count: item.count || 1,
   })), [diagnosticFindings, lastCheckedAt]);
-  const requestPressureIssue = requestHealth.rateLimitedUntil || rateLimitCount > 0 ? [{
+  const requestPressureIssue = requestHealth.rateLimitedUntil ? [{
     id: 'diagnostic:api-pressure',
     severity: 'degraded',
     component: 'Base44 API',

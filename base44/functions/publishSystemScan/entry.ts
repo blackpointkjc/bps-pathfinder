@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
     }
     for (const [issueKey, issue] of activeByKey.entries()) {
       if (currentIssueKeys.has(issueKey)) continue;
+      if (audit.scan_incomplete || findings.some((finding:any) => String(finding.key || '').startsWith('service:') || finding.key === 'auto-dispatch:evaluation-read')) continue;
       await base44.asServiceRole.entities.SystemOutage.update(issue.id, {
         resolved_at: scannedAt,
         resolved_by: 'Pathfinder System Monitor',
