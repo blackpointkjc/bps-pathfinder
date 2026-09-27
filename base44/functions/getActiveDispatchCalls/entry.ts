@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+const readCache = new Map<string, { at:number; rows:any[]; pending?:Promise<any[]> }>();
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const ACTIVE_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
@@ -37,7 +38,17 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(50, Math.min(200, Number(body?.limit || 100)));
-    const rows = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
+    const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
+    let cached = readCache.get(cacheKey);
+    if (!cached || Date.now() - cached.at >= 5000) {
+      if (!cached?.pending) {
+        cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000) };
+        readCache.set(cacheKey, cached);
+      }
+      try { cached.rows = await cached.pending!; cached.at = Date.now(); cached.pending = undefined; }
+      catch (error) { readCache.delete(cacheKey); throw error; }
+    }
+    const rows = cached.rows;
     const now = Date.now();
     const calls = (Array.isArray(rows) ? rows : [])
       .filter(call => isVisibleActiveCall(call, now))

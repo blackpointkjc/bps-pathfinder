@@ -52,7 +52,10 @@ export default function SystemIssuesPanel({ currentUser }) {
       setIssues(all || []);
       if (scanRuns?.[0]?.audit_json) {
         try {
-          setAudit(JSON.parse(scanRuns[0].audit_json));
+          const saved = JSON.parse(scanRuns[0].audit_json);
+          const resolvedKeys = new Set((all || []).filter(issue => issue.resolved_at).map(issue => issue.issue_key));
+          const findings = (saved.findings || []).filter(item => !resolvedKeys.has('scan:' + (item.key || item.area || '') + ':' + (item.title || '')));
+          setAudit({ ...saved, findings, summary:{ ...saved.summary, issues_found:findings.length, outages:findings.filter(item => item.severity === 'outage').length, degraded:findings.filter(item => item.severity === 'degraded').length } });
         } catch {
           console.warn('Latest hourly system scan result could not be parsed.');
         }
