@@ -8,7 +8,8 @@ const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed',
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 3_000;
+const MEMORY_DEDUPE_MS = 10_000;
+let requestBackoffUntil = 0;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
@@ -130,6 +131,12 @@ export async function loadActiveDispatchCallRows(limit = 100) {
   if (Array.isArray(memoryRows) && Date.now() - memoryRowsAt < MEMORY_DEDUPE_MS) {
     return memoryRows.slice(0, limit);
   }
+  if (Date.now() < requestBackoffUntil) {
+    if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows).slice(0, limit);
+    const cached = readLastGoodCalls();
+    if (cached.length) return cached.slice(0, limit);
+    throw new Error('Active calls are waiting for the API retry window.');
+  }
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
@@ -157,6 +164,13 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       return deduped;
     } catch (error) {
       primaryError = error;
+      if (/429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
+        requestBackoffUntil = Date.now() + 60000;
+        if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows);
+        const cached = readLastGoodCalls();
+        if (cached.length) return cached;
+        throw error;
+      }
     }
 
     // Preserve a direct-read compatibility fallback while an updated backend
