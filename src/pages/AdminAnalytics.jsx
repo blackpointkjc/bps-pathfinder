@@ -294,10 +294,6 @@ export default function AdminAnalytics() {
     ...(callsAnalytics.data?.service_errors || {}),
     ...(qualityAnalytics.data?.service_errors || {}),
   }), [coreAnalytics.data, trainingAnalytics.data, dutyAnalytics.data, callsAnalytics.data, qualityAnalytics.data]);
-  const performanceGenerationReady = Boolean(
-    coreAnalytics.data && trainingAnalytics.data && dutyAnalytics.data && callsAnalytics.data && qualityAnalytics.data
-    && Object.keys(performanceCriticalErrors).length === 0
-  );
   const performanceAnalyticsData = useMemo(() => mergeAnalyticsSegments({}, {
     core: coreAnalytics.data,
     duty: dutyAnalytics.data,
@@ -931,10 +927,10 @@ export default function AdminAnalytics() {
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
                   Loading officer performance for this period…
                   {Object.keys(performanceCriticalErrors).length > 0 && (
-                    <div className="mt-2 text-amber-200">Retrying company sources: {Object.keys(performanceCriticalErrors).join(', ')}</div>
+                    <div className="mt-2 text-amber-200">Sources awaiting refresh: {Object.keys(performanceCriticalErrors).join(', ')}</div>
                   )}
                   {Object.keys(officerPerformanceSnapshots.data?.errors || {}).length > 0 && (
-                    <div className="mt-2 text-amber-200">Retrying officer snapshots: {Object.values(officerPerformanceSnapshots.data.errors).join(' · ')}</div>
+                    <div className="mt-2 text-amber-200">Officer snapshots awaiting refresh: {Object.values(officerPerformanceSnapshots.data.errors).join(' · ')}</div>
                   )}
                 </div>
               )}

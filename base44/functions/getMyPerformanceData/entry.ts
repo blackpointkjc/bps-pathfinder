@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
     const safeFilter = (entity: string, query: any, sort?: string, limit = 1000) => safeRead(entity, async () => {
       const service = (base44.asServiceRole.entities as any)[entity];
       if (!service?.filter) throw new Error(`${entity} filter service is unavailable`);
-      return service.filter(query, sort, limit);
+      const shared = ['IncidentReport', 'QRScanEvent', 'DispatchCall', 'CallHistory', 'PropertyAlert', 'DailyActivityReport', 'ShiftReport'].includes(entity);
+      return shared ? cachedRows(entity + ':' + JSON.stringify(query) + ':' + sort + ':' + limit, 30000, () => service.filter(query, sort, limit)) : service.filter(query, sort, limit);
     });
 
     // User is the canonical identity source. Linked work/Microsoft aliases are
@@ -153,7 +154,7 @@ Deno.serve(async (req) => {
       incidentRequired ? safeFilter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 500) : Promise.resolve([]),
       incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500) : Promise.resolve([]),
       incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 750) : Promise.resolve([]),
-      incidentRequired ? safeFilter('CallAssignment', { $and: [{ unit_id: officerId }, { assigned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }] }, '-assigned_at', 500) : Promise.resolve([]),
+      Promise.resolve([]),
     ]);
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
