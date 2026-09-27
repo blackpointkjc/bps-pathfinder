@@ -1,3 +1,4 @@
+import PulsePointLiveFeed from '@/components/dispatch/PulsePointLiveFeed';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
@@ -342,6 +343,7 @@ function CommandDashboardInner({ embedded = false }) {
             <div className="command-dashboard-system-bar flex-none bg-slate-900/90 border-b border-slate-700/80 px-2.5 py-1.5 flex items-center gap-2">
                 <div className="command-dashboard-spacer flex-1" />
                 <div className="command-dashboard-actions flex items-center gap-1.5">
+                    <PulsePointLiveFeed />
                     {/* Sync status */}
                     <div className={`command-dashboard-sync h-8 flex items-center justify-center gap-1.5 px-2 rounded-lg border font-mono text-[9px] font-bold flex-shrink-0 ${
                         syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :

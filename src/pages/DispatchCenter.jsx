@@ -1,3 +1,4 @@
+import PulsePointLiveFeed from '@/components/dispatch/PulsePointLiveFeed';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -657,6 +658,7 @@ export default function DispatchCenter() {
         <div className="bps-command-page cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white ">
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
+            <div className="flex-none border-b border-slate-800 px-3 py-1"><PulsePointLiveFeed /></div>
             {/* ══ TOP SYSTEM BAR ══ */}
             <div className="flex min-h-12 flex-none flex-wrap items-center gap-2 border-b border-cyan-950/80 bg-gradient-to-r from-[#08111d] via-[#0b1725] to-[#08111d] px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,.28)] md:flex-nowrap md:gap-3 md:px-4">
                 <div className="flex items-center gap-2">
