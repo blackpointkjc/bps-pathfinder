@@ -4,7 +4,11 @@ const admin=fs.readFileSync('src/pages/AdminAnalytics.jsx','utf8');
 const start=admin.indexOf('    queryFn: async () => {',admin.indexOf('const officerPerformanceSnapshots'))+'    queryFn: async () => {'.length;
 const end=admin.indexOf('\n    },\n    enabled:',start);
 const previous={snapshots:{a:{officer:{id:'a'},score:90},b:{officer:{id:'b'},score:80}}};
-const fn=vm.runInNewContext('(async()=>{'+admin.slice(start,end)+'})',{queryClient:{getQueryData:()=>previous},performanceOfficerKey:'a,b',analyticsStartDate:'2026-09-01',analyticsEndDate:'2026-09-30',performanceOfficerUsers:[{id:'a'},{id:'b'}],base44:{functions:{invoke:async(_,arg)=>{if(arg.preview_user_id==='a')throw Error('429');return {data:{officer:{id:'b'},score:85,timeEntries:[]}}}}});
+const client = { functions: { invoke: async (_, arg) => {
+  if (arg.preview_user_id === 'a') throw Error('429');
+  return { data: { officer:{id:'b'}, score:85, timeEntries:[] } };
+} } };
+const fn=vm.runInNewContext('(async()=>{'+admin.slice(start,end)+'})',{queryClient:{getQueryData:()=>previous},performanceOfficerKey:'a,b',analyticsStartDate:'2026-09-01',analyticsEndDate:'2026-09-30',performanceOfficerUsers:[{id:'a'},{id:'b'}],base44:client});
 const refreshed=await fn();assert.equal(refreshed.snapshots.a.score,90);assert.equal(refreshed.snapshots.b.score,85);assert(refreshed.errors.a);
 assert(admin.includes('const performanceCardsReady = Boolean(officerPerformanceSnapshots.data);'));
 let now=Date.now(),calls=0,fallback=0;class Clock extends Date{static now(){return now}}
