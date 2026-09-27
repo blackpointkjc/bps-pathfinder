@@ -75,13 +75,19 @@ function mergeAnalyticsSegments(previous = {}, payloads = {}) {
 
 function useAnalyticsSegment(name, enabled, startDate, endDate) {
   const config = ANALYTICS_SEGMENTS[name];
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ['companyAnalyticsSegment', name, startDate, endDate],
     queryFn: async () => {
       const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name, start_date: startDate, end_date: endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      return payload;
+      const previous = queryClient.getQueryData(['companyAnalyticsSegment', name, startDate, endDate]);
+      const retained = { ...payload };
+      for (const [field, sources] of Object.entries(config.fields)) {
+        if ([sources].flat().some(source => payload.service_errors?.[source]) && previous?.[field] !== undefined) retained[field] = previous[field];
+      }
+      return retained;
     },
     enabled,
     staleTime: config?.interval || 2 * 60 * 1000,
@@ -447,7 +453,7 @@ export default function AdminAnalytics() {
     refetchInterval: 5 * 60 * 1000,
     refetchIntervalInBackground: false,
     retry: false,
-    placeholderData: previousData => previousData,
+    placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === analyticsStartDate && previousQuery?.queryKey?.[3] === analyticsEndDate ? previousData : undefined,
   });
   const performanceTimeEntries = performanceAnalyticsData.timeEntries || [];
   const performanceSchedules = performanceAnalyticsData.schedules || [];
@@ -923,7 +929,7 @@ export default function AdminAnalytics() {
             <div className="space-y-3">
               {!performanceCardsReady && (
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
-                  Loading each officer from the same My Performance snapshot used on their officer page. Old or partially merged percentages are intentionally not shown.
+                  Loading officer performance for this period…
                   {Object.keys(performanceCriticalErrors).length > 0 && (
                     <div className="mt-2 text-amber-200">Retrying company sources: {Object.keys(performanceCriticalErrors).join(', ')}</div>
                   )}
@@ -932,6 +938,7 @@ export default function AdminAnalytics() {
                   )}
                 </div>
               )}
+              {performanceCardsReady && <div className="min-h-5 text-xs text-slate-400" aria-live="polite">{officerPerformanceSnapshots.isFetching ? 'Refreshing figures…' : Object.keys(performanceCriticalErrors).length || Object.keys(officerPerformanceSnapshots.data?.errors || {}).length ? 'Some figures could not refresh. Last verified figures remain visible.' : 'Figures are up to date.'}</div>}
               {performanceCardsReady && overallByOfficer.map(officer => (
                 <div key={officer.email} className="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
