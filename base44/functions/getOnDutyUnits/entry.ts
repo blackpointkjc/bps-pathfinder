@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
             clock_in_time: openEntry?.clock_in || active.clock_in_time || '',
             last_update: active.last_update || active.updated_date || active.created_date || '',
             last_updated: active.last_update || active.updated_date || active.created_date || '',
-            session_active: sessionActive,
+            session_active: retainedSession,
             map_visible: retainedSession,
             presence_online: sessionActive,
             presence_state: sessionActive ? 'online' : retainedSession ? 'stale' : 'offline',
