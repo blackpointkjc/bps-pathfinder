@@ -78,7 +78,11 @@ export function applyOfficerLocationEvent(rows = [], event) {
       'clock_in_time','tracking_session_key'
     ];
     for (const field of fields) {
-      if (record[field] !== undefined) next[field] = record[field];
+      if (record[field] === undefined) continue;
+      if (['profile_photo_url','officer_name','first_name','last_name','rank','unit_number'].includes(field)
+          && (record[field] === null || String(record[field]).trim() === '')
+          && next[field]) continue;
+      next[field] = record[field];
     }
     if (record.last_update !== undefined) next.last_updated = record.last_update;
     if (record.session_active !== undefined) {
