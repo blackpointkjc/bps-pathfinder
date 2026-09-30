@@ -498,7 +498,9 @@ function installSerialEvents() {
     if (event?.target === activePort || event?.port === activePort) {
       activePort = null;
       activeReader = null;
-      emit({ connected: false, connecting: false, error: 'External GPS receiver disconnected.' });
+      releaseGpsOwnership();
+      emit({ connected: false, connecting: false, backgroundReader: false, error: 'External GPS receiver disconnected. Reconnecting…' });
+      window.setTimeout(() => startExternalGpsAutoReconnect().catch(() => null), 1200);
     }
   });
   navigator.serial.addEventListener?.('connect', () => {
