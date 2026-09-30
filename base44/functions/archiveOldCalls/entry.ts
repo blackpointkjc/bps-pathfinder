@@ -15,16 +15,13 @@ function callTimestamp(call: any) {
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-        const scheduledRun = body?.scheduled === true;
-
         const user = await base44.auth.me().catch(() => null);
-        if (!scheduledRun && !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-        const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
         // Any authenticated operational user may trigger the archive pass. The
         // actual archive/delete writes use service role, so normal users never
         // receive direct write access to DispatchCall or CallHistory.
-        const authorized = scheduledRun || user?.role === 'admin' || user?.role === 'dispatch' || user?.role === 'supervisor' || user?.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
+        const authorized = user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         // Scan a broad oldest-first window. The old newest-only scan could miss
