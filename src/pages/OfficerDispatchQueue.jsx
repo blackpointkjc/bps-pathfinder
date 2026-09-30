@@ -26,10 +26,11 @@ export default function OfficerDispatchQueue() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 180000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-    staleTime: 15000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 5000,
   });
 
   const queue = payload.queue || [];
