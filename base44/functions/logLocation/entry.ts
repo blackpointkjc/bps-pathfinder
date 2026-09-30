@@ -281,6 +281,82 @@ Deno.serve(async (req) => {
       ));
     }
 
+    // Automatically place an assigned officer On Scene when the accepted live GPS
+    // fix is within 50 feet (15.24m) of the call. This runs on the backend location
+    // write, so arrival does not depend on the dispatch page being open/foreground.
+    const autoSceneTransitions: Array<{ call_id:string; distance_meters:number }> = [];
+    const officerOperationalStatus = String(primary?.status || user.status || '').trim().toLowerCase();
+    const shouldCheckArrival = acceptedForPosition
+      && acceptedAccuracy <= 100
+      && ['dispatched','enroute','en route'].includes(officerOperationalStatus);
+    if (shouldCheckArrival) {
+      const officerAssignments = await base44.asServiceRole.entities.CallAssignment
+        .filter({ unit_id: user.id }, '-assigned_at', 100)
+        .catch(() => []);
+      const activeAssignments = (officerAssignments || []).filter((assignment:any) =>
+        !['cleared','cancelled','canceled','on_scene'].includes(String(assignment.status || '').trim().toLowerCase())
+      );
+      for (const assignment of activeAssignments) {
+        const call = await base44.asServiceRole.entities.DispatchCall.get(assignment.call_id).catch(() => null);
+        if (!call || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status || '').trim().toLowerCase())) continue;
+        if (!hasCoordinates(call.latitude, call.longitude)) continue;
+        const arrivalDistance = distanceMeters(latitude, longitude, call.latitude, call.longitude);
+        if (!Number.isFinite(arrivalDistance) || arrivalDistance > 15.24) continue;
+
+        const arrivalAt = new Date(deviceFixAt).toISOString();
+        await base44.asServiceRole.entities.CallAssignment.update(assignment.id, {
+          status: 'on_scene',
+          accepted_at: assignment.accepted_at || assignment.assigned_at || arrivalAt,
+        }).catch(() => null);
+        await base44.asServiceRole.entities.DispatchCall.update(call.id, {
+          status: 'On Scene',
+          time_on_scene: call.time_on_scene || arrivalAt,
+        }).catch(() => null);
+        const callInfo = `${call.incident || 'Call for service'} · ${call.location || ''}`.slice(0, 500);
+        await base44.asServiceRole.entities.User.update(user.id, {
+          status: 'On Scene',
+          current_call_id: call.id,
+          current_call_info: callInfo,
+          status_since: arrivalAt,
+          last_updated: now,
+        }).catch(() => null);
+        await base44.asServiceRole.entities.ActiveOfficer.update(activeOfficer.id, {
+          status: 'On Scene',
+          current_call_info: callInfo,
+          last_update: now,
+        }).catch(() => null);
+        const unitRows = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 20).catch(() => []);
+        await Promise.all((unitRows || []).map((unit:any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+          status: 'On Scene',
+          assigned_call_ids: Array.from(new Set([...(unit.assigned_call_ids || []).map(String), String(call.id)])),
+          last_update_at: now,
+        }).catch(() => null)));
+        const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+        const officerName = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || officerEmail);
+        await base44.asServiceRole.entities.CallStatusLog.create({
+          call_id: call.id,
+          incident_type: call.incident || '',
+          location: call.location || '',
+          old_status: call.status || '',
+          new_status: 'On Scene',
+          unit_id: user.id,
+          unit_name: officerName,
+          notes: `Automatically marked On Scene at ${Math.round(arrivalDistance)}m from the call using accepted ${gpsSource} GPS.`,
+          latitude,
+          longitude,
+          event_key: `call:${call.id}:unit:${user.id}:auto-on-scene:${arrivalAt}`,
+          event_type: 'unit_on_scene',
+          announcement_text: `${officerName} automatically marked on scene. CAD number ${cadNumber}.`,
+          announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
+          cad_number: String(cadNumber),
+          triggering_action: 'logLocation.autoArrival50ft',
+          audio_enabled: true,
+          sensitive: false,
+        }).catch(() => null);
+        autoSceneTransitions.push({ call_id: String(call.id), distance_meters: Math.round(arrivalDistance * 10) / 10 });
+      }
+    }
+
     // Persist movement history in the authenticated backend so browser
     // background throttling and client-side RLS cannot silently stop the trail.
     // One history stream per officer across tabs/devices: every 30 seconds
@@ -349,6 +425,7 @@ Deno.serve(async (req) => {
       last_updated: now,
       history_recorded: historyRecorded,
       history_error: historyError || null,
+      auto_on_scene: autoSceneTransitions,
     });
   } catch (error) {
     console.error('Error logging location:', error);
