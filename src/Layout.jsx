@@ -1296,9 +1296,11 @@ export default function Layout({ children, currentPageName }) {
           const linkedCall = callById.get(String(item.callId));
           const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
-          const callTime = new Date(item.callTime || item.time_received || 0).getTime();
           const createdTime = new Date(item.created_date || 0).getTime();
-          const eventTime = Number.isFinite(callTime) && callTime > 0 ? callTime : createdTime;
+          // PropertyAlert creation is the live Pathfinder event. The public CAD
+          // source may publish a call several minutes after its reported call time,
+          // so gating this popup by callTime incorrectly suppresses brand-new alerts.
+          const eventTime = createdTime;
           const location = locationById.get(String(item.propertyId));
           const inactiveProperty = !location || location.active === false || location.property_monitoring_enabled !== true;
           const inactiveCall = !linkedCall || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
