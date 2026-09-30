@@ -108,6 +108,7 @@ export default function Navigation() {
     const spokenNavPromptsRef = useRef(new Set());
     const lastRerouteAtRef = useRef(0);
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
+    const speedLimitRequestSeqRef = useRef(0);
     const navSnapIndexRef = useRef(0);
     const initialOperationalFitRef = useRef(false);
 
@@ -744,7 +745,7 @@ export default function Navigation() {
         const roadChanged = roadName && roadName !== previous.road;
         if (!roadChanged && now - previous.at < 15000 && distanceMeters < 120) return;
 
-        let cancelled = false;
+        const requestSeq = ++speedLimitRequestSeqRef.current;
         lastSpeedLimitLookupRef.current = { at: now, lat: currentLocation[0], lng: currentLocation[1], road: roadName };
         withRequestTimeout(base44.functions.invoke('routeNavigation', {
             mode: 'speed_limit',
@@ -752,14 +753,13 @@ export default function Navigation() {
             longitude: currentLocation[1],
             road_name: roadName,
         }), 9000, 'Road speed limit').then(response => {
-            if (cancelled) return;
+            if (requestSeq !== speedLimitRequestSeqRef.current) return;
             const payload = response?.data || response || {};
             const limit = Number(payload.speed_limit_mph);
             setRoadSpeedLimit(Number.isFinite(limit) && limit > 0 ? Math.round(limit) : null);
         }).catch(() => {
             // Keep the last known posted limit through a transient lookup failure.
         });
-        return () => { cancelled = true; };
     }, [currentLocation, isNavigating, speed, navStepIndex, navSteps]);
 
     useEffect(() => {
