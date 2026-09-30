@@ -107,18 +107,20 @@ function buildDispatchCalls(dispatchCallsLive:any[], callHistory:any[], property
   const represented = new Set<string>();
   for (const [originalId, call] of byOriginalId.entries()) {
     const alert = alertByCall.get(originalId);
-    if (!alert) continue;
     represented.add(originalId);
+    // Every CAD call belongs in company dispatch analytics. PropertyAlert is
+    // optional enrichment, not an eligibility requirement; manual dispatches and
+    // non-property calls must still contribute to dispatch-to-scene metrics.
     result.push({
       ...call,
       id: originalId,
       original_call_id: originalId,
-      property_id: alert.propertyId || '',
-      property_site: alert.propertyName || '',
+      property_id: alert?.propertyId || call.property_id || '',
+      property_site: alert?.propertyName || call.property_site || '',
       call_id: call.call_id || originalId,
-      incident: call.incident || alert.callIncident || 'Property call',
-      location: call.location || alert.callLocation || alert.propertyName || '',
-      time_received: call.time_received || alert.callTime || alert.time_received || alert.created_date,
+      incident: call.incident || alert?.callIncident || 'Call for service',
+      location: call.location || alert?.callLocation || alert?.propertyName || '',
+      time_received: call.time_received || alert?.callTime || alert?.time_received || alert?.created_date || call.created_date,
     });
   }
   for (const [originalId, alert] of alertByCall.entries()) {
