@@ -4,6 +4,7 @@ import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls } from '@/li
 const listeners = new Set();
 let entityUnsubscribe = null;
 let connectError = null;
+let reconnectTimer = null;
 
 const HIDDEN = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
@@ -25,9 +26,21 @@ function startEntitySubscription() {
       }
     });
     entityUnsubscribe = typeof unsubscribe === 'function' ? unsubscribe : () => {};
+    connectError = null;
+    if (reconnectTimer) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
   } catch (error) {
     connectError = error;
-    console.warn('[CAD realtime] subscription unavailable; fallback refresh remains active', error?.message || error);
+    console.warn('[CAD realtime] subscription unavailable; retrying shortly while fallback refresh remains active', error?.message || error);
+    if (!reconnectTimer && listeners.size) {
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        connectError = null;
+        if (listeners.size) startEntitySubscription();
+      }, 5000);
+    }
   }
 }
 
@@ -36,6 +49,10 @@ function stopEntitySubscriptionIfIdle() {
   try { entityUnsubscribe(); } catch {}
   entityUnsubscribe = null;
   connectError = null;
+  if (reconnectTimer) {
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
 }
 
 export function subscribeDispatchCallChanges(listener) {
