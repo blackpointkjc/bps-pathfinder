@@ -37,6 +37,16 @@ Deno.serve(async (req) => {
     }
     await base44.asServiceRole.entities.DispatchCall.update(callId, update);
 
+    if (newStatus === 'Cleared' || newStatus === 'Cancelled') {
+      const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 200).catch(() => []);
+      await Promise.all((assignments || [])
+        .filter((assignment: any) => String(assignment.status || '').toLowerCase() !== 'cleared')
+        .map((assignment: any) => base44.asServiceRole.entities.CallAssignment.update(assignment.id, {
+          status: 'cleared',
+          cleared_at: assignment.cleared_at || now,
+        }).catch(() => null)));
+    }
+
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
     const eventByStatus: Record<string,string> = {
       Dispatched: 'unit_dispatched',
