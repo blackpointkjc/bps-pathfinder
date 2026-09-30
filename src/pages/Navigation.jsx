@@ -1121,7 +1121,12 @@ export default function Navigation() {
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
                         </div>
                     </div>
-                    <div className="mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
+                </div>
+            )}
+
+            {Math.max(0, Math.round(Number(speed) || 0)) > 0 && (
+                <div className={`pointer-events-none absolute left-3 z-[1214] ${isNavigating && navDestination ? 'top-[292px]' : 'top-12'}`}>
+                    <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
                             <div className="mt-0.5 text-2xl font-black leading-none">--<span className="ml-1 text-[10px] font-black">MPH</span></div>
