@@ -287,6 +287,7 @@ export default function BackgroundLocationTracker({ user }) {
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
           time_entry_id: activeEntry?.id || '',
+          tracking_session_key: trackingSessionKeyRef.current,
           last_update: new Date().toISOString(),
           device_fix_at: new Date(fixTimestamp).toISOString(),
           latitude: lat,
