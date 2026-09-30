@@ -474,6 +474,10 @@ export default function BackgroundLocationTracker({ user }) {
     // minute; use it as a background-safe opportunity to send the lightweight
     // heartbeat only when GPS has not already updated the server recently.
     const handleBackgroundTick = () => {
+      // Always retry the approved external receiver on the desktop heartbeat.
+      // If COM6/USB GNSS was previously granted, Pathfinder should reclaim it
+      // instead of remaining indefinitely on Windows/browser positioning.
+      startExternalGpsAutoReconnect().catch(() => null);
       if (!getLiveLocation(45_000)) {
         lastGpsPushRef.current = 0;
         lastGpsAttemptRef.current = 0;
