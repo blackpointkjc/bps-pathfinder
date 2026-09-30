@@ -313,7 +313,8 @@ export default function GlobalMessageBanner({ user }) {
         || (recipient === 'dispatch' && (user.role === 'admin' || user.role === 'dispatch' || roles.has('cad_access')));
     };
 
-    const showBanner = (source, record) => {
+    const showBanner = (source, record, options = {}) => {
+      const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
       const senderIdentity = normalized(record.created_by_id || record.sender_user_id || record.sender_id || record.sender_email || record.created_by);
       const isOwnRecord = myIds.includes(senderIdentity);
@@ -356,9 +357,10 @@ export default function GlobalMessageBanner({ user }) {
 
       if (!duplicate) {
         if (source.kind === 'message' && source.direct) {
-          // Use concise CAD radio wording and the shared dispatch voice.
-          speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
-        } else if (isSupervisorTask && freshForAudio) {
+          // Use concise CAD radio wording and the shared dispatch voice only for
+          // genuinely new realtime messages, never for recovery/history loads.
+          if (allowAudio) speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
+        } else if (isSupervisorTask && freshForAudio && allowAudio) {
           // A missed check-in must cut through: critical tasks repeat the urgent
           // chime so the alert cannot be missed; routine tasks chime once.
           playNotificationChime(true);
@@ -395,10 +397,11 @@ export default function GlobalMessageBanner({ user }) {
           // The durable CallStatusLog event owns assignment speech. This targeted
           // notification remains visual so the officer receives the assignment
           // without creating a second competing announcement.
-          playNotificationChime(true);
-        } else {
-          playNotificationChime(source.kind === 'property');
+          if (allowAudio) playNotificationChime(true);
         }
+        // Ordinary messages, announcements, mentions and recovery records are
+        // visual-only. They previously shared the generic chime and could sound
+        // like a random beep with no urgent CAD event on screen.
         window.dispatchEvent(new CustomEvent('bps-unread-notification', {
           detail: { page: targetPage, key },
         }));
