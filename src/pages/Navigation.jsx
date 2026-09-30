@@ -770,8 +770,7 @@ export default function Navigation() {
 
         const requestSeq = ++speedLimitRequestSeqRef.current;
         lastSpeedLimitLookupRef.current = { at: now, lat: currentLocation[0], lng: currentLocation[1], road: roadName };
-        withRequestTimeout(base44.functions.invoke('routeNavigation', {
-            mode: 'speed_limit',
+        withRequestTimeout(base44.functions.invoke('getRoadSpeedLimit', {
             latitude: currentLocation[0],
             longitude: currentLocation[1],
             road_name: roadName,
