@@ -40,6 +40,20 @@ Deno.serve(async req => {
     }
 
     const requestedRoad = String(body.road_name || '').trim();
+    const heading = Number(body.heading);
+    const accuracy = Number(body.accuracy);
+    // Do not publish a posted speed limit from a coarse network/Wi-Fi fix. At
+    // street intersections a 100m+ fix can easily land on the wrong road.
+    if (Number.isFinite(accuracy) && accuracy > 75) {
+      return Response.json({
+        success: true,
+        speed_limit_mph: null,
+        road_name: requestedRoad,
+        source: '',
+        estimated: false,
+        reason: 'gps_accuracy_too_low',
+      });
+    }
     const delta = 0.00125;
     const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join(',');
 
@@ -69,7 +83,7 @@ Deno.serve(async req => {
 
     const metersPerLat = 111320;
     const metersPerLng = 111320 * Math.max(0.2, Math.cos(lat * Math.PI / 180));
-    const pointToSegmentMeters = (a:[number,number], b:[number,number]) => {
+    const pointToSegment = (a:[number,number], b:[number,number]) => {
       const ax = (a[1] - lng) * metersPerLng;
       const ay = (a[0] - lat) * metersPerLat;
       const bx = (b[1] - lng) * metersPerLng;
@@ -78,7 +92,15 @@ Deno.serve(async req => {
       const dy = by - ay;
       const lengthSq = dx * dx + dy * dy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, (-(ax * dx + ay * dy)) / lengthSq)) : 0;
-      return Math.hypot(ax + t * dx, ay + t * dy);
+      const distance = Math.hypot(ax + t * dx, ay + t * dy);
+      const bearing = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+      return { distance, bearing };
+    };
+    const headingDifference = (segmentBearing:number) => {
+      if (!Number.isFinite(heading)) return 0;
+      const direct = Math.abs((((heading - segmentBearing) % 360) + 540) % 360 - 180);
+      // Road direction is effectively bidirectional for matching purposes.
+      return Math.min(direct, Math.abs(180 - direct));
     };
 
     const wanted = normalizeRoad(requestedRoad);
@@ -93,10 +115,28 @@ Deno.serve(async req => {
 
       const refs = [...inner.matchAll(/<nd\s+ref="([^"]+)"\s*\/>/g)].map(match => match[1]);
       let nearest = Infinity;
+      let nearestBearing = 0;
       for (let i = 1; i < refs.length; i += 1) {
         const a = nodes.get(refs[i - 1]);
         const b = nodes.get(refs[i]);
-        if (a && b) nearest = Math.min(nearest, pointToSegmentMeters(a, b));
+        if (!a || !b) continue;
+        const segment = pointToSegment(a, b);
+        if (segment.distance < nearest) {
+          nearest = segment.distance;
+          nearestBearing = segment.bearing;
+        }
+      }
+
+      const genericMph = parseMph(tags.maxspeed);
+      const forwardMph = parseMph(tags['maxspeed:forward']);
+      const backwardMph = parseMph(tags['maxspeed:backward']);
+      let mph = genericMph;
+      if (!mph && (forwardMph || backwardMph)) {
+        if (!Number.isFinite(heading)) mph = forwardMph || backwardMph;
+        else {
+          const direct = Math.abs((((heading - nearestBearing) % 360) + 540) % 360 - 180);
+          mph = direct <= 90 ? (forwardMph || backwardMph) : (backwardMph || forwardMph);
+        }
       }
 
       roads.push({
@@ -104,53 +144,52 @@ Deno.serve(async req => {
         name: tags.name || tags.ref || '',
         ref: tags.ref || '',
         highway: tags.highway,
-        mph: parseMph(tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward']),
+        mph,
         distance: nearest,
+        headingDifference: headingDifference(nearestBearing),
       });
     }
 
-    const namedMatches = wanted
-      ? roads.filter(road => {
-          const actual = normalizeRoad(road.name);
-          return actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual));
-        })
-      : [];
+    const hasRoadNameMatch = (road:any) => {
+      if (!wanted) return false;
+      const actual = normalizeRoad(road.name);
+      return Boolean(actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual)));
+    };
 
-    const candidates = namedMatches.length
-      ? namedMatches
-      : roads.filter(road => road.highway !== 'service');
+    // Only tagged posted limits are eligible. Never invent 25 MPH from a
+    // residential classification: that caused a nearby side street to overwrite
+    // the actual 35/45 MPH roadway. Prefer the named route segment, then the
+    // nearest directionally compatible tagged segment.
+    const posted = roads
+      .filter(road => Number.isFinite(road.mph) && road.mph > 0 && road.highway !== 'service')
+      .filter(road => road.distance <= (hasRoadNameMatch(road) ? 65 : 35))
+      .filter(road => !Number.isFinite(heading) || road.headingDifference <= 50)
+      .map(road => ({
+        ...road,
+        nameMatch: hasRoadNameMatch(road),
+        score: road.distance + road.headingDifference * 0.35 - (hasRoadNameMatch(road) ? 35 : 0),
+      }))
+      .sort((a,b) => a.score - b.score);
 
-    const currentRoad =
-      candidates.sort((a,b) => a.distance - b.distance)[0]
-      || roads.sort((a,b) => a.distance - b.distance)[0]
-      || null;
-
-    if (Number.isFinite(currentRoad?.mph)) {
+    const currentRoad = posted[0] || null;
+    if (currentRoad) {
       return Response.json({
         success: true,
         speed_limit_mph: currentRoad.mph,
         road_name: currentRoad.name || requestedRoad,
-        source: 'OpenStreetMap road segment',
+        source: 'OpenStreetMap posted maxspeed',
         estimated: false,
-      });
-    }
-
-    if (currentRoad?.highway === 'residential') {
-      return Response.json({
-        success: true,
-        speed_limit_mph: 25,
-        road_name: currentRoad.name || requestedRoad,
-        source: 'Residential-road fallback',
-        estimated: true,
+        matched_distance_m: Math.round(currentRoad.distance),
       });
     }
 
     return Response.json({
       success: true,
       speed_limit_mph: null,
-      road_name: currentRoad?.name || requestedRoad || '',
+      road_name: requestedRoad || '',
       source: '',
       estimated: false,
+      reason: 'no_reliable_posted_limit',
     });
   } catch (error: any) {
     console.error('getRoadSpeedLimit failed', error);
