@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { recoverLiveLocationTracking, requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
+import { getLiveLocation, recoverLiveLocationTracking, requestBestLiveLocation, requestFreshLiveLocation, startLiveLocationTracking, subscribeLiveLocation } from '@/lib/liveLocationService';
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listDirectoryLocations } from '@/lib/appDirectory';
@@ -384,6 +384,18 @@ export default function BackgroundLocationTracker({ user }) {
     };
 
     const reportLocationError = (error) => {
+      const currentFix = getLiveLocation(45_000);
+      if (currentFix) {
+        const currentAccuracy = Number(currentFix.accuracy);
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: {
+            state: Number.isFinite(currentAccuracy) && currentAccuracy <= 100 ? 'live' : 'low_accuracy',
+            accuracy: Number.isFinite(currentAccuracy) ? currentAccuracy : null,
+            source: currentFix.source || 'live_location',
+          },
+        }));
+        return;
+      }
       const state = error?.code === 1
         ? 'permission_denied'
         : error?.code === 3
