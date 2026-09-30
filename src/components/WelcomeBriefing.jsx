@@ -129,7 +129,7 @@ export default function WelcomeBriefing({ user }) {
           notifications = [], propertyAlerts = [], propertyAlertReceipts = [],
           units = [], assignedTasks = [], schedules = [], vehicleAssignments = [],
           overrides = [], recentUserTimeEntries = [], liveOfficers = [],
-          allUsers = [], allUnits = [], allLiveOfficers = [], allSchedules = [], timeEntries = [], dispatchCalls = [], sourceErrors = []
+          allUsers = [], allUnits = [], allLiveOfficers = [], allSchedules = [], timeEntries = [], sourceErrors = []
         } = snapshot;
         if (!active) return;
         const receiptIds = getLocalReadAnnouncementIds(user.email);
