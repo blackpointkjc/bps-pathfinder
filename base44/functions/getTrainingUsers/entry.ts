@@ -7,7 +7,7 @@ async function loadUsers(base44: any) {
     try {
       const rows = await base44.asServiceRole.entities.User.list(undefined, 1000);
       return Array.isArray(rows) ? rows : [];
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
       if (attempt < 2) await delay(500 * (attempt + 1));
     }
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       .sort((a: any, b: any) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`));
 
     return Response.json({ success: true, users });
-  } catch (error) {
+  } catch (error: any) {
     return Response.json({ error: error?.message || 'Unable to load training users', users: [] }, { status: 500 });
   }
 });
