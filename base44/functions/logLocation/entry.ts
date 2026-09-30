@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     // One officer can be signed in on more than one device at once. Use the
     // TimeEntry id when clocked in, otherwise a stable account session key so a
     // phone and laptop do not repeatedly invalidate each other's GPS session.
-    const trackingSessionKey = String(body.time_entry_id || `account-session:${user.id || officerEmail}`);
+    const trackingSessionKey = String(body.tracking_session_key || `account-session:${user.id || officerEmail}`);
 
     const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
       { officer_email: officerEmail },
