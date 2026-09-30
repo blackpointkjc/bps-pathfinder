@@ -42,7 +42,8 @@ Deno.serve(async req => {
         const actual = normalizeRoad(row.name);
         return actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual));
       }) : null;
-      const best = matched || (!wanted ? rows[0] : null);
+      const distinctLimits = [...new Set(rows.map(row => row.mph))];
+      const best = matched || (rows.length && distinctLimits.length === 1 ? rows[0] : (!wanted ? rows[0] : null));
       return Response.json({ success: true, speed_limit_mph: best?.mph || null, road_name: best?.name || '', source: best ? 'OpenStreetMap' : '' });
     }
     const lat = Number(body.origin_lat), lng = Number(body.origin_lng);
