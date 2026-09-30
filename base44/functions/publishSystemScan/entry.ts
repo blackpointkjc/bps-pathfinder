@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       issue_rows_created: issueRowsCreated,
       issue_rows_resolved: issueRowsResolved,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('publishSystemScan failed', error);
     return Response.json({ error: error?.message || 'Unable to publish system scan' }, { status: 500 });
   }
