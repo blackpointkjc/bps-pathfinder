@@ -396,7 +396,7 @@ export default function CallHistory() {
         }).join('');
 
         const generated = formatEasternDateTime(new Date().toISOString(), { year: 'numeric', second: '2-digit', hour12: true });
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
+        const printWindow = window.open('', '_blank', 'width=1200,height=900');
         if (!printWindow) {
             toast.error('Allow pop-ups to print the property alert report.');
             return;
