@@ -64,6 +64,8 @@ export default function Navigation() {
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
+    const [roadSpeedLimit, setRoadSpeedLimit] = useState(null);
+    const [navigationDisplayLocation, setNavigationDisplayLocation] = useState(null);
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
     const [showLights, setShowLights] = useState(false);
@@ -105,6 +107,8 @@ export default function Navigation() {
     const lastSpokenNavStepRef = useRef(-1);
     const spokenNavPromptsRef = useRef(new Set());
     const lastRerouteAtRef = useRef(0);
+    const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
+    const navSnapIndexRef = useRef(0);
     const initialOperationalFitRef = useRef(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
