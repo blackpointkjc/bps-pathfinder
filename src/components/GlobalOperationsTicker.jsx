@@ -200,7 +200,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
         backoffUntilRef.current = 0;
       } catch (error) {
         const message = String(error?.message || error || '');
-        backoffUntilRef.current = Date.now() + (/rate limit|too many requests|\b429\b/i.test(message) ? 90_000 : 20_000);
+        backoffUntilRef.current = Date.now() + (/rate limit|too many requests|\b429\b/i.test(message) ? 30_000 : 10_000);
       } finally {
         loadingRef.current = false;
       }
@@ -245,7 +245,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
     const refresh = () => load();
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') load();
-    }, 30_000);
+    }, 15_000);
     window.addEventListener('bps-operational-resume', refresh);
     window.addEventListener('online', refresh);
 
