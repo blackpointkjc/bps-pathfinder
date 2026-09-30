@@ -447,7 +447,8 @@ export default function GlobalMessageBanner({ user }) {
 
     // BOLOs use their own global alert path because they must notify every
     // authorized user, including the person who issued the BOLO.
-    const showBolo = async record => {
+    const showBolo = async (record, options = {}) => {
+      const allowAudio = options.allowAudio !== false;
       if (!record?.id || record.status !== 'active') return;
       const version = record.updated_date || record.created_date || 'active';
       const key = `BOLOAlert:${record.id}:${version}`;
@@ -456,7 +457,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const summary = boloSummary(record);
       const speechKey = `bolo:${record.id}:${version}`;
-      if (!announcedBoloSpeech.current.has(speechKey)) {
+      if (allowAudio && !announcedBoloSpeech.current.has(speechKey)) {
         const claim = await claimAnnouncementEvent({
           event_key: speechKey,
           event_id: record.id,
@@ -476,7 +477,7 @@ export default function GlobalMessageBanner({ user }) {
           await finalizeAnnouncementEvent(claim, speechKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
         }
       }
-      playNotificationChime(true);
+      if (allowAudio) playNotificationChime(true);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -509,6 +510,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     const showPropertyCall = async (record, options = {}) => {
+      const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
