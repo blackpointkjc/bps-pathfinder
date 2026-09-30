@@ -112,7 +112,7 @@ async function fetchOfficialTable(url: string) {
       if (cells.length >= 4 && /^\d+$/.test(cells[0])) rows.push({ official: cells[0], received: cells[1], location: cells[2], incident: cells[3] });
     }
     return rows;
-  } catch (error) {
+  } catch (error: any) {
     console.warn('Official table lookup failed', error?.message || error);
     return [];
   }
@@ -125,7 +125,7 @@ async function fetchOfficialJson(url: string, headers: Record<string, string>) {
     const payload = await response.json();
     const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.calls) ? payload.calls : [];
     return list.map((row: any) => ({ official: String(row?.id || '').trim(), received: row?.callReceivedFormatted || row?.callReceived || '', location: row?.location || '', incident: row?.type || '' })).filter((row: any) => row.official && row.location);
-  } catch (error) {
+  } catch (error: any) {
     console.warn('Official JSON lookup failed', error?.message || error);
     return [];
   }
@@ -349,7 +349,7 @@ async function fetchNonEmptySource(loader: () => Promise<any[]>, label: string) 
     const rows = await loader();
     if (Array.isArray(rows) && rows.length) return rows;
     throw new Error(`${label} returned zero rows`);
-  } catch (error) {
+  } catch (error: any) {
     throw error || new Error(`${label} unavailable`);
   }
 }
@@ -862,7 +862,7 @@ async function reconcilePropertyAlerts(base44: any) {
   // the property's configured interval; the evaluator's permanent assigned
   // receipt prevents duplicate assignments and announcements across retries.
   const activeCallIds = new Set(activeCalls.map((call: any) => String(call.id)));
-  const propertyById = new Map(monitored.map((location: any) => [String(location.id), location]));
+  const propertyById = new Map<string, any>(monitored.map((location: any) => [String(location.id), location]));
   const latestEvaluationByAlert = new Map<string, any>();
   for (const evaluation of existingEvaluations || []) {
     const alertId = String(evaluation.property_alert_id || '');
@@ -1027,7 +1027,7 @@ async function acquireIngestionLease(base44: any) {
 
 async function recordSourcePoll(base44: any, lease: any, data: any) {
   if (!lease?.id) return;
-  await base44.asServiceRole.entities.CadCounter.update(lease.id, data).catch(error => {
+  await base44.asServiceRole.entities.CadCounter.update(lease.id, data).catch((error: any) => {
     console.warn('Unable to record CAD source heartbeat', error?.message || error);
   });
 }
@@ -1062,8 +1062,8 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   const archivedExternal = new Set((history || []).map((row: any) => externalKey(row)).filter(Boolean));
   const archivedLegacy = new Set((history || []).map((row: any) => legacyKey(row)).filter(Boolean));
   const monitored = (locations || []).filter((row: any) => row.active !== false && row.property_monitoring_enabled === true);
-  const callPropertyKeys = new Set((alerts || []).map((row: any) => String(row.propertyId || '') + '|' + String(row.callId || '')));
-  const alertKeys = new Set((alerts || []).map((row: any) => String(row.source_key ||
+  const callPropertyKeys = new Set<string>((alerts || []).map((row: any) => String(row.propertyId || '') + '|' + String(row.callId || '')));
+  const alertKeys = new Set<string>((alerts || []).map((row: any) => String(row.source_key ||
     [row.propertyId || '', row.callTime || row.time_received || row.created_date || '',
       String(row.callIncident || '').toUpperCase(), String(row.callLocation || '').toUpperCase()].join('|'))));
   const now = Date.now();
@@ -1096,7 +1096,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         propertyAlertsCreated += await createImmediatePropertyAlerts(
           base44, call, monitored, callPropertyKeys, alertKeys, sideEffects
         );
-      } catch (error) {
+      } catch (error: any) {
         alertFailures++;
         console.error('Fast CAD property-alert creation failed; next sync will retry', error?.message || error);
       }
@@ -1121,14 +1121,14 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         official_cad_verified: previous.official_cad_verified === true,
       };
       const saved = await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
-      await announceAssignedCallUpdate(base44, previous, { ...previous, ...patch, ...saved }).catch(error => console.error('Assigned call update announcement failed', error?.message));
+      await announceAssignedCallUpdate(base44, previous, { ...previous, ...patch, ...saved }).catch((error: any) => console.error('Assigned call update announcement failed', error?.message));
       updated++;
       if (!['Cleared', 'Cancelled'].includes(String(patch.status || ''))) {
         try {
           propertyAlertsCreated += await createImmediatePropertyAlerts(
             base44, { ...previous, ...patch }, monitored, callPropertyKeys, alertKeys, sideEffects
           );
-        } catch (error) {
+        } catch (error: any) {
           alertFailures++;
           console.error('Fast CAD updated-call alert failed; next sync will retry', error?.message || error);
         }
@@ -1145,23 +1145,23 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       propertyAlertsCreated += await createImmediatePropertyAlerts(
         base44, { ...previous, ...row, id: previous.id }, monitored, callPropertyKeys, alertKeys, sideEffects
       );
-    } catch (error) {
+    } catch (error: any) {
       alertFailures++;
       console.error('Fast CAD missing-property-alert retry failed', error?.message || error);
     }
   }
   const liveKeys = new Set(incoming.flatMap(row => [externalKey(row), legacyKey(row)]).filter(Boolean));
-  const disappeared = (saved || []).filter(row => {
+  const disappeared = (saved || []).filter((row: any) => {
     const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
     return receivedAt >= now - 3 * 60 * 60_000 && receivedAt <= now &&
       !['Cleared','Cancelled'].includes(String(row.status || '')) &&
       row.manual_dismissed !== true && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
   for (let offset = 0; offset < disappeared.length; offset += 4) {
-    await Promise.all(disappeared.slice(offset, offset + 4).map(row =>
+    await Promise.all(disappeared.slice(offset, offset + 4).map((row: any) =>
       base44.asServiceRole.entities.DispatchCall.update(row.id, {
         status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
-      }).catch(error => console.warn('Fast CAD close failed', error?.message || error))
+      }).catch((error: any) => console.warn('Fast CAD close failed', error?.message || error))
     ));
   }
   await Promise.allSettled(sideEffects);
@@ -1169,7 +1169,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   // ingestion lease serializes runs; cap work to keep the minute poll bounded.
   const closedIds = new Set(disappeared.map((call:any) => String(call.id)));
   const activeIds = new Set(saved.filter((call:any) => !closedIds.has(String(call.id)) && !['Cleared','Cancelled'].includes(String(call.status))).map((call:any) => String(call.id)));
-  const properties = new Map(monitored.map((property:any) => [String(property.id), property]));
+  const properties = new Map<string, any>(monitored.map((property:any) => [String(property.id), property]));
   const candidates = alerts.filter((alert:any) => activeIds.has(String(alert.callId)) && alert.is_test !== true && !['resolved','false_alarm','test'].includes(String(alert.lifecycle_status || '').toLowerCase()) && properties.get(String(alert.propertyId))?.auto_dispatch_enabled === true && properties.get(String(alert.propertyId))?.auto_dispatch_mode === 'live');
   if (candidates.length) {
     try {
@@ -1187,7 +1187,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         const response = await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment', { call_id: alert.callId, property_alert_id: alert.id });
         if (response?.data?.error) throw new Error(response.data.error);
       }
-    } catch (error) { alertFailures++; console.error('Automatic dispatch recovery deferred to next poll', error?.message || error); }
+    } catch (error: any) { alertFailures++; console.error('Automatic dispatch recovery deferred to next poll', error?.message || error); }
   }
   return { success: true, lightweight: true, active: incoming.length,
     created, updated, removed: disappeared.length, property_alerts_created: propertyAlertsCreated,
@@ -1448,7 +1448,7 @@ Deno.serve(async (req) => {
         };
         if (changed(existing, incomingWithCad)) {
           const saved = await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
-          await announceAssignedCallUpdate(base44, existing, { ...existing, ...incomingWithCad, ...saved }).catch(error => console.error('Assigned call update announcement failed', error?.message));
+          await announceAssignedCallUpdate(base44, existing, { ...existing, ...incomingWithCad, ...saved }).catch((error: any) => console.error('Assigned call update announcement failed', error?.message));
           const updatedRecord = { ...existing, ...incomingWithCad, id: existing.id };
           updated += 1;
           immediatePropertyAlertsCreated += await createImmediatePropertyAlerts(
@@ -1499,12 +1499,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    const reconciledPropertyAlertsCreated = await reconcilePropertyAlerts(base44).catch(error => {
+    const reconciledPropertyAlertsCreated = await reconcilePropertyAlerts(base44).catch((error: any) => {
       console.error('Property alert reconciliation failed:', error);
       return 0;
     });
     const propertyAlertsCreated = immediatePropertyAlertsCreated + reconciledPropertyAlertsCreated;
-    const phase2aSafety = await ensurePhase2ASafetyEvidence(base44).catch(error => {
+    const phase2aSafety = await ensurePhase2ASafetyEvidence(base44).catch((error: any) => {
       console.error('Phase 2A shadow safety verification failed:', error);
       return { status: 'failed', error: error?.message || String(error) };
     });
@@ -1524,7 +1524,7 @@ Deno.serve(async (req) => {
     } finally {
       await releaseIngestionLease(base44, lease);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('GRAC ingestion failed:', error);
     return Response.json({ success: false, error: error?.message || 'GRAC ingestion failed' }, { status: 500 });
   }
