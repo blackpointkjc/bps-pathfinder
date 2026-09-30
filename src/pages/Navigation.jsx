@@ -727,6 +727,79 @@ export default function Navigation() {
         }
     }, [currentLocation, isNavigating, navRoute, navDestination, routing]);
 
+    useEffect(() => {
+        if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
+        if (!isNavigating && Number(speed || 0) < 1) return;
+
+        const now = Date.now();
+        const roadName = String(navSteps[navStepIndex]?.name || '').trim();
+        const previous = lastSpeedLimitLookupRef.current;
+        const toRad = value => value * Math.PI / 180;
+        const distanceMeters = previous.lat == null ? Infinity : (() => {
+            const dLat = toRad(currentLocation[0] - previous.lat);
+            const dLng = toRad(currentLocation[1] - previous.lng);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(previous.lat)) * Math.cos(toRad(currentLocation[0])) * Math.sin(dLng / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        })();
+        const roadChanged = roadName && roadName !== previous.road;
+        if (!roadChanged && now - previous.at < 15000 && distanceMeters < 120) return;
+
+        let cancelled = false;
+        lastSpeedLimitLookupRef.current = { at: now, lat: currentLocation[0], lng: currentLocation[1], road: roadName };
+        withRequestTimeout(base44.functions.invoke('routeNavigation', {
+            mode: 'speed_limit',
+            latitude: currentLocation[0],
+            longitude: currentLocation[1],
+            road_name: roadName,
+        }), 9000, 'Road speed limit').then(response => {
+            if (cancelled) return;
+            const payload = response?.data || response || {};
+            const limit = Number(payload.speed_limit_mph);
+            setRoadSpeedLimit(Number.isFinite(limit) && limit > 0 ? Math.round(limit) : null);
+        }).catch(() => {
+            // Keep the last known posted limit through a transient lookup failure.
+        });
+        return () => { cancelled = true; };
+    }, [currentLocation, isNavigating, speed, navStepIndex, navSteps]);
+
+    useEffect(() => {
+        if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
+        if (!isNavigating || navRoute.length < 2) {
+            navSnapIndexRef.current = 0;
+            setNavigationDisplayLocation(currentLocation);
+            return;
+        }
+
+        const toRad = value => value * Math.PI / 180;
+        const distanceMeters = (a, b) => {
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+        };
+
+        const start = Math.max(0, navSnapIndexRef.current - 20);
+        const end = Math.min(navRoute.length - 1, Math.max(start + 240, navSnapIndexRef.current + 180));
+        let nearestIndex = start;
+        let nearestDistance = Infinity;
+        for (let index = start; index <= end; index += 1) {
+            const distance = distanceMeters(currentLocation, navRoute[index]);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = index;
+            }
+        }
+        if (nearestDistance <= 85) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
+        const target = nearestDistance <= 85 ? navRoute[nearestIndex] : currentLocation;
+        setNavigationDisplayLocation(previous => {
+            if (!previous) return target;
+            const moved = distanceMeters(previous, target);
+            if (moved < 3) return previous;
+            if (moved > 120) return target;
+            return [previous[0] * 0.3 + target[0] * 0.7, previous[1] * 0.3 + target[1] * 0.7];
+        });
+    }, [currentLocation, isNavigating, navRoute]);
+
     const toggleNavigationVoice = () => {
         setNavVoiceMuted(current => {
             const next = !current;
@@ -993,7 +1066,7 @@ export default function Navigation() {
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
                 <MapView
-                    currentLocation={currentLocation}
+                    currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                     destination={navDestination} route={navRoute} trafficSegments={null}
                     useOfflineTiles={!isOnline}
                     activeCalls={showActiveCalls ? activeCalls : []}
@@ -1128,7 +1201,7 @@ export default function Navigation() {
                     <div className="mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                             <div className="border-b border-slate-200 px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">--<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
                             </div>
                             <div className="px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
@@ -1143,7 +1216,7 @@ export default function Navigation() {
                     <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">--<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
                         </div>
                         <div className="px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
