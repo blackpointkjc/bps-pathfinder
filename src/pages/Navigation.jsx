@@ -65,6 +65,7 @@ export default function Navigation() {
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
     const [roadSpeedLimit, setRoadSpeedLimit] = useState(null);
+    const [roadSpeedLimitEstimated, setRoadSpeedLimitEstimated] = useState(false);
     const [navigationDisplayLocation, setNavigationDisplayLocation] = useState(null);
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
@@ -779,6 +780,7 @@ export default function Navigation() {
             const payload = response?.data || response || {};
             const limit = Number(payload.speed_limit_mph);
             setRoadSpeedLimit(Number.isFinite(limit) && limit > 0 ? Math.round(limit) : null);
+            setRoadSpeedLimitEstimated(payload.estimated === true);
         }).catch(() => {
             // Keep the last known posted limit through a transient lookup failure.
         });
@@ -1223,7 +1225,7 @@ export default function Navigation() {
                     <div className="mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                             <div className="border-b border-slate-200 px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div>
                             </div>
                             <div className="px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
@@ -1238,7 +1240,7 @@ export default function Navigation() {
                     <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div>
                         </div>
                         <div className="px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
