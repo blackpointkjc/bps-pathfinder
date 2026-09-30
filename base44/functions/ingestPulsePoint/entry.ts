@@ -185,7 +185,7 @@ async function geocodePulsePointAddress(address: string, agency: any) {
     if (latitude !== null && longitude !== null) {
       return { latitude, longitude, geo_confidence: 'medium', geo_method: 'street', geo_approximate: true };
     }
-  } catch (error) {
+  } catch (error: any) {
     console.warn('PulsePoint address geocode failed', cleanAddress, error?.message || error);
   }
   return null;
@@ -538,7 +538,7 @@ Deno.serve(async (req) => {
       synced_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('PulsePoint ingestion failed', error);
     const wafBlocked = error?.code === 'PULSEPOINT_WAF_CHALLENGE';
     return Response.json({
