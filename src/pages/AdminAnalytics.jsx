@@ -650,11 +650,6 @@ export default function AdminAnalytics() {
   }, [overallByOfficer]);
 
   const responseTimeStats = useMemo(() => {
-    const callById = new Map();
-    dispatchCalls.forEach(call => {
-      [call.id, call.original_call_id, call.call_id].filter(Boolean).forEach(id => callById.set(String(id), call));
-    });
-
     // Response time begins the moment Black Point dispatches a unit. Do not wait
     // for the assignment to be cleared: as soon as an officer marks (or is auto-
     // marked) On Scene, Company Analytics should include that response.
