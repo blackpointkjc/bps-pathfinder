@@ -110,6 +110,11 @@ function configurePermissions(win) {
     }
 
     const gpsPattern = /(gps|gnss|nmea|globalsat|u-blox|ublox|prolific|cp210|silicon labs|usb serial)/i;
+    const com6 = ports.find(port => /(^|\\b)COM6(\\b|$)/i.test(String(port.portName || '')));
+    if (com6) {
+      callback(com6.portId);
+      return;
+    }
     const preferred = ports.filter(port => gpsPattern.test(`${port.displayName || ''} ${port.portName || ''}`));
     const candidates = preferred.length ? preferred : ports;
 
