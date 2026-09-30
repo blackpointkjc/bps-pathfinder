@@ -20,10 +20,10 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 // request every few seconds while the shared watch remains active so the map
 // stays close to a driving-navigation cadence. The background tracker separately
 // rate-limits server persistence.
-export const DEVICE_GPS_REFRESH_MS = 30_000;
+export const DEVICE_GPS_REFRESH_MS = 15_000;
 export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
 export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
-export const GPS_WATCH_STALE_MS = 90_000;
+export const GPS_WATCH_STALE_MS = 45_000;
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
