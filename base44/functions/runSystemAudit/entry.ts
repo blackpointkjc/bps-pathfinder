@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       try {
         const rows = await readDataset(area, entityName, limit);
         datasets[entityName] = Array.isArray(rows) ? rows : [];
-      } catch (error) {
+      } catch (error: any) {
         datasets[entityName] = [];
         serviceFailures.push({
           area,
@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
       try {
         const exact = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: { $in: unchecked.map(alert => String(alert.id)) } }, '-evaluated_at', 1000);
         for (const evaluation of exact) latestEvaluationByAlert.set(String(evaluation.property_alert_id), evaluation);
-      } catch (error) {
+      } catch (error: any) {
         evaluationLookupFailed = true;
         add(findings, { key:'auto-dispatch:evaluation-read', area:'Automatic Dispatch', severity:'degraded', title:'Automatic-dispatch decisions could not be verified', description:error?.message || 'Evaluation lookup failed' });
       }
@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
           recentEmails = recentMovementEmails(movementHistory);
           missingHistoryOfficers = missingHistoryOfficers.filter(item => !recentEmails.has(emailKey(item.officer_email)));
           if (!missingHistoryOfficers.length) break;
-        } catch (error) {
+        } catch (error: any) {
           const transient = /rate limit|too many requests|429|timed out|timeout/i.test(String(error?.message || error));
           if (!transient) break;
         }
@@ -549,7 +549,7 @@ Deno.serve(async (req) => {
       scanned_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('runSystemAudit failed', error);
     return Response.json({ error: error?.message || 'System audit failed' }, { status: 500 });
   }
