@@ -358,7 +358,7 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async (force = false) => {
        const now = Date.now();
-       if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 10000)) return;
+       if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 3000)) return;
        activeCallsLoadingRef.current = true;
        try {
             let calls = await loadActiveDispatchCallRows(100);
