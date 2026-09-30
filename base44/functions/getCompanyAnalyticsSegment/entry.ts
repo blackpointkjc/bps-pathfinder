@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
       try {
         const rows = await loader();
         return Array.isArray(rows) ? rows : [];
-      } catch (error) {
+      } catch (error: any) {
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
       } finally {
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ error:'Unknown analytics segment' }, { status:400 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('getCompanyAnalyticsSegment failed', error);
     return Response.json({ error:error?.message || 'Unable to load analytics segment' }, { status:500 });
   }
