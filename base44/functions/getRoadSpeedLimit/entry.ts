@@ -40,8 +40,8 @@ Deno.serve(async req => {
     }
 
     const requestedRoad = String(body.road_name || '').trim();
-    const heading = Number(body.heading);
-    const accuracy = Number(body.accuracy);
+    const heading = body.heading === null || body.heading === undefined || body.heading === '' ? Number.NaN : Number(body.heading);
+    const accuracy = body.accuracy === null || body.accuracy === undefined || body.accuracy === '' ? Number.NaN : Number(body.accuracy);
     // Do not publish a posted speed limit from a coarse network/Wi-Fi fix. At
     // street intersections a 100m+ fix can easily land on the wrong road.
     if (Number.isFinite(accuracy) && accuracy > 75) {
