@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
         if (latestReceipt?.id) await base44.asServiceRole.entities.PropertyAlertSmsDelivery.update(latestReceipt.id, data);
         else await base44.asServiceRole.entities.PropertyAlertSmsDelivery.create(data);
         results.sent += 1;
-      } catch (error) {
+      } catch (error: any) {
         const errorMessage = String(error?.message || error || 'SMS send failed').slice(0, 1000);
         const data = {
           property_alert_id: propertyAlertId,
@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, ...results });
-  } catch (error) {
+  } catch (error: any) {
     console.error('notifyPropertyAlertSms failed', error?.message || error);
     return Response.json({ error: error?.message || 'Unable to send property-call SMS notifications' }, { status: 500 });
   }
