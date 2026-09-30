@@ -134,8 +134,9 @@ async function migrateEntityReferences(base44: any, oldEmail: string, newEmail: 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const caller = await base44.auth.me();
-    if (!caller || caller.role !== 'admin') {
+    const caller = await base44.auth.me().catch(() => null);
+    if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (caller.role !== 'admin') {
       return Response.json({ error: 'System administrator access required.' }, { status: 403 });
     }
 
