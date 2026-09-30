@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History } from 'lucide-react';
+import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -44,6 +44,15 @@ function agencyKey(agency) {
         if (agency.includes(k)) return k;
     }
     return '';
+}
+
+function escapePrintHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 export default function CallHistory() {
@@ -335,6 +344,95 @@ export default function CallHistory() {
         else { setSortField(field); setSortDir('desc'); }
     };
 
+    const printPropertyAlerts = () => {
+        const q = search.toLowerCase();
+        const propertyRows = rows.filter(row => {
+            if (!row._propertyCall) return false;
+            if (q && ![
+                row.incident,
+                row.location,
+                row.agency,
+                row.call_id,
+                row.bps_reference,
+                row.agency_cad_number,
+                row._propertyName,
+                row._propertyAlert?.propertyName,
+                row._propertyAlert?.description,
+            ].some(value => String(value || '').toLowerCase().includes(q))) return false;
+            if (agencyFilter !== 'ALL' && !row.agency?.includes(agencyFilter)) return false;
+            if (statusFilter !== 'ALL' && row.status !== statusFilter) return false;
+            return true;
+        }).sort((a, b) => {
+            const aTime = parseServerDate(a.time_received || a.created_date)?.getTime() || 0;
+            const bTime = parseServerDate(b.time_received || b.created_date)?.getTime() || 0;
+            return sortDir === 'asc' ? aTime - bTime : bTime - aTime;
+        });
+
+        if (!propertyRows.length) {
+            toast.error('No property alerts match the current filters.');
+            return;
+        }
+
+        const reportRows = propertyRows.map((row, index) => {
+            const propertyName = row._propertyName || row._propertyAlert?.propertyName || 'Monitored property';
+            const lifecycle = String(row._propertyLifecycle || row._propertyAlert?.lifecycle_status || row.status || '').replaceAll('_', ' ');
+            const cad = row.agency_cad_number || row.bps_reference || row.call_id || row.original_call_id || '—';
+            const distance = Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0
+                ? `${Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft`
+                : 'Inside / not recorded';
+            const notes = row._propertyAlert?.description || row.description || '';
+            return `<tr>
+                <td>${index + 1}</td>
+                <td>${escapePrintHtml(fmtDT(row.time_received || row.created_date))}</td>
+                <td>${escapePrintHtml(propertyName)}</td>
+                <td>${escapePrintHtml(row.incident || 'Call for service')}</td>
+                <td>${escapePrintHtml(row.location || '—')}</td>
+                <td>${escapePrintHtml(row.agency || '—')}</td>
+                <td>${escapePrintHtml(lifecycle || '—')}</td>
+                <td>${escapePrintHtml(cad)}</td>
+                <td>${escapePrintHtml(distance)}</td>
+                <td>${escapePrintHtml(notes)}</td>
+            </tr>`;
+        }).join('');
+
+        const generated = formatEasternDateTime(new Date().toISOString(), { year: 'numeric', second: '2-digit', hour12: true });
+        const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
+        if (!printWindow) {
+            toast.error('Allow pop-ups to print the property alert report.');
+            return;
+        }
+        printWindow.document.open();
+        printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Property Alert Call History</title><style>
+            @page { size: landscape; margin: 0.45in; }
+            * { box-sizing: border-box; }
+            body { margin: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; font-size: 10px; }
+            h1 { margin: 0 0 4px; font-size: 20px; }
+            .meta { margin-bottom: 14px; color: #444; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th, td { border: 1px solid #bbb; padding: 6px; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+            th { background: #f0f0f0; font-size: 9px; text-transform: uppercase; letter-spacing: .03em; }
+            tr { break-inside: avoid; }
+            th:nth-child(1), td:nth-child(1) { width: 3%; text-align: center; }
+            th:nth-child(2), td:nth-child(2) { width: 10%; }
+            th:nth-child(3), td:nth-child(3) { width: 12%; }
+            th:nth-child(4), td:nth-child(4) { width: 12%; }
+            th:nth-child(5), td:nth-child(5) { width: 15%; }
+            th:nth-child(6), td:nth-child(6) { width: 6%; }
+            th:nth-child(7), td:nth-child(7) { width: 8%; }
+            th:nth-child(8), td:nth-child(8) { width: 10%; }
+            th:nth-child(9), td:nth-child(9) { width: 8%; }
+            th:nth-child(10), td:nth-child(10) { width: 16%; }
+            .footer { margin-top: 10px; color: #555; font-size: 9px; }
+        </style></head><body>
+            <h1>Property Alert Call History</h1>
+            <div class="meta">Generated ${escapePrintHtml(generated)} ET · ${propertyRows.length} record${propertyRows.length === 1 ? '' : 's'}</div>
+            <table><thead><tr><th>#</th><th>Date / Time</th><th>Property</th><th>Incident</th><th>Location</th><th>Agency</th><th>Status</th><th>CAD / Ref.</th><th>Boundary</th><th>Details</th></tr></thead><tbody>${reportRows}</tbody></table>
+            <div class="footer">Property alert history report. Use the print dialog to save as PDF.</div>
+            <script>window.addEventListener('load',()=>{window.focus();window.print();});<\/script>
+        </body></html>`);
+        printWindow.document.close();
+    };
+
     const agencies = ['ALL', 'RPD', 'CCPD', 'HPD', 'HCPD', 'RFD', 'CCFD', 'EMS', 'BPS', 'MONITORING'];
     const statuses = ['ALL', 'New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Cleared', 'Closed', 'Cancelled'];
 
@@ -406,6 +504,10 @@ export default function CallHistory() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                     <span className="hidden text-[9px] text-slate-500 sm:inline">UPDATED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                    <button onClick={printPropertyAlerts}
+                        className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-500 bg-white px-3 text-[10px] font-black text-slate-900 transition hover:bg-slate-100">
+                        <Printer className="h-3.5 w-3.5" />PRINT PROPERTY PDF
+                    </button>
                     <button onClick={handleRefresh} disabled={refreshing}
                         className="flex h-9 items-center gap-1.5 rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-100 transition hover:border-cyan-400 hover:bg-cyan-900/40 disabled:opacity-50">
                         <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
