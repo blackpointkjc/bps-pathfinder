@@ -774,6 +774,8 @@ export default function Navigation() {
             latitude: currentLocation[0],
             longitude: currentLocation[1],
             road_name: roadName,
+            heading,
+            accuracy: gpsQuality?.accuracy ?? null,
         }), 9000, 'Road speed limit').then(response => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             const payload = response?.data || response || {};
@@ -812,8 +814,12 @@ export default function Navigation() {
                 nearestIndex = index;
             }
         }
-        if (nearestDistance <= 85) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
-        const target = nearestDistance <= 85 ? navRoute[nearestIndex] : currentLocation;
+        // Only snap the displayed vehicle to the route when GPS and route geometry
+        // actually agree. The old 85m tolerance could pull the icon onto a nearby
+        // parallel/side road and make the street map appear wrong.
+        const snapToleranceMeters = gpsQuality?.state === 'live' ? 35 : 20;
+        if (nearestDistance <= snapToleranceMeters) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
+        const target = nearestDistance <= snapToleranceMeters ? navRoute[nearestIndex] : currentLocation;
         setNavigationDisplayLocation(previous => {
             if (!previous) return target;
             const moved = distanceMeters(previous, target);
@@ -821,7 +827,7 @@ export default function Navigation() {
             if (moved > 120) return target;
             return [previous[0] * 0.3 + target[0] * 0.7, previous[1] * 0.3 + target[1] * 0.7];
         });
-    }, [currentLocation, isNavigating, navRoute]);
+    }, [currentLocation, isNavigating, navRoute, gpsQuality?.state]);
 
     const toggleNavigationVoice = () => {
         setNavVoiceMuted(current => {
