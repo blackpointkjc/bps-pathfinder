@@ -21,8 +21,20 @@ Deno.serve(async (req) => {
     const calls: any[] = [];
     for (const callId of callIds) {
       const call = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
-      if (!call) continue;
-      if (isTerminalCall(call)) continue;
+      if (!call || isTerminalCall(call)) {
+        // Reconcile stale officer assignments when dispatch/upstream already closed
+        // or archived the CAD call. Leaving CallAssignment active is what caused a
+        // cleared call to reappear in the officer queue on the next refresh.
+        const stale = activeAssignments.filter((a: any) => String(a.call_id) === String(callId));
+        const closedAt = new Date().toISOString();
+        await Promise.all(stale.map((assignment: any) =>
+          base44.asServiceRole.entities.CallAssignment.update(assignment.id, {
+            status: 'cleared',
+            cleared_at: assignment.cleared_at || closedAt,
+          }).catch(() => null)
+        ));
+        continue;
+      }
       calls.push(call);
     }
 
