@@ -10,7 +10,6 @@ import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
-const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
 function easternMinutesNow() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -167,11 +166,9 @@ export default function WelcomeBriefing({ user }) {
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
         const pendingTasks = (assignedTasks || []).filter(item => ['open', 'in_progress'].includes(normalized(item.status)));
         const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
-        const callById = new Map((dispatchCalls || []).map(call => [String(call.id), call]));
         const seenPropertyPairs = new Set();
         const offlineAlerts = (propertyAlerts || []).filter(item => {
           const pair = `${item.callId}:${item.propertyId}`;
-          const linkedCall = callById.get(String(item.callId));
           const lifecycle = normalized(item.lifecycle_status);
           if (['false_alarm', 'test'].includes(lifecycle)) return false;
           if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
