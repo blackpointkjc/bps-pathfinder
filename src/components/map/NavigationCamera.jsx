@@ -62,8 +62,9 @@ export default function NavigationCamera({
         // Pathfinder immediately snapping back in on the next GPS fix.
         if (userInteractingRef.current) return;
 
-        // Google-style follow camera: look slightly ahead of the moving unit so
-        // more of the upcoming road is visible while preserving nearby officers.
+        // Stable follow camera. The marker itself carries heading; the viewport
+        // stays centered on the smoothed/route-snapped vehicle position so small
+        // heading changes do not swing the whole map.
         let targetZoom = 17;
         if (speed > 55) targetZoom = 16;
         else if (speed > 35) targetZoom = 16.5;
@@ -77,16 +78,7 @@ export default function NavigationCamera({
             else if (maneuverFeet <= 1200) targetZoom = Math.max(targetZoom, 17);
         }
 
-        const validHeading = Number.isFinite(Number(heading));
-        const lookAheadMeters = Math.min(140, Math.max(35, Number(speed || 0) * 2.2));
-        let cameraCenter = currentLocation;
-        if (validHeading) {
-            const radians = Number(heading) * Math.PI / 180;
-            const latOffset = (lookAheadMeters * Math.cos(radians)) / 111320;
-            const lngScale = Math.max(0.2, Math.cos(currentLocation[0] * Math.PI / 180));
-            const lngOffset = (lookAheadMeters * Math.sin(radians)) / (111320 * lngScale);
-            cameraCenter = [currentLocation[0] + latOffset, currentLocation[1] + lngOffset];
-        }
+        const cameraCenter = currentLocation;
 
         // GPS position is authoritative while navigating. Preserve the current
         // tile pyramid whenever the requested zoom is effectively unchanged;
