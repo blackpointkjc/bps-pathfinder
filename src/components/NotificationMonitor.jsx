@@ -7,7 +7,7 @@ import { parseISO } from "date-fns";
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
-  const [audioEnabled] = useState(true);
+  const [audioEnabled] = useState(false);
 
   // Monitor PTO request status changes
   const { data: myPTORequests } = useQuery({
@@ -31,7 +31,7 @@ export default function NotificationMonitor({ user }) {
     enabled: !!user?.email,
   });
 
-  // Play notification sound
+  // PTO/personal notifications are visual-only; operational CAD audio has its own controlled path.
   const playNotificationSound = () => {
     if (!audioEnabled) return;
     try {
