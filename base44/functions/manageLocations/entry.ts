@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ error: 'Unsupported location action' }, { status: 400 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('manageLocations failed', error);
     return Response.json({ error: error?.message || 'Unable to manage locations' }, { status: 500 });
   }
