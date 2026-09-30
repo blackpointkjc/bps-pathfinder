@@ -10,12 +10,19 @@ Deno.serve(async req => {
     if (body.mode === 'speed_limit') {
       const lat = Number(body.latitude), lng = Number(body.longitude);
       if (![lat, lng].every(valid)) return Response.json({ error: 'Valid coordinates are required' }, { status: 400 });
-      const query = `[out:json][timeout:5];way(around:35,${lat},${lng})[highway][maxspeed];out tags;`;
-      const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`, {
+      const query = `[out:json][timeout:5];way(around:25,${lat},${lng})[highway][maxspeed];out tags;`;
+      const urls = [
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass-api.de/api/interpreter',
+      ].map(host => `${host}?data=${encodeURIComponent(query)}`);
+      const response = await Promise.any(urls.map(url => fetch(url, {
         headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-Navigation/1.0' },
-        signal: AbortSignal.timeout(7000),
-      });
-      if (!response.ok) return Response.json({ success: true, speed_limit_mph: null, source: '' });
+        signal: AbortSignal.timeout(6500),
+      }).then(result => {
+        if (!result.ok) throw new Error(`HTTP ${result.status}`);
+        return result;
+      }))).catch(() => null);
+      if (!response) return Response.json({ success: true, speed_limit_mph: null, source: '' });
       const data = await response.json();
       const requestedRoad = String(body.road_name || '').trim().toLowerCase();
       const parseMph = raw => {
@@ -25,11 +32,17 @@ Deno.serve(async req => {
         if (text.includes('mph')) return Math.round(value);
         return Math.round(value * 0.621371);
       };
+      const normalizeRoad = value => String(value || '').toLowerCase().replace(/\b(street|st|road|rd|avenue|ave|drive|dr|place|pl|boulevard|blvd|lane|ln|court|ct)\b/g, '').replace(/[^a-z0-9]/g, '');
       const rows = (data?.elements || []).map(element => ({
-        mph: parseMph(element?.tags?.maxspeed),
+        mph: parseMph(element?.tags?.maxspeed || element?.tags?.['maxspeed:forward'] || element?.tags?.['maxspeed:backward']),
         name: String(element?.tags?.name || element?.tags?.ref || ''),
       })).filter(row => Number.isFinite(row.mph));
-      const best = rows.find(row => requestedRoad && row.name.toLowerCase() === requestedRoad) || rows[0] || null;
+      const wanted = normalizeRoad(requestedRoad);
+      const matched = wanted ? rows.find(row => {
+        const actual = normalizeRoad(row.name);
+        return actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual));
+      }) : null;
+      const best = matched || (!wanted ? rows[0] : null);
       return Response.json({ success: true, speed_limit_mph: best?.mph || null, road_name: best?.name || '', source: best ? 'OpenStreetMap' : '' });
     }
     const lat = Number(body.origin_lat), lng = Number(body.origin_lng);
