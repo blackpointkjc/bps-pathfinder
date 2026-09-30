@@ -23,8 +23,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Administrator access required' }, { status: user ? 403 : 401 });
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Administrator access required' }, { status: 403 });
     }
 
     const findings: Finding[] = [];
