@@ -473,7 +473,15 @@ export default function BackgroundLocationTracker({ user }) {
     // The location service's Worker-driven watchdog also emits this event every
     // minute; use it as a background-safe opportunity to send the lightweight
     // heartbeat only when GPS has not already updated the server recently.
-    const handleBackgroundTick = () => heartbeat();
+    const handleBackgroundTick = () => {
+      if (!getLiveLocation(45_000)) {
+        lastGpsPushRef.current = 0;
+        lastGpsAttemptRef.current = 0;
+        recoverLiveLocationTracking('background_watchdog').catch(() => null);
+        requestFreshLiveLocation({ timeoutMs: 8000 }).catch(() => null);
+      }
+      heartbeat();
+    };
     let recoveryTimer;
     const handleOperationalResume = event => {
       window.clearTimeout(recoveryTimer);
