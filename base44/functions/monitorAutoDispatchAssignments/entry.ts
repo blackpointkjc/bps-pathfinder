@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
       response_escalations: responseEscalations,
       welfare_requests: welfareRequests,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('monitorAutoDispatchAssignments failed', error);
     return Response.json({ error: error?.message || 'Unable to monitor automatic dispatch assignments' }, { status: 500 });
   }
