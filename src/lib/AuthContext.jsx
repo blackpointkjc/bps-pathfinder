@@ -403,6 +403,14 @@ export const AuthProvider = ({ children }) => {
       }
     } catch {}
 
+    try {
+      const userKey = String(user?.email || user?.id || '').trim().toLowerCase();
+      if (userKey) {
+        sessionStorage.removeItem(`bps-welcome-session:${userKey}`);
+        sessionStorage.removeItem(`bps:pathfinder:tracking-session:${userKey}`);
+      }
+    } catch {}
+
     setUser(null);
     setIsAuthenticated(false);
     setAccountLock(null);
