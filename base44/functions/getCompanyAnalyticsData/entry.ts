@@ -17,10 +17,11 @@ const cacheRead = async (key: string, ttlMs: number, loader: () => Promise<any[]
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const me = await base44.auth.me();
+    const me = await base44.auth.me().catch(() => null);
+    if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = rolesOf(me);
-    if (!me || (me.role !== 'admin' && !roles.has('full_access') && !roles.has('hr') && !roles.has('accounting'))) {
-      return Response.json({ error: 'Company analytics access required' }, { status: me ? 403 : 401 });
+    if (me.role !== 'admin' && !roles.has('full_access') && !roles.has('hr') && !roles.has('accounting')) {
+      return Response.json({ error: 'Company analytics access required' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
