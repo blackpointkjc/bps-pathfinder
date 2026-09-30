@@ -61,9 +61,10 @@ async function geocodeWithPhoton(address: string) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = rolesOf(user);
-    const authorized = !!user && (
+    const authorized = (
       user.role === 'admin' ||
       roles.has('full_access') ||
       roles.has('support') ||
