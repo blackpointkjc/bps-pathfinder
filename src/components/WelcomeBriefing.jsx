@@ -141,10 +141,18 @@ export default function WelcomeBriefing({ user }) {
         // Prefer the newest verified server activity over an old browser-only value.
         // This prevents a different device or cleared local storage from reporting
         // that an officer was away for weeks despite recent time entries.
-        const lastCompletedActivity = Math.max(0, ...(recentUserTimeEntries || [])
+        const openSessionStarts = (recentUserTimeEntries || [])
+          .filter(entry => entry.clock_in && !entry.clock_out)
+          .map(entry => parseServerTimestamp(entry.clock_in)?.getTime() || 0)
+          .filter(Boolean);
+        const currentSessionStart = openSessionStarts.length ? Math.max(...openSessionStarts) : now;
+        const completedBeforeSession = (recentUserTimeEntries || [])
           .filter(entry => entry.clock_out)
-          .map(entry => parseServerTimestamp(entry.clock_out)?.getTime() || 0));
-        const effectiveOfflineSince = offlineSince || lastCompletedActivity || null;
+          .map(entry => parseServerTimestamp(entry.clock_out)?.getTime() || 0)
+          .filter(value => value > 0 && value <= currentSessionStart);
+        const lastCompletedActivity = completedBeforeSession.length ? Math.max(...completedBeforeSession) : 0;
+        const effectiveOfflineSince = lastCompletedActivity || offlineSince || null;
+        const offlineWindowEnd = currentSessionStart || now;
         setOfflineSince(effectiveOfflineSince);
         const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
         const createdAfterCutoff = item => {
@@ -176,7 +184,7 @@ export default function WelcomeBriefing({ user }) {
           seenPropertyPairs.add(pair);
           if (!effectiveOfflineSince) return true;
           const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
-          return created > effectiveOfflineSince;
+          return created > effectiveOfflineSince && created <= offlineWindowEnd;
         });
         const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
         const liveOfficer = (liveOfficers || []).find(item => item.session_active === true) || null;
