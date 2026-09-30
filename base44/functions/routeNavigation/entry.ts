@@ -88,44 +88,35 @@ Deno.serve(async req => {
         });
       }
 
-      const namedMatches = wanted
-        ? roads.filter(road => {
-            const actual = normalizeRoad(road.name);
-            return actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual));
-          })
-        : [];
-      const candidates = namedMatches.length ? namedMatches : roads.filter(road => road.highway !== 'service');
-      const currentRoad = candidates.sort((a,b) => a.distance - b.distance)[0] || roads.sort((a,b) => a.distance - b.distance)[0] || null;
+      const hasRoadNameMatch = (road:any) => {
+        if (!wanted) return false;
+        const actual = normalizeRoad(road.name);
+        return Boolean(actual && (actual === wanted || actual.includes(wanted) || wanted.includes(actual)));
+      };
+      const posted = roads
+        .filter(road => Number.isFinite(road.mph) && road.mph > 0 && road.highway !== 'service')
+        .filter(road => road.distance <= (hasRoadNameMatch(road) ? 65 : 35))
+        .map(road => ({ ...road, score: road.distance - (hasRoadNameMatch(road) ? 35 : 0) }))
+        .sort((a,b) => a.score - b.score);
+      const currentRoad = posted[0] || null;
 
-      if (Number.isFinite(currentRoad?.mph)) {
+      if (currentRoad) {
         return Response.json({
           success: true,
           speed_limit_mph: currentRoad.mph,
           road_name: currentRoad.name || requestedRoad,
-          source: 'OpenStreetMap road segment',
+          source: 'OpenStreetMap posted maxspeed',
           estimated: false,
-        });
-      }
-
-      // For the Richmond/Henrico residential grid, the local road segment may be
-      // mapped without maxspeed. Keep that case usable, but clearly label it as
-      // an estimate rather than pretending OSM supplied a posted sign value.
-      if (currentRoad?.highway === 'residential') {
-        return Response.json({
-          success: true,
-          speed_limit_mph: 25,
-          road_name: currentRoad.name || requestedRoad,
-          source: 'Residential-road fallback',
-          estimated: true,
         });
       }
 
       return Response.json({
         success: true,
         speed_limit_mph: null,
-        road_name: currentRoad?.name || requestedRoad || '',
+        road_name: requestedRoad || '',
         source: '',
         estimated: false,
+        reason: 'no_reliable_posted_limit',
       });
     }
     const lat = Number(body.origin_lat), lng = Number(body.origin_lng);
