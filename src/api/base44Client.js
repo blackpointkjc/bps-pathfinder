@@ -52,7 +52,7 @@ const readCacheTtl = meta => {
   return READ_CACHE_MS;
 };
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
-const CRITICAL_RATE_LIMIT_RECOVERY_MS = 60_000;
+const CRITICAL_RATE_LIMIT_RECOVERY_MS = 15_000;
 const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
@@ -155,7 +155,7 @@ function pumpReads() {
   // After any 429, even operational reads need a short recovery window. The
   // previous critical bypass immediately retried CAD/location calls and converted
   // one throttle into repeated getActiveDispatchCalls/getOnDutyUnits failures.
-  // Critical feeds wait eight seconds; background work honors the full cooldown.
+  // Critical feeds use a short recovery window; background work honors the full cooldown.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt));
   const waitForHead = cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
