@@ -12,6 +12,7 @@ export default function NavigationCamera({
     const map = useMap();
     const userInteractingRef = useRef(false);
     const interactionTimeoutRef = useRef(null);
+    const lastCameraRef = useRef({ center: null, zoom: null, at: 0 });
 
     useEffect(() => {
         const handleInteractionStart = () => {
@@ -93,15 +94,25 @@ export default function NavigationCamera({
         // whole viewport/tile set on every GPS fix.
         const currentZoom = map.getZoom();
         const roundedTargetZoom = Math.max(10, Math.min(18, Math.round(targetZoom * 2) / 2));
-        try { map.invalidateSize({ animate: false, pan: false }); } catch (_) {}
-        if (Math.abs(currentZoom - roundedTargetZoom) >= 0.45) {
+        const toRad = value => value * Math.PI / 180;
+        const centerDistance = (() => {
+            const previous = lastCameraRef.current.center;
+            if (!previous) return Infinity;
+            const dLat = toRad(cameraCenter[0] - previous[0]);
+            const dLng = toRad(cameraCenter[1] - previous[1]);
+            const a = Math.sin(dLat / 2) ** 2
+                + Math.cos(toRad(previous[0])) * Math.cos(toRad(cameraCenter[0])) * Math.sin(dLng / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        })();
+        const zoomChange = Math.abs(currentZoom - roundedTargetZoom);
+        if (centerDistance < 7 && zoomChange < 0.75) return;
+
+        lastCameraRef.current = { center: cameraCenter, zoom: roundedTargetZoom, at: Date.now() };
+        if (zoomChange >= 0.75) {
             map.setView(cameraCenter, roundedTargetZoom, { animate: false, noMoveStart: true });
         } else {
-            map.panTo(cameraCenter, { animate: false, noMoveStart: true });
+            map.panTo(cameraCenter, { animate: true, duration: 0.3, easeLinearity: 0.35, noMoveStart: true });
         }
-        window.requestAnimationFrame(() => {
-            try { map.invalidateSize({ animate: false, pan: false }); } catch (_) {}
-        });
 
     }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
 
