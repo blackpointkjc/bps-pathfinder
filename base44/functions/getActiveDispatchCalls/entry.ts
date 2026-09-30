@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const limit = Math.max(50, Math.min(200, Number(body?.limit || 100)));
     const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
     let cached = readCache.get(cacheKey);
-    if (!cached || Date.now() - cached.at >= 5000) {
+    if (!cached || Date.now() - cached.at >= 2000) {
       if (!cached?.pending) {
         cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000) };
         readCache.set(cacheKey, cached);
