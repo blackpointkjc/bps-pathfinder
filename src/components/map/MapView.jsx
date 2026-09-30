@@ -79,6 +79,50 @@ const destinationIcon = new L.DivIcon({
     iconAnchor: [16, 16],
 });
 
+function MapViewportSync() {
+    const map = useMap();
+
+    useEffect(() => {
+        const container = map.getContainer();
+        let frame = null;
+        let settleTimer = null;
+        const refresh = () => {
+            if (frame) cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                if (container?.isConnected) map.invalidateSize({ animate: false, pan: false });
+            });
+        };
+        const recoverTiles = () => {
+            refresh();
+            try {
+                map.eachLayer(layer => {
+                    if (typeof layer?.redraw === 'function') layer.redraw();
+                });
+            } catch (_) {}
+        };
+        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
+        observer?.observe(container);
+        window.addEventListener('resize', refresh);
+        window.addEventListener('pageshow', refresh);
+        window.addEventListener('bps-operational-resume', refresh);
+        window.addEventListener('bps-map-tiles-failed', recoverTiles);
+        refresh();
+        settleTimer = window.setTimeout(refresh, 250);
+
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('resize', refresh);
+            window.removeEventListener('pageshow', refresh);
+            window.removeEventListener('bps-operational-resume', refresh);
+            window.removeEventListener('bps-map-tiles-failed', recoverTiles);
+            if (frame) cancelAnimationFrame(frame);
+            if (settleTimer) window.clearTimeout(settleTimer);
+        };
+    }, [map]);
+
+    return null;
+}
+
 // Component to handle map center updates
 function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating, heading }) {
     const map = useMap();
@@ -226,6 +270,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             maxZoom={20}
         >
             <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
+            <MapViewportSync />
 
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
