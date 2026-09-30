@@ -38,7 +38,7 @@ const ANALYTICS_SEGMENTS = {
   },
   calls: {
     fields: { dispatchCalls: ['DispatchCall','CallHistory','PropertyAlert','CallPerformanceDecision'], callAssignments: 'CallAssignment' },
-    interval: 2 * 60 * 1000,
+    interval: 30 * 1000,
   },
   quality: {
     fields: { commendations: ['User','Commendation'], complaints: ['User','Complaint'], clientFeedback: ['User','ClientFeedback'], performanceReviews: ['User','PerformanceReview'] },
@@ -91,10 +91,11 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
     },
     enabled,
     staleTime: config?.interval || 2 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     refetchInterval: config?.interval || 5 * 60 * 1000,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
     retry: false,
     placeholderData: previousData => previousData,
   });
@@ -654,26 +655,32 @@ export default function AdminAnalytics() {
       [call.id, call.original_call_id, call.call_id].filter(Boolean).forEach(id => callById.set(String(id), call));
     });
 
-    // Response time begins when Black Point actually receives an assignment—not
-    // when the public agency first receives the call. Only completed assignments
-    // with a recorded on-scene action are scoreable.
-    const earliestCompletedAssignment = new Map();
+    // Response time begins the moment Black Point dispatches a unit. Do not wait
+    // for the assignment to be cleared: as soon as an officer marks (or is auto-
+    // marked) On Scene, Company Analytics should include that response.
+    const earliestAssignmentAt = new Map();
     callAssignments
-      .filter(assignment => String(assignment.status || '').toLowerCase() === 'cleared' && assignment.assigned_at && assignment.cleared_at)
+      .filter(assignment => assignment.assigned_at)
       .forEach(assignment => {
         const key = String(assignment.call_id || '');
         if (!key) return;
-        const prior = earliestCompletedAssignment.get(key);
-        if (!prior || new Date(assignment.assigned_at).getTime() < new Date(prior.assigned_at).getTime()) earliestCompletedAssignment.set(key, assignment);
+        const at = new Date(assignment.assigned_at).getTime();
+        if (!Number.isFinite(at)) return;
+        const prior = earliestAssignmentAt.get(key);
+        if (!Number.isFinite(prior) || at < prior) earliestAssignmentAt.set(key, at);
       });
 
-    const responseTimes = [...earliestCompletedAssignment.entries()]
-      .map(([callId, assignment]) => {
-        const call = callById.get(callId);
+    const responseTimes = dispatchCalls
+      .map(call => {
         if (!call?.time_on_scene) return null;
+        const ids = [call.id, call.original_call_id, call.call_id].filter(Boolean).map(String);
+        const assignmentTimes = ids.map(id => earliestAssignmentAt.get(id)).filter(Number.isFinite);
+        const callDispatchAt = new Date(call.time_dispatched || 0).getTime();
+        const anchors = [...assignmentTimes, ...(Number.isFinite(callDispatchAt) && callDispatchAt > 0 ? [callDispatchAt] : [])];
+        if (!anchors.length) return null;
+        const dispatchedAt = Math.min(...anchors);
         const sceneAt = parseISO(call.time_on_scene).getTime();
-        const assignedAt = parseISO(assignment.assigned_at).getTime();
-        const minutes = (sceneAt - assignedAt) / 60000;
+        const minutes = (sceneAt - dispatchedAt) / 60000;
         return Number.isFinite(minutes) && minutes >= 0 && minutes <= 240 ? minutes : null;
       })
       .filter(minutes => minutes != null);
