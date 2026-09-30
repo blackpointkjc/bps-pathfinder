@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     archivedCount++;
                     console.log(`Archived: ${call.incident} @ ${call.location} (age: ${Math.round(ageMs / 60000)}min)`);
-                } catch (error) {
+                } catch (error: any) {
                     console.error(`Failed to archive call ${call.id}:`, error);
                 }
             }
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
             message: `Archived ${archivedCount} calls at 1 hour elapsed`
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error archiving old calls:', error);
         return Response.json({
             error: 'Failed to archive calls',
