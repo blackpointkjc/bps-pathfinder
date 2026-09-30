@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       try {
         const rows = await reader();
         return Array.isArray(rows) ? rows : [];
-      } catch (error) {
+      } catch (error: any) {
         errors[entityName] = error?.message || 'Unable to read data';
         return [];
       } finally {
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
       performanceReviews: canonicalRows(performanceReviews),
       service_errors: errors,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('getCompanyAnalyticsData failed', error);
     return Response.json({ error: error?.message || 'Unable to load company analytics' }, { status: 500 });
   }
