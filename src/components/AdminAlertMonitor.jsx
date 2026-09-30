@@ -74,11 +74,11 @@ export default function AdminAlertMonitor({ user }) {
     refetchIntervalInBackground: false,
   });
 
-  // Play notification sound
+  // Administrative approval notifications are visual-only. Operational CAD/emergency audio is handled separately.
   const playAlertSound = () => {
     try {
       const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGJ0fPTgjMGHm7A7+OZUQ4MW6ro7q1aFAg+ltryxXQnBSuCzvLaizgIG2m98OScTgwNUKXf77RjGgU2j9Tyy30qBSh+x+/glz8JElux6OynUxEKRJzd8r9wIgU1h83z1YU1Bh1tv+zjn1ANCligvOGhWRcJNYzJ88l6KQUme8Tv3Zk+CRJYrejxpVMRCkObzPO9cSIFNYjN89WFNQYdbL/t4Z9PDAxYoLvhoVkXCTWMyfPJeikFJnvF79yZPgkSV63o8aVTEQpDm8zzvm8iBTWIzfPVhTUGHWy/7eGfTwwMWKC74aFZFwk1jMnzyXopBSZ7xe/cmT4JEletz/GlUxEKQ5vM871vIgU1iM3z1YU1Bh1rv+3hn08MDFiguuGhWhgJNYvJ88l6KQUme8Tv3Jk+CRJXre/xpVMRCkObzPO9byIFNYjN89WFNQYdbL/t4Z9PDAxYoLrhoVoYCTWLyfPJeikFJnvE79yZPgkSV63v8aVTEQpDm8zzvm8iBTWIzfPVhTUGHWy/7eGfTwwMWKC64aFaGAk1i8nzyXopBSZ7xO/cmT4JEletz/GlUxEKQ5vM871vIgU1iM3z1YU1Bh1sv+3hn08MDFiguuGhWhgJNYvJ88l6KQUme8Tv3Jk+CRJXre/xpVMRCkObzPO9byIFNYjN89WFNQYdbL/t4Z9PDAxYoLrhoVoYCTWLyfPJeikFJnvE79yZPgkSV63v8aVTEQpDm8zzvm8iBTWIzfPVhTUGHWy/7eGfTwwMWKC64aFaGAk1i8nzyXopBSZ7xO/cmT4JEletz/GlUxEKQ5vM871vIgU1iM3z1YU1Bh1sv+3hn08MDFiguuGhWhgJNYvJ88l6KQUme8Tv3Jk+CRJXre/xpVMRCkObzPO9byIFNYjN89WFNQYdbL/t4Z9PDAxYoLrhoVoYCTWLyfPJeikFJnvE79yZPgkSV63v8aVTEQpDm8zzvm8iBTWIzfPVhTUGHWy/7eGfTwwMWKC64aFaGAk1i8nzyXopBSZ7xO/cmT4JEletz/GlUxEKQ5vM871vIgU1iM3z1YU1Bh1sv+3hn08MDFiguuGhWhgJNYvJ88l6KQUme8Tv3Jk+CRJXre/xpVMRCkObzPO9byIFNYjN89WFNQYdbL/t4Z9PDAxYoLrhoVoYCTWLyfPJeikFJnvE79yZPgkSV63v8aVTEQpDm8zzvm8iBTWIzfPVhTUGHWy/7eGfTwwMWKC64aFaGAk1i8nzyXopBSZ7xO/cmT4J');
-      audio.volume = 0.4;
+      audio.volume = 0;
       audio.play();
     } catch (e) {
       console.error('Could not play alert sound', e);
