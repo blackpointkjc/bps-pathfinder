@@ -398,6 +398,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const userKey = String(user?.email || user?.id || '').trim().toLowerCase();
       if (userKey) {
+        localStorage.setItem(`bps-last-active:${userKey}`, new Date().toISOString());
         sessionStorage.removeItem(`bps-welcome-session:${userKey}`);
         sessionStorage.removeItem(`bps:pathfinder:tracking-session:${userKey}`);
       }
