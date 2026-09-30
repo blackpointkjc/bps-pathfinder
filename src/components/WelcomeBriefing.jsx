@@ -141,10 +141,10 @@ export default function WelcomeBriefing({ user }) {
         // Prefer the newest verified server activity over an old browser-only value.
         // This prevents a different device or cleared local storage from reporting
         // that an officer was away for weeks despite recent time entries.
-        const serverLastActivity = Math.max(0, ...(recentUserTimeEntries || []).map(entry =>
-          parseServerTimestamp(entry.clock_out || entry.clock_in)?.getTime() || 0
-        ));
-        const effectiveOfflineSince = Math.max(offlineSince || 0, serverLastActivity || 0) || null;
+        const lastCompletedActivity = Math.max(0, ...(recentUserTimeEntries || [])
+          .filter(entry => entry.clock_out)
+          .map(entry => parseServerTimestamp(entry.clock_out)?.getTime() || 0));
+        const effectiveOfflineSince = offlineSince || lastCompletedActivity || null;
         setOfflineSince(effectiveOfflineSince);
         const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
         const createdAfterCutoff = item => {
