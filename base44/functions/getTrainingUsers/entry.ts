@@ -18,9 +18,10 @@ async function loadUsers(base44: any) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    const authorized = !!user && (user.role === 'admin' || roles.has('trainer') || roles.has('full_access'));
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ error: 'Unauthorized', users: [] }, { status: 401 });
+    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+    const authorized = user.role === 'admin' || roles.has('trainer') || roles.has('full_access');
     if (!authorized) return Response.json({ error: 'Trainer access required', users: [] }, { status: 403 });
 
     const allUsers = await loadUsers(base44);
