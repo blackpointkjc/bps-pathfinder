@@ -257,7 +257,7 @@ export default function Navigation() {
         };
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
-        }, 30000);
+        }, 15000);
         window.addEventListener('bps-operational-resume', recoverCalls);
         window.addEventListener('online', recoverCalls);
         window.addEventListener('pageshow', recoverCalls);
