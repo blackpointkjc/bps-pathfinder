@@ -103,8 +103,8 @@ Deno.serve(async (req) => {
     }
 
     // Get the exported files
-    const exportTask = jobStatus.data.tasks.find(t => t.operation === 'export/url');
-    const slideUrls = exportTask.result.files.map(f => f.url);
+    const exportTask = jobStatus.data.tasks.find((t: any) => t.operation === 'export/url');
+    const slideUrls = exportTask.result.files.map((f: any) => f.url);
 
     return Response.json({ 
       success: true,
