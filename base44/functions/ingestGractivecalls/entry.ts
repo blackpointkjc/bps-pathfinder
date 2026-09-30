@@ -277,7 +277,7 @@ async function fetchLiveWebsiteCalls() {
       'Cache-Control': 'no-cache, no-store, max-age=0',
       Pragma: 'no-cache',
     },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(6_000),
   });
   if (!response.ok) throw new Error(`GRAC website returned HTTP ${response.status}`);
   const html = await response.text();
@@ -325,7 +325,7 @@ async function fetchLiveApiCalls() {
       'Cache-Control': 'no-cache, no-store, max-age=0',
       Pragma: 'no-cache',
     },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(6_000),
   });
   if (!response.ok) throw new Error(`GRAC API returned HTTP ${response.status}`);
   const payload = await response.json();
@@ -334,18 +334,13 @@ async function fetchLiveApiCalls() {
 }
 
 async function fetchNonEmptySource(loader: () => Promise<any[]>, label: string) {
-  let firstError: any = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const rows = await loader();
-      if (Array.isArray(rows) && rows.length) return rows;
-      firstError = new Error(`${label} returned zero rows`);
-    } catch (error) {
-      firstError = error;
-    }
-    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 650));
+  try {
+    const rows = await loader();
+    if (Array.isArray(rows) && rows.length) return rows;
+    throw new Error(`${label} returned zero rows`);
+  } catch (error) {
+    throw error || new Error(`${label} unavailable`);
   }
-  throw firstError || new Error(`${label} unavailable`);
 }
 
 function liveMergeKey(call: any) {
@@ -416,12 +411,10 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
   const now = Date.now();
   const candidates = (calls || []).filter(call => call?.source_channel === 'grac_website_live'
     && !Number.isFinite(Number(call.latitude))
-    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 30);
+    && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 8);
   const replacements = new Map<string, any>();
-  for (let offset = 0; offset < candidates.length; offset += 6) {
-    const batch = await Promise.all(candidates.slice(offset, offset + 6).map(fastGeocodeWebsiteCall));
-    batch.forEach(call => replacements.set(liveMergeKey(call), call));
-  }
+  const batch = await Promise.all(candidates.map(fastGeocodeWebsiteCall));
+  batch.forEach(call => replacements.set(liveMergeKey(call), call));
   return (calls || []).map(call => replacements.get(liveMergeKey(call)) || call);
 }
 
@@ -1012,7 +1005,7 @@ async function acquireIngestionLease(base44: any) {
 
   await base44.asServiceRole.entities.CadCounter.update(counter.id, {
     ingestion_lock_token: token,
-    ingestion_locked_until: new Date(now + 60_000).toISOString(),
+    ingestion_locked_until: new Date(now + 45_000).toISOString(),
   });
 
   // Let simultaneous contenders finish their writes, then only the final token owner proceeds.
