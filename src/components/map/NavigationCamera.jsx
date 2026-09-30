@@ -63,17 +63,17 @@ export default function NavigationCamera({
 
         // Google-style follow camera: look slightly ahead of the moving unit so
         // more of the upcoming road is visible while preserving nearby officers.
-        let targetZoom = 18;
-        if (speed > 55) targetZoom = 16.8;
-        else if (speed > 35) targetZoom = 17.2;
-        else if (speed > 15) targetZoom = 17.8;
-        else targetZoom = 18.4;
+        let targetZoom = 17;
+        if (speed > 55) targetZoom = 16;
+        else if (speed > 35) targetZoom = 16.5;
+        else if (speed > 15) targetZoom = 17;
+        else targetZoom = 17.5;
 
         const maneuverFeet = Number(upcomingManeuverDistance);
         if (Number.isFinite(maneuverFeet)) {
-            if (maneuverFeet <= 140) targetZoom = Math.max(targetZoom, 19);
-            else if (maneuverFeet <= 450) targetZoom = Math.max(targetZoom, 18.6);
-            else if (maneuverFeet <= 1200) targetZoom = Math.max(targetZoom, 18.1);
+            if (maneuverFeet <= 140) targetZoom = Math.max(targetZoom, 18);
+            else if (maneuverFeet <= 450) targetZoom = Math.max(targetZoom, 17.5);
+            else if (maneuverFeet <= 1200) targetZoom = Math.max(targetZoom, 17);
         }
 
         const validHeading = Number.isFinite(Number(heading));
@@ -92,12 +92,16 @@ export default function NavigationCamera({
         // panTo moves the camera with the unit without making Leaflet rebuild the
         // whole viewport/tile set on every GPS fix.
         const currentZoom = map.getZoom();
-        const roundedTargetZoom = Math.round(targetZoom * 2) / 2;
+        const roundedTargetZoom = Math.max(10, Math.min(18, Math.round(targetZoom * 2) / 2));
+        try { map.invalidateSize({ animate: false, pan: false }); } catch (_) {}
         if (Math.abs(currentZoom - roundedTargetZoom) >= 0.45) {
-            map.setView(cameraCenter, roundedTargetZoom, { animate: true, duration: 0.55, easeLinearity: 1, noMoveStart: true });
+            map.setView(cameraCenter, roundedTargetZoom, { animate: false, noMoveStart: true });
         } else {
-            map.panTo(cameraCenter, { animate: true, duration: 0.65, easeLinearity: 1, noMoveStart: true });
+            map.panTo(cameraCenter, { animate: false, noMoveStart: true });
         }
+        window.requestAnimationFrame(() => {
+            try { map.invalidateSize({ animate: false, pan: false }); } catch (_) {}
+        });
 
     }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
 
