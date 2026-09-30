@@ -65,6 +65,19 @@ export default function BackgroundLocationTracker({ user }) {
   const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
   const trackingDeviceIdRef = useRef(getTrackingDeviceId());
+  const trackingSessionKeyRef = useRef((() => {
+    const identity = String(user?.email || user?.id || 'unknown').trim().toLowerCase();
+    const storageKey = `bps:pathfinder:tracking-session:${identity}`;
+    try {
+      const existing = window.sessionStorage.getItem(storageKey);
+      if (existing) return existing;
+      const created = `app-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.sessionStorage.setItem(storageKey, created);
+      return created;
+    } catch {
+      return `app-session-${identity}-${sessionStartedRef.current}`;
+    }
+  })());
   const queryClient = useQueryClient();
 
   const { data: activeEntry } = useQuery({
