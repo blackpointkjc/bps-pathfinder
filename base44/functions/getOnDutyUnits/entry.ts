@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
             rank: active.rank || '',
             profile_photo_url: active.profile_photo_url || '',
             unit_number: active.unit_number || '',
-            status: sessionActive ? (active.status || 'Available') : 'Out of Service',
+            status: active.status || 'Available',
             latitude: hasGps ? Number(active.latitude) : null,
             longitude: hasGps ? Number(active.longitude) : null,
             heading: hasGps ? active.heading : null,
