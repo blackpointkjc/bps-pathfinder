@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       show_lights: body.show_lights === true,
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
-    if ((body.reset_gps === true || sessionChanged) && !acceptsGps) {
+    if (body.reset_gps === true && !acceptsGps) {
       // A newly established app/clock session must never inherit coordinates from
       // a prior session. This was the cause of officers appearing miles away at
       // the start of a new shift while the map displayed the old GPS timestamp.
