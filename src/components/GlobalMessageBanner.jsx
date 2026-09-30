@@ -818,11 +818,9 @@ export default function GlobalMessageBanner({ user }) {
       // connecting. Older history is seeded as known and never replayed. The server
       // claim also prevents a refresh from repeating a call already announced to
       // this user.
-      const statusLogRecoveryCutoff = Date.now() - LIVE_PROPERTY_ALERT_MAX_AGE_MS;
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
-          const created = parseServerTimestamp(record.created_date)?.getTime() || 0;
           // Recovery/history loads are seeded silently. Only a realtime create
           // owns CAD audio; reconnecting must never make an old record beep.
           knownIds.current.add(`CallStatusLog:${record.event_key}`);
@@ -941,7 +939,7 @@ export default function GlobalMessageBanner({ user }) {
           })
           .slice()
           .reverse()
-          .forEach(record => showBanner(supervisorTaskSource, record)))
+          .forEach(record => showBanner(supervisorTaskSource, record, { allowAudio: false })))
         .catch(() => null);
     }
 
@@ -956,7 +954,7 @@ export default function GlobalMessageBanner({ user }) {
           .filter(record => record.source_name === 'CAD Welfare' && pendingIds.has(String(record.related_id || '')))
           .slice()
           .reverse()
-          .forEach(record => showBanner(welfareSource, record));
+          .forEach(record => showBanner(welfareSource, record, { allowAudio: false }));
       }).catch(() => null);
 
       try {
@@ -974,7 +972,7 @@ export default function GlobalMessageBanner({ user }) {
 
     const mentionSource = SOURCES.find(source => source.mention);
     base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 20)
-      .then(records => (records || []).reverse().forEach(record => showBanner(mentionSource, record)))
+      .then(records => (records || []).reverse().forEach(record => showBanner(mentionSource, record, { allowAudio: false })))
       .catch(() => null);
 
     const clearAnnouncementBanners = () => setBanners(current => current.filter(entry => entry.kind !== 'announcement'));
@@ -1009,7 +1007,7 @@ export default function GlobalMessageBanner({ user }) {
         if (!created || (accountCreated && created < accountCreated) || seen.has(record.id)) return;
         const ageDays = (Date.now() - created) / 86400000;
         const active = record.priority === 'urgent' ? ageDays <= 30 : record.priority === 'important' ? ageDays <= 14 : ageDays <= 7;
-        if (active) showBanner(announcementSource, record);
+        if (active) showBanner(announcementSource, record, { allowAudio: false });
       });
     }).catch(() => null);
 
