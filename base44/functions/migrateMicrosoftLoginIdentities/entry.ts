@@ -124,7 +124,7 @@ async function migrateEntityReferences(base44: any, oldEmail: string, newEmail: 
         }
       }
       if (count) updatesByEntity[entityName] = count;
-    } catch (error) {
+    } catch (error: any) {
       console.warn(`Microsoft identity migration skipped ${entityName}:`, error?.message || error);
     }
   }
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       disabled: true,
       message: 'Email-reference migration is disabled. Microsoft remains a linked communication identity.',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('migrateMicrosoftLoginIdentities failed', error);
     return Response.json({ error: error?.message || 'Microsoft identity migration failed.' }, { status: 500 });
   }
