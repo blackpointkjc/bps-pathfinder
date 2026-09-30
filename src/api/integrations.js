@@ -1,25 +1,32 @@
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { base44 } from './base44Client';
 
-
-
-
-export const Core = base44.integrations.Core;
-
-export const InvokeLLM = base44.integrations.Core.InvokeLLM;
-
-export const SendEmail = base44.integrations.Core.SendEmail;
-
-export const SendSMS = base44.integrations.Core.SendSMS;
+// Legacy compatibility module. Paid Base44 integration handles are deliberately
+// not exported to browser code. AI is routed through the authenticated,
+// credit-free internalAssistant backend and files use the audited internal upload.
+export const InvokeLLM = async (payload = {}) => {
+  const response = await base44.functions.invoke('internalAssistant', payload);
+  const data = response?.data || response || {};
+  if (data?.error) throw new Error(data.error);
+  return data;
+};
 
 export const UploadFile = ({ file } = {}) => uploadInternalFile(file);
 
-export const GenerateImage = base44.integrations.Core.GenerateImage;
+const blockedPaidIntegration = (name) => async () => {
+  throw new Error(`${name} is disabled in the browser. Use the authenticated Pathfinder backend workflow instead.`);
+};
 
-export const ExtractDataFromUploadedFile = base44.integrations.Core.ExtractDataFromUploadedFile;
+export const SendEmail = blockedPaidIntegration('Direct Base44 email');
+export const SendSMS = blockedPaidIntegration('Direct Base44 SMS');
+export const GenerateImage = blockedPaidIntegration('Direct Base44 image generation');
+export const ExtractDataFromUploadedFile = blockedPaidIntegration('Direct Base44 file extraction');
 
-
-
-
-
-
+export const Core = {
+  InvokeLLM,
+  SendEmail,
+  SendSMS,
+  UploadFile,
+  GenerateImage,
+  ExtractDataFromUploadedFile,
+};
