@@ -433,7 +433,7 @@ export default function BackgroundLocationTracker({ user }) {
       unsubscribe();
       releaseTracking();
     };
-  }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
+  }, [shouldTrack, shouldPublish, user?.email, user?.id, user?.unit_number, user?.role, user?.assigned_location, user?.current_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in, locations]);
 
   // Independent signed-in heartbeat. GPS persists once per minute when available;
   // a much lighter five-minute heartbeat keeps the signed-in session alive only
