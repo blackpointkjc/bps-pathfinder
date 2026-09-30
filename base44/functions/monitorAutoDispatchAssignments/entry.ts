@@ -12,16 +12,12 @@ const officerName = (officer: any) => {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const scheduledRun = body.scheduled === true;
     const user = await base44.auth.me().catch(() => null);
-    if (!scheduledRun) {
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      const roles = new Set((user.additional_roles || []).map(lower));
-      const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
-        || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access');
-      if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const roles = new Set((user.additional_roles || []).map(lower));
+    const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
+      || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access');
+    if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
 
     const now = Date.now();
     // Query only live evaluations that can still have operational timers. This
