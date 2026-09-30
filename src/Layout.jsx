@@ -1354,7 +1354,7 @@ export default function Layout({ children, currentPageName }) {
       } catch (error) {
         const message = String(error?.message || error || '');
         if (/rate limit|too many requests|\b429\b/i.test(message)) {
-          rateLimitBackoffUntil = Date.now() + 2 * 60 * 1000;
+          rateLimitBackoffUntil = Date.now() + 30 * 1000;
         } else {
           console.warn('Property alert display check failed:', error?.message);
         }
@@ -1378,7 +1378,7 @@ export default function Layout({ children, currentPageName }) {
     };
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') monitor();
-    }, 30000);
+    }, 15000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
