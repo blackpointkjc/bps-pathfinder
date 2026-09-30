@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { createDecipheriv, createHash } from 'node:crypto';
 
-const HASH_PASSWORD = 'tombrady5rings';
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';
 const AGENCY_DATA_URL = 'https://web.pulsepoint.org/DB/GeolocationAgency.php?id=';
 const DEFAULT_AREAS = [
@@ -38,6 +37,8 @@ const UNIT_STATUS: Record<string, string> = {
 
 function decodePulsePoint(data: any) {
   if (!data?.ct || !data?.iv || !data?.s) throw new Error('Unexpected PulsePoint encoded response');
+  const decryptPassword = Deno.env.get('PULSEPOINT_DECRYPT_PASSWORD') || '';
+  if (!decryptPassword) throw new Error('PULSEPOINT_DECRYPT_PASSWORD secret is not configured');
   const cipherText = Buffer.from(data.ct, 'base64');
   const initVector = Buffer.from(data.iv, 'hex');
   const salt = Buffer.from(data.s, 'hex');
@@ -46,7 +47,7 @@ function decodePulsePoint(data: any) {
   while (key.length < 32) {
     const hash = createHash('md5');
     if (intermediateHash) hash.update(intermediateHash);
-    hash.update(HASH_PASSWORD);
+    hash.update(decryptPassword);
     hash.update(salt);
     intermediateHash = hash.digest();
     key = Buffer.concat([key, intermediateHash]);
