@@ -173,9 +173,7 @@ export default function WelcomeBriefing({ user }) {
           const pair = `${item.callId}:${item.propertyId}`;
           const linkedCall = callById.get(String(item.callId));
           const lifecycle = normalized(item.lifecycle_status);
-          if (['resolved', 'false_alarm', 'test'].includes(lifecycle)) return false;
-          const effectiveStatus = normalized(linkedCall?.status || item.callStatus || '');
-          if (HIDDEN_CALL_STATUSES.has(effectiveStatus)) return false;
+          if (['false_alarm', 'test'].includes(lifecycle)) return false;
           if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
           seenPropertyPairs.add(pair);
           if (!effectiveOfflineSince) return true;
