@@ -130,6 +130,32 @@ async function sendTwilioSms(to: string, message: string) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    let user = await base44.auth.me().catch(() => null);
+    let trustedServiceInvocation = false;
+    if (!user && req.headers.get('Authorization')) {
+      try {
+        // PropertyAlertSmsDelivery is admin-only. A successful read with no user
+        // identifies Base44's trusted service-role function invocation rather than
+        // an arbitrary public request carrying a forged request-body flag.
+        await base44.entities.PropertyAlertSmsDelivery.list('-created_date', 1);
+        trustedServiceInvocation = true;
+      } catch {}
+    }
+    if (!user && !trustedServiceInvocation) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user) {
+      const roles = new Set((user.additional_roles || []).map((role: unknown) => lower(role)));
+      const allowed = user.role === 'admin'
+        || user.role === 'dispatch'
+        || user.dispatch_role === true
+        || roles.has('cad_access')
+        || roles.has('dispatch')
+        || roles.has('supervisor')
+        || roles.has('full_access');
+      if (!allowed) return Response.json({ error: 'Property alert notification access required' }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const propertyAlertId = String(body.property_alert_id || body.propertyAlertId || '').trim();
     if (!propertyAlertId) return Response.json({ error: 'property_alert_id is required' }, { status: 400 });
