@@ -107,6 +107,8 @@ export default function Navigation() {
     const lastSpokenNavStepRef = useRef(-1);
     const spokenNavPromptsRef = useRef(new Set());
     const lastRerouteAtRef = useRef(0);
+    const offRouteSinceRef = useRef(0);
+    const offRouteConfirmationsRef = useRef(0);
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
     const speedLimitRequestSeqRef = useRef(0);
     const navSnapIndexRef = useRef(0);
@@ -673,6 +675,9 @@ export default function Navigation() {
             if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
+            navSnapIndexRef.current = 0;
+            offRouteSinceRef.current = 0;
+            offRouteConfirmationsRef.current = 0;
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
             setNavSteps(routeSteps);
             setNavStepIndex(0);
@@ -713,17 +718,34 @@ export default function Navigation() {
             return 3958.8 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
         };
 
-        const stride = Math.max(1, Math.floor(navRoute.length / 180));
+        // Check the route densely enough to recognize a missed turn/new street
+        // quickly. The previous 0.12-mile threshold could leave an officer more
+        // than 600 feet off course before Pathfinder reacted.
+        const stride = Math.max(1, Math.floor(navRoute.length / 1000));
         let nearest = Infinity;
         for (let index = 0; index < navRoute.length; index += stride) {
             nearest = Math.min(nearest, distanceMiles(currentLocation, navRoute[index]));
-            if (nearest < 0.03) break;
+            if (nearest < 0.015) break;
         }
-        const offRoute = nearest > 0.12;
+
+        const offRoute = nearest > 0.035; // ~185 ft
+        const now = Date.now();
+        if (offRoute) {
+            if (!offRouteSinceRef.current) offRouteSinceRef.current = now;
+            offRouteConfirmationsRef.current += 1;
+        } else {
+            offRouteSinceRef.current = 0;
+            offRouteConfirmationsRef.current = 0;
+        }
         setNavOffRoute(offRoute);
 
-        if (offRoute && Date.now() - lastRerouteAtRef.current > 30000) {
-            lastRerouteAtRef.current = Date.now();
+        const confirmedDeviation = offRoute
+            && offRouteConfirmationsRef.current >= 2
+            && now - offRouteSinceRef.current >= 2500;
+        if (confirmedDeviation && now - lastRerouteAtRef.current > 10000) {
+            lastRerouteAtRef.current = now;
+            offRouteSinceRef.current = 0;
+            offRouteConfirmationsRef.current = 0;
             startNavigationToPoint(navDestination, { setEnroute: false, reroute: true }).catch(() => null);
         }
     }, [currentLocation, isNavigating, navRoute, navDestination, routing]);
