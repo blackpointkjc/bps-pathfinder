@@ -109,7 +109,8 @@ export default function WelcomeBriefing({ user }) {
     // The login briefing is a once-per-login/browser-session window. It must not
     // reopen because the app was minimized, the tab was hidden, the user returned
     // after an hour, their duty status changed, or a component remounted.
-    if (sessionSeen) return;
+    const lastShownAt = new Date(localStorage.getItem(lastShownKey) || 0).getTime();
+    if (sessionSeen && Number.isFinite(lastShownAt) && now - lastShownAt < 15 * 60 * 1000) return;
 
     localStorage.setItem(lastShownKey, new Date(now).toISOString());
     localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
