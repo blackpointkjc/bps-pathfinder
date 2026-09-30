@@ -440,13 +440,22 @@ Deno.serve(async (req) => {
     if (!approvedFeed) return Response.json({ success:false, configured:false, skipped:true, reason:'approved_feed_required', source:'pulsepoint', message:'Automatic import is not configured. Use the official PulsePoint live feed view.' });
     const feedUrl = new URL(approvedFeed);
     if (feedUrl.protocol !== 'https:') return Response.json({ error:'Approved feed must use HTTPS' }, { status:400 });
-    let user = await base44.auth.me().catch(() => null);
+    const user = await base44.auth.me().catch(() => null);
+    let trustedServiceInvocation = false;
     if (!user && req.headers.get('Authorization')) {
-      try { await base44.entities.SystemScanRun.list('-created_date', 1); user = { role:'dispatch', additional_roles:[] }; } catch {}
+      try {
+        // SystemScanRun is admin-only. A successful request-context read here
+        // identifies a trusted Base44 workflow/service invocation without
+        // fabricating a user or trusting caller-supplied request data.
+        await base44.entities.SystemScanRun.list('-created_date', 1);
+        trustedServiceInvocation = true;
+      } catch {}
     }
-    if (!user) return Response.json({ error:'Unauthorized' }, { status:401 });
-    const roles = new Set((user.additional_roles || []).map((role:any) => String(role).toLowerCase()));
-    if (!['admin','dispatch'].includes(user.role) && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access') && !roles.has('dispatch')) return Response.json({ error:'CAD access required' }, { status:403 });
+    if (!user && !trustedServiceInvocation) return Response.json({ error:'Unauthorized' }, { status:401 });
+    if (user) {
+      const roles = new Set((user.additional_roles || []).map((role:any) => String(role).toLowerCase()));
+      if (!['admin','dispatch'].includes(user.role) && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access') && !roles.has('dispatch')) return Response.json({ error:'CAD access required' }, { status:403 });
+    }
 
     const agencies = await resolveAgencies(body);
     if (!agencies.length) return Response.json({ success: false, error: 'No PulsePoint agencies found. Pass agency_ids or configure PULSEPOINT_AGENCY_IDS.' }, { status: 400 });
@@ -461,10 +470,10 @@ Deno.serve(async (req) => {
     active = decoded.incidents.active;
     feedSource = 'approved_feed';
 
-    const incoming = (await Promise.all(active.map(row => {
+    const incoming: any[] = (await Promise.all(active.map(row => {
       const agencyId = rowAgencyId(row);
       return normalizeIncident(row, agencyById.get(agencyId) || { agencyId: agencyId || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' });
-    }))).filter(Boolean);
+    }))).filter((row:any) => Boolean(row)) as any[];
 
     const [existingCalls, history] = await Promise.all([
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
