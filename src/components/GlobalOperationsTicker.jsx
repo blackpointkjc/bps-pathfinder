@@ -120,7 +120,14 @@ function distressSegments(rows = []) {
 }
 
 function propertySegments(rows = [], calls = []) {
-  const activeCalls = dedupeOperationalCalls(calls).filter(call => !CLOSED.has(normalized(call.status)));
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const todayEastern = formatter.format(new Date());
+  const activeCalls = dedupeOperationalCalls(calls).filter(call => {
+    if (CLOSED.has(normalized(call.status))) return false;
+    const stamp = new Date(call.time_received || call.created_date || 0);
+    if (!Number.isFinite(stamp.getTime())) return false;
+    return formatter.format(stamp) === todayEastern;
+  });
   const activeById = new Map();
   for (const call of activeCalls) {
     [call.id, call.external_call_id, call.agency_cad_number, call.bps_reference, call.call_id]
