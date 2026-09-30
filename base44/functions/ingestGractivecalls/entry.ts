@@ -35,11 +35,22 @@ const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
 const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
 const LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1000;
+const LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 15 * 60 * 1000;
 
 function isFreshLivePropertyCall(call: any) {
+  const now = Date.now();
+  const firstSeenAt = new Date(call?.source_first_seen_at || call?.created_date || 0).getTime();
   const callAt = new Date(call?.time_received || call?.created_date || 0).getTime();
-  const ageMs = Date.now() - callAt;
-  return Number.isFinite(callAt) && callAt > 0 && ageMs >= 0 && ageMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS;
+  const firstSeenAgeMs = now - firstSeenAt;
+  const upstreamAgeMs = now - callAt;
+  // Public CAD feeds can intentionally publish several minutes after the event's
+  // reported receive time. Treat a call as live when Pathfinder has just observed
+  // it, while retaining an upstream-age ceiling so an outage cannot replay truly
+  // old calls as brand-new monitored-property emergencies.
+  return Number.isFinite(firstSeenAt) && firstSeenAt > 0
+    && firstSeenAgeMs >= 0 && firstSeenAgeMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS
+    && Number.isFinite(callAt) && callAt > 0
+    && upstreamAgeMs >= 0 && upstreamAgeMs <= LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS;
 }
 
 const normalizeStatus = (raw: unknown) => {
