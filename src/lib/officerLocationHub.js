@@ -10,8 +10,8 @@ import { base44, clearBase44ReadCacheMatching, getBase44RequestHealth } from '@/
 const SNAPSHOT_TTL_MS = 60_000;
 const FORCE_REFRESH_DEDUPE_MS = 45_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
-const GPS_PUBLISH_MIN_MS = 30 * 1000;
-const HEARTBEAT_PUBLISH_MIN_MS = 8 * 60 * 1000;
+const GPS_PUBLISH_MIN_MS = 5 * 1000;
+const HEARTBEAT_PUBLISH_MIN_MS = 60 * 1000;
 const CROSS_KIND_BURST_GAP_MS = 5 * 1000;
 const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
 const PUBLISH_STAMP_PREFIX = 'bps:pathfinder:location-publish-at:';
@@ -202,7 +202,10 @@ export async function publishOfficerLocation(data = {}) {
   const email = String(data.officer_email || '').trim().toLowerCase();
   const kind = publishKind(data);
   const forcePublish = data.end_session === true || data.reset_gps === true || data.status_changed === true;
-  const gpsGap = Number(data.publish_interval_ms) === 60000 ? 60000 : GPS_PUBLISH_MIN_MS;
+  const requestedGpsGap = Number(data.publish_interval_ms);
+  const gpsGap = Number.isFinite(requestedGpsGap) && requestedGpsGap > 0
+    ? Math.max(GPS_PUBLISH_MIN_MS, requestedGpsGap)
+    : GPS_PUBLISH_MIN_MS;
   const minimumGap = forcePublish ? 0 : (kind === 'gps' ? gpsGap : kind === 'heartbeat' ? HEARTBEAT_PUBLISH_MIN_MS : 0);
 
   return withPublishLock(email || 'current-user', async () => {
