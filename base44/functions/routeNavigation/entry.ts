@@ -148,12 +148,12 @@ Deno.serve(async req => {
         const route = data?.routes?.[0];
         if (route?.geometry?.coordinates?.length > 1) return Response.json({ success: true, route });
         last = 'No route returned';
-      } catch (error) {
+      } catch (error: any) {
         last = error?.message || String(error);
       }
     }
     return Response.json({ error: 'No routing provider returned a route', detail: last }, { status: 502 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('routeNavigation failed', error);
     return Response.json({ error: error?.message || 'Route failed' }, { status: 500 });
   }
