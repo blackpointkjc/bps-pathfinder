@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       max_age_minutes: 60,
       fetched_at: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('getActiveDispatchCalls failed', error);
     return Response.json(
       { error: error?.message || 'Unable to load active dispatch calls' },
