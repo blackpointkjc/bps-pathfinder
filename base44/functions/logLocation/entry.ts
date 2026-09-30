@@ -152,9 +152,7 @@ Deno.serve(async (req) => {
       && sameSessionPosition
       && jumpDistance > 5000
       && jumpDistance / jumpElapsedSeconds > 70;
-    const grosslyImpreciseFix = gpsSource === 'external_serial'
-      ? candidateAccuracy > 1000
-      : candidateAccuracy > 2000;
+    const grosslyImpreciseFix = candidateAccuracy > 100;
     const acceptsGps = hasGps
       && deviceFixAt >= receivedAt - 2 * 60 * 1000
       && (!Number.isFinite(existingFixAt) || sessionChanged || deviceFixAt >= existingFixAt || (candidateClearlyBetter && existingFixAt - deviceFixAt <= 30000))
