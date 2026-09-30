@@ -7,12 +7,22 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, MapPin, CheckCircle, Clock3, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
-import { formatEasternTime } from '@/lib/easternTime';
+import { EASTERN_TIME_ZONE, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import AutoDispatchRecommendation from '@/components/dispatch/AutoDispatchRecommendation';
 import { createPageUrl } from '../../utils';
 
 const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const normalizedStatus = value => String(value || '').trim().toLowerCase();
+const easternDateKey = value => {
+    const date = parseServerTimestamp(value);
+    if (!date) return '';
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: EASTERN_TIME_ZONE,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date);
+    const part = type => parts.find(item => item.type === type)?.value || '';
+    return [part('year'), part('month'), part('day')].join('-');
+};
 
 export default function PropertyAlertsBanner() {
     const navigate = useNavigate();
@@ -61,8 +71,13 @@ export default function PropertyAlertsBanner() {
             } catch {
                 locallyDismissed = new Set();
             }
+            const todayEastern = easternDateKey(new Date());
             const activeCallById = new Map((calls || [])
-                .filter(call => !HIDDEN_CALL_STATUSES.has(normalizedStatus(call.status)))
+                .filter(call => {
+                    if (HIDDEN_CALL_STATUSES.has(normalizedStatus(call.status))) return false;
+                    const callDay = easternDateKey(call.time_received || call.created_date);
+                    return Boolean(callDay) && callDay === todayEastern;
+                })
                 .map(call => [String(call.id), call]));
             const seenPairs = new Set();
             const visible = [];
