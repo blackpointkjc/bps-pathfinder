@@ -510,9 +510,11 @@ export default function GlobalMessageBanner({ user }) {
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
-      const callStartedAt = new Date(record.callTime || record.time_received || 0).getTime();
       const alertCreatedAt = new Date(record.created_date || 0).getTime();
-      const liveReferenceAt = Number.isFinite(callStartedAt) && callStartedAt > 0 ? callStartedAt : alertCreatedAt;
+      // The public CAD source can expose a call several minutes after its reported
+      // receive time. PropertyAlert.created_date is the moment Pathfinder verified
+      // the monitored-property event, so live audio freshness must use that event.
+      const liveReferenceAt = alertCreatedAt;
       const liveAgeMs = Date.now() - liveReferenceAt;
       const isFreshLivePropertyAlert = Number.isFinite(liveReferenceAt)
         && liveAgeMs >= 0
