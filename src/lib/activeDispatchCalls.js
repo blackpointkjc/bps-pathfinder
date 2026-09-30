@@ -8,7 +8,7 @@ const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed',
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 10_000;
+const MEMORY_DEDUPE_MS = 3_000;
 let requestBackoffUntil = 0;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
@@ -165,7 +165,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     } catch (error) {
       primaryError = error;
       if (/429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
-        requestBackoffUntil = Date.now() + 60000;
+        requestBackoffUntil = Date.now() + 20_000;
         if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows);
         const cached = readLastGoodCalls();
         if (cached.length) return cached;
