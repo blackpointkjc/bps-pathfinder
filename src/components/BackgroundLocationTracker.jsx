@@ -256,9 +256,10 @@ export default function BackgroundLocationTracker({ user }) {
             )
           : Infinity;
         const moving = speedMph >= 3 || movedMeters >= 18;
-        // A dedicated GPS receiver or moving unit records every 30 seconds.
-        // Idle browser GPS records every minute, even at unchanged coordinates.
-        const livePushIntervalMs = moving || fix.source === 'external_serial' ? 30000 : 60000;
+        // External NMEA/USB is a live tactical source: publish it at near-live
+        // cadence instead of holding a good fix for 30-60 seconds. Moving browser
+        // GPS stays conservative to avoid unnecessary backend pressure.
+        const livePushIntervalMs = fix.source === 'external_serial' ? 5000 : moving ? 15000 : 30000;
         if (uploadInFlightRef.current || now < rateLimitBackoffUntilRef.current) return;
         if (now - Math.max(lastGpsPushRef.current, lastGpsAttemptRef.current) < livePushIntervalMs) return;
         lastGpsAttemptRef.current = now;
