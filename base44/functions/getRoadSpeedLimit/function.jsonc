@@ -1,0 +1,5 @@
+{
+  "name": "getRoadSpeedLimit",
+  "entrypoint": "entry.ts",
+  "description": "Returns the mapped or clearly marked estimated road speed limit near a live Pathfinder GPS position."
+}
