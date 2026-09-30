@@ -549,7 +549,7 @@ export default function GlobalMessageBanner({ user }) {
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
-        if (!announcedPropertySpeech.current.has(propertyEventKey)) {
+        if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
           const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -654,7 +654,7 @@ export default function GlobalMessageBanner({ user }) {
       // speech whenever that log row was created before this browser subscribed.
       // Claim the canonical property+call+status event so multiple tabs/devices
       // still speak it only once for this user.
-      if (!announcedPropertySpeech.current.has(propertyEventKey)) {
+      if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
         const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -823,10 +823,8 @@ export default function GlobalMessageBanner({ user }) {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
           const created = parseServerTimestamp(record.created_date)?.getTime() || 0;
-          if (record.event_type === 'property_alert' && Number.isFinite(created) && created >= statusLogRecoveryCutoff) {
-            void showCadAnnouncementEvent(record);
-            return;
-          }
+          // Recovery/history loads are seeded silently. Only a realtime create
+          // owns CAD audio; reconnecting must never make an old record beep.
           knownIds.current.add(`CallStatusLog:${record.event_key}`);
         });
       }).catch(() => null);
@@ -847,7 +845,7 @@ export default function GlobalMessageBanner({ user }) {
             if (!record?.id) return;
             const created = new Date(record.created_date || 0).getTime();
             if (Number.isFinite(created) && created >= propertyCutoff) {
-              void showPropertyCall(record);
+              void showPropertyCall(record, { allowAudio: false });
             } else {
               // Old alerts stay available in history but are never replayed as a
               // new live voice/banner event.
@@ -877,7 +875,7 @@ export default function GlobalMessageBanner({ user }) {
           const version = record.updated_date || record.created_date || 'active';
           const changedAt = new Date(version).getTime();
           if (record.status === 'active' && Number.isFinite(changedAt) && changedAt >= boloCutoff) {
-            void showBolo(record);
+            void showBolo(record, { allowAudio: false });
             return;
           }
           knownIds.current.add(`BOLOAlert:${record.id}:${version}`);
