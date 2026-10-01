@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
@@ -78,6 +78,19 @@ const destinationIcon = new L.DivIcon({
     iconSize: [32, 32],
     iconAnchor: [16, 16],
 });
+
+function MapClickSelector({ enabled, onPick }) {
+    useMapEvents({
+        click(event) {
+            if (!enabled || typeof onPick !== 'function') return;
+            const lat = Number(event?.latlng?.lat);
+            const lng = Number(event?.latlng?.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            onPick([lat, lng]);
+        },
+    });
+    return null;
+}
 
 function MapViewportSync() {
     const map = useMap();
@@ -245,11 +258,14 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
 const validCoordPair = value => Array.isArray(value) && value.length >= 2 && value.slice(0,2).every(v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v))) && Math.abs(Number(value[0])) <= 90 && Math.abs(Number(value[1])) <= 180;
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, upcomingManeuverDistance = null, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, upcomingManeuverDistance = null, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, searchPins = [], mapPickEnabled = false, onMapPick = null, onNavigateToPoint = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
     const safeMapCenter = validCoordPair(mapCenter) ? [Number(mapCenter[0]), Number(mapCenter[1])] : null;
     const safeDestination = destination && validCoordPair(destination.coords) ? { ...destination, coords: [Number(destination.coords[0]), Number(destination.coords[1])] } : null;
     const safeSearchPin = searchPin && validCoordPair(searchPin.coords) ? { ...searchPin, coords: [Number(searchPin.coords[0]), Number(searchPin.coords[1])] } : null;
+    const safeSearchPins = (searchPins || [])
+        .filter(item => item && validCoordPair(item.coords))
+        .map(item => ({ ...item, coords: [Number(item.coords[0]), Number(item.coords[1])] }));
     const safeRoute = (route || []).filter(validCoordPair).map(coord => [Number(coord[0]), Number(coord[1])]);
     const safeHistory = (locationHistory || []).filter(validCoordPair).map(coord => [Number(coord[0]), Number(coord[1])]);
     const defaultCenter = safeCurrentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
@@ -271,6 +287,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         >
             <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
             <MapViewportSync />
+            <MapClickSelector enabled={mapPickEnabled && !isNavigating} onPick={onMapPick} />
 
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
@@ -390,8 +407,25 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} onUnitClick={(unit) => onNavigateToJail({ coords: [Number(unit.latitude), Number(unit.longitude)], name: unit.unit_number ? `Unit ${unit.unit_number}` : unit.full_name || 'Officer unit' })} />
             )}
             
-            {/* Search Pin */}
-            {safeSearchPin && <SearchPinMarker position={safeSearchPin.coords} address={safeSearchPin.address} propertyInfo={safeSearchPin.propertyInfo} />}
+            {/* Search / map-picked destination pins */}
+            {safeSearchPin && (
+                <SearchPinMarker
+                    position={safeSearchPin.coords}
+                    address={safeSearchPin.address || safeSearchPin.name}
+                    propertyInfo={safeSearchPin.propertyInfo}
+                    label={safeSearchPin.label || 'Selected Location'}
+                    onNavigate={typeof onNavigateToPoint === 'function' ? () => onNavigateToPoint(safeSearchPin) : null}
+                />
+            )}
+            {safeSearchPins.map((pin, index) => (
+                <SearchPinMarker
+                    key={`${pin.coords[0].toFixed(5)}:${pin.coords[1].toFixed(5)}:${index}`}
+                    position={pin.coords}
+                    address={pin.address || pin.name}
+                    label={pin.label || 'Search Result'}
+                    onNavigate={typeof onNavigateToPoint === 'function' ? () => onNavigateToPoint(pin) : null}
+                />
+            ))}
             
             {/* Call Volume Heatmap */}
             <CallHeatmapLayer enabled={showHeatmap} calls={allCalls} />
