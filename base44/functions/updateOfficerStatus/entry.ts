@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
         const now = new Date().toISOString();
 
-        const updateData = {
+        const updateData: Record<string, any> = {
             status,
             last_updated: now,
             status_since: now
@@ -153,8 +153,8 @@ Deno.serve(async (req) => {
 
         return Response.json({ success: true, status, officer_id: user.id, email: user.email, last_updated: now, duplicate_transition: duplicateTransition, reconciled_live_status: true, active_records_updated: linkedActive.length, active_record_created: false, unit_records_updated: linkedUnits.length, unit_records_deduped: unitDedupedCount });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating officer status:', error);
-        return Response.json({ error: error.message }, { status: 500 });
+        return Response.json({ error: error?.message || 'Unable to update officer status' }, { status: 500 });
     }
 });
