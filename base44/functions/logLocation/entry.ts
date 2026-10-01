@@ -5,6 +5,11 @@ function finiteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizedSpeedMph(value: unknown) {
+  const speed = Math.max(0, finiteNumber(value));
+  return speed >= 3 ? speed : 0;
+}
+
 function hasCoordinates(latitude: unknown, longitude: unknown) {
   if (latitude === null || latitude === undefined || longitude === null || longitude === undefined || latitude === '' || longitude === '') return false;
   const lat = Number(latitude);
@@ -229,7 +234,7 @@ Deno.serve(async (req) => {
       liveData.latitude = latitude;
       liveData.longitude = longitude;
       liveData.heading = finiteNumber(body.heading);
-      liveData.speed = finiteNumber(body.speed);
+      liveData.speed = normalizedSpeedMph(body.speed);
       liveData.accuracy = acceptedAccuracy;
       liveData.gps_session_key = trackingSessionKey;
       liveData.gps_source = gpsSource;
@@ -383,7 +388,7 @@ Deno.serve(async (req) => {
         ));
         const latestAt = new Date(latestHistory?.[0]?.timestamp || latestHistory?.[0]?.created_date || 0).getTime();
         const latestIsUsable = Number.isFinite(latestAt) && latestAt <= receivedAt + 30000;
-        const speedMph = Math.max(0, finiteNumber(body.speed));
+        const speedMph = normalizedSpeedMph(body.speed);
         const movedMeters = latestHistory?.[0]
           ? distanceMeters(latestHistory[0].latitude, latestHistory[0].longitude, latitude, longitude)
           : 0;
@@ -398,7 +403,7 @@ Deno.serve(async (req) => {
             longitude,
             timestamp: new Date(deviceFixAt).toISOString(),
             accuracy: acceptedAccuracy,
-            speed: finiteNumber(body.speed),
+            speed: normalizedSpeedMph(body.speed),
             heading: finiteNumber(body.heading),
             gps_source: gpsSource,
           }));
