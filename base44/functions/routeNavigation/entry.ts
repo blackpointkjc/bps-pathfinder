@@ -137,25 +137,30 @@ Deno.serve(async req => {
     if (Number.isFinite(originAccuracy) && originAccuracy > 0) {
       query.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2))) };unlimited`.replace(' ', ''));
     }
-    const path = `${lng},${lat};${destLng},${destLat}?${query.toString()}`;
+    const constrainedPath = `${lng},${lat};${destLng},${destLat}?${query.toString()}`;
+    const fallbackQuery = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
+    const fallbackPath = `${lng},${lat};${destLng},${destLat}?${fallbackQuery.toString()}`;
+    const routePaths = constrainedPath === fallbackPath ? [fallbackPath] : [constrainedPath, fallbackPath];
     const providers = [
       'https://router.project-osrm.org/route/v1/driving/',
       'https://routing.openstreetmap.de/routed-car/route/v1/driving/',
     ];
     let last = '';
-    for (const host of providers) {
-      try {
-        const response = await fetch(host + path, {
-          headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-Navigation/1.0' },
-          signal: AbortSignal.timeout(8000),
-        });
-        if (!response.ok) { last = `HTTP ${response.status}`; continue; }
-        const data = await response.json();
-        const route = data?.routes?.[0];
-        if (route?.geometry?.coordinates?.length > 1) return Response.json({ success: true, route });
-        last = 'No route returned';
-      } catch (error: any) {
-        last = error?.message || String(error);
+    for (const path of routePaths) {
+      for (const host of providers) {
+        try {
+          const response = await fetch(host + path, {
+            headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-Navigation/1.0' },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!response.ok) { last = `HTTP ${response.status}`; continue; }
+          const data = await response.json();
+          const route = data?.routes?.[0];
+          if (route?.geometry?.coordinates?.length > 1) return Response.json({ success: true, route, heading_constrained: path === constrainedPath && constrainedPath !== fallbackPath });
+          last = data?.code || 'No route returned';
+        } catch (error: any) {
+          last = error?.message || String(error);
+        }
       }
     }
     return Response.json({ error: 'No routing provider returned a route', detail: last }, { status: 502 });
