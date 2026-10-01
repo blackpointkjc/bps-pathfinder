@@ -712,22 +712,42 @@ export default function Navigation() {
         setAddressSearchError('');
         setNavigationFallbackAddress(destination.name || destination.address || coords.join(','));
         try {
-            const recentFix = getLiveLocation(90_000);
-            const freshLocation = recentFix && validPosition(recentFix.latitude, recentFix.longitude)
-                ? [recentFix.latitude, recentFix.longitude]
-                : currentLocation && validPosition(currentLocation[0], currentLocation[1])
-                    ? currentLocation
-                    : await getFreshDeviceLocation();
+            const originOverride = Array.isArray(options.originOverride) && validPosition(options.originOverride[0], options.originOverride[1])
+                ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
+                : null;
+            const recentFix = getLiveLocation(options.reroute ? 12_000 : 30_000);
+            const freshLocation = originOverride
+                || (options.reroute && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
+                || (currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || await getFreshDeviceLocation();
             if (!freshLocation) throw new Error('GPS unavailable. Enable precise location or use Open in Google Maps below.');
             const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
-            const routePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+            const originHeading = Number.isFinite(Number(options.originHeading))
+                ? Number(options.originHeading)
+                : Number.isFinite(Number(recentFix?.heading)) ? Number(recentFix.heading)
+                    : Number.isFinite(Number(heading)) ? Number(heading) : null;
+            const originAccuracy = Number.isFinite(Number(recentFix?.accuracy))
+                ? Number(recentFix.accuracy)
+                : Number.isFinite(Number(gpsQuality?.accuracy)) ? Number(gpsQuality.accuracy) : null;
+            const originSpeed = liveSpeedMph(recentFix?.speed ?? speed);
+            const browserQuery = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
+            if (originSpeed >= 5 && Number.isFinite(originHeading)) browserQuery.set('bearings', `${Math.round(((originHeading % 360) + 360) % 360)},55;`);
+            if (Number.isFinite(originAccuracy) && originAccuracy > 0) browserQuery.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2)))};unlimited`);
+            const routePath = `${lng},${lat};${destLng},${destLat}?${browserQuery.toString()}`;
             let route = null;
             // Server-side routing avoids browser CORS/network policies that were
             // causing Search to finish and simply return to GO without starting.
             try {
                 const routed = await withRequestTimeout(base44.functions.invoke('routeNavigation', {
-                    origin_lat: lat, origin_lng: lng, dest_lat: destLat, dest_lng: destLng,
+                    origin_lat: lat,
+                    origin_lng: lng,
+                    dest_lat: destLat,
+                    dest_lng: destLng,
+                    origin_heading: originHeading,
+                    origin_accuracy: originAccuracy,
+                    origin_speed_mph: originSpeed,
                 }), 12_000, 'Navigation route');
                 const payload = routed?.data || routed || {};
                 if (payload?.route?.geometry?.coordinates?.length > 1) route = payload.route;
@@ -748,11 +768,33 @@ export default function Navigation() {
             }
             if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
-            setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
+            const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
+            const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
+            setNavRoute(routeCoords);
             navSnapIndexRef.current = 0;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
-            const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
+            // Map each OSRM maneuver to its forward route index. This gives the
+            // step engine a route-progress reference so a missed/closely-parallel
+            // maneuver cannot stay active indefinitely.
+            let searchStart = 0;
+            navStepRouteIndexesRef.current = routeSteps.map(step => {
+                const location = step?.maneuver?.location;
+                if (!Array.isArray(location) || location.length < 2 || !routeCoords.length) return searchStart;
+                const point = [Number(location[1]), Number(location[0])];
+                let nearestIndex = searchStart;
+                let nearestDistance = Infinity;
+                for (let index = searchStart; index < routeCoords.length; index += 1) {
+                    const distance = distanceMetersBetween(point, routeCoords[index]);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestIndex = index;
+                    }
+                    if (nearestDistance < 4 && index > nearestIndex + 15) break;
+                }
+                searchStart = Math.max(searchStart, nearestIndex);
+                return nearestIndex;
+            });
             setNavSteps(routeSteps);
             setNavStepIndex(0);
             lastSpokenNavStepRef.current = -1;
@@ -772,7 +814,7 @@ export default function Navigation() {
             setFitBounds(null);
             setMapCenter(null);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
-            if (options.reroute) toast.success('Route updated');
+            if (options.reroute) toast.success('Route updated from your current position');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
             const message = error?.message || 'Unable to build route';
