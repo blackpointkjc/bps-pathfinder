@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, invalidateAppDirectory } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,6 +182,7 @@ export default function OfficerProfile() {
         zip: homeAddressForm.zip.trim(),
       };
       await updateProfileMutation.mutateAsync(payload);
+      invalidateAppDirectory();
       window.dispatchEvent(new CustomEvent('bps-profile-home-address-updated', { detail: payload }));
       alert('Home navigation address updated successfully.');
     } catch (error) {
