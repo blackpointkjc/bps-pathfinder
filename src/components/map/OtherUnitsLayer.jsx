@@ -19,7 +19,7 @@ const getAgencyLabel = (unitNumber) => {
 };
 
 // Law-enforcement-style patrol shield for officer/unit locations.
-const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber, locationState = 'live') => {
+const createOtherUnitIcon = (status, heading, flashAssignedEnroute, isSupervisor, unitNumber, locationState = 'live') => {
     let statusColor = '#64748B';
     if (status === 'Dispatched' || status === 'Enroute') statusColor = '#EF4444';
     else if (status === 'On Scene') statusColor = '#22C55E';
@@ -31,13 +31,13 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
 
     const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
     const unitLabel = String(unitNumber || getAgencyLabel(unitNumber) || 'UNIT').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) || 'UNIT';
-    const emergency = showLights || status === 'Dispatched' || status === 'Enroute' || status === 'On Scene';
+    const emergency = flashAssignedEnroute === true;
 
     return new L.DivIcon({
         className: 'custom-marker patrol-shield-marker',
         html: `
           <div style="position:relative;width:38px;height:46px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
-            ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.9);z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsPoliceFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsPoliceFlash .8s .4s infinite"></span></div>` : ''}
+            ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.95);z-index:4;background:#052e16"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#22c55e;animation:bpsAssignedEnrouteFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#ffffff;animation:bpsAssignedEnrouteFlash .8s .4s infinite"></span></div>` : ''}
             <svg width="54" height="58" viewBox="0 0 54 58" style="position:absolute;top:5px;left:0;z-index:2;overflow:visible">
               <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${['last_known','site_fallback','shift_clock_in'].includes(locationState) ? '#94a3b8' : isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2" opacity="${['last_known','site_fallback','shift_clock_in'].includes(locationState) ? '.72' : '1'}"/>
               <path d="M27 7 L42 12 V26 C42 36 36 44 27 49 C18 44 12 36 12 26 V12 Z" fill="#0f3b68" stroke="${statusColor}" stroke-width="2"/>
@@ -50,7 +50,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
             </svg>
             ${Number.isFinite(Number(heading)) ? `<div style="position:absolute;left:24px;top:-8px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:10px solid ${isSupervisor ? '#facc15' : '#67e8f9'};transform:rotate(${normalizedHeading}deg);transform-origin:4px 39px;z-index:1"></div>` : ''}
           </div>
-          <style>@keyframes bpsPoliceFlash{0%,48%{opacity:1}50%,100%{opacity:.2}}</style>
+          <style>@keyframes bpsAssignedEnrouteFlash{0%,48%{opacity:1}50%,100%{opacity:.2}}</style>
         `,
         iconSize: [38, 46],
         iconAnchor: [19, 42],
@@ -199,7 +199,13 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
             }}
         >
             {unitsToShow.map((unit) => {
-                const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.last_updated || ''}`;
+                const assignedToCall = Boolean(
+                    String(unit.current_call_id || '').trim()
+                    || (Array.isArray(unit.assigned_call_ids) && unit.assigned_call_ids.length > 0)
+                    || String(unit.current_call_info || '').trim()
+                );
+                const flashAssignedEnroute = String(unit.status || '').trim().toLowerCase() === 'enroute' && assignedToCall;
+                const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.current_call_id || ''}-${unit.last_updated || ''}`;
                 return (
                 <Fragment key={markerKey}>
                 {unit.location_state === 'low_accuracy' && unit.display_accuracy && <Circle center={[unit.latitude, unit.longitude]} radius={Math.max(25, unit.display_accuracy)} pathOptions={{ color:'#f59e0b', weight:1.5, fillOpacity:.08, dashArray:'6 6' }} />}
@@ -207,7 +213,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                     key={markerKey}
                     position={[unit.latitude, unit.longitude]}
                     title={unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.officer_name || unit.email || 'Officer'}
-                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.location_state)}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, flashAssignedEnroute, unit.is_supervisor, unit.unit_number, unit.location_state)}
                     eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
                         <Popup autoPan={false}>
