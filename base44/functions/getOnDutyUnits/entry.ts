@@ -69,7 +69,7 @@ async function readWithRetry(loader: () => Promise<any[]>, label: string) {
     try {
       const rows = await loader();
       return Array.isArray(rows) ? rows : [];
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
       if (attempt < 2) await delay(300 * (attempt + 1));
     }
@@ -608,7 +608,7 @@ Deno.serve(async (req) => {
       clocked_in_without_session: clockedInWithoutSession,
       clocked_in_without_session_count: clockedInWithoutSession.length,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('getOnDutyUnits failed', error);
     return Response.json({ error: error?.message || 'Unable to load on-duty units', units: [], users: [] }, { status: 500 });
   }
