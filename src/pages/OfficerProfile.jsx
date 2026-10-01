@@ -87,6 +87,16 @@ export default function OfficerProfile() {
     refetchInterval: 2 * 60 * 1000,
   });
 
+  useEffect(() => {
+    if (!user) return;
+    setHomeAddressForm({
+      address: String(user.address || ''),
+      city: String(user.city || ''),
+      state: String(user.state || ''),
+      zip: String(user.zip || ''),
+    });
+  }, [user?.id, user?.address, user?.city, user?.state, user?.zip]);
+
   const certificationRows = profileCertifications(user);
 
   const { data: companyMailboxes = [] } = useQuery({
@@ -161,6 +171,26 @@ export default function OfficerProfile() {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
+
+  const saveHomeNavigationAddress = async () => {
+    try {
+      setSavingHomeAddress(true);
+      const payload = {
+        address: homeAddressForm.address.trim(),
+        city: homeAddressForm.city.trim(),
+        state: homeAddressForm.state.trim().toUpperCase(),
+        zip: homeAddressForm.zip.trim(),
+      };
+      await updateProfileMutation.mutateAsync(payload);
+      window.dispatchEvent(new CustomEvent('bps-profile-home-address-updated', { detail: payload }));
+      alert('Home navigation address updated successfully.');
+    } catch (error) {
+      console.error('Unable to update home navigation address:', error);
+      alert(error?.message || 'Unable to update your home navigation address.');
+    } finally {
+      setSavingHomeAddress(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") return;
