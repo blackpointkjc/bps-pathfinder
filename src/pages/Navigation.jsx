@@ -154,10 +154,7 @@ export default function Navigation() {
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const homeAddress = profileHomeAddress(currentUser);
-    const selfAssignedToCall = Boolean(
-        String(currentUser?.current_call_id || '').trim()
-        || String(currentUser?.current_call_info || '').trim()
-    );
+    const selfAssignedToCall = Boolean(String(currentUser?.current_call_id || '').trim());
     const flashSelfAssignedEnroute = String(unitStatus || currentUser?.status || '').trim().toLowerCase() === 'enroute'
         && selfAssignedToCall;
 
