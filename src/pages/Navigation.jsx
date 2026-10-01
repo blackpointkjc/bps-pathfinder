@@ -27,6 +27,7 @@ import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 const liveSpeedMph = value => {
@@ -479,7 +480,7 @@ export default function Navigation() {
 
     const init = async () => {
         try {
-            const user = await base44.auth.me();
+            const user = await getCurrentDirectoryUser();
             setCurrentUser(user);
             syncScheduledCadPartnership(user).then(setCurrentUser).catch(() => null);
             if (user.status) setUnitStatus(user.status === 'On Patrol' ? 'Available' : user.status);
