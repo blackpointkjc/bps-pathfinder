@@ -60,6 +60,10 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
 
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const LIVE_GPS_FRESH_MS = 5 * 60 * 1000;
+const liveSpeedMph = value => {
+    const speed = Math.max(0, Number(value) || 0);
+    return speed >= 3 ? speed : 0;
+};
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -251,7 +255,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     {unit.speed !== undefined && unit.speed !== null && (
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-gray-600">Speed:</span>
-                                            <span className="text-sm font-bold text-gray-900">{Math.round(unit.speed)} mph</span>
+                                            <span className="text-sm font-bold text-gray-900">{Math.round(liveSpeedMph(unit.speed))} mph</span>
                                         </div>
                                     )}
 
