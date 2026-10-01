@@ -715,6 +715,9 @@ export default function Navigation() {
             setAddressQuery('');
             setNavigationFallbackAddress('');
             setAddressSearchError('');
+            setMapPickMode(false);
+            setMapSelectedDestination(null);
+            setFitBounds(null);
             setMapCenter(null);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
             if (options.reroute) toast.success('Route updated');
@@ -1508,6 +1511,8 @@ export default function Navigation() {
                                 if (showAddressSearch) {
                                     setAddressResults([]);
                                     setAddressQuery('');
+                                    setMapPickMode(false);
+                                    setMapSelectedDestination(null);
                                 }
                             },
                             title: showAddressSearch ? 'Close address search' : 'Search for a destination',
