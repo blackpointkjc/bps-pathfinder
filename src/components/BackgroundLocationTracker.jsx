@@ -259,7 +259,8 @@ export default function BackgroundLocationTracker({ user }) {
       if (!shouldPublish) return;
 
       try {
-        const speedMph = Number.isFinite(Number(fix.speed)) ? Math.max(0, Number(fix.speed)) : 0;
+        const rawSpeedMph = Number.isFinite(Number(fix.speed)) ? Math.max(0, Number(fix.speed)) : 0;
+        const speedMph = rawSpeedMph >= 3 ? rawSpeedMph : 0;
         const previousPushed = lastPushedFixRef.current;
         const movedMeters = previousPushed
           ? getDistanceFromLatLonInMeters(
