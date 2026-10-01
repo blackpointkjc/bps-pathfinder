@@ -7,6 +7,7 @@ import { isInternalMember } from '@/lib/directoryUtils';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 import { releaseOperationalWakeLock, requestOperationalWakeLock } from '@/lib/keepAliveService';
+import { persistOfficerStatus } from '@/lib/officerStatusService';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -65,6 +66,7 @@ export default function BackgroundLocationTracker({ user }) {
   const rateLimitBackoffUntilRef = useRef(0);
   const sessionStartedRef = useRef(new Date().toISOString());
   const trackingDeviceIdRef = useRef(getTrackingDeviceId());
+  const dutyStatusRecoveryRef = useRef('');
   const trackingSessionKeyRef = useRef((() => {
     const identity = String(user?.email || user?.id || 'unknown').trim().toLowerCase();
     const storageKey = `bps:pathfinder:tracking-session:${identity}`;
@@ -100,6 +102,29 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
     refetchInterval: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (!activeEntry?.id || !user?.email) return;
+    if (String(user?.status || '').trim().toLowerCase() !== 'out of service') return;
+    if (dutyStatusRecoveryRef.current === activeEntry.id) return;
+    dutyStatusRecoveryRef.current = activeEntry.id;
+
+    // Repair legacy/automatic OOS corruption while an officer is still clocked
+    // in. updateOfficerStatus refuses this recovery when a real forced-OOS
+    // override is active, so supervisor actions remain authoritative.
+    persistOfficerStatus('Available', { force: true })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+        queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+      })
+      .catch(error => {
+        const message = String(error?.message || error || '');
+        if (!/forced Out of Service|override/i.test(message)) {
+          console.warn('[DUTY STATUS] Unable to reconcile clocked-in officer to Available:', message);
+        }
+      });
+  }, [activeEntry?.id, user?.email, user?.status, queryClient]);
 
   // Get locations for geofencing
   const { data: locations } = useQuery({
