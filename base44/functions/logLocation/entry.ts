@@ -182,7 +182,8 @@ Deno.serve(async (req) => {
       last_update: now,
       user_role: String(body.user_role || user.role || 'user'),
       session_active: true,
-      show_lights: body.show_lights === true,
+      show_lights: false,
+      current_call_id: String(body.current_call_id || user.current_call_id || ''),
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
     if (body.reset_gps === true && !acceptsGps) {
