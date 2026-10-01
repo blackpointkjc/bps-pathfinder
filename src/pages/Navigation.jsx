@@ -38,6 +38,29 @@ const profileHomeAddress = profile => [profile?.address, profile?.city, profile?
     .map(value => String(value || '').trim())
     .filter(Boolean)
     .join(', ');
+const toRadians = value => Number(value) * Math.PI / 180;
+const distanceMetersBetween = (a, b) => {
+    if (!Array.isArray(a) || !Array.isArray(b)) return Infinity;
+    const dLat = toRadians(Number(b[0]) - Number(a[0]));
+    const dLng = toRadians(Number(b[1]) - Number(a[1]));
+    const h = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRadians(Number(a[0]))) * Math.cos(toRadians(Number(b[0]))) * Math.sin(dLng / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+};
+const bearingBetween = (a, b) => {
+    if (!Array.isArray(a) || !Array.isArray(b)) return null;
+    const lat1 = toRadians(Number(a[0]));
+    const lat2 = toRadians(Number(b[0]));
+    const dLng = toRadians(Number(b[1]) - Number(a[1]));
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    return Number.isFinite(bearing) ? bearing : null;
+};
+const angleDifference = (a, b) => {
+    if (!Number.isFinite(Number(a)) || !Number.isFinite(Number(b))) return 0;
+    return Math.abs((((Number(a) - Number(b)) % 360) + 540) % 360 - 180);
+};
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -126,6 +149,7 @@ export default function Navigation() {
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
     const speedLimitRequestSeqRef = useRef(0);
     const navSnapIndexRef = useRef(0);
+    const navStepRouteIndexesRef = useRef([]);
     const initialOperationalFitRef = useRef(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
