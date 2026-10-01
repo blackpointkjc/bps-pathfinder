@@ -402,42 +402,7 @@ export default function AdminLocationTracker({ embedded = false }) {
       const freshLocations = freshPayload.units || [];
       const freshClockedInWithoutSession = freshPayload.clocked_in_without_session || [];
       const freshUsers = allUsers || [];
-      const latestByEmail = new Map();
-      for (const row of freshLocations) {
-        const key = String(row.officer_email || '').toLowerCase();
-        if (!key || latestByEmail.has(key)) continue;
-        latestByEmail.set(key, row);
-      }
-      const results = { total: 0, withLocation: [], withoutLocation: [], staleLocation: [], timestamp: new Date().toISOString() };
-      const now = Date.now();
-      for (const locationData of latestByEmail.values()) {
-        // Admin map responses may include an offline ActiveOfficer row only so
-        // last-known GPS can still be inspected. Offline rows are historical
-        // context, not current tracking exceptions, and must never appear under
-        // "Officers Without Live GPS."
-        if (locationData.session_active !== true) continue;
-        const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
-        if (profile && !isOperationallyVisibleUser(profile)) continue;
-        const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
-        const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
-        const name = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : (profile?.full_name || locationData.officer_name || locationData.officer_email);
-        const hasFreshGps = locationData.session_active === true && hasValidCoordinates(locationData)
-          && gpsAgeMs <= LIVE_GPS_FRESH_MS;
-        const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
-        const item = {
-          name,
-          email: profile?.email || locationData.officer_email,
-          location: locationData.current_location || 'Signed in - GPS pending',
-          role: profile?.rank || profile?.role || 'officer',
-          lastUpdate: hadGps ? new Date(gpsStamp).toISOString() : null,
-          minutesSinceUpdate: hadGps ? Math.max(0, Math.floor(gpsAgeMs / 60000)) : null,
-          trackingState: hasFreshGps ? 'Live' : hadGps ? 'Signed in - GPS stale' : 'Signed in - GPS unavailable',
-        };
-        results.total += 1;
-        if (hasFreshGps) results.withLocation.push(item);
-        else if (hadGps) results.staleLocation.push(item);
-        else results.withoutLocation.push(item);
-      }
+      const results = buildLiveLocationHealth(freshLocations, freshUsers);
 
       // A person who is still clocked in but no longer has a fresh Pathfinder
       // session is a tracking exception and must appear under No Location rather
