@@ -365,10 +365,10 @@ function handleSentence(sentence) {
     const course = Number(fields[8]);
     const speedMph = Number.isFinite(speedKnots) ? speedKnots * 1.150779 : 0;
     lastMotion = {
-      // Consumer-grade GNSS receivers commonly wander around 1–2 MPH while
-      // stationary. Treat sub-3 MPH NMEA drift as stopped so officer maps do not
-      // show parked units creeping across the screen.
-      speed: speedMph >= 3 ? speedMph : 0,
+      // Consumer-grade GNSS receivers can report several MPH of false motion
+      // while parked. Treat anything below 5 MPH as stationary so a stopped patrol
+      // unit cannot appear to be creeping at 3–4 MPH on live CAD maps.
+      speed: speedMph >= 5 ? speedMph : 0,
       heading: Number.isFinite(course) ? course : null,
     };
     return;
