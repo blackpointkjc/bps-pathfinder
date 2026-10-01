@@ -600,9 +600,12 @@ export default function Navigation() {
         if (!step) return 'Continue to destination';
         const type = String(step.maneuver?.type || 'continue').toLowerCase();
         const modifier = String(step.maneuver?.modifier || '').toLowerCase();
-        const name = String(step.name || '').trim();
+        const name = String(step.name || step.ref || '').trim();
+        const destinations = String(step.destinations || '').trim();
         const onto = name ? ` onto ${name}` : '';
         const onRoad = name ? ` on ${name}` : '';
+        const toward = destinations ? ` toward ${destinations.split(';')[0].trim()}` : '';
+        const side = modifier.includes('left') ? 'left' : modifier.includes('right') ? 'right' : 'ahead';
 
         if (type === 'arrive') {
             if (modifier.includes('left')) return 'Your destination is on the left';
@@ -614,22 +617,38 @@ export default function Navigation() {
             if (modifier.includes('right')) return `Head right${onRoad}`;
             return `Head straight${onRoad}`;
         }
-        if (type === 'roundabout' || type === 'rotary') {
+        if (type === 'roundabout' || type === 'rotary' || type === 'roundabout turn') {
             const exit = Number(step.maneuver?.exit);
             return `Enter the roundabout${Number.isFinite(exit) && exit > 0 ? ` and take exit ${exit}` : ''}${onto}`;
         }
+        if (type === 'exit roundabout' || type === 'exit rotary') return `Exit the roundabout${onto}`;
         if (modifier.includes('uturn') || modifier.includes('u-turn')) return `Make a U-turn${onto}`;
-        if (type === 'merge') return `Merge ${modifier || 'ahead'}${onto}`;
-        if (type === 'fork') return `Keep ${modifier.includes('left') ? 'left' : modifier.includes('right') ? 'right' : 'ahead'}${onto}`;
-        if (type === 'end of road') return `Turn ${modifier.includes('left') ? 'left' : 'right'}${onto}`;
-        if (modifier.includes('slight left')) return `Bear left${onto}`;
-        if (modifier.includes('slight right')) return `Bear right${onto}`;
-        if (modifier.includes('sharp left')) return `Make a sharp left${onto}`;
-        if (modifier.includes('sharp right')) return `Make a sharp right${onto}`;
-        if (modifier.includes('left')) return `Turn left${onto}`;
-        if (modifier.includes('right')) return `Turn right${onto}`;
-        if (type === 'new name') return `Continue${onto}`;
-        return `Continue straight${onRoad}`;
+        if (type === 'merge') return `Merge ${side}${onto}${toward}`;
+        if (type === 'fork') return `Keep ${side}${onto}${toward}`;
+        if (type === 'on ramp') return `Take the ramp ${side}${onto}${toward}`;
+        if (type === 'off ramp') return `Take the exit ${side}${onto}${toward}`;
+        if (type === 'end of road') return `Turn ${side === 'ahead' ? 'right' : side}${onto}`;
+        if (type === 'continue') {
+            if (modifier.includes('slight left')) return `Keep slightly left${onRoad}`;
+            if (modifier.includes('slight right')) return `Keep slightly right${onRoad}`;
+            if (modifier.includes('left')) return `Keep left${onRoad}`;
+            if (modifier.includes('right')) return `Keep right${onRoad}`;
+            return `Continue${onRoad}`;
+        }
+        if (type === 'new name' || type === 'notification') return `Continue${onRoad || onto}`;
+        if (type === 'turn') {
+            if (modifier.includes('slight left')) return `Bear left${onto}`;
+            if (modifier.includes('slight right')) return `Bear right${onto}`;
+            if (modifier.includes('sharp left')) return `Make a sharp left${onto}`;
+            if (modifier.includes('sharp right')) return `Make a sharp right${onto}`;
+            if (modifier.includes('left')) return `Turn left${onto}`;
+            if (modifier.includes('right')) return `Turn right${onto}`;
+        }
+        // Unknown highway maneuvers with a directional modifier are safer as
+        // lane/continuation guidance than as an invented intersection turn.
+        if (modifier.includes('left')) return `Keep left${onRoad}`;
+        if (modifier.includes('right')) return `Keep right${onRoad}`;
+        return `Continue${onRoad}`;
     };
 
     const maneuverIconForStep = (step, className = 'h-8 w-8') => {
