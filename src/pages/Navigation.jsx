@@ -988,8 +988,12 @@ export default function Navigation() {
         // Only snap the displayed vehicle to the route when GPS and route geometry
         // actually agree. The old 85m tolerance could pull the icon onto a nearby
         // parallel/side road and make the street map appear wrong.
+        if (navOffRoute) {
+            setNavigationDisplayLocation(currentLocation);
+            return;
+        }
         const snapToleranceMeters = gpsQuality?.state === 'live' ? 35 : 20;
-        const canSnapToRoute = !navOffRoute && nearestDistance <= snapToleranceMeters;
+        const canSnapToRoute = nearestDistance <= snapToleranceMeters;
         if (canSnapToRoute) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
         // Once off-route, immediately follow the real GPS point rather than
         // visually pulling the vehicle back onto the obsolete route line.
