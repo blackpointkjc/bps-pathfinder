@@ -176,8 +176,31 @@ export default function AdminOfficerManagement() {
         if (row?.id) await base44.entities.OfficerAvailability.update(row.id, payload);
         else await base44.entities.OfficerAvailability.create(payload);
       }
+
+      const officerId = selectedOfficerPrivate?.id || selectedOfficerRecord?.id;
+      if (!officerId) throw new Error('Unable to resolve the selected officer profile.');
+      const profileResult = await base44.functions.invoke('updateUser', {
+        userId: officerId,
+        updates: {
+          address: homeAddressForm.address.trim(),
+          city: homeAddressForm.city.trim(),
+          state: homeAddressForm.state.trim().toUpperCase(),
+          zip: homeAddressForm.zip.trim(),
+        },
+      });
+      const profilePayload = profileResult?.data || profileResult || {};
+      if (profilePayload.error) throw new Error(profilePayload.error);
     },
-    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['allAvailability'] }); setSaving(false); },
+    onSuccess: async () => {
+      invalidateAppDirectory();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['allAvailability'] }),
+        queryClient.invalidateQueries({ queryKey: ['adminOfficerPrivateProfile', selectedOfficer] }),
+        queryClient.invalidateQueries({ queryKey: ['officerDirectory'] }),
+      ]);
+      setSaving(false);
+      alert('Officer availability and Home navigation address saved.');
+    },
     onError: error => { setSaving(false); alert(error.message || 'Failed to save.'); },
   });
 
