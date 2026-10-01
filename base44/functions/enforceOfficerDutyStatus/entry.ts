@@ -1,35 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const AVAILABLE_LIMIT_MS = 8 * 60 * 60 * 1000;
 const STALE_SESSION_LIMIT_MS = 8 * 60 * 60 * 1000;
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 
-function isCadOfficer(user: any) {
-  const roles = Array.isArray(user?.additional_roles) ? user.additional_roles.map(lower) : [];
-  return roles.includes('cad_access') && roles.includes('officer');
+async function hasOpenTimeEntry(base44: any, email: string) {
+  const rows = await base44.asServiceRole.entities.TimeEntry.filter({
+    officer_email: email,
+    archived: { $ne: true },
+    $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
+  }, '-clock_in', 1).catch(() => []);
+  return Boolean(rows?.length);
 }
 
-function displayName(user: any) {
-  const rank = String(user?.rank || 'Officer').trim();
-  const last = String(user?.last_name || user?.full_name || user?.email || '').trim().split(/\s+/).pop();
-  return [rank, last].filter(Boolean).join(' ');
-}
-
-async function retireLiveOfficer(base44: any, email: string) {
+async function retireLiveOfficer(base44: any, email: string, forceStatus: string | null = null) {
   const mine = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: email }, '-last_update', 100).catch(() => []);
   const now = new Date().toISOString();
   await Promise.all(mine.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
+    // App/browser presence is separate from duty status. Preserve status and last
+    // known GPS unless Clock Out explicitly supplies a new status.
     session_active: false,
-    status: 'Out of Service',
+    ...(forceStatus ? { status: forceStatus } : {}),
     last_update: now,
-    gps_updated_at: null,
-    latitude: null,
-    longitude: null,
     heading: null,
     speed: 0,
-    accuracy: null,
-    current_call_info: '',
+    ...(forceStatus === 'Out of Service' ? { current_call_info: '' } : {}),
   }).catch(() => null)));
   return mine.length;
 }
@@ -59,7 +54,7 @@ async function setOutOfService(base44: any, officer: any, reason: string, alertS
 
   if (alertSupervisors) {
     await base44.asServiceRole.entities.SupervisorChatMessage.create({
-      message: `AUTO STATUS ALERT: ${displayName(officer)}${officer.unit_number ? ` (#${officer.unit_number})` : ''} ${reason} Pathfinder automatically placed the officer Out of Service.`,
+      message: `STATUS ALERT: ${officer.full_name || officer.email || 'Officer'} ${reason}`,
       sender_name: 'Pathfinder CAD System',
       sender_email: 'system@pathfinder.local',
     }).catch(() => null);
@@ -78,134 +73,62 @@ Deno.serve(async (req) => {
     const action = String(body?.action || 'sweep');
 
     if (action === 'session_start') {
-      const retired = await retireLiveOfficer(base44, caller.email);
-      if (lower(caller.status) === 'out of service') {
-        return Response.json({ success: true, changed: false, status: 'Out of Service', retired_live_records: retired });
-      }
-      const result = await setOutOfService(base44, caller, 'started or refreshed a Pathfinder session.', false);
-      return Response.json({ success: true, changed: true, officer: result, retired_live_records: retired });
+      // Refreshing/reopening Pathfinder is never a duty-status transition.
+      return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service' });
     }
 
     if (action === 'logout') {
+      const clockedIn = await hasOpenTimeEntry(base44, caller.email);
       const retired = await retireLiveOfficer(base44, caller.email);
-      if (caller.status === 'Out of Service') {
+      if (clockedIn) {
+        // Signing out of the app ends presence only. The open TimeEntry keeps the
+        // officer's CAD status locked until they actually Clock Out.
+        return Response.json({ success: true, changed: false, status: caller.status || 'Available', clocked_in: true, retired_live_records: retired });
+      }
+      if (lower(caller.status) === 'out of service') {
         return Response.json({ success: true, changed: false, status: 'Out of Service', retired_live_records: retired });
       }
-      const alert = lower(caller.status) === 'available';
-      const result = await setOutOfService(
-        base44,
-        caller,
-        'logged out while still marked Available and did not manually go Out of Service.',
-        alert,
-      );
+      const result = await setOutOfService(base44, caller, 'signed out while not clocked in.', false);
       return Response.json({ success: true, changed: true, officer: result, retired_live_records: retired });
     }
 
     if (action === 'clock_out') {
-      const retired = await retireLiveOfficer(base44, caller.email);
-      const result = caller.status === 'Out of Service'
+      const result = lower(caller.status) === 'out of service'
         ? { id: caller.id, email: caller.email, status: 'Out of Service' }
         : await setOutOfService(base44, caller, 'clocked out of duty.', false);
-      return Response.json({ success: true, changed: caller.status !== 'Out of Service', officer: result, retired_live_records: retired });
+      const retired = await retireLiveOfficer(base44, caller.email, 'Out of Service');
+      return Response.json({ success: true, changed: lower(caller.status) !== 'out of service', officer: result, retired_live_records: retired });
     }
 
     if (action === 'self_check') {
-      if (!isCadOfficer(caller) || lower(caller.status) !== 'available') {
-        return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service' });
-      }
-      const sinceRaw = caller.status_since || caller.last_updated || caller.updated_date;
-      const since = sinceRaw ? new Date(sinceRaw).getTime() : NaN;
-      if (!caller.status_since) {
-        const seeded = new Date().toISOString();
-        await base44.asServiceRole.entities.User.update(caller.id, { status_since: seeded });
-        return Response.json({ success: true, changed: false, seeded_status_since: seeded });
-      }
-      if (!Number.isFinite(since) || Date.now() - since < AVAILABLE_LIMIT_MS) {
-        return Response.json({ success: true, changed: false, status: 'Available' });
-      }
-      const result = await setOutOfService(
-        base44,
-        caller,
-        'remained Available for at least 8 hours without going Out of Service.',
-        true,
-      );
-      return Response.json({ success: true, changed: true, officer: result });
+      // Health checks may report connectivity, but never alter duty status.
+      return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service', clocked_in: await hasOpenTimeEntry(base44, caller.email) });
     }
 
-    // Fixed server-side sweep: callers cannot choose a target officer. Enforce
-    // both the 8-hour Available ceiling and an 8-hour stale live-session cutoff.
-    const [users, activeSessions, allUnits] = await Promise.all([
-      base44.asServiceRole.entities.User.list(undefined, 2000),
-      base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 2000).catch(() => []),
-      base44.asServiceRole.entities.Unit.list(undefined, 2000).catch(() => []),
-    ]);
-    const now = Date.now();
-    const availableOfficers = (users || []).filter((officer: any) => isCadOfficer(officer) && lower(officer.status) === 'available');
-    for (const officer of availableOfficers) {
-      if (!officer.status_since) {
-        await base44.asServiceRole.entities.User.update(officer.id, { status_since: new Date().toISOString() }).catch(() => null);
-      }
-    }
-    const stale = availableOfficers.filter((officer: any) => {
-      if (!officer.status_since) return false;
-      const since = new Date(officer.status_since).getTime();
-      return Number.isFinite(since) && now - since >= AVAILABLE_LIMIT_MS;
-    });
-
-    const changed = [];
-    for (const officer of stale) {
-      changed.push(await setOutOfService(
-        base44,
-        officer,
-        'remained Available for at least 8 hours without going Out of Service.',
-        true,
-        allUnits,
-      ));
-    }
-
-    const staleCutoff = now - STALE_SESSION_LIMIT_MS;
-    const userByEmail = new Map((users || []).map((officer:any) => [lower(officer.email), officer]));
-    const staleSessionEmails = new Set<string>();
+    // Server health sweep retires only stale browser presence. It never changes
+    // CAD duty status. Open TimeEntry remains authoritative until Clock Out.
+    const activeSessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 2000).catch(() => []);
+    const staleCutoff = Date.now() - STALE_SESSION_LIMIT_MS;
     const stampNow = new Date().toISOString();
+    let retired = 0;
     for (const session of activeSessions || []) {
       if (session?.session_active === false) continue;
       const stamp = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
       if (!Number.isFinite(stamp) || stamp > staleCutoff) continue;
-      const email = lower(session.officer_email);
-      if (!email) continue;
-      staleSessionEmails.add(email);
-      await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
+      const updated = await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
         session_active: false,
-        status: 'Out of Service',
         last_update: stampNow,
-        gps_updated_at: null,
-        latitude: null,
-        longitude: null,
         heading: null,
         speed: 0,
-        accuracy: null,
-        current_call_info: '',
       }).catch(() => null);
-    }
-
-    const staleSessionOfficers:any[] = [];
-    for (const email of staleSessionEmails) {
-      const officer = userByEmail.get(email);
-      if (!officer) continue;
-      staleSessionOfficers.push(await setOutOfService(
-        base44,
-        officer,
-        'had no Pathfinder heartbeat for at least 8 hours and was automatically signed out of the live CAD roster.',
-        true,
-        allUnits,
-      ));
+      if (updated) retired += 1;
     }
 
     return Response.json({
       success: true,
-      checked: (users || []).length,
-      forced_out_of_service: changed,
-      stale_sessions_retired: staleSessionOfficers,
+      checked: (activeSessions || []).length,
+      forced_out_of_service: [],
+      stale_sessions_retired: retired,
     });
   } catch (error) {
     console.error('enforceOfficerDutyStatus failed:', error);
