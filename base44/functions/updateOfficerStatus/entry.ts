@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
                 // live tracking: an Out of Service officer who is still signed in
                 // keeps GPS and movement history flowing, with the OOS status
                 // displayed, until they actually sign out.
-                ...(status === 'Available' || status === 'Out of Service' ? { current_call_info: '' } : {}),
+                ...(status === 'Available' || status === 'Out of Service' ? { current_call_id: '', current_call_info: '', show_lights: false } : {}),
             }).catch(() => null)),
         ]);
 
