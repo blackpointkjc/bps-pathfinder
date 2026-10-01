@@ -253,6 +253,7 @@ Deno.serve(async (req) => {
             coarse_stale: !hasGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
             gps_pending: retainedSession && !hasGps,
             show_lights: active.show_lights,
+            current_call_id: active.current_call_id || '',
             current_call_info: active.current_call_info || '',
             current_location: sessionActive ? (active.current_location || openEntry?.location || 'Location pending') : (active.current_location || openEntry?.location || ''),
             clock_in_time: openEntry?.clock_in || active.clock_in_time || '',
@@ -396,6 +397,7 @@ Deno.serve(async (req) => {
         coarse_stale: !hasReliableGps && (!Number.isFinite(gpsTs) || gpsTs < gpsFreshCutoff),
         gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
+        current_call_id: active.current_call_id || user.current_call_id || '',
         current_call_info: active.current_call_info || user.current_call_info || '',
         current_location: active.current_location || entry?.location || '',
         clock_in_time: entry?.clock_in || active.clock_in_time || '',
@@ -528,6 +530,7 @@ Deno.serve(async (req) => {
           unit_number: active?.unit_number || user.unit_number || '',
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
+          current_call_id: clockedIn ? (active?.current_call_id || user.current_call_id || '') : '',
           current_call_info: clockedIn ? (active?.current_call_info || user.current_call_info || '') : '',
           current_location: signedInRetained
             ? (active?.current_location || openEntry?.location || user.assigned_location || '')
