@@ -199,11 +199,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
             }}
         >
             {unitsToShow.map((unit) => {
-                const assignedToCall = Boolean(
-                    String(unit.current_call_id || '').trim()
-                    || (Array.isArray(unit.assigned_call_ids) && unit.assigned_call_ids.length > 0)
-                    || String(unit.current_call_info || '').trim()
-                );
+                const assignedToCall = Boolean(String(unit.current_call_id || '').trim());
                 const flashAssignedEnroute = String(unit.status || '').trim().toLowerCase() === 'enroute' && assignedToCall;
                 const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.current_call_id || ''}-${unit.last_updated || ''}`;
                 return (
