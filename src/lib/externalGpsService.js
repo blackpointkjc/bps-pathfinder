@@ -363,8 +363,12 @@ function handleSentence(sentence) {
     if (String(fields[2] || '').toUpperCase() !== 'A') return;
     const speedKnots = Number(fields[7]);
     const course = Number(fields[8]);
+    const speedMph = Number.isFinite(speedKnots) ? speedKnots * 1.150779 : 0;
     lastMotion = {
-      speed: Number.isFinite(speedKnots) ? speedKnots * 1.150779 : 0,
+      // Consumer-grade GNSS receivers commonly wander around 1–2 MPH while
+      // stationary. Treat sub-3 MPH NMEA drift as stopped so officer maps do not
+      // show parked units creeping across the screen.
+      speed: speedMph >= 3 ? speedMph : 0,
       heading: Number.isFinite(course) ? course : null,
     };
     return;
