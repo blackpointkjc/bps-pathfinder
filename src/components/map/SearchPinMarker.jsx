@@ -13,22 +13,27 @@ const searchPinIcon = new L.Icon({
     popupAnchor: [0, -40]
 });
 
-export default function SearchPinMarker({ position, address, propertyInfo }) {
+export default function SearchPinMarker({ position, address, propertyInfo, label = 'Search Result', onNavigate = null }) {
     if (!position) return null;
     
     return (
         <Marker position={position} icon={searchPinIcon}>
             <Popup autoPan={false} maxWidth={300}>
                 <div className="p-3 min-w-[250px]">
-                    <p className="font-bold text-green-600 mb-2 text-sm">📍 Search Result</p>
+                    <p className="font-bold text-green-600 mb-2 text-sm">📍 {label}</p>
                     <p className="text-xs text-gray-700 mb-3 border-b pb-2">{address}</p>
                     
-                    <div className="mt-2">
-                        <p className="font-semibold text-blue-700 text-xs mb-1">🏠 Property Information:</p>
-                        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">
-                            {propertyInfo || 'Loading property information...'}
+                    {propertyInfo && (
+                        <div className="mt-2">
+                            <p className="font-semibold text-blue-700 text-xs mb-1">🏠 Property Information:</p>
+                            <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">{propertyInfo}</div>
                         </div>
-                    </div>
+                    )}
+                    {onNavigate && (
+                        <button type="button" onClick={onNavigate} className="mt-3 w-full rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-600">
+                            Navigate Here
+                        </button>
+                    )}
                 </div>
             </Popup>
         </Marker>
