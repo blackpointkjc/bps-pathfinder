@@ -135,7 +135,7 @@ Deno.serve(async req => {
     // while the vehicle is moving so maneuvers match the road the officer is on.
     if (moving && Number.isFinite(originHeading)) query.set('bearings', `${Math.round(((originHeading % 360) + 360) % 360)},55;`);
     if (Number.isFinite(originAccuracy) && originAccuracy > 0) {
-      query.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2))) };unlimited`.replace(' ', ''));
+      query.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2)))};unlimited`);
     }
     const constrainedPath = `${lng},${lat};${destLng},${destLat}?${query.toString()}`;
     const fallbackQuery = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
