@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       forced_out_of_service: [],
       stale_sessions_retired: retired,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('enforceOfficerDutyStatus failed:', error);
     return Response.json({ error: error?.message || 'Unable to enforce officer duty status' }, { status: 500 });
   }
