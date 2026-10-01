@@ -1520,6 +1520,27 @@ export default function Navigation() {
                             active: showAddressSearch,
                         },
                         {
+                            key: 'home',
+                            onClick: () => showHomeLocation(),
+                            title: homeAddress ? 'Show my saved home location' : 'Add a home address to your profile',
+                            icon: <Home className="h-4 w-4" />,
+                            active: mapSelectedDestination?.label === 'Home',
+                            disabled: !homeAddress || isNavigating,
+                        },
+                        {
+                            key: 'pick',
+                            onClick: () => {
+                                setShowAddressSearch(true);
+                                setMapPickMode(enabled => !enabled);
+                                setAddressResults([]);
+                                setAddressSearchError('');
+                            },
+                            title: mapPickMode ? 'Cancel map destination selection' : 'Pick a destination directly on the map',
+                            icon: <MapPin className="h-4 w-4" />,
+                            active: mapPickMode,
+                            disabled: isNavigating,
+                        },
+                        {
                             key: 'calls',
                             onClick: () => setShowActiveCalls(visible => !visible),
                             title: showActiveCalls ? 'Hide calls from map' : 'Show calls on map',
