@@ -20,8 +20,42 @@ Deno.serve(async req => {
     if (!me) return Response.json({ error: 'Sign in is required.' }, { status: 401 });
     const input = await req.json().catch(() => ({}));
     const query = String(input.query || '').trim().slice(0, 180);
-    if (query.length < 3) return Response.json({ error: 'Enter at least three characters.' }, { status: 400 });
     const lat = Number(input.latitude), lon = Number(input.longitude);
+    const reverse = input.reverse === true;
+
+    if (reverse) {
+      if (!valid(lat, lon)) return Response.json({ error: 'Valid latitude and longitude are required.' }, { status: 400 });
+      const settled = await Promise.allSettled([
+        fetchJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`),
+        fetchJson(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`),
+      ]);
+      for (const outcome of settled) {
+        if (outcome.status !== 'fulfilled') continue;
+        const payload = outcome.value || {};
+        if (payload.display_name) {
+          return Response.json({
+            success: true,
+            result: { name: payload.display_name, address: payload.display_name, coords: [lat, lon], type: payload.type || 'map_point' },
+          });
+        }
+        const feature = payload.features?.[0];
+        if (feature) {
+          const p = feature.properties || {};
+          const label = [p.name, p.housenumber, p.street, p.city, p.state].filter(Boolean).join(', ')
+            || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+          return Response.json({
+            success: true,
+            result: { name: label, address: label, coords: [lat, lon], type: p.type || 'map_point' },
+          });
+        }
+      }
+      return Response.json({
+        success: true,
+        result: { name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, address: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, coords: [lat, lon], type: 'map_point' },
+      });
+    }
+
+    if (query.length < 3) return Response.json({ error: 'Enter at least three characters.' }, { status: 400 });
     const near = valid(lat, lon) && input.latitude != null && input.longitude != null
       ? '&lat=' + lat + '&lon=' + lon : '';
     const encoded = encodeURIComponent(query);
