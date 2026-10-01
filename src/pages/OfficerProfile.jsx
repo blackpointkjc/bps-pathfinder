@@ -79,10 +79,17 @@ export default function OfficerProfile() {
   const { data: user } = useQuery({
     queryKey: ['officerProfileUser'],
     queryFn: async () => {
-      const authUser = await getCurrentDirectoryUser();
-      if (!authUser?.email) return authUser;
-      const rows = await base44.entities.User.filter({ email: authUser.email }).catch(() => []);
-      return rows?.[0] ? { ...authUser, ...rows[0] } : authUser;
+      const [authenticated, directoryUser] = await Promise.all([
+        base44.auth.me(),
+        getCurrentDirectoryUser(true),
+      ]);
+      if (!authenticated?.email) return directoryUser || authenticated;
+      const rows = await base44.entities.User.filter({ email: authenticated.email }).catch(() => []);
+      return {
+        ...(directoryUser || {}),
+        ...(authenticated || {}),
+        ...(rows?.[0] || {}),
+      };
     },
     refetchInterval: 2 * 60 * 1000,
   });
@@ -246,7 +253,12 @@ export default function OfficerProfile() {
       />
       <div className="mx-auto max-w-5xl space-y-5">
         <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl md:p-7">
-          <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
+            <Button type="button" variant="outline" onClick={() => document.getElementById('home-navigation-address')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="border-cyan-600/60 bg-cyan-950/30 text-cyan-100 hover:bg-cyan-900/40">
+              <MapPin className="mr-2 h-4 w-4" />{user?.address ? 'Edit Home Address' : 'Add Home Address'}
+            </Button>
+          </div>
         </div>
 
         <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
@@ -391,7 +403,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card id="home-navigation-address" className="scroll-mt-6 overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-cyan-950/35 to-blue-950/25">
             <CardTitle className="flex items-center gap-2 text-white">
               <MapPin className="h-5 w-5 text-cyan-300" />
