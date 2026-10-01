@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Upload, Camera, Award, AlertTriangle, ClipboardCheck, Star, Shield, Phone, Package, Trash2, CheckCircle, Mail, KeyRound } from "lucide-react";
+import { User, Upload, Camera, Award, AlertTriangle, ClipboardCheck, Star, Shield, Phone, Package, Trash2, CheckCircle, Mail, KeyRound, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -72,6 +72,8 @@ export default function OfficerProfile() {
   const [companyMailPassword, setCompanyMailPassword] = useState('');
   const [companyMailPasswordConfirm, setCompanyMailPasswordConfirm] = useState('');
   const [savingCompanyMailPassword, setSavingCompanyMailPassword] = useState(false);
+  const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
+  const [savingHomeAddress, setSavingHomeAddress] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
