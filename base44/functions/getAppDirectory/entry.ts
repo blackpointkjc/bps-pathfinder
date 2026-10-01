@@ -41,7 +41,7 @@ function addEmailAliases(entry: any, teamsByUser: Map<string, any>, outlookByUse
   };
 }
 
-function safeUser(entry: any, full = false) {
+function safeUser(entry: any, full = false, includePrivateSelf = false) {
   if (full) return entry;
   return {
     id: entry.id,
@@ -75,6 +75,12 @@ function safeUser(entry: any, full = false) {
     assigned_location: entry.assigned_location || '',
     status: entry.status,
     last_updated: entry.last_updated || entry.updated_date || '',
+    ...(includePrivateSelf ? {
+      address: entry.address || '',
+      city: entry.city || '',
+      state: entry.state || '',
+      zip: entry.zip || '',
+    } : {}),
   };
 }
 
@@ -138,7 +144,11 @@ Deno.serve(async (req) => {
     } else if (studentOnly) {
       users = directoryUsers.filter((u: any) => u.email === cleanEmail(me.email) || lowerRoles(u).has('trainer') || u.role === 'admin').map((u: any) => safeUser(u, false));
     } else {
-      users = directoryUsers.filter(isInternal).map((u: any) => safeUser(u, internalPrivileged));
+      users = directoryUsers.filter(isInternal).map((u: any) => safeUser(
+        u,
+        internalPrivileged,
+        cleanEmail(u.email) === cleanEmail(me.email),
+      ));
     }
 
     let locations = rawLocations || [];
