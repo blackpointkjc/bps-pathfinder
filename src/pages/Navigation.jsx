@@ -383,11 +383,12 @@ export default function Navigation() {
         // a maneuver the officer already passed.
         if (navRoute.length > 1) {
             const start = Math.max(0, navSnapIndexRef.current - 12);
-            const remaining = navRoute.length - start;
-            const stride = Math.max(1, Math.floor(remaining / 1200));
+            const searchEnd = Math.min(navRoute.length, start + 2500);
+            const remaining = searchEnd - start;
+            const stride = Math.max(1, Math.floor(Math.max(1, remaining) / 1200));
             let nearestIndex = start;
             let nearestMeters = Infinity;
-            for (let index = start; index < navRoute.length; index += stride) {
+            for (let index = start; index < searchEnd; index += stride) {
                 const distance = distanceMetersBetween(currentLocation, navRoute[index]);
                 if (distance < nearestMeters) {
                     nearestMeters = distance;
@@ -396,12 +397,12 @@ export default function Navigation() {
             }
             if (nearestMeters <= 80) navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
         }
-        const nextStepRouteIndex = navStepRouteIndexesRef.current[navStepIndex + 1];
-        const passedNextManeuver = Number.isFinite(Number(nextStepRouteIndex))
-            && navSnapIndexRef.current >= Math.max(0, Number(nextStepRouteIndex) - 2);
+        const currentStepRouteIndex = navStepRouteIndexesRef.current[navStepIndex];
+        const passedCurrentManeuver = Number.isFinite(Number(currentStepRouteIndex))
+            && navSnapIndexRef.current >= Number(currentStepRouteIndex) + 2;
         // Do not advance so early that the final "turn now" prompt is skipped,
-        // but do advance once route progress proves that maneuver was passed.
-        if ((miles < 0.018 || passedNextManeuver) && navStepIndex < navSteps.length - 1) {
+        // but do advance once forward route progress proves this maneuver was passed.
+        if ((miles < 0.018 || passedCurrentManeuver) && navStepIndex < navSteps.length - 1) {
             setNavStepIndex(index => index + 1);
         }
         if (navDestination?.coords) {
@@ -858,11 +859,12 @@ export default function Navigation() {
         // lets a nearby road/interchange segment already driven falsely keep the
         // officer "on route" after taking a different road.
         const start = Math.max(0, navSnapIndexRef.current - 12);
-        const remaining = Math.max(1, navRoute.length - start);
+        const searchEnd = Math.min(navRoute.length, start + 2500);
+        const remaining = Math.max(1, searchEnd - start);
         const stride = Math.max(1, Math.floor(remaining / 1400));
         let nearestMeters = Infinity;
         let nearestIndex = start;
-        for (let index = start; index < navRoute.length; index += stride) {
+        for (let index = start; index < searchEnd; index += stride) {
             const distance = distanceMetersBetween(currentLocation, navRoute[index]);
             if (distance < nearestMeters) {
                 nearestMeters = distance;
