@@ -531,16 +531,32 @@ export function subscribeExternalGpsStatus(listener, { emitCurrent = true } = {}
   return () => listeners.delete(listener);
 }
 
-export async function startExternalGpsAutoReconnect() {
+export async function startExternalGpsAutoReconnect({ recoverStale = false } = {}) {
   if (!externalGpsSupported()) {
     emit({ supported: false, connected: false, backgroundReader: false });
     return getExternalGpsStatus();
   }
   installSerialEvents();
-  if (state.connected || connectPromise) return connectPromise || getExternalGpsStatus();
+  if (connectPromise) return connectPromise;
+
+  const lastFixMs = state.lastFixAt ? new Date(state.lastFixAt).getTime() : 0;
+  const fixAgeMs = lastFixMs > 0 ? Date.now() - lastFixMs : Infinity;
+  const staleConnectedSession = state.connected && recoverStale && fixAgeMs > 45_000;
+  if (state.connected && !staleConnectedSession) return getExternalGpsStatus();
 
   connectPromise = (async () => {
-    const ownsPort = await acquireGpsOwnership({ waitMs: 0 });
+    if (staleConnectedSession) {
+      // A COM port can remain open while its reader has silently stopped. Close
+      // that dead session before reclaiming it so Pathfinder cannot stay forever
+      // in a misleading "connected but unavailable" state.
+      await stopWorkerPort({ terminate: true }).catch(() => null);
+      await closeCurrentPort().catch(() => null);
+      releaseGpsOwnership();
+      emit({ connected: false, connecting: true, backgroundReader: false, error: 'External GPS stopped producing fixes. Reconnecting…' });
+      await delay(300);
+    }
+
+    const ownsPort = await acquireGpsOwnership({ requestRelease: staleConnectedSession, waitMs: staleConnectedSession ? 2500 : 0 });
     if (!ownsPort) {
       emit({ connected: false, connecting: false, backgroundReader: false, error: '' });
       return getExternalGpsStatus();
