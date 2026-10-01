@@ -13,6 +13,17 @@ let desktopHeartbeat = null;
 let unresponsiveTimer = null;
 let pendingSerialSelection = null;
 
+ipcMain.on('bps:select-serial-port', (event, payload = {}) => {
+  const pending = pendingSerialSelection;
+  if (!pending || event.sender.id !== pending.webContentsId) return;
+  if (String(payload.requestId || '') !== pending.requestId) return;
+  const requestedPortId = String(payload.portId || '');
+  const allowed = pending.ports.some(port => String(port.portId || '') === requestedPortId);
+  if (pending.timeout) clearTimeout(pending.timeout);
+  pendingSerialSelection = null;
+  try { pending.callback(allowed ? requestedPortId : ''); } catch {}
+});
+
 // Keep Chromium from lowering the renderer process priority when the Pathfinder
 // window is minimized. The BrowserWindow also disables background throttling.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
