@@ -461,9 +461,11 @@ Deno.serve(async (req) => {
         // A dedicated status change writes User and ActiveOfficer together. If a
         // racing ActiveOfficer row is momentarily older than User, honor the newer
         // source. Crucially, loss of browser presence never changes duty status.
-        const newestLiveStatus = Number.isFinite(userStatusTs) && userStatusTs > activeTs
+        const newestLiveStatus = active?.session_active === false
           ? (user.status || active?.status || 'Out of Service')
-          : (active?.status || user.status || 'Out of Service');
+          : Number.isFinite(userStatusTs) && userStatusTs > activeTs
+            ? (user.status || active?.status || 'Out of Service')
+            : (active?.status || user.status || 'Out of Service');
         const normalizedLiveStatus = lower(newestLiveStatus);
         const resolvedStatus = clockedIn ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
