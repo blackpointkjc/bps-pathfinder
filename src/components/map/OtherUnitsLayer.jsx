@@ -62,7 +62,7 @@ const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const LIVE_GPS_FRESH_MS = 5 * 60 * 1000;
 const liveSpeedMph = value => {
     const speed = Math.max(0, Number(value) || 0);
-    return speed >= 3 ? speed : 0;
+    return speed >= 5 ? speed : 0;
 };
 
 const getStatusColor = (status) => {
