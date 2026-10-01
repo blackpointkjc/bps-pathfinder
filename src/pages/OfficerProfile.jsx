@@ -188,9 +188,23 @@ export default function OfficerProfile() {
         state: homeAddressForm.state.trim().toUpperCase(),
         zip: homeAddressForm.zip.trim(),
       };
-      await updateProfileMutation.mutateAsync(payload);
+      const result = await base44.functions.invoke('updateMyHomeAddress', payload);
+      const saved = result?.data || result || {};
+      if (saved.error) throw new Error(saved.error);
+      const savedAddress = {
+        address: saved.address || payload.address,
+        city: saved.city || payload.city,
+        state: saved.state || payload.state,
+        zip: saved.zip || payload.zip,
+      };
+      setHomeAddressForm(savedAddress);
+      queryClient.setQueryData(['officerProfileUser'], current => current ? { ...current, ...savedAddress } : current);
       invalidateAppDirectory();
-      window.dispatchEvent(new CustomEvent('bps-profile-home-address-updated', { detail: payload }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['officerProfileUser'] }),
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
+      ]);
+      window.dispatchEvent(new CustomEvent('bps-profile-home-address-updated', { detail: savedAddress }));
       alert('Home navigation address updated successfully.');
     } catch (error) {
       console.error('Unable to update home navigation address:', error);
