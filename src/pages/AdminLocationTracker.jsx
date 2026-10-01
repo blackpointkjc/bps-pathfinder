@@ -40,7 +40,7 @@ const hasValidCoordinates = item => hasCoordinateValue(item?.latitude)
 
 const liveSpeedMph = value => {
   const speed = Math.max(0, Number(value) || 0);
-  return speed >= 3 ? speed : 0;
+  return speed >= 5 ? speed : 0;
 };
 
 function buildLiveLocationHealth(rows = [], users = []) {
