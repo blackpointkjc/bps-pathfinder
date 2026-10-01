@@ -762,6 +762,7 @@ export default function Navigation() {
             if (originSpeed >= 5 && Number.isFinite(originHeading)) browserQuery.set('bearings', `${Math.round(((originHeading % 360) + 360) % 360)},55;`);
             if (Number.isFinite(originAccuracy) && originAccuracy > 0) browserQuery.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2)))};unlimited`);
             const routePath = `${lng},${lat};${destLng},${destLat}?${browserQuery.toString()}`;
+            const plainRoutePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
             let route = null;
             // Server-side routing avoids browser CORS/network policies that were
             // causing Search to finish and simply return to GO without starting.
@@ -781,18 +782,23 @@ export default function Navigation() {
                 console.warn('[NAV] Server route failed; trying browser providers:', serverRouteError?.message || serverRouteError);
             }
             if (!route) {
-                for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
-                    try {
-                        const response = await fetch(`${host}${routePath}`, { signal: AbortSignal.timeout(7000) });
-                        if (!response.ok) continue;
-                        const data = await response.json();
-                        if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; break; }
-                    } catch (serviceError) {
-                        console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
+                const browserPaths = routePath === plainRoutePath ? [plainRoutePath] : [routePath, plainRoutePath];
+                for (const path of browserPaths) {
+                    if (route) break;
+                    for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
+                        try {
+                            const response = await fetch(`${host}${path}`, { signal: AbortSignal.timeout(7000) });
+                            if (!response.ok) continue;
+                            const data = await response.json();
+                            if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; break; }
+                        } catch (serviceError) {
+                            console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
+                        }
                     }
                 }
             }
             if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
+            setNavOffRoute(false);
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
