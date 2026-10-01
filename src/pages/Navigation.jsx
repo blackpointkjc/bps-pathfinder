@@ -159,17 +159,19 @@ export default function Navigation() {
                 setIsLiveTracking(false);
                 return;
             }
-            // Show the officer's own marker at the best available device fix. A
-            // desktop/indoor Wi-Fi estimate is often the only fix available; rejecting
-            // it left the self-marker off the map and the view stuck on Richmond.
-            // isLiveTracking still reflects whether the fix is precise enough for
-            // tactical use, but the icon and map focus follow the current fix.
-            const coords = [lat, lng];
-            setCurrentLocation(coords);
-            if (fix.heading !== null) setHeading(fix.heading);
-            setSpeed(Math.round(fix.speed || 0));
-            setLocationHistory(prev => [...prev, coords].slice(-30));
-            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
+            // Keep coarse Windows/Wi-Fi fixes available as a fallback, but never
+            // move the tactical navigation map on a >100m estimate. That produced
+            // the large jumps/off-road map behavior. External serial and precise
+            // browser/device fixes remain authoritative for the moving marker.
+            const tacticalFix = fix?.source === 'external_serial' || quality.state === 'live';
+            if (tacticalFix) {
+                const coords = [lat, lng];
+                setCurrentLocation(coords);
+                if (fix.heading !== null) setHeading(fix.heading);
+                setSpeed(Math.round(fix.speed || 0));
+                setLocationHistory(prev => [...prev, coords].slice(-30));
+            }
+            setIsLiveTracking(tacticalFix);
         });
         return () => { unsubscribe(); stopTracking(); };
     }, []);
