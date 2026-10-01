@@ -7,7 +7,7 @@ function finiteNumber(value: unknown, fallback = 0) {
 
 function normalizedSpeedMph(value: unknown) {
   const speed = Math.max(0, finiteNumber(value));
-  return speed >= 3 ? speed : 0;
+  return speed >= 5 ? speed : 0;
 }
 
 function hasCoordinates(latitude: unknown, longitude: unknown) {
@@ -393,7 +393,7 @@ Deno.serve(async (req) => {
         const movedMeters = latestHistory?.[0]
           ? distanceMeters(latestHistory[0].latitude, latestHistory[0].longitude, latitude, longitude)
           : 0;
-        const historyIntervalMs = externalCandidate || speedMph >= 3 || movedMeters >= 18 ? 30000 : 60000;
+        const historyIntervalMs = externalCandidate || speedMph >= 5 || movedMeters >= 18 ? 30000 : 60000;
         if (!latestIsUsable || deviceFixAt - latestAt >= historyIntervalMs) {
           await withHistoryRetry(() => base44.asServiceRole.entities.LocationHistory.create({
             time_entry_id: historySessionId,
