@@ -9,7 +9,6 @@ import {
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '../utils';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
@@ -942,21 +941,37 @@ export default function Navigation() {
         }
     };
 
-    const showHomeLocation = async ({ navigateNow = false } = {}) => {
-        setShowAddressSearch(true);
+    const showHomeLocation = async () => {
         setMapPickMode(false);
+        setShowAddressSearch(false);
         setAddressSearching(true);
         setAddressSearchError('');
         try {
-            // Home is private profile data, so refresh only the signed-in officer's
-            // directory record each time the shortcut is used. This picks up a new
-            // address immediately after My Profile or admin/HR changes it.
-            const freshUser = await getCurrentDirectoryUser(true);
-            if (freshUser?.id) setCurrentUser(freshUser);
-            const freshHomeAddress = profileHomeAddress(freshUser || currentUser);
+            // Read the signed-in officer's private Home address directly. Do not
+            // depend on the general directory/currentUser object because CAD/session
+            // syncs can replace that object with a redacted operational profile.
+            let freshHomeAddress = homeAddress;
+            try {
+                const response = await base44.functions.invoke('updateMyHomeAddress', { action: 'get' });
+                const profile = response?.data || response || {};
+                if (profile.error) throw new Error(profile.error);
+                const backendAddress = profileHomeAddress(profile);
+                if (backendAddress) {
+                    freshHomeAddress = backendAddress;
+                    setCurrentUser(previous => previous ? {
+                        ...previous,
+                        address: profile.address || '',
+                        city: profile.city || '',
+                        state: profile.state || '',
+                        zip: profile.zip || '',
+                    } : previous);
+                }
+            } catch (profileError) {
+                if (!freshHomeAddress) throw profileError;
+            }
+
             if (!freshHomeAddress) {
-                toast.error('No Home address is saved yet. Add it in My Profile.');
-                navigate(createPageUrl('OfficerProfile'));
+                toast.error('No Home address is saved. Add one in My Profile first.');
                 return;
             }
 
@@ -964,7 +979,7 @@ export default function Navigation() {
             if (!destination || String(destination.address || '') !== freshHomeAddress) {
                 const results = await lookupNavigationDestinations(freshHomeAddress, currentLocation);
                 destination = results[0] || null;
-                if (!destination) throw new Error('Your saved home address could not be mapped. Check the address in My Profile.');
+                if (!destination) throw new Error('Your saved Home address could not be mapped. Check the address in My Profile.');
                 destination = { ...destination, name: 'Home', address: freshHomeAddress, label: 'Home' };
                 setHomeDestination(destination);
             }
@@ -973,10 +988,9 @@ export default function Navigation() {
             setNavigationFallbackAddress(freshHomeAddress);
             setAddressResults([]);
             setFitBounds([...(currentLocation ? [currentLocation] : []), destination.coords]);
-            if (navigateNow) await startNavigationToPoint(destination);
-            else toast.success('Home location shown from your profile');
+            await startNavigationToPoint(destination);
         } catch (error) {
-            const message = error?.message || 'Unable to map your home address';
+            const message = error?.message || 'Unable to start navigation to Home';
             setAddressSearchError(message);
             toast.error(message);
         } finally {
@@ -1394,7 +1408,7 @@ export default function Navigation() {
                             className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black ${mapPickMode ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-emerald-600/50 bg-emerald-950/70 text-emerald-100 hover:bg-emerald-900/70'} disabled:opacity-40`}>
                             <MapPin className="h-3.5 w-3.5" /> {mapPickMode ? 'CLICK MAP' : 'PICK ON MAP'}
                         </button>
-                        <button type="button" onClick={() => showHomeLocation({ navigateNow: true })} disabled={addressSearching || isNavigating}
+                        <button type="button" onClick={showHomeLocation} disabled={addressSearching || isNavigating}
                             className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-900/80 px-3 py-2 text-[10px] font-black text-blue-100 hover:bg-blue-800 disabled:opacity-40 sm:col-span-1">
                             <Navigation2 className="h-3.5 w-3.5" /> NAVIGATE HOME
                         </button>
@@ -1530,8 +1544,8 @@ export default function Navigation() {
                         },
                         {
                             key: 'home',
-                            onClick: () => showHomeLocation(),
-                            title: homeAddress ? 'Show my saved home location' : 'Add a home address to your profile',
+                            onClick: showHomeLocation,
+                            title: 'Navigate to my saved Home address',
                             icon: <Home className="h-4 w-4" />,
                             active: mapSelectedDestination?.label === 'Home',
                             disabled: isNavigating,
