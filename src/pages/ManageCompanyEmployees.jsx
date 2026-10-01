@@ -377,8 +377,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     if (!editingUser || !canManageEmployees) return;
     const filteredData = Object.fromEntries(
       Object.entries(editFormData).filter(([key, value]) => {
-        // Always include additional_roles even if empty array
+        // Always include role arrays and home-address fields, even when empty,
+        // so admins can both set and clear the officer's navigation address.
         if (key === 'additional_roles') return true;
+        if (['address', 'city', 'state', 'zip'].includes(key)) return true;
         if (value === null || value === undefined || value === '') return false;
         if (Array.isArray(value) && value.length === 0) return false;
         return true;
@@ -584,6 +586,20 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Last Name</Label><Input value={editFormData.last_name || ""} onChange={(e) => setEditFormData({...editFormData, last_name: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">SSN</Label><Input value={editFormData.ssn || ""} onChange={(e) => setEditFormData({...editFormData, ssn: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Date of Birth</Label><Input type="date" value={editFormData.date_of_birth || ""} onChange={(e) => setEditFormData({...editFormData, date_of_birth: e.target.value})} /></div>
+                  <div className="md:col-span-2 rounded-lg border border-cyan-200 bg-cyan-50/60 p-3">
+                    <div className="mb-3">
+                      <Label className="text-xs font-bold text-cyan-900">Home / Navigation Address</Label>
+                      <p className="mt-1 text-[11px] text-cyan-800">This is the same address shown in the officer's My Profile and used by the GPS Home button.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="md:col-span-2"><Label className="text-xs text-slate-600">Street Address</Label><Input autoComplete="street-address" value={editFormData.address || ""} onChange={(e) => setEditFormData({...editFormData, address: e.target.value})} placeholder="123 Main Street" /></div>
+                      <div><Label className="text-xs text-slate-600">City</Label><Input autoComplete="address-level2" value={editFormData.city || ""} onChange={(e) => setEditFormData({...editFormData, city: e.target.value})} placeholder="Richmond" /></div>
+                      <div className="grid grid-cols-[.8fr_1.2fr] gap-3">
+                        <div><Label className="text-xs text-slate-600">State</Label><Input autoComplete="address-level1" maxLength={2} value={editFormData.state || ""} onChange={(e) => setEditFormData({...editFormData, state: e.target.value.toUpperCase()})} placeholder="VA" /></div>
+                        <div><Label className="text-xs text-slate-600">ZIP</Label><Input autoComplete="postal-code" value={editFormData.zip || ""} onChange={(e) => setEditFormData({...editFormData, zip: e.target.value})} placeholder="23223" /></div>
+                      </div>
+                    </div>
+                  </div>
                   <div><Label className="text-xs text-slate-500">Mobile Phone</Label><Input type="tel" value={editFormData.mobile_phone || ""} onChange={(e) => setEditFormData({...editFormData, mobile_phone: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Badge Number</Label><Input value={editFormData.badge_number || ""} onChange={(e) => setEditFormData({...editFormData, badge_number: e.target.value})} /></div>
                   <div>
