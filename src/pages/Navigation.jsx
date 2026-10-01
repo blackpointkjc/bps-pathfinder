@@ -6,7 +6,7 @@ import MapView from '@/components/map/MapView';
 import {
     Layers, Radio, MapPin, Users,
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
-    ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed
+    ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -24,7 +24,7 @@ import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFee
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
-import { lookupNavigationDestinations } from '@/lib/navigationGeocoding';
+import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 
@@ -108,6 +108,9 @@ export default function Navigation() {
     const [addressSearchError, setAddressSearchError] = useState('');
     const [navigationFallbackAddress, setNavigationFallbackAddress] = useState('');
     const [showAddressSearch, setShowAddressSearch] = useState(false);
+    const [mapPickMode, setMapPickMode] = useState(false);
+    const [mapSelectedDestination, setMapSelectedDestination] = useState(null);
+    const [homeDestination, setHomeDestination] = useState(null);
     const [streetViewUrl, setStreetViewUrl] = useState('');
     const [fitBounds, setFitBounds] = useState(null);
     const lastSpokenNavStepRef = useRef(-1);
@@ -122,6 +125,10 @@ export default function Navigation() {
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
+    const homeAddress = [currentUser?.address, currentUser?.city, currentUser?.state, currentUser?.zip]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join(', ');
 
     const [jurisdictionFilters] = useState({
         baseMapType: 'street', showPoliceStations: true, showFireStations: false,
