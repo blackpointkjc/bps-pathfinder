@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
         if (session.session_active === false) continue;
         await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
           status: officerStatus,
+          current_call_id: String(call_id),
           current_call_info: callInfo,
+          show_lights: false,
           last_update: now,
         }).catch(() => null);
       }
@@ -147,7 +149,7 @@ Deno.serve(async (req) => {
       const nextInfo = next ? `${next.call.incident || 'Call for service'} · ${next.call.location || ''}`.slice(0, 500) : '';
       await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now }).catch(() => null);
       const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
-      for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_info: nextInfo, last_update: now }).catch(() => null);
+      for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, show_lights: false, last_update: now }).catch(() => null);
       if (next) {
         await base44.asServiceRole.entities.CallNote.create({ call_id:next.call.id, author_id:user.id, author_name:officer, note:`[QUEUE] Previous call cleared. This is now the officer's next active call (${nextCad}).`, note_type:'update' }).catch(()=>null);
       }
