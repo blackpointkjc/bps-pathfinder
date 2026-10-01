@@ -87,8 +87,9 @@ Deno.serve(async (req) => {
       const ended = [];
       for (const record of records || []) {
         ended.push(await base44.asServiceRole.entities.ActiveOfficer.update(record.id, {
+          // Ending the browser/app GPS session is not a duty-status transition.
+          // Preserve the officer's last CAD status; Clock Out owns OOS.
           session_active: false,
-          status: 'Out of Service',
           last_update: now,
           // Preserve the final accepted coordinate as LAST KNOWN. Clearing these
           // fields on logout/force-sign-out made maps fall all the way back to the
