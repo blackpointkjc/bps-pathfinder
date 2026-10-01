@@ -102,7 +102,6 @@ export default function Navigation() {
     const [navigationDisplayLocation, setNavigationDisplayLocation] = useState(null);
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
-    const [showLights, setShowLights] = useState(false);
     const [unitName] = useState(localStorage.getItem('unitName') || '');
     const [mapTheme, setMapTheme] = usePathfinderMapTheme();
     const [showCallSidebar, setShowCallSidebar] = useState(false);
@@ -155,6 +154,12 @@ export default function Navigation() {
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const homeAddress = profileHomeAddress(currentUser);
+    const selfAssignedToCall = Boolean(
+        String(currentUser?.current_call_id || '').trim()
+        || String(currentUser?.current_call_info || '').trim()
+    );
+    const flashSelfAssignedEnroute = String(unitStatus || currentUser?.status || '').trim().toLowerCase() === 'enroute'
+        && selfAssignedToCall;
 
     const [jurisdictionFilters] = useState({
         baseMapType: 'street', showPoliceStations: true, showFireStations: false,
@@ -226,8 +231,20 @@ export default function Navigation() {
             const eventEmail = String(record?.officer_email || record?.email || '').toLowerCase();
 
             // Realtime ActiveOfficer payloads already contain status/GPS updates.
-            // Paint them directly instead of spending a getOnDutyUnits request for
-            // every officer movement. Full roster reads are reconciliation only.
+            // Keep the signed-in officer's own call-assignment/status state current
+            // too so their marker starts/stops flashing without a page refresh.
+            if (eventEmail && eventEmail === currentEmail && record && type !== 'delete') {
+                setCurrentUser(previous => previous ? {
+                    ...previous,
+                    ...(record.status !== undefined ? { status: record.status } : {}),
+                    ...(record.current_call_id !== undefined ? { current_call_id: record.current_call_id } : {}),
+                    ...(record.current_call_info !== undefined ? { current_call_info: record.current_call_info } : {}),
+                } : previous);
+                if (record.status) setUnitStatus(record.status === 'On Patrol' ? 'Available' : record.status);
+            }
+
+            // Paint other officers directly instead of spending a getOnDutyUnits
+            // request for every GPS movement. Full roster reads are reconciliation only.
             if (eventEmail && eventEmail !== currentEmail) {
                 setOtherUnits(current => {
                     if (type === 'delete' || record?.session_active === false) {
@@ -612,7 +629,13 @@ export default function Navigation() {
             const stamp = new Date().toISOString();
             const payload = await persistOfficerStatus(newStatus);
             if (payload.error) throw new Error(payload.error);
-            setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: stamp, status_since: stamp } : prev);
+            setCurrentUser(prev => prev ? {
+                ...prev,
+                status: newStatus,
+                last_updated: stamp,
+                status_since: stamp,
+                ...(['Available', 'Out of Service'].includes(newStatus) ? { current_call_id: '', current_call_info: '' } : {}),
+            } : prev);
             // officerStatusService already broadcasts the canonical status event
             // with officer id/email. Do not emit a duplicate event/read burst here.
             fetchOtherUnits();
@@ -1371,7 +1394,7 @@ export default function Navigation() {
                     heading={heading}
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
-                    showLights={showLights}
+                    flashAssignedEnroute={flashSelfAssignedEnroute}
                     otherUnits={mapVisibleUnits}
                     currentUserId={currentUser?.id}
                     speed={speed}
