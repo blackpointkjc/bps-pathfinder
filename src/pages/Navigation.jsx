@@ -26,6 +26,7 @@ import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveD
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 
@@ -137,6 +138,13 @@ export default function Navigation() {
     useEffect(() => {
         const stopTracking = startLiveLocationTracking({ onError: error => {
             if (!getLiveLocation(30000)) {
+                const external = getExternalGpsStatus();
+                if (external.connected || external.connecting || external.portGranted) {
+                    setIsLiveTracking(false);
+                    setGpsQuality({ state: 'external_acquiring', accuracy: null, source: 'external_serial' });
+                    startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+                    return;
+                }
                 setIsLiveTracking(false);
                 setGpsQuality({ state: error?.code === 1 ? 'denied' : 'unavailable', accuracy: null });
             }
