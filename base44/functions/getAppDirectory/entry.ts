@@ -80,6 +80,8 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
       city: entry.city || '',
       state: entry.state || '',
       zip: entry.zip || '',
+      current_call_id: entry.current_call_id || '',
+      current_call_info: entry.current_call_info || '',
     } : {}),
   };
 }
