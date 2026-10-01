@@ -1205,7 +1205,11 @@ export default function Navigation() {
                     showFireStations={jurisdictionFilters.showFireStations}
                     showJails={jurisdictionFilters.showJails}
                     onNavigateToJail={(destination) => startNavigationToPoint(destination)}
-                    searchPin={null}
+                    onNavigateToPoint={(destination) => startNavigationToPoint(destination)}
+                    searchPin={mapSelectedDestination}
+                    searchPins={showAddressSearch ? addressResults : []}
+                    mapPickEnabled={mapPickMode}
+                    onMapPick={selectMapLocation}
                     mapTheme={mapTheme}
                     showHeatmap={showHeatmap}
                     allCalls={activeCalls}
