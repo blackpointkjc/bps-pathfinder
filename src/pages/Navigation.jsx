@@ -9,6 +9,7 @@ import {
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
@@ -34,6 +35,10 @@ const liveSpeedMph = value => {
     const speed = Math.max(0, Number(value) || 0);
     return speed >= 5 ? speed : 0;
 };
+const profileHomeAddress = profile => [profile?.address, profile?.city, profile?.state, profile?.zip]
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join(', ');
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -126,10 +131,7 @@ export default function Navigation() {
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
-    const homeAddress = [currentUser?.address, currentUser?.city, currentUser?.state, currentUser?.zip]
-        .map(value => String(value || '').trim())
-        .filter(Boolean)
-        .join(', ');
+    const homeAddress = profileHomeAddress(currentUser);
 
     const [jurisdictionFilters] = useState({
         baseMapType: 'street', showPoliceStations: true, showFireStations: false,
@@ -941,26 +943,34 @@ export default function Navigation() {
     };
 
     const showHomeLocation = async ({ navigateNow = false } = {}) => {
-        if (!homeAddress) {
-            toast.error('No home address is saved in your Pathfinder profile.');
-            return;
-        }
         setShowAddressSearch(true);
         setMapPickMode(false);
         setAddressSearching(true);
         setAddressSearchError('');
         try {
+            // Home is private profile data, so refresh only the signed-in officer's
+            // directory record each time the shortcut is used. This picks up a new
+            // address immediately after My Profile or admin/HR changes it.
+            const freshUser = await getCurrentDirectoryUser(true);
+            if (freshUser?.id) setCurrentUser(freshUser);
+            const freshHomeAddress = profileHomeAddress(freshUser || currentUser);
+            if (!freshHomeAddress) {
+                toast.error('No Home address is saved yet. Add it in My Profile.');
+                navigate(createPageUrl('OfficerProfile'));
+                return;
+            }
+
             let destination = homeDestination;
-            if (!destination) {
-                const results = await lookupNavigationDestinations(homeAddress, currentLocation);
+            if (!destination || String(destination.address || '') !== freshHomeAddress) {
+                const results = await lookupNavigationDestinations(freshHomeAddress, currentLocation);
                 destination = results[0] || null;
-                if (!destination) throw new Error('Your saved home address could not be mapped. Check the address in your profile.');
-                destination = { ...destination, name: 'Home', address: homeAddress, label: 'Home' };
+                if (!destination) throw new Error('Your saved home address could not be mapped. Check the address in My Profile.');
+                destination = { ...destination, name: 'Home', address: freshHomeAddress, label: 'Home' };
                 setHomeDestination(destination);
             }
             setMapSelectedDestination(destination);
-            setAddressQuery(homeAddress);
-            setNavigationFallbackAddress(homeAddress);
+            setAddressQuery(freshHomeAddress);
+            setNavigationFallbackAddress(freshHomeAddress);
             setAddressResults([]);
             setFitBounds([...(currentLocation ? [currentLocation] : []), destination.coords]);
             if (navigateNow) await startNavigationToPoint(destination);
@@ -1371,7 +1381,7 @@ export default function Navigation() {
                         </button>
                     </form>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        <button type="button" onClick={() => showHomeLocation()} disabled={!homeAddress || addressSearching}
+                        <button type="button" onClick={() => showHomeLocation()} disabled={addressSearching || isNavigating}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
                             <Home className="h-3.5 w-3.5" /> HOME
                         </button>
@@ -1384,12 +1394,10 @@ export default function Navigation() {
                             className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black ${mapPickMode ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-emerald-600/50 bg-emerald-950/70 text-emerald-100 hover:bg-emerald-900/70'} disabled:opacity-40`}>
                             <MapPin className="h-3.5 w-3.5" /> {mapPickMode ? 'CLICK MAP' : 'PICK ON MAP'}
                         </button>
-                        {homeAddress && (
-                            <button type="button" onClick={() => showHomeLocation({ navigateNow: true })} disabled={addressSearching}
-                                className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-900/80 px-3 py-2 text-[10px] font-black text-blue-100 hover:bg-blue-800 sm:col-span-1">
-                                <Navigation2 className="h-3.5 w-3.5" /> NAVIGATE HOME
-                            </button>
-                        )}
+                        <button type="button" onClick={() => showHomeLocation({ navigateNow: true })} disabled={addressSearching || isNavigating}
+                            className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-900/80 px-3 py-2 text-[10px] font-black text-blue-100 hover:bg-blue-800 disabled:opacity-40 sm:col-span-1">
+                            <Navigation2 className="h-3.5 w-3.5" /> NAVIGATE HOME
+                        </button>
                     </div>
                     {mapPickMode && (
                         <div className="mt-2 rounded-lg border border-emerald-500/60 bg-emerald-950/85 px-3 py-2 text-xs font-bold text-emerald-100">
@@ -1526,7 +1534,7 @@ export default function Navigation() {
                             title: homeAddress ? 'Show my saved home location' : 'Add a home address to your profile',
                             icon: <Home className="h-4 w-4" />,
                             active: mapSelectedDestination?.label === 'Home',
-                            disabled: !homeAddress || isNavigating,
+                            disabled: isNavigating,
                         },
                         {
                             key: 'pick',
