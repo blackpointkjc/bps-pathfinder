@@ -1363,11 +1363,55 @@ export default function Navigation() {
                         />
                         <button type="submit" disabled={addressSearching || addressQuery.trim().length < 3}
                             className="flex h-9 items-center gap-1 rounded-lg bg-blue-700 px-3 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-50">
-                            <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
+                            <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <button type="button" onClick={() => showHomeLocation()} disabled={!homeAddress || addressSearching}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
+                            <Home className="h-3.5 w-3.5" /> HOME
+                        </button>
+                        <button type="button" onClick={() => {
+                            setMapPickMode(enabled => !enabled);
+                            setShowAddressSearch(true);
+                            setAddressResults([]);
+                            setAddressSearchError('');
+                        }} disabled={isNavigating}
+                            className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black ${mapPickMode ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-emerald-600/50 bg-emerald-950/70 text-emerald-100 hover:bg-emerald-900/70'} disabled:opacity-40`}>
+                            <MapPin className="h-3.5 w-3.5" /> {mapPickMode ? 'CLICK MAP' : 'PICK ON MAP'}
+                        </button>
+                        {homeAddress && (
+                            <button type="button" onClick={() => showHomeLocation({ navigateNow: true })} disabled={addressSearching}
+                                className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-900/80 px-3 py-2 text-[10px] font-black text-blue-100 hover:bg-blue-800 sm:col-span-1">
+                                <Navigation2 className="h-3.5 w-3.5" /> NAVIGATE HOME
+                            </button>
+                        )}
+                    </div>
+                    {mapPickMode && (
+                        <div className="mt-2 rounded-lg border border-emerald-500/60 bg-emerald-950/85 px-3 py-2 text-xs font-bold text-emerald-100">
+                            Click or tap any point on the map. Pathfinder will identify the street/place and drop a destination pin there.
+                        </div>
+                    )}
+                    {!homeAddress && (
+                        <div className="mt-2 text-[10px] text-slate-500">Add your address, city, state, and ZIP in your Pathfinder profile to enable Home navigation.</div>
+                    )}
                     {addressSearchError && (
                         <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>
+                    )}
+                    {mapSelectedDestination && (
+                        <div className="mt-2 rounded-xl border border-emerald-500/50 bg-[#071b19]/95 p-3 shadow-lg">
+                            <div className="flex items-start gap-2">
+                                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-[10px] font-black uppercase tracking-wide text-emerald-300">{mapSelectedDestination.label || 'Selected Location'}</div>
+                                    <div className="mt-1 text-xs leading-relaxed text-white">{mapSelectedDestination.address || mapSelectedDestination.name}</div>
+                                </div>
+                            </div>
+                            <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={addressSearching || routing}
+                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
+                                <Navigation2 className="h-4 w-4" /> NAVIGATE HERE
+                            </button>
+                        </div>
                     )}
                     {(addressQuery.trim().length >= 3 || navigationFallbackAddress) && (
                         <button type="button" className="mt-2 rounded-lg border border-emerald-600/60 bg-emerald-950/90 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-900" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navigationFallbackAddress || addressQuery.trim())}&travelmode=driving`, '_blank', 'noopener,noreferrer')}>
@@ -1377,7 +1421,7 @@ export default function Navigation() {
                     {addressResults.length > 0 && (
                         <div className="relative z-[1220] mt-2 max-h-[55vh] overflow-y-auto rounded-xl border border-[#45637f] bg-[#07111f] shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
                             <div className="border-b border-[#1e2d4a] px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                Select a destination
+                                Select a destination · pins are shown on the map
                             </div>
                             {addressResults.map((result, index) => (
                                 <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
