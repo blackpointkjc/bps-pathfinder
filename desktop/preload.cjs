@@ -10,6 +10,24 @@ contextBridge.exposeInMainWorld('bpsDesktop', Object.freeze({
   isDesktop: true,
   platform: process.platform,
   electronVersion: process.versions.electron,
+  onSerialPortSelectionRequested: handler => {
+    if (typeof handler !== 'function') return () => {};
+    const listener = (_event, detail = {}) => handler(detail);
+    ipcRenderer.on('bps:serial-port-options', listener);
+    return () => ipcRenderer.removeListener('bps:serial-port-options', listener);
+  },
+  onSerialPortSelectionExpired: handler => {
+    if (typeof handler !== 'function') return () => {};
+    const listener = (_event, detail = {}) => handler(detail);
+    ipcRenderer.on('bps:serial-port-selection-expired', listener);
+    return () => ipcRenderer.removeListener('bps:serial-port-selection-expired', listener);
+  },
+  selectSerialPort: payload => {
+    ipcRenderer.send('bps:select-serial-port', {
+      requestId: String(payload?.requestId || ''),
+      portId: String(payload?.portId || ''),
+    });
+  },
 }));
 
 ipcRenderer.on('bps:desktop-heartbeat', (_event, detail = {}) => {
