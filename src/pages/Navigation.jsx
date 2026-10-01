@@ -981,8 +981,11 @@ export default function Navigation() {
         // actually agree. The old 85m tolerance could pull the icon onto a nearby
         // parallel/side road and make the street map appear wrong.
         const snapToleranceMeters = gpsQuality?.state === 'live' ? 35 : 20;
-        if (nearestDistance <= snapToleranceMeters) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
-        const target = nearestDistance <= snapToleranceMeters ? navRoute[nearestIndex] : currentLocation;
+        const canSnapToRoute = !navOffRoute && nearestDistance <= snapToleranceMeters;
+        if (canSnapToRoute) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
+        // Once off-route, immediately follow the real GPS point rather than
+        // visually pulling the vehicle back onto the obsolete route line.
+        const target = canSnapToRoute ? navRoute[nearestIndex] : currentLocation;
         setNavigationDisplayLocation(previous => {
             if (!previous) return target;
             const moved = distanceMeters(previous, target);
@@ -990,7 +993,7 @@ export default function Navigation() {
             if (moved > 120) return target;
             return [previous[0] * 0.3 + target[0] * 0.7, previous[1] * 0.3 + target[1] * 0.7];
         });
-    }, [currentLocation, isNavigating, navRoute, gpsQuality?.state]);
+    }, [currentLocation, isNavigating, navRoute, gpsQuality?.state, navOffRoute]);
 
     const toggleNavigationVoice = () => {
         setNavVoiceMuted(current => {
