@@ -14,6 +14,25 @@ Deno.serve(async (req) => {
         if (!status) {
             return Response.json({ error: 'Status is required' }, { status: 400 });
         }
+        // An officer who is clocked in may change operational CAD states, but
+        // cannot self-transition to Out of Service. Clock Out is the authoritative
+        // end-of-duty transaction; refreshes, disconnects, GPS loss, and status
+        // controls must never bypass it. Authorized forced-OOS uses its own backend.
+        if (String(status).trim().toLowerCase() === 'out of service') {
+            const openEntries = await base44.asServiceRole.entities.TimeEntry.filter({
+                officer_email: user.email,
+                archived: { $ne: true },
+                $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
+            }, '-clock_in', 1).catch(() => []);
+            if (openEntries?.length) {
+                return Response.json({
+                    error: 'You are still clocked in. Use Clock Out to go Out of Service.',
+                    clocked_in: true,
+                    status: user.status || 'Available',
+                }, { status: 409 });
+            }
+        }
+
         // Even when the User row already has this value, continue reconciling the
         // Unit and ActiveOfficer sources. Those live-board rows can be stale after
         // a reconnect, and returning here previously made Available appear OOS.
