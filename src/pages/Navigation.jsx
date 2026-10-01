@@ -481,7 +481,14 @@ export default function Navigation() {
 
     const init = async () => {
         try {
-            const user = await getCurrentDirectoryUser();
+            const [directoryUser, homeResponse] = await Promise.all([
+                getCurrentDirectoryUser(),
+                base44.functions.invoke('updateMyHomeAddress', { action: 'get' }).catch(() => null),
+            ]);
+            const homeProfile = homeResponse?.data || homeResponse || {};
+            const user = profileHomeAddress(homeProfile)
+                ? { ...directoryUser, address: homeProfile.address || '', city: homeProfile.city || '', state: homeProfile.state || '', zip: homeProfile.zip || '' }
+                : directoryUser;
             setCurrentUser(user);
             syncScheduledCadPartnership(user).then(setCurrentUser).catch(() => null);
             if (user.status) setUnitStatus(user.status === 'On Patrol' ? 'Available' : user.status);
