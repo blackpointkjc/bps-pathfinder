@@ -380,8 +380,10 @@ export const AuthProvider = ({ children }) => {
   }, [isAuthenticated, user?.id, user?.email]);
 
   const logout = useCallback(async (shouldRedirect = true) => {
-    // Before clearing the auth token, force duty status OOS and close the one
-    // canonical live-location session. Pages never delete ActiveOfficer directly.
+    // Before clearing the auth token, close browser presence through the duty
+    // status backend and then end the live-location session. If a TimeEntry is
+    // still open, both operations preserve the officer's CAD status; Clock Out
+    // remains the only self-service transition to Out of Service.
     try {
       const response = await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
       const payload = response?.data || response || {};
@@ -434,7 +436,9 @@ export const AuthProvider = ({ children }) => {
       const age = Date.now() - Number(operationalSessionHeartbeatRef.current || 0);
       if (age >= staleAfterMs) {
         signingOut = true;
-        cacheOfficerStatus('Out of Service');
+        // Authentication may expire after a very long idle period, but that is
+        // presence only. Never poison the local CAD-status cache with OOS; the
+        // open TimeEntry keeps duty status authoritative across the next login.
         void logout(true);
         return;
       }
