@@ -24,6 +24,33 @@ const unique = rows => {
   }).slice(0, 6);
 };
 
+export async function lookupNavigationPoint(latitude, longitude) {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    throw new Error('That map point is not valid');
+  }
+  try {
+    const response = await withRequestTimeout(base44.functions.invoke('geocodeNavigationDestination', {
+      reverse: true,
+      latitude: lat,
+      longitude: lng,
+    }), 10_000, 'Map point lookup');
+    const payload = response?.data || response || {};
+    if (payload?.result && valid(payload.result.coords)) return payload.result;
+  } catch (error) {
+    console.warn('[NAV] Server reverse lookup failed; trying public service:', error?.message || error);
+  }
+  try {
+    const payload = await fetchJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+    const label = payload?.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return { coords: [lat, lng], name: label, address: label, type: payload?.type || 'map_point' };
+  } catch {
+    const label = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return { coords: [lat, lng], name: label, address: label, type: 'map_point' };
+  }
+}
+
 export async function lookupNavigationDestinations(query, location) {
   const value = String(query || '').trim();
   if (value.length < 3) return [];
