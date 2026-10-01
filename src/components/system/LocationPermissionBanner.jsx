@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, LocateFixed, Loader2, MapPinOff, X } from 'lucide-react';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { requestBestLiveLocation } from '@/lib/liveLocationService';
+import { getExternalGpsStatus, startExternalGpsAutoReconnect, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 
 function messageFor(state, detail = {}) {
   if (state === 'permission_denied') return 'Location is blocked for Pathfinder. Allow Location and Precise Location in this browser’s site settings, then select Retry Location.';
   if (state === 'timeout') return 'Pathfinder could not obtain a current device location. Confirm device Location Services are on, then retry.';
   if (state === 'low_accuracy') return `Pathfinder has a low-accuracy location${Number.isFinite(Number(detail.accuracy)) ? ` (±${Math.round(Number(detail.accuracy))} m)` : ''}. Keep Wi-Fi and Precise Location enabled while the device improves the fix.`;
   if (state === 'stale') return 'The last device location is stale. Keep Pathfinder open and retry the live location.';
+  if (state === 'external_acquiring') return detail.message || 'External GPS receiver is connected and acquiring a fresh satellite fix.';
   if (state === 'unavailable') return 'This device is not providing a location to Pathfinder. Confirm browser and device location settings.';
   return '';
 }
@@ -16,6 +18,7 @@ export default function LocationPermissionBanner({ user }) {
   const [quality, setQuality] = useState({ state: 'checking' });
   const [retrying, setRetrying] = useState(false);
   const [dismissedState, setDismissedState] = useState('');
+  const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
 
   useEffect(() => {
     if (!user?.id || !isInternalMember(user)) return undefined;
@@ -23,10 +26,43 @@ export default function LocationPermissionBanner({ user }) {
     const onQuality = event => {
       if (!active) return;
       const detail = event?.detail || {};
+      const external = getExternalGpsStatus();
+      // Browser geolocation can fail independently of a USB/NMEA receiver. Do
+      // not overwrite a connected/reconnecting external source with a false
+      // app-wide "unavailable" state.
+      if (['unavailable', 'timeout', 'permission_denied'].includes(detail.state)
+          && (external.connected || external.connecting || external.portGranted)) {
+        setQuality({
+          state: 'external_acquiring',
+          source: 'external_serial',
+          external_connected: external.connected === true,
+          message: external.connected
+            ? 'External GPS receiver connected and acquiring a fresh satellite fix.'
+            : 'External GPS receiver is reconnecting.',
+        });
+        return;
+      }
       setQuality(detail);
       if (detail.state === 'live') setDismissedState('');
     };
     window.addEventListener('bps-location-quality', onQuality);
+    const unsubscribeExternal = subscribeExternalGpsStatus(status => {
+      if (!active) return;
+      setExternalGps(status);
+      if (status.connected || status.connecting) {
+        const ageMs = status.lastFixAt ? Date.now() - new Date(status.lastFixAt).getTime() : Infinity;
+        if (!Number.isFinite(ageMs) || ageMs > 30_000) {
+          setQuality({
+            state: 'external_acquiring',
+            source: 'external_serial',
+            external_connected: status.connected === true,
+            message: status.connected
+              ? 'External GPS receiver connected and acquiring a fresh satellite fix.'
+              : 'External GPS receiver is reconnecting.',
+          });
+        }
+      }
+    });
 
     if (navigator?.permissions?.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(status => {
@@ -45,6 +81,7 @@ export default function LocationPermissionBanner({ user }) {
     return () => {
       active = false;
       window.removeEventListener('bps-location-quality', onQuality);
+      unsubscribeExternal?.();
     };
   }, [user?.id]);
 
@@ -59,6 +96,9 @@ export default function LocationPermissionBanner({ user }) {
     setRetrying(true);
     setDismissedState('');
     try {
+      if (externalGps.connected || externalGps.connecting || externalGps.portGranted) {
+        await startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+      }
       const fix = await requestBestLiveLocation({ timeoutMs: 20000, targetAccuracyMeters: 75 });
       window.dispatchEvent(new CustomEvent('bps-location-quality', {
         detail: { state: Number(fix?.accuracy) <= 100 ? 'live' : 'low_accuracy', accuracy: fix?.accuracy },
