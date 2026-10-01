@@ -5,6 +5,10 @@ function roleSet(user: any) {
 }
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const normalizedSpeedMph = (value: unknown) => {
+  const speed = Math.max(0, Number(value) || 0);
+  return speed >= 3 ? speed : 0;
+};
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const usableGpsAccuracy = (value: unknown) => Number.isFinite(Number(value)) && Number(value) <= MAX_USABLE_GPS_ACCURACY_METERS;
 const hasCoordinateValue = (value: unknown) => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
@@ -239,7 +243,7 @@ Deno.serve(async (req) => {
             latitude: hasGps ? Number(active.latitude) : null,
             longitude: hasGps ? Number(active.longitude) : null,
             heading: hasGps ? active.heading : null,
-            speed: hasGps ? active.speed : 0,
+            speed: hasGps ? normalizedSpeedMph(active.speed) : 0,
             accuracy: Number.isFinite(accuracy) ? accuracy : null,
             gps_updated_at: hasGps ? active.gps_updated_at : null,
             gps_source: hasGps ? (active.gps_source || 'browser_geolocation') : '',
@@ -391,7 +395,7 @@ Deno.serve(async (req) => {
         latitude: hasReliableGps ? active.latitude : null,
         longitude: hasReliableGps ? active.longitude : null,
         heading: hasReliableGps ? active.heading : null,
-        speed: hasReliableGps ? active.speed : 0,
+        speed: hasReliableGps ? normalizedSpeedMph(active.speed) : 0,
         accuracy: hasReliableGps ? active.accuracy : null,
         gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
         gps_source: hasReliableGps ? (active.gps_source || 'browser_geolocation') : '',
@@ -553,7 +557,7 @@ Deno.serve(async (req) => {
           latitude: freshPosition ? Number(freshPosition.latitude) : null,
           longitude: freshPosition ? Number(freshPosition.longitude) : null,
           heading: freshPosition?.heading ?? null,
-          speed: freshPosition?.speed ?? 0,
+          speed: freshPosition ? normalizedSpeedMph(freshPosition.speed) : 0,
           accuracy: freshPosition && Number.isFinite(Number(freshPosition.accuracy)) ? Number(freshPosition.accuracy) : null,
           gps_updated_at: freshPosition ? (freshPosition.gps_updated_at || userGpsTimestamp) : null,
           gps_source: freshPosition ? (freshPosition.gps_source || (freshPosition === user ? 'user_location_fallback' : 'browser_geolocation')) : '',
