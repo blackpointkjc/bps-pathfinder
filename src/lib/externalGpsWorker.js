@@ -45,8 +45,9 @@ function handleSentence(sentence) {
     if (String(fields[2] || '').toUpperCase() !== 'A') return;
     const speedKnots = Number(fields[7]);
     const course = Number(fields[8]);
+    const speedMph = Number.isFinite(speedKnots) ? speedKnots * 1.150779 : 0;
     lastMotion = {
-      speed: Number.isFinite(speedKnots) ? speedKnots * 1.150779 : 0,
+      speed: speedMph >= 3 ? speedMph : 0,
       heading: Number.isFinite(course) ? course : null,
     };
     return;
