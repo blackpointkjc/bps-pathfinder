@@ -29,6 +29,10 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
+const liveSpeedMph = value => {
+    const speed = Math.max(0, Number(value) || 0);
+    return speed >= 3 ? speed : 0;
+};
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -168,7 +172,7 @@ export default function Navigation() {
                 const coords = [lat, lng];
                 setCurrentLocation(coords);
                 if (fix.heading !== null) setHeading(fix.heading);
-                setSpeed(Math.round(fix.speed || 0));
+                setSpeed(Math.round(liveSpeedMph(fix.speed)));
                 setLocationHistory(prev => [...prev, coords].slice(-30));
             }
             setIsLiveTracking(tacticalFix);
@@ -482,7 +486,7 @@ export default function Navigation() {
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
                 setCurrentLocation([lat, lng]);
                 if (fix.heading !== null) setHeading(fix.heading);
-                setSpeed(Math.round(fix.speed || 0));
+                setSpeed(Math.round(liveSpeedMph(fix.speed)));
             }
             setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
         }
@@ -607,7 +611,7 @@ export default function Navigation() {
             setGpsQuality(quality);
             setCurrentLocation(fresh);
             if (fix.heading !== null) setHeading(fix.heading);
-            setSpeed(Math.round(fix.speed || 0));
+            setSpeed(Math.round(liveSpeedMph(fix.speed)));
             setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
             return fresh;
         } catch (liveError) {
@@ -619,7 +623,7 @@ export default function Navigation() {
                 const fresh = [best.latitude, best.longitude];
                 setCurrentLocation(fresh);
                 if (best.heading !== null) setHeading(best.heading);
-                setSpeed(Math.round(best.speed || 0));
+                setSpeed(Math.round(liveSpeedMph(best.speed)));
                 setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
                 return fresh;
             } catch (deviceError) {
