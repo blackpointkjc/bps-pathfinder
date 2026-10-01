@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
       const t = String(entry.user_type || entry.account_type || entry.portal_type || '').toLowerCase();
       if (entry.termination_date) return false;
       if (rs.has('client') || rs.has('student') || ['client','student','pending'].includes(t) || ['client','student'].includes(r)) return false;
-      return entry.role === 'admin' || [...rs].some((x: string) => internalRoles.has(x)) || Boolean(r && !['client','student'].includes(r)) || String(entry.employment_status || '').toLowerCase() === 'active';
+      return entry.role === 'admin' || [...rs].some((x: unknown) => internalRoles.has(String(x))) || Boolean(r && !['client','student'].includes(r)) || String(entry.employment_status || '').toLowerCase() === 'active';
     };
 
     let users: any[] = [];
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         data_health: Object.keys(sourceErrors).length ? 'partial' : 'verified',
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('getAppDirectory failed', error);
     return Response.json({ error: error?.message || 'Unable to load app directory', users: [], locations: [], divisions: [] }, { status: 500 });
   }
