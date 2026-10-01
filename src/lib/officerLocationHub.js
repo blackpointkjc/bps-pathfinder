@@ -48,12 +48,15 @@ export function applyOfficerLocationEvent(rows = [], event) {
       if (activeId !== eventId && rowId !== eventId) return row;
       return {
         ...row,
-        status: 'Out of Service',
+        // Losing/deleting an ActiveOfficer browser session changes presence only.
+        // If the officer is still clocked in, preserve their CAD status until
+        // Clock Out. A later canonical roster fetch reconciles the User record.
+        status: row?.clocked_in ? row.status : 'Out of Service',
         session_active: false,
         presence_online: false,
         presence_state: 'offline',
         connection_stale: false,
-        current_call_info: '',
+        current_call_info: row?.clocked_in ? (row.current_call_info || '') : '',
         last_update: new Date().toISOString(),
         last_updated: new Date().toISOString(),
       };
