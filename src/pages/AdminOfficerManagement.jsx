@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, CalendarDays, Check, CheckCircle2, Clock3, MapPin, Save, Search, Shield, UserCheck, XCircle } from 'lucide-react';
-import { listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { createPageUrl } from '@/utils';
 
@@ -42,6 +42,7 @@ export default function AdminOfficerManagement() {
   const [newDayOff, setNewDayOff] = useState('');
   const [preferredLocations, setPreferredLocations] = useState([]);
   const [notes, setNotes] = useState('');
+  const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
   const [saving, setSaving] = useState(false);
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
@@ -89,6 +90,15 @@ export default function AdminOfficerManagement() {
   }).sort((a, b) => rankLast(a).localeCompare(rankLast(b))), [activeOfficers, searchTerm]);
 
   const selectedOfficerRecord = officerByEmail.get(normalize(selectedOfficer));
+  const { data: selectedOfficerPrivate = null } = useQuery({
+    queryKey: ['adminOfficerPrivateProfile', selectedOfficer],
+    queryFn: async () => {
+      const rows = await base44.entities.User.filter({ email: selectedOfficer });
+      return rows?.[0] || null;
+    },
+    enabled: isAdmin && Boolean(selectedOfficer),
+    staleTime: 0,
+  });
   const selectedUpcoming = useMemo(() => upcomingSchedules.filter(s => normalize(s.officer_email) === normalize(selectedOfficer)), [upcomingSchedules, selectedOfficer]);
 
   useEffect(() => {
@@ -105,6 +115,16 @@ export default function AdminOfficerManagement() {
     setPreferredLocations(rows[0]?.preferred_locations || []);
     setNotes(rows[0]?.notes || '');
   }, [selectedOfficer, allAvailability]);
+
+  useEffect(() => {
+    const profile = selectedOfficerPrivate || selectedOfficerRecord;
+    setHomeAddressForm({
+      address: String(profile?.address || ''),
+      city: String(profile?.city || ''),
+      state: String(profile?.state || ''),
+      zip: String(profile?.zip || ''),
+    });
+  }, [selectedOfficer, selectedOfficerPrivate?.id, selectedOfficerPrivate?.address, selectedOfficerPrivate?.city, selectedOfficerPrivate?.state, selectedOfficerPrivate?.zip]);
 
   const reviewAvailabilityRequest = async (request, approved) => {
     try {
