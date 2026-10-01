@@ -157,6 +157,10 @@
     "current_call_info": {
       "type": "string",
       "description": "Current assigned call summary"
+    },
+    "current_call_id": {
+      "type": "string",
+      "description": "Current assigned dispatch call id for live CAD marker/assignment state"
     }
   },
   "required": [
