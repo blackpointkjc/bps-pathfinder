@@ -1713,6 +1713,43 @@ export default function Layout({ children, currentPageName }) {
               document.body
             )}
           </div>
+          {serialPortRequest && typeof document !== 'undefined' && createPortal(
+            <div className="fixed inset-0 z-[100100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+              <div className="w-[min(94vw,520px)] overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#071421] shadow-[0_24px_80px_rgba(0,0,0,.85)]">
+                <div className="border-b border-[#27445f] bg-[#0b1c2b] px-5 py-4">
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">Select External GPS Port</div>
+                  <div className="mt-1 text-sm font-bold text-white">Choose the COM port connected to the GPS antenna.</div>
+                  <div className="mt-1 text-[10px] leading-4 text-slate-400">Pathfinder will use only the port you select. COM6 is not selected automatically.</div>
+                </div>
+                <div className="max-h-[55vh] space-y-2 overflow-y-auto p-4">
+                  {serialPortRequest.ports.length ? serialPortRequest.ports.map(port => {
+                    const title = port.portName || port.displayName || 'Serial device';
+                    const detail = port.displayName && port.displayName !== title ? port.displayName : port.deviceInstanceId || '';
+                    return (
+                      <button
+                        key={port.portId}
+                        type="button"
+                        onClick={() => selectDesktopSerialPort(port.portId)}
+                        className="w-full rounded-xl border border-slate-700 bg-[#0b1725] px-4 py-3 text-left transition hover:border-cyan-500 hover:bg-cyan-950/25"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-base font-black text-white">{title}</span>
+                          {port.suggestedGps && <span className="rounded-full border border-emerald-600/60 bg-emerald-950/40 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-300">GPS likely</span>}
+                        </div>
+                        {detail && <div className="mt-1 break-all text-[10px] text-slate-400">{detail}</div>}
+                      </button>
+                    );
+                  }) : (
+                    <div className="rounded-xl border border-amber-700/50 bg-amber-950/25 px-4 py-3 text-sm text-amber-200">No serial/COM ports were reported by Windows.</div>
+                  )}
+                </div>
+                <div className="flex justify-end border-t border-[#27445f] bg-[#08111d] px-4 py-3">
+                  <button type="button" onClick={() => selectDesktopSerialPort('')} className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-black text-slate-200 hover:bg-slate-800">CANCEL</button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
           <CadAudioToggle />
 
           <button
