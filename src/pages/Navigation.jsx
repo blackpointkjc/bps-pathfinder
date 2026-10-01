@@ -587,6 +587,11 @@ export default function Navigation() {
                     const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'join' });
                     const payload = result?.data || result || {};
                     if (payload.error) throw new Error(payload.error);
+                    setCurrentUser(previous => previous ? {
+                        ...previous,
+                        current_call_id: payload.current_call_id || String(selectedCall.id),
+                        current_call_info: payload.current_call_info || previous.current_call_info || '',
+                    } : previous);
                 } catch (error) {
                     setSelectedCall(prev => ({ ...prev, assigned_units: previousUnits }));
                     throw error;
@@ -609,6 +614,9 @@ export default function Navigation() {
             const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'leave' });
             const payload = result?.data || result || {};
             if (payload.error) throw new Error(payload.error);
+            if (String(currentUser.current_call_id || '') === String(selectedCall.id)) {
+                setCurrentUser(previous => previous ? { ...previous, current_call_id: '', current_call_info: '' } : previous);
+            }
             const updatedUnits = (selectedCall.assigned_units || []).filter(id => id !== currentUser.id);
             setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
             toast.success('Unassigned from call');
