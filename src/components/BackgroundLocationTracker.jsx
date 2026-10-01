@@ -285,7 +285,7 @@ export default function BackgroundLocationTracker({ user }) {
 
       try {
         const rawSpeedMph = Number.isFinite(Number(fix.speed)) ? Math.max(0, Number(fix.speed)) : 0;
-        const speedMph = rawSpeedMph >= 3 ? rawSpeedMph : 0;
+        const speedMph = rawSpeedMph >= 5 ? rawSpeedMph : 0;
         const previousPushed = lastPushedFixRef.current;
         const movedMeters = previousPushed
           ? getDistanceFromLatLonInMeters(
@@ -295,7 +295,7 @@ export default function BackgroundLocationTracker({ user }) {
               lng
             )
           : Infinity;
-        const moving = speedMph >= 3 || movedMeters >= 18;
+        const moving = speedMph >= 5 || movedMeters >= 18;
         // External NMEA/USB is a live tactical source: publish it at near-live
         // cadence instead of holding a good fix for 30-60 seconds. Moving browser
         // GPS stays conservative to avoid unnecessary backend pressure.
