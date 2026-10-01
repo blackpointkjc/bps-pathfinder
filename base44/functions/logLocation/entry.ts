@@ -44,7 +44,7 @@ async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await operation();
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
       if (!isTransientHistoryError(error) || attempt === 1) break;
       await delay(300 * (attempt + 1));
@@ -409,7 +409,7 @@ Deno.serve(async (req) => {
           }));
           historyRecorded = true;
         }
-      } catch (error) {
+      } catch (error: any) {
         historyError = String(error?.message || error || 'Movement history write failed');
         console.warn(`[logLocation] movement history delayed for ${officerEmail}: ${historyError}`);
       }
@@ -430,7 +430,7 @@ Deno.serve(async (req) => {
       history_error: historyError || null,
       auto_on_scene: autoSceneTransitions,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error logging location:', error);
     return Response.json({ error: error?.message || 'Unable to update live location' }, { status: 500 });
   }
