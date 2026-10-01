@@ -38,6 +38,51 @@ const hasValidCoordinates = item => hasCoordinateValue(item?.latitude)
   && Math.abs(Number(item.longitude)) <= 180
   && !(Number(item.latitude) === 0 && Number(item.longitude) === 0);
 
+const liveSpeedMph = value => {
+  const speed = Math.max(0, Number(value) || 0);
+  return speed >= 3 ? speed : 0;
+};
+
+function buildLiveLocationHealth(rows = [], users = []) {
+  const latestByEmail = new Map();
+  for (const row of rows || []) {
+    const key = String(row?.officer_email || '').toLowerCase();
+    if (!key) continue;
+    const stamp = new Date(row?.last_update || row?.updated_date || row?.created_date || 0).getTime();
+    const existing = latestByEmail.get(key);
+    const existingStamp = existing ? new Date(existing?.last_update || existing?.updated_date || existing?.created_date || 0).getTime() : -Infinity;
+    if (!existing || stamp > existingStamp) latestByEmail.set(key, row);
+  }
+  const results = { total: 0, withLocation: [], withoutLocation: [], staleLocation: [], timestamp: new Date().toISOString() };
+  const now = Date.now();
+  for (const locationData of latestByEmail.values()) {
+    if (locationData.session_active !== true) continue;
+    const profile = users.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+    if (profile && !isOperationallyVisibleUser(profile)) continue;
+    const gpsStamp = new Date(locationData.gps_updated_at || locationData.last_gps_updated_at || 0).getTime();
+    const gpsAgeMs = Number.isFinite(gpsStamp) ? now - gpsStamp : Infinity;
+    const hasFreshGps = hasValidCoordinates(locationData) && gpsAgeMs <= LIVE_GPS_FRESH_MS;
+    const hadGps = Number.isFinite(gpsStamp) && gpsStamp > 0;
+    const name = profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : (profile?.full_name || locationData.officer_name || locationData.officer_email);
+    const item = {
+      name,
+      email: profile?.email || locationData.officer_email,
+      location: locationData.current_location || 'Signed in - GPS pending',
+      role: profile?.rank || profile?.role || 'officer',
+      lastUpdate: hadGps ? new Date(gpsStamp).toISOString() : null,
+      minutesSinceUpdate: hadGps ? Math.max(0, Math.floor(gpsAgeMs / 60000)) : null,
+      trackingState: hasFreshGps ? 'Live' : hadGps ? 'Signed in - GPS stale' : 'Signed in - GPS unavailable',
+    };
+    results.total += 1;
+    if (hasFreshGps) results.withLocation.push(item);
+    else if (hadGps) results.staleLocation.push(item);
+    else results.withoutLocation.push(item);
+  }
+  return results;
+}
+
 // Custom marker icons
 const clockInIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCAzMCA0NSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMCAwIDAgNSAwIDE1YzAgMTAgMTUgMzAgMTUgMzBzMTUtMjAgMTUtMzBjMC0xMC0xMC0xNS0xNS0xNXoiIGZpbGw9IiMyMmMzNWUiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
@@ -199,6 +244,18 @@ export default function AdminLocationTracker({ embedded = false }) {
   });
 
   const activeOfficerLocations = activeOfficerPayload.units || [];
+
+  useEffect(() => {
+    if (!hasAccess || viewMode !== 'live') return;
+    // Location Health must reflect the same live roster driving the map. The old
+    // independent five-minute snapshot could keep showing NO GPS long after a
+    // recovered external receiver had already published a fresh fix.
+    const liveResults = buildLiveLocationHealth(activeOfficerLocations, allUsers || []);
+    setLocationCheckResults(liveResults);
+    setLastAutoCheck(new Date());
+    setLocationCheckError('');
+  }, [hasAccess, viewMode, activeOfficerLocations, allUsers]);
+
   useEffect(() => {
     if (!hasAccess) return undefined;
     let refreshTimer;
@@ -850,7 +907,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                             fillOpacity: officer.gps_stale ? 0.55 : 0.95,
                           }}
                         >
-                          <Tooltip permanent direction="top">{getOfficerName(officer.officer_email)}{officer.gps_stale ? " · Last known" : ` · ${Math.round(Number(officer.speed || 0))} MPH`}</Tooltip>
+                          <Tooltip permanent direction="top">{getOfficerName(officer.officer_email)}{officer.gps_stale ? " · Last known" : ` · ${Math.round(liveSpeedMph(officer.speed))} MPH`}</Tooltip>
                           <Popup autoPan={false} className="bps-location-popup">
                             <div className="min-w-[270px] max-w-[340px] rounded-xl bg-[#08111d] p-4 text-white shadow-2xl">
                               <p className="text-base font-black text-white">{getOfficerName(officer.officer_email)}</p>
@@ -872,7 +929,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                                   : 'No GPS data'}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-black text-cyan-100">{Math.round(Number(officer.speed || 0))} MPH</span>
+                                <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-black text-cyan-100">{Math.round(liveSpeedMph(officer.speed))} MPH</span>
                                 {Number.isFinite(Number(officer.heading)) && <span className="rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-black text-slate-300">{Math.round(Number(officer.heading))}°</span>}
                               </div>
                               <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-cyan-300">
@@ -950,7 +1007,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                     <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-[#08131f] p-2">
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">Speed</p>
-                        <p className="text-xl font-black text-cyan-200">{Math.round(Number(officer.speed || 0))} <span className="text-[10px] text-cyan-400">MPH</span></p>
+                        <p className="text-xl font-black text-cyan-200">{Math.round(liveSpeedMph(officer.speed))} <span className="text-[10px] text-cyan-400">MPH</span></p>
                       </div>
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">Last Update</p>
