@@ -354,7 +354,7 @@ export default function Navigation() {
     }, []);
 
     useEffect(() => {
-        if (!isNavigating || !currentLocation || navSteps.length === 0) return;
+        if (!isNavigating || !currentLocation || navSteps.length === 0 || routing || navOffRoute) return;
         const step = navSteps[navStepIndex];
         const location = step?.maneuver?.location;
         if (!location) return;
@@ -377,8 +377,33 @@ export default function Navigation() {
         setNavDistanceMiles(Math.max(0, (currentMeters + futureMeters) / 1609.344));
         setNavDurationMinutes(Math.max(1, Math.ceil((currentStepSeconds + futureSeconds) / 60)));
 
-        // Do not advance so early that the final "turn now" prompt is skipped.
-        if (miles < 0.018 && navStepIndex < navSteps.length - 1) setNavStepIndex(index => index + 1);
+        // Maintain forward route progress independently of exact maneuver-radius
+        // hits. A GPS update can skip across the ~95 ft turn bubble at highway
+        // speed; without route-progress advancement Pathfinder can keep speaking
+        // a maneuver the officer already passed.
+        if (navRoute.length > 1) {
+            const start = Math.max(0, navSnapIndexRef.current - 12);
+            const remaining = navRoute.length - start;
+            const stride = Math.max(1, Math.floor(remaining / 1200));
+            let nearestIndex = start;
+            let nearestMeters = Infinity;
+            for (let index = start; index < navRoute.length; index += stride) {
+                const distance = distanceMetersBetween(currentLocation, navRoute[index]);
+                if (distance < nearestMeters) {
+                    nearestMeters = distance;
+                    nearestIndex = index;
+                }
+            }
+            if (nearestMeters <= 80) navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
+        }
+        const nextStepRouteIndex = navStepRouteIndexesRef.current[navStepIndex + 1];
+        const passedNextManeuver = Number.isFinite(Number(nextStepRouteIndex))
+            && navSnapIndexRef.current >= Math.max(0, Number(nextStepRouteIndex) - 2);
+        // Do not advance so early that the final "turn now" prompt is skipped,
+        // but do advance once route progress proves that maneuver was passed.
+        if ((miles < 0.018 || passedNextManeuver) && navStepIndex < navSteps.length - 1) {
+            setNavStepIndex(index => index + 1);
+        }
         if (navDestination?.coords) {
             const [destLat, destLng] = navDestination.coords;
             const ddLat = toRad(destLat - currentLocation[0]);
@@ -390,12 +415,12 @@ export default function Navigation() {
                 stopInAppNavigation();
             }
         }
-    }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination]);
+    }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination, navRoute, routing, navOffRoute]);
 
     // Modern staged turn prompts: one early cue, one near-turn cue, and a
     // turn-now cue. Each stage is spoken only once per maneuver.
     useEffect(() => {
-        if (!isNavigating || navVoiceMuted || !navSteps.length || navStepIndex < 0) return;
+        if (!isNavigating || navVoiceMuted || !navSteps.length || navStepIndex < 0 || routing || navOffRoute) return;
         const step = navSteps[navStepIndex];
         if (!step) return;
         const feet = Number(navTurnDistanceFeet);
@@ -411,7 +436,7 @@ export default function Navigation() {
         spokenNavPromptsRef.current.add(key);
         lastSpokenNavStepRef.current = navStepIndex;
         announceNavigationInstruction(formatInstruction(step), stage === 'now' ? 0 : feet);
-    }, [isNavigating, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet]);
+    }, [isNavigating, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet, routing, navOffRoute]);
 
     const syncScheduledCadPartnership = async (user) => {
         if (!user?.email || !user?.id) return user;
