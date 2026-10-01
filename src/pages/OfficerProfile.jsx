@@ -390,6 +390,43 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
+        <Card className="overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#0d1725] text-slate-100 shadow-xl">
+          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-cyan-950/35 to-blue-950/25">
+            <CardTitle className="flex items-center gap-2 text-white">
+              <MapPin className="h-5 w-5 text-cyan-300" />
+              Home Navigation Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <p className="mb-4 text-xs leading-5 text-slate-400">
+              Pathfinder uses this address only for your personal Home shortcut in GPS/navigation. It is not used as your live duty location or displayed on the officer tracking map.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <Label htmlFor="home-address" className="text-sm text-slate-300">Street Address</Label>
+                <Input id="home-address" autoComplete="street-address" value={homeAddressForm.address} onChange={event => setHomeAddressForm(current => ({ ...current, address: event.target.value }))} placeholder="123 Main Street" className="mt-1 bg-[#07111f] text-white" />
+              </div>
+              <div>
+                <Label htmlFor="home-city" className="text-sm text-slate-300">City</Label>
+                <Input id="home-city" autoComplete="address-level2" value={homeAddressForm.city} onChange={event => setHomeAddressForm(current => ({ ...current, city: event.target.value }))} placeholder="Richmond" className="mt-1 bg-[#07111f] text-white" />
+              </div>
+              <div className="grid grid-cols-[1fr_1.4fr] gap-3">
+                <div>
+                  <Label htmlFor="home-state" className="text-sm text-slate-300">State</Label>
+                  <Input id="home-state" autoComplete="address-level1" maxLength={2} value={homeAddressForm.state} onChange={event => setHomeAddressForm(current => ({ ...current, state: event.target.value.toUpperCase() }))} placeholder="VA" className="mt-1 bg-[#07111f] text-white" />
+                </div>
+                <div>
+                  <Label htmlFor="home-zip" className="text-sm text-slate-300">ZIP</Label>
+                  <Input id="home-zip" autoComplete="postal-code" value={homeAddressForm.zip} onChange={event => setHomeAddressForm(current => ({ ...current, zip: event.target.value }))} placeholder="23223" className="mt-1 bg-[#07111f] text-white" />
+                </div>
+              </div>
+            </div>
+            <Button type="button" onClick={saveHomeNavigationAddress} disabled={savingHomeAddress || !homeAddressForm.address.trim()} className="mt-5 bg-cyan-700 hover:bg-cyan-600">
+              <MapPin className="mr-2 h-4 w-4" />{savingHomeAddress ? 'Saving…' : 'Save Home Navigation Address'}
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
