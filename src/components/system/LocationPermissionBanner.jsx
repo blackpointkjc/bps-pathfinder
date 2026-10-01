@@ -67,11 +67,16 @@ export default function LocationPermissionBanner({ user }) {
     if (navigator?.permissions?.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(status => {
         if (!active) return;
-        if (status.state === 'denied') setQuality({ state: 'permission_denied' });
+        if (status.state === 'denied') {
+          const external = getExternalGpsStatus();
+          if (!(external.connected || external.connecting)) setQuality({ state: 'permission_denied' });
+        }
         status.onchange = () => {
           if (!active) return;
-          if (status.state === 'denied') setQuality({ state: 'permission_denied' });
-          else {
+          if (status.state === 'denied') {
+            const external = getExternalGpsStatus();
+            if (!(external.connected || external.connecting)) setQuality({ state: 'permission_denied' });
+          } else {
             setDismissedState('');
             window.dispatchEvent(new Event('bps-request-location'));
           }
@@ -104,11 +109,22 @@ export default function LocationPermissionBanner({ user }) {
         detail: { state: Number(fix?.accuracy) <= 100 ? 'live' : 'low_accuracy', accuracy: fix?.accuracy },
       }));
     } catch (error) {
+      const external = getExternalGpsStatus();
       window.dispatchEvent(new CustomEvent('bps-location-quality', {
-        detail: {
-          state: error?.code === 1 ? 'permission_denied' : error?.code === 3 ? 'timeout' : 'unavailable',
-          message: error?.message,
-        },
+        detail: external.connected || external.connecting
+          ? {
+              state: 'external_acquiring',
+              source: 'external_serial',
+              external_connected: external.connected === true,
+              message: external.connected
+                ? 'External GPS receiver connected and acquiring a fresh satellite fix.'
+                : 'External GPS receiver is reconnecting.',
+            }
+          : {
+              state: error?.code === 1 ? 'permission_denied' : error?.code === 3 ? 'timeout' : 'unavailable',
+              source: 'browser_geolocation',
+              message: error?.message,
+            },
       }));
     } finally {
       setRetrying(false);
