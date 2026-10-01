@@ -122,7 +122,22 @@ Deno.serve(async req => {
     const lat = Number(body.origin_lat), lng = Number(body.origin_lng);
     const destLat = Number(body.dest_lat), destLng = Number(body.dest_lng);
     if (![lat,lng,destLat,destLng].every(valid)) return Response.json({ error: 'Valid route coordinates are required' }, { status: 400 });
-    const path = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+    const originHeading = body.origin_heading === null || body.origin_heading === undefined || body.origin_heading === ''
+      ? Number.NaN
+      : Number(body.origin_heading);
+    const originAccuracy = body.origin_accuracy === null || body.origin_accuracy === undefined || body.origin_accuracy === ''
+      ? Number.NaN
+      : Number(body.origin_accuracy);
+    const moving = Number(body.origin_speed_mph) >= 5;
+    const query = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
+    // On divided highways/interchanges, coordinate-only matching can snap to the
+    // wrong carriageway or a nearby ramp. Constrain the origin by travel heading
+    // while the vehicle is moving so maneuvers match the road the officer is on.
+    if (moving && Number.isFinite(originHeading)) query.set('bearings', `${Math.round(((originHeading % 360) + 360) % 360)},55;`);
+    if (Number.isFinite(originAccuracy) && originAccuracy > 0) {
+      query.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2))) };unlimited`.replace(' ', ''));
+    }
+    const path = `${lng},${lat};${destLng},${destLat}?${query.toString()}`;
     const providers = [
       'https://router.project-osrm.org/route/v1/driving/',
       'https://routing.openstreetmap.de/routed-car/route/v1/driving/',
