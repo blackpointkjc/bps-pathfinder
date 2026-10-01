@@ -5,7 +5,7 @@ import { getLiveLocation, recoverLiveLocationTracking, requestBestLiveLocation, 
 import { publishOfficerLocation } from '@/lib/officerLocationHub';
 import { isInternalMember } from '@/lib/directoryUtils';
 import { listDirectoryLocations } from '@/lib/appDirectory';
-import { startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
+import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 import { releaseOperationalWakeLock, requestOperationalWakeLock } from '@/lib/keepAliveService';
 
 // Calculate distance between two GPS coordinates in meters
@@ -400,6 +400,7 @@ export default function BackgroundLocationTracker({ user }) {
 
     const reportLocationError = (error) => {
       const currentFix = getLiveLocation(45_000);
+      const externalStatus = getExternalGpsStatus();
       if (currentFix) {
         const currentAccuracy = Number(currentFix.accuracy);
         window.dispatchEvent(new CustomEvent('bps-location-quality', {
@@ -411,13 +412,30 @@ export default function BackgroundLocationTracker({ user }) {
         }));
         return;
       }
+      // A browser/Windows geolocation failure must never mark Pathfinder GPS as
+      // unavailable while an external serial receiver is connected or actively
+      // reconnecting. The external receiver is an independent, preferred source.
+      if (externalStatus.connected || externalStatus.connecting || externalStatus.portGranted) {
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: {
+            state: 'external_acquiring',
+            source: 'external_serial',
+            external_connected: externalStatus.connected === true,
+            message: externalStatus.connected
+              ? 'External GPS receiver connected and acquiring a fresh satellite fix.'
+              : 'External GPS receiver is reconnecting.',
+          },
+        }));
+        startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+        return;
+      }
       const state = error?.code === 1
         ? 'permission_denied'
         : error?.code === 3
           ? 'timeout'
           : 'unavailable';
       window.dispatchEvent(new CustomEvent('bps-location-quality', {
-        detail: { state, message: error?.message || 'The browser could not obtain a location.' },
+        detail: { state, source: 'browser_geolocation', message: error?.message || 'The browser could not obtain a location.' },
       }));
       console.warn('Geolocation unavailable:', error?.message || error);
     };
@@ -477,8 +495,9 @@ export default function BackgroundLocationTracker({ user }) {
       // Always retry the approved external receiver on the desktop heartbeat.
       // If COM6/USB GNSS was previously granted, Pathfinder should reclaim it
       // instead of remaining indefinitely on Windows/browser positioning.
-      startExternalGpsAutoReconnect().catch(() => null);
-      if (!getLiveLocation(45_000)) {
+      const hasFreshFix = !!getLiveLocation(45_000);
+      startExternalGpsAutoReconnect({ recoverStale: !hasFreshFix }).catch(() => null);
+      if (!hasFreshFix) {
         lastGpsPushRef.current = 0;
         lastGpsAttemptRef.current = 0;
         recoverLiveLocationTracking('background_watchdog').catch(() => null);
@@ -499,7 +518,7 @@ export default function BackgroundLocationTracker({ user }) {
         // fixes. Re-register it, reconnect an approved USB GPS, and immediately
         // renew the signed-in presence heartbeat when Pathfinder wakes.
         lastLivePushRef.current = 0;
-        startExternalGpsAutoReconnect().catch(() => null);
+        startExternalGpsAutoReconnect({ recoverStale: !getLiveLocation(45_000) }).catch(() => null);
         recoverLiveLocationTracking(event?.detail?.reason || 'operational_resume').catch(() => null);
         await heartbeat();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
