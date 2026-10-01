@@ -875,6 +875,7 @@ export default function Layout({ children, currentPageName }) {
   const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
   const [gpsChanging, setGpsChanging] = useState(false);
   const [externalGps, setExternalGps] = useState(() => getExternalGpsStatus());
+  const [serialPortRequest, setSerialPortRequest] = useState(null);
   const gpsMenuRef = useRef(null);
   const gpsPopupRef = useRef(null);
   const [search, setSearch] = useState('');
@@ -912,6 +913,33 @@ export default function Layout({ children, currentPageName }) {
   };
 
   useEffect(() => subscribeExternalGpsStatus(setExternalGps), []);
+
+  useEffect(() => {
+    const desktop = typeof window !== 'undefined' ? window.bpsDesktop : null;
+    if (!desktop?.onSerialPortSelectionRequested) return undefined;
+    const unsubscribeRequest = desktop.onSerialPortSelectionRequested(detail => {
+      const ports = Array.isArray(detail?.ports) ? detail.ports : [];
+      setSerialPortRequest({ requestId: String(detail?.requestId || ''), ports });
+      setGpsMenuOpen(false);
+    });
+    const unsubscribeExpired = desktop.onSerialPortSelectionExpired?.(detail => {
+      setSerialPortRequest(current => current?.requestId === String(detail?.requestId || '') ? null : current);
+      setGpsChanging(false);
+      toast.error('GPS port selection timed out. Select Connect External GPS Antenna and choose the COM port again.');
+    });
+    return () => {
+      unsubscribeRequest?.();
+      unsubscribeExpired?.();
+    };
+  }, []);
+
+  const selectDesktopSerialPort = portId => {
+    const desktop = typeof window !== 'undefined' ? window.bpsDesktop : null;
+    const requestId = serialPortRequest?.requestId;
+    if (!desktop?.selectSerialPort || !requestId) return;
+    desktop.selectSerialPort({ requestId, portId: portId || '' });
+    setSerialPortRequest(null);
+  };
 
   useEffect(() => {
     if (!gpsMenuOpen) return undefined;
