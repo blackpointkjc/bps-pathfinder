@@ -151,8 +151,19 @@ export default function WelcomeBriefing({ user }) {
           .map(entry => parseServerTimestamp(entry.clock_out)?.getTime() || 0)
           .filter(value => value > 0 && value <= currentSessionStart);
         const lastCompletedActivity = completedBeforeSession.length ? Math.max(...completedBeforeSession) : 0;
-        const effectiveOfflineSince = lastCompletedActivity || offlineSince || null;
-        const offlineWindowEnd = currentSessionStart || now;
+        // The briefing window is based on the officer's most recent Pathfinder
+        // activity, not merely the last completed Time Clock shift. An officer may
+        // sign in/out of Pathfinder several times between shifts; reusing an older
+        // shift end caused the same property alerts to appear again on later logins.
+        // Use the newest trustworthy marker, with TimeEntry only as the fallback.
+        const activityCandidates = [lastCompletedActivity, offlineSince]
+          .map(value => Number(value) || 0)
+          .filter(value => value > 0 && value <= now);
+        const effectiveOfflineSince = activityCandidates.length ? Math.max(...activityCandidates) : null;
+        // This briefing ends at the current login/load, not at the current shift's
+        // clock-in time. That keeps a mid-shift logout/login from reopening alerts
+        // that were already visible earlier in the same duty shift.
+        const offlineWindowEnd = now;
         setOfflineSince(effectiveOfflineSince);
         const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
         const createdAfterCutoff = item => {
