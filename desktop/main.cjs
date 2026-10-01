@@ -1,5 +1,5 @@
 const path = require('node:path');
-const { app, BrowserWindow, Menu, dialog, powerMonitor, powerSaveBlocker, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, powerMonitor, powerSaveBlocker, shell } = require('electron');
 
 const PATHFINDER_URL = process.env.PATHFINDER_URL || 'https://pathfinderbps.base44.app';
 const BACKGROUND_START_ARG = '--background-start';
@@ -11,6 +11,7 @@ let quitting = false;
 let powerBlockerId = null;
 let desktopHeartbeat = null;
 let unresponsiveTimer = null;
+let pendingSerialSelection = null;
 
 // Keep Chromium from lowering the renderer process priority when the Pathfinder
 // window is minimized. The BrowserWindow also disables background throttling.
@@ -96,7 +97,7 @@ function configurePermissions(win) {
     return details.deviceType === 'serial' && isTrustedPathfinderOrigin(details.origin);
   });
 
-  ses.on('select-serial-port', async (event, portList, webContents, callback) => {
+  ses.on('select-serial-port', (event, portList, webContents, callback) => {
     if (!isTrustedPathfinderOrigin(webContents?.getURL?.() || '')) {
       callback('');
       return;
@@ -109,34 +110,39 @@ function configurePermissions(win) {
       return;
     }
 
+    // Never hard-code COM6 or silently choose the first serial device. The
+    // officer must select the receiver inside Pathfinder so a radio/programming
+    // cable cannot accidentally become the GPS source.
+    if (pendingSerialSelection?.callback) {
+      try { pendingSerialSelection.callback(''); } catch {}
+      if (pendingSerialSelection.timeout) clearTimeout(pendingSerialSelection.timeout);
+      pendingSerialSelection = null;
+    }
+
     const gpsPattern = /(gps|gnss|nmea|globalsat|u-blox|ublox|prolific|cp210|silicon labs|usb serial)/i;
-    const com6 = ports.find(port => /(^|\\b)COM6(\\b|$)/i.test(String(port.portName || '')));
-    if (com6) {
-      callback(com6.portId);
-      return;
-    }
-    const preferred = ports.filter(port => gpsPattern.test(`${port.displayName || ''} ${port.portName || ''}`));
-    const candidates = preferred.length ? preferred : ports;
+    const ordered = [...ports].sort((a, b) => {
+      const aGps = gpsPattern.test(`${a.displayName || ''} ${a.portName || ''}`) ? 1 : 0;
+      const bGps = gpsPattern.test(`${b.displayName || ''} ${b.portName || ''}`) ? 1 : 0;
+      return bGps - aGps;
+    }).slice(0, 16);
+    const requestId = `serial-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const publicPorts = ordered.map(port => ({
+      portId: String(port.portId || ''),
+      portName: String(port.portName || ''),
+      displayName: String(port.displayName || ''),
+      deviceInstanceId: String(port.deviceInstanceId || ''),
+      suggestedGps: gpsPattern.test(`${port.displayName || ''} ${port.portName || ''}`),
+    }));
 
-    if (candidates.length === 1) {
-      callback(candidates[0].portId);
-      return;
-    }
+    const timeout = setTimeout(() => {
+      if (pendingSerialSelection?.requestId !== requestId) return;
+      try { pendingSerialSelection.callback(''); } catch {}
+      pendingSerialSelection = null;
+      win.webContents.send('bps:serial-port-selection-expired', { requestId });
+    }, 60_000);
 
-    const buttons = candidates.slice(0, 8).map(port => port.displayName || port.portName || `Serial ${port.portId}`);
-    buttons.push('Cancel');
-    const result = await dialog.showMessageBox(win, {
-      type: 'question',
-      title: 'Select Pathfinder GPS Receiver',
-      message: 'Choose the GPS / serial receiver Pathfinder should use.',
-      detail: 'Pathfinder Desktop keeps this serial permission available while the desktop runtime is running.',
-      buttons,
-      cancelId: buttons.length - 1,
-      defaultId: 0,
-      noLink: true,
-    });
-    const selected = candidates[result.response];
-    callback(selected?.portId || '');
+    pendingSerialSelection = { requestId, callback, ports: ordered, timeout, webContentsId: webContents.id };
+    win.webContents.send('bps:serial-port-options', { requestId, ports: publicPorts });
   });
 }
 
