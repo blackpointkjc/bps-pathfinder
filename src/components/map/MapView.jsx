@@ -28,14 +28,14 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const makeCurrentOfficerShield = (heading = null, withLights = false, unitName = 'YOU') => {
+const makeCurrentOfficerShield = (heading = null, flashAssignedEnroute = false, unitName = 'YOU') => {
     const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
     const unitLabel = String(unitName || 'YOU').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) || 'YOU';
     return new L.DivIcon({
         className: 'custom-marker patrol-shield-marker current-officer-marker',
         html: `
           <div style="position:relative;width:41px;height:48px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.58));">
-            ${withLights ? `<div style="position:absolute;left:14px;top:0;width:30px;height:7px;border-radius:5px;overflow:hidden;border:1px solid #fff;z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsCurrentFlash .75s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsCurrentFlash .75s .375s infinite"></span></div>` : ''}
+            ${flashAssignedEnroute ? `<div style="position:absolute;left:14px;top:0;width:30px;height:7px;border-radius:5px;overflow:hidden;border:1px solid #fff;z-index:4;background:#052e16"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#22c55e;animation:bpsCurrentAssignedFlash .75s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#ffffff;animation:bpsCurrentAssignedFlash .75s .375s infinite"></span></div>` : ''}
             <svg width="58" height="61" viewBox="0 0 58 61" style="position:absolute;top:6px;left:0;z-index:2;overflow:visible">
               <path d="M29 2 L51 10 V28 C51 43 42 53 29 59 C16 53 7 43 7 28 V10 Z" fill="#06101d" stroke="#67e8f9" stroke-width="2.6"/>
               <path d="M29 8 L45 14 V28 C45 38 39 46 29 51 C19 46 13 38 13 28 V14 Z" fill="#124776" stroke="#38bdf8" stroke-width="2"/>
@@ -46,7 +46,7 @@ const makeCurrentOfficerShield = (heading = null, withLights = false, unitName =
             </svg>
             ${Number.isFinite(Number(heading)) ? `<div style="position:absolute;left:25px;top:-9px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:11px solid #67e8f9;transform:rotate(${normalizedHeading}deg);transform-origin:4px 42px;z-index:1"></div>` : ''}
           </div>
-          <style>@keyframes bpsCurrentFlash{0%,48%{opacity:1}50%,100%{opacity:.18}}</style>
+          <style>@keyframes bpsCurrentAssignedFlash{0%,48%{opacity:1}50%,100%{opacity:.18}}</style>
         `,
         iconSize: [41, 48],
         iconAnchor: [20, 44],
@@ -54,8 +54,8 @@ const makeCurrentOfficerShield = (heading = null, withLights = false, unitName =
     });
 };
 
-const createCurrentLocationIcon = (withLights = false, unitName = 'YOU') => makeCurrentOfficerShield(null, withLights, unitName);
-const createLocationWithHeading = (heading, withLights = false, unitName = 'YOU') => makeCurrentOfficerShield(heading, withLights, unitName);
+const createCurrentLocationIcon = (flashAssignedEnroute = false, unitName = 'YOU') => makeCurrentOfficerShield(null, flashAssignedEnroute, unitName);
+const createLocationWithHeading = (heading, flashAssignedEnroute = false, unitName = 'YOU') => makeCurrentOfficerShield(heading, flashAssignedEnroute, unitName);
 
 // Custom red marker for destination
 const destinationIcon = new L.DivIcon({
@@ -258,7 +258,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
 const validCoordPair = value => Array.isArray(value) && value.length >= 2 && value.slice(0,2).every(v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v))) && Math.abs(Number(value[0])) <= 90 && Math.abs(Number(value[1])) <= 180;
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, upcomingManeuverDistance = null, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, searchPins = [], mapPickEnabled = false, onMapPick = null, onNavigateToPoint = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, flashAssignedEnroute = false, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, upcomingManeuverDistance = null, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, searchPins = [], mapPickEnabled = false, onMapPick = null, onNavigateToPoint = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
     const safeMapCenter = validCoordPair(mapCenter) ? [Number(mapCenter[0]), Number(mapCenter[1])] : null;
     const safeDestination = destination && validCoordPair(destination.coords) ? { ...destination, coords: [Number(destination.coords[0]), Number(destination.coords[1])] } : null;
@@ -343,7 +343,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 <Marker
                     key="self-location"
                     position={safeCurrentLocation}
-                    icon={heading !== null ? createLocationWithHeading(heading, showLights, unitName) : createCurrentLocationIcon(showLights, unitName)}
+                    icon={heading !== null ? createLocationWithHeading(heading, flashAssignedEnroute, unitName) : createCurrentLocationIcon(flashAssignedEnroute, unitName)}
                 />
             )}
             
