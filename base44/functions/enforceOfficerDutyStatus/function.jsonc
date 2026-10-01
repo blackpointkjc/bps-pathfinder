@@ -4,7 +4,7 @@
   "automations": [
     {
       "name": "Enforce stale officer CAD status",
-      "description": "Every 15 minutes, retire live CAD sessions with no heartbeat for 8 hours and force stale/overlong Available officers Out of Service.",
+      "description": "Every 15 minutes, retire stale browser presence without changing CAD duty status. Clock Out remains authoritative for Out of Service.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "simple",
