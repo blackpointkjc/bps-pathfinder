@@ -358,7 +358,7 @@ export default function OfficerProfile() {
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                 <div className="text-sm font-bold text-emerald-900">{myCompanyMailbox.display_name || 'Company Mailbox'}</div>
                 <div className="mt-1 text-sm text-emerald-800">{myCompanyMailbox.mailbox_email}</div>
-                <p className="mt-2 text-xs leading-5 text-emerald-700">This mailbox is assigned by the company. You can update only your mailbox password here. Address and server settings are controlled by an administrator.</p>
+                <p className="mt-2 text-xs leading-5 text-emerald-700">This mailbox is assigned by the company. You can update only your mailbox password here. The company mailbox address and server settings are controlled by an administrator.</p>
               </div>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <div><Label className="text-sm text-slate-400">New Email Password</Label><Input type="password" autoComplete="new-password" value={companyMailPassword} onChange={e => setCompanyMailPassword(e.target.value)} placeholder="Enter new password" /></div>
