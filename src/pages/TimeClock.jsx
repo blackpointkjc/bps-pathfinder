@@ -276,8 +276,12 @@ export default function TimeClock() {
       // tracker owns logLocation and will establish/update the live GPS session
       // from this new active entry. Do not force a second location-function call
       // here; that startup burst was the main source of logLocation 429s.
-      void persistOfficerStatus('Out of Service')
-        .catch(error => console.warn('Clock-in saved, but OOS status synchronization is retrying:', error?.message));
+      // Clock-in is the authoritative start of duty. Enter CAD as Available and
+      // keep that operational status independent of GPS motion, connectivity,
+      // page refreshes, or app-session restarts. Only Clock Out may self-transition
+      // the officer to Out of Service.
+      void persistOfficerStatus('Available', { force: true })
+        .catch(error => console.warn('Clock-in saved, but Available status synchronization is retrying:', error?.message));
     },
   });
 
