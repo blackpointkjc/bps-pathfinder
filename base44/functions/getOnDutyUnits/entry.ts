@@ -7,7 +7,7 @@ function roleSet(user: any) {
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const normalizedSpeedMph = (value: unknown) => {
   const speed = Math.max(0, Number(value) || 0);
-  return speed >= 3 ? speed : 0;
+  return speed >= 5 ? speed : 0;
 };
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
 const usableGpsAccuracy = (value: unknown) => Number.isFinite(Number(value)) && Number(value) <= MAX_USABLE_GPS_ACCURACY_METERS;
