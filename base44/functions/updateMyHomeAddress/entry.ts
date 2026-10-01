@@ -9,6 +9,21 @@ Deno.serve(async (req) => {
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
+
+    if (String(body.action || '').toLowerCase() === 'get') {
+      const profile = await base44.asServiceRole.entities.User.get(user.id).catch(async () => {
+        const rows = await base44.asServiceRole.entities.User.filter({ email: user.email }, '-updated_date', 1).catch(() => []);
+        return rows?.[0] || null;
+      });
+      return Response.json({
+        success: true,
+        address: clean(profile?.address, 160),
+        city: clean(profile?.city, 80),
+        state: clean(profile?.state, 2).toUpperCase(),
+        zip: clean(profile?.zip, 12),
+      });
+    }
+
     const address = clean(body.address, 160);
     const city = clean(body.city, 80);
     const state = clean(body.state, 2).toUpperCase();
