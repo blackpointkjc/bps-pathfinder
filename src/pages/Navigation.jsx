@@ -854,25 +854,38 @@ export default function Navigation() {
     useEffect(() => {
         if (!isNavigating || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
 
-        const toRad = value => value * Math.PI / 180;
-        const distanceMiles = (a, b) => {
-            const dLat = toRad(b[0] - a[0]);
-            const dLng = toRad(b[1] - a[1]);
-            const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
-            return 3958.8 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-        };
-
-        // Check the route densely enough to recognize a missed turn/new street
-        // quickly. The previous 0.12-mile threshold could leave an officer more
-        // than 600 feet off course before Pathfinder reacted.
-        const stride = Math.max(1, Math.floor(navRoute.length / 1000));
-        let nearest = Infinity;
-        for (let index = 0; index < navRoute.length; index += stride) {
-            nearest = Math.min(nearest, distanceMiles(currentLocation, navRoute[index]));
-            if (nearest < 0.015) break;
+        // Compare only against the forward route. Looking at the entire polyline
+        // lets a nearby road/interchange segment already driven falsely keep the
+        // officer "on route" after taking a different road.
+        const start = Math.max(0, navSnapIndexRef.current - 12);
+        const remaining = Math.max(1, navRoute.length - start);
+        const stride = Math.max(1, Math.floor(remaining / 1400));
+        let nearestMeters = Infinity;
+        let nearestIndex = start;
+        for (let index = start; index < navRoute.length; index += stride) {
+            const distance = distanceMetersBetween(currentLocation, navRoute[index]);
+            if (distance < nearestMeters) {
+                nearestMeters = distance;
+                nearestIndex = index;
+            }
         }
 
-        const offRoute = nearest > 0.035; // ~185 ft
+        const accuracy = Number(gpsQuality?.accuracy);
+        const offRouteThresholdMeters = Math.max(30, Math.min(55, Number.isFinite(accuracy) && accuracy > 0 ? accuracy * 2 : 35));
+        if (nearestMeters <= Math.max(80, offRouteThresholdMeters * 2)) {
+            navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
+        }
+
+        const routeBearing = bearingBetween(
+            navRoute[nearestIndex],
+            navRoute[Math.min(navRoute.length - 1, nearestIndex + Math.max(1, stride * 2))],
+        );
+        const headingMismatch = Number(speed || 0) >= 10
+            && Number.isFinite(Number(heading))
+            && Number.isFinite(Number(routeBearing))
+            && angleDifference(Number(heading), Number(routeBearing)) >= 70
+            && nearestMeters > 15;
+        const offRoute = nearestMeters > offRouteThresholdMeters || headingMismatch;
         const now = Date.now();
         if (offRoute) {
             if (!offRouteSinceRef.current) offRouteSinceRef.current = now;
@@ -885,14 +898,21 @@ export default function Navigation() {
 
         const confirmedDeviation = offRoute
             && offRouteConfirmationsRef.current >= 2
-            && now - offRouteSinceRef.current >= 2500;
-        if (confirmedDeviation && now - lastRerouteAtRef.current > 10000) {
+            && now - offRouteSinceRef.current >= 1200;
+        if (confirmedDeviation && now - lastRerouteAtRef.current > 4000) {
             lastRerouteAtRef.current = now;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
-            startNavigationToPoint(navDestination, { setEnroute: false, reroute: true }).catch(() => null);
+            stopVoice();
+            spokenNavPromptsRef.current.clear();
+            startNavigationToPoint(navDestination, {
+                setEnroute: false,
+                reroute: true,
+                originOverride: [...currentLocation],
+                originHeading: heading,
+            }).catch(() => null);
         }
-    }, [currentLocation, isNavigating, navRoute, navDestination, routing]);
+    }, [currentLocation, isNavigating, navRoute, navDestination, routing, gpsQuality?.accuracy, heading, speed]);
 
     useEffect(() => {
         if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
