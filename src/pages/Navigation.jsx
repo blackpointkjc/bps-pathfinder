@@ -32,7 +32,7 @@ import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 const liveSpeedMph = value => {
     const speed = Math.max(0, Number(value) || 0);
-    return speed >= 3 ? speed : 0;
+    return speed >= 5 ? speed : 0;
 };
 
 const PRIORITY_COLORS = {
