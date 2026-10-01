@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, status });
-  } catch (error) {
+  } catch (error: any) {
     console.error('updateMyFieldCallStatus failed', error);
     return Response.json({ error: error?.message || 'Unable to update call status' }, { status: 500 });
   }
