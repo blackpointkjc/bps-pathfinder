@@ -27,39 +27,19 @@ async function retireExpiredSessions(base44: any, rows: any[], retentionCutoff: 
   });
   if (!stale.length) return 0;
   const now = new Date().toISOString();
-  const emails = new Set(stale.map((row: any) => lower(row.officer_email)).filter(Boolean));
   await Promise.all(stale.map(async (row: any) => {
+    // Expired browser presence is not a duty-status transition. Mark only the
+    // live app session offline and preserve the officer's CAD status and last
+    // known GPS. Open TimeEntry + User status remain authoritative until Clock Out.
     row.session_active = false;
-    row.status = 'Out of Service';
     row.last_update = now;
     await base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
       session_active: false,
-      status: 'Out of Service',
       last_update: now,
-      current_call_info: '',
-      gps_updated_at: null,
-      latitude: null,
-      longitude: null,
       heading: null,
       speed: 0,
-      accuracy: null,
     }).catch(() => null);
   }));
-  const [users, units] = await Promise.all([
-    base44.asServiceRole.entities.User.list(undefined, 2000).catch(() => []),
-    base44.asServiceRole.entities.Unit.list(undefined, 2000).catch(() => []),
-  ]);
-  await Promise.all((users || []).filter((user: any) => emails.has(lower(user.email))).map((user: any) =>
-    base44.asServiceRole.entities.User.update(user.id, {
-      status: 'Out of Service', status_since: now, last_updated: now,
-      current_call_id: null, current_call_info: null,
-    }).catch(() => null)
-  ));
-  await Promise.all((units || []).filter((unit: any) => emails.has(lower(unit.user_email))).map((unit: any) =>
-    base44.asServiceRole.entities.Unit.update(unit.id, {
-      status: 'Out of Service', last_update_at: now, last_updated: now, assigned_call_ids: [],
-    }).catch(() => null)
-  ));
   return stale.length;
 }
 
@@ -452,10 +432,11 @@ Deno.serve(async (req) => {
         };
       });
 
-    // Canonical Unit Status Board feed: a field officer may only appear Available,
-    // Enroute, On Scene, Busy, or Distress while a fresh signed-in ActiveOfficer
-    // session exists. A stale User/Unit status can never keep someone Available
-    // after logout or loss of heartbeat. Signed-out officers resolve to OOS.
+    // Canonical Unit Status Board feed: TimeEntry owns duty state while the app
+    // session owns only presence/GPS. A clocked-in officer keeps their selected
+    // CAD status across refreshes, no movement, GPS loss, internet loss, and app
+    // logout. Presence may become stale/offline, but status remains locked until
+    // Clock Out or an explicit authorized forced-status action.
     const operational = (user:any) => {
       const roles = roleSet(user);
       const rank = lower(user?.rank);
@@ -473,21 +454,18 @@ Deno.serve(async (req) => {
         const userStatusTs = new Date(user.last_updated || user.status_since || user.updated_date || 0).getTime();
         const signedInRetained = Boolean(active && active.session_active !== false && Number.isFinite(activeTs) && activeTs >= sessionRetentionCutoff);
         const connectionStale = signedInRetained && activeTs < sessionHealthyCutoff;
-        // A TimeEntry can remain open after the officer signs out. Only a fresh,
-        // active ActiveOfficer session represents a live CAD unit. An open time
-        // entry by itself must never make the officer Available or place a marker
-        // on live maps.
+        const clockedIn = Boolean(openEntry);
+        // ActiveOfficer represents connectivity only. Open TimeEntry represents
+        // duty. A clocked-in officer can be offline/stale without becoming OOS.
         const operationallySignedIn = signedInRetained;
         // A dedicated status change writes User and ActiveOfficer together. If a
-        // duplicate/racing ActiveOfficer row is momentarily older than User, honor
-        // the newer User status instead of showing OOS/stale status on the board.
-        // Signed-out users still resolve OOS because logout writes OOS and closes the
-        // live session.
+        // racing ActiveOfficer row is momentarily older than User, honor the newer
+        // source. Crucially, loss of browser presence never changes duty status.
         const newestLiveStatus = Number.isFinite(userStatusTs) && userStatusTs > activeTs
           ? (user.status || active?.status || 'Out of Service')
           : (active?.status || user.status || 'Out of Service');
         const normalizedLiveStatus = lower(newestLiveStatus);
-        const resolvedStatus = signedInRetained ? newestLiveStatus : 'Out of Service';
+        const resolvedStatus = clockedIn ? newestLiveStatus : 'Out of Service';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
@@ -548,7 +526,7 @@ Deno.serve(async (req) => {
           unit_number: active?.unit_number || user.unit_number || '',
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
-          current_call_info: signedInRetained ? (active?.current_call_info || user.current_call_info || '') : '',
+          current_call_info: clockedIn ? (active?.current_call_info || user.current_call_info || '') : '',
           current_location: signedInRetained
             ? (active?.current_location || openEntry?.location || user.assigned_location || '')
             : (openEntry?.location || user.assigned_location || ''),
@@ -578,9 +556,10 @@ Deno.serve(async (req) => {
           coarse_accuracy: !freshPosition && storedPosition ? storedAccuracy : null,
           coarse_gps_updated_at: !freshPosition && storedPosition ? storedGpsTimestamp : null,
           coarse_stale: !freshPosition && Boolean(storedPosition),
-          gps_pending: operationallySignedIn && !freshPosition,
+          gps_pending: clockedIn && !freshPosition,
           last_update: active?.last_update || user.last_updated || user.updated_date || '',
           last_updated: active?.last_update || user.last_updated || user.updated_date || '',
+          clocked_in: clockedIn,
           session_active: operationallySignedIn,
           presence_online: operationallySignedIn,
           presence_state: operationallySignedIn ? (connectionStale ? 'stale' : 'online') : 'offline',
