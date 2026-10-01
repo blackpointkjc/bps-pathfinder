@@ -881,21 +881,89 @@ export default function Navigation() {
         setAddressSearching(true);
         setAddressSearchError('');
         setAddressResults([]);
+        setMapSelectedDestination(null);
+        setMapPickMode(false);
         setNavigationFallbackAddress(query);
         try {
             const results = await lookupNavigationDestinations(query, currentLocation);
             setAddressResults(results);
             if (!results.length) {
-                setAddressSearchError('No mapped address was returned. Check the street and city, or open Google Maps below.');
-                toast.error('Address not found. Try the full street and city.');
+                setAddressSearchError('No mapped address or place was returned. Try the full street, business, building, or city.');
+                toast.error('Location not found. Try a more specific search.');
             } else {
-                // GO means go: use the best geocoder result immediately. Keep the
-                // result list visible only as alternatives if routing fails.
-                await startNavigationToPoint(results[0]);
+                const points = results.map(result => result.coords).filter(coords => Array.isArray(coords));
+                if (currentLocation) points.unshift(currentLocation);
+                setFitBounds(points);
+                toast.success(`${results.length} mapped location${results.length === 1 ? '' : 's'} found`);
             }
         } catch (error) {
-            const message = error?.message || 'Unable to search addresses';
+            const message = error?.message || 'Unable to search locations';
             setAddressSearchError(message + '. Use Google Maps below if the address services are unavailable.');
+            toast.error(message);
+        } finally {
+            setAddressSearching(false);
+        }
+    };
+
+    const selectMapLocation = async (coords) => {
+        if (!mapPickMode || !Array.isArray(coords) || coords.length < 2) return;
+        const [lat, lng] = coords.map(Number);
+        if (!validPosition(lat, lng)) return;
+        setMapPickMode(false);
+        setShowAddressSearch(true);
+        setAddressSearching(true);
+        setAddressSearchError('');
+        setAddressResults([]);
+        const pending = {
+            coords: [lat, lng],
+            name: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            label: 'Selected Map Location',
+            type: 'map_point',
+        };
+        setMapSelectedDestination(pending);
+        setNavigationFallbackAddress(pending.address);
+        try {
+            const resolved = await lookupNavigationPoint(lat, lng);
+            const destination = { ...resolved, label: 'Selected Map Location' };
+            setMapSelectedDestination(destination);
+            setAddressQuery(destination.address || destination.name || '');
+            setNavigationFallbackAddress(destination.address || destination.name || pending.address);
+        } catch (error) {
+            setAddressSearchError(error?.message || 'The map point could not be identified by street name, but its coordinates can still be used.');
+        } finally {
+            setAddressSearching(false);
+        }
+    };
+
+    const showHomeLocation = async ({ navigateNow = false } = {}) => {
+        if (!homeAddress) {
+            toast.error('No home address is saved in your Pathfinder profile.');
+            return;
+        }
+        setShowAddressSearch(true);
+        setMapPickMode(false);
+        setAddressSearching(true);
+        setAddressSearchError('');
+        try {
+            let destination = homeDestination;
+            if (!destination) {
+                const results = await lookupNavigationDestinations(homeAddress, currentLocation);
+                destination = results[0] || null;
+                if (!destination) throw new Error('Your saved home address could not be mapped. Check the address in your profile.');
+                destination = { ...destination, name: 'Home', address: homeAddress, label: 'Home' };
+                setHomeDestination(destination);
+            }
+            setMapSelectedDestination(destination);
+            setAddressQuery(homeAddress);
+            setNavigationFallbackAddress(homeAddress);
+            setAddressResults([]);
+            setFitBounds([...(currentLocation ? [currentLocation] : []), destination.coords]);
+            if (navigateNow) await startNavigationToPoint(destination);
+            else toast.success('Home location shown from your profile');
+        } catch (error) {
+            const message = error?.message || 'Unable to map your home address';
+            setAddressSearchError(message);
             toast.error(message);
         } finally {
             setAddressSearching(false);
