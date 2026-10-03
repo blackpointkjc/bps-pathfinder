@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
+import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
     Layers, Radio, MapPin, Users,
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
@@ -778,10 +779,10 @@ export default function Navigation() {
             if (!freshLocation) throw new Error('GPS unavailable. Enable precise location or use Open in Google Maps below.');
             const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
-            const originHeading = Number.isFinite(Number(options.originHeading))
+            const originHeading = options.originHeading != null && Number.isFinite(Number(options.originHeading))
                 ? Number(options.originHeading)
-                : Number.isFinite(Number(recentFix?.heading)) ? Number(recentFix.heading)
-                    : Number.isFinite(Number(heading)) ? Number(heading) : null;
+                : recentFix?.heading != null && Number.isFinite(Number(recentFix.heading)) ? Number(recentFix.heading)
+                    : heading != null && Number.isFinite(Number(heading)) ? Number(heading) : null;
             const originAccuracy = Number.isFinite(Number(recentFix?.accuracy))
                 ? Number(recentFix.accuracy)
                 : Number.isFinite(Number(gpsQuality?.accuracy)) ? Number(gpsQuality.accuracy) : null;
@@ -892,19 +893,9 @@ export default function Navigation() {
         // Compare only against the forward route. Looking at the entire polyline
         // lets a nearby road/interchange segment already driven falsely keep the
         // officer "on route" after taking a different road.
-        const start = Math.max(0, navSnapIndexRef.current - 12);
-        const searchEnd = Math.min(navRoute.length, start + 2500);
-        const remaining = Math.max(1, searchEnd - start);
-        const stride = Math.max(1, Math.floor(remaining / 1400));
-        let nearestMeters = Infinity;
-        let nearestIndex = start;
-        for (let index = start; index < searchEnd; index += stride) {
-            const distance = distanceMetersBetween(currentLocation, navRoute[index]);
-            if (distance < nearestMeters) {
-                nearestMeters = distance;
-                nearestIndex = index;
-            }
-        }
+        const projection = projectOntoRoute(currentLocation, navRoute, Math.max(0, navSnapIndexRef.current - 4), Math.min(navRoute.length - 1, navSnapIndexRef.current + 400));
+        const nearestMeters = projection.distance;
+        const nearestIndex = projection.index;
 
         const accuracy = Number(gpsQuality?.accuracy);
         const offRouteThresholdMeters = Math.max(30, Math.min(55, Number.isFinite(accuracy) && accuracy > 0 ? accuracy * 2 : 35));
@@ -912,13 +903,10 @@ export default function Navigation() {
             navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
         }
 
-        const routeBearing = bearingBetween(
-            navRoute[nearestIndex],
-            navRoute[Math.min(navRoute.length - 1, nearestIndex + Math.max(1, stride * 2))],
-        );
+        const routeBearing = projection.bearing;
         const headingMismatch = Number(speed || 0) >= 10
-            && Number.isFinite(Number(heading))
-            && Number.isFinite(Number(routeBearing))
+            && heading != null && Number.isFinite(Number(heading))
+            && routeBearing != null && Number.isFinite(Number(routeBearing))
             && angleDifference(Number(heading), Number(routeBearing)) >= 70
             && nearestMeters > 15;
         const offRoute = nearestMeters > offRouteThresholdMeters || headingMismatch;
@@ -994,25 +982,10 @@ export default function Navigation() {
             return;
         }
 
-        const toRad = value => value * Math.PI / 180;
-        const distanceMeters = (a, b) => {
-            const dLat = toRad(b[0] - a[0]);
-            const dLng = toRad(b[1] - a[1]);
-            const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
-            return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-        };
-
-        const start = Math.max(0, navSnapIndexRef.current - 20);
-        const end = Math.min(navRoute.length - 1, Math.max(start + 240, navSnapIndexRef.current + 180));
-        let nearestIndex = start;
-        let nearestDistance = Infinity;
-        for (let index = start; index <= end; index += 1) {
-            const distance = distanceMeters(currentLocation, navRoute[index]);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestIndex = index;
-            }
-        }
+        const distanceMeters = distanceMetersBetween;
+        const projection = projectOntoRoute(currentLocation, navRoute, Math.max(0, navSnapIndexRef.current - 4), Math.min(navRoute.length - 1, navSnapIndexRef.current + 400));
+        const nearestIndex = projection.index;
+        const nearestDistance = projection.distance;
         // Only snap the displayed vehicle to the route when GPS and route geometry
         // actually agree. The old 85m tolerance could pull the icon onto a nearby
         // parallel/side road and make the street map appear wrong.
@@ -1025,7 +998,7 @@ export default function Navigation() {
         if (canSnapToRoute) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
         // Once off-route, immediately follow the real GPS point rather than
         // visually pulling the vehicle back onto the obsolete route line.
-        const target = canSnapToRoute ? navRoute[nearestIndex] : currentLocation;
+        const target = canSnapToRoute ? projection.point : currentLocation;
         setNavigationDisplayLocation(previous => {
             if (!previous) return target;
             const moved = distanceMeters(previous, target);
