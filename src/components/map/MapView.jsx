@@ -22,6 +22,9 @@ import CCPDStation from './CCPDStation';
 import CallHeatmapLayer from './CallHeatmapLayer';
 import PathfinderTileLayer from './PathfinderTileLayer';
 
+// Rotation controls are opt-in; other Pathfinder maps keep their existing controls.
+L.Map.mergeOptions({ rotateControl: false, shiftKeyRotate: false });
+
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
