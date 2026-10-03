@@ -1,112 +1,98 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-leaflet';
+import { shortestHeadingDelta } from '@/lib/navigationGeometry';
 
-export default function NavigationCamera({ 
-    isNavigating, 
-    currentLocation, 
-    heading, 
-    speed = 0,
-    upcomingManeuverDistance = null,
-    onUserInteraction
-}) {
+export default function NavigationCamera({ isNavigating, currentLocation, heading, speed = 0, recenterLocation }) {
     const map = useMap();
-    const userInteractingRef = useRef(false);
-    const interactionTimeoutRef = useRef(null);
-    const lastCameraRef = useRef({ center: null, zoom: null, at: 0 });
+    const pausedUntil = useRef(0);
+    const lastPosition = useRef(null);
+    const lastHeading = useRef(null);
+    const rotationFrame = useRef(null);
+    const [resumeRevision, setResumeRevision] = useState(0);
+    const lat = currentLocation?.[0], lng = currentLocation?.[1];
+    const recenterLat = recenterLocation?.[0], recenterLng = recenterLocation?.[1];
 
     useEffect(() => {
-        const handleInteractionStart = () => {
-            userInteractingRef.current = true;
-            if (onUserInteraction) onUserInteraction(true);
-            
-            if (interactionTimeoutRef.current) {
-                clearTimeout(interactionTimeoutRef.current);
-            }
+        let timer;
+        const pause = () => {
+            pausedUntil.current = Date.now() + 12000;
+            cancelAnimationFrame(rotationFrame.current);
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                pausedUntil.current = 0;
+                lastPosition.current = null;
+                setResumeRevision(value => value + 1);
+            }, 12000);
         };
-        
-        const handleInteractionEnd = () => {
-            interactionTimeoutRef.current = setTimeout(() => {
-                userInteractingRef.current = false;
-                if (onUserInteraction) onUserInteraction(false);
-            }, 60000);
-        };
-        
-        // Only genuine manual interaction pauses follow mode. Leaflet zoomstart
-        // also fires when Pathfinder changes zoom programmatically, which made the
-        // navigation camera pause itself after its own GPS update.
-        map.on('dragstart', handleInteractionStart);
-        map.on('dragend', handleInteractionEnd);
         const container = map.getContainer();
-        container?.addEventListener('wheel', handleInteractionStart, { passive: true });
-        container?.addEventListener('pointerdown', handleInteractionStart, { passive: true });
-        container?.addEventListener('pointerup', handleInteractionEnd, { passive: true });
-        
+        map.on('dragstart', pause);
+        map.on('dragend', pause);
+        container.addEventListener('wheel', pause, { passive: true });
+        // A tap on a call or map control must not disable GPS follow.
         return () => {
-            map.off('dragstart', handleInteractionStart);
-            map.off('dragend', handleInteractionEnd);
-            const container = map.getContainer();
-            container?.removeEventListener('wheel', handleInteractionStart);
-            container?.removeEventListener('pointerdown', handleInteractionStart);
-            container?.removeEventListener('pointerup', handleInteractionEnd);
-            if (interactionTimeoutRef.current) {
-                clearTimeout(interactionTimeoutRef.current);
-            }
+            clearTimeout(timer);
+            map.off('dragstart', pause);
+            map.off('dragend', pause);
+            container.removeEventListener('wheel', pause);
         };
-    }, [map, onUserInteraction]);
+    }, [map]);
 
     useEffect(() => {
-        if (!isNavigating || !currentLocation) return;
-        
-        // If user is manually panning/zooming, don't auto-follow. Keep this long
-        // enough that an officer can zoom out for situational awareness without
-        // Pathfinder immediately snapping back in on the next GPS fix.
-        if (userInteractingRef.current) return;
+        if (!isNavigating) return;
+        // Set driving scale once. Speed/turn-distance noise never resets zoom.
+        map.setZoom(16, { animate: false });
+        return () => {
+            cancelAnimationFrame(rotationFrame.current);
+            map.stop();
+            map.setBearing(0);
+        };
+    }, [map, isNavigating]);
 
-        // Stable follow camera. The marker itself carries heading; the viewport
-        // stays centered on the smoothed/route-snapped vehicle position so small
-        // heading changes do not swing the whole map.
-        let targetZoom = 17;
-        if (speed > 55) targetZoom = 16;
-        else if (speed > 35) targetZoom = 16.5;
-        else if (speed > 15) targetZoom = 17;
-        else targetZoom = 17.5;
+    useEffect(() => {
+        if (recenterLat == null || recenterLng == null) return;
+        pausedUntil.current = 0;
+        lastPosition.current = null;
+        setResumeRevision(value => value + 1);
+    }, [recenterLat, recenterLng]);
 
-        const maneuverFeet = Number(upcomingManeuverDistance);
-        if (Number.isFinite(maneuverFeet)) {
-            if (maneuverFeet <= 140) targetZoom = Math.max(targetZoom, 18);
-            else if (maneuverFeet <= 450) targetZoom = Math.max(targetZoom, 17.5);
-            else if (maneuverFeet <= 1200) targetZoom = Math.max(targetZoom, 17);
+    useEffect(() => {
+        if (!isNavigating || !Number.isFinite(lat) || !Number.isFinite(lng) || Date.now() < pausedUntil.current) return;
+        let course = lastHeading.current;
+        if (heading != null && Number.isFinite(Number(heading)) && (Number(speed) >= 5 || course == null)) {
+            course = ((Number(heading) % 360) + 360) % 360;
+        } else if (lastPosition.current && Number(speed) >= 5) {
+            const dy = lat - lastPosition.current[0];
+            const dx = (lng - lastPosition.current[1]) * Math.cos(lat * Math.PI / 180);
+            if (Math.hypot(dx, dy) * 111195 > 8) course = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+        }
+        if (course == null) course = 0;
+        lastHeading.current = course;
+        lastPosition.current = [lat, lng];
+
+        const startBearing = map.getBearing() || 0;
+        const targetBearing = (360 - course) % 360;
+        const delta = shortestHeadingDelta(startBearing, targetBearing);
+        cancelAnimationFrame(rotationFrame.current);
+        if (Math.abs(delta) >= 2) {
+            const started = performance.now();
+            const rotate = now => {
+                if (!map.getContainer()?.isConnected || Date.now() < pausedUntil.current) return;
+                const t = Math.min(1, (now - started) / 450);
+                map.setBearing(startBearing + delta * (1 - (1 - t) ** 3));
+                if (t < 1) rotationFrame.current = requestAnimationFrame(rotate);
+            };
+            rotationFrame.current = requestAnimationFrame(rotate);
         }
 
-        const cameraCenter = currentLocation;
-
-        // GPS position is authoritative while navigating. Preserve the current
-        // tile pyramid whenever the requested zoom is effectively unchanged;
-        // panTo moves the camera with the unit without making Leaflet rebuild the
-        // whole viewport/tile set on every GPS fix.
-        const currentZoom = map.getZoom();
-        const roundedTargetZoom = Math.max(10, Math.min(18, Math.round(targetZoom * 2) / 2));
-        const toRad = value => value * Math.PI / 180;
-        const centerDistance = (() => {
-            const previous = lastCameraRef.current.center;
-            if (!previous) return Infinity;
-            const dLat = toRad(cameraCenter[0] - previous[0]);
-            const dLng = toRad(cameraCenter[1] - previous[1]);
-            const a = Math.sin(dLat / 2) ** 2
-                + Math.cos(toRad(previous[0])) * Math.cos(toRad(cameraCenter[0])) * Math.sin(dLng / 2) ** 2;
-            return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        })();
-        const zoomChange = Math.abs(currentZoom - roundedTargetZoom);
-        if (centerDistance < 7 && zoomChange < 0.75) return;
-
-        lastCameraRef.current = { center: cameraCenter, zoom: roundedTargetZoom, at: Date.now() };
-        if (zoomChange >= 0.75) {
-            map.setView(cameraCenter, roundedTargetZoom, { animate: false, noMoveStart: true });
-        } else {
-            map.panTo(cameraCenter, { animate: true, duration: 0.3, easeLinearity: 0.35, noMoveStart: true });
+        // Look ahead along travel direction, leaving the vehicle below center.
+        const zoom = map.getZoom();
+        const aheadMeters = Math.min(220, Math.max(25, map.getSize().y * 0.18 * 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** zoom));
+        const radians = course * Math.PI / 180;
+        const center = [lat + Math.cos(radians) * aheadMeters / 111195, lng + Math.sin(radians) * aheadMeters / (111195 * Math.cos(lat * Math.PI / 180))];
+        if (map.distance(map.getCenter(), center) > 3) {
+            map.panTo(center, { animate: true, duration: 0.45, easeLinearity: 0.3, noMoveStart: true });
         }
-
-    }, [map, isNavigating, currentLocation, heading, speed, upcomingManeuverDistance]);
+    }, [map, isNavigating, lat, lng, heading, speed, resumeRevision]);
 
     return null;
 }
