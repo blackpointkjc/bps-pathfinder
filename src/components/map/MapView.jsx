@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { MapContainer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import '@/lib/leafletGlobal';
+import 'leaflet-rotate/dist/leaflet-rotate.js';
 import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
 import ActiveCallMarkers from './ActiveCallMarkers';
@@ -282,6 +284,11 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             zoom={isNavigating ? 18 : 13}
             className="pathfinder-leaflet-map relative z-0 h-full w-full"
             zoomControl={false}
+            rotate={true}
+            rotateControl={false}
+            touchRotate={false}
+            shiftKeyRotate={false}
+            bearing={0}
             minZoom={10}
             maxZoom={20}
         >
@@ -334,7 +341,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     currentLocation={safeCurrentLocation}
                     heading={heading}
                     speed={speed}
-                    upcomingManeuverDistance={upcomingManeuverDistance}
+                    recenterLocation={safeMapCenter}
                     onUserInteraction={otherUnits ? undefined : undefined}
                 />
             )}
@@ -343,7 +350,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 <Marker
                     key="self-location"
                     position={safeCurrentLocation}
-                    icon={heading !== null ? createLocationWithHeading(heading, flashAssignedEnroute, unitName) : createCurrentLocationIcon(flashAssignedEnroute, unitName)}
+                    icon={isNavigating ? createLocationWithHeading(0, flashAssignedEnroute, unitName) : heading !== null ? createLocationWithHeading(heading, flashAssignedEnroute, unitName) : createCurrentLocationIcon(flashAssignedEnroute, unitName)}
                 />
             )}
             
