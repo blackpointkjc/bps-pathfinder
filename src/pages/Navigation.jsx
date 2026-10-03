@@ -387,20 +387,8 @@ export default function Navigation() {
         // speed; without route-progress advancement Pathfinder can keep speaking
         // a maneuver the officer already passed.
         if (navRoute.length > 1) {
-            const start = Math.max(0, navSnapIndexRef.current - 12);
-            const searchEnd = Math.min(navRoute.length, start + 2500);
-            const remaining = searchEnd - start;
-            const stride = Math.max(1, Math.floor(Math.max(1, remaining) / 1200));
-            let nearestIndex = start;
-            let nearestMeters = Infinity;
-            for (let index = start; index < searchEnd; index += stride) {
-                const distance = distanceMetersBetween(currentLocation, navRoute[index]);
-                if (distance < nearestMeters) {
-                    nearestMeters = distance;
-                    nearestIndex = index;
-                }
-            }
-            if (nearestMeters <= 80) navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
+            const projection = projectOntoRoute(currentLocation, navRoute, Math.max(0, navSnapIndexRef.current - 4), Math.min(navRoute.length - 1, navSnapIndexRef.current + 400));
+            if (projection.distance <= 80) navSnapIndexRef.current = Math.max(navSnapIndexRef.current, projection.index);
         }
         const currentStepRouteIndex = navStepRouteIndexesRef.current[navStepIndex];
         const passedCurrentManeuver = Number.isFinite(Number(currentStepRouteIndex))
