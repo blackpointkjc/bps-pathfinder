@@ -1,5 +1,5 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ function MapUpdater({ center, zoom }) {
   return null;
 }
 
-function BoundaryPointEditor({ enabled, points, onAddPoint }) {
+function BoundaryPointEditor({ enabled, points, onAddPoint, onMovePoint }) {
   useMapEvents({
     click(event) {
       if (!enabled) return;
@@ -78,11 +78,22 @@ function BoundaryPointEditor({ enabled, points, onAddPoint }) {
   return (
     <>
       {(points || []).map((point, index) => (
-        <CircleMarker
-          key={`${point.lat}-${point.lng}-${index}`}
-          center={[point.lat, point.lng]}
-          radius={5}
-          pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 1 }}
+        <Marker
+          key={index}
+          position={[Number(point.lat), Number(point.lng)]}
+          draggable={!enabled}
+          icon={L.divIcon({
+            className: '',
+            html: '<span style="display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#fbbf24;box-shadow:0 1px 5px #000"></span>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          })}
+          eventHandlers={{
+            dragend(event) {
+              const point = event.target.getLatLng();
+              onMovePoint(index, { lat: point.lat, lng: point.lng });
+            },
+          }}
         />
       ))}
       {(points || []).length >= 3 && (
@@ -98,6 +109,16 @@ function BoundaryPointEditor({ enabled, points, onAddPoint }) {
 export default function AdminLocations({ embedded = false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+  const [focusGeofence, setFocusGeofence] = useState(false);
+  const geofenceSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (!showDialog || !focusGeofence) return;
+    const timer = window.setTimeout(() => {
+      geofenceSectionRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [showDialog, focusGeofence]);
   // Removed selectedDivision state as per changes to UI with Tabs
   const [formData, setFormData] = useState({
     site_name: "",
@@ -362,7 +383,9 @@ export default function AdminLocations({ embedded = false }) {
     }
   };
 
-  const handleEdit = (location) => {
+  const handleEdit = (location, editGeofence = false) => {
+    setFocusGeofence(editGeofence);
+    setDrawingBoundary(false);
     setEditingLocation(location.id);
     setFormData({
       site_name: location.site_name,
@@ -432,9 +455,10 @@ export default function AdminLocations({ embedded = false }) {
     if (!locationId) return;
     const target = locations.find(location => String(location.id) === String(locationId));
     if (target) {
-      handleEdit(target);
+      handleEdit(target, new URLSearchParams(window.location.search).get('edit_geofence') === '1');
       const params = new URLSearchParams(window.location.search);
       params.delete('location_id');
+      params.delete('edit_geofence');
       window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
     }
   }, [locations, showDialog]);
@@ -445,6 +469,13 @@ export default function AdminLocations({ embedded = false }) {
       ...prev,
       geofence_polygon: next,
       property_monitoring_boundary_type: next.length >= 3 ? 'polygon' : prev.property_monitoring_boundary_type,
+    }));
+  };
+
+  const moveBoundaryPoint = (index, point) => {
+    setFormData(prev => ({
+      ...prev,
+      geofence_polygon: (prev.geofence_polygon || []).map((existing, i) => i === index ? point : existing),
     }));
   };
 
@@ -460,6 +491,14 @@ export default function AdminLocations({ embedded = false }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!formData.is_special_event && (!Number.isFinite(Number(formData.geofence_radius_meters)) || Number(formData.geofence_radius_meters) < 50 || Number(formData.geofence_radius_meters) > 5000)) {
+      alert('Enter a geofence radius between 50 and 5000 meters.');
+      return;
+    }
+    if ((formData.geofence_polygon || []).length > 0 && formData.geofence_polygon.length < 3) {
+      alert('Add at least 3 boundary points, or clear the boundary to use a radius.');
+      return;
+    }
     // Track site rate changes for audit
     let siteRateHistory = formData.site_rate_history || [];
     if (editingLocation) {
@@ -682,7 +721,7 @@ export default function AdminLocations({ embedded = false }) {
                             <p className="text-xs text-slate-600 mt-2 italic">{location.notes}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -691,12 +730,15 @@ export default function AdminLocations({ embedded = false }) {
                           >
                             <ToggleRight className="w-5 h-5 text-green-600" />
                           </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(location, true)}>
+                            <Target className="w-4 h-4 mr-1" /> Edit Geofence
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(location)}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-4 h-4 mr-1" /> Edit Location
                           </Button>
                           <Button
                             variant="outline"
@@ -796,7 +838,7 @@ export default function AdminLocations({ embedded = false }) {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -805,12 +847,15 @@ export default function AdminLocations({ embedded = false }) {
                           >
                             <ToggleLeft className="w-5 h-5 text-gray-400" />
                           </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(location, true)}>
+                            <Target className="w-4 h-4 mr-1" /> Edit Geofence
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(location)}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-4 h-4 mr-1" /> Edit Location
                           </Button>
                         </div>
                       </div>
@@ -1101,8 +1146,22 @@ export default function AdminLocations({ embedded = false }) {
               </div>
             </div>
 
+            <div ref={geofenceSectionRef} className="scroll-mt-4 rounded-xl border border-cyan-700/50 bg-[#081522] p-4 space-y-3">
+              <div className="font-semibold text-cyan-200">Edit Geofence — {formData.site_name || 'New Location'}</div>
+              {formData.is_special_event ? (
+                <p className="text-sm text-slate-300">This is a variable-location special event. Change it to a fixed site to configure a property geofence.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-300">Set a radius or draw the property boundary below. Stop drawing to drag existing gold points. Save with Update Location at the bottom.</p>
+                  <Label htmlFor="geofence_radius">Geofence Radius (meters)</Label>
+                  <Input id="geofence_radius" type="number" min="50" max="5000" value={formData.geofence_radius_meters} onChange={e => setFormData(prev => ({ ...prev, geofence_radius_meters: e.target.value === '' ? '' : Number(e.target.value) }))} />
+                  <p className="text-xs text-slate-400">{(formData.geofence_polygon || []).length >= 3 ? 'Custom boundary is active. Clear the boundary to use the radius instead.' : 'The radius controls clock-in eligibility and property monitoring, even when officer exit alerts are disabled.'}</p>
+                  {(!formData.latitude || !formData.longitude) && <p className="text-sm text-amber-200">Enter the site address and use Find Coordinates above, or enter latitude and longitude, to show the boundary map.</p>}
+                </>
+              )}
+            </div>
             {formData.latitude && formData.longitude && !formData.is_special_event && (
-              <div className="space-y-3 rounded-xl border border-slate-700 bg-[#081522] p-4">
+              <div data-vaul-no-drag className="space-y-3 rounded-xl border border-slate-700 bg-[#081522] p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <Label className="text-slate-100">Property & Geofence Boundary Editor</Label>
@@ -1124,7 +1183,7 @@ export default function AdminLocations({ embedded = false }) {
                     {(formData.geofence_polygon || []).length < 3 && (
                       <Circle center={mapCenter} radius={formData.geofence_radius_meters || 100} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08, dashArray: '8, 8' }} />
                     )}
-                    <BoundaryPointEditor enabled={drawingBoundary} points={formData.geofence_polygon || []} onAddPoint={addBoundaryPoint} />
+                    <BoundaryPointEditor enabled={drawingBoundary} points={formData.geofence_polygon || []} onAddPoint={addBoundaryPoint} onMovePoint={moveBoundaryPoint} />
                   </MapContainer>
                 </div>
                 <div className="grid gap-2 text-xs sm:grid-cols-2">
@@ -1174,8 +1233,7 @@ export default function AdminLocations({ embedded = false }) {
                       </div>
                     ) : (
                       <>
-                        <Label htmlFor="geofence_radius">Geofence Radius (meters)</Label>
-                        <Input id="geofence_radius" type="number" min="50" max="5000" value={formData.geofence_radius_meters} onChange={(e) => setFormData({...formData, geofence_radius_meters: parseInt(e.target.value) || 100})} />
+                        <p className="text-sm text-green-900">Edit the radius in the Edit Geofence section above.</p>
                         <p className="text-xs text-green-700">No custom polygon is saved yet, so officer geofencing uses the {formData.geofence_radius_meters}m center radius.</p>
                       </>
                     )}
