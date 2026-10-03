@@ -48,16 +48,6 @@ const distanceMetersBetween = (a, b) => {
         + Math.cos(toRadians(Number(a[0]))) * Math.cos(toRadians(Number(b[0]))) * Math.sin(dLng / 2) ** 2;
     return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
 };
-const bearingBetween = (a, b) => {
-    if (!Array.isArray(a) || !Array.isArray(b)) return null;
-    const lat1 = toRadians(Number(a[0]));
-    const lat2 = toRadians(Number(b[0]));
-    const dLng = toRadians(Number(b[1]) - Number(a[1]));
-    const y = Math.sin(dLng) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-    const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    return Number.isFinite(bearing) ? bearing : null;
-};
 const angleDifference = (a, b) => {
     if (!Number.isFinite(Number(a)) || !Number.isFinite(Number(b))) return 0;
     return Math.abs((((Number(a) - Number(b)) % 360) + 540) % 360 - 180);
