@@ -3,7 +3,6 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
-import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
     Layers, Radio, MapPin, Users,
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
@@ -397,9 +396,515 @@ export default function Navigation() {
         // speed; without route-progress advancement Pathfinder can keep speaking
         // a maneuver the officer already passed.
         if (navRoute.length > 1) {
-            const projection = projectOntoRoute(currentLocation, navRoute, Math.max(0, navSnapIndexRef.current - 4), Math.min(navRoute.length - 1, navSnapIndexRef.current + 400));
-        const nearestMeters = projection.distance;
-        const nearestIndex = projection.index;
+            const start = Math.max(0, navSnapIndexRef.current - 12);
+            const searchEnd = Math.min(navRoute.length, start + 2500);
+            const remaining = searchEnd - start;
+            const stride = Math.max(1, Math.floor(Math.max(1, remaining) / 1200));
+            let nearestIndex = start;
+            let nearestMeters = Infinity;
+            for (let index = start; index < searchEnd; index += stride) {
+                const distance = distanceMetersBetween(currentLocation, navRoute[index]);
+                if (distance < nearestMeters) {
+                    nearestMeters = distance;
+                    nearestIndex = index;
+                }
+            }
+            if (nearestMeters <= 80) navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
+        }
+        const currentStepRouteIndex = navStepRouteIndexesRef.current[navStepIndex];
+        const passedCurrentManeuver = Number.isFinite(Number(currentStepRouteIndex))
+            && navSnapIndexRef.current >= Number(currentStepRouteIndex) + 2;
+        // Do not advance so early that the final "turn now" prompt is skipped,
+        // but do advance once forward route progress proves this maneuver was passed.
+        if ((miles < 0.018 || passedCurrentManeuver) && navStepIndex < navSteps.length - 1) {
+            setNavStepIndex(index => index + 1);
+        }
+        if (navDestination?.coords) {
+            const [destLat, destLng] = navDestination.coords;
+            const ddLat = toRad(destLat - currentLocation[0]);
+            const ddLng = toRad(destLng - currentLocation[1]);
+            const da = Math.sin(ddLat / 2) ** 2 + Math.cos(toRad(currentLocation[0])) * Math.cos(toRad(destLat)) * Math.sin(ddLng / 2) ** 2;
+            const remaining = 3958.8 * 2 * Math.atan2(Math.sqrt(da), Math.sqrt(1 - da));
+            if (remaining < 0.03) {
+                toast.success('Arrived at call location');
+                stopInAppNavigation();
+            }
+        }
+    }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination, navRoute, routing, navOffRoute]);
+
+    // Modern staged turn prompts: one early cue, one near-turn cue, and a
+    // turn-now cue. Each stage is spoken only once per maneuver.
+    useEffect(() => {
+        if (!isNavigating || navVoiceMuted || !navSteps.length || navStepIndex < 0 || routing || navOffRoute) return;
+        const step = navSteps[navStepIndex];
+        if (!step) return;
+        const feet = Number(navTurnDistanceFeet);
+        if (!Number.isFinite(feet) || feet < 0) return;
+
+        let stage = 'far';
+        if (feet <= 110) stage = 'now';
+        else if (feet <= 450) stage = 'near';
+        else if (feet <= 1400) stage = 'approach';
+
+        const key = `${navStepIndex}:${stage}`;
+        if (spokenNavPromptsRef.current.has(key)) return;
+        spokenNavPromptsRef.current.add(key);
+        lastSpokenNavStepRef.current = navStepIndex;
+        announceNavigationInstruction(formatInstruction(step), stage === 'now' ? 0 : feet);
+    }, [isNavigating, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet, routing, navOffRoute]);
+
+    const syncScheduledCadPartnership = async (user) => {
+        if (!user?.email || !user?.id) return user;
+        try {
+            const now = new Date();
+            const today = now.toISOString().slice(0, 10);
+            const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+            const rows = await base44.entities.Schedule.list('-shift_date', 500);
+            const candidates = (rows || []).filter(s =>
+                String(s.officer_email || '').toLowerCase() === String(user.email).toLowerCase() &&
+                (s.shift_date === today || s.shift_date === yesterday) &&
+                s.partner_officer_email
+            );
+            const shift = candidates.find(s => s.shift_date === today) || candidates[0];
+            if (!shift?.partner_officer_email) return user;
+
+            let partner = null;
+            try {
+                const partnerRows = await base44.entities.User.filter({ email: shift.partner_officer_email });
+                partner = partnerRows?.[0] || null;
+            } catch (partnerLookupError) {
+                // Do not let a failed partner lookup silently look like "no partner" --
+                // fall back to the scheduled partner's email so the assignment still
+                // shows, but make the degraded lookup visible in the console.
+                console.error('[NAV] partner lookup failed, falling back to scheduled partner email:', partnerLookupError);
+            }
+            const pairKey = [String(user.email).toLowerCase(), String(shift.partner_officer_email).toLowerCase()].sort().join('|');
+            const unionId = `TEAM-${shift.shift_date}-${pairKey}`;
+            const isLead = String(user.email).toLowerCase() === pairKey.split('|')[0];
+            const partnerName = partner
+                ? `${partner.rank || 'Officer'} ${partner.last_name || partner.first_name || ''}`.trim()
+                : shift.partner_officer_email;
+            const partnership = {
+                union_id: unionId,
+                partner_email: shift.partner_officer_email,
+                partner_name: partnerName,
+                partner_user_id: partner?.id || '',
+                is_union_lead: isLead,
+                isUnionLead: isLead,
+                union_member_count: 2,
+                unionMembers: 2,
+                scheduled_shift_id: shift.id,
+            };
+
+            // Do not swallow this failure into an empty array: a failed fetch would
+            // then look identical to "no existing unit" and create a duplicate Unit
+            // row on every sync retry. Let a real failure fall through to the outer
+            // catch instead, which aborts the sync without touching CAD unit data.
+            const ownUnits = await base44.entities.Unit.filter({ user_id: user.id });
+            const unitPayload = {
+                unit_id: user.unit_number || user.id,
+                label: `${user.rank || 'Officer'} ${user.last_name || user.first_name || ''}`.trim(),
+                // Never promote a missing/stale duty status to Available.
+                status: user.status || 'Out of Service',
+                user_id: user.id,
+                union_id: unionId,
+                partner_user_id: partner?.id || '',
+                partner_email: shift.partner_officer_email,
+                partner_name: partnerName,
+                is_union_lead: isLead,
+                union_member_count: 2,
+                scheduled_shift_id: shift.id,
+                last_update_at: new Date().toISOString(),
+            };
+            if (ownUnits?.length) {
+                const sortedOwnUnits = [...ownUnits].sort((a, b) =>
+                    new Date(b.created_date || b.updated_date || 0).getTime() - new Date(a.created_date || a.updated_date || 0).getTime()
+                );
+                const primaryUnit = sortedOwnUnits[0];
+                await Promise.all([
+                    base44.entities.Unit.update(primaryUnit.id, unitPayload),
+                    ...sortedOwnUnits.slice(1)
+                        .filter(unit => unit.status !== 'Out of Service')
+                        .map(unit => base44.entities.Unit.update(unit.id, {
+                            status: 'Out of Service',
+                            description: 'Duplicate unit record retired automatically.',
+                            last_update_at: new Date().toISOString(),
+                        }).catch(() => null)),
+                ]);
+            } else {
+                await base44.entities.Unit.create(unitPayload);
+            }
+
+            return { ...user, ...partnership };
+        } catch (e) {
+            console.error('[NAV] scheduled CAD partnership sync failed:', e);
+            toast.error('Could not sync your CAD partner/unit assignment. It will retry automatically.');
+            return user;
+        }
+    };
+
+    const init = async () => {
+        try {
+            const [directoryUser, homeResponse] = await Promise.all([
+                getCurrentDirectoryUser(),
+                base44.functions.invoke('updateMyHomeAddress', { action: 'get' }).catch(() => null),
+            ]);
+            const homeProfile = homeResponse?.data || homeResponse || {};
+            const user = profileHomeAddress(homeProfile)
+                ? { ...directoryUser, address: homeProfile.address || '', city: homeProfile.city || '', state: homeProfile.state || '', zip: homeProfile.zip || '' }
+                : directoryUser;
+            setCurrentUser(user);
+            syncScheduledCadPartnership(user).then(setCurrentUser).catch(() => null);
+            if (user.status) setUnitStatus(user.status === 'On Patrol' ? 'Available' : user.status);
+        } catch {}
+        const fix = getLiveLocation(30000);
+        if (fix) {
+            const quality = locationQuality(fix);
+            setGpsQuality(quality);
+            const lat = Number(fix.latitude);
+            const lng = Number(fix.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                setCurrentLocation([lat, lng]);
+                if (fix.heading !== null) setHeading(fix.heading);
+                setSpeed(Math.round(liveSpeedMph(fix.speed)));
+            }
+            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
+        }
+        requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 }).catch(() => null);
+    };
+
+    const handleSelfAssign = async () => {
+        if (!currentUser || !selectedCall) return;
+        setAssigning(true);
+        try {
+            const alreadyAssigned = selectedCall.assigned_units?.includes(currentUser.id);
+            if (!alreadyAssigned) {
+                const previousUnits = selectedCall.assigned_units || [];
+                const updatedUnits = [...previousUnits, currentUser.id];
+                // Reflect assignment immediately; roll it back if the server rejects it.
+                setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
+                try {
+                    const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'join' });
+                    const payload = result?.data || result || {};
+                    if (payload.error) throw new Error(payload.error);
+                    setCurrentUser(previous => previous ? {
+                        ...previous,
+                        current_call_id: payload.current_call_id || String(selectedCall.id),
+                        current_call_info: payload.current_call_info || previous.current_call_info || '',
+                    } : previous);
+                } catch (error) {
+                    setSelectedCall(prev => ({ ...prev, assigned_units: previousUnits }));
+                    throw error;
+                }
+                setAssigning(false);
+                toast.success('Assigned to call — updating status to Enroute');
+                handleStatusChange('Enroute');
+            }
+        } catch (error) {
+            toast.error(error?.message || 'Failed to assign');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleSelfUnassign = async () => {
+        if (!currentUser || !selectedCall) return;
+        setAssigning(true);
+        try {
+            const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'leave' });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
+            if (String(currentUser.current_call_id || '') === String(selectedCall.id)) {
+                setCurrentUser(previous => previous ? { ...previous, current_call_id: '', current_call_info: '' } : previous);
+            }
+            const updatedUnits = (selectedCall.assigned_units || []).filter(id => id !== currentUser.id);
+            setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
+            toast.success('Unassigned from call');
+        } catch {
+            toast.error('Failed to unassign');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleStatusChange = async (newStatus) => {
+        setUnitStatus(newStatus);
+        unitStatusRef.current = newStatus;
+        try {
+            const stamp = new Date().toISOString();
+            const payload = await persistOfficerStatus(newStatus);
+            if (payload.error) throw new Error(payload.error);
+            setCurrentUser(prev => prev ? {
+                ...prev,
+                status: newStatus,
+                last_updated: stamp,
+                status_since: stamp,
+                ...(['Available', 'Out of Service'].includes(newStatus) ? { current_call_id: '', current_call_info: '' } : {}),
+            } : prev);
+            // officerStatusService already broadcasts the canonical status event
+            // with officer id/email. Do not emit a duplicate event/read burst here.
+            fetchOtherUnits();
+        } catch (e) {
+            console.warn('[NAV] direct status update failed:', e?.message);
+            toast.error('Unable to update status');
+        }
+    };
+
+    const formatInstruction = (step) => {
+        if (!step) return 'Continue to destination';
+        const type = String(step.maneuver?.type || 'continue').toLowerCase();
+        const modifier = String(step.maneuver?.modifier || '').toLowerCase();
+        const name = String(step.name || step.ref || '').trim();
+        const destinations = String(step.destinations || '').trim();
+        const onto = name ? ` onto ${name}` : '';
+        const onRoad = name ? ` on ${name}` : '';
+        const toward = destinations ? ` toward ${destinations.split(';')[0].trim()}` : '';
+        const side = modifier.includes('left') ? 'left' : modifier.includes('right') ? 'right' : 'ahead';
+
+        if (type === 'arrive') {
+            if (modifier.includes('left')) return 'Your destination is on the left';
+            if (modifier.includes('right')) return 'Your destination is on the right';
+            return 'You have arrived at your destination';
+        }
+        if (type === 'depart') {
+            if (modifier.includes('left')) return `Head left${onRoad}`;
+            if (modifier.includes('right')) return `Head right${onRoad}`;
+            return `Head straight${onRoad}`;
+        }
+        if (type === 'roundabout' || type === 'rotary' || type === 'roundabout turn') {
+            const exit = Number(step.maneuver?.exit);
+            return `Enter the roundabout${Number.isFinite(exit) && exit > 0 ? ` and take exit ${exit}` : ''}${onto}`;
+        }
+        if (type === 'exit roundabout' || type === 'exit rotary') return `Exit the roundabout${onto}`;
+        if (modifier.includes('uturn') || modifier.includes('u-turn')) return `Make a U-turn${onto}`;
+        if (type === 'merge') return `Merge ${side}${onto}${toward}`;
+        if (type === 'fork') return `Keep ${side}${onto}${toward}`;
+        if (type === 'on ramp') return `Take the ramp ${side}${onto}${toward}`;
+        if (type === 'off ramp') return `Take the exit ${side}${onto}${toward}`;
+        if (type === 'end of road') return `Turn ${side === 'ahead' ? 'right' : side}${onto}`;
+        if (type === 'continue') {
+            if (modifier.includes('slight left')) return `Keep slightly left${onRoad}`;
+            if (modifier.includes('slight right')) return `Keep slightly right${onRoad}`;
+            if (modifier.includes('left')) return `Keep left${onRoad}`;
+            if (modifier.includes('right')) return `Keep right${onRoad}`;
+            return `Continue${onRoad}`;
+        }
+        if (type === 'new name' || type === 'notification') return `Continue${onRoad || onto}`;
+        if (type === 'turn') {
+            if (modifier.includes('slight left')) return `Bear left${onto}`;
+            if (modifier.includes('slight right')) return `Bear right${onto}`;
+            if (modifier.includes('sharp left')) return `Make a sharp left${onto}`;
+            if (modifier.includes('sharp right')) return `Make a sharp right${onto}`;
+            if (modifier.includes('left')) return `Turn left${onto}`;
+            if (modifier.includes('right')) return `Turn right${onto}`;
+        }
+        // Unknown highway maneuvers with a directional modifier are safer as
+        // lane/continuation guidance than as an invented intersection turn.
+        if (modifier.includes('left')) return `Keep left${onRoad}`;
+        if (modifier.includes('right')) return `Keep right${onRoad}`;
+        return `Continue${onRoad}`;
+    };
+
+    const maneuverIconForStep = (step, className = 'h-8 w-8') => {
+        const type = String(step?.maneuver?.type || 'continue').toLowerCase();
+        const modifier = String(step?.maneuver?.modifier || '').toLowerCase();
+        if (modifier.includes('uturn') || modifier.includes('u-turn')) return <RotateCcw className={className} />;
+        if (modifier.includes('left')) return <CornerUpLeft className={className} />;
+        if (modifier.includes('right')) return <CornerUpRight className={className} />;
+        if (type === 'arrive') return <MapPin className={className} />;
+        return <ArrowUp className={className} />;
+    };
+
+    const getFreshDeviceLocation = async () => {
+        setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
+        try {
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: Infinity });
+            const fresh = [fix.latitude, fix.longitude];
+            const quality = locationQuality(fix);
+            setGpsQuality(quality);
+            setCurrentLocation(fresh);
+            if (fix.heading !== null) setHeading(fix.heading);
+            setSpeed(Math.round(liveSpeedMph(fix.speed)));
+            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
+            return fresh;
+        } catch (liveError) {
+            try {
+                const best = await requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 });
+                const quality = locationQuality(best);
+                setGpsQuality(quality);
+                if (!best) return null;
+                const fresh = [best.latitude, best.longitude];
+                setCurrentLocation(fresh);
+                if (best.heading !== null) setHeading(best.heading);
+                setSpeed(Math.round(liveSpeedMph(best.speed)));
+                setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
+                return fresh;
+            } catch (deviceError) {
+                const fallback = getLiveLocation(30000);
+                const fallbackQuality = locationQuality(fallback);
+                setGpsQuality(fallbackQuality);
+                if (fallback) {
+                    setCurrentLocation([fallback.latitude, fallback.longitude]);
+                    setIsLiveTracking(fallbackQuality.state === 'live' || fallbackQuality.state === 'low_accuracy');
+                } else {
+                    setIsLiveTracking(false);
+                }
+                console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
+                // A valid recent cached fix can start a route while device GPS recovers.
+                return fallback ? [fallback.latitude, fallback.longitude] : null;
+            }
+        }
+    };
+
+    const startNavigationToPoint = async (destination, options = {}) => {
+        const coords = destination?.coords || (destination?.latitude && destination?.longitude ? [Number(destination.latitude), Number(destination.longitude)] : null);
+        if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) {
+            toast.error('This destination does not have mapped coordinates');
+            return;
+        }
+        setRouting(true);
+        setAddressSearchError('');
+        setNavigationFallbackAddress(destination.name || destination.address || coords.join(','));
+        try {
+            const originOverride = Array.isArray(options.originOverride) && validPosition(options.originOverride[0], options.originOverride[1])
+                ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
+                : null;
+            const recentFix = getLiveLocation(options.reroute ? 12_000 : 30_000);
+            const freshLocation = originOverride
+                || (options.reroute && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
+                || (currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || await getFreshDeviceLocation();
+            if (!freshLocation) throw new Error('GPS unavailable. Enable precise location or use Open in Google Maps below.');
+            const [lat, lng] = freshLocation;
+            const [destLat, destLng] = coords.map(Number);
+            const originHeading = Number.isFinite(Number(options.originHeading))
+                ? Number(options.originHeading)
+                : Number.isFinite(Number(recentFix?.heading)) ? Number(recentFix.heading)
+                    : Number.isFinite(Number(heading)) ? Number(heading) : null;
+            const originAccuracy = Number.isFinite(Number(recentFix?.accuracy))
+                ? Number(recentFix.accuracy)
+                : Number.isFinite(Number(gpsQuality?.accuracy)) ? Number(gpsQuality.accuracy) : null;
+            const originSpeed = liveSpeedMph(recentFix?.speed ?? speed);
+            const browserQuery = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
+            if (originSpeed >= 5 && Number.isFinite(originHeading)) browserQuery.set('bearings', `${Math.round(((originHeading % 360) + 360) % 360)},55;`);
+            if (Number.isFinite(originAccuracy) && originAccuracy > 0) browserQuery.set('radiuses', `${Math.round(Math.max(25, Math.min(100, originAccuracy * 2)))};unlimited`);
+            const routePath = `${lng},${lat};${destLng},${destLat}?${browserQuery.toString()}`;
+            const plainRoutePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+            let route = null;
+            // Server-side routing avoids browser CORS/network policies that were
+            // causing Search to finish and simply return to GO without starting.
+            try {
+                const routed = await withRequestTimeout(base44.functions.invoke('routeNavigation', {
+                    origin_lat: lat,
+                    origin_lng: lng,
+                    dest_lat: destLat,
+                    dest_lng: destLng,
+                    origin_heading: originHeading,
+                    origin_accuracy: originAccuracy,
+                    origin_speed_mph: originSpeed,
+                }), 12_000, 'Navigation route');
+                const payload = routed?.data || routed || {};
+                if (payload?.route?.geometry?.coordinates?.length > 1) route = payload.route;
+            } catch (serverRouteError) {
+                console.warn('[NAV] Server route failed; trying browser providers:', serverRouteError?.message || serverRouteError);
+            }
+            if (!route) {
+                const browserPaths = routePath === plainRoutePath ? [plainRoutePath] : [routePath, plainRoutePath];
+                for (const path of browserPaths) {
+                    if (route) break;
+                    for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
+                        try {
+                            const response = await fetch(`${host}${path}`, { signal: AbortSignal.timeout(7000) });
+                            if (!response.ok) continue;
+                            const data = await response.json();
+                            if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; break; }
+                        } catch (serviceError) {
+                            console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
+                        }
+                    }
+                }
+            }
+            if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
+            setNavOffRoute(false);
+            setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
+            const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
+            const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
+            setNavRoute(routeCoords);
+            navSnapIndexRef.current = 0;
+            offRouteSinceRef.current = 0;
+            offRouteConfirmationsRef.current = 0;
+            // Map each OSRM maneuver to its forward route index. This gives the
+            // step engine a route-progress reference so a missed/closely-parallel
+            // maneuver cannot stay active indefinitely.
+            let searchStart = 0;
+            navStepRouteIndexesRef.current = routeSteps.map(step => {
+                const location = step?.maneuver?.location;
+                if (!Array.isArray(location) || location.length < 2 || !routeCoords.length) return searchStart;
+                const point = [Number(location[1]), Number(location[0])];
+                let nearestIndex = searchStart;
+                let nearestDistance = Infinity;
+                for (let index = searchStart; index < routeCoords.length; index += 1) {
+                    const distance = distanceMetersBetween(point, routeCoords[index]);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestIndex = index;
+                    }
+                    if (nearestDistance < 4 && index > nearestIndex + 15) break;
+                }
+                searchStart = Math.max(searchStart, nearestIndex);
+                return nearestIndex;
+            });
+            setNavSteps(routeSteps);
+            setNavStepIndex(0);
+            lastSpokenNavStepRef.current = -1;
+            spokenNavPromptsRef.current.clear();
+            setNavTurnDistanceFeet(Math.max(0, Math.round((Number(routeSteps[0]?.distance) || 0) * 3.28084)));
+            setNavDistanceMiles(route.distance / 1609.344);
+            setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
+            setIsNavigating(true);
+            setShowCallSidebar(false);
+            setShowAddressSearch(false);
+            setAddressResults([]);
+            setAddressQuery('');
+            setNavigationFallbackAddress('');
+            setAddressSearchError('');
+            setMapPickMode(false);
+            setMapSelectedDestination(null);
+            setFitBounds(null);
+            setMapCenter(null);
+            if (options.setEnroute !== false) await handleStatusChange('Enroute');
+            if (options.reroute) toast.success('Route updated from your current position');
+            else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
+        } catch (error) {
+            const message = error?.message || 'Unable to build route';
+            setAddressSearchError(message + ' The destination is retained below so you can open driving directions.');
+            setShowAddressSearch(true);
+            toast.error(message, { duration: 9000 });
+        } finally {
+            setRouting(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isNavigating || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
+
+        // Compare only against the forward route. Looking at the entire polyline
+        // lets a nearby road/interchange segment already driven falsely keep the
+        // officer "on route" after taking a different road.
+        const start = Math.max(0, navSnapIndexRef.current - 12);
+        const searchEnd = Math.min(navRoute.length, start + 2500);
+        const remaining = Math.max(1, searchEnd - start);
+        const stride = Math.max(1, Math.floor(remaining / 1400));
+        let nearestMeters = Infinity;
+        let nearestIndex = start;
+        for (let index = start; index < searchEnd; index += stride) {
+            const distance = distanceMetersBetween(currentLocation, navRoute[index]);
+            if (distance < nearestMeters) {
+                nearestMeters = distance;
+                nearestIndex = index;
+            }
+        }
 
         const accuracy = Number(gpsQuality?.accuracy);
         const offRouteThresholdMeters = Math.max(30, Math.min(55, Number.isFinite(accuracy) && accuracy > 0 ? accuracy * 2 : 35));
@@ -407,10 +912,13 @@ export default function Navigation() {
             navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
         }
 
-        const routeBearing = projection.bearing;
+        const routeBearing = bearingBetween(
+            navRoute[nearestIndex],
+            navRoute[Math.min(navRoute.length - 1, nearestIndex + Math.max(1, stride * 2))],
+        );
         const headingMismatch = Number(speed || 0) >= 10
-            && heading != null && Number.isFinite(Number(heading))
-            && routeBearing != null && Number.isFinite(Number(routeBearing))
+            && Number.isFinite(Number(heading))
+            && Number.isFinite(Number(routeBearing))
             && angleDifference(Number(heading), Number(routeBearing)) >= 70
             && nearestMeters > 15;
         const offRoute = nearestMeters > offRouteThresholdMeters || headingMismatch;
@@ -486,10 +994,25 @@ export default function Navigation() {
             return;
         }
 
-        const distanceMeters = distanceMetersBetween;
-        const projection = projectOntoRoute(currentLocation, navRoute, Math.max(0, navSnapIndexRef.current - 4), Math.min(navRoute.length - 1, navSnapIndexRef.current + 400));
-        const nearestIndex = projection.index;
-        const nearestDistance = projection.distance;
+        const toRad = value => value * Math.PI / 180;
+        const distanceMeters = (a, b) => {
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+        };
+
+        const start = Math.max(0, navSnapIndexRef.current - 20);
+        const end = Math.min(navRoute.length - 1, Math.max(start + 240, navSnapIndexRef.current + 180));
+        let nearestIndex = start;
+        let nearestDistance = Infinity;
+        for (let index = start; index <= end; index += 1) {
+            const distance = distanceMeters(currentLocation, navRoute[index]);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = index;
+            }
+        }
         // Only snap the displayed vehicle to the route when GPS and route geometry
         // actually agree. The old 85m tolerance could pull the icon onto a nearby
         // parallel/side road and make the street map appear wrong.
@@ -502,7 +1025,7 @@ export default function Navigation() {
         if (canSnapToRoute) navSnapIndexRef.current = Math.max(navSnapIndexRef.current - 3, nearestIndex);
         // Once off-route, immediately follow the real GPS point rather than
         // visually pulling the vehicle back onto the obsolete route line.
-        const target = canSnapToRoute ? projection.point : currentLocation;
+        const target = canSnapToRoute ? navRoute[nearestIndex] : currentLocation;
         setNavigationDisplayLocation(previous => {
             if (!previous) return target;
             const moved = distanceMeters(previous, target);
