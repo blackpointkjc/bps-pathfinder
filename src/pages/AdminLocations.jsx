@@ -18,7 +18,7 @@ import {
   MobileResponsiveDialogTitle,
 } from "../components/MobileResponsiveDialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MapContainer, Marker, Circle, Polygon, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Circle, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -701,7 +701,7 @@ export default function AdminLocations({ embedded = false }) {
                           )}
                           {location.latitude && location.longitude && (
                             <p className="text-xs text-slate-500">
-                              Coordinates: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)} • 165 ft clock-in radius
+                              Coordinates: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)} • {(location.geofence_polygon || []).length >= 3 ? 'Custom geofence boundary' : `${location.geofence_radius_meters || 100}m geofence radius`}
                             </p>
                           )}
                           {(location.site_bill_rate || location.site_bill_rate_unarmed) && (
@@ -1191,6 +1191,7 @@ export default function AdminLocations({ embedded = false }) {
                   <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Canonical Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom property polygon' : `${formData.geofence_radius_meters || 100}m shared radius fallback`}</div>
                 </div>
                 <p className="text-xs text-slate-400">Gold boundary = the single location boundary used for clock-in eligibility, live geofence alerts, property/CAD monitoring, and location enforcement.</p>
+                {editingLocation && <Button type="submit" disabled={updateLocationMutation.isPending} className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto">{updateLocationMutation.isPending ? 'Saving...' : 'Save Geofence'}</Button>}
               </div>
             )}
 
