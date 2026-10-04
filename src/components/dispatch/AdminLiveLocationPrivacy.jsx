@@ -81,8 +81,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     <div className="relative z-10 flex-none border-b border-slate-800 bg-slate-900 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs text-slate-300">
-          <span className="font-semibold text-white">My live location: {setting ? (setting.hidden ? 'Hidden from everyone' : 'Sharing ON') : 'Checking…'}</span>
-          <p className="mt-0.5 text-[11px] text-slate-400">Colonel Hiers only · Movement history and GPS pings continue recording.</p>
+          <span className="font-semibold text-white">Status: {currentUser?.status || setting?.status || 'Loading…'}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setHidden(false)} disabled={busy} aria-pressed={setting?.hidden === false}
