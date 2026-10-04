@@ -9,6 +9,7 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const input = await req.json().catch(() => ({}));
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(new Date());
@@ -29,6 +30,8 @@ Deno.serve(async (req) => {
           return result ?? fallback;
         } catch (error) {
           lastError = error;
+          // Retrying a 429 immediately spends the same exhausted allowance.
+          if (error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) break;
           if (attempt < attempts - 1) await delay(500 * (attempt + 1));
         }
       }
@@ -36,6 +39,22 @@ Deno.serve(async (req) => {
       if (options.reportError !== false) sourceErrors.push(label);
       if (options.required) throw lastError || new Error(`Unable to load ${label}`);
       return fallback;
+    }
+
+    // Load property alerts before the large staffing/communications snapshot.
+    // Project only the fields the briefing uses, and offer a small recovery request
+    // so a failed alert read does not rerun every company-wide query.
+    const propertyFields = ['id', 'created_date', 'callId', 'propertyId', 'propertyName',
+      'callIncident', 'callLocation', 'callPriority', 'callStatus', 'cadNumber',
+      'callTime', 'time_received', 'lifecycle_status', 'is_test', 'acknowledged'];
+    const propertyAlerts = operational
+      ? await loadSource('property alerts', () => base44.asServiceRole.entities.PropertyAlert.filter({}, '-created_date', 150, 0, propertyFields))
+      : [];
+    const propertyAlertReceipts = operational
+      ? await loadSource('property alert receipts', () => base44.asServiceRole.entities.PropertyAlertReceipt.filter({ user_email: email }, '-dismissed_at', 150, 0, ['id', 'call_id', 'property_id', 'dismissed_at']))
+      : [];
+    if (input.section === 'property_alerts') {
+      return Response.json({ success: true, propertyAlerts, propertyAlertReceipts, sourceErrors });
     }
 
     // IMPORTANT: keep these reads serialized. This snapshot runs at login and feeds
@@ -92,32 +111,9 @@ Deno.serve(async (req) => {
       ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id }, '-created_date', 100))
       : [];
 
-    const propertyAlertReceipts = operational
-      ? await loadSource('property alert receipts', () => base44.asServiceRole.entities.PropertyAlertReceipt.filter({ user_email: email }, '-dismissed_at', 150))
-      : [];
-    const propertyAlerts = operational
-      ? await loadSource('property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 150))
-      : [];
 
-    // The briefing only needs DispatchCall rows to verify the current status of
-    // property-alert calls. Pulling the latest 200 calls on every login was wasteful
-    // and made this optional enrichment the most common source of briefing warnings.
-    // Query only the call IDs referenced by the already-loaded PropertyAlert rows.
-    const propertyCallIds = Array.from(new Set((propertyAlerts || [])
-      .map((alert: any) => String(alert?.callId || '').trim())
-      .filter(Boolean)))
-      .slice(0, 150);
-    const dispatchCalls = operational && propertyCallIds.length
-      ? await loadSource(
-          'dispatch calls',
-          () => base44.asServiceRole.entities.DispatchCall.filter({
-            id: propertyCallIds.length === 1 ? propertyCallIds[0] : { $in: propertyCallIds },
-          }, '-created_date', 200),
-          // PropertyAlert stores its own call/lifecycle snapshot, so a transient
-          // verification failure must not mark the entire briefing incomplete.
-          { reportError: false, attempts: 1 },
-        )
-      : [];
+    // PropertyAlert already contains the call/lifecycle snapshot used by this UI.
+    const dispatchCalls: any[] = [];
 
     const units = officerLike ? (allUnits || []).filter((unit: any) => String(unit.user_id || '') === String(me.id)) : [];
     const schedules = officerLike ? (allSchedules || []).filter((shift: any) => lower(shift.officer_email) === email) : [];

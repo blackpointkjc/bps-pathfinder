@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, ClipboardList, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
@@ -10,6 +10,20 @@ import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
+
+function selectPropertyBriefingAlerts(alerts, receipts, since, until) {
+  const dismissed = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
+  const seen = new Set();
+  return (alerts || []).filter(item => {
+    const pair = `${item.callId}:${item.propertyId}`;
+    if (item.is_test === true || ['false_alarm', 'test'].includes(normalized(item.lifecycle_status))) return false;
+    if (seen.has(pair) || dismissed.has(pair)) return false;
+    seen.add(pair);
+    if (!since) return true;
+    const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
+    return created > since && created <= until;
+  });
+}
 
 function easternMinutesNow() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -88,6 +102,33 @@ export default function WelcomeBriefing({ user }) {
   const [startingSession, setStartingSession] = useState(false);
   const [startSessionError, setStartSessionError] = useState('');
   const loadRef = useRef(() => {});
+  const propertyWindowRef = useRef({ since: null, until: Date.now() });
+  const propertyRequestRef = useRef(false);
+  const propertyRetryRef = useRef(0);
+  const [propertyLoading, setPropertyLoading] = useState(false);
+  const propertySourcesFailed = dataErrors.some(source => ['property alerts', 'property alert receipts'].includes(source));
+  const refreshPropertyAlerts = useCallback(async () => {
+    if (propertyRequestRef.current || !user?.id) return;
+    propertyRequestRef.current = true;
+    setPropertyLoading(true);
+    clearBase44ReadCacheMatching('function:getWelcomeBriefingData:');
+    try {
+      const response = await base44.functions.invoke('getWelcomeBriefingData', { section: 'property_alerts' });
+      const snapshot = response?.data || response || {};
+      if (!snapshot.success || snapshot.sourceErrors?.length) throw new Error(snapshot.error || 'Property alerts are temporarily unavailable.');
+      const window = propertyWindowRef.current;
+      const alerts = selectPropertyBriefingAlerts(snapshot.propertyAlerts, snapshot.propertyAlertReceipts, window.since, window.until);
+      setBrief(previous => ({ ...previous, propertyAlerts: alerts }));
+      setDataErrors(previous => previous.filter(source => !['property alerts', 'property alert receipts'].includes(source)));
+      propertyRetryRef.current = 0;
+    } catch (error) {
+      console.warn('Briefing property alert recovery delayed:', error);
+      setDataErrors(previous => Array.from(new Set([...previous, 'property alerts'])));
+    } finally {
+      propertyRequestRef.current = false;
+      setPropertyLoading(false);
+    }
+  }, [user?.id]);
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
@@ -122,6 +163,7 @@ export default function WelcomeBriefing({ user }) {
         // Load one authenticated backend snapshot instead of launching many
         // browser-side entity requests during sign-in. This keeps the briefing
         // stable under role permissions and Base44 rate limits.
+        clearBase44ReadCacheMatching('function:getWelcomeBriefingData:');
         const response = await base44.functions.invoke('getWelcomeBriefingData', {});
         const snapshot = response?.data || response || {};
         if (snapshot?.error) throw new Error(snapshot.error);
@@ -185,18 +227,9 @@ export default function WelcomeBriefing({ user }) {
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
         const pendingTasks = (assignedTasks || []).filter(item => ['open', 'in_progress'].includes(normalized(item.status)));
-        const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
-        const seenPropertyPairs = new Set();
-        const offlineAlerts = (propertyAlerts || []).filter(item => {
-          const pair = `${item.callId}:${item.propertyId}`;
-          const lifecycle = normalized(item.lifecycle_status);
-          if (['false_alarm', 'test'].includes(lifecycle)) return false;
-          if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
-          seenPropertyPairs.add(pair);
-          if (!effectiveOfflineSince) return true;
-          const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
-          return created > effectiveOfflineSince && created <= offlineWindowEnd;
-        });
+        propertyWindowRef.current = { since: effectiveOfflineSince, until: offlineWindowEnd };
+        const offlineAlerts = selectPropertyBriefingAlerts(propertyAlerts, propertyAlertReceipts, effectiveOfflineSince, offlineWindowEnd);
+        const propertySourceFailed = sourceErrors.some(source => ['property alerts', 'property alert receipts'].includes(source));
         const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
         const liveOfficer = (liveOfficers || []).find(item => item.session_active === true) || null;
         const unit = liveOfficer || units?.[0] || null;
@@ -207,7 +240,7 @@ export default function WelcomeBriefing({ user }) {
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], allLiveOfficers: allLiveOfficers || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
+        setBrief(previous => ({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: propertySourceFailed ? previous.propertyAlerts : offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], allLiveOfficers: allLiveOfficers || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] }));
         setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
@@ -223,6 +256,27 @@ export default function WelcomeBriefing({ user }) {
     load();
     return () => { active = false; };
   }, [user?.id, user?.email, sessionKey, storageKey, lastShownKey, lastStatusKey]);
+
+  useEffect(() => {
+    if (!open || loading || !propertySourcesFailed || propertyRetryRef.current >= 3) return;
+    const timer = window.setTimeout(() => {
+      propertyRetryRef.current += 1;
+      refreshPropertyAlerts();
+    }, 15000);
+    return () => window.clearTimeout(timer);
+  }, [open, loading, propertySourcesFailed, propertyLoading, refreshPropertyAlerts]);
+
+  useEffect(() => {
+    if (!user?.id || !open || loading) return;
+    let timer;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(refreshPropertyAlerts, 3000);
+    };
+    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(refresh);
+    const unsubscribeReceipts = base44.entities.PropertyAlertReceipt.subscribe(refresh);
+    return () => { window.clearTimeout(timer); unsubscribeAlerts?.(); unsubscribeReceipts?.(); };
+  }, [user?.id, open, loading, refreshPropertyAlerts]);
 
   useEffect(() => {
     if (!user?.id || !open || loading) return undefined;
@@ -404,7 +458,7 @@ export default function WelcomeBriefing({ user }) {
                       <div className="min-w-0 flex-1 text-[11px] font-bold leading-5 text-amber-200">
                         Some briefing data could not be loaded and may be showing as empty or incomplete: {dataErrors.join(', ')}.
                       </div>
-                      <button type="button" onClick={() => loadRef.current?.()} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
+                      <button type="button" onClick={() => { propertyRetryRef.current = 0; dataErrors.every(source => ['property alerts', 'property alert receipts'].includes(source)) ? refreshPropertyAlerts() : loadRef.current?.(); }} disabled={propertyLoading} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
                     </div>
                   )}
                   <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-3 sm:p-4">
@@ -470,7 +524,7 @@ export default function WelcomeBriefing({ user }) {
                     {brief.appUpdates.length > 0 && <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail="Unread platform or software update records" tone="violet" />}
                     <BriefCard icon={ClipboardList} label="Assigned Tasks" value={brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} />
                     {brief.updates.length > 0 && <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail="Unread account, schedule, or system notification records" tone="blue" />}
-                    <BriefCard icon={Siren} label="Property Calls While Away" value={brief.propertyAlerts.length} detail={brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
+                    <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
 
                   {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
