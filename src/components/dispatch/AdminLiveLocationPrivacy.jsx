@@ -81,4 +81,3 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     </div>
   );
 }
-

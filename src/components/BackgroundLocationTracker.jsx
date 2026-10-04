@@ -246,7 +246,7 @@ export default function BackgroundLocationTracker({ user }) {
   useEffect(() => {
     if (!shouldTrack) return undefined;
 
-    const saveLocation = async (fix) => {
+    const saveLocation = async (fix, restoreLiveSharing = false) => {
       const now = Date.now();
       const lat = Number(fix.latitude);
       const lng = Number(fix.longitude);
@@ -301,7 +301,7 @@ export default function BackgroundLocationTracker({ user }) {
         // GPS stays conservative to avoid unnecessary backend pressure.
         const livePushIntervalMs = fix.source === 'external_serial' ? 5000 : moving ? 15000 : 30000;
         if (uploadInFlightRef.current || now < rateLimitBackoffUntilRef.current) return;
-        if (now - Math.max(lastGpsPushRef.current, lastGpsAttemptRef.current) < livePushIntervalMs) return;
+        if (!restoreLiveSharing && now - Math.max(lastGpsPushRef.current, lastGpsAttemptRef.current) < livePushIntervalMs) return;
         lastGpsAttemptRef.current = now;
 
         // One request updates both the live position and the durable history.
@@ -323,6 +323,7 @@ export default function BackgroundLocationTracker({ user }) {
           accuracy: accuracy,
           gps_source: fix.source || 'browser_geolocation',
           record_history: true,
+          reset_gps: restoreLiveSharing,
           publish_interval_ms: livePushIntervalMs,
           device_id: trackingDeviceIdRef.current,
           user_role: user?.role || 'user',
@@ -479,7 +480,7 @@ export default function BackgroundLocationTracker({ user }) {
       lastGpsAttemptRef.current = 0;
       try {
         const fix = await requestFreshLiveLocation({ timeoutMs: 15000 });
-        if (fix) await saveLocation(fix);
+        if (fix) await saveLocation(fix, true);
       } catch (error) { console.warn('Awaiting fresh GPS after enabling live sharing:', error?.message); }
     };
     window.addEventListener('bps-live-location-visibility-changed', restoreSharing);
