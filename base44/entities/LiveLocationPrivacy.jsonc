@@ -1,0 +1,43 @@
+{
+  "name": "LiveLocationPrivacy",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "officer_email": {
+      "type": "string"
+    },
+    "hidden": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "officer_email",
+    "hidden"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "__service_only__"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "__service_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__service_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__service_only__"
+      }
+    }
+  }
+}
