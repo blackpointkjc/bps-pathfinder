@@ -77,7 +77,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
   }, [eligible, currentUser?.id, currentUser?.email, refresh]);
 
   const setHidden = async (hidden, retry = false) => {
-    if (saving.current || (settingRef.current?.hidden === hidden && !retry)) return;
+    if (saving.current || (settingRef.current?.hidden === hidden && !settingRef.current?.cached && !retry)) return;
     clearTimeout(retryTimer.current);
     saving.current = true;
     const version = ++loadVersion.current;
@@ -121,11 +121,11 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
           <span className="font-semibold text-white">Status: {setting ? (setting.hidden ? 'Hidden' : 'Visible') : error ? 'Unavailable' : 'Loading…'}</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setHidden(false)} disabled={busy || setting?.hidden === false} aria-pressed={setting?.hidden === false}
+          <button type="button" onClick={() => setHidden(false)} disabled={busy || (setting?.hidden === false && !setting?.cached)} aria-pressed={setting?.hidden === false}
             className="flex items-center gap-2 rounded-md border border-green-500/60 px-3 py-2 text-xs font-semibold text-green-300 disabled:opacity-50">
             <Eye className="h-4 w-4" />Turn sharing ON
           </button>
-          <button type="button" onClick={() => setHidden(true)} disabled={busy || setting?.hidden === true} aria-pressed={setting?.hidden === true}
+          <button type="button" onClick={() => setHidden(true)} disabled={busy || (setting?.hidden === true && !setting?.cached)} aria-pressed={setting?.hidden === true}
             className="flex items-center gap-2 rounded-md border border-gold/50 px-3 py-2 text-xs font-semibold text-gold disabled:opacity-50">
             <EyeOff className="h-4 w-4" />Hide my live location
           </button>
