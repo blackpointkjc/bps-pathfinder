@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { canHideLiveLocation, stripLiveLocation } from './privacy.ts';
 
 function roleSet(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
@@ -95,6 +96,25 @@ Deno.serve(async (req) => {
       });
       return Response.json({ success: true, history: usableHistory, filtered_history_count: Math.max(0, (history || []).length - usableHistory.length) });
     }
+
+    // Privacy applies equally to every viewer, including administrators and all
+    // last-known/site/history fallbacks. History responses above remain intact.
+    const settings = await base44.asServiceRole.entities.LiveLocationPrivacy.filter({ hidden: true }, '-updated_date', 1000);
+    const hiddenEmails = new Set<string>();
+    for (const setting of settings || []) {
+      const officer = await base44.asServiceRole.entities.User.get(setting.user_id);
+      if (canHideLiveLocation(officer)) hiddenEmails.add(lower(officer.email));
+    }
+    const liveResponse = (payload: any) => {
+      const redact = (row: any) => hiddenEmails.has(lower(row.officer_email || row.email))
+        ? stripLiveLocation(row)
+        : { ...row, live_location_hidden: false, show_on_map: true };
+      for (const key of ['units', 'users', 'clocked_in_without_session']) {
+        if (Array.isArray(payload[key])) payload[key] = payload[key].map(redact);
+      }
+      if (payload.map_visible_count !== undefined) payload.map_visible_count = payload.units.filter((row: any) => row.map_visible && !row.live_location_hidden).length;
+      return Response.json(payload);
+    };
 
     // Location-only consumers (the live map and its health probe) only need the
     // canonical ActiveOfficer stream. Avoid loading TimeEntry + User on every map
@@ -267,7 +287,7 @@ Deno.serve(async (req) => {
             connection_age_seconds: Number.isFinite(sessionTs) ? Math.max(0, Math.floor((Date.now() - sessionTs) / 1000)) : null,
           };
         });
-      return Response.json({
+      return liveResponse({
         success: true,
         units,
         signed_in_count: units.filter(unit => unit.session_active).length,
@@ -577,7 +597,7 @@ Deno.serve(async (req) => {
     const liveUsers = onDutyUsers.filter((row: any) => row.session_active === true);
     const dispatchReadyUsers = liveUsers.filter((row: any) => lower(row.status) !== 'out of service');
 
-    return Response.json({
+    return liveResponse({
       success: true,
       // The status board needs the enriched directory roster so signed-out/OOS
       // officers and profile fields (including photos) remain visible. Live maps
