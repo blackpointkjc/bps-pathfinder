@@ -3,6 +3,7 @@ import { Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { clearOfficerLocationSnapshotCache, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
+import { announceOwnLocationVisibility } from '@/lib/useOwnLocationVisibility';
 const HIERS_USER_ID = '6a72bbee2842d6338cbae513';
 const serverErrorText = error => {
   const data = error?.response?.data;
@@ -29,11 +30,11 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     try {
       const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
       if (!data?.success) throw new Error(data?.error || 'Unable to load visibility.');
-      if (version === loadVersion.current && !saving.current) { setSetting(data); syncCurrentStatus(data); setError(''); }
+      if (version === loadVersion.current && !saving.current) { setSetting(data); syncCurrentStatus(data); announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email); setError(''); }
     } catch (err) {
       if (version === loadVersion.current) setError(serverErrorText(err));
     }
-  }, [eligible]);
+  }, [eligible, currentUser?.id, currentUser?.email]);
   useEffect(() => {
     setSetting(null);
     if (!eligible) return;
@@ -45,6 +46,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       if (typeof row?.live_location_hidden === 'boolean') {
         ++loadVersion.current;
         setSetting({ success: true, eligible: true, hidden: row.live_location_hidden });
+        announceOwnLocationVisibility(currentUser.id, row.live_location_hidden, currentUser.email);
       }
     });
     window.addEventListener('focus', onFocus);
@@ -64,7 +66,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       setSetting(data);
       syncCurrentStatus(data);
       clearOfficerLocationSnapshotCache();
-      window.dispatchEvent(new CustomEvent('bps-live-location-visibility-changed', { detail: { user_id: currentUser.id, hidden } }));
+      announceOwnLocationVisibility(currentUser.id, hidden, currentUser.email);
     } catch (err) {
       setError(serverErrorText(err));
       // A downstream cleanup may fail after the setting was saved. Reconcile the
@@ -72,7 +74,11 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       clearBase44ReadCacheMatching('function:manageLiveLocationPrivacy:');
       try {
         const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
-        if (data?.success) { setSetting(data); syncCurrentStatus(data); }
+        if (data?.success) {
+          setSetting(data); syncCurrentStatus(data);
+          clearOfficerLocationSnapshotCache();
+          announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email);
+        }
       } catch {}
     }
     finally { saving.current = false; setBusy(false); }
@@ -81,7 +87,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     <div className="relative z-10 flex-none border-b border-slate-800 bg-slate-900 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs text-slate-300">
-          <span className="font-semibold text-white">Status: {currentUser?.status || setting?.status || 'Loading…'}</span>
+          <span className="font-semibold text-white">Status: {setting ? (setting.hidden ? 'Hidden' : 'Visible') : 'Loading…'}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setHidden(false)} disabled={busy} aria-pressed={setting?.hidden === false}
