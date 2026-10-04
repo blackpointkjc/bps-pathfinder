@@ -44,9 +44,9 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       const row = event?.data || event?.record;
       if (saving.current || String(row?.officer_email || '').toLowerCase() !== String(currentUser.email || '').toLowerCase()) return;
       if (typeof row?.live_location_hidden === 'boolean') {
-        ++loadVersion.current;
-        setSetting({ success: true, eligible: true, hidden: row.live_location_hidden });
-        announceOwnLocationVisibility(currentUser.id, row.live_location_hidden, currentUser.email);
+        // The saved privacy record owns visibility. A delayed GPS row must not
+        // reverse a completed click or expose the device marker.
+        refresh();
       }
     });
     window.addEventListener('focus', onFocus);
@@ -66,7 +66,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       setSetting(data);
       syncCurrentStatus(data);
       clearOfficerLocationSnapshotCache();
-      announceOwnLocationVisibility(currentUser.id, hidden, currentUser.email);
+      announceOwnLocationVisibility(currentUser.id, hidden, currentUser.email, !hidden);
     } catch (err) {
       setError(serverErrorText(err));
       // A downstream cleanup may fail after the setting was saved. Reconcile the
@@ -77,7 +77,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
         if (data?.success) {
           setSetting(data); syncCurrentStatus(data);
           clearOfficerLocationSnapshotCache();
-          announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email);
+          announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email, !hidden && data.hidden === false);
         }
       } catch {}
     }
