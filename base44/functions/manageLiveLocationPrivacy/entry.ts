@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         });
       }
     }
-    return Response.json({ success: true, eligible, hidden: body.hidden, status: user.status, officer_id: user.id, email: user.email, last_updated: user.status_since || user.last_updated });
+    return Response.json({ success: true, cleanup_pending: false, eligible, hidden: body.hidden, status: user.status, officer_id: user.id, email: user.email, last_updated: user.status_since || user.last_updated });
   } catch (error: any) {
     const throttled = error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error));
     console.error('[manageLiveLocationPrivacy]', stage, error);
