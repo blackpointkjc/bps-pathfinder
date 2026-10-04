@@ -163,6 +163,7 @@ export default function WelcomeBriefing({ user }) {
         // Load one authenticated backend snapshot instead of launching many
         // browser-side entity requests during sign-in. This keeps the briefing
         // stable under role permissions and Base44 rate limits.
+        propertyWindowRef.current = { since: offlineSince, until: now };
         clearBase44ReadCacheMatching('function:getWelcomeBriefingData:');
         const response = await base44.functions.invoke('getWelcomeBriefingData', {});
         const snapshot = response?.data || response || {};
@@ -244,7 +245,7 @@ export default function WelcomeBriefing({ user }) {
         setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
-        setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary'])));
+        setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary', 'property alerts'])));
       } finally {
         if (active) {
           setLoading(false);
@@ -258,7 +259,7 @@ export default function WelcomeBriefing({ user }) {
   }, [user?.id, user?.email, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {
-    if (!open || loading || !propertySourcesFailed || propertyRetryRef.current >= 3) return;
+    if (!open || loading || propertyLoading || !propertySourcesFailed || propertyRetryRef.current >= 3) return;
     const timer = window.setTimeout(() => {
       propertyRetryRef.current += 1;
       refreshPropertyAlerts();
