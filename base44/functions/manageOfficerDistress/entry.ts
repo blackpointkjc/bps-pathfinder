@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { isLiveLocationHidden } from './privacy.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -48,7 +49,8 @@ Deno.serve(async (req) => {
     };
 
     if (action === 'activate') {
-      const loc = body.location || null;
+      const privateLocation = await isLiveLocationHidden(base44, officer);
+      const loc = privateLocation ? null : body.location || null;
       const lat = loc?.lat ?? null;
       const lon = loc?.lon ?? null;
       const distressData = {
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
         longitude: lon,
         current_latitude: lat,
         current_longitude: lon,
-        location_description: (lat && lon) ? `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}` : (officer.last_known_location || 'Location unavailable'),
+        location_description: (lat && lon) ? `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}` : (privateLocation ? 'Live location hidden' : officer.last_known_location || 'Location unavailable'),
         status: 'active',
         activated_at: now,
         notes: isSelf ? '' : `Triggered by dispatch (${[user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email})`,

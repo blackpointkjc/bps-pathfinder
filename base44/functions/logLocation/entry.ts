@@ -411,7 +411,7 @@ Deno.serve(async (req) => {
             time_entry_id: historySessionId,
             officer_email: officerEmail,
             officer_name: String(liveData.officer_name),
-            location: String(liveData.current_location),
+            location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
             latitude,
             longitude,
             timestamp: new Date(deviceFixAt).toISOString(),

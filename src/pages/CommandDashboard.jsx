@@ -15,6 +15,7 @@ import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
 import { useAuth } from '@/lib/AuthContext';
+import AdminLiveLocationPrivacy from '@/components/dispatch/AdminLiveLocationPrivacy';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -438,6 +439,8 @@ function CommandDashboardInner({ embedded = false }) {
                 </div>
             )}
 
+
+            <AdminLiveLocationPrivacy currentUser={currentUser} />
 
             {/* ── OFFICER ROSTER ── */}
             <div className="flex-none border-b border-slate-800 bg-[#07111d] px-2 py-1.5">

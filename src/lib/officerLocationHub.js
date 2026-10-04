@@ -78,7 +78,7 @@ export function applyOfficerLocationEvent(rows = [], event) {
       'status','session_active','current_call_id','current_call_info','current_location','unit_number',
       'officer_name','first_name','last_name','rank','profile_photo_url','latitude',
       'longitude','heading','speed','accuracy','gps_updated_at','gps_source','last_update',
-      'clock_in_time','tracking_session_key'
+      'clock_in_time','tracking_session_key','live_location_hidden'
     ];
     for (const field of fields) {
       if (record[field] === undefined) continue;
@@ -93,7 +93,7 @@ export function applyOfficerLocationEvent(rows = [], event) {
       next.presence_state = record.session_active === true ? 'online' : 'offline';
       if (record.session_active === false) next.connection_stale = false;
     }
-    return next;
+    return scrubUnitLocation(next);
   });
 }
 
@@ -153,6 +153,12 @@ function validCoords(lat, lng) {
 
 function scrubUnitLocation(unit = {}) {
   const clean = { ...unit };
+  if (clean.live_location_hidden === true) {
+    for (const key of Object.keys(clean)) {
+      if (/latitude|longitude|heading|speed|accuracy|gps_|last_gps|last_known/.test(key)) clean[key] = null;
+    }
+    return { ...clean, current_location: '', location: '', show_on_map: false, map_visible: false };
+  }
   const accuracy = Number(clean.accuracy);
   const liveUsable = validCoords(clean.latitude, clean.longitude)
     && Number.isFinite(accuracy)

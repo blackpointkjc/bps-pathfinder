@@ -88,7 +88,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     // officer who is still online.
     const unitsToShow = units
       .filter(unit => unit.id !== currentUserId)
-      .filter(unit => unit.show_on_map !== false)
+      .filter(unit => unit.live_location_hidden !== true)
       .filter(unit => unit.session_active === true || unit.presence_online === true || unit.map_visible === true)
       .map(unit => {
         const valid = (lat, lng) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && !(Number(lat) === 0 && Number(lng) === 0);

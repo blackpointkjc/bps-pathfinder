@@ -357,7 +357,7 @@ export default function BackgroundLocationTracker({ user }) {
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
 
         // Keep geofence evaluation at one minute even though live GPS persists faster.
-        if (activeEntry && now - lastGeofenceCheckRef.current >= 60000 && locations) {
+        if (!liveResult.live_location_hidden && activeEntry && now - lastGeofenceCheckRef.current >= 60000 && locations) {
           lastGeofenceCheckRef.current = now;
 
           // Find the location for this officer's active site - match by site name

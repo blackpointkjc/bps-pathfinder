@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { isLiveLocationHidden } from './privacy.ts';
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
 const rad = (value: number) => value * Math.PI / 180;
@@ -35,6 +36,7 @@ Deno.serve(async (req) => {
     const allAlerts = async () => await base44.asServiceRole.entities.GeofenceAlert.list('-created_date', 1000);
 
     if (action === 'outside') {
+      if (await isLiveLocationHidden(base44, user)) return Response.json({ success: true, suppressed: true });
       const officerEmail = String(body.officer_email || user.email || '').toLowerCase();
       if (officerEmail !== String(user.email || '').toLowerCase() && !reviewer) return Response.json({ error: 'Cannot create alert for another user' }, { status: 403 });
       const location = String(body.location || '');

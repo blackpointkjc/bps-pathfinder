@@ -161,6 +161,11 @@
     "current_call_id": {
       "type": "string",
       "description": "Current assigned dispatch call id for live CAD marker/assignment state"
+    },
+    "live_location_hidden": {
+      "type": "boolean",
+      "default": false,
+      "description": "Server-controlled live map privacy; movement history continues"
     }
   },
   "required": [
