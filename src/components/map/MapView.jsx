@@ -350,7 +350,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 />
             )}
 
-            {safeCurrentLocation && !ownLocationHidden && (
+            {currentUserId && safeCurrentLocation && !ownLocationHidden && (
                 <Marker
                     key="self-location"
                     position={safeCurrentLocation}
@@ -359,7 +359,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             )}
             
             {/* Location History Trail */}
-            {safeHistory.length > 1 && !ownLocationHidden && (
+            {currentUserId && safeHistory.length > 1 && !ownLocationHidden && (
                 <Polyline
                     positions={safeHistory}
                     pathOptions={{
