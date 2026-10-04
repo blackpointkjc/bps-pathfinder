@@ -31,8 +31,10 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
   const eligible = currentUser?.id === HIERS_USER_ID && currentUser?.role === 'admin' && rank === 'colonel';
   const applyConfirmed = useCallback((data, restore = false) => {
     if (typeof data?.hidden !== 'boolean') return;
-    settingRef.current = data;
-    setSetting(data);
+    const confirmed = data.cleanup_pending === undefined && settingRef.current?.cleanup_pending && settingRef.current.hidden === data.hidden
+      ? { ...data, cleanup_pending: true } : data;
+    settingRef.current = confirmed;
+    setSetting(confirmed);
     syncCurrentStatus(data);
     announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email, restore && data.hidden === false);
   }, [currentUser?.id, currentUser?.email]);
@@ -68,7 +70,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       if (saving.current || String(row?.officer_email || '').toLowerCase() !== String(currentUser.email || '').toLowerCase()) return;
       // Ordinary GPS heartbeats do not change visibility and need no status read.
       // A differing flag is verified against the saved record before applying it.
-      if (typeof row?.live_location_hidden === 'boolean' && row.live_location_hidden !== settingRef.current?.hidden) refresh();
+      if (typeof row?.live_location_hidden === 'boolean' && row.live_location_hidden !== settingRef.current?.hidden) refresh(true);
     });
     window.addEventListener('focus', onFocus);
     return () => { ++loadVersion.current; clearTimeout(retryTimer.current); unsubscribe(); window.removeEventListener('focus', onFocus); };
