@@ -3,7 +3,7 @@
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
  */
 import { Fragment } from 'react';
-import { CircleMarker, Marker, Pane, Tooltip } from 'react-leaflet';
+import { CircleMarker, Marker, Pane, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 const isPulsePointCall = (call) => {
@@ -91,6 +91,7 @@ const assessCallPriority = (call) => {
 };
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
+    const map = useMap();
     if (!calls || calls.length === 0) return null;
 
     const renderable = calls.filter(c =>
@@ -99,7 +100,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     ).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));
 
     return (
-        <Pane name="active-cad-calls" style={{ zIndex: 690 }}>
+        <Pane name="active-cad-calls" pane={map.getPane('norotatePane') ? 'norotatePane' : undefined} style={{ zIndex: 7 }}>
             {renderable.map((call, index) => {
                 const priority = assessCallPriority(call);
                 const key = call.id || `call-${index}`;
@@ -108,7 +109,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 return (
                     <Fragment key={key}>
                         <CircleMarker
-                            pane="active-cad-calls"
+                            pane="overlayPane"
                             center={[call.latitude, call.longitude]}
                             radius={13}
                             interactive={false}

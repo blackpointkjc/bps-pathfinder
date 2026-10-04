@@ -25,6 +25,7 @@ function clearSnapshotCache() { snapshotCache.clear(); }
 export function clearOfficerLocationSnapshotCache() {
   snapshotCache.clear();
   lastForcedAt.clear();
+  clearBase44ReadCacheMatching('function:getOnDutyUnits:');
 }
 
 function realtimeOfficerRecord(event) {
@@ -78,7 +79,7 @@ export function applyOfficerLocationEvent(rows = [], event) {
       'status','session_active','current_call_id','current_call_info','current_location','unit_number',
       'officer_name','first_name','last_name','rank','profile_photo_url','latitude',
       'longitude','heading','speed','accuracy','gps_updated_at','gps_source','last_update',
-      'clock_in_time','tracking_session_key','live_location_hidden'
+      'clock_in_time','tracking_session_key','live_location_hidden','live_location_privacy_user_id'
     ];
     for (const field of fields) {
       if (record[field] === undefined) continue;
@@ -153,12 +154,14 @@ function validCoords(lat, lng) {
 
 function scrubUnitLocation(unit = {}) {
   const clean = { ...unit };
-  if (clean.live_location_hidden === true) {
+  if (clean.live_location_hidden === true && clean.live_location_privacy_user_id === '6a72bbee2842d6338cbae513') {
     for (const key of Object.keys(clean)) {
       if (/latitude|longitude|heading|speed|accuracy|gps_|last_gps|last_known/.test(key)) clean[key] = null;
     }
     return { ...clean, current_location: '', location: '', show_on_map: false, map_visible: false };
   }
+  clean.live_location_hidden = false;
+  clean.show_on_map = true;
   const accuracy = Number(clean.accuracy);
   const liveUsable = validCoords(clean.latitude, clean.longitude)
     && Number.isFinite(accuracy)

@@ -291,7 +291,7 @@ function invalidateReadCacheForWrite(meta = {}) {
 
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
-    if (['logLocation','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
+    if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
       addEntity('ActiveOfficer'); addEntity('Unit'); addEntity('User'); addFunction('getOnDutyUnits');
       if (name !== 'logLocation') prefixes.add('auth:me:');
     }

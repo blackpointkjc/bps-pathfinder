@@ -665,6 +665,10 @@ body::-webkit-scrollbar-button,
 }
 .leaflet-pane { z-index: 1 !important; }
 .leaflet-tile-pane { z-index: 1 !important; }
+/* Rotated geometry and upright symbols have separate stacking contexts. Custom
+   district panes must live inside rotatePane, with icons above in norotatePane. */
+.leaflet-rotate-pane { z-index: 1 !important; }
+.leaflet-norotate-pane { z-index: 5 !important; }
 
 /* Geometry belongs below symbols. Jurisdiction/district polygons get their own
    pane so their strokes can never cut across CAD calls, officers, stations,

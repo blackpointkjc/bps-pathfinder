@@ -1,4 +1,4 @@
-import { GeoJSON, Pane } from 'react-leaflet';
+import { GeoJSON, Pane, useMap } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 // Validate GeoJSON data
@@ -12,6 +12,7 @@ const isValidGeoJSON = (data) => {
 };
 
 export default function JurisdictionBoundaries({ filters = {} }) {
+    const map = useMap();
     const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all', fredericksburgDistrict = 'all', manassasParkDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
@@ -819,7 +820,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
 
     return (
-        <Pane name="jurisdiction-boundaries" style={{ zIndex: 2 }}>
+        <Pane name="jurisdiction-boundaries" pane={map.getPane('rotatePane') ? 'rotatePane' : undefined} style={{ zIndex: 2 }}>
             {/* Jurisdiction geometry always stays below operational markers/icons. */}
             {/* Chesterfield County Districts */}
             {filteredChesterfieldDistricts && (

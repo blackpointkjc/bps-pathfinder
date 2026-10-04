@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { canHideLiveLocation, stripLiveLocation } from './privacy.ts';
+import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
 
 function roleSet(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
@@ -102,13 +102,14 @@ Deno.serve(async (req) => {
     const settings = await base44.asServiceRole.entities.LiveLocationPrivacy.filter({ hidden: true }, '-updated_date', 1000);
     const hiddenEmails = new Set<string>();
     for (const setting of settings || []) {
-      const officer = await base44.asServiceRole.entities.User.get(setting.user_id);
-      if (canHideLiveLocation(officer)) hiddenEmails.add(lower(officer.email));
+      if (setting.user_id === LIVE_LOCATION_PRIVACY_USER_ID && setting.hidden === true && setting.officer_email) {
+        hiddenEmails.add(lower(setting.officer_email));
+      }
     }
     const liveResponse = (payload: any) => {
       const redact = (row: any) => hiddenEmails.has(lower(row.officer_email || row.email))
         ? stripLiveLocation(row)
-        : { ...row, live_location_hidden: false, show_on_map: true };
+        : { ...row, live_location_hidden: false, live_location_privacy_user_id: '', show_on_map: true };
       for (const key of ['units', 'users', 'clocked_in_without_session']) {
         if (Array.isArray(payload[key])) payload[key] = payload[key].map(redact).filter((row: any) => !(row.live_location_hidden && (key === 'users' || payload.location_only === true)));
       }

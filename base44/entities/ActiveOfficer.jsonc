@@ -166,6 +166,10 @@
       "type": "boolean",
       "default": false,
       "description": "Server-controlled live map privacy; movement history continues"
+    },
+    "live_location_privacy_user_id": {
+      "type": "string",
+      "description": "Account to which this explicit live privacy exception belongs"
     }
   },
   "required": [

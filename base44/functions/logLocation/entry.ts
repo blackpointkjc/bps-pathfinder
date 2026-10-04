@@ -279,6 +279,7 @@ Deno.serve(async (req) => {
     }
     // Private GPS still reaches the history stream below, never the public live entity.
     liveData.live_location_hidden = liveLocationHidden;
+    liveData.live_location_privacy_user_id = liveLocationHidden ? user.id : '';
     if (liveLocationHidden) Object.assign(liveData, clearedLivePosition);
     const activeOfficer = primary
       ? await base44.asServiceRole.entities.ActiveOfficer.update(primary.id, liveData)
@@ -286,7 +287,7 @@ Deno.serve(async (req) => {
 
     // A toggle can arrive while this request is in flight. Recheck after the write.
     const hiddenAfterWrite = await isLiveLocationHidden(base44, user);
-    if (hiddenAfterWrite) {
+    if (hiddenAfterWrite && !liveLocationHidden) {
       await base44.asServiceRole.entities.ActiveOfficer.update(activeOfficer.id, clearedLivePosition);
       Object.assign(activeOfficer, clearedLivePosition);
     }

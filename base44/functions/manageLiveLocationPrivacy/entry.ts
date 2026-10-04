@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     if (body.action !== 'set' || typeof body.hidden !== 'boolean') {
       return Response.json({ error: 'A boolean hidden setting is required' }, { status: 400 });
     }
-    if (!eligible) return Response.json({ error: 'Only Colonel administrators may hide their live location. All other personnel must share it.' }, { status: 403 });
+    if (!eligible) return Response.json({ error: 'Only Colonel Hiers may hide his own live location. All other personnel must share it.' }, { status: 403 });
     const settings = await base44.asServiceRole.entities.LiveLocationPrivacy.filter({ user_id: user.id }, '-updated_date', 100);
     const patch = { user_id: user.id, officer_email: String(user.email).trim().toLowerCase(), hidden: body.hidden };
     if (settings.length) await Promise.all(settings.map((row: any) => base44.asServiceRole.entities.LiveLocationPrivacy.update(row.id, patch)));
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     // Clear all device sessions; re-enabling waits for a fresh accepted GPS fix.
     const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: patch.officer_email }, '-last_update', 100);
     await Promise.all(sessions.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
-      ...clearedLivePosition, live_location_hidden: body.hidden,
+      ...clearedLivePosition, live_location_hidden: body.hidden, live_location_privacy_user_id: body.hidden ? user.id : '',
       current_location: body.hidden ? 'Live location hidden' : 'Awaiting GPS',
       last_update: new Date().toISOString(),
     })));
