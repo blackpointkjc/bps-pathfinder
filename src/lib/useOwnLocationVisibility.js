@@ -4,10 +4,10 @@ import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 export const HIERS_PRIVACY_USER_ID = '6a72bbee2842d6338cbae513';
 const key = 'bps:hiers-live-location-hidden';
-export function announceOwnLocationVisibility(userId, hidden, email = '') {
+export function announceOwnLocationVisibility(userId, hidden, email = '', restore = false) {
   if (userId !== HIERS_PRIVACY_USER_ID || typeof hidden !== 'boolean') return;
   try { localStorage.setItem(key, JSON.stringify(hidden)); } catch {}
-  window.dispatchEvent(new CustomEvent('bps-live-location-visibility-changed', { detail: { user_id: userId, hidden, email } }));
+  window.dispatchEvent(new CustomEvent('bps-live-location-visibility-changed', { detail: { user_id: userId, hidden, email, restore } }));
 }
 export function useOwnLocationHidden(userId) {
   // Until confirmed visible, do not flash Hiers's device marker during startup.
@@ -42,7 +42,7 @@ export function useOwnLocationHidden(userId) {
       const row = event?.data || event?.record;
       if (!row || typeof row.live_location_hidden !== 'boolean') return;
       if ((email && String(row.officer_email || '').toLowerCase() === email)
-          || row.live_location_privacy_user_id === userId) apply(row.live_location_hidden);
+          || row.live_location_privacy_user_id === userId) refresh();
     });
     refresh();
     window.addEventListener('bps-live-location-visibility-changed', changed);
