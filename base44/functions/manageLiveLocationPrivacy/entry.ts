@@ -57,17 +57,17 @@ Deno.serve(async (req) => {
         stage = 'clear legacy user location';
         await base44.asServiceRole.entities.User.update(user.id, legacyPatch);
       }
-      stage = 'clear unit locations';
-      const units = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 100);
-      for (const row of units) if (row.current_latitude != null || row.current_longitude != null) {
-        await base44.asServiceRole.entities.Unit.update(row.id, { current_latitude: null, current_longitude: null });
-      }
       stage = 'clear active distress locations';
       const alerts = await base44.asServiceRole.entities.OfficerDistress.filter({ officer_id: user.id, status: 'active' }, '-activated_at', 100);
       for (const row of alerts) if ([row.latitude,row.longitude,row.current_latitude,row.current_longitude].some(value => value != null)) {
         await base44.asServiceRole.entities.OfficerDistress.update(row.id, {
           latitude: null, longitude: null, current_latitude: null, current_longitude: null, location_description: 'Live location hidden',
         });
+      }
+      stage = 'clear unit locations';
+      const units = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 100);
+      for (const row of units) if (row.current_latitude != null || row.current_longitude != null) {
+        await base44.asServiceRole.entities.Unit.update(row.id, { current_latitude: null, current_longitude: null });
       }
     }
     return Response.json({ success: true, cleanup_pending: false, eligible, hidden: body.hidden, status: user.status, officer_id: user.id, email: user.email, last_updated: user.status_since || user.last_updated });
