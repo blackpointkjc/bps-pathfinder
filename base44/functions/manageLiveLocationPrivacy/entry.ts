@@ -3,6 +3,7 @@ import { canHideLiveLocation, isLiveLocationHidden, clearedLivePosition } from '
 
 Deno.serve(async (req) => {
   let stage = 'authentication';
+  let savedVisibility: any = null;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -29,6 +30,9 @@ Deno.serve(async (req) => {
       }
     }
     if (!settings.length) await base44.asServiceRole.entities.LiveLocationPrivacy.create(patch);
+    // Once committed, this is authoritative even if a secondary cleanup is
+    // throttled. Return it in the error instead of forcing another queued read.
+    savedVisibility = { eligible, hidden: body.hidden, status: user.status, officer_id: user.id, email: user.email, last_updated: user.status_since || user.last_updated };
     stage = 'sync live visibility';
     const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: patch.officer_email }, '-last_update', 100);
     for (const row of sessions) {
@@ -70,6 +74,6 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     const throttled = error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error));
     console.error('[manageLiveLocationPrivacy]', stage, error);
-    return Response.json({ error: error?.message || 'Unable to change live location visibility', stage }, { status: throttled ? 429 : 500 });
+    return Response.json({ error: error?.message || 'Unable to change live location visibility', stage, ...(savedVisibility ? { ...savedVisibility, visibility_saved: true, cleanup_pending: true } : {}), ...(throttled ? { retry_after_ms: 60000 } : {}) }, { status: throttled ? 429 : 500 });
   }
 });
