@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 export const HIERS_PRIVACY_USER_ID = '6a72bbee2842d6338cbae513';
@@ -50,7 +50,10 @@ export function useOwnLocationHidden(userId) {
       const row = event?.data || event?.record;
       if (!row || typeof row.live_location_hidden !== 'boolean') return;
       if (row.live_location_hidden !== confirmedHidden && ((email && String(row.officer_email || '').toLowerCase() === email)
-          || row.live_location_privacy_user_id === userId)) refresh();
+          || row.live_location_privacy_user_id === userId)) {
+        clearBase44ReadCacheMatching('function:manageLiveLocationPrivacy:');
+        refresh();
+      }
     });
     refresh();
     window.addEventListener('bps-live-location-visibility-changed', changed);
