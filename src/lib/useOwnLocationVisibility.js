@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 export const HIERS_PRIVACY_USER_ID = '6a72bbee2842d6338cbae513';
 const key = 'bps:hiers-live-location-hidden';
+export function readLastOwnLocationVisibility(userId) {
+  if (userId !== HIERS_PRIVACY_USER_ID) return null;
+  try {
+    const hidden = JSON.parse(localStorage.getItem(key));
+    return typeof hidden === 'boolean' ? { hidden } : null;
+  } catch { return null; }
+}
 export function announceOwnLocationVisibility(userId, hidden, email = '', restore = false) {
   if (userId !== HIERS_PRIVACY_USER_ID || typeof hidden !== 'boolean') return;
   try { localStorage.setItem(key, JSON.stringify(hidden)); } catch {}
@@ -15,13 +22,13 @@ export function useOwnLocationHidden(userId) {
   const version = useRef(0);
   useEffect(() => {
     if (userId !== HIERS_PRIVACY_USER_ID) { setVisibility({ userId, hidden: false }); return; }
-    const setHidden = hidden => setVisibility({ userId, hidden });
+    let confirmedHidden = null;
+    const setHidden = hidden => { confirmedHidden = hidden; setVisibility({ userId, hidden }); };
     let active = true;
     let email = '';
     const apply = value => { ++version.current; if (active) setHidden(value); };
     const refresh = async () => {
       const requestVersion = ++version.current;
-      clearBase44ReadCacheMatching('function:manageLiveLocationPrivacy:');
       try {
         const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
         if (active && requestVersion === version.current && data?.success) {
@@ -42,8 +49,8 @@ export function useOwnLocationHidden(userId) {
     const unsubscribe = subscribeOfficerLocationChanges(event => {
       const row = event?.data || event?.record;
       if (!row || typeof row.live_location_hidden !== 'boolean') return;
-      if ((email && String(row.officer_email || '').toLowerCase() === email)
-          || row.live_location_privacy_user_id === userId) refresh();
+      if (row.live_location_hidden !== confirmedHidden && ((email && String(row.officer_email || '').toLowerCase() === email)
+          || row.live_location_privacy_user_id === userId)) refresh();
     });
     refresh();
     window.addEventListener('bps-live-location-visibility-changed', changed);
