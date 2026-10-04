@@ -4,6 +4,16 @@ import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { clearOfficerLocationSnapshotCache, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
 const HIERS_USER_ID = '6a72bbee2842d6338cbae513';
+const serverErrorText = error => {
+  const data = error?.response?.data;
+  return data?.error ? `${data.error}${data.stage ? ` (${data.stage})` : ''}` : error?.message || 'Unable to save visibility.';
+};
+const syncCurrentStatus = data => {
+  if (data?.status) window.dispatchEvent(new CustomEvent('bps-officer-status-changed', {
+    detail: { status: data.status, officer_id: data.officer_id, email: data.email, source: 'live-visibility', last_updated: data.last_updated },
+  }));
+};
+
 export default function AdminLiveLocationPrivacy({ currentUser }) {
   const [setting, setSetting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -19,9 +29,9 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     try {
       const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
       if (!data?.success) throw new Error(data?.error || 'Unable to load visibility.');
-      if (version === loadVersion.current && !saving.current) { setSetting(data); setError(''); }
+      if (version === loadVersion.current && !saving.current) { setSetting(data); syncCurrentStatus(data); setError(''); }
     } catch (err) {
-      if (version === loadVersion.current) setError(err.message || 'Unable to load visibility.');
+      if (version === loadVersion.current) setError(serverErrorText(err));
     }
   }, [eligible]);
   useEffect(() => {
@@ -52,9 +62,19 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'set', hidden });
       if (!data?.success || data.hidden !== hidden) throw new Error(data?.error || 'Unable to save visibility.');
       setSetting(data);
+      syncCurrentStatus(data);
       clearOfficerLocationSnapshotCache();
       window.dispatchEvent(new CustomEvent('bps-live-location-visibility-changed', { detail: { user_id: currentUser.id, hidden } }));
-    } catch (err) { setError(err.message || 'Unable to save visibility.'); }
+    } catch (err) {
+      setError(serverErrorText(err));
+      // A downstream cleanup may fail after the setting was saved. Reconcile the
+      // visible setting and status instead of leaving the switch showing old state.
+      clearBase44ReadCacheMatching('function:manageLiveLocationPrivacy:');
+      try {
+        const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
+        if (data?.success) { setSetting(data); syncCurrentStatus(data); }
+      } catch {}
+    }
     finally { saving.current = false; setBusy(false); }
   };
   return (

@@ -161,7 +161,7 @@ export function DashboardDataProvider({ children }) {
             if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || !usersCacheRef.current.length) {
                 setRequestCount(c => c + 1);
                 getOfficerLocationSnapshot().then(payload => {
-                    usersCacheRef.current = payload.users || [];
+                    usersCacheRef.current = Array.isArray(payload.units) ? payload.units : (payload.users || []);
                     lastUsersRefreshTime.current = Date.now();
                     setUsers(usersCacheRef.current);
                 }).catch(error => console.warn('[CAD] Roster refresh failed', error?.message));

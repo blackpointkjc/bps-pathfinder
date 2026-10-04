@@ -98,7 +98,7 @@ function CommandDashboardInner({ embedded = false }) {
     const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
 
-    const [currentUser, setCurrentUser] = useState(() => authenticatedUser ? { ...authenticatedUser, status: getLastOfficerStatus() || authenticatedUser.status || 'Out of Service' } : null);
+    const [currentUser, setCurrentUser] = useState(() => authenticatedUser ? { ...authenticatedUser, status: authenticatedUser.status || getLastOfficerStatus() || 'Out of Service' } : null);
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
@@ -121,7 +121,7 @@ function CommandDashboardInner({ embedded = false }) {
         const cachedStatus = getLastOfficerStatus();
         setCurrentUser({
             ...authenticatedUser,
-            status: cachedStatus || (authenticatedUser.status === 'On Patrol' ? 'Out of Service' : authenticatedUser.status) || 'Out of Service',
+            status: (authenticatedUser.status === 'On Patrol' ? 'Available' : authenticatedUser.status) || cachedStatus || 'Out of Service',
         });
         const val = !isDispatchAlertMuted();
         setSoundEnabled(val);
@@ -130,12 +130,15 @@ function CommandDashboardInner({ embedded = false }) {
 
     useEffect(() => {
         const syncStatus = event => {
-            const next = event?.detail?.status;
+            const detail = event?.detail || {};
+            const next = detail.status;
+            if (detail.officer_id && detail.officer_id !== authenticatedUser?.id) return;
+            if (detail.email && String(detail.email).toLowerCase() !== String(authenticatedUser?.email || '').toLowerCase()) return;
             if (next) setCurrentUser(previous => previous ? { ...previous, status: next } : previous);
         };
         window.addEventListener('bps-officer-status-changed', syncStatus);
         return () => window.removeEventListener('bps-officer-status-changed', syncStatus);
-    }, []);
+    }, [authenticatedUser?.id, authenticatedUser?.email]);
 
     useEffect(() => {
         let active = true;
