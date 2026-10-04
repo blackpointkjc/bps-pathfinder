@@ -268,10 +268,12 @@ export default function AdminLocationTracker({ embedded = false }) {
     const unsubscribe = subscribeOfficerLocationChanges(refreshNow);
     window.addEventListener('bps-live-location-persisted', refreshNow);
     window.addEventListener('bps-operational-resume', refreshNow);
+    window.addEventListener('bps-live-location-visibility-changed', refreshNow);
     return () => {
       window.clearTimeout(refreshTimer);
       window.removeEventListener('bps-live-location-persisted', refreshNow);
       window.removeEventListener('bps-operational-resume', refreshNow);
+      window.removeEventListener('bps-live-location-visibility-changed', refreshNow);
       unsubscribe();
     };
   }, [hasAccess, refetchActiveOfficerLocations]);

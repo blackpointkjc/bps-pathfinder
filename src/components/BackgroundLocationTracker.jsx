@@ -473,7 +473,18 @@ export default function BackgroundLocationTracker({ user }) {
     const releaseTracking = startLiveLocationTracking({ onError: reportLocationError });
     requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 75 }).catch(() => requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => null));
 
+    const restoreSharing = async event => {
+      if (event?.detail?.user_id !== user?.id || event?.detail?.hidden !== false) return;
+      lastGpsPushRef.current = 0;
+      lastGpsAttemptRef.current = 0;
+      try {
+        const fix = await requestFreshLiveLocation({ timeoutMs: 15000 });
+        if (fix) await saveLocation(fix);
+      } catch (error) { console.warn('Awaiting fresh GPS after enabling live sharing:', error?.message); }
+    };
+    window.addEventListener('bps-live-location-visibility-changed', restoreSharing);
     return () => {
+      window.removeEventListener('bps-live-location-visibility-changed', restoreSharing);
       unsubscribe();
       releaseTracking();
     };
