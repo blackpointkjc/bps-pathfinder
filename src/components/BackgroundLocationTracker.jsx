@@ -475,7 +475,7 @@ export default function BackgroundLocationTracker({ user }) {
     requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 75 }).catch(() => requestFreshLiveLocation({ timeoutMs: 15000 }).catch(() => null));
 
     const restoreSharing = async event => {
-      if (event?.detail?.user_id !== user?.id || event?.detail?.hidden !== false) return;
+      if (event?.detail?.user_id !== user?.id || event?.detail?.hidden !== false || event?.detail?.restore !== true) return;
       lastGpsPushRef.current = 0;
       lastGpsAttemptRef.current = 0;
       try {
