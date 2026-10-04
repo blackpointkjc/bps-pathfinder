@@ -11,10 +11,11 @@ export function announceOwnLocationVisibility(userId, hidden, email = '', restor
 }
 export function useOwnLocationHidden(userId) {
   // Until confirmed visible, do not flash Hiers's device marker during startup.
-  const [hidden, setHidden] = useState(userId === HIERS_PRIVACY_USER_ID);
+  const [visibility, setVisibility] = useState({ userId, hidden: userId === HIERS_PRIVACY_USER_ID });
   const version = useRef(0);
   useEffect(() => {
-    if (userId !== HIERS_PRIVACY_USER_ID) { setHidden(false); return; }
+    if (userId !== HIERS_PRIVACY_USER_ID) { setVisibility({ userId, hidden: false }); return; }
+    const setHidden = hidden => setVisibility({ userId, hidden });
     let active = true;
     let email = '';
     const apply = value => { ++version.current; if (active) setHidden(value); };
@@ -55,6 +56,6 @@ export function useOwnLocationHidden(userId) {
       window.removeEventListener('focus', refresh);
     };
   }, [userId]);
-  return userId === HIERS_PRIVACY_USER_ID && hidden;
+  return userId === HIERS_PRIVACY_USER_ID && (visibility.userId !== userId || visibility.hidden);
 }
 
