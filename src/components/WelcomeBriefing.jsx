@@ -459,7 +459,7 @@ export default function WelcomeBriefing({ user }) {
                       <div className="min-w-0 flex-1 text-[11px] font-bold leading-5 text-amber-200">
                         Some briefing data could not be loaded and may be showing as empty or incomplete: {dataErrors.join(', ')}.
                       </div>
-                      <button type="button" onClick={() => { propertyRetryRef.current = 0; dataErrors.every(source => ['property alerts', 'property alert receipts'].includes(source)) ? refreshPropertyAlerts() : loadRef.current?.(); }} disabled={propertyLoading} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
+                      <button type="button" onClick={() => { propertyRetryRef.current = 0; propertySourcesFailed ? refreshPropertyAlerts() : loadRef.current?.(); }} disabled={propertyLoading} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
                     </div>
                   )}
                   <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-3 sm:p-4">
