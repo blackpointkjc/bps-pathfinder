@@ -8,7 +8,7 @@ export function readLastOwnLocationVisibility(userId) {
   if (userId !== HIERS_PRIVACY_USER_ID) return null;
   try {
     const hidden = JSON.parse(localStorage.getItem(key));
-    return typeof hidden === 'boolean' ? { hidden } : null;
+    return typeof hidden === 'boolean' ? { hidden, cached: true } : null;
   } catch { return null; }
 }
 export function announceOwnLocationVisibility(userId, hidden, email = '', restore = false) {
