@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { isLiveLocationHidden, clearedLivePosition } from './privacy.ts';
 
 function finiteNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
@@ -59,6 +60,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const liveLocationHidden = await isLiveLocationHidden(base44, user);
     const body = await req.json().catch(() => ({}));
     const heartbeatOnly = body.heartbeat_only === true;
     const latitude = Number(body.latitude);
@@ -275,10 +277,19 @@ Deno.serve(async (req) => {
     } else if (!primary) {
       liveData.status = String(user.status || 'Signed In');
     }
+    // Private GPS still reaches the history stream below, never the public live entity.
+    liveData.live_location_hidden = liveLocationHidden;
+    if (liveLocationHidden) Object.assign(liveData, clearedLivePosition);
     const activeOfficer = primary
       ? await base44.asServiceRole.entities.ActiveOfficer.update(primary.id, liveData)
       : await base44.asServiceRole.entities.ActiveOfficer.create(liveData);
 
+    // A toggle can arrive while this request is in flight. Recheck after the write.
+    const hiddenAfterWrite = await isLiveLocationHidden(base44, user);
+    if (hiddenAfterWrite) {
+      await base44.asServiceRole.entities.ActiveOfficer.update(activeOfficer.id, clearedLivePosition);
+      Object.assign(activeOfficer, clearedLivePosition);
+    }
     const duplicateIds = (records || []).slice(1).map((record: any) => record.id).filter(Boolean);
     if (duplicateIds.length) {
       await Promise.all(duplicateIds.map((id: string) =>
@@ -347,8 +358,8 @@ Deno.serve(async (req) => {
           unit_id: user.id,
           unit_name: officerName,
           notes: `Automatically marked On Scene at ${Math.round(arrivalDistance)}m from the call using accepted ${gpsSource} GPS.`,
-          latitude,
-          longitude,
+          latitude: hiddenAfterWrite ? null : latitude,
+          longitude: hiddenAfterWrite ? null : longitude,
           event_key: `call:${call.id}:unit:${user.id}:auto-on-scene:${arrivalAt}`,
           event_type: 'unit_on_scene',
           announcement_text: `${officerName} automatically marked on scene. CAD number ${cadNumber}.`,
@@ -424,6 +435,7 @@ Deno.serve(async (req) => {
       latitude: acceptedForPosition ? latitude : null,
       longitude: acceptedForPosition ? longitude : null,
       gps_accepted: acceptedForPosition,
+      live_location_hidden: hiddenAfterWrite,
       gps_candidate_only: false,
       gps_rejected_reason: grosslyImpreciseFix ? 'accuracy_too_low' : impossibleBrowserJump ? 'impossible_jump' : (!candidateOwnsBestSource && hasGps ? 'better_device_fix_active' : null),
       gps_updated_at: acceptedForPosition ? new Date(deviceFixAt).toISOString() : activeOfficer.gps_updated_at || null,
