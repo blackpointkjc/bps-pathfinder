@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
         ? stripLiveLocation(row)
         : { ...row, live_location_hidden: false, show_on_map: true };
       for (const key of ['units', 'users', 'clocked_in_without_session']) {
-        if (Array.isArray(payload[key])) payload[key] = payload[key].map(redact);
+        if (Array.isArray(payload[key])) payload[key] = payload[key].map(redact).filter((row: any) => !(row.live_location_hidden && (key === 'users' || payload.location_only === true)));
       }
       if (payload.map_visible_count !== undefined) payload.map_visible_count = payload.units.filter((row: any) => row.map_visible && !row.live_location_hidden).length;
       return Response.json(payload);
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
         const sessionTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
         return active.session_active !== false && Number.isFinite(sessionTs) && sessionTs >= sessionRetentionCutoff;
       });
-      const needsFallback = retainedRows.some((active: any) =>
+      const needsFallback = retainedRows.filter((active: any) => !hiddenEmails.has(lower(active.officer_email))).some((active: any) =>
         !hasValidCoordinates(active.latitude, active.longitude)
         && !hasValidCoordinates(active.reliable_latitude, active.reliable_longitude)
       );

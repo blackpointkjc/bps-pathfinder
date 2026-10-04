@@ -307,7 +307,7 @@ export default function AdminLocationTracker({ embedded = false }) {
   // ActiveOfficer ping. This client-side freshness check is
   // only a final display safeguard.
   const trackedOfficers = React.useMemo(() => {
-    return [...newestLocationByEmail.values()].map(locationData => {
+    return [...newestLocationByEmail.values()].filter(locationData => !locationData.live_location_hidden).map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
       if (profile && !isOperationallyVisibleUser(profile)) return null;
       const rawLocation = String(locationData.current_location || '').trim();
