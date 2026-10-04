@@ -490,7 +490,9 @@ Deno.serve(async (req) => {
             ? (user.status || active?.status || 'Out of Service')
             : (active?.status || user.status || 'Out of Service');
         const normalizedLiveStatus = lower(newestLiveStatus);
-        const resolvedStatus = clockedIn ? newestLiveStatus : 'Out of Service';
+        // Location privacy and the absence of an open clock row never change CAD status.
+        // Explicit status/clock-out actions own the authoritative User/session value.
+        const resolvedStatus = newestLiveStatus;
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
