@@ -102,7 +102,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
         </div>
       </div>
       {busy && <p role="status" className="mt-1 text-xs text-slate-300">Saving visibility…</p>}
-      {error && <p role="alert" className="mt-1 text-xs text-red-300">{error} You can still use Turn sharing ON.</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-red-300">{error}</p>}
     </div>
   );
 }
