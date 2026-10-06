@@ -301,7 +301,7 @@ export default function DispatchCenter() {
             // is an ActiveOfficer session ID; CallAssignment and the officer queue
             // require the immutable User id. The full snapshot returns live status,
             // GPS, profile fields, and user IDs together.
-            const payload = await withRequestTimeout(getOfficerLocationSnapshot({ force }), 12000, 'Dispatch on-duty unit roster');
+            const payload = await getOfficerLocationSnapshot({ force });
             const eligibleUnits = (payload.units || payload.users || [])
                 .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
                 .map(unit => ({
@@ -321,8 +321,8 @@ export default function DispatchCenter() {
             if (!getBase44RequestHealth().rateLimitedUntil) {
                 try {
                     const [live, directory] = await Promise.all([
-                        withRequestTimeout(getOfficerLocationSnapshot({ locationOnly: true }), 9000, 'Live officer fallback'),
-                        withRequestTimeout(getAppDirectory(), 9000, 'Cached officer directory'),
+                        getOfficerLocationSnapshot({ locationOnly: true }),
+                        getAppDirectory(),
                     ]);
                     const recovered = (live.units || []).map(session => {
                         const user = findDirectoryUser(directory.users || [], session.officer_email || session.email);
