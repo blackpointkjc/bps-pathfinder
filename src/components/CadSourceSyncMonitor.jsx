@@ -34,7 +34,8 @@ export default function CadSourceSyncMonitor({ user }) {
         running = false;
       }
     };
-    const first = window.setTimeout(sync, 2200);
+    // Let the signed-in page load before beginning expensive source ingestion.
+    const first = window.setTimeout(sync, 15_000);
     // Tick frequently enough to retry a collided server lease within seconds.
     // cadCallFeed and the backend lease keep this from turning into duplicate writes;
     // command screens should not wait a minute to discover a property call.
