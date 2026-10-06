@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { endOfficerLocationSession } from '@/lib/officerLocationHub';
 import { cacheOfficerStatus } from '@/lib/officerStatusService';
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = useCallback(async (requestId) => {
     try {
       setIsLoadingAuth(true);
-      let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
+      let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
       if (requestId !== requestSequence.current) return;
 
       // The User record already carries the linked work/Microsoft aliases.
