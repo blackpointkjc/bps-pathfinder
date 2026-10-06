@@ -26,7 +26,7 @@ function harness(clientSource = fs.readFileSync('src/api/base44Client.js', 'utf8
     }
     now=target; await flush();
   };
-  return { ...exports, ...timeoutExports, storage, starts, advance, now:()=>now };
+  return { ...exports, ...timeoutExports, raw, storage, starts, advance, now:()=>now };
 }
 const h = harness();
 h.storage.set('bps:base44-rate-limit-until', String(h.now()+60000));
@@ -67,6 +67,17 @@ const stale = harness();
 stale.storage.set('bps:base44-rate-limit-until','Infinity');
 await stale.base44.entities.Location.list();
 assert.equal(stale.starts.length,1,'invalid persistent cooldown must not freeze reads');
+const throttled = harness();
+let attempts = 0;
+throttled.raw.functions.invoke = async () => { attempts++; throw Error('429 Too many requests'); };
+await throttled.base44.functions.invoke('getActiveDispatchCalls',{}).catch(()=>{});
+const retry = throttled.base44.functions.invoke('getActiveDispatchCalls',{}).catch(()=>{});
+await throttled.advance(15100); await retry;
+const retryAgain = throttled.base44.functions.invoke('getActiveDispatchCalls',{}).catch(()=>{});
+await throttled.advance(1000);
+assert.equal(attempts,2,'another 429 must impose another quiet window, not drain the queue');
+await throttled.advance(15000);await retryAgain;
+assert.equal(attempts,3);
 const network = harness();
 let timeoutError;
 network.withRequestTimeout(new Promise(()=>{}),1000,'Network').catch(e=>timeoutError=e);
