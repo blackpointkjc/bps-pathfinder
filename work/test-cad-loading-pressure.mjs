@@ -1,0 +1,16 @@
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';
+let health={activeReads:2,queuedReads:3,activeWrites:0}, calls=0;
+const storage=new Map(),exports={};
+const source=fs.readFileSync('src/lib/cadCallFeed.js','utf8').replace(/^import .*;\n/gm,'');
+vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{exports,Date,console,localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},getBase44RequestHealth:()=>health,withRequestTimeout:p=>p,base44:{functions:{invoke:async()=>{calls++;return {data:{success:true}}}}}});
+assert.equal((await exports.requestCadLiveSync()).reason,'app_data_loading');
+assert.equal(calls,0);
+health={activeReads:0,queuedReads:0,activeWrites:0,rateLimitedUntil:new Date(Date.now()+60000).toISOString()};
+assert.equal((await exports.requestCadLiveSync()).reason,'rate_limit_backoff');
+assert.equal(calls,0);
+health={activeReads:0,queuedReads:0,activeWrites:0};
+assert.equal((await exports.requestCadLiveSync()).success,true);
+assert.equal(calls,1);
+assert.equal((await exports.requestCadLiveSync()).reason,'recent_live_sync');
+assert.equal(calls,1);
+console.log('PASS: CAD ingestion yields to page reads; makes no backend calls during throttling; resumes once idle; retains deduplication');
