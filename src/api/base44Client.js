@@ -289,6 +289,7 @@ function invalidateReadCacheForWrite(meta = {}) {
       addFunction('getAppDirectory');
       addFunction('getOfficerDirectory');
     }
+    if (meta.name === 'TimeEntry') { addFunction('getMyTimeEntries'); addFunction('manageHRTimeEntries'); }
     if (meta.name === 'DispatchCall') addFunction('getActiveDispatchCalls');
     if (meta.name === 'ActiveOfficer') addFunction('getOnDutyUnits');
   }
@@ -388,6 +389,10 @@ function invalidateReadCacheForRealtimeEntity(name) {
   if (name === 'PropertyAlert') {
     prefixes.add('function:getCallHistoryFeed:');
     prefixes.add('function:getWelcomeBriefingData:');
+  }
+  if (name === 'TimeEntry') {
+    prefixes.add('function:getMyTimeEntries:');
+    prefixes.add('function:manageHRTimeEntries:');
   }
   if (name === 'CallHistory') prefixes.add('function:getCallHistoryFeed:');
   if (name === 'GeofenceAlert') prefixes.add('function:manageGeofenceAlerts:');
