@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STALE_AFTER_MS = 12 * 1000;
@@ -81,6 +81,15 @@ function isRateLimitError(error) {
 
 async function performCadLiveSync() {
   const now = Date.now();
+  const health = getBase44RequestHealth();
+  // Ingestion fans out to many backend reads/writes and bypasses the page-read
+  // queue. Never let it consume recovery capacity while app data is still loading.
+  if (health.rateLimitedUntil || health.readRetryAt) {
+    return { skipped: true, reason: 'rate_limit_backoff' };
+  }
+  if (health.queuedReads > 0 || health.activeReads > 0 || health.activeWrites > 0) {
+    return { skipped: true, reason: 'app_data_loading' };
+  }
   const backoffUntil = liveSyncBackoffUntil();
   if (backoffUntil > now) {
     return { skipped: true, reason: 'rate_limit_backoff', retry_after_ms: backoffUntil - now };
