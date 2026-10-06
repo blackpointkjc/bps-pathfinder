@@ -136,11 +136,17 @@ const stableKey = value => {
   catch { return String(value); }
 };
 const sharedRateLimitUntil = () => {
-  try { return Number(localStorage.getItem(RATE_LIMIT_KEY) || 0) || 0; } catch { return 0; }
+  try {
+    const until = Number(localStorage.getItem(RATE_LIMIT_KEY) || 0);
+    // Ignore malformed/future state left behind by an older browser session.
+    return Number.isFinite(until) && until <= Date.now() + RATE_LIMIT_COOLDOWN_MS ? until : 0;
+  } catch { return 0; }
 };
 const noteRateLimit = error => {
   if (!isRateLimit(error)) return;
   recentRateLimitAt = Date.now();
+  // Concurrent failures belong to one recovery window, not a new minute each.
+  if (sharedRateLimitUntil() > recentRateLimitAt) return;
   const until = recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS;
   try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch {}
 };
@@ -154,26 +160,19 @@ function pumpReads() {
   const score = job => job.priority + Math.floor((Date.now() - job.queuedAt) / 1000) * 2;
   readQueue.sort((a, b) => Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth') || score(b) - score(a) || a.queuedAt - b.queuedAt);
   const cooldown = sharedRateLimitUntil() - Date.now();
-  const criticalPriority = 90;
-
-  // After any 429, even operational reads need a short recovery window. The
-  // previous critical bypass immediately retried CAD/location calls and converted
-  // one throttle into repeated getActiveDispatchCalls/getOnDutyUnits failures.
-  // Critical feeds use a short recovery window; background work honors the full cooldown.
+  // All page reads recover after the same quiet window. Keeping ordinary reads
+  // frozen for a full minute made every non-CAD screen appear empty. Background
+  // telemetry still honors the longer cooldown in the function wrapper below.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt));
-  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0
-    : cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
-      ? criticalRecovery : cooldown;
+  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0 : cooldown > 0 ? criticalRecovery : 0;
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
     return;
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
-    const nextPriority = Number(readQueue[0]?.priority || 0);
-    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0
-      : cooldown > 0 && nextPriority >= criticalPriority ? criticalRecovery : cooldown;
+    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0 : cooldown > 0 ? criticalRecovery : 0;
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
       break;
