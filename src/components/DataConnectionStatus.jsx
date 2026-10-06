@@ -14,7 +14,7 @@ export default function DataConnectionStatus() {
       const health = getBase44RequestHealth();
       const failed = queryClient.getQueryCache().getAll().filter(query => query.isActive() && query.state.status === 'error');
       const until = health.rateLimitedUntil ? Date.parse(health.rateLimitedUntil) : 0;
-      const quietUntil = until ? until - 45_000 : 0;
+      const quietUntil = Math.max(health.readRetryAt ? Date.parse(health.readRetryAt) : 0, until ? until - 45_000 : 0);
       setStatus(until || failed.length >= 2 ? { rateLimited: until > Date.now(), failed: failed.length } : null);
       // Recover only failed active reads, once per 30 seconds. Successful queries,
       // mutations, and in-progress forms are left alone.
