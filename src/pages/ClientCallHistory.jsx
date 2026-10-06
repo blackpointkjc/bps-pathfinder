@@ -62,7 +62,7 @@ export default function ClientCallHistory() {
 
   const load = async () => {
     try {
-      const me = user || await withRequestTimeout(getClientPortalUser(), 12000, 'Client authentication');
+      const me = user || await getClientPortalUser();
       if (!user) setUser(me);
       const assignedNames = [...new Set([...(Array.isArray(me?.assigned_locations) ? me.assigned_locations : []), ...(Array.isArray(me?.assigned_sites) ? me.assigned_sites : []), ...(me?.assigned_location ? [me.assigned_location] : [])].filter(Boolean))];
       // Load sequentially to avoid the Base44 per-user burst limit that was
