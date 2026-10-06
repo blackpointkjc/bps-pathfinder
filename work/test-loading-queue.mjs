@@ -1,0 +1,63 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const compile = source => ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+function harness(clientSource = fs.readFileSync('src/api/base44Client.js', 'utf8'), timeoutSource = fs.readFileSync('src/lib/requestTimeout.js', 'utf8')) {
+  let now = 1000000, id = 0;
+  const timers = new Map(), storage = new Map(), starts = [];
+  class Clock extends Date { static now() { return now; } }
+  const set = (fn, ms) => { timers.set(++id, { at: now + ms, fn }); return id; };
+  const clear = key => timers.delete(key);
+  const raw = { entities: new Proxy({}, { get: (_, name) => ({ list: async () => { starts.push(name); return [{ id: name }]; } }) }), functions: { invoke: async name => { starts.push(name); return { data: { calls: [{ id:'call' }] } }; } }, auth: { me: async () => { starts.push('auth'); return { id:'user' }; } } };
+  const context = { Date: Clock, Map, Set, console, Promise, setTimeout:set, clearTimeout:clear, window: { setTimeout:set, clearTimeout:clear, location:{pathname:'/'}, localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}, dispatchEvent:()=>{} }, localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}, CustomEvent: class {} };
+  const timeoutExports = {};
+  vm.runInNewContext(compile(timeoutSource), { ...context, exports:timeoutExports });
+  const exports = {};
+  vm.runInNewContext(compile(clientSource), { ...context, exports, require: name => name === '@base44/sdk' ? {createClient:()=>raw} : name.includes('requestTimeout') ? timeoutExports : {appParams:{appId:'app'}} });
+  const flush = async () => { for(let i=0;i<30;i++) await Promise.resolve(); };
+  const advance = async ms => {
+    const target = now + ms;
+    while (true) {
+      await flush();
+      const next = [...timers].filter(([,t])=>t.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];
+      if (!next) break;
+      now=next[1].at; timers.delete(next[0]); next[1].fn();
+    }
+    now=target; await flush();
+  };
+  return { ...exports, ...timeoutExports, storage, starts, advance, now:()=>now };
+}
+const h = harness();
+h.storage.set('bps:base44-rate-limit-until', String(h.now()+60000));
+let result, error;
+h.withRequestTimeout(h.base44.functions.invoke('getActiveDispatchCalls',{}),12000,'Active calls').then(v=>result=v,e=>error=e);
+await h.advance(12001);
+assert.equal(error, undefined, 'page timeout must not expire before network dispatch');
+assert.equal(h.starts.length,0);
+await h.advance(3100);
+assert.equal(result.data.calls.length,1);
+const auth = harness();
+auth.storage.set('bps:base44-rate-limit-until',String(auth.now()+60000));
+await auth.base44.auth.me();
+assert.deepEqual(auth.starts,['auth'],'auth must not wait on unrelated API cooldown');
+const bounded = harness();
+bounded.storage.set('bps:base44-rate-limit-until',String(bounded.now()+9999999));
+let queueError;
+bounded.base44.entities.Ordinary.list().catch(e=>queueError=e);
+await bounded.advance(120001);
+assert.match(queueError.message,/queue remained busy/,'renewed cooldown must not extend queue wait forever');
+const fair = harness();
+fair.storage.set('bps:base44-rate-limit-until',String(fair.now()+60000));
+const normal = fair.base44.entities.Ordinary.list();
+await fair.advance(25000);
+const critical = fair.base44.functions.invoke('getActiveDispatchCalls',{});
+await fair.advance(36000);
+await Promise.all([normal,critical]);
+assert.equal(fair.starts[0],'Ordinary','older page reads must get a turn ahead of fresh polling');
+const network = harness();
+let timeoutError;
+network.withRequestTimeout(new Promise(()=>{}),1000,'Network').catch(e=>timeoutError=e);
+await network.advance(1001);
+assert.match(timeoutError.message,/timed out/);
+console.log('PASS: queued call survives page timeout; auth recovers during cooldown; queue wait is bounded; aging prevents starvation; ordinary network timeouts still work');
