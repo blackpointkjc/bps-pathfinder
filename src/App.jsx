@@ -17,6 +17,7 @@ import PageErrorBoundary from '@/components/PageErrorBoundary';
 import DispatcherShiftReports from './pages/DispatcherShiftReports';
 import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
+import DataConnectionStatus from '@/components/DataConnectionStatus';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -337,6 +338,7 @@ const AuthenticatedApp = () => {
             or external GPS stream. Individual pages only consume this stream. */}
         {user && <BackgroundLocationTracker user={user} />}
         <GlobalDataRealtimeSync enabled={Boolean(user)} />
+        <DataConnectionStatus />
         <Routes location={location}>
       <Route
         path="/"
