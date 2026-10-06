@@ -107,6 +107,7 @@ const recordRequestTrace = entry => {
 };
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
@@ -149,6 +150,9 @@ const schedulePump = delay => {
 };
 function pumpReads() {
   if (activeReads >= MAX_CONCURRENT_READS || !readQueue.length) return;
+  // Authentication always goes first; aging prevents starvation of other screens.
+  const score = job => job.priority + Math.floor((Date.now() - job.queuedAt) / 1000) * 2;
+  readQueue.sort((a, b) => Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth') || score(b) - score(a) || a.queuedAt - b.queuedAt);
   const cooldown = sharedRateLimitUntil() - Date.now();
   const criticalPriority = 90;
 
@@ -158,9 +162,9 @@ function pumpReads() {
   // Critical feeds use a short recovery window; background work honors the full cooldown.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt));
-  const waitForHead = cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
-    ? criticalRecovery
-    : cooldown;
+  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0
+    : cooldown > 0 && Number(readQueue[0]?.priority || 0) >= criticalPriority
+      ? criticalRecovery : cooldown;
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
     return;
@@ -168,13 +172,15 @@ function pumpReads() {
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
     const nextPriority = Number(readQueue[0]?.priority || 0);
-    const nextWait = cooldown > 0 && nextPriority >= criticalPriority ? criticalRecovery : cooldown;
+    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0
+      : cooldown > 0 && nextPriority >= criticalPriority ? criticalRecovery : cooldown;
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
       break;
     }
     const job = readQueue.shift();
     window.clearTimeout(job.queueTimer);
+    job.markStarted();
     activeReads += 1;
     const startedAt = Date.now();
     Promise.resolve()
@@ -220,8 +226,11 @@ function queuedRead(key, task, meta = {}) {
     recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'deduped_inflight', duration_ms: 0 });
     return readInflight.get(key);
   }
+  let markStarted;
+  const requestStarted = new Promise(resolve => { markStarted = resolve; });
   const request = new Promise((resolve, reject) => {
     const job = {
+      markStarted,
       task: async () => {
         const value = await task();
         readCache.set(key, { at: Date.now(), value });
@@ -237,14 +246,7 @@ function queuedRead(key, task, meta = {}) {
       job.queueTimer = window.setTimeout(() => {
         const index = readQueue.indexOf(job);
         if (index < 0) return;
-        const cooldownRemaining = sharedRateLimitUntil() - Date.now();
-        if (cooldownRemaining > 0) {
-          // Waiting for our own deliberate API cooldown is not a failed request.
-          // Re-arm the watchdog after the cooldown instead of turning a throttle
-          // into dozens of misleading queue_timeout/fatal errors.
-          armQueueTimeout(cooldownRemaining + 30_000);
-          return;
-        }
+        // Keep the total wait bounded even if other requests renew a cooldown.
         readQueue.splice(index, 1);
         const error = new Error('Data request queue remained busy after recovery. Please retry.');
         recordRequestTrace({
@@ -265,6 +267,8 @@ function queuedRead(key, task, meta = {}) {
     else readQueue.splice(insertAt, 0, job);
     pumpReads();
   }).finally(() => readInflight.delete(key));
+  // Page-level network timeouts start when the queue dispatches this request.
+  Object.defineProperty(request, 'base44RequestStarted', { value: requestStarted });
   readInflight.set(key, request);
   return request;
 }
