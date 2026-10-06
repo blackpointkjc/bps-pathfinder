@@ -35,11 +35,12 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       ? { ...data, cleanup_pending: true } : data;
     settingRef.current = confirmed;
     setSetting(confirmed);
+    setError('');
     syncCurrentStatus(data);
     announceOwnLocationVisibility(currentUser.id, data.hidden, currentUser.email, restore && data.hidden === false);
   }, [currentUser?.id, currentUser?.email]);
   const refresh = useCallback(async (force = false) => {
-    if (!eligible || saving.current || (loadPending.current && !force)) return;
+    if (!eligible || saving.current || loadPending.current) return;
     if (!force && Date.now() - lastLoad.current < 15000) return;
     const version = ++loadVersion.current;
     lastLoad.current = Date.now();
@@ -86,7 +87,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     setError('');
     let reconcile = false;
     try {
-      const { data } = await withRequestTimeout(base44.functions.invoke('manageLiveLocationPrivacy', { action: 'set', hidden }), 20000, 'Visibility save');
+      const { data } = await withRequestTimeout(base44.functions.invoke('manageLiveLocationPrivacy', { action: 'set', hidden }), 45000, 'Visibility save');
       if (!data?.success || data.hidden !== hidden) throw new Error(data?.error || 'Unable to save visibility.');
       if (version !== loadVersion.current) return;
       applyConfirmed(data, !hidden);
