@@ -198,8 +198,11 @@ export default function TimeClock() {
     retry: false,
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 10);
-      return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
+      const response = await base44.functions.invoke('getMyTimeEntries', { ...getOfficerPreviewRequest(), active_only: true });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!Array.isArray(payload.entries)) throw new Error('Time entry service returned an invalid response.');
+      return payload.entries.find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
     staleTime: 2 * 60 * 1000,
@@ -215,7 +218,7 @@ export default function TimeClock() {
     return () => window.clearTimeout(timer);
   }, [user?.email]);
 
-  const { data: recentEntries = [] } = useQuery({
+  const { data: recentEntries = [], isPending: entriesPending, error: entriesError, refetch: retryEntries } = useQuery({
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
       if (!user?.email) return [];
@@ -227,7 +230,8 @@ export default function TimeClock() {
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.entries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
-      const entries = payload.entries || [];
+      if (!Array.isArray(payload.entries)) throw new Error('Time entry service returned an invalid response.');
+      const entries = payload.entries;
       return entries.filter(entry => {
         if (!entry.clock_in || entry.archived === true) return false;
         const entryDate = getEasternDateKey(entry.clock_in);
@@ -245,7 +249,8 @@ export default function TimeClock() {
     if (!user?.email) return undefined;
     const unsubscribe = base44.entities.TimeEntry.subscribe(event => {
       const record = event?.data || event?.record || event;
-      if (record?.officer_email && String(record.officer_email).toLowerCase() !== String(user.email).toLowerCase()) return;
+      const aliases = [user.email, user.auth_email, user.work_email, user.pathfinder_email, ...(user.email_aliases || [])].map(value => String(value || '').toLowerCase());
+      if (record?.officer_email && !aliases.includes(String(record.officer_email).toLowerCase())) return;
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user.email] });
     });
@@ -1178,8 +1183,9 @@ export default function TimeClock() {
                   </div>
                 </div>
               ))}
-              {!recentEntries?.length && (
-                <p className="text-center text-slate-500 py-8">No time entries for selected period</p>
+              {entriesError && <Alert variant="destructive"><AlertDescription>Time entries could not load: {entriesError.message}<Button variant="outline" size="sm" className="ml-3" onClick={() => retryEntries()}>Retry</Button></AlertDescription></Alert>}
+              {!recentEntries.length && !entriesError && (
+                <p role="status" className="text-center text-slate-400 py-8">{entriesPending || !historyReady ? 'Loading your time entries…' : 'No time entries for selected period'}</p>
               )}
             </div>
           </CardContent>
