@@ -26,7 +26,7 @@ function harness(clientSource = fs.readFileSync('src/api/base44Client.js', 'utf8
     }
     now=target; await flush();
   };
-  return { ...exports, ...timeoutExports, raw, storage, starts, advance, now:()=>now };
+  return { ...exports, ...timeoutExports, raw, storage, starts, advance, delay: ms => new Promise(resolve => set(resolve, ms)), now:()=>now };
 }
 const h = harness();
 h.storage.set('bps:base44-rate-limit-until', String(h.now()+60000));
@@ -78,6 +78,20 @@ await throttled.advance(1000);
 assert.equal(attempts,2,'another 429 must impose another quiet window, not drain the queue');
 await throttled.advance(15000);await retryAgain;
 assert.equal(attempts,3);
+const visibility = harness();
+visibility.raw.functions.invoke = async () => { await visibility.delay(13000); return {data:{success:true,hidden:true}}; };
+let visibilityResult, visibilityError;
+visibility.withRequestTimeout(visibility.base44.functions.invoke('manageLiveLocationPrivacy',{action:'get'}),12000,'Visibility check').then(value=>visibilityResult=value,error=>visibilityError=error);
+await visibility.advance(12001);
+assert.equal(visibilityError,undefined,'the obsolete page deadline must not reject a managed visibility read');
+await visibility.advance(1100);
+assert.equal(visibilityResult.data.hidden,true);
+const hungVisibility = harness();
+hungVisibility.raw.functions.invoke = () => new Promise(()=>{});
+let hungError;
+hungVisibility.withRequestTimeout(hungVisibility.base44.functions.invoke('manageLiveLocationPrivacy',{action:'get'}),12000,'Visibility check').catch(error=>hungError=error);
+await hungVisibility.advance(30001);
+assert.match(hungError.message,/timed out after 30 seconds/,'managed visibility requests still have a bounded network deadline');
 const network = harness();
 let timeoutError;
 network.withRequestTimeout(new Promise(()=>{}),1000,'Network').catch(e=>timeoutError=e);
