@@ -112,7 +112,7 @@ export default function ManageTimeEntries() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: hrTimeSnapshot = { entries: [], call_outs: [] } } = useQuery({
+  const { data: hrTimeSnapshot = { entries: [], call_outs: [] }, isPending: timeEntriesPending, error: timeEntriesError, refetch: retryTimeEntries } = useQuery({
     queryKey: ['hrTimeEntriesSnapshot'],
     queryFn: async () => {
       const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
@@ -408,6 +408,7 @@ export default function ManageTimeEntries() {
           </Button>
         </div>
 
+        {timeEntriesError && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-red-200">Time entries could not load: {timeEntriesError.message}<Button variant="outline" size="sm" className="ml-3" onClick={() => retryTimeEntries()}>Retry</Button></div>}
         {showAddForm && (
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -840,7 +841,7 @@ export default function ManageTimeEntries() {
           <Card className="border-none shadow-lg">
             <CardContent className="p-12 text-center">
               <Clock className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <p className="text-slate-500">No time entries yet</p>
+              <p role="status" className="text-slate-400">{timeEntriesPending ? 'Loading time entries…' : timeEntriesError ? 'Time entries are unavailable until the connection recovers.' : 'No time entries yet'}</p>
             </CardContent>
           </Card>
         )}
