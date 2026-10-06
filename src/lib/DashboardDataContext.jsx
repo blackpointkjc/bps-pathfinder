@@ -191,7 +191,7 @@ export function DashboardDataProvider({ children }) {
             if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
             try {
                 const result = await requestCadLiveSync();
-                if (stopped || ['recent_live_sync', 'rate_limit_backoff'].includes(result?.reason)) return;
+                if (stopped || result?.skipped || ['recent_live_sync', 'rate_limit_backoff', 'app_data_loading'].includes(result?.reason)) return;
             } catch (error) {
                 console.warn('[CAD] Guarded upstream sync failed', error?.message || error);
             }
