@@ -73,6 +73,7 @@ const readQueue = [];
 let activeReads = 0;
 let activeWrites = 0;
 let recentRateLimitAt = null;
+let readRecoveryUntil = 0;
 let wakeTimer = null;
 
 const errorText = error => String(error?.response?.data?.error || error?.response?.data?.message || error?.message || error || '');
@@ -145,6 +146,7 @@ const sharedRateLimitUntil = () => {
 const noteRateLimit = error => {
   if (!isRateLimit(error)) return;
   recentRateLimitAt = Date.now();
+  readRecoveryUntil = recentRateLimitAt + CRITICAL_RATE_LIMIT_RECOVERY_MS;
   // Concurrent failures belong to one recovery window, not a new minute each.
   if (sharedRateLimitUntil() > recentRateLimitAt) return;
   const until = recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS;
@@ -164,15 +166,15 @@ function pumpReads() {
   // frozen for a full minute made every non-CAD screen appear empty. Background
   // telemetry still honors the longer cooldown in the function wrapper below.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
-  const criticalRecovery = Math.max(0, CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt));
-  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0 : cooldown > 0 ? criticalRecovery : 0;
+  const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
+  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0 : criticalRecovery;
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
     return;
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
-    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0 : cooldown > 0 ? criticalRecovery : 0;
+    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0 : criticalRecovery;
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
       break;
@@ -528,6 +530,7 @@ export function getBase44RequestHealth() {
     activeWrites,
     rateLimitedUntil: until > Date.now() ? new Date(until).toISOString() : null,
     recentRateLimitAt: recentRateLimitAt ? new Date(recentRateLimitAt).toISOString() : null,
+    readRetryAt: readRecoveryUntil > Date.now() ? new Date(readRecoveryUntil).toISOString() : null,
   };
 }
 
