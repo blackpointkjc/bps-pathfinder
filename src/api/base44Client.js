@@ -108,6 +108,7 @@ const recordRequestTrace = entry => {
 };
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
@@ -124,6 +125,7 @@ const readPriority = meta => {
   return 50;
 };
 const readTimeoutMs = meta => {
+  if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.
   if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries'].includes(meta?.name)) return 60_000;
