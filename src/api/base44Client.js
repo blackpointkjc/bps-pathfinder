@@ -123,7 +123,13 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit'].includes(meta?.name)) return 20;
   return 50;
 };
-const readTimeoutMs = meta => meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name) ? 35_000 : 20_000;
+const readTimeoutMs = meta => {
+  // These authenticated snapshots intentionally serialize many source reads.
+  // Do not abandon them at the 20-second limit used for individual entity calls.
+  if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries'].includes(meta?.name)) return 60_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 35_000;
+  return 20_000;
+};
 const requestLabel = meta => {
   if (!meta) return 'unknown';
   if (meta.kind === 'entity') return `Entity ${meta.name}.${meta.method}`;
