@@ -27,6 +27,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
   const lastLoad = useRef(0);
   const loadPending = useRef(false);
   const retryTimer = useRef(null);
+  const readRetryTimer = useRef(null);
   const rank = String(currentUser?.rank || '').trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, '');
   const eligible = currentUser?.id === HIERS_USER_ID && currentUser?.role === 'admin' && rank === 'colonel';
   const applyConfirmed = useCallback((data, restore = false) => {
@@ -47,11 +48,20 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
     loadPending.current = true;
     if (force) clearBase44ReadCacheMatching('function:manageLiveLocationPrivacy:');
     try {
-      const { data } = await withRequestTimeout(base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' }), 12000, 'Visibility check');
+      const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
       if (!data?.success) throw new Error(data?.error || 'Unable to load visibility.');
-      if (version === loadVersion.current && !saving.current) applyConfirmed(data);
+      if (version === loadVersion.current && !saving.current) {
+        clearTimeout(readRetryTimer.current);
+        applyConfirmed(data);
+      }
     } catch (err) {
-      if (version === loadVersion.current) setError(serverErrorText(err));
+      if (version === loadVersion.current) {
+        setError(serverErrorText(err));
+        clearTimeout(readRetryTimer.current);
+        readRetryTimer.current = setTimeout(() => {
+          if (version === loadVersion.current && !saving.current) void refresh(true);
+        }, 30_000);
+      }
     } finally {
       if (version === loadVersion.current) loadPending.current = false;
     }
@@ -74,12 +84,23 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
       if (typeof row?.live_location_hidden === 'boolean' && row.live_location_hidden !== settingRef.current?.hidden) refresh(true);
     });
     window.addEventListener('focus', onFocus);
-    return () => { ++loadVersion.current; clearTimeout(retryTimer.current); unsubscribe(); window.removeEventListener('focus', onFocus); };
+    window.addEventListener('online', onFocus);
+    window.addEventListener('bps-operational-resume', onFocus);
+    return () => {
+      ++loadVersion.current;
+      clearTimeout(retryTimer.current);
+      clearTimeout(readRetryTimer.current);
+      unsubscribe();
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onFocus);
+      window.removeEventListener('bps-operational-resume', onFocus);
+    };
   }, [eligible, currentUser?.id, currentUser?.email, refresh]);
 
   const setHidden = async (hidden, retry = false) => {
     if (saving.current || (settingRef.current?.hidden === hidden && !settingRef.current?.cached && !retry)) return;
     clearTimeout(retryTimer.current);
+    clearTimeout(readRetryTimer.current);
     saving.current = true;
     const version = ++loadVersion.current;
     loadPending.current = false;
