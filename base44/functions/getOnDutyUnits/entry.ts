@@ -52,6 +52,9 @@ async function readWithRetry(loader: () => Promise<any[]>, label: string) {
       return Array.isArray(rows) ? rows : [];
     } catch (error: any) {
       lastError = error;
+      // A 429 is a request to pause, not a transient read to repeat three times.
+      if (Number(error?.response?.status || error?.status) === 429
+          || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) throw error;
       if (attempt < 2) await delay(300 * (attempt + 1));
     }
   }
@@ -617,6 +620,11 @@ Deno.serve(async (req) => {
     });
   } catch (error: any) {
     console.error('getOnDutyUnits failed', error);
-    return Response.json({ error: error?.message || 'Unable to load on-duty units', units: [], users: [] }, { status: 500 });
+    const throttled = Number(error?.response?.status || error?.status) === 429
+      || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error));
+    return Response.json({ error: error?.message || 'Unable to load on-duty units' }, {
+      status: throttled ? 429 : 500,
+      headers: throttled ? { 'Retry-After': '30' } : {},
+    });
   }
 });
