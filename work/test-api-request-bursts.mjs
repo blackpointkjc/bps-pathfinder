@@ -1,0 +1,72 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const existing = fs.readFileSync('work/test-loading-queue.mjs', 'utf8');
+const preamble = existing.slice(0, existing.indexOf('const h = harness();'));
+const additions = `
+const paced = harness();
+const p1 = paced.base44.entities.First.list();
+const p2 = paced.base44.entities.Second.list();
+await paced.advance(0);
+assert.equal(paced.starts.length,1);
+await paced.advance(349);
+assert.equal(paced.starts.length,1);
+await paced.advance(1);
+await Promise.all([p1,p2]);
+assert.equal(paced.starts.length,2);
+const backoff = harness();
+let count=0;
+backoff.raw.functions.invoke = async () => {
+  count++;
+  if(count===1) throw {response:{status:429,headers:{'retry-after':'45'}},message:'Request rejected'};
+  return {data:{success:true}};
+};
+await backoff.base44.functions.invoke('getOnDutyUnits',{}).catch(()=>{});
+const again = backoff.base44.functions.invoke('getOnDutyUnits',{});
+await backoff.advance(15100);
+assert.equal(count,1,'HTTP 429 and Retry-After must be honored even without a rate-limit message');
+await backoff.advance(30100);await again;assert.equal(count,2);
+const gpsCache=harness();
+gpsCache.raw.functions.invoke=async name=>{gpsCache.starts.push(name);return {data:{success:true,units:[]}}};
+await gpsCache.base44.functions.invoke('getOnDutyUnits',{});
+await gpsCache.base44.functions.invoke('logLocation',{latitude:37,longitude:-77});
+await gpsCache.base44.functions.invoke('getOnDutyUnits',{});
+assert.equal(gpsCache.starts.filter(n=>n==='getOnDutyUnits').length,1);
+await gpsCache.base44.functions.invoke('logLocation',{end_session:true});
+const afterEnd=gpsCache.base44.functions.invoke('getOnDutyUnits',{});
+await gpsCache.advance(400);await afterEnd;
+assert.equal(gpsCache.starts.filter(n=>n==='getOnDutyUnits').length,2,'session transitions must invalidate');
+console.log('PASS: request starts paced; numeric 429 and Retry-After honored; GPS preserves cache; session end invalidates');
+`;
+const testPath = '/tmp/base44-request-burst-test.mjs';
+const dynamicTest = preamble.replace("from 'typescript'", "from '/app/node_modules/typescript/lib/typescript.js'") + additions;
+fs.writeFileSync(testPath,dynamicTest);
+await import(testPath);
+
+const compile=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+let resolveRoster, calls=0, now=1000000, limited=false;
+class Clock extends Date {static now(){return now}}
+const storage=new Map();
+const fixture={success:true,units:[{id:'one',officer_email:'officer@example.test',session_active:true,latitude:37,longitude:-77,accuracy:10}],users:[]};
+const api={base44:{functions:{invoke:async name=>{
+  if(name==='logLocation')return {data:{success:true}};
+  calls++;return await new Promise(resolve=>resolveRoster=resolve);
+}}},clearBase44ReadCacheMatching:()=>{},getBase44RequestHealth:()=>({rateLimitedUntil:limited?'later':null})};
+const hub={};
+vm.runInNewContext(compile(fs.readFileSync('src/lib/officerLocationHub.js','utf8')),{exports:hub,require:()=>api,Date:Clock,Map,Set,Promise,console,navigator:{},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}});
+const full=hub.getOfficerLocationSnapshot();
+const map=hub.getOfficerLocationSnapshot({locationOnly:true});
+assert.equal(calls,1,'map and full roster must share pending request');
+resolveRoster({data:fixture});await Promise.all([full,map]);
+await hub.publishOfficerLocation({officer_email:'officer@example.test',latitude:37.1,longitude:-77.1,accuracy:10});
+await hub.getOfficerLocationSnapshot();assert.equal(calls,1,'GPS must not clear roster');
+now+=61000;limited=true;
+const cached=await hub.getOfficerLocationSnapshot();assert.equal(cached.stale,true);assert.equal(calls,1,'cooldown preserves known roster');
+const backend=fs.readFileSync('base44/functions/getOnDutyUnits/entry.ts','utf8').split('Deno.serve(')[0].replace(/^import .*;\n/gm,'')+'\nexports.readWithRetry=readWithRetry;';
+const be={};vm.runInNewContext(compile(backend),{exports:be,setTimeout:()=>{throw Error('Unexpected retry')},console});
+let attempts=0;
+await assert.rejects(be.readWithRetry(async()=>{attempts++;throw {response:{status:429},message:'Rejected'}},'test'));
+assert.equal(attempts,1,'backend must not retry HTTP 429');
+console.log('PASS: shared map/roster request; GPS cache retained; stale roster retained on cooldown; backend 429 attempted once');
+
