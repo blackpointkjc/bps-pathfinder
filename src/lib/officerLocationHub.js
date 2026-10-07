@@ -275,7 +275,9 @@ export async function publishOfficerLocation(data = {}) {
     if (payload.error) throw new Error(payload.error);
     if (!payload.success || payload.suppressed) return payload;
     if (minimumGap > 0) notePublishAt(email || 'current-user', kind, attemptedAt);
-    clearSnapshotCache();
+    // Keep the roster until its normal expiry; realtime events apply the saved
+    // GPS locally. Clearing on each fix turned 5-second uploads into roster reads.
+    if (forcePublish) clearSnapshotCache();
     return payload;
   });
 }
@@ -299,11 +301,18 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
   if (!force && compatibleCached && now - compatibleCached.at < SNAPSHOT_TTL_MS) return compatibleCached.payload;
   if (force && cached && now - Number(lastForcedAt.get(key) || 0) < FORCE_REFRESH_DEDUPE_MS) return cached.payload;
   if (inflight.has(key)) return inflight.get(key);
+  // The full roster already supplies the ordinary map. Share its pending request
+  // as well as its completed derivative; startup must not fetch both shapes.
+  if (locationOnly && !includeLastKnown && inflight.has('full')) {
+    return inflight.get('full').then(payload => scrubSnapshot({ ...payload, location_only: true, includes_last_known: false }));
+  }
 
   // Never turn a known API throttle into another getOnDutyUnits request. Realtime
   // ActiveOfficer events already update the cached roster locally; keep using that
   // verified snapshot until the shared cooldown expires.
-  if (force && cached && getBase44RequestHealth().rateLimitedUntil) return cached.payload;
+  if (cached && getBase44RequestHealth().rateLimitedUntil) {
+    return { ...cached.payload, stale: true, rate_limited: true };
+  }
 
   if (force) {
     lastForcedAt.set(key, now);
