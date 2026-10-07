@@ -37,7 +37,7 @@ export const queryClientInstance = new QueryClient({
 			// failures get one delayed retry.
 			retry: (failureCount, error) => {
 				const message = String(error?.message || error?.response?.data?.message || error || '');
-				if (/rate limit|too many requests|\b429\b/i.test(message)) return false;
+				if (Number(error?.response?.status || error?.status) === 429 || /rate limit|too many requests|\b429\b/i.test(message)) return false;
 				return failureCount < 1;
 			},
 			retryDelay: failureCount => Math.min(2000 * (2 ** failureCount), 10000),
