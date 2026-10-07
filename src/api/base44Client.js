@@ -17,6 +17,9 @@ const rawBase44 = createClient({
 // consume that allowance just as an officer saves a report or changes status.
 // User writes always bypass this queue; only reads are capped and deduplicated.
 const MAX_CONCURRENT_READS = 2;
+// Concurrency alone does not limit fast completions; space starts to avoid bursts.
+const READ_START_GAP_MS = 350;
+let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
@@ -139,7 +142,7 @@ const requestLabel = meta => {
   if (meta.kind === 'auth') return `Auth ${meta.method}`;
   return meta.label || 'unknown';
 };
-const isRateLimit = error => /rate limit|too many requests|\b429\b/i.test(errorText(error));
+const isRateLimit = error => Number(error?.response?.status || error?.status) === 429 || /rate limit|too many requests|\b429\b/i.test(errorText(error));
 const stableKey = value => {
   try { return JSON.stringify(value, (_key, item) => typeof File !== 'undefined' && item instanceof File ? { name: item.name, size: item.size, type: item.type } : item); }
   catch { return String(value); }
@@ -154,7 +157,16 @@ const sharedRateLimitUntil = () => {
 const noteRateLimit = error => {
   if (!isRateLimit(error)) return;
   recentRateLimitAt = Date.now();
-  readRecoveryUntil = recentRateLimitAt + CRITICAL_RATE_LIMIT_RECOVERY_MS;
+  const headers = error?.response?.headers;
+  const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
+  const seconds = Number(retryAfter);
+  const retryAt = retryAfter != null && String(retryAfter).trim() !== ''
+    ? (Number.isFinite(seconds) ? recentRateLimitAt + Math.max(0, seconds) * 1000 : Date.parse(retryAfter))
+    : 0;
+  const recoveryMs = Number.isFinite(retryAt) && retryAt > recentRateLimitAt
+    ? Math.min(READ_QUEUE_TIMEOUT_MS - 5_000, retryAt - recentRateLimitAt)
+    : CRITICAL_RATE_LIMIT_RECOVERY_MS;
+  readRecoveryUntil = Math.max(readRecoveryUntil, recentRateLimitAt + recoveryMs);
   // Concurrent failures belong to one recovery window, not a new minute each.
   if (sharedRateLimitUntil() > recentRateLimitAt) return;
   const until = recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS;
@@ -187,6 +199,12 @@ function pumpReads() {
       schedulePump(nextWait + 25);
       break;
     }
+    const spacingWait = nextReadStartAt - Date.now();
+    if (spacingWait > 0) {
+      schedulePump(spacingWait);
+      break;
+    }
+    nextReadStartAt = Date.now() + READ_START_GAP_MS;
     const job = readQueue.shift();
     window.clearTimeout(job.queueTimer);
     job.markStarted();
@@ -306,7 +324,11 @@ function invalidateReadCacheForWrite(meta = {}) {
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
     if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
-      addEntity('ActiveOfficer'); addEntity('Unit'); addEntity('User'); addFunction('getOnDutyUnits');
+      // Routine GPS/heartbeats are applied by the realtime location hub. Only
+      // session/status transitions need a fresh canonical roster/directory read.
+      if (name !== 'logLocation' || meta.locationTransition) {
+        addEntity('ActiveOfficer'); addEntity('Unit'); addEntity('User'); addFunction('getOnDutyUnits');
+      }
       if (name !== 'logLocation') prefixes.add('auth:me:');
     }
     if (['ingestGractivecalls','createDispatchCall','updateCadCallStatus','updateCadCallPriority','manageCadUnitAssignment'].includes(name)) {
@@ -468,7 +490,8 @@ const functions = new Proxy(rawBase44.functions, {
       const functionName = String(name);
       const key = `function:${functionName}:${stableKey(payload || {})}`;
       const task = () => value.call(target, name, payload);
-      const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '' };
+      const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',
+        locationTransition: payload?.end_session === true || payload?.reset_gps === true || payload?.status_changed === true };
 
       // logLocation is background telemetry, not a user-initiated save. Once the
       // backend has throttled this browser, suppress additional GPS/heartbeat
