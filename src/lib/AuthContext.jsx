@@ -94,6 +94,27 @@ export const AuthProvider = ({ children }) => {
         email_aliases: [...new Set([authEmail, workEmail, microsoftEmail, ...(currentUser.email_aliases || [])].map(cleanEmail).filter(Boolean))],
       };
 
+      // Newly invited student accounts can be created by Base44 only when the
+      // invitation is accepted. Recover their trainer-owned enrollment by the
+      // authenticated email before choosing the restricted first-login screen.
+      const assigned = (currentUser.additional_roles || []).length > 0 || currentUser.role === 'admin' || currentUser.role === 'dispatch';
+      if (!assigned && String(currentUser.rank || '').toLowerCase() !== 'student registration pending') {
+        try {
+          const response = await base44.functions.invoke('resolveStudentEnrollment', {});
+          const enrollment = response?.data || response || {};
+          if (enrollment.student_pending) {
+            currentUser = { ...currentUser, ...{
+              rank: enrollment.rank,
+              first_name: enrollment.first_name,
+              last_name: enrollment.last_name,
+              date_of_birth: enrollment.date_of_birth,
+            }};
+          }
+        } catch (error) {
+          console.warn('Student enrollment lookup deferred', error?.message || error);
+        }
+      }
+
       // Authentication refresh/page reload is not a duty-status transition.
       // Preserve the authoritative server status so a browser refresh cannot turn
       // an Available/Enroute/On Scene officer OOS or retire a valid live session.
