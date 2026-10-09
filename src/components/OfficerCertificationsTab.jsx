@@ -382,13 +382,14 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             <h5 className="font-semibold text-blue-900 text-sm">{editingIdx !== null ? "Edit DCJS Certification" : "Add DCJS Certification"}</h5>
 
             <div>
-              <Label className="text-xs">DCJS Course</Label>
+              <Label className="text-xs">DCJS Credential / Training Code</Label>
+              <p className="mt-1 text-xs text-blue-800">These are DCJS credential reference codes, not classes offered in this portal. Select the code shown on the officer's existing certification record. Create an actual class in Trainer Center before assigning online coursework.</p>
               <Select value={newCert.course_id} onValueChange={(val) => {
                 const course = DCJS_COURSES.find(c => c.id === val);
                 setNewCert(p => ({ ...p, course_id: val, training_name: course?.name || val }));
               }}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select course..." />
+                  <SelectValue placeholder="Select DCJS credential code..." />
                 </SelectTrigger>
                 <SelectContent>
                   {["Entry Level", "In-Service", "Retraining"].map(level => (
