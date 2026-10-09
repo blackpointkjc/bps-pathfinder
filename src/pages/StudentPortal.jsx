@@ -249,16 +249,16 @@ export default function StudentPortal({ onboardingOnly = false }) {
   const pendingModules = assignedModules.filter(m => !myCompletions.some(c => c.training_module_id === m.id && c.completed));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-full bg-gradient-to-b from-violet-50 via-slate-50 to-white p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-7">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 bg-gradient-to-br from-violet-700 to-indigo-800 rounded-2xl flex items-center justify-center shadow-lg">
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-0.5">Black Point Protection</p>
-            <h1 className="text-2xl font-bold text-slate-900">Black Point Training School</h1>
-            <p className="text-slate-500 text-sm">Welcome, {user.first_name}. Complete your assigned training below.</p>
+            <h1 className="text-2xl font-black text-slate-900 md:text-3xl">Student Learning Dashboard</h1>
+            <p className="text-slate-500 text-sm">Welcome back, {user.first_name}. Your courses, progress, and completed learning are all here.</p>
           </div>
         </div>
 
