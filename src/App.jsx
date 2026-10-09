@@ -257,8 +257,6 @@ const AuthenticatedApp = () => {
   const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const approvedCategory = user?.role === 'admin' || user?.role === 'dispatch' ||
     ['full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer'].some(role => accessRoles.has(role));
-  if (isAuthenticated && user && !approvedCategory) return <PendingUserOnboarding user={user} />;
-
   if (accountLock) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">
@@ -277,6 +275,8 @@ const AuthenticatedApp = () => {
       </div>
     );
   }
+
+  if (isAuthenticated && user && !approvedCategory) return <PendingUserOnboarding user={user} />;
 
   if (needsLogin) {
     return (
