@@ -27,7 +27,7 @@ Deno.serve(async req => {
       const enrollmentRows = await base44.asServiceRole.entities.StudentEnrollment.filter({ email: String(me.email || '').toLowerCase() }, '-created_date', 3);
       const enrollment = (enrollmentRows || []).find((entry:any) => ['invited','profile_submitted'].includes(entry.status));
       if (!enrollment) return Response.json({error:'Student enrollment invitation could not be found; please contact your trainer'}, {status:409});
-      await base44.asServiceRole.entities.StudentEnrollment.update(enrollment.id, { status:'profile_submitted', user_id: me.id });
+      await base44.asServiceRole.entities.StudentEnrollment.update(enrollment.id, { user_id: me.id });
     }
     return Response.json({success:true, awaiting_admin_approval:!studentIntake, awaiting_trainer_review:studentIntake});
   } catch (error) {
