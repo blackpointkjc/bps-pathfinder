@@ -15,6 +15,8 @@ import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirect
 
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
+  const [reviewingStudent, setReviewingStudent] = useState(null);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [studentFilter, setStudentFilter] = useState('all');
@@ -279,7 +281,7 @@ export default function ManageStudents({ embedded = false }) {
                       Edit Profile
                     </Button>}
                     {student.invitation_only && <Badge className="bg-amber-100 text-amber-900">Awaiting invitation acceptance</Badge>}
-                    {String(student.rank || '').toLowerCase() === 'student registration pending' && <Button className="bg-green-700 text-white" size="sm" onClick={() => approveStudent(student)}>Review & Approve Student</Button>}
+                    {String(student.rank || '').toLowerCase() === 'student registration pending' && <Button className="bg-green-700 text-white" size="sm" onClick={() => setReviewingStudent(student)}>Review Student Registration</Button>}
                   </div>
                 </div>
               </CardContent>
