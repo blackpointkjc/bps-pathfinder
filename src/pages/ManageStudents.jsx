@@ -54,7 +54,7 @@ export default function ManageStudents({ embedded = false }) {
   const updateStudentMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const requestedRole = data.role || 'user';
-      if (editingStudent?.role !== requestedRole) {
+      if (data.role !== undefined && (editingStudent?.role || 'user') !== requestedRole) {
         if (!isSystemAdmin) throw new Error('Only a current system administrator can grant or remove administrator status.');
         const roleResult = await base44.functions.invoke('updateUser', {
           userId: id,
@@ -152,7 +152,6 @@ export default function ManageStudents({ embedded = false }) {
       first_name: student.first_name || "",
       last_name: student.last_name || "",
       date_of_birth: student.date_of_birth || "",
-      ssn: student.ssn || "",
       dcjs_number: student.dcjs_number || "",
       role: student.role || "user",
     });
@@ -296,10 +295,6 @@ export default function ManageStudents({ embedded = false }) {
             <div>
               <Label className="text-xs text-slate-500">Date of Birth *</Label>
               <Input type="date" required value={editForm.date_of_birth || ""} onChange={(e) => setEditForm(p => ({ ...p, date_of_birth: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Social Security Number *</Label>
-              <Input required placeholder="XXX-XX-XXXX" value={editForm.ssn || ""} onChange={(e) => setEditForm(p => ({ ...p, ssn: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs text-slate-500">DCJS Number *</Label>
