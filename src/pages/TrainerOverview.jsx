@@ -60,10 +60,10 @@ export default function TrainerOverview() {
     ...certificationReviewTasks.slice(0, 5).map(task => ({
       id: `cert-review-${task.id}`,
       taskId: task.id,
-      person: task.related_name || 'New officer',
+      person: (() => { const officer = (data.users || []).find(user => user.id === task.related_id); return [officer?.first_name, officer?.last_name].filter(Boolean).join(' ').trim() || officer?.full_name || officer?.email || task.related_name?.trim() || `Officer account unavailable · ${task.related_id || task.id}`; })(),
       title: 'Review new officer certification file',
       detail: 'Verify DCJS, firearm credentials and upload supporting certification records',
-      page: 'TrainerCenter?section=compliance',
+      page: 'TrainerCenter?section=compliance' + (task.related_id ? '&officer_id=' + encodeURIComponent(task.related_id) : ''),
       urgent: true,
     })),
     ...certificationTodos.slice(0, 5).map(row => ({
