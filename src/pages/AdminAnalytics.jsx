@@ -268,8 +268,11 @@ export default function AdminAnalytics() {
   const secondarySegmentsEnabled = Boolean(user && coreAnalytics.data);
   const dutyAnalytics = useAnalyticsSegment('duty', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
   const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const trainingAnalytics = useAnalyticsSegment('training', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const qualityAnalytics = useAnalyticsSegment('quality', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  // Keep analytics segments in two controlled waves so the backend does not
+  // start four large multi-entity scans at once during a rate-limited session.
+  const laterSegmentsEnabled = secondarySegmentsEnabled && Boolean(dutyAnalytics.data) && Boolean(callsAnalytics.data);
+  const trainingAnalytics = useAnalyticsSegment('training', laterSegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', laterSegmentsEnabled, analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
