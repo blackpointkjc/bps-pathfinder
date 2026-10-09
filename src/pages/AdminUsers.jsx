@@ -105,8 +105,8 @@ export default function AdminUsers({ embedded = false }) {
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
     queryFn: async () => await listDirectoryUsers(undefined, 1000, true) || [],
     enabled: hasAccess,
-    retry: 3,
-    staleTime: 0,
+    retry: 1,
+    staleTime: 60_000,
   });
 
   const { data: accessRequests = [] } = useQuery({
@@ -173,19 +173,22 @@ export default function AdminUsers({ embedded = false }) {
         ...data,
       });
       const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
+      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Account invitation was not confirmed');
       return payload;
     },
     onSuccess: (result) => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       resetCreateForm();
-      if (result?.email_sent === false) {
-        alert(`✅ Pending user created, but the Black Point welcome email could not be delivered. ${result?.email_error || 'Verify the email address and resend the invitation.'}`);
+      if (result?.provisioned) {
+        alert('Account created and the Base44 login invitation processed. Assign Support Staff, Officer, Student, or Client access from Pending Users.');
+      } else if (result?.invitation_sent) {
+        alert('Base44 invitation sent. The person must accept the invitation to finish registration before their account appears in Pending Users. No password is emailed; they securely set their own password.');
       } else {
-        alert('✅ Pending user created. Assign the person as Support Staff, Officer, Student, or Client from this page.');
+        alert('An existing account was found, but a fresh invitation was not confirmed. Check the Base44 user dashboard.');
       }
     },
     onError: (error) => {
