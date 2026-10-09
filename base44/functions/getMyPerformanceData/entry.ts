@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       // Keep this bounded, but do not serialize 20+ monthly reads one-by-one.
       // Two service-role reads at a time cuts the long blank load substantially
       // without recreating the large fan-out that previously caused 429s.
-      if (activeReads >= 3) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 1) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -49,12 +49,14 @@ Deno.serve(async (req) => {
       await acquireReadSlot();
       try {
         let lastError:any = null;
-        for (let attempt = 0; attempt < 1; attempt += 1) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             return await reader() || [];
           } catch (error) {
             lastError = error;
-            break;
+            const isRateLimit = error?.status === 429 || error?.response?.status === 429 || /rate.limit|429|too many requests/i.test(String(error?.message || ''));
+            if (!isRateLimit || attempt === 1) break;
+            await new Promise(resolve => setTimeout(resolve, 1800));
           }
         }
         throw lastError || new Error('Unable to read data');
