@@ -15,6 +15,9 @@ import { listTrainingUsers } from '@/lib/trainingDirectory';
 
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
+  const [showInvite, setShowInvite] = useState(false);
+  const [studentInvite, setStudentInvite] = useState({ first_name: '', last_name: '', email: '', date_of_birth: '' });
+  const [inviting, setInviting] = useState(false);
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
 
@@ -102,7 +105,20 @@ export default function ManageStudents({ embedded = false }) {
     onError: (err) => toast.error("Failed: " + err.message),
   });
 
-  const students = allUsers.filter(u => u.additional_roles?.includes('student'));
+  const students = allUsers.filter(u => u.additional_roles?.includes('student') || String(u.rank || '').toLowerCase() === 'student registration pending');
+  const inviteStudent = async (event) => {
+    event.preventDefault(); setInviting(true);
+    try {
+      const response = await base44.functions.invoke('createPortalAccount', { ...studentInvite, accountType: 'student_pending' });
+      const result = response?.data || response || {};
+      if (!result.success) throw new Error(result.error || 'Invitation was not confirmed');
+      toast.success('Student invitation processed; registration awaits trainer review');
+      setShowInvite(false);
+      setStudentInvite({ first_name: '', last_name: '', email: '', date_of_birth: '' });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+    } catch (error) { toast.error(error.message || 'Student invitation failed'); }
+    finally { setInviting(false); }
+  };
 
   const getStudentStats = (studentEmail) => {
     const studentModules = trainingModules.filter(m => {
