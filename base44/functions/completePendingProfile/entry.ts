@@ -23,7 +23,13 @@ Deno.serve(async req => {
     const missing = requiredForAccount.filter(field => !String(combined[field] || '').trim());
     if (missing.length) return Response.json({error:'Complete all required fields before submitting.',missing}, {status:400});
     await base44.asServiceRole.entities.User.update(me.id, updates);
-    return Response.json({success:true, awaiting_admin_approval:true});
+    if (studentIntake) {
+      const enrollmentRows = await base44.asServiceRole.entities.StudentEnrollment.filter({ email: String(me.email || '').toLowerCase() }, '-created_date', 3);
+      const enrollment = (enrollmentRows || []).find((entry:any) => ['invited','profile_submitted'].includes(entry.status));
+      if (!enrollment) return Response.json({error:'Student enrollment invitation could not be found; please contact your trainer'}, {status:409});
+      await base44.asServiceRole.entities.StudentEnrollment.update(enrollment.id, { status:'profile_submitted', user_id: me.id });
+    }
+    return Response.json({success:true, awaiting_admin_approval:!studentIntake, awaiting_trainer_review:studentIntake});
   } catch (error) {
     console.error('completePendingProfile failed', error);
     return Response.json({error:error?.message || 'Could not save onboarding information'}, {status:500});
