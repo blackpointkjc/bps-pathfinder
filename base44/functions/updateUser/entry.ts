@@ -31,15 +31,14 @@ Deno.serve(async (req) => {
         if (!isSystemManager && roles.has('trainer') && !targetRoles.has('student')) return Response.json({ error: 'Trainer can manage student accounts only' }, { status: 403 });
         if (!isSystemManager && updates.role !== undefined) return Response.json({ error: 'Only Admin or Full Access can change system administrator status' }, { status: 403 });
         if (!isSystemManager && updates.additional_roles !== undefined) {
-            const requestedRoles = new Set((Array.isArray(updates.additional_roles) ? updates.additional_roles : []).map((role: string) => String(role).toLowerCase()));
-            const preservedRoles = [...targetRoles].filter((role: string) => role !== 'student');
-            const isStudentToOfficer = roles.has('trainer')
-                && targetRoles.has('student')
-                && requestedRoles.has('officer')
-                && !requestedRoles.has('student')
-                && preservedRoles.every((role: string) => requestedRoles.has(role))
-                && [...requestedRoles].every((role: string) => role === 'officer' || preservedRoles.includes(role));
-            if (!isStudentToOfficer) return Response.json({ error: 'Only Admin or Full Access can change account roles' }, { status: 403 });
+            return Response.json({ error: 'Only Admin or Full Access can change account roles' }, { status: 403 });
+        }
+        // Trainers manage student education records, never payroll, employment,
+        // officer access, or personal identity verification data.
+        if (!isSystemManager && roles.has('trainer')) {
+            const allowed = new Set(['first_name','last_name','full_name','date_of_birth','dcjs_number','dcjs_expiration','firearm_expiration','officer_certifications']);
+            const forbidden = Object.keys(updates || {}).filter(field => !allowed.has(field));
+            if (forbidden.length) return Response.json({ error: 'Trainer updates are limited to student training and course identity fields' }, { status: 403 });
         }
 
         const updatePayload: Record<string, unknown> = {};
