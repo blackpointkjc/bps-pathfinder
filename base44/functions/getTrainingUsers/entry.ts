@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
 
     const allUsers = await loadUsers(base44);
     const enrollments = await base44.asServiceRole.entities.StudentEnrollment.list('-created_date', 150).catch(() => []);
+    const enrollmentsByEmail = new Map((enrollments || []).map((enrollment:any) => [String(enrollment.email || '').toLowerCase(), String(enrollment.status || '')]));
     const users = (allUsers || [])
       .filter((entry: any) => {
         if (!entry?.email || entry.termination_date) return false;
@@ -52,6 +53,7 @@ Deno.serve(async (req) => {
         officer_certifications: Array.isArray(entry.officer_certifications) ? entry.officer_certifications : [],
         date_of_birth: entry.date_of_birth || '',
         student_intake_complete: Boolean(entry.ssn && entry.dcjs_number && entry.mobile_phone && entry.address && entry.date_of_birth),
+        student_enrollment_status: enrollmentsByEmail.get(String(entry.email || '').toLowerCase()) || '',
         dcjs_number: entry.dcjs_number || '',
         dcjs_expiration: entry.dcjs_expiration || '',
         firearm_expiration: entry.firearm_expiration || '',
@@ -70,6 +72,7 @@ Deno.serve(async (req) => {
         date_of_birth: enrollment.date_of_birth,
         rank: 'Student Invitation Pending', additional_roles: [],
         invitation_only: true, student_intake_complete: false,
+        student_enrollment_status: String(enrollment.status || 'invited'),
       });
     }
 
