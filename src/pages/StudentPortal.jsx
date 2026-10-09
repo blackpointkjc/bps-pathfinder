@@ -83,6 +83,11 @@ export default function StudentPortal({ onboardingOnly = false }) {
     }
     setSavingProfile(true);
     await base44.auth.updateMe(profileForm);
+    if (onboardingOnly) {
+      const submission = await base44.functions.invoke('submitStudentRegistration', {});
+      const submitted = submission?.data || submission || {};
+      if (!submitted.success) throw new Error(submitted.error || 'Registration not verified');
+    }
     invalidateAppDirectory();
     queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     setSavingProfile(false);
