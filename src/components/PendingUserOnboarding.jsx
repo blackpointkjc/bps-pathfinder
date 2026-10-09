@@ -5,7 +5,7 @@ const fields = [
  ['mobile_phone','Mobile phone','tel'],['address','Street address','text'],['city','City','text'],['state','State','text'],['zip','ZIP code','text'],
  ['emergency_contact_name','Emergency contact full name','text'],['emergency_contact_relationship','Emergency contact relationship','text'],['emergency_contact_phone','Emergency contact phone','tel'],
  ['drivers_license_number','Driver license number','text'],['drivers_license_state','Driver license state','text'],['drivers_license_expiration','Driver license expiration','date'],
- ['dcjs_number','DCJS registration number (if applicable)','text',['dcjs_expiration','DCJS expiration (if applicable)','date']
+ ['dcjs_number','DCJS registration number (if applicable)','text'],['dcjs_expiration','DCJS expiration (if applicable)','date']
 ];
 const required = new Set(fields.filter(([name]) => !['dcjs_number','dcjs_expiration'].includes(name)).map(([name]) => name));
 export default function PendingUserOnboarding({ user }) {
