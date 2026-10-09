@@ -18,7 +18,7 @@ const rawBase44 = createClient({
 // User writes always bypass this queue; only reads are capped and deduplicated.
 const MAX_CONCURRENT_READS = 2;
 // Concurrency alone does not limit fast completions; space starts to avoid bursts.
-const READ_START_GAP_MS = 350;
+const READ_START_GAP_MS = 700;
 let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
@@ -55,7 +55,7 @@ const readCacheTtl = meta => {
   return READ_CACHE_MS;
 };
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
-const CRITICAL_RATE_LIMIT_RECOVERY_MS = 15_000;
+const CRITICAL_RATE_LIMIT_RECOVERY_MS = 25_000;
 const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
