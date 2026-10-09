@@ -116,6 +116,13 @@ export default function StudentPortal({ onboardingOnly = false }) {
   // Profile gate — required fields before class access
   const profileComplete = user?.first_name && user?.last_name && user?.date_of_birth && user?.ssn && user?.dcjs_number;
 
+  if (onboardingOnly && profileComplete) {
+    return <div className="mx-auto max-w-2xl rounded-2xl border border-amber-500/40 bg-slate-900 p-6 text-slate-100">
+      <h2 className="text-xl font-bold text-amber-300">Student profile received</h2>
+      <p className="mt-3 text-sm">Your identity and training registration information has been saved. Your account remains pending trainer review. Training courses and company employee features are unavailable until approval.</p>
+    </div>;
+  }
+
   if (!profileComplete && isPreview) {
     return (
       <div className="min-h-full bg-[#080d16] p-4 text-white md:p-6">
