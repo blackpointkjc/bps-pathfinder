@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const notifications = await loadSource('notifications', () => base44.asServiceRole.entities.Notification.filter({ recipient_email: me.email, is_read: false }, '-created_date', 50), { attempts: 1 });
 
     const assignedTasks = supervisorLike
-      ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id, status: 'open' }, '-created_date', 50), { attempts: 1 })
+      ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id, status: { $in: ['open', 'in_progress'] } }, '-created_date', 50), { attempts: 1 })
       : [];
 
 
