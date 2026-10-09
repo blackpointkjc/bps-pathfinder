@@ -171,9 +171,18 @@ export default function ManageStudents({ embedded = false }) {
             <p className="text-slate-500 text-sm">{students.length} student{students.length !== 1 ? 's' : ''} registered</p>
           </div>
         </div>
-        <Badge className="border border-violet-500/40 bg-violet-950/40 text-violet-200">Assigned through Admin → Pending Users</Badge>
+        <Button onClick={() => setShowInvite(true)} className="bg-violet-700 text-white hover:bg-violet-600">Create Student Account</Button>
       </div>
 
+      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+        <DialogContent><DialogHeader><DialogTitle>Create Student Portal Invitation</DialogTitle></DialogHeader>
+          <form className="space-y-3" onSubmit={inviteStudent}>
+            {[["first_name","First name","text"],["last_name","Last name","text"],["email","Email address","email"],["date_of_birth","Date of birth","date"]].map(([key,label,type]) => <label key={key} className="block text-sm font-semibold">{label}<Input required type={type} value={studentInvite[key]} onChange={event => setStudentInvite(previous => ({ ...previous,[key]:event.target.value }))} /></label>)}
+            <p className="text-xs text-slate-600">The student completes their personal and licensing registration after accepting the invitation. This does not create an employee/officer account.</p>
+            <Button disabled={inviting} type="submit">{inviting ? 'Sending invitation…' : 'Invite Student'}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
       {isLoading && (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto" />
@@ -185,7 +194,7 @@ export default function ManageStudents({ embedded = false }) {
         <Card>
           <CardContent className="p-12 text-center">
             <GraduationCap className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-            <p className="text-slate-500">No students are assigned. Assign a pending user as Student from Admin → Pending Users.</p>
+            <p className="text-slate-500">No student accounts yet. Use Create Student Account above to invite a new student.</p>
           </CardContent>
         </Card>
       )}
