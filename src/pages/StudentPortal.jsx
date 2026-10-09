@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
-export default function StudentPortal() {
+export default function StudentPortal({ onboardingOnly = false }) {
   const [viewingModule, setViewingModule] = useState(null);
   const [completionNotes, setCompletionNotes] = useState("");
   const [profileForm, setProfileForm] = useState({});
@@ -85,7 +85,7 @@ export default function StudentPortal() {
     await base44.auth.updateMe(profileForm);
     queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     setSavingProfile(false);
-    toast.success("Profile saved! You can now access your training.");
+    toast.success(onboardingOnly ? 'Student identity profile saved. Await trainer review.' : 'Profile saved! You can now access your training.');
   };
 
   if (userLoading) {
@@ -96,7 +96,7 @@ export default function StudentPortal() {
     );
   }
 
-  if (!isStudent) {
+  if (!isStudent && !onboardingOnly) {
     return (
       <div className="p-8 text-center">
         <ShieldAlert className="w-16 h-16 mx-auto mb-4 text-slate-400" />
@@ -104,6 +104,13 @@ export default function StudentPortal() {
         <p className="text-slate-600">You don't have the Student role. Contact your administrator.</p>
       </div>
     );
+  }
+
+  // Student intake is permitted before account approval, but coursework is not.
+  // Reuse the existing authenticated Student Portal identity form without
+  // granting the pending person a Student role or any course permissions.
+  if (onboardingOnly && isStudent) {
+    return <div className="rounded-xl border border-amber-600/40 bg-slate-900 p-6 text-amber-200">Your training account has already been activated. Please refresh to enter your student dashboard.</div>;
   }
 
   // Profile gate — required fields before class access
