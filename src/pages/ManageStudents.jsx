@@ -16,6 +16,8 @@ import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirect
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentFilter, setStudentFilter] = useState('all');
   const [studentInvite, setStudentInvite] = useState({ first_name: '', last_name: '', email: '', date_of_birth: '' });
   const [inviting, setInviting] = useState(false);
   const [editForm, setEditForm] = useState({});
@@ -106,6 +108,14 @@ export default function ManageStudents({ embedded = false }) {
   });
 
   const students = allUsers.filter(u => u.additional_roles?.includes('student') || ['student registration pending','student invitation pending'].includes(String(u.rank || '').toLowerCase()));
+  const visibleStudents = students.filter(student => {
+    const searchText = [student.first_name, student.last_name, student.email].filter(Boolean).join(' ').toLowerCase();
+    if (!searchText.includes(studentSearch.trim().toLowerCase())) return false;
+    if (studentFilter === 'approved') return student.additional_roles?.includes('student');
+    if (studentFilter === 'ready') return String(student.rank || '').toLowerCase() === 'student registration pending' && student.student_intake_complete;
+    if (studentFilter === 'waiting') return !student.additional_roles?.includes('student') && (!student.student_intake_complete || student.invitation_only);
+    return true;
+  });
   const inviteStudent = async (event) => {
     event.preventDefault(); setInviting(true);
     try {
@@ -209,8 +219,13 @@ export default function ManageStudents({ embedded = false }) {
         </Card>
       )}
 
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-violet-200 bg-white p-3">
+        <Input className="min-w-[180px] flex-1" aria-label="Search students" value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Find student by name or email…" />
+        <select className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900" aria-label="Filter student status" value={studentFilter} onChange={event => setStudentFilter(event.target.value)}><option value="all">All students</option><option value="ready">Ready to approve</option><option value="waiting">Registration pending</option><option value="approved">Approved students</option></select>
+        <span className="text-xs font-medium text-slate-500">{visibleStudents.length} shown</span>
+      </div>
       <div className="space-y-4">
-        {students.map((student) => {
+        {visibleStudents.map((student) => {
           const stats = getStudentStats(student.email);
           const profileOk = isProfileComplete(student);
           const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
@@ -259,7 +274,7 @@ export default function ManageStudents({ embedded = false }) {
                       {student.dcjs_number && <div>DCJS: {student.dcjs_number}</div>}
                       {student.student_intake_complete && <div>Identity profile received</div>}
                     </div>
-                    {!student.invitation_only && <Button variant="outline" size="sm" onClick={() => openEdit(student)}>
+                    {student.additional_roles?.includes('student') && <Button variant="outline" size="sm" onClick={() => openEdit(student)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Profile
                     </Button>}
