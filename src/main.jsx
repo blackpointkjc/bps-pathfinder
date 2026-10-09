@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
 import '@/responsive.css'
+import '@/field-readability.css'
 import { installRequiredPrintFooter } from '@/utils/requiredPrintFooter'
 import { installGlobalRuntimeIssueCapture } from '@/utils/appDiagnostics'
 
