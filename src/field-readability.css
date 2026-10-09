@@ -128,8 +128,10 @@
       padding: 14px;
       border-radius: 10px;
       border: 1px solid #475569;
-      border-left: 3px solid;
+      border-left-width: 3px;
     }
+    .cad-app .command-dashboard .cad-call-row.border-l-red-500 { border-left-color: #ef4444; }
+    .cad-app .command-dashboard .cad-call-row.border-l-orange-500 { border-left-color: #f97316; }
     .cad-app .command-dashboard .cad-call-row > div { width: auto !important; min-width: 0; }
     .cad-app .command-dashboard .cad-call-priority { grid-area: 1 / 1; }
     .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2 / 2 / 4; padding: 0; }
