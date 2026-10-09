@@ -9,8 +9,7 @@
   }
 
   :is(.cad-app, html.bps-night-mode [role="dialog"], html.bps-night-mode [role="listbox"])
-  :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\])
-  :not(svg):not(.leaflet-container *):not(.recharts-wrapper *) {
+  :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *) {
     font-size: 14px !important;
     line-height: 1.45 !important;
   }
