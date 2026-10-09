@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 
 const categories = [
   ['pending_hr','HR outstanding','AdminCenter?admin_ops_section=people'],
-  ['pending_trainer_reviews','Trainer reviews','TrainerCenter?section=overview'],
+  ['pending_trainer_reviews','Certification reviews','TrainerCenter?section=compliance'],
   ['pending_students','Student registrations','TrainerCenter?section=students'],
   ['pending_employees','Pending employee accounts','AdminCenter?admin_ops_section=people'],
   ['pending_access_requests','Access requests','AdminCenter?admin_ops_section=people'],
@@ -24,7 +24,7 @@ export default function AdminOperationsBriefing({ compact = false }) {
   {isLoading && <p className="mt-4 text-sm text-slate-300">Checking department status…</p>}
   {error && <p role="alert" className="mt-4 text-sm text-red-300">Briefing unavailable: {error.message}. Counts are not verified.</p>}
   {!!data?.source_errors?.length && <p className="mt-4 rounded-lg border border-amber-700/40 p-3 text-xs text-amber-200">Data still unavailable from: {data.source_errors.join(', ')}. Affected counts are shown as unknown.</p>}
-  {!compact && <div className="mt-4 space-y-2">{(data?.items||[]).slice(0,35).map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 p-3"><div><div className="text-xs font-black text-cyan-300">{item.area} · {item.status}</div><div className="text-sm font-bold">{item.person}</div><div className="text-xs text-slate-400">{item.label}</div></div><Link to={'/'+item.page} className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200">OPEN WORKSPACE</Link></div>)}{data?.items?.length===0&&data?.source_errors?.length===0&&<p className="text-sm text-emerald-300">No pending HR, student, or trainer items returned.</p>}</div>}
+  {!compact && <div className="mt-4 space-y-2">{(data?.items||[]).slice(0,35).map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 p-3"><div><div className="text-xs font-black text-cyan-300">{item.area} · {item.status}</div><div className="text-sm font-bold">{item.person}</div><div className="text-xs text-slate-300">{item.label}</div>{item.owner && <div className="mt-1 text-xs text-slate-300">Assigned trainer: {item.owner}</div>}</div><Link to={'/'+item.page} className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200">{item.action || 'Open workspace'}</Link></div>)}{data?.items?.length===0&&data?.source_errors?.length===0&&<p className="text-sm text-emerald-300">No pending HR, student, or trainer items returned.</p>}</div>}
   {data?.generated_at&&<div className="mt-3 text-[11px] text-slate-500">Last checked: {new Date(data.generated_at).toLocaleString()}</div>}
  </section>;
 }
