@@ -134,8 +134,17 @@ export default function ManageStudents({ embedded = false }) {
     return { total: studentModules.length, completed };
   };
 
-  const isProfileComplete = (student) =>
-    student?.first_name && student?.last_name && student?.date_of_birth && student?.ssn && student?.dcjs_number;
+  const isProfileComplete = (student) => Boolean(student?.student_intake_complete);
+
+  const approveStudent = async student => {
+    try {
+      const response = await base44.functions.invoke('approveStudentAccount', { userId: student.id });
+      const result = response?.data || response || {};
+      if (!result.success) throw new Error(result.error || 'Approval was not confirmed');
+      toast.success('Student approved for the Student Portal');
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+    } catch (error) { toast.error(error?.response?.data?.error || error.message || 'Approval failed'); }
+  };
 
   const openEdit = (student) => {
     setEditingStudent(student);
@@ -247,26 +256,13 @@ export default function ManageStudents({ embedded = false }) {
                     <div className="text-xs space-y-1 text-slate-600">
                       {student.date_of_birth && <div>DOB: {student.date_of_birth}</div>}
                       {student.dcjs_number && <div>DCJS: {student.dcjs_number}</div>}
-                      {student.ssn && <div>SSN: ***-**-{student.ssn.slice(-4)}</div>}
+                      {student.student_intake_complete && <div>Identity profile received</div>}
                     </div>
                     <Button variant="outline" size="sm" onClick={() => openEdit(student)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Profile
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-green-700 border-green-300 hover:bg-green-50"
-                      onClick={async () => {
-                        if (await confirmInApp(`Convert ${student.first_name || student.email} from Student to Officer? This removes the Student role.`)) {
-                          convertToOfficerMutation.mutate(student);
-                        }
-                      }}
-                      disabled={convertToOfficerMutation.isPending}
-                    >
-                      <UserCheck className="w-4 h-4 mr-2" />
-                      Convert to Officer
-                    </Button>
+                    {String(student.rank || '').toLowerCase() === 'student registration pending' && <Button className="bg-green-700 text-white" size="sm" onClick={() => approveStudent(student)}>Review & Approve Student</Button>}
                   </div>
                 </div>
               </CardContent>
