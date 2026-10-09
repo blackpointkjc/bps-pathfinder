@@ -1528,6 +1528,19 @@ export default function Layout({ children, currentPageName }) {
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
+  // Student accounts have their own shell. Do not mount operational overlays,
+  // GPS, CAD audio, refresh controls, duty briefings, or field menus at all.
+  if (allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student') {
+    return <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#f5f3ff] text-slate-900">
+      <header className="flex min-h-16 items-center justify-between border-b border-violet-200 bg-white px-4 shadow-sm md:px-8">
+        <Link to={createPageUrl('StudentPortal')} className="flex items-center gap-3 text-violet-900"><GraduationCap className="h-7 w-7"/><span className="text-base font-black">Black Point Student Portal</span></Link>
+        <div className="flex items-center gap-3"><span className="hidden text-sm text-slate-600 sm:inline">{user?.first_name || 'Student'}</span><button type="button" onClick={() => logout(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100">Sign Out</button></div>
+      </header>
+      <main className="min-h-0 flex-1 overflow-y-auto pb-20">{currentPageName === 'StudentPortal' ? children : <div className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-bold">Student access only</h1><p className="mt-2 text-sm text-slate-500">Your account is assigned to the Student Portal.</p><Link to={createPageUrl('StudentPortal')} className="mt-5 inline-block rounded-lg bg-violet-700 px-4 py-3 text-sm font-bold text-white">Go to Student Portal</Link></div>}</main>
+      <nav className="fixed inset-x-0 bottom-0 flex justify-center border-t border-violet-200 bg-white p-2" aria-label="Student navigation"><Link to={createPageUrl('StudentPortal')} className="flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-violet-700 text-sm font-black text-white"><GraduationCap className="h-5 w-5"/>Student Portal</Link></nav>
+    </div>;
+  }
+
   return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={activeCenter === 'supervisor' || currentPageName === 'SupervisorCenter' || currentPageName === 'SupervisorFieldOversight'} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} />{!allowedCenters(user).includes('student') && <WelcomeBriefing user={user} />}<MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-2 backdrop-blur-[4px] sm:p-5" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
       <motion.section initial={{ scale: 0.96, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.97, y: 12, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[min(80dvh,640px)] w-[min(94vw,620px)] overflow-hidden rounded-2xl border border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
