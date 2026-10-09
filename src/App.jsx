@@ -241,12 +241,12 @@ const AuthenticatedApp = () => {
     playForcedSignOutLoginBeep();
   }, [needsLogin, forcedSignOutNotice]);
 
-  const signBackIn = method => {
-    try { localStorage.removeItem(FORCED_SIGN_OUT_NOTICE_KEY); } catch {}
-    setForcedSignOutNotice(null);
-    if (method === 'microsoft') navigateToMicrosoftLogin();
-    else navigateToLogin();
-  };
+  // Use the provider's actual sign-in route, never an intermediate Pathfinder
+  // sign-in page after a normal logout, session expiration, or forced logout.
+  useEffect(() => {
+    if (!needsLogin) return;
+    navigateToLogin();
+  }, [needsLogin, navigateToLogin]);
 
   if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 
@@ -278,7 +278,9 @@ const AuthenticatedApp = () => {
 
   if (isAuthenticated && user && !approvedCategory) return <PendingUserOnboarding user={user} />;
 
-  if (needsLogin) {
+  if (needsLogin) return <LoadingScreen />;
+
+  if (false) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-[#050a12] p-5 text-slate-100">
         <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0b1725] p-6 shadow-2xl sm:p-8">
