@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const allowed = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number','dcjs_expiration'];
-const required = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number'];
+const required = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration'];
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
