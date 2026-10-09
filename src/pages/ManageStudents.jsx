@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { listTrainingUsers } from '@/lib/trainingDirectory';
+import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirectory';
 
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
@@ -32,7 +32,7 @@ export default function ManageStudents({ embedded = false }) {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['trainingUsers', 'manageStudents'],
     queryFn: async () => {
-      const allUsers = await listTrainingUsers(true) || [];
+      const allUsers = await listTrainingUsers() || [];
       return allUsers.filter(u => !u.termination_date);
     },
     enabled: hasAccess,
@@ -105,7 +105,7 @@ export default function ManageStudents({ embedded = false }) {
     onError: (err) => toast.error("Failed: " + err.message),
   });
 
-  const students = allUsers.filter(u => u.additional_roles?.includes('student') || String(u.rank || '').toLowerCase() === 'student registration pending');
+  const students = allUsers.filter(u => u.additional_roles?.includes('student') || ['student registration pending','student invitation pending'].includes(String(u.rank || '').toLowerCase()));
   const inviteStudent = async (event) => {
     event.preventDefault(); setInviting(true);
     try {
@@ -115,6 +115,7 @@ export default function ManageStudents({ embedded = false }) {
       toast.success('Student invitation processed; registration awaits trainer review');
       setShowInvite(false);
       setStudentInvite({ first_name: '', last_name: '', email: '', date_of_birth: '' });
+      invalidateTrainingUsers();
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
     } catch (error) { toast.error(error.message || 'Student invitation failed'); }
     finally { setInviting(false); }
@@ -142,6 +143,7 @@ export default function ManageStudents({ embedded = false }) {
       const result = response?.data || response || {};
       if (!result.success) throw new Error(result.error || 'Approval was not confirmed');
       toast.success('Student approved for the Student Portal');
+      invalidateTrainingUsers();
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
     } catch (error) { toast.error(error?.response?.data?.error || error.message || 'Approval failed'); }
   };
@@ -257,10 +259,11 @@ export default function ManageStudents({ embedded = false }) {
                       {student.dcjs_number && <div>DCJS: {student.dcjs_number}</div>}
                       {student.student_intake_complete && <div>Identity profile received</div>}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(student)}>
+                    {!student.invitation_only && <Button variant="outline" size="sm" onClick={() => openEdit(student)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Edit Profile
-                    </Button>
+                    </Button>}
+                    {student.invitation_only && <Badge className="bg-amber-100 text-amber-900">Awaiting invitation acceptance</Badge>}
                     {String(student.rank || '').toLowerCase() === 'student registration pending' && <Button className="bg-green-700 text-white" size="sm" onClick={() => approveStudent(student)}>Review & Approve Student</Button>}
                   </div>
                 </div>
