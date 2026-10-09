@@ -143,7 +143,7 @@ export default function AdminDashboard() {
     staleTime: 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    refetchInterval: 60 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const directory = buildDirectoryIndex(allUsers || []);
