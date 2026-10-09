@@ -505,8 +505,8 @@ function CommandDashboardInner({ embedded = false }) {
             </div>
 
             {/* ── MAIN WORKSPACE ── */}
-            <div className="flex-1 min-h-0 p-1.5 md:p-2">
-                <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
+            <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">
+                <div className="command-queue-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
                     <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span>{pulsePointCalls.length > 0 && <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-red-950/70 border border-red-500/60 text-red-200 rounded">{pulsePointCalls.length} PULSEPOINT</span>}</div>
                         <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
@@ -525,7 +525,7 @@ function CommandDashboardInner({ embedded = false }) {
                         {isDispatchOrAdmin && <div className="w-14 flex-shrink-0 text-center">MARK</div>}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="command-queue-list flex-1 overflow-y-auto">
                         {sortedCalls.length === 0 ? (
                             <div className="flex items-center justify-center h-32 text-slate-500 font-mono text-xs tracking-widest">
                                 {loading ? '— LOADING CURRENT INCIDENTS —' : '— NO ACTIVE INCIDENTS —'}
