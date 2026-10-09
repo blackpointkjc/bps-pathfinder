@@ -56,8 +56,8 @@ import ClientCenter from './ClientCenter';
 import TrainerCenter from './TrainerCenter';
 import StudentPortal from './StudentPortal';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryLocations, listDirectoryUsers, listOfficerDirectory } from '@/lib/appDirectory';
-import { isClientAccount, isOperationalOfficer } from '@/lib/directoryUtils';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isClientAccount } from '@/lib/directoryUtils';
 import { setClientPreviewId } from '@/utils/clientPreview';
 import { setOfficerPreviewId } from '@/utils/officerPreview';
 
@@ -246,9 +246,7 @@ export default function AdminCenter() {
   const { data: signedInUser } = useQuery({ queryKey: ['adminCenterSignedInUser'], queryFn: () => base44.auth.me(), staleTime: 60000 });
   const navigate = useNavigate();
   const [shadowMode, setShadowMode] = useState('');
-  const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
-  const [officers, setOfficers] = useState([]);
   const [selectedOfficer, setSelectedOfficer] = useState('');
   const [previewPeople, setPreviewPeople] = useState([]);
   const [selectedRoleUser, setSelectedRoleUser] = useState('');
@@ -280,8 +278,6 @@ export default function AdminCenter() {
         }
         const rows = [...unique.values()].sort((x,y)=>x.__label.localeCompare(y.__label));
         setPreviewPeople(rows);
-        setOfficers(rows.filter(isOperationalOfficer));
-        setClients(rows.filter(isClientAccount));
       }).catch(() => { if (active) setPreviewError('Could not load users. Please retry.'); })
       .finally(() => { if (active) setPreviewLoading(false); });
     return () => { active = false; };
@@ -293,7 +289,7 @@ export default function AdminCenter() {
     if (!profile) return;
     const roles = new Set([profile.role, ...(Array.isArray(profile.additional_roles) ? profile.additional_roles : profile.additional_roles ? [profile.additional_roles] : [])].filter(Boolean).map(value=>String(value).toLowerCase()));
     const supervisorRanks = new Set(['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
-    const mode = isClientAccount(profile) ? 'client'
+    const mode = roles.has('admin') || roles.has('full_access') ? 'admin' : isClientAccount(profile) ? 'client'
       : roles.has('student') || String(profile.user_type || '').toLowerCase() === 'student' ? 'student'
       : roles.has('hr') ? 'hr'
       : roles.has('trainer') || roles.has('training') ? 'training'
@@ -307,7 +303,7 @@ export default function AdminCenter() {
     setSelectedOfficer(mode === 'officer' ? profile.id : '');
     setSelectedRoleUser(!['client','officer'].includes(mode) ? profile.id : '');
     // Reset identity-dependent cached results before mounting the selected account.
-    queryClient.removeQueries({ predicate: query => query.queryKey[0] !== 'adminCenterSignedInUser' });
+    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
     setShadowMode(mode);
   };
 
@@ -326,6 +322,7 @@ export default function AdminCenter() {
   };
 
   const shadowContent = useMemo(() => {
+    if (shadowMode === 'admin' && selectedRoleUser) return <AdminDashboard key={`shadow-admin-${selectedRoleUser}`} />;
     if (shadowMode === 'cad' && selectedRoleUser) return <CADCenter key={`shadow-cad-${selectedRoleUser}`} />;
     if (shadowMode === 'officer' && selectedOfficer) return <OfficerCenter key={`shadow-officer-${selectedOfficer}`} />;
     if (shadowMode === 'officer') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Shield className="mx-auto mb-3 h-10 w-10 text-cyan-300"/><div className="text-lg font-black text-white">Select an officer account above</div><div className="mt-1 text-sm">The Officer Center will load that officer's schedule, time, reports, and performance view.</div></div></div>;
