@@ -18,15 +18,15 @@ function blackPointEmail(subject: string, content: string, actionLabel = 'View i
 function accountCreatedEmail(firstName: string, accountType: string) {
   const portalLabel = accountType === 'client'
     ? 'Client Portal'
-    : accountType === 'student'
-      ? 'Student Training Portal'
+    : ['student', 'student_pending'].includes(accountType)
+      ? 'Student Portal'
       : 'Employee Portal';
   const content = `
     <p>Hello ${escapeHtml(firstName)},</p>
-    <p>A Black Point account has been created for you with access to the <strong>${portalLabel}</strong>. Before signing in for the first time, you will need to create your password through the account portal.</p>
-    <h3>Set up your password</h3>
-    <p>1. Open the Black Point portal.<br>2. Select <strong>Forgot Password</strong>.<br>3. Enter the email address connected to your account.<br>4. Follow the password-reset instructions sent to your email.</p>
-    <p>For your security, do not share your password or password-reset link with anyone. Black Point staff will never ask you to send your password by email.</p>
+    <p>You have been invited to create your Black Point <strong>${portalLabel}</strong> account.</p>
+    <h3>Create your account</h3>
+    <p>1. Open the Black Point portal using the button below.<br>2. Select <strong>Create Account</strong> or <strong>Sign Up</strong>.<br>3. Register using <strong>the same email address that received this invitation</strong>.<br>4. Create your own secure password and complete any email-verification steps.<br>5. Sign in and complete your ${['student','student_pending'].includes(accountType) ? 'student registration. Your trainer will review your submission before your Student Portal access is approved.' : 'account profile. An administrator will review your information before granting access.'}</p>
+    <p><strong>Do not select Forgot Password to register for the first time.</strong> For your security, never share your password with anyone.</p>
   `;
   return blackPointEmail('Welcome to Black Point — Set Up Your Account', content, 'Set Up Your Black Point Account', PORTAL_URL);
 }
