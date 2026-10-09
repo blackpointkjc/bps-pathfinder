@@ -661,9 +661,10 @@ export default function DispatchCenter() {
             <div className="flex min-h-12 flex-none flex-wrap items-center gap-2 border-b border-cyan-950/80 bg-gradient-to-r from-[#08111d] via-[#0b1725] to-[#08111d] px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,.28)] md:flex-nowrap md:gap-3 md:px-4">
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
-                    <div><span className="block text-sm font-black tracking-[0.18em] text-[#f5a623]">BPS CAD</span><span className="block text-[8px] tracking-[0.22em] text-slate-500">COMPUTER-AIDED DISPATCH</span></div>
-                    <span className="hidden text-slate-600 md:inline">/</span>
-                    <span className="hidden whitespace-nowrap text-[10px] font-semibold tracking-wider text-slate-300 md:inline">PRIMARY DISPATCH</span>
+                    <div className="min-w-0">
+                        <h1 className="text-sm font-bold leading-snug text-white">Dispatch Center</h1>
+                        <p className="mt-0.5 text-[10px] leading-snug text-slate-300">BPS CAD · Computer-Aided Dispatch</p>
+                    </div>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
