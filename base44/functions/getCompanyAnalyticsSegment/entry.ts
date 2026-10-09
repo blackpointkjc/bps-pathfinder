@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const waiters:Array<() => void> = [];
     const acquire = async () => {
-      if (activeReads >= 2) await new Promise<void>(resolve => waiters.push(resolve));
+      if (activeReads >= 1) await new Promise<void>(resolve => waiters.push(resolve));
       activeReads += 1;
     };
     const release = () => {
@@ -169,10 +169,19 @@ Deno.serve(async (req) => {
     const safe = async (entityName:string, loader:() => Promise<any[]>) => {
       await acquire();
       try {
-        const rows = await loader();
-        return Array.isArray(rows) ? rows : [];
-      } catch (error: any) {
-        errors[entityName] = error?.message || 'Unable to read data';
+        let lastError: any = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const rows = await loader();
+            return Array.isArray(rows) ? rows : [];
+          } catch (error: any) {
+            lastError = error;
+            const limited = error?.status === 429 || /rate.limit|429/i.test(String(error?.message || ''));
+            if (!limited || attempt > 0) break;
+            await new Promise(resolve => setTimeout(resolve, 1200));
+          }
+        }
+        errors[entityName] = lastError?.message || 'Unable to read data';
         return [];
       } finally {
         release();
