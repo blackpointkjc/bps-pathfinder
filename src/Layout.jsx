@@ -1528,7 +1528,7 @@ export default function Layout({ children, currentPageName }) {
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
-  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={activeCenter === 'supervisor' || currentPageName === 'SupervisorCenter' || currentPageName === 'SupervisorFieldOversight'} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><AdminHourlySystemScan user={user} /><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={activeCenter === 'supervisor' || currentPageName === 'SupervisorCenter' || currentPageName === 'SupervisorFieldOversight'} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} />{!allowedCenters(user).includes('student') && <WelcomeBriefing user={user} />}<MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-2 backdrop-blur-[4px] sm:p-5" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
       <motion.section initial={{ scale: 0.96, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.97, y: 12, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[min(80dvh,640px)] w-[min(94vw,620px)] overflow-hidden rounded-2xl border border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
@@ -1594,7 +1594,7 @@ export default function Layout({ children, currentPageName }) {
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-          <button type="button" onClick={openMobileToolsMenu} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
+          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).includes('student')} className={`${allowedCenters(user).includes('student') ? '!hidden' : ''} hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
             <span>Tools</span>
           </button>
@@ -1628,7 +1628,7 @@ export default function Layout({ children, currentPageName }) {
             <span>{criticalOutage ? 'SYSTEM OUTAGE' : 'SYSTEM STATUS'}</span>
             {outages.length > 0 && <span className="rounded-full bg-black/25 px-1.5 py-0.5 text-[8px]">{outages.length}</span>}
           </button>
-          <div ref={gpsMenuRef} className="relative">
+          <div ref={gpsMenuRef} className={allowedCenters(user).includes('student') ? 'hidden' : 'relative'}>
             <button
               type="button"
               onClick={() => setGpsMenuOpen(open => !open)}
@@ -1759,6 +1759,7 @@ export default function Layout({ children, currentPageName }) {
             type="button"
             onClick={refreshApplication}
             disabled={refreshingApp}
+            hidden={allowedCenters(user).includes('student')}
             className="flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-950/30 px-2.5 font-black uppercase tracking-[0.08em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-900/40 disabled:cursor-wait disabled:opacity-60 sm:px-3"
             title="Load the newest Pathfinder update"
             aria-label="Refresh Pathfinder and load the newest update"
