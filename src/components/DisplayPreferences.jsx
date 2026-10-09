@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DISPLAY_DEFAULTS, displayStorageKey, readDisplayPreferences, normalizeDisplayPreferences } from '@/lib/displayPreferences';
 
 const TEXT_SIZES = ['standard', 'large', 'extra-large'];
@@ -41,15 +41,15 @@ export default function DisplayPreferences({ userId }) {
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button type="button" className="pf-display-trigger" aria-label="Display settings: text size, contrast and spacing" title="Display settings">
-          <span aria-hidden="true">Aa</span>
+          <span aria-hidden="true">A− / A+</span>
         </button>
-      </DialogTrigger>
-      <DialogContent className="pf-display-panel">
-        <DialogTitle>Display settings</DialogTitle>
-        <DialogDescription>Make Pathfinder comfortable to read. Changes apply across your pages immediately.</DialogDescription>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} aria-label="Display settings" className="pf-display-panel w-[min(400px,calc(100vw-24px))] max-h-[min(760px,calc(100dvh-90px))] overflow-y-auto space-y-4">
+        <h2 className="font-bold">Display settings</h2>
+        <p>Make Pathfinder comfortable to read. Changes apply across your pages immediately.</p>
 
         <fieldset className="pf-display-group">
           <legend>Text size</legend>
@@ -91,7 +91,7 @@ export default function DisplayPreferences({ userId }) {
         </div>
         <p className="pf-display-save" role="status">{saveError ? 'Applied for now. This browser could not save your preference.' : 'Saved for your account on this browser. Other officers keep their own settings.'}</p>
         <button type="button" className="pf-display-reset" onClick={() => update(DISPLAY_DEFAULTS)}>Reset display settings</button>
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   );
 }
