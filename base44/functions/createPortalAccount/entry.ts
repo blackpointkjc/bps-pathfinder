@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       dcjs_number, dcjs_expiration, firearm_expiration
     } = body;
 
-    if (!['pending', 'client', 'student', 'employee'].includes(accountType)) {
+    if (!['pending', 'student_pending', 'client', 'student', 'employee'].includes(accountType)) {
       return Response.json({ error: 'Invalid account type' }, { status: 400 });
     }
     if (!first_name || !last_name || !email) {
@@ -57,8 +57,10 @@ Deno.serve(async (req) => {
     const canCreateStudent = fullAccess || roles.has('trainer');
     const canCreateEmployee = fullAccess || roles.has('hr');
     const canCreatePending = fullAccess;
+    const canCreateStudentPending = fullAccess || roles.has('trainer');
     if (
       (accountType === 'pending' && !canCreatePending) ||
+      (accountType === 'student_pending' && !canCreateStudentPending) ||
       (accountType === 'client' && !canCreateClient) ||
       (accountType === 'student' && !canCreateStudent) ||
       (accountType === 'employee' && !canCreateEmployee)
@@ -84,7 +86,7 @@ Deno.serve(async (req) => {
     let assignmentError = '';
     let assignmentPending = false;
 
-    const employeeRoles = accountType === 'pending'
+    const employeeRoles = ['pending','student_pending'].includes(accountType)
       ? []
       : accountType === 'employee'
         ? ['officer', 'cad_access']
@@ -92,12 +94,13 @@ Deno.serve(async (req) => {
     const updates: Record<string, unknown> = {
       first_name,
       last_name,
+      ...(accountType === 'student_pending' ? { date_of_birth: date_of_birth || '' } : {}),
       mobile_phone: mobile_phone || '',
       additional_roles: employeeRoles,
       assigned_location: clientAssignedLocations[0] || '',
       assigned_locations: clientAssignedLocations,
       assigned_sites: clientAssignedLocations,
-      rank: accountType === 'pending'
+      rank: accountType === 'student_pending' ? 'Student Registration Pending' : accountType === 'pending'
         ? 'Pending Assignment'
         : accountType === 'student'
           ? 'Student'
@@ -110,7 +113,7 @@ Deno.serve(async (req) => {
     // Direct User.create calls are rejected with HTTP 400 because User is a protected
     // system entity. After inviting, wait for the real pending User record and then
     // attach the editable profile fields.
-    if (accountType === 'pending' && !portalUser) {
+    if (['pending','student_pending'].includes(accountType) && !portalUser) {
       try {
         await base44.users.inviteUser(normalizedEmail, 'user');
         invitationSent = true;
@@ -139,7 +142,7 @@ Deno.serve(async (req) => {
 
     // Legacy category-specific creation remains supported for existing internal calls,
     // but uses only editable User fields and never writes protected role/email fields.
-    if (accountType !== 'pending' && !portalUser) {
+    if (!['pending','student_pending'].includes(accountType) && !portalUser) {
       try {
         portalUser = await base44.asServiceRole.entities.User.create({ email: normalizedEmail, ...updates });
       } catch (createError) {
@@ -148,7 +151,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (accountType !== 'pending') {
+    if (!['pending','student_pending'].includes(accountType)) {
       try {
         await base44.users.inviteUser(normalizedEmail, 'user');
         invitationSent = true;
