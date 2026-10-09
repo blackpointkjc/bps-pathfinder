@@ -130,7 +130,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
   if (onboardingOnly && profileComplete) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-amber-500/40 bg-slate-900 p-6 text-slate-100">
       <h2 className="text-xl font-bold text-amber-300">Student profile received</h2>
-      <p className="mt-3 text-sm">Your identity and training registration information has been saved. Your account remains pending trainer review. Training courses and company employee features are unavailable until approval.</p>
+      <p className="mt-3 text-sm">Thank you for completing your student registration. Your information has been submitted to the Training Department for review. You will be able to access your courses once your enrollment is approved.</p>
     </div>;
   }
 
