@@ -873,18 +873,6 @@ export default function AdminUsers({ embedded = false }) {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                        onClick={async () => {
-                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as a Student?`)) {
-                            alert('Student account creation and approval is managed by Trainer Center → Student Management.');
-                          }
-                        }}
-                      >
-                        Assign Student
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                         onClick={async () => {
                           if (await confirmInApp(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
