@@ -103,7 +103,7 @@ export default function OfficerCertificationCenter() {
   });
 
   const trainingOptions = useMemo(() => {
-    const reqs = requirements.filter(r => r.active !== false).map(r => ({
+    const reqs = requirements.filter(r => r.active !== false && modules.some(m => m.active !== false && String(m.title || '').trim().toLowerCase() === String(r.training_name || '').trim().toLowerCase())).map(r => ({
       key: `req:${r.id}`,
       name: r.training_name,
       category: r.category || 'certification',
@@ -238,7 +238,7 @@ export default function OfficerCertificationCenter() {
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-5 w-5" />Push Training to Officer</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><span className="font-bold">Officer:</span> {[selectedUser?.first_name, selectedUser?.last_name].filter(Boolean).join(' ') || selectedUser?.email}</div>
-            <div className="space-y-2"><Label>Training *</Label><Select value={pushTrainingId} onValueChange={value => { setPushTrainingId(value); const option = trainingOptions.find(t => t.key === value); if (option) setPushDueDate(format(addDays(new Date(), option.dueDays || 30), 'yyyy-MM-dd')); }}><SelectTrigger><SelectValue placeholder="Select training…" /></SelectTrigger><SelectContent>{trainingOptions.map(option => <SelectItem key={option.key} value={option.key}>{option.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Available Training *</Label><p className="text-xs text-slate-500">Only training modules that actually exist in the training catalog can be assigned. DCJS credential reference codes are managed separately in the officer certification file.</p>{trainingOptions.length === 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">No training modules have been created yet. Create a module in Trainer Center → Build & Assign Training before assigning coursework.</p>}<Select value={pushTrainingId} onValueChange={value => { setPushTrainingId(value); const option = trainingOptions.find(t => t.key === value); if (option) setPushDueDate(format(addDays(new Date(), option.dueDays || 30), 'yyyy-MM-dd')); }}><SelectTrigger><SelectValue placeholder="Select training…" /></SelectTrigger><SelectContent>{trainingOptions.map(option => <SelectItem key={option.key} value={option.key}>{option.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Due Date</Label><Input type="date" value={pushDueDate} onChange={e => setPushDueDate(e.target.value)} /></div>
             {selectedTraining && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900"><div className="font-bold">{selectedTraining.name}</div><div className="mt-1">{selectedTraining.mandatory ? 'Mandatory' : 'Optional'} · {selectedTraining.category?.replace(/_/g, ' ')}</div></div>}
             <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setPushOpen(false)}>Cancel</Button><Button className="flex-1" disabled={!selectedTraining || pushMutation.isPending} onClick={() => pushMutation.mutate()}><Send className="mr-2 h-4 w-4" />{pushMutation.isPending ? 'Pushing…' : 'Push Training'}</Button></div>
