@@ -7,10 +7,10 @@ import { listDirectoryUsers } from '@/lib/appDirectory';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 
 const actions = [
-  { label: 'Training Setup', detail: 'Build modules, courses and training content', icon: GraduationCap, page: 'AdminTraining' },
-  { label: 'Training Records', detail: 'Classes, rosters, certificates and records', icon: BookOpen, page: 'TrainingRecords' },
-  { label: 'Compliance', detail: 'Assignments, submissions and certification status', icon: ShieldCheck, page: 'AdminTrainingCompliance' },
-  { label: 'Students', detail: 'Student accounts and assigned coursework', icon: Users, page: 'ManageStudents' },
+  { label: 'Training Setup', detail: 'Build modules, courses and training content', icon: GraduationCap, page: 'TrainerCenter?section=courses' },
+  { label: 'Training Records', detail: 'Classes, rosters, certificates and records', icon: BookOpen, page: 'TrainerCenter?section=classes' },
+  { label: 'Compliance', detail: 'Assignments, submissions and certification status', icon: ShieldCheck, page: 'TrainerCenter?section=compliance' },
+  { label: 'Students', detail: 'Student accounts and assigned coursework', icon: Users, page: 'TrainerCenter?section=students' },
 ];
 
 const pretty = value => String(value || '').replace(/_/g, ' ').trim();
@@ -42,7 +42,19 @@ export default function TrainerOverview() {
   const recentCutoff = Date.now() - (14 * 86400000);
   const recentCompletions = completions.filter(row => new Date(row.completed_date || row.created_date || 0).getTime() >= recentCutoff).slice(0, 5);
 
+  const recentlyApprovedOfficers = (data.users || []).filter(person =>
+    (person.additional_roles || []).includes('officer') &&
+    (!Array.isArray(person.officer_certifications) || person.officer_certifications.length === 0)
+  ).slice(0, 10);
   const taskQueue = [
+    ...recentlyApprovedOfficers.slice(0, 5).map(person => ({
+      id: `officer-cert-review-${person.id}`,
+      person: `${person.first_name || ''} ${person.last_name || ''}`.trim() || person.email,
+      title: 'Review new officer certification file',
+      detail: 'Verify DCJS, firearm credentials and upload supporting certification records',
+      page: 'TrainerCenter?section=compliance',
+      urgent: true,
+    })),
     ...certificationTodos.slice(0, 5).map(row => ({
       id: `cert-${row.id}`,
       person: operationalName(row, directory, { fallback: 'Officer' }),
@@ -56,7 +68,7 @@ export default function TrainerOverview() {
       person: row.student_name || operationalName(row, directory, { fallback: 'Trainee' }),
       title: 'Training submission ready for review',
       detail: row.module_title || row.training_title || row.assignment_name || pretty(row.status || 'Submitted'),
-      page: 'AdminTrainingCompliance',
+      page: 'TrainerCenter?section=compliance',
       urgent: false,
     })),
     ...recentCompletions.slice(0, 3).map(row => ({
@@ -64,7 +76,7 @@ export default function TrainerOverview() {
       person: row.student_name || operationalName(row, directory, { fallback: 'Trainee' }),
       title: 'Completed class / record review',
       detail: row.module_title || row.training_title || row.course_name || 'Verify completion and certificate record',
-      page: 'TrainingRecords',
+      page: 'TrainerCenter?section=classes',
       urgent: false,
     })),
   ].slice(0, 10);
