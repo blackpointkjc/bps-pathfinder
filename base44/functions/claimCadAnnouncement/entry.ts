@@ -64,7 +64,9 @@ Deno.serve(async (req) => {
           ? 'Your assigned call has been cancelled. Return 10-8.'
           : event.event_type === 'call_cleared'
             ? 'Your assigned call has been cleared.'
-            : 'Your assigned call has been updated. Check your mobile data terminal.';
+            : ['unit_dispatched','additional_unit'].includes(event.event_type)
+              ? 'You have been assigned a call. Check your mobile data terminal.'
+              : 'Your call has been updated. Check your mobile data terminal.';
     }
 
     const existing = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
