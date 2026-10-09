@@ -258,6 +258,14 @@ export default function AdminCenter() {
 
   const canPreview = signedInRoles.has('admin') || signedInRoles.has('full_access');
   useEffect(() => {
+    // Account preview is scoped to Admin Center; do not leak it into normal navigation.
+    return () => {
+      setClientPreviewId('');
+      setOfficerPreviewId('');
+      queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+    };
+  }, [queryClient]);
+  useEffect(() => {
     if (!canPreview) return;
     let active = true;
     setPreviewLoading(true);
@@ -313,10 +321,7 @@ export default function AdminCenter() {
     setOfficerPreviewId('');
     setSelectedOfficer('');
     setSelectedRoleUser('');
-    queryClient.removeQueries({ queryKey: ['currentUser'] });
-    queryClient.removeQueries({ queryKey: ['myScheduleData'] });
-    queryClient.removeQueries({ queryKey: ['myTimeEntries'] });
-    queryClient.removeQueries({ queryKey: ['myPerformanceData'] });
+    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
     setShadowMode('');
     navigate({ pathname: window.location.pathname, search: '?admin_center=admin' }, { replace: true });
   };
