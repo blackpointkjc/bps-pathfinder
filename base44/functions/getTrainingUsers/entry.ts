@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
         const type = String(entry.user_type || entry.account_type || entry.portal_type || '').toLowerCase();
         const rank = String(entry.rank || '').toLowerCase();
         if (entryRoles.has('client') || ['client','pending'].includes(type) || rank === 'client') return false;
-        if (entryRoles.has('student') || type === 'student' || rank === 'student') return true;
+        if (entryRoles.has('student') || type === 'student' || rank === 'student' || rank === 'student registration pending') return true;
         return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
       })
       .map((entry: any) => ({
@@ -49,6 +49,8 @@ Deno.serve(async (req) => {
         additional_roles: entry.additional_roles || [],
         user_type: entry.user_type || entry.account_type || entry.portal_type || '',
         officer_certifications: Array.isArray(entry.officer_certifications) ? entry.officer_certifications : [],
+        date_of_birth: entry.date_of_birth || '',
+        student_intake_complete: Boolean(entry.ssn && entry.dcjs_number && entry.mobile_phone && entry.address && entry.date_of_birth),
         dcjs_number: entry.dcjs_number || '',
         dcjs_expiration: entry.dcjs_expiration || '',
         firearm_expiration: entry.firearm_expiration || '',
