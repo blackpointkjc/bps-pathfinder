@@ -36,8 +36,8 @@ export default function DataConnectionStatus() {
     void queryClient.refetchQueries({ type: 'active', predicate: query => query.state.status === 'error' }).catch(() => {});
     window.dispatchEvent(new CustomEvent('bps-operational-resume'));
   };
-  return <div role="status" className="fixed bottom-4 left-4 right-4 z-[100] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-slate-950 p-4 text-sm text-amber-100 shadow-xl">
-    <div><div className="font-bold">Data connection interrupted</div><div className="mt-1 text-xs">{status.rateLimited ? 'The API is rate-limited. Data will retry after the recovery pause.' : 'Some data could not load. Failed screens are retrying automatically.'}</div></div>
+  return <div role="status" aria-live="polite" className="fixed bottom-2 right-2 z-[70] flex max-w-xs flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-slate-950/95 p-2 text-xs text-amber-100 shadow-sm">
+    <div><div className="font-bold">Some data is reconnecting</div><div className="mt-1 text-[11px]">{status.rateLimited ? 'The API is rate-limited. Data will retry after the recovery pause.' : 'Some data could not load. Failed screens are retrying automatically.'}</div></div>
     <button type="button" onClick={retry} className="rounded-md border border-amber-500/60 px-3 py-2 font-bold">Retry data</button>
   </div>;
 }
