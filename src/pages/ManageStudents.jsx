@@ -142,7 +142,7 @@ export default function ManageStudents({ embedded = false }) {
       const response = await base44.functions.invoke('approveStudentAccount', { userId: student.id });
       const result = response?.data || response || {};
       if (!result.success) throw new Error(result.error || 'Approval was not confirmed');
-      toast.success('Student approved for the Student Portal');
+      toast.success('Student approved. Student Portal access has been assigned automatically.');
       invalidateTrainingUsers();
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
     } catch (error) { toast.error(error?.response?.data?.error || error.message || 'Approval failed'); }
@@ -230,11 +230,11 @@ export default function ManageStudents({ embedded = false }) {
                             ? `${student.first_name} ${student.last_name}`
                             : student.email}
                         </h3>
-                        <Badge className={profileOk ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
-                          {profileOk ? (
-                            <><CheckCircle className="w-3 h-3 mr-1" />Profile Complete</>
+                        <Badge className={student.additional_roles?.includes('student') ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
+                          {student.additional_roles?.includes('student') ? (
+                            <><CheckCircle className="w-3 h-3 mr-1" />Approved · Student Portal Active</>
                           ) : (
-                            <><Clock className="w-3 h-3 mr-1" />Profile Incomplete</>
+                            <><Clock className="w-3 h-3 mr-1" />{student.invitation_only ? 'Invitation Pending' : profileOk ? 'Pending Trainer Approval' : 'Registration Incomplete'}</>
                           )}
                         </Badge>
                       </div>
