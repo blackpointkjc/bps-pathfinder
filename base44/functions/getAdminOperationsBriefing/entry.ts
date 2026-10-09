@@ -25,7 +25,7 @@ Deno.serve(async req => {
       return !assigned && !user.termination_date && rank !== 'student registration pending';
     });
     const enrollmentRows = (enrollments || []).filter((item:any)=>['invited','profile_submitted'].includes(item.status));
-    const namesById = new Map((users || []).map((user:any)=>[String(user.id), [user.first_name,user.last_name].filter(Boolean).join(' ') || user.email || 'User']));
+    const namesById = new Map((users || []).map((user:any)=>[String(user.id), [user.first_name,user.last_name].filter(Boolean).join(' ').trim() || user.full_name?.trim() || user.email || `Account ${user.id}`]));
     return Response.json({
       success:true, generated_at:new Date().toISOString(), source_errors:sourceErrors,
       status:{
@@ -39,7 +39,15 @@ Deno.serve(async req => {
         ...pendingEmployees.slice(0,30).map((item:any)=>({id:'employee-'+item.id,area:'HR',label:'Employee onboarding / access approval',person:namesById.get(String(item.id)) || 'Employee',status:'Pending admin review',page:'AdminCenter?admin_ops_section=people'})),
         ...(access || []).slice(0,25).map((item:any)=>({id:'access-'+item.id,area:'HR',label:'Account access request',person:item.full_name || item.email || 'Applicant',status:'Awaiting HR/admin decision',page:'AdminCenter?admin_ops_section=people'})),
         ...enrollmentRows.slice(0,35).map((item:any)=>({id:'student-'+item.id,area:'Student',label:'Student registration',person:[item.first_name,item.last_name].filter(Boolean).join(' ') || item.email,status:item.status==='profile_submitted'?'Ready for trainer review':'Waiting for student registration',page:'TrainerCenter?section=students'})),
-        ...officerReviews.slice(0,35).map((item:any)=>({id:'training-'+item.id,area:'Trainer',label:'Review officer certifications',person:item.related_name || 'Officer',status:'Trainer review outstanding',page:'TrainerCenter?section=overview'})),
+        ...officerReviews.slice(0,35).map((item:any)=>({
+          id:'training-'+item.id, area:'Training',
+          label:'Review officer certifications',
+          person:namesById.get(String(item.related_id)) || item.related_name?.trim() || `Officer account unavailable · ${item.related_id || item.id}`,
+          owner:namesById.get(String(item.assigned_to)) || item.assigned_name?.trim() || 'Trainer assignment unavailable',
+          status:'Certification review pending',
+          page:'TrainerCenter?section=compliance' + (item.related_id ? '&officer_id='+encodeURIComponent(item.related_id) : ''),
+          action:'Review certifications',
+        })),
       ],
     });
   } catch(error) {
