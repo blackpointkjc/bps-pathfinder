@@ -437,7 +437,10 @@ export default function AdminAnalytics() {
           let payload = result?.data || result || {};
           if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
           if (payload?.error) throw new Error(payload.error);
-          if (payload.is_partial || Object.keys(payload.service_errors || {}).length) throw new Error('Refresh incomplete; last verified figures remain visible.');
+          if (payload.is_partial || Object.keys(payload.service_errors || {}).length) {
+            const sources = Object.keys(payload.service_errors || {});
+            throw new Error(`Performance sources unavailable: ${sources.join(', ') || 'unknown'}. Last verified figures remain visible.`);
+          }
           snapshots[officer.id] = payload;
         } catch (error) {
           errors[officer.id] = error?.message || 'Unable to load officer performance';
@@ -450,7 +453,7 @@ export default function AdminAnalytics() {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchInterval: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === analyticsStartDate && previousQuery?.queryKey?.[3] === analyticsEndDate ? previousData : undefined,
