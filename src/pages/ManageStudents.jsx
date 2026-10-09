@@ -150,14 +150,17 @@ export default function ManageStudents({ embedded = false }) {
   const isProfileComplete = (student) => Boolean(student?.student_intake_complete);
 
   const approveStudent = async student => {
+    setApprovalBusy(true);
     try {
       const response = await base44.functions.invoke('approveStudentAccount', { userId: student.id });
       const result = response?.data || response || {};
       if (!result.success) throw new Error(result.error || 'Approval was not confirmed');
-      toast.success('Student approved. Student Portal access has been assigned automatically.');
+      setReviewingStudent(null);
+      toast.success('Student approved. The Student role has been assigned automatically.');
       invalidateTrainingUsers();
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
     } catch (error) { toast.error(error?.response?.data?.error || error.message || 'Approval failed'); }
+    finally { setApprovalBusy(false); }
   };
 
   const openEdit = (student) => {
