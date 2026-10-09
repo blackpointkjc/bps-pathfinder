@@ -105,10 +105,10 @@ Deno.serve(async (req) => {
 
     const announcements = await loadSource('announcements', () => base44.asServiceRole.entities.Announcement.list('-created_date', 100));
     const receipts = await loadSource('announcement receipts', () => base44.asServiceRole.entities.AnnouncementReceipt.filter({ user_email: me.email }, '-read_at', 300));
-    const notifications = await loadSource('notifications', () => base44.asServiceRole.entities.Notification.filter({ recipient_email: me.email }, '-created_date', 150));
+    const notifications = await loadSource('notifications', () => base44.asServiceRole.entities.Notification.filter({ recipient_email: me.email, is_read: false }, '-created_date', 50), { attempts: 1 });
 
     const assignedTasks = supervisorLike
-      ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id }, '-created_date', 100))
+      ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id, status: 'open' }, '-created_date', 50), { attempts: 1 })
       : [];
 
 
