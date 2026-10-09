@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
+import AdminOperationsBriefing from '@/components/AdminOperationsBriefing';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
@@ -714,7 +715,8 @@ export default function AdminUsers({ embedded = false }) {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedAdminPhoto}
       />
-      <div className="mb-8">
+      <AdminOperationsBriefing />
+      <div className="mb-8 mt-5">
         {!embedded && <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
