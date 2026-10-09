@@ -33,14 +33,20 @@ export default function ManageStudents({ embedded = false }) {
   const isSystemAdmin = currentUser?.role === 'admin';
   const hasAccess = isSystemAdmin || currentUser?.additional_roles?.includes('full_access') || currentUser?.additional_roles?.includes('trainer');
 
-  const { data: allUsers = [], isLoading } = useQuery({
+  const { data: studentRoster = { users: [], load_errors: [] }, isLoading, isFetching: refreshingStudents, error: studentRosterError, refetch: refetchStudents } = useQuery({
     queryKey: ['trainingUsers', 'manageStudents'],
     queryFn: async () => {
-      const allUsers = await listTrainingUsers() || [];
-      return allUsers.filter(u => !u.termination_date);
+      const response = await base44.functions.invoke('getTrainingUsers', {});
+      const result = response?.data || response || {};
+      if (!result.success) throw new Error(result.error || 'Unable to load student invitations');
+      return {users: (result.users || []).filter(u => !u.termination_date), load_errors: result.load_errors || []};
     },
     enabled: hasAccess,
+    staleTime: 15000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
   });
+  const allUsers = studentRoster.users || [];
 
   const { data: allCompletions = [] } = useQuery({
     queryKey: ['allTrainingCompletions'],
@@ -129,6 +135,7 @@ export default function ManageStudents({ embedded = false }) {
       setStudentInvite({ first_name: '', last_name: '', email: '', date_of_birth: '' });
       invalidateTrainingUsers();
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+      await refetchStudents();
     } catch (error) { toast.error(error.message || 'Student invitation failed'); }
     finally { setInviting(false); }
   };
@@ -208,6 +215,9 @@ export default function ManageStudents({ embedded = false }) {
           </form>
         </DialogContent>
       </Dialog>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-200 bg-white p-3 text-slate-800"><span className="text-sm font-bold">{students.filter(item => !item.additional_roles?.includes('student')).length} pending student invitation(s) or registrations</span><Button size="sm" variant="outline" onClick={() => refetchStudents()} disabled={refreshingStudents}>{refreshingStudents ? 'Updating…' : 'Refresh Students'}</Button></div>
+      {studentRosterError && <div role="alert" className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">Student invitations could not be loaded: {studentRosterError.message}</div>}
+      {!!studentRoster.load_errors?.length && <div role="alert" className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">Some enrollment data is unavailable: {studentRoster.load_errors.join('; ')}. The list may be incomplete.</div>}
       {isLoading && (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto" />
