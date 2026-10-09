@@ -21,8 +21,10 @@ export default function StudentPortal({ onboardingOnly = false }) {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: userLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
+    queryKey: ['studentPortalIdentity'],
+    queryFn: async () => (await base44.auth.me()) || getCurrentDirectoryUser(),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
@@ -128,9 +130,20 @@ export default function StudentPortal({ onboardingOnly = false }) {
   const profileComplete = user?.first_name && user?.last_name && user?.date_of_birth && user?.ssn && user?.dcjs_number;
 
   if (onboardingOnly && profileComplete) {
+    const submitCompletedRegistration = async () => {
+      setSavingProfile(true);
+      try {
+        const response = await base44.functions.invoke('submitStudentRegistration', {});
+        const result = response?.data || response || {};
+        if (!result.success) throw new Error(result.error || 'Registration could not be submitted');
+        toast.success('Registration submitted for trainer review');
+      } catch(error) {toast.error(error?.response?.data?.error || error.message || 'Submission failed');}
+      finally {setSavingProfile(false);}
+    };
     return <div className="mx-auto max-w-2xl rounded-2xl border border-amber-500/40 bg-slate-900 p-6 text-slate-100">
       <h2 className="text-xl font-bold text-amber-300">Student profile received</h2>
-      <p className="mt-3 text-sm">Thank you for completing your student registration. Your information has been submitted to the Training Department for review. You will be able to access your courses once your enrollment is approved.</p>
+      <p className="mt-3 text-sm">Your student profile has been saved. Submit your registration for trainer review. Your courses will become available after your enrollment is approved.</p>
+      <button type="button" disabled={savingProfile} onClick={submitCompletedRegistration} className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white">{savingProfile ? 'Submitting…' : 'Submit Registration for Review'}</button>
     </div>;
   }
 
