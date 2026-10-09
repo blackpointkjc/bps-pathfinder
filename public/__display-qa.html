@@ -1,0 +1,17 @@
+<!doctype html><html class="bps-night-mode"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module">
+import React from '/node_modules/.vite/deps/react.js';
+import {createRoot} from '/node_modules/.vite/deps/react-dom_client.js';
+import DisplayPreferences from '/src/components/DisplayPreferences.jsx';
+import '/src/App.css'; import '/src/index.css'; import '/src/responsive.css'; import '/src/field-readability.css';
+const e=React.createElement;
+createRoot(document.getElementById('root')).render(e('div',{className:'cad-app',style:{background:'#08111d',color:'white',padding:20,overflow:'auto'}},
+e('header',{className:'pathfinder-header',style:{display:'flex',justifyContent:'space-between'}},e('h1',null,'Display settings test — sample content'),e(DisplayPreferences,{userId:'display-qa'})),
+e('main',{className:'bps-command-page night-workspace',style:{padding:20}},
+e('h2',{className:'text-xl'},'Officer workspace'),
+e('p',{className:'text-[10px] text-slate-500',id:'qa-small'},'Incident address and secondary label'),
+e('p',{className:'text-sm',id:'qa-body'},'Sample report text'),
+e('button',{className:'text-xs border border-slate-700',id:'qa-button'},'Open sample call'),
+e('div',{className:'animate-pulse text-red-300',id:'qa-motion'},'Sample alert'),
+e('table',null,e('tbody',null,e('tr',null,e('td',{id:'qa-cell'},'Sample table row'))))
+)));
+</script></body></html>
