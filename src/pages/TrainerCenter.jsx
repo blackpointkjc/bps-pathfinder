@@ -38,7 +38,7 @@ export default function TrainerCenter({embedded=false}) {
     </nav>
     <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs leading-5 text-slate-400">Student approvals, officer certification reviews, and course creation have their own clearly named work areas. You do not need to return to a dashboard between tasks.</div>
    </aside>
-   <main className="min-w-0 flex-1"><div className="border-b border-slate-800 bg-[#101a2a] px-4 py-4 md:px-6"><div className="text-[10px] font-black uppercase tracking-widest text-violet-300">Current task</div><h2 className="mt-1 text-xl font-black">{selected.title}</h2><p className="text-xs text-slate-400">{selected.detail}</p></div><View embedded /></main>
+   <main className="min-w-0 flex-1"><div className="border-b border-slate-800 bg-[#101a2a] px-4 py-4 md:px-6"><div className="text-[10px] font-black uppercase tracking-widest text-violet-300">Current task</div><h2 className="mt-1 text-xl font-black">{selected.title}</h2><p className="text-xs text-slate-400">{selected.detail}</p></div><div className={selected.id === 'overview' ? '' : 'min-w-0 bg-slate-50 text-slate-900'}><View embedded /></div></main>
   </div>
  </div>;
 }
