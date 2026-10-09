@@ -321,6 +321,13 @@ function invalidateReadCacheForWrite(meta = {}) {
     if (meta.name === 'ActiveOfficer') addFunction('getOnDutyUnits');
   }
 
+  if (meta?.kind === 'auth' && meta?.method === 'updateMe') {
+    prefixes.add('auth:me:');
+    addEntity('User');
+    addFunction('getAppDirectory');
+    addFunction('getTrainingUsers');
+  }
+
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
     if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
