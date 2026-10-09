@@ -33,8 +33,8 @@ export default function PendingUserOnboarding({ user }) {
    <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Black Point | Secure registration</p>
    <h1 className="mt-2 text-2xl font-black">{submitted ? (isStudent ? 'Pending trainer review' : 'Pending administrator approval') : (isStudent ? 'Complete your student registration' : 'Complete your new account profile')}</h1>
    {submitted && isStudent ? <div className="mt-5"><StudentPortal onboardingOnly /></div> : submitted ? <div className="mt-5 space-y-4 text-slate-200">
-     <p>Your onboarding information has been submitted. Your account will remain pending until the responsible reviewer verifies your profile and assigns portal access. You cannot use the operational dashboard yet.</p>
-     <p className="text-sm text-slate-400">You may safely close this page and sign back in later after your administrator approves the account.</p>
+     <p>Your employee profile has been submitted successfully. Your account will remain pending while the Administration Department reviews your information and confirms your assigned access.</p>
+     <p className="text-sm text-slate-400">You may close this page. Once your administrator approves your account, sign in again to access your employee portal.</p>
    </div> : <>
     <p className="mt-3 text-sm text-slate-300">{isStudent ? 'Enter the contact and DCJS information requested for your student record. Your trainer will review your enrollment before course access.' : 'Complete the personal and licensing details below. Payroll, tax, salary, badge, rank, SSN, date of birth, division, work assignments, and access permissions are administered separately by authorized staff.'}</p>
     <form onSubmit={submit} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
