@@ -36,6 +36,7 @@ import MicrosoftMailSetupGate from '@/components/MicrosoftMailSetupGate';
 import OutlookNotificationMonitor from '@/components/OutlookNotificationMonitor';
 import TeamsNotificationMonitor from '@/components/TeamsNotificationMonitor';
 import AdminHourlySystemScan from '@/components/admin/AdminHourlySystemScan';
+import DisplayPreferences from '@/components/DisplayPreferences';
 
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1630,6 +1631,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-[#7791aa]">
+          <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
           <button
             type="button"
             onClick={() => navigate(createPageUrl('SystemStatus'))}
