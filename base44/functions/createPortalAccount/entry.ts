@@ -235,6 +235,32 @@ Deno.serve(async (req) => {
     }
     const emailSent = invitationSent;
     const emailError = brandedEmailError || (invitationSent ? '' : (invitationError || 'No account invitation was sent'));
+    let enrollmentId: string | null = null;
+    if (accountType === 'student_pending' && (invitationSent || portalUser?.id)) {
+      try {
+        const found = await base44.asServiceRole.entities.StudentEnrollment.filter({ email: normalizedEmail }, '-created_date', 2);
+        const current = (found || []).find((entry:any) => entry.status !== 'denied');
+        if (current?.id) {
+          enrollmentId = current.id;
+          if (portalUser?.id && !current.user_id) {
+            await base44.asServiceRole.entities.StudentEnrollment.update(current.id, { user_id: portalUser.id });
+          }
+        } else {
+          const enrollment = await base44.asServiceRole.entities.StudentEnrollment.create({
+            email: normalizedEmail, first_name: String(first_name).trim(), last_name: String(last_name).trim(),
+            date_of_birth: String(date_of_birth || ''), status: 'invited',
+            user_id: portalUser?.id || '', invited_by: currentUser.email || '',
+          });
+          enrollmentId = enrollment?.id || null;
+        }
+      } catch (enrollmentError) {
+        return Response.json({
+          error: 'The invitation may have been sent, but enrollment tracking could not be saved.',
+          invitation_sent: invitationSent,
+          error_stage: 'student_enrollment',
+        }, { status: 503 });
+      }
+    }
     const provisioned = Boolean(portalUser?.id && !assignmentPending);
     if (!invitationSent && !portalUser?.id) {
       return Response.json({ success: false, error: invitationError || directoryError || 'Base44 did not create or invite this user', error_stage: 'invitation' }, { status: 502 });
@@ -243,6 +269,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       provisioned,
+      enrollment_id: enrollmentId,
       status: provisioned ? 'account_ready' : 'invited_waiting_for_registration',
       invitation_sent: invitationSent,
       branded_email_sent: brandedEmailSent,
