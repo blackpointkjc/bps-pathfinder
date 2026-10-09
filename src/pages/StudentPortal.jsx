@@ -11,7 +11,7 @@ import { GraduationCap, CheckCircle, User, ShieldAlert, Lock } from "lucide-reac
 import { format } from "date-fns";
 import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
-import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, invalidateAppDirectory } from '@/lib/appDirectory';
 
 export default function StudentPortal({ onboardingOnly = false }) {
   const [viewingModule, setViewingModule] = useState(null);
@@ -83,6 +83,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
     }
     setSavingProfile(true);
     await base44.auth.updateMe(profileForm);
+    invalidateAppDirectory();
     queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     setSavingProfile(false);
     toast.success(onboardingOnly ? 'Student identity profile saved. Await trainer review.' : 'Profile saved! You can now access your training.');
