@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
     if (!authorized) return Response.json({ error: 'Trainer access required', users: [] }, { status: 403 });
 
     const allUsers = await loadUsers(base44);
+    const enrollments = await base44.asServiceRole.entities.StudentEnrollment.list('-created_date', 150).catch(() => []);
     const users = (allUsers || [])
       .filter((entry: any) => {
         if (!entry?.email || entry.termination_date) return false;
@@ -56,6 +57,21 @@ Deno.serve(async (req) => {
         firearm_expiration: entry.firearm_expiration || '',
       }))
       .sort((a: any, b: any) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`));
+
+    // Invitations are durable even before Base44 provisions the User record.
+    // These are roster placeholders only; they cannot be approved or edited until
+    // the invited person has actually signed in and completed registration.
+    for (const enrollment of enrollments || []) {
+      if (!['invited','profile_submitted'].includes(String(enrollment.status || ''))) continue;
+      if (users.some((entry:any) => String(entry.email).toLowerCase() === String(enrollment.email).toLowerCase())) continue;
+      users.push({
+        id: `invitation:${enrollment.id}`, email: enrollment.email,
+        first_name: enrollment.first_name, last_name: enrollment.last_name,
+        date_of_birth: enrollment.date_of_birth,
+        rank: 'Student Invitation Pending', additional_roles: [],
+        invitation_only: true, student_intake_complete: false,
+      });
+    }
 
     return Response.json({ success: true, users });
   } catch (error: any) {
