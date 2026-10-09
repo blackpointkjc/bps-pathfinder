@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
         }
 
         console.log('📝 Updating user:', userId);
-        console.log('📝 Updates:', JSON.stringify(updates, null, 2));
+        // Never log submitted profile fields or sensitive identification details.
 
         // Update the user's profile using asServiceRole
         const targetUsers = await base44.asServiceRole.entities.User.list();
