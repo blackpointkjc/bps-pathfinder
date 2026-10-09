@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { GraduationCap, BookOpen, ShieldCheck, Users, ClipboardCheck, ArrowRight, AlertTriangle, Activity, CheckCircle2, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -16,6 +17,16 @@ const actions = [
 const pretty = value => String(value || '').replace(/_/g, ' ').trim();
 
 export default function TrainerOverview() {
+  const queryClient = useQueryClient();
+  const finishCertificationTask = async taskId => {
+    try {
+      const response = await base44.functions.invoke('completeTrainerCertificationReview', {taskId});
+      const payload = response?.data || response || {};
+      if (!payload.success) throw new Error(payload.error || 'Review is not complete');
+      toast.success('Certification review completed');
+      queryClient.invalidateQueries({queryKey:['trainerOverviewSnapshot']});
+    } catch(error) { toast.error(error?.response?.data?.error || error?.message || 'Unable to complete review'); }
+  };
   const { data = {}, isLoading } = useQuery({
     queryKey: ['trainerOverviewSnapshot'],
     queryFn: async () => {
@@ -25,7 +36,9 @@ export default function TrainerOverview() {
       const submissions = await base44.entities.TrainingSubmission.list('-submission_date', 150).catch(() => []);
       const completions = await base44.entities.TrainingCompletion.list('-completed_date', 150).catch(() => []);
       const certificationTodos = await base44.entities.CertificationTodo.list('days_until_expiration', 150).catch(() => []);
-      return { users, modules, assignments, submissions, completions, certificationTodos };
+      const currentUser = await base44.auth.me();
+      const trainerTasks = currentUser?.id ? await base44.entities.Task.filter({ assigned_to: currentUser.id, status: 'open' }, '-created_date', 50).catch(() => []) : [];
+      return { users, modules, assignments, submissions, completions, certificationTodos, trainerTasks };
     },
     staleTime: 60000,
     refetchInterval: 120000,
@@ -42,14 +55,12 @@ export default function TrainerOverview() {
   const recentCutoff = Date.now() - (14 * 86400000);
   const recentCompletions = completions.filter(row => new Date(row.completed_date || row.created_date || 0).getTime() >= recentCutoff).slice(0, 5);
 
-  const recentlyApprovedOfficers = (data.users || []).filter(person =>
-    (person.additional_roles || []).includes('officer') &&
-    (!Array.isArray(person.officer_certifications) || person.officer_certifications.length === 0)
-  ).slice(0, 10);
+  const certificationReviewTasks = (data.trainerTasks || []).filter(task => task.title === 'Review new officer certifications');
   const taskQueue = [
-    ...recentlyApprovedOfficers.slice(0, 5).map(person => ({
-      id: `officer-cert-review-${person.id}`,
-      person: `${person.first_name || ''} ${person.last_name || ''}`.trim() || person.email,
+    ...certificationReviewTasks.slice(0, 5).map(task => ({
+      id: `cert-review-${task.id}`,
+      taskId: task.id,
+      person: task.related_name || 'New officer',
       title: 'Review new officer certification file',
       detail: 'Verify DCJS, firearm credentials and upload supporting certification records',
       page: 'TrainerCenter?section=compliance',
