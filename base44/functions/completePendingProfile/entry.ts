@@ -12,13 +12,15 @@ Deno.serve(async req => {
       return Response.json({error:'Only pending users can submit this onboarding form'}, {status:403});
     }
     const values = await req.json();
+    const studentIntake = String(me.rank || '').toLowerCase() === 'student registration pending';
     const updates = {};
     for (const field of allowed) {
       if (Object.prototype.hasOwnProperty.call(values,field)) updates[field] = String(values[field] ?? '').trim().slice(0,255);
     }
     const current = await base44.asServiceRole.entities.User.get(me.id);
     const combined = {...current,...updates};
-    const missing = required.filter(field => !String(combined[field] || '').trim());
+    const requiredForAccount = studentIntake ? ['mobile_phone','address','city','state','zip','dcjs_number'] : required;
+    const missing = requiredForAccount.filter(field => !String(combined[field] || '').trim());
     if (missing.length) return Response.json({error:'Complete all required fields before submitting.',missing}, {status:400});
     await base44.asServiceRole.entities.User.update(me.id, updates);
     return Response.json({success:true, awaiting_admin_approval:true});
