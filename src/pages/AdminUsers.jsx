@@ -652,12 +652,20 @@ export default function AdminUsers({ embedded = false }) {
     };
     const config = categoryConfig[category];
     if (!config) return;
+    const officerRequired = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number'];
+    if (category === 'officer') {
+      const missing = officerRequired.filter(field => !String(userData[field] || '').trim());
+      if (missing.length) {
+        alert('Officer onboarding has not been completed. The officer must sign in and submit their personal, emergency contact, driver license and DCJS information before approval. Missing: ' + missing.join(', '));
+        return;
+      }
+    }
     const response = await base44.functions.invoke('updateUser', {
       userId: userData.id,
       updates: { role: 'user', additional_roles: config.roles, rank: config.rank },
     });
     const payload = response?.data || response || {};
-    if (payload.error) throw new Error(payload.error);
+    if (payload.error || payload.success === false) throw new Error(payload.error || 'Unable to approve account');
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] }),
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] }),
