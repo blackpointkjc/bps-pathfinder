@@ -18,6 +18,7 @@ import DispatcherShiftReports from './pages/DispatcherShiftReports';
 import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
+import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -250,6 +251,13 @@ const AuthenticatedApp = () => {
   if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 
   if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
+
+  // Authentication alone is not portal authorization. Newly invited users stay
+  // in restricted onboarding until an administrator assigns their category.
+  const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const approvedCategory = user?.role === 'admin' || user?.role === 'dispatch' ||
+    ['full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer'].some(role => accessRoles.has(role));
+  if (isAuthenticated && user && !approvedCategory) return <PendingUserOnboarding user={user} />;
 
   if (accountLock) {
     return (
