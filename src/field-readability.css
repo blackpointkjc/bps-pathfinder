@@ -1,168 +1,139 @@
-/* Field readability: loaded after legacy themes and responsive rules.
-   Screen-only so official printed forms keep their original dimensions.
-   Map/chart internals retain their own label sizing and geometry. */
+/* Officer-controlled display preferences. Standard preserves original type sizes.
+   Screen-only: no changes to official printed documents or map/chart geometry. */
 @media screen {
-  .cad-app main {
-    font-size: 16px;
-    line-height: 1.5;
-    background-image: none;
-  }
+  html[data-pf-text="large"] { --pf-small: 14px; --pf-body: 17px; --pf-title-scale: 1.1; }
+  html[data-pf-text="extra-large"] { --pf-small: 16px; --pf-body: 19px; --pf-title-scale: 1.2; }
 
-  :is(.cad-app, html.bps-night-mode [role="dialog"], html.bps-night-mode [role="listbox"])
-  :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *) {
-    font-size: 14px !important;
-    line-height: 1.45 !important;
-  }
-
-  .cad-app main :is(.text-sm, td, th):not(.leaflet-container *):not(.recharts-wrapper *) {
-    font-size: 15px;
-    line-height: 1.5;
-  }
-
-  .cad-app :is(.uppercase, .tracking-widest, .tracking-wider):not(.leaflet-container *) {
-    letter-spacing: .035em !important;
-  }
-
-  html .cad-app main :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-muted-foreground):not(.leaflet-container *):not(.recharts-wrapper *),
-  html.bps-night-mode .cad-app main.night-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) {
-    color: #c4d0df !important;
-  }
-
-  html .cad-app main :is(input, textarea)::placeholder {
-    color: #aebed0 !important;
-    opacity: 1;
-  }
-
-  .cad-app main :is(button, a[role="button"], [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"])):not(.leaflet-container *) {
-    min-height: 44px;
-  }
-
-  .cad-app main :is(input, textarea, select, [role="combobox"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
-    font-size: 16px !important;
-  }
-
-  .cad-app main [role="tablist"] {
-    height: auto;
-    max-width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-  }
-
+  /* Layout improvements apply at the original size, without forcing enlargement. */
+  .cad-app main { background-image: none; }
+  .cad-app .pathfinder-header { flex-wrap: wrap; gap: 8px; }
+  .cad-app .pathfinder-header > :last-child { flex-wrap: wrap; gap: 6px; }
+  .cad-app main [role="tablist"] { height: auto; max-width: 100%; overflow-x: auto; justify-content: flex-start; }
   .cad-app main [role="tab"] { flex-shrink: 0; }
-  .cad-app main :is(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid #7dd3fc;
-    outline-offset: 3px;
-  }
-
-  /* Allow the enlarged shell controls to wrap instead of clipping. */
-  .cad-app .pathfinder-header { flex-wrap: wrap; gap: 8px; padding-block: 8px; }
-  .cad-app .pathfinder-header > :last-child { flex-wrap: wrap; gap: 8px; }
-  .cad-app .pathfinder-header :is(button, a) { min-height: 44px; }
-  .cad-app .mobile-tool-library nav a span { font-size: 14px !important; line-height: 1.45 !important; }
-
-  .cad-app .command-dashboard .command-dashboard-kpis {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
-    gap: 8px;
-    padding: 10px;
-  }
-  .cad-app .command-dashboard .command-dashboard-kpi {
-    min-height: 76px;
-    padding: 10px 8px;
-    box-shadow: none;
-  }
-  .cad-app .command-dashboard-kpi > span:first-child {
-    font-size: 28px !important;
-    line-height: 1.1;
-    filter: none;
-  }
-  .cad-app .command-dashboard-kpi > span:last-child {
-    font-size: 14px !important;
-    line-height: 1.4;
-    letter-spacing: .025em !important;
-    color: #c4d0df !important;
-  }
-  .cad-app .command-dashboard-system-bar { flex-wrap: wrap; }
-  .cad-app .command-dashboard-actions { flex-wrap: wrap; }
-  .cad-app .command-dashboard-sync { height: auto; min-height: 36px; }
-  .cad-app .command-status-bar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
-  .cad-app .command-status-options { min-width: 0; flex-wrap: wrap; }
-  .cad-app .command-status-options button { height: auto; padding: 8px 10px; }
+  .cad-app main :is(button, a, input, select, textarea):focus-visible { outline: 2px solid #7dd3fc; outline-offset: 3px; }
   .cad-app .command-queue-header { flex-wrap: wrap; flex-shrink: 0; }
   .cad-app .command-queue-header > :first-child { flex-wrap: wrap; min-width: 0; }
-  .cad-app .command-dashboard .cad-call-row { padding-block: 14px; }
-  .cad-app .command-dashboard .cad-call-incident > :first-child {
-    font-size: 17px !important;
-    line-height: 1.45 !important;
-  }
-  .cad-app .command-dashboard .cad-call-incident > :last-child {
-    font-size: 15px !important;
-    line-height: 1.5 !important;
-  }
-  .cad-app .command-dashboard .cad-call-time > :first-child {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  .cad-app .command-dashboard .cad-call-status span {
-    display: inline-block;
-    white-space: normal;
-  }
+  .cad-app .command-dashboard-system-bar, .cad-app .command-dashboard-actions { flex-wrap: wrap; }
+  .cad-app .command-status-options { min-width: 0; flex-wrap: wrap; }
+  .cad-app .command-dashboard-kpi > span:first-child { filter: none; }
+  .cad-app .command-dashboard .cad-call-time > :first-child { white-space: normal; overflow-wrap: anywhere; }
+  .cad-app .command-dashboard .cad-call-status span { display: inline-block; white-space: normal; }
   .cad-app .command-dashboard .cad-call-elapsed { font-variant-numeric: tabular-nums; }
 
-  /* A full-width card protects addresses and status labels on scaled laptops.
-     Keep elapsed time and agency visible in this layout, including tablets. */
-  @media (max-width: 1535px) {
-    .cad-app .command-dashboard {
-      height: auto;
-      min-height: 100%;
-      overflow: visible;
-    }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
+    font-size: var(--pf-small) !important; line-height: 1.45 !important;
+  }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app main { font-size: var(--pf-body); line-height: 1.5; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-sm:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(var(--pf-body) - 1px) !important; line-height: 1.5 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-base:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; line-height: 1.5 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-lg, .text-xl):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(20px * var(--pf-title-scale)) !important; line-height: 1.35 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-2xl:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(24px * var(--pf-title-scale)) !important; line-height: 1.3 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea, select, [role="combobox"]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(td, th):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-small) !important; line-height: 1.5; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app :is(.uppercase, .tracking-widest, .tracking-wider):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { letter-spacing: .035em !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .mobile-tool-library nav a span { font-size: var(--pf-small) !important; line-height: 1.45 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .pathfinder-field-nav > :is(a, button) > span:not(.absolute) { font-size: var(--pf-small) !important; line-height: 1.35; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-status-bar { flex-wrap: wrap; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-status-options button { height: auto; white-space: normal; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard-sync { height: auto; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-dashboard-kpis {
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important; gap: 8px; padding: 10px;
+  }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-dashboard-kpi { min-height: 76px; padding: 10px 8px; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard-kpi > span:first-child { font-size: calc(28px * var(--pf-title-scale)) !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard-kpi > span:last-child { font-size: var(--pf-small) !important; letter-spacing: .025em !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-incident > :first-child { font-size: var(--pf-body) !important; line-height: 1.45 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-incident > :last-child { font-size: calc(var(--pf-body) - 2px) !important; line-height: 1.5 !important; }
+
+  html:is([data-pf-spacing="comfortable"], [data-pf-text="large"], [data-pf-text="extra-large"])
+  :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(button, a[role="button"], [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"])):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
+    min-height: 44px;
+  }
+  html[data-pf-spacing="comfortable"] .cad-app main :is(td, th) { padding: 14px 12px !important; }
+  html[data-pf-spacing="comfortable"] .cad-app main :is(.cad-call-row, .dispatch-call-card) { padding-block: 16px !important; }
+  html[data-pf-spacing="comfortable"] .cad-app main :is(button, [role="tab"]):not(.leaflet-container *) { padding-block: 10px; height: auto; }
+  html[data-pf-spacing="comfortable"] .cad-app main :is(.command-status-bar, .command-queue-header) { padding-block: 12px; gap: 10px; }
+
+  html[data-pf-contrast="high"] .cad-app main,
+  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) { --muted-foreground: 214 25% 84%; --bps-command-border: #64748b; }
+  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-muted-foreground):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *),
+  html.bps-night-mode[data-pf-contrast="high"] .cad-app main.night-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #e2e8f0 !important; }
+  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.border-slate-700, .border-slate-800, .border-gray-700, .border-gray-800):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { border-color: #64748b !important; }
+  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea)::placeholder { color: #cbd5e1 !important; opacity: 1; }
+  html[data-pf-motion="reduced"] .cad-app *,
+  html[data-pf-motion="reduced"] [role="dialog"] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
+  /* Original responsive breakpoint remains the default. Let the queue grow so
+     content cannot be trapped beneath status and KPI strips on short screens. */
+  @media (max-width: 1279px) {
+    .cad-app .command-dashboard { height: auto; min-height: 100%; overflow: visible; }
     .cad-app .command-dashboard .command-queue-workspace { flex: none; min-height: 340px; }
     .cad-app .command-dashboard .command-queue-panel { height: auto; overflow: visible; }
     .cad-app .command-dashboard .command-queue-list { overflow: visible; }
-    .cad-app .command-dashboard .command-column-headings { display: none !important; }
-    .cad-app .command-dashboard .cad-call-row {
-      display: grid !important;
-      grid-template-columns: 44px minmax(0, 1fr) minmax(110px, auto);
-      gap: 8px 14px;
-      margin: 10px;
-      padding: 14px;
-      border-radius: 10px;
-      border: 1px solid #475569;
-      border-left-width: 3px;
+  }
+  @media (max-width: 1535px) {
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard { height: auto; min-height: 100%; overflow: visible; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-queue-workspace { flex: none; min-height: 340px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-queue-panel { height: auto; overflow: visible; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-queue-list { overflow: visible; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-column-headings { display: none !important; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-row {
+      display: grid !important; grid-template-columns: 44px minmax(0, 1fr) minmax(110px, auto);
+      gap: 8px 14px; margin: 10px; padding: 14px; border-radius: 10px; border: 1px solid #475569; border-left-width: 3px;
     }
-    .cad-app .command-dashboard .cad-call-row.border-l-red-500 { border-left-color: #ef4444; }
-    .cad-app .command-dashboard .cad-call-row.border-l-orange-500 { border-left-color: #f97316; }
-    .cad-app .command-dashboard .cad-call-row > div { width: auto !important; min-width: 0; }
-    .cad-app .command-dashboard .cad-call-priority { grid-area: 1 / 1; }
-    .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2 / 2 / 4; padding: 0; }
-    .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 2; display: flex; flex-wrap: wrap; gap: 4px 16px; }
-    .cad-app .command-dashboard .cad-call-elapsed { grid-area: 2 / 3; display: block !important; }
-    .cad-app .command-dashboard .cad-call-elapsed::before { content: "Elapsed: "; }
-    .cad-app .command-dashboard .cad-call-agency { grid-area: 3 / 2; display: block !important; }
-    .cad-app .command-dashboard .cad-call-agency::before { content: "Agency: "; color: #c4d0df; font-size: 14px; }
-    .cad-app .command-dashboard .cad-call-status { grid-area: 4 / 2; text-align: left; }
-    .cad-app .command-dashboard .cad-call-units { grid-area: 3 / 3; text-align: left; }
-    .cad-app .command-dashboard .cad-call-clear { grid-area: 4 / 3; justify-content: flex-start; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-row.border-l-red-500 { border-left-color: #ef4444; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-row.border-l-orange-500 { border-left-color: #f97316; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-row > div { width: auto !important; min-width: 0; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-priority { grid-area: 1 / 1; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2 / 2 / 4; padding: 0; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 2; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-elapsed { grid-area: 2 / 3; display: block !important; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-elapsed::before { content: "Elapsed: "; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-agency { grid-area: 3 / 2; display: block !important; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-agency::before { content: "Agency: "; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-status { grid-area: 4 / 2; text-align: left; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-units { grid-area: 3 / 3; text-align: left; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-clear { grid-area: 4 / 3; justify-content: flex-start; }
   }
-
   @media (max-width: 639px) {
-    .cad-app .command-dashboard .command-dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    .cad-app .command-dashboard .cad-call-row { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
-    .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2; }
-    .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 1 / 3 / 3; }
-    .cad-app .command-dashboard .cad-call-elapsed { grid-area: 3 / 1 / 4 / 3; }
-    .cad-app .command-dashboard .cad-call-agency { grid-area: 4 / 1 / 5 / 3; }
-    .cad-app .command-dashboard .cad-call-status { grid-area: 5 / 1 / 6 / 3; }
-    .cad-app .command-dashboard .cad-call-units { grid-area: 6 / 1 / 7 / 3; }
-    .cad-app .command-dashboard .cad-call-clear { grid-area: 7 / 1 / 8 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .command-dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-row { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 1 / 3 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-elapsed { grid-area: 3 / 1 / 4 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-agency { grid-area: 4 / 1 / 5 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-status { grid-area: 5 / 1 / 6 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-units { grid-area: 6 / 1 / 7 / 3; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-clear { grid-area: 7 / 1 / 8 / 3; }
+  }
+  @media (min-width: 1536px) {
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard :is(.cad-call-status, .command-column-headings > .w-20.text-center) { width: 128px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard :is(.cad-call-priority, .command-column-headings > :first-child) { width: 48px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard :is(.cad-call-units, .command-column-headings > .w-16) { width: 96px; }
+    html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard :is(.cad-call-clear, .command-column-headings > .w-14) { width: 80px; }
   }
 
-  @media (min-width: 1536px) {
-    .cad-app .command-dashboard .command-column-headings { font-size: 14px; letter-spacing: .025em; }
-    .cad-app .command-dashboard :is(.cad-call-priority, .command-column-headings > :first-child) { width: 48px; }
-    .cad-app .command-dashboard :is(.cad-call-status, .command-column-headings > .w-20.text-center) { width: 116px; }
-    .cad-app .command-dashboard :is(.cad-call-units, .command-column-headings > .w-16) { width: 88px; }
-    .cad-app .command-dashboard :is(.cad-call-clear, .command-column-headings > .w-14) { width: 76px; }
-    .cad-app .command-dashboard .command-queue-workspace { min-height: 320px; }
-  }
+  /* The controls themselves stay legible at every setting, including reset. */
+  .pf-display-trigger { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; padding: 6px 10px; border: 1px solid #64748b; border-radius: 8px; background: #10263a; color: #f8fafc; font-size: 20px; font-weight: 700; }
+  .pf-display-trigger:hover { background: #1e405d; }
+  .pf-display-panel { font-size: 14px; line-height: 1.45; gap: 16px; }
+  .pf-display-panel h2 { padding-right: 28px; font-size: 22px !important; line-height: 1.3; }
+  .pf-display-panel p { margin: 0; font-size: 14px; color: #cbd5e1; line-height: 1.5; }
+  .pf-display-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .pf-display-group legend { margin-bottom: 8px; font-weight: 700; color: #f8fafc; }
+  .pf-text-controls { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .pf-text-controls output { text-align: center; font-size: 16px; color: #f8fafc; font-weight: 700; }
+  .pf-text-controls button { font-size: 22px !important; }
+  .pf-choice-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .pf-choice-row button { flex: 1; min-width: 90px; }
+  .pf-display-panel button:not(.absolute) { min-height: 44px; border: 1px solid #64748b; border-radius: 8px; padding: 8px 10px; background: #0b1725; color: #f8fafc; font-size: 14px; line-height: 1.4; }
+  .pf-display-panel button[aria-pressed="true"] { background: #164e63; border-color: #67e8f9; box-shadow: inset 0 0 0 1px #67e8f9; }
+  .pf-display-panel button:disabled { opacity: .4; cursor: not-allowed; }
+  .pf-display-panel button:focus-visible, .pf-display-trigger:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
+  .pf-motion-choice { display: flex; align-items: center; gap: 10px; min-height: 44px; color: #f8fafc; }
+  .pf-motion-choice input { width: 20px; height: 20px; accent-color: #22d3ee; }
+  .pf-display-sample { padding: 12px; border: 1px solid #475569; border-radius: 10px; background: #08111d; color: #f8fafc; }
+  .pf-display-sample strong { display: block; }
+  .pf-display-panel .pf-display-save { font-size: 12px; }
+  .pf-display-reset { width: 100%; }
 }
