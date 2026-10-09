@@ -57,6 +57,30 @@ Deno.serve(async (req) => {
 
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
 
+        // On the first admin approval of an officer, create an actionable
+        // certification review for trainers without changing employee roles.
+        const newRoles = Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles.map((item:any) => String(item).toLowerCase()) : [];
+        const officerJustApproved = isSystemManager && !targetRoles.has('officer') && newRoles.includes('officer');
+        if (officerJustApproved) {
+          try {
+            const trainers = (targetUsers || []).filter((person:any) => (person.additional_roles || []).includes('trainer'));
+            const pending = await base44.asServiceRole.entities.Task.filter({ related_id: userId, related_type: 'general' }, '-created_date', 30);
+            for (const trainer of trainers) {
+              if (!trainer.id || (pending || []).some((task:any) => task.assigned_to === trainer.id && task.status !== 'completed')) continue;
+              await base44.asServiceRole.entities.Task.create({
+                title: 'Review new officer certifications',
+                description: `Verify credentials, DCJS registration, firearm qualifications, expiration dates, and supporting files for ${target.first_name || ''} ${target.last_name || ''} (${target.email || ''}).`,
+                status: 'open', priority: 'high', assigned_to: trainer.id,
+                assigned_name: `${trainer.first_name || ''} ${trainer.last_name || ''}`.trim(),
+                related_type: 'general', related_id: userId,
+                related_name: `${target.first_name || ''} ${target.last_name || ''}`.trim(),
+              });
+            }
+          } catch (reviewError) {
+            console.warn('Officer approved; trainer certification task creation needs retry', reviewError?.message);
+          }
+        }
+
         console.log('✅ User updated successfully');
         
         return Response.json({
