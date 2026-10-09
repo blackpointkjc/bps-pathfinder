@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import StudentPortal from '@/pages/StudentPortal';
 
 const fields = [
  ['mobile_phone','Mobile phone','tel'],['address','Street address','text'],['city','City','text'],['state','State','text'],['zip','ZIP code','text'],
@@ -31,7 +32,7 @@ export default function PendingUserOnboarding({ user }) {
   <section className="mx-auto max-w-3xl rounded-2xl border border-amber-600/40 bg-[#101c2c] p-6 shadow-xl">
    <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Black Point | Secure registration</p>
    <h1 className="mt-2 text-2xl font-black">{submitted ? (isStudent ? 'Pending trainer review' : 'Pending administrator approval') : (isStudent ? 'Complete your student registration' : 'Complete your new account profile')}</h1>
-   {submitted ? <div className="mt-5 space-y-4 text-slate-200">
+   {submitted && isStudent ? <div className="mt-5"><StudentPortal onboardingOnly /></div> : submitted ? <div className="mt-5 space-y-4 text-slate-200">
      <p>Your onboarding information has been submitted. Your account will remain pending until the responsible reviewer verifies your profile and assigns portal access. You cannot use the operational dashboard yet.</p>
      <p className="text-sm text-slate-400">You may safely close this page and sign back in later after your administrator approves the account.</p>
    </div> : <>
@@ -41,7 +42,7 @@ export default function PendingUserOnboarding({ user }) {
        <input required={requiredFields.has(name)} type={type} autoComplete="off" value={values[name] || ''} onChange={e => setValues(prev => ({...prev,[name]:e.target.value}))} className="mt-1 w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-white" />
      </label>)}
      {error && <p role="alert" className="sm:col-span-2 text-sm text-red-300">{error}</p>}
-     <button disabled={busy} type="submit" className="rounded-lg bg-amber-500 px-5 py-3 font-bold text-black disabled:opacity-50 sm:col-span-2">{busy ? 'Saving…' : 'Submit for administrator review'}</button>
+     <button disabled={busy} type="submit" className="rounded-lg bg-amber-500 px-5 py-3 font-bold text-black disabled:opacity-50 sm:col-span-2">{busy ? 'Saving…' : (isStudent ? 'Continue student registration' : 'Submit for administrator review')}</button>
     </form>
    </>}
   </section>
