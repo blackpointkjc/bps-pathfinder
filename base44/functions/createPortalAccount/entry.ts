@@ -209,12 +209,26 @@ Deno.serve(async (req) => {
       assignmentPending = true;
     }
 
-    // The native inviteUser call above already sends the platform invitation /
-    // password-setup email, so a separate branded SendEmail is intentionally
-    // omitted to avoid integration-credit usage. The account is still fully
-    // provisioned and the recipient can set up their password via the invite.
+    // Send an additional HTML-branded welcome message with the portal URL.
+    // The Base44 invitation remains the authoritative password-setup mechanism;
+    // NEVER generate, store, or email a plaintext temporary password.
+    let brandedEmailSent = false;
+    let brandedEmailError = '';
+    if (invitationSent) {
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: normalizedEmail,
+          subject: 'Welcome to Black Point — Set Up Your Account',
+          body: accountCreatedEmail(String(first_name), accountType),
+        });
+        brandedEmailSent = true;
+      } catch (error) {
+        brandedEmailError = error?.message || 'Branded welcome email delivery failed';
+        console.warn('Branded portal invitation email failed', brandedEmailError);
+      }
+    }
     const emailSent = invitationSent;
-    const emailError = invitationSent ? '' : (invitationError || 'No account invitation was sent');
+    const emailError = brandedEmailError || (invitationSent ? '' : (invitationError || 'No account invitation was sent'));
     const provisioned = Boolean(portalUser?.id && !assignmentPending);
     if (!invitationSent && !portalUser?.id) {
       return Response.json({ success: false, error: invitationError || directoryError || 'Base44 did not create or invite this user', error_stage: 'invitation' }, { status: 502 });
@@ -225,6 +239,8 @@ Deno.serve(async (req) => {
       provisioned,
       status: provisioned ? 'account_ready' : 'invited_waiting_for_registration',
       invitation_sent: invitationSent,
+      branded_email_sent: brandedEmailSent,
+      branded_email_error: brandedEmailError || undefined,
       invitation_error: invitationError || undefined,
       invitation_pending: !portalUser && !invitationSent,
       assignment_pending: assignmentPending,
