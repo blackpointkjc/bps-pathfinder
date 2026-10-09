@@ -1,0 +1,167 @@
+/* Field readability: loaded after legacy themes and responsive rules.
+   Screen-only so official printed forms keep their original dimensions.
+   Map/chart internals retain their own label sizing and geometry. */
+@media screen {
+  .cad-app main {
+    font-size: 16px;
+    line-height: 1.5;
+    background-image: none;
+  }
+
+  :is(.cad-app, html.bps-night-mode [role="dialog"], html.bps-night-mode [role="listbox"])
+  :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\])
+  :not(svg):not(.leaflet-container *):not(.recharts-wrapper *) {
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+  }
+
+  .cad-app main :is(.text-sm, td, th):not(.leaflet-container *):not(.recharts-wrapper *) {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .cad-app :is(.uppercase, .tracking-widest, .tracking-wider):not(.leaflet-container *) {
+    letter-spacing: .035em !important;
+  }
+
+  html .cad-app main :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-muted-foreground):not(.leaflet-container *):not(.recharts-wrapper *),
+  html.bps-night-mode .cad-app main.night-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) {
+    color: #c4d0df !important;
+  }
+
+  html .cad-app main :is(input, textarea)::placeholder {
+    color: #aebed0 !important;
+    opacity: 1;
+  }
+
+  .cad-app main :is(button, a[role="button"], [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"])):not(.leaflet-container *) {
+    min-height: 44px;
+  }
+
+  .cad-app main :is(input, textarea, select, [role="combobox"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    font-size: 16px !important;
+  }
+
+  .cad-app main [role="tablist"] {
+    height: auto;
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .cad-app main [role="tab"] { flex-shrink: 0; }
+  .cad-app main :is(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid #7dd3fc;
+    outline-offset: 3px;
+  }
+
+  /* Allow the enlarged shell controls to wrap instead of clipping. */
+  .cad-app .pathfinder-header { flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+  .cad-app .pathfinder-header > :last-child { flex-wrap: wrap; gap: 8px; }
+  .cad-app .pathfinder-header :is(button, a) { min-height: 44px; }
+  .cad-app .mobile-tool-library nav a span { font-size: 14px !important; line-height: 1.45 !important; }
+
+  .cad-app .command-dashboard .command-dashboard-kpis {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+    gap: 8px;
+    padding: 10px;
+  }
+  .cad-app .command-dashboard .command-dashboard-kpi {
+    min-height: 76px;
+    padding: 10px 8px;
+    box-shadow: none;
+  }
+  .cad-app .command-dashboard-kpi > span:first-child {
+    font-size: 28px !important;
+    line-height: 1.1;
+    filter: none;
+  }
+  .cad-app .command-dashboard-kpi > span:last-child {
+    font-size: 14px !important;
+    line-height: 1.4;
+    letter-spacing: .025em !important;
+    color: #c4d0df !important;
+  }
+  .cad-app .command-dashboard-system-bar { flex-wrap: wrap; }
+  .cad-app .command-dashboard-actions { flex-wrap: wrap; }
+  .cad-app .command-dashboard-sync { height: auto; min-height: 36px; }
+  .cad-app .command-status-bar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+  .cad-app .command-status-options { min-width: 0; flex-wrap: wrap; }
+  .cad-app .command-status-options button { height: auto; padding: 8px 10px; }
+  .cad-app .command-queue-header { flex-wrap: wrap; flex-shrink: 0; }
+  .cad-app .command-queue-header > :first-child { flex-wrap: wrap; min-width: 0; }
+  .cad-app .command-dashboard .cad-call-row { padding-block: 14px; }
+  .cad-app .command-dashboard .cad-call-incident > :first-child {
+    font-size: 17px !important;
+    line-height: 1.45 !important;
+  }
+  .cad-app .command-dashboard .cad-call-incident > :last-child {
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+  }
+  .cad-app .command-dashboard .cad-call-time > :first-child {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .cad-app .command-dashboard .cad-call-status span {
+    display: inline-block;
+    white-space: normal;
+  }
+  .cad-app .command-dashboard .cad-call-elapsed { font-variant-numeric: tabular-nums; }
+
+  /* A full-width card protects addresses and status labels on scaled laptops.
+     Keep elapsed time and agency visible in this layout, including tablets. */
+  @media (max-width: 1535px) {
+    .cad-app .command-dashboard {
+      height: auto;
+      min-height: 100%;
+      overflow: visible;
+    }
+    .cad-app .command-dashboard .command-queue-workspace { flex: none; min-height: 340px; }
+    .cad-app .command-dashboard .command-queue-panel { height: auto; overflow: visible; }
+    .cad-app .command-dashboard .command-queue-list { overflow: visible; }
+    .cad-app .command-dashboard .command-column-headings { display: none !important; }
+    .cad-app .command-dashboard .cad-call-row {
+      display: grid !important;
+      grid-template-columns: 44px minmax(0, 1fr) minmax(110px, auto);
+      gap: 8px 14px;
+      margin: 10px;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      border-left: 3px solid;
+    }
+    .cad-app .command-dashboard .cad-call-row > div { width: auto !important; min-width: 0; }
+    .cad-app .command-dashboard .cad-call-priority { grid-area: 1 / 1; }
+    .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2 / 2 / 4; padding: 0; }
+    .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 2; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    .cad-app .command-dashboard .cad-call-elapsed { grid-area: 2 / 3; display: block !important; }
+    .cad-app .command-dashboard .cad-call-elapsed::before { content: "Elapsed: "; }
+    .cad-app .command-dashboard .cad-call-agency { grid-area: 3 / 2; display: block !important; }
+    .cad-app .command-dashboard .cad-call-agency::before { content: "Agency: "; color: #c4d0df; font-size: 14px; }
+    .cad-app .command-dashboard .cad-call-status { grid-area: 4 / 2; text-align: left; }
+    .cad-app .command-dashboard .cad-call-units { grid-area: 3 / 3; text-align: left; }
+    .cad-app .command-dashboard .cad-call-clear { grid-area: 4 / 3; justify-content: flex-start; }
+  }
+
+  @media (max-width: 639px) {
+    .cad-app .command-dashboard .command-dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .cad-app .command-dashboard .cad-call-row { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
+    .cad-app .command-dashboard .cad-call-incident { grid-area: 1 / 2; }
+    .cad-app .command-dashboard .cad-call-time { grid-area: 2 / 1 / 3 / 3; }
+    .cad-app .command-dashboard .cad-call-elapsed { grid-area: 3 / 1 / 4 / 3; }
+    .cad-app .command-dashboard .cad-call-agency { grid-area: 4 / 1 / 5 / 3; }
+    .cad-app .command-dashboard .cad-call-status { grid-area: 5 / 1 / 6 / 3; }
+    .cad-app .command-dashboard .cad-call-units { grid-area: 6 / 1 / 7 / 3; }
+    .cad-app .command-dashboard .cad-call-clear { grid-area: 7 / 1 / 8 / 3; }
+  }
+
+  @media (min-width: 1536px) {
+    .cad-app .command-dashboard .command-column-headings { font-size: 14px; letter-spacing: .025em; }
+    .cad-app .command-dashboard :is(.cad-call-priority, .command-column-headings > :first-child) { width: 48px; }
+    .cad-app .command-dashboard :is(.cad-call-status, .command-column-headings > .w-20.text-center) { width: 116px; }
+    .cad-app .command-dashboard :is(.cad-call-units, .command-column-headings > .w-16) { width: 88px; }
+    .cad-app .command-dashboard :is(.cad-call-clear, .command-column-headings > .w-14) { width: 76px; }
+    .cad-app .command-dashboard .command-queue-workspace { min-height: 320px; }
+  }
+}
