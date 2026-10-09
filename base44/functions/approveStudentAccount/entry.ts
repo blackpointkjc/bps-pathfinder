@@ -17,7 +17,7 @@ Deno.serve(async req => {
   if (!enrollment || (enrollment.user_id && enrollment.user_id !== target.id)) {
     return Response.json({error:'The student must accept the invitation and submit the registration form before trainer approval'},{status:409});
   }
-  const required = ['first_name','last_name','date_of_birth','email','mobile_phone','address','city','state','zip','dcjs_number'];
+  const required = ['first_name','last_name','date_of_birth','email','ssn','mobile_phone','address','city','state','zip','dcjs_number'];
   const missing = required.filter(field => !String(target[field] || '').trim());
   if (missing.length) return Response.json({error:'Student intake is incomplete',missing},{status:400});
   await api.asServiceRole.entities.User.update(target.id,{additional_roles:['student'],rank:'Student'});
