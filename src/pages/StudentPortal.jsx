@@ -82,6 +82,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
       return;
     }
     setSavingProfile(true);
+    try {
     await base44.auth.updateMe(profileForm);
     if (onboardingOnly) {
       const submission = await base44.functions.invoke('submitStudentRegistration', {});
@@ -92,6 +93,10 @@ export default function StudentPortal({ onboardingOnly = false }) {
     queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     setSavingProfile(false);
     toast.success(onboardingOnly ? 'Student identity profile saved. Await trainer review.' : 'Profile saved! You can now access your training.');
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.message || 'Profile could not be saved');
+      setSavingProfile(false);
+    }
   };
 
   if (userLoading) {
