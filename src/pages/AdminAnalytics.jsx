@@ -92,10 +92,10 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
     enabled,
     staleTime: config?.interval || 2 * 60 * 1000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchInterval: config?.interval || 5 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchInterval: Math.max(config?.interval || 5 * 60 * 1000, 5 * 60 * 1000),
+    refetchIntervalInBackground: false,
     retry: false,
     placeholderData: previousData => previousData,
   });
