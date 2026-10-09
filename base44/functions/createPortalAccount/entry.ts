@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
       console.error('Unable to read user directory during portal account creation', error);
     }
     let portalUser = (users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+    if (accountType === 'student_pending' && portalUser && (portalUser.role === 'admin' || (portalUser.additional_roles || []).length > 0)) {
+      return Response.json({ error: 'This email already has active portal access. Student invitations cannot replace an assigned account.' }, { status: 409 });
+    }
     let invitationSent = false;
     let invitationError = '';
     let assignmentError = '';
