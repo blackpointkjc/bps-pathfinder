@@ -31,7 +31,10 @@ Deno.serve(async (req) => {
         } catch (error) {
           lastError = error;
           // Retrying a 429 immediately spends the same exhausted allowance.
-          if (error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) break;
+          if (error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) {
+            if (attempt < attempts - 1) { await delay(1800 * (attempt + 1)); continue; }
+            break;
+          }
           if (attempt < attempts - 1) await delay(500 * (attempt + 1));
         }
       }
@@ -62,31 +65,31 @@ Deno.serve(async (req) => {
     // the old safe() wrapper then replaced the failed sources with empty arrays,
     // causing false "0 / none found" briefing results.
     const recentUserTimeEntries = officerLike
-      ? await loadSource('your time entries', () => base44.asServiceRole.entities.TimeEntry.filter({ officer_email: me.email }, '-clock_in', 20), { required: true })
+      ? await loadSource('your time entries', () => base44.asServiceRole.entities.TimeEntry.filter({ officer_email: me.email }, '-clock_in', 20), { required: false })
       : [];
 
     const liveOfficers = officerLike
-      ? await loadSource('your live duty session', () => base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: me.email }, '-last_update', 5), { required: true })
+      ? await loadSource('your live duty session', () => base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: me.email }, '-last_update', 5), { required: false })
       : [];
 
     const allSchedules = operational
-      ? await loadSource("today's schedule", () => base44.asServiceRole.entities.Schedule.filter({ shift_date: today }, 'start_time', 250), { required: true })
+      ? await loadSource("today's schedule", () => base44.asServiceRole.entities.Schedule.filter({ shift_date: today }, 'start_time', 250), { required: false })
       : [];
 
     const timeEntries = operational
-      ? await loadSource('active staffing/time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 250), { required: true })
+      ? await loadSource('active staffing/time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 250), { required: false })
       : [];
 
     const allUsers = operational
-      ? await loadSource('company users', () => base44.asServiceRole.entities.User.list('last_name', 500), { required: true })
+      ? await loadSource('company users', () => base44.asServiceRole.entities.User.list('last_name', 500), { required: false })
       : [];
 
     const allUnits = operational
-      ? await loadSource('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 250), { required: true })
+      ? await loadSource('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 250), { required: false })
       : [];
 
     const allLiveOfficers = operational
-      ? await loadSource('live officer sessions', () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 250), { required: true })
+      ? await loadSource('live officer sessions', () => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 250), { required: false })
       : [];
 
     const vehicleAssignments = officerLike
