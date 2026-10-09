@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useAuth } from '@/lib/AuthContext';
+import AdminOperationsBriefing from '@/components/AdminOperationsBriefing';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -261,6 +262,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <AdminOperationsBriefing />
+        <section className="rounded-2xl border border-slate-700 bg-[#0b1624] p-4 text-white"><div className="text-xs font-black uppercase tracking-wider text-amber-300">Officer report compliance</div><div className="mt-2 flex flex-wrap items-center gap-4"><div className="text-2xl font-black">{adminWorkError || adminWork.load_errors?.length ? '—' : adminTasks.filter(task => task.kind === 'missing_report').length}</div><div className="text-sm text-slate-300">Officer reports currently flagged as missing</div><Link to={createPageUrl('AdminReports')} className="rounded-lg border border-amber-600/50 px-3 py-2 text-xs font-bold text-amber-200">REVIEW REPORTS</Link></div>{(adminWorkError || adminWork.load_errors?.length) && <p className="mt-2 text-xs text-amber-300">Some report sources are unavailable. Missing-report totals cannot be verified.</p>}</section>
         {workforceError && <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">Workforce counts could not refresh: {workforceError.message}. Existing command data remains available below.</div>}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
