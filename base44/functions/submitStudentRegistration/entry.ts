@@ -4,12 +4,12 @@ Deno.serve(async req => {
   const api = createClientFromRequest(req);
   const actor = await api.auth.me();
   if (!actor?.id || !actor.email) return Response.json({error:'Sign-in required'},{status:401});
-  if (String(actor.rank || '').toLowerCase() !== 'student registration pending')
+  const profile = await api.asServiceRole.entities.User.get(actor.id);
+  if (String(profile?.rank || '').toLowerCase() !== 'student registration pending')
     return Response.json({error:'This account is not awaiting student registration'},{status:403});
   const records = await api.asServiceRole.entities.StudentEnrollment.filter({email:String(actor.email).toLowerCase()},'-created_date',3);
   const enrollment = (records || []).find((item:any)=>['invited','profile_submitted'].includes(item.status));
   if (!enrollment) return Response.json({error:'Student invitation was not found'},{status:404});
-  const profile = await api.asServiceRole.entities.User.get(actor.id);
   const required = ['first_name','last_name','date_of_birth','ssn','address','city','state','zip','mobile_phone','dcjs_number'];
   const missing = required.filter(key=>!String(profile?.[key]||'').trim());
   if(missing.length)return Response.json({error:'Complete the remaining student profile fields',missing},{status:400});
