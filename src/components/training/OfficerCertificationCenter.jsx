@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, parseISO } from 'date-fns';
 import { Search, Send, Save, ShieldCheck, UserRound } from 'lucide-react';
@@ -29,6 +30,9 @@ function certStatus(cert) {
 
 export default function OfficerCertificationCenter() {
   const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const requestedOfficerId = params.get('officer_id');
+  const openedRequest = useRef(null);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [editFormData, setEditFormData] = useState({ officer_certifications: [] });
@@ -78,6 +82,19 @@ export default function OfficerCertificationCenter() {
     setSelectedId(officer.id);
     setEditFormData({ officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(c => ({ ...c })) : [] });
   };
+
+  useEffect(() => {
+    if (!requestedOfficerId) { openedRequest.current = null; return; }
+    if (openedRequest.current === requestedOfficerId || isLoading) return;
+    const officer = officerUsers.find(user => user.id === requestedOfficerId);
+    openedRequest.current = requestedOfficerId;
+    if (officer) {
+      setSelectedId(officer.id);
+      setEditFormData({ officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(cert => ({ ...cert })) : [] });
+    } else {
+      toast.error('This officer’s certification file is unavailable. Check the account in the personnel directory.');
+    }
+  }, [requestedOfficerId, officerUsers, isLoading]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
