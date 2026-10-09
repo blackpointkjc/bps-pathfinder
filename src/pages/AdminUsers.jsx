@@ -636,7 +636,7 @@ export default function AdminUsers({ embedded = false }) {
   // employee login and must never require an Officer/reporting-officer role.
   const isPendingUser = (u) => {
     const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
-    return u.role !== 'admin' &&
+    return u.role !== 'admin' && String(u.rank || '').toLowerCase() !== 'student registration pending' &&
       !['officer','client','student','support','support_staff','hr','accounting','trainer','dispatch','cad_access'].some(role => roles.has(role)) &&
       !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
   };
@@ -646,7 +646,6 @@ export default function AdminUsers({ embedded = false }) {
   const assignUserCategory = async (userData, category) => {
     const categoryConfig = {
       support: { roles: ['support_staff'], rank: 'Support Staff', page: 'AdminSupportStaffClock' },
-      student: { roles: ['student'], rank: 'Student', page: 'ManageStudents' },
       officer: { roles: ['officer', 'cad_access'], rank: 'Officer', page: 'ManageCompanyEmployees' },
       client: { roles: ['client'], rank: 'Client', page: 'ManageClients' },
     };
@@ -877,7 +876,7 @@ export default function AdminUsers({ embedded = false }) {
                         className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
                         onClick={async () => {
                           if (await confirmInApp(`Assign ${userData.first_name || userData.email} as a Student?`)) {
-                            await assignUserCategory(userData, 'student');
+                            alert('Student account creation and approval is managed by Trainer Center → Student Management.');
                           }
                         }}
                       >
