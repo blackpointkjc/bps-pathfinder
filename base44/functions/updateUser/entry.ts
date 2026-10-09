@@ -62,17 +62,19 @@ Deno.serve(async (req) => {
         const officerJustApproved = isSystemManager && !targetRoles.has('officer') && newRoles.includes('officer');
         if (officerJustApproved) {
           try {
+            const approvedOfficer = { ...target, ...updatePayload };
+            const officerName = [approvedOfficer.first_name, approvedOfficer.last_name].filter(Boolean).join(' ').trim() || approvedOfficer.full_name || approvedOfficer.email || `Account ${userId}`;
             const trainers = (targetUsers || []).filter((person:any) => (person.additional_roles || []).includes('trainer'));
             const pending = await base44.asServiceRole.entities.Task.filter({ related_id: userId, related_type: 'general' }, '-created_date', 30);
             for (const trainer of trainers) {
               if (!trainer.id || (pending || []).some((task:any) => task.assigned_to === trainer.id && task.status !== 'completed')) continue;
               await base44.asServiceRole.entities.Task.create({
                 title: 'Review new officer certifications',
-                description: `Verify credentials, DCJS registration, firearm qualifications, expiration dates, and supporting files for ${target.first_name || ''} ${target.last_name || ''} (${target.email || ''}).`,
+                description: `Verify credentials, DCJS registration, firearm qualifications, expiration dates, and supporting files for ${officerName} (${approvedOfficer.email || userId}).`,
                 status: 'open', priority: 'high', assigned_to: trainer.id,
-                assigned_name: `${trainer.first_name || ''} ${trainer.last_name || ''}`.trim(),
+                assigned_name: [trainer.first_name, trainer.last_name].filter(Boolean).join(' ').trim() || trainer.full_name || trainer.email || `Account ${trainer.id}`,
                 related_type: 'general', related_id: userId,
-                related_name: `${target.first_name || ''} ${target.last_name || ''}`.trim(),
+                related_name: officerName,
               });
             }
           } catch (reviewError) {
