@@ -1594,7 +1594,7 @@ export default function Layout({ children, currentPageName }) {
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).includes('student')} className={`${allowedCenters(user).includes('student') ? '!hidden' : ''} hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
+          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).includes('student')} className={`hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
             <span>Tools</span>
           </button>
