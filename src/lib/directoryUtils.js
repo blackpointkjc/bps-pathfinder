@@ -36,7 +36,7 @@ export function isCompanyEmployeeAccount(user) {
   ]);
   const isOfficer = roles.has('officer') || roles.has('cad_access') || roles.has('supervisor') || officerRanks.has(rank);
   if (isOfficer) return true;
-  if (roles.has('student') || rank === 'student' || type === 'student') return false;
+  if (roles.has('student') || ['student','student registration pending','student invitation pending'].includes(rank) || type === 'student') return false;
   if ((type === 'pending' || status === 'pending') && !user.termination_date) return false;
   return user.role === 'admin'
     || roles.has('hr')
