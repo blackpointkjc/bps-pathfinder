@@ -130,8 +130,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      for (let attempt = 0; attempt < 10 && !portalUser?.id; attempt += 1) {
-        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 600));
+      for (let attempt = 0; attempt < 2 && !portalUser?.id; attempt += 1) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 800));
         const refreshed = await base44.asServiceRole.entities.User.list(undefined, 1000);
         portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
       }
@@ -214,10 +214,16 @@ Deno.serve(async (req) => {
     // omitted to avoid integration-credit usage. The account is still fully
     // provisioned and the recipient can set up their password via the invite.
     const emailSent = invitationSent;
-    const emailError = '';
+    const emailError = invitationSent ? '' : (invitationError || 'No account invitation was sent');
+    const provisioned = Boolean(portalUser?.id && !assignmentPending);
+    if (!invitationSent && !portalUser?.id) {
+      return Response.json({ success: false, error: invitationError || directoryError || 'Base44 did not create or invite this user', error_stage: 'invitation' }, { status: 502 });
+    }
 
     return Response.json({
       success: true,
+      provisioned,
+      status: provisioned ? 'account_ready' : 'invited_waiting_for_registration',
       invitation_sent: invitationSent,
       invitation_error: invitationError || undefined,
       invitation_pending: !portalUser && !invitationSent,
