@@ -280,46 +280,6 @@ const AuthenticatedApp = () => {
 
   if (needsLogin) return <LoadingScreen />;
 
-  if (false) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#050a12] p-5 text-slate-100">
-        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0b1725] p-6 shadow-2xl sm:p-8">
-          <div className={`text-xs font-black uppercase tracking-[0.2em] ${forcedSignOutNotice ? 'text-red-300' : 'text-blue-300'}`}>BPS Pathfinder</div>
-          <h1 className="mt-2 text-2xl font-black">{forcedSignOutNotice ? 'Administrative Sign-Out' : 'Secure Sign In'}</h1>
-          {forcedSignOutNotice ? (
-            <div className="mt-4 rounded-xl border-2 border-red-600/70 bg-red-950/45 p-4 shadow-[0_0_35px_rgba(239,68,68,.2)]">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-red-300">Your Pathfinder session was ended by an administrator</div>
-              <div className="mt-2 text-sm font-bold leading-6 text-white">{forcedSignOutNotice.reason || 'An administrator ended your Pathfinder session.'}</div>
-              {forcedSignOutNotice.issuedBy && <div className="mt-2 text-xs text-red-200/80">Issued by: {forcedSignOutNotice.issuedBy}</div>}
-              <div className="mt-3 text-xs leading-5 text-slate-300">You may sign back in below. If the administrator also placed your account Out of Service or locked it, that restriction will still apply after authentication.</div>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm leading-6 text-slate-400">Sign in with your authorized BlackPoint Microsoft work email. Pathfinder uses the linked identity to keep your existing account, role, reports, schedule, and history connected even when your original login email is different.</p>
-          )}
-          {authError?.type === 'microsoft_session_expired' && (
-            <div className="mt-4 rounded-xl border border-amber-500/50 bg-amber-950/40 p-3 text-sm font-semibold leading-5 text-amber-100">
-              Your Microsoft session has expired. Please sign in again with your BlackPoint email.
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => forcedSignOutNotice ? signBackIn('microsoft') : navigateToMicrosoftLogin()}
-            className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-500"
-          >
-            {forcedSignOutNotice ? 'SIGN BACK IN WITH MICROSOFT' : 'SIGN IN WITH MICROSOFT'}
-          </button>
-          <button
-            type="button"
-            onClick={() => forcedSignOutNotice ? signBackIn('other') : navigateToLogin()}
-            className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-600 bg-slate-900 px-4 text-sm font-black text-slate-200 hover:border-slate-500 hover:bg-slate-800"
-          >
-            {forcedSignOutNotice ? 'OTHER SIGN BACK IN' : 'OTHER PATHFINDER SIGN IN'}
-          </button>
-          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Pathfinder keeps your original user ID and login email authoritative so roles, reports, schedules, posts, messages, and history stay linked.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (authError) {
     return (
