@@ -1494,8 +1494,12 @@ export default function AdminLocations({ embedded = false }) {
                       <SelectValue placeholder="Select shift length..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="4">4 hours</SelectItem>
+                      <SelectItem value="5">5 hours</SelectItem>
                       <SelectItem value="6">6 hours</SelectItem>
+                      <SelectItem value="7">7 hours</SelectItem>
                       <SelectItem value="8">8 hours</SelectItem>
+                      <SelectItem value="9">9 hours</SelectItem>
                       <SelectItem value="10">10 hours</SelectItem>
                       <SelectItem value="12">12 hours</SelectItem>
                     </SelectContent>
