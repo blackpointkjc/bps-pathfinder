@@ -15,7 +15,9 @@ export default function DataConnectionStatus() {
       const failed = queryClient.getQueryCache().getAll().filter(query => query.isActive() && query.state.status === 'error');
       const until = health.rateLimitedUntil ? Date.parse(health.rateLimitedUntil) : 0;
       const quietUntil = Math.max(health.readRetryAt ? Date.parse(health.readRetryAt) : 0, until ? until - 45_000 : 0);
-      setStatus(until || failed.length >= 2 ? { rateLimited: until > Date.now(), failed: failed.length } : null);
+      // A previously observed 429 is not itself proof that the active page is broken.
+      // Warn only when at least two visible queries are actually failing.
+      setStatus(failed.length >= 2 ? { rateLimited: until > Date.now(), failed: failed.length } : null);
       // Recover only failed active reads, once per 30 seconds. Successful queries,
       // mutations, and in-progress forms are left alone.
       if (failed.length && Date.now() >= quietUntil && Date.now() - lastRetryAt >= 30_000 && navigator.onLine) {
