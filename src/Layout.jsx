@@ -552,6 +552,7 @@ function pageLabel(pageName) {
 
 function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, onTabNavigate, user }) {
   const centers = allowedCenters(user);
+  if (centers.length === 1 && centers[0] === 'student') return <nav aria-label="Student navigation" className="fixed inset-x-0 bottom-0 z-[45] flex justify-center border-t border-[#29445f] bg-[#07111f] px-2 py-2 xl:hidden" style={{paddingBottom:'max(6px, env(safe-area-inset-bottom))'}}><Link to={createPageUrl('StudentPortal')} className="flex min-h-[52px] w-full items-center justify-center gap-3 rounded-lg bg-[#153b65] text-sm font-black text-white"><GraduationCap className="h-5 w-5" />STUDENT PORTAL</Link></nav>;
   const roleWorkspace = centers.includes('admin')
     ? ['Admin', 'AdminCenter', Settings]
     : centers.includes('supervisor')
