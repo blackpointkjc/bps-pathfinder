@@ -293,6 +293,21 @@ export default function ManageStudents({ embedded = false }) {
         })}
       </div>
 
+      <Dialog open={!!reviewingStudent} onOpenChange={open => {if(!open && !approvalBusy)setReviewingStudent(null);}}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Review Student Enrollment</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">{[reviewingStudent?.first_name,reviewingStudent?.last_name].filter(Boolean).join(' ') || 'Student applicant'}</p>
+            <p>{reviewingStudent?.email}</p>
+            <p>DCJS registration: {reviewingStudent?.dcjs_number || 'Not provided'}</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="font-bold">{reviewingStudent?.student_enrollment_status === 'profile_submitted' && reviewingStudent?.student_intake_complete ? 'Registration submitted — ready for your decision' : 'Registration is not yet ready for approval'}</p>
+              <p className="mt-1 text-xs">The student must submit their profile before approval. Approving assigns Student Portal access only; it does not create an employee or officer account.</p>
+            </div>
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setReviewingStudent(null)} disabled={approvalBusy}>Close</Button><Button className="bg-green-700 text-white" disabled={approvalBusy || reviewingStudent?.student_enrollment_status !== 'profile_submitted' || !reviewingStudent?.student_intake_complete} onClick={() => approveStudent(reviewingStudent)}>{approvalBusy ? 'Approving…' : 'Approve & Activate Student Portal'}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!editingStudent} onOpenChange={() => setEditingStudent(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
