@@ -512,6 +512,8 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
+  const studentAccess = normalizedRoles(user).has('student');
+  if (studentAccess) return pageName === 'StudentPortal';
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
