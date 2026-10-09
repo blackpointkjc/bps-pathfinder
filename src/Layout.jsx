@@ -1760,7 +1760,7 @@ export default function Layout({ children, currentPageName }) {
             onClick={refreshApplication}
             disabled={refreshingApp}
             hidden={allowedCenters(user).includes('student')}
-            className={`${allowedCenters(user).includes('student') ? '!hidden ' : ''}flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-950/30 px-2.5 font-black uppercase tracking-[0.08em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-900/40 disabled:cursor-wait disabled:opacity-60 sm:px-3"
+            className="flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-950/30 px-2.5 font-black uppercase tracking-[0.08em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-900/40 disabled:cursor-wait disabled:opacity-60 sm:px-3"
             title="Load the newest Pathfinder update"
             aria-label="Refresh Pathfinder and load the newest update"
           >
