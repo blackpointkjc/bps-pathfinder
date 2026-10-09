@@ -50,6 +50,9 @@ Deno.serve(async (req) => {
     if (!first_name || !last_name || !email) {
       return Response.json({ error: 'First name, last name, and email are required' }, { status: 400 });
     }
+    if (accountType === 'student_pending' && !/^\d{4}-\d{2}-\d{2}$/.test(String(date_of_birth || ''))) {
+      return Response.json({ error: 'Student date of birth is required in YYYY-MM-DD format' }, { status: 400 });
+    }
 
     const roles = new Set((currentUser.additional_roles || []).map((r: string) => String(r).toLowerCase()));
     const fullAccess = currentUser.role === 'admin' || roles.has('full_access');
