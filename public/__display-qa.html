@@ -1,10 +1,10 @@
 <!doctype html><html class="bps-night-mode"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module">
 import React from '/node_modules/.vite/deps/react.js';
-import {createRoot} from '/node_modules/.vite/deps/react-dom_client.js';
+import ReactDOM from '/node_modules/.vite/deps/react-dom_client.js';
 import DisplayPreferences from '/src/components/DisplayPreferences.jsx';
 import '/src/App.css'; import '/src/index.css'; import '/src/responsive.css'; import '/src/field-readability.css';
 const e=React.createElement;
-createRoot(document.getElementById('root')).render(e('div',{className:'cad-app',style:{background:'#08111d',color:'white',padding:20,overflow:'auto'}},
+ReactDOM.createRoot(document.getElementById('root')).render(e('div',{className:'cad-app',style:{background:'#08111d',color:'white',padding:20,overflow:'auto'}},
 e('header',{className:'pathfinder-header',style:{display:'flex',justifyContent:'space-between'}},e('h1',null,'Display settings test — sample content'),e(DisplayPreferences,{userId:'display-qa'})),
 e('main',{className:'bps-command-page night-workspace',style:{padding:20}},
 e('h2',{className:'text-xl'},'Officer workspace'),
