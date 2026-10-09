@@ -24,8 +24,17 @@ Deno.serve(async (req) => {
     const authorized = user.role === 'admin' || roles.has('trainer') || roles.has('full_access');
     if (!authorized) return Response.json({ error: 'Trainer access required', users: [] }, { status: 403 });
 
-    const allUsers = await loadUsers(base44);
-    const enrollments = await base44.asServiceRole.entities.StudentEnrollment.list('-created_date', 150).catch(() => []);
+    // Pending invitations are independent from User provisioning; one failing source
+    // must not erase the other source's confirmed records.
+    const load_errors: string[] = [];
+    const enrollments = await base44.asServiceRole.entities.StudentEnrollment.list('-created_date', 300).catch((error:any) => {
+      load_errors.push('Student invitations: ' + (error?.message || 'unavailable'));
+      return [];
+    });
+    const allUsers = await loadUsers(base44).catch((error:any) => {
+      load_errors.push('User directory: ' + (error?.message || 'unavailable'));
+      return [];
+    });
     const enrollmentsByEmail = new Map((enrollments || []).map((enrollment:any) => [String(enrollment.email || '').toLowerCase(), String(enrollment.status || '')]));
     const users = (allUsers || [])
       .filter((entry: any) => {
@@ -76,7 +85,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return Response.json({ success: true, users });
+    return Response.json({ success: true, users, load_errors, pending_invitations: (enrollments || []).filter((entry:any) => ['invited','profile_submitted'].includes(String(entry.status))).length });
   } catch (error: any) {
     return Response.json({ error: error?.message || 'Unable to load training users', users: [] }, { status: 500 });
   }
