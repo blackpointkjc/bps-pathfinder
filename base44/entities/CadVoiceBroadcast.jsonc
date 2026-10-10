@@ -1,0 +1,58 @@
+{
+  "name": "CadVoiceBroadcast",
+  "type": "object",
+  "properties": {
+    "request_key": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "sender_id": {
+      "type": "string"
+    },
+    "recipient_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shift_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "request_key",
+    "message",
+    "recipient_emails",
+    "shift_ids"
+  ],
+  "rls": {
+    "create": false,
+    "update": false,
+    "delete": false,
+    "read": {
+      "$or": [
+        {
+          "data.recipient_emails": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
