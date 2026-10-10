@@ -5,7 +5,10 @@ const openShift = row => row.clock_in && !row.clock_out && row.archived !== true
 const activeOfficer = user => {
   const roles = new Set([user.role, ...(user.additional_roles || [])].map(lower));
   const type = lower(user.user_type || user.account_type || user.portal_type);
-  return !user.termination_date && !['pending','disabled','inactive','suspended'].includes(lower(user.account_status))
+  const officerRoles = ['officer','supervisor','cad_access'];
+  const officerRanks = ['officer','unarmed officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel','supervisor'];
+  return (officerRoles.some(role => roles.has(role)) || officerRanks.includes(lower(user.rank)))
+    && !user.termination_date && !['pending','disabled','inactive','suspended'].includes(lower(user.account_status))
     && !['client','student','pending'].includes(type)
     && !['client','student','pending'].some(role => roles.has(role))
     && !['out of service','off duty','off-duty','oos'].includes(lower(user.status));
