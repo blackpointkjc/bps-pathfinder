@@ -157,6 +157,14 @@ export default function WelcomeBriefing({ user }) {
     localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
     setOfflineSince(savedActive);
     let active = true;
+    let recoveryTimer;
+    let recoveryAttempts = 0;
+    const scheduleRecovery = (retryAt = 0) => {
+      if (!active || recoveryAttempts >= 3) return;
+      window.clearTimeout(recoveryTimer);
+      recoveryAttempts += 1;
+      recoveryTimer = window.setTimeout(load, Math.max(60000, retryAt - Date.now()) + Math.random() * 15000);
+    };
     const load = async () => {
       const failedSources = [];
       try {
@@ -243,8 +251,11 @@ export default function WelcomeBriefing({ user }) {
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
         setBrief(previous => ({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: propertySourceFailed ? previous.propertyAlerts : offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], allLiveOfficers: allLiveOfficers || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] }));
         setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
+        if (sourceErrors.length) scheduleRecovery(Number(snapshot.retry_after || 0));
+        else window.clearTimeout(recoveryTimer);
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
+        scheduleRecovery();
         setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary', 'property alerts'])));
       } finally {
         if (active) {
@@ -255,7 +266,7 @@ export default function WelcomeBriefing({ user }) {
     };
     loadRef.current = load;
     load();
-    return () => { active = false; };
+    return () => { active = false; window.clearTimeout(recoveryTimer); };
   }, [user?.id, user?.email, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { readBriefingSource, briefingRetryAt } from './sourceRead.ts';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
-const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 Deno.serve(async (req) => {
   try {
@@ -22,22 +22,10 @@ Deno.serve(async (req) => {
 
     async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean; attempts?: number } = {}) {
       const fallback = options.fallback ?? [];
-      const attempts = Math.max(1, Number(options.attempts || 3));
       let lastError: any = null;
-      for (let attempt = 0; attempt < attempts; attempt += 1) {
-        try {
-          const result = await loader();
-          return result ?? fallback;
-        } catch (error) {
-          lastError = error;
-          // Retrying a 429 immediately spends the same exhausted allowance.
-          if (error?.status === 429 || error?.response?.status === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) {
-            if (attempt < attempts - 1) { await delay(1800 * (attempt + 1)); continue; }
-            break;
-          }
-          if (attempt < attempts - 1) await delay(500 * (attempt + 1));
-        }
-      }
+      try {
+        return await readBriefingSource(JSON.stringify([me.id, [...roles].sort(), today, label]), loader) ?? fallback;
+      } catch (error) { lastError = error; }
       console.error(`getWelcomeBriefingData could not load ${label}`, lastError);
       if (options.reportError !== false) sourceErrors.push(label);
       if (options.required) throw lastError || new Error(`Unable to load ${label}`);
@@ -57,7 +45,7 @@ Deno.serve(async (req) => {
       ? await loadSource('property alert receipts', () => base44.asServiceRole.entities.PropertyAlertReceipt.filter({ user_email: email }, '-dismissed_at', 150, 0, ['id', 'call_id', 'property_id', 'dismissed_at']))
       : [];
     if (input.section === 'property_alerts') {
-      return Response.json({ success: true, propertyAlerts, propertyAlertReceipts, sourceErrors });
+      return Response.json({ success: true, propertyAlerts, propertyAlertReceipts, sourceErrors, retry_after: briefingRetryAt() });
     }
 
     // IMPORTANT: keep these reads serialized. This snapshot runs at login and feeds
@@ -125,6 +113,7 @@ Deno.serve(async (req) => {
       success: true,
       today,
       sourceErrors,
+      retry_after: briefingRetryAt(),
       messages: [],
       mentions,
       announcements,
