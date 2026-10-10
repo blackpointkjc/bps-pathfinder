@@ -254,6 +254,10 @@ async function nextQueuedSpeech() {
         lastBlockedSpeech = item;
         scheduleAutomaticRetry(item);
       }
+      if (item.options.managedRecovery) {
+        if (pendingSpeech?.sequence === item.sequence) pendingSpeech = null;
+        if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
+      }
       item.resolve?.(success);
       nextQueuedSpeech();
     };
@@ -276,7 +280,7 @@ async function nextQueuedSpeech() {
         lastBlockedSpeech = item;
         activeSpeech = null;
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
-        if (item.options.managedRecovery) { pendingSpeech = null; lastBlockedSpeech = null; item.resolve?.(false); nextQueuedSpeech(); }
+        if (item.options.managedRecovery) { finished = true; window.speechSynthesis.cancel(); pendingSpeech = null; lastBlockedSpeech = null; item.resolve?.(false); nextQueuedSpeech(); }
         else scheduleAutomaticRetry(item);
       }
     }, 1800);
@@ -286,7 +290,8 @@ async function nextQueuedSpeech() {
     activeSpeech = null;
     item.resolve?.(false);
     window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
-    if (cancelGeneration === speechCancelGeneration && !item.options.managedRecovery) scheduleAutomaticRetry(item);
+    if (item.options.managedRecovery) { pendingSpeech = null; lastBlockedSpeech = null; nextQueuedSpeech(); }
+    else if (cancelGeneration === speechCancelGeneration) scheduleAutomaticRetry(item);
   }
 }
 
