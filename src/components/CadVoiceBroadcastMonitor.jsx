@@ -6,7 +6,7 @@ import { announceVoiceAsync, cancelVoiceEvent } from '@/utils/voiceAnnouncer';
 export default function CadVoiceBroadcastMonitor({ user }) {
   useEffect(() => {
     if (!user?.id || !user?.email) return;
-    let disposed = false, busy = false, timer, speakingId, lastRecovery = 0;
+    let disposed = false, busy = false, timer, speakingId, lastRecovery = 0, needsAudioUnlock = false;
     const keyFor = id => 'bps:cad-broadcast-played:' + user.id + ':' + id;
     const invoke = async payload => {
       const response = await base44.functions.invoke('cad-voice-broadcast', payload);
@@ -36,6 +36,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
               },
             });
           } finally { window.clearTimeout(timeout); speakingId = null; }
+          needsAudioUnlock = !played;
           if (played) { try { localStorage.setItem(keyFor(record.id), '1'); } catch {} }
         }
         // A failed acknowledgement is retried during recovery without speaking again.
@@ -44,7 +45,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
       if (navigator.locks?.request) await navigator.locks.request(eventId, {ifAvailable:true}, lock => lock ? deliver() : undefined);
       else await deliver();
     };
-    const schedule = (ms = 60000) => {
+    const schedule = (ms = 180000) => {
       window.clearTimeout(timer);
       if (!disposed) timer = window.setTimeout(recover, ms + Math.random() * (ms < 10000 ? 1000 : 10000));
     };
@@ -60,6 +61,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
       } finally { busy = false; schedule(); }
     };
     const wake = () => { if (!busy) schedule(Math.max(300, 10000 - (Date.now() - lastRecovery))); };
+    const unlock = () => { if (needsAudioUnlock) wake(); };
     const dutyChanged = event => {
       const row = event?.data;
       if (!row || String(row.officer_email || row.email || '').toLowerCase() !== user.email.toLowerCase()) return;
@@ -73,7 +75,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
     ];
     window.addEventListener('online', wake);
     window.addEventListener('focus', wake);
-    window.addEventListener('pointerdown', wake);
+    window.addEventListener('pointerdown', unlock);
     schedule(1000);
     return () => {
       disposed = true; window.clearTimeout(timer);
@@ -81,7 +83,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
       unsubscribers.forEach(unsubscribe => unsubscribe?.());
       window.removeEventListener('online', wake);
       window.removeEventListener('focus', wake);
-      window.removeEventListener('pointerdown', wake);
+      window.removeEventListener('pointerdown', unlock);
     };
   }, [user?.id, user?.email]);
   return null;
