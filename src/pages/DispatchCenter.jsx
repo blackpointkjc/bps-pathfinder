@@ -15,6 +15,7 @@ import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
+import CadVoiceBroadcastButton from '@/components/dispatch/CadVoiceBroadcastButton';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
@@ -697,6 +698,7 @@ export default function DispatchCenter() {
                         }
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
                     }} className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
+                    <CadVoiceBroadcastButton user={currentUser} />
                     <button onClick={() => setShowMessaging(!showMessaging)}
                         className={`relative flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMessaging ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-200' : 'border-slate-600 text-slate-400 hover:text-white'}`}>
                         <MessageSquarePlus className="w-2.5 h-2.5" /> MSG
