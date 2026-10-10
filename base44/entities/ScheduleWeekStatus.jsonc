@@ -5,12 +5,12 @@
     "week_start_date": {
       "type": "string",
       "format": "date",
-      "description": "Start date of the week (Friday)"
+      "description": "Start date of the week (Sunday)"
     },
     "week_end_date": {
       "type": "string",
       "format": "date",
-      "description": "End date of the week (Thursday)"
+      "description": "End date of the week (Saturday)"
     },
     "is_ready": {
       "type": "boolean",
@@ -25,6 +25,39 @@
       "type": "string",
       "format": "date-time",
       "description": "When it was marked ready"
+    },
+    "unpublished_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "publication_key": {
+      "type": "string"
+    },
+    "delivery_lock_token": {
+      "type": "string"
+    },
+    "delivery_locked_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "complete"
+      ]
+    },
+    "delivery_recipient_count": {
+      "type": "number"
+    },
+    "delivery_sent_count": {
+      "type": "number"
+    },
+    "delivery_updated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

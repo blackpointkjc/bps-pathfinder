@@ -54,6 +54,10 @@
         "type": "string"
       },
       "description": "List of emails who have read this announcement"
+    },
+    "publication_key": {
+      "type": "string",
+      "description": "Stable schedule publication key for retry-safe announcement delivery"
     }
   },
   "required": [

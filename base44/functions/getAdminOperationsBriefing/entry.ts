@@ -18,7 +18,10 @@ Deno.serve(async req => {
     const enrollments = await read('Student enrollment',()=>api.asServiceRole.entities.StudentEnrollment.list('-created_date',250));
     const access = await read('Access requests',()=>api.asServiceRole.entities.AccessRequest.filter({status:'pending'},'-created_date',150));
     const tasks = await read('Assigned work',()=>api.asServiceRole.entities.Task.filter({status:'open'},'-created_date',250));
-    const officerReviews = (tasks || []).filter((item:any)=>item.title === 'Review new officer certifications');
+    // Trainer assignments remain actionable, but the admin queue counts officers.
+    const officerReviews = [...new Map((tasks || [])
+      .filter((item:any)=>item.title === 'Review new officer certifications')
+      .map((item:any)=>[String(item.related_id || item.id),item])).values()];
     const pendingEmployees = (users || []).filter((user:any)=>{
       const rank = String(user.rank || '').toLowerCase();
       const assigned = (user.additional_roles || []).length || user.role === 'admin' || user.role === 'dispatch';
@@ -40,10 +43,9 @@ Deno.serve(async req => {
         ...(access || []).slice(0,25).map((item:any)=>({id:'access-'+item.id,area:'HR',label:'Account access request',person:item.full_name || item.email || 'Applicant',status:'Awaiting HR/admin decision',page:'AdminCenter?admin_ops_section=people'})),
         ...enrollmentRows.slice(0,35).map((item:any)=>({id:'student-'+item.id,area:'Student',label:'Student registration',person:[item.first_name,item.last_name].filter(Boolean).join(' ') || item.email,status:item.status==='profile_submitted'?'Ready for trainer review':'Waiting for student registration',page:'TrainerCenter?section=students'})),
         ...officerReviews.slice(0,35).map((item:any)=>({
-          id:'training-'+item.id, area:'Training',
+          id:'training-'+(item.related_id || item.id), area:'Training',
           label:'Review officer certifications',
           person:namesById.get(String(item.related_id)) || item.related_name?.trim() || `Officer account unavailable · ${item.related_id || item.id}`,
-          owner:namesById.get(String(item.assigned_to)) || item.assigned_name?.trim() || 'Trainer assignment unavailable',
           status:'Certification review pending',
           page:'TrainerCenter?section=compliance' + (item.related_id ? '&officer_id='+encodeURIComponent(item.related_id) : ''),
           action:'Review certifications',

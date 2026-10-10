@@ -187,113 +187,23 @@ export default function AdminScheduling() {
     },
     mutationFn: async (isReady) => {
       const currentWeekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
-      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
-      const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-
-      if (weekStatus) {
-        // Update existing
-        await base44.entities.ScheduleWeekStatus.update(weekStatus.id, {
-          is_ready: isReady,
-          marked_ready_by: user?.email,
-          marked_ready_date: new Date().toISOString()
-        });
-      } else {
-        // Create new
-        await base44.entities.ScheduleWeekStatus.create({
-          week_start_date: weekStartStr,
-          week_end_date: weekEndStr,
-          is_ready: isReady,
-          marked_ready_by: user?.email,
-          marked_ready_date: new Date().toISOString()
-        });
-      }
-
-      // Send one personalized notification and email per scheduled officer.
-      // Do not create a second company announcement for the same publication;
-      // that duplicate was responsible for the extra pale banner.
-      if (isReady) {
-        const withheldOfficers = new Set(weekStatus?.unpublished_officer_emails || []);
-        const publishedShifts = (schedules || []).filter(shift =>
-          shift.shift_date >= weekStartStr &&
-          shift.shift_date <= weekEndStr &&
-          shift.officer_email &&
-          shift.officer_email !== 'OPEN' &&
-          shift.is_open !== true &&
-          !withheldOfficers.has(shift.officer_email)
-        );
-
-        const shiftsByOfficer = publishedShifts.reduce((groups, shift) => {
-          if (!groups[shift.officer_email]) groups[shift.officer_email] = [];
-          groups[shift.officer_email].push(shift);
-          return groups;
-        }, {});
-
-        const getShiftHours = (startTime, endTime) => {
-          const [startHour = 0, startMinute = 0] = String(startTime || '00:00').split(':').map(Number);
-          const [endHour = 0, endMinute = 0] = String(endTime || '00:00').split(':').map(Number);
-          const start = (startHour * 60) + startMinute;
-          let end = (endHour * 60) + endMinute;
-          if (end <= start) end += 24 * 60;
-          return (end - start) / 60;
-        };
-
-        await Promise.all(Object.entries(shiftsByOfficer).map(async ([officerEmail, officerShifts]) => {
-          const officer = allUsers?.find(item => item.email === officerEmail);
-          const officerName = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || 'Officer';
-          const sortedShifts = [...officerShifts].sort((a, b) =>
-            `${a.shift_date} ${a.start_time}`.localeCompare(`${b.shift_date} ${b.start_time}`)
-          );
-          const totalHours = sortedShifts.reduce((sum, shift) => sum + getShiftHours(shift.start_time, shift.end_time), 0);
-          const shiftRows = sortedShifts.map(shift => `
-            <tr>
-              <td>${format(parseISO(shift.shift_date), 'EEE, MMM d')}</td>
-              <td>${shift.start_time} - ${shift.end_time}</td>
-              <td>${String(shift.location || '').split(':')[0].trim()}</td>
-              <td>${getShiftHours(shift.start_time, shift.end_time).toFixed(2)}h</td>
-            </tr>
-          `).join('');
-
-          const publishedSummary = `Your schedule has been published for ${format(currentWeekStart, 'MMM d')} - ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}. You are scheduled for ${sortedShifts.length} shift(s), totaling ${totalHours.toFixed(2)} hours. Please review My Schedule.`;
-          await Promise.all([
-            base44.integrations.Core.SendEmail({
-              to: officerEmail,
-              subject: `Your Schedule - ${format(currentWeekStart, 'MMM d')} to ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`,
-              action_url: '/Schedule',
-              action_label: 'View My Schedule',
-              body: `
-                <p>Hello ${officerName},</p>
-                <p>Your work schedule has been published for <strong>${format(currentWeekStart, 'MMMM d')}</strong> through <strong>${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')}</strong>.</p>
-                <p><strong>Scheduled Shifts:</strong> ${sortedShifts.length}<br><strong>Total Scheduled Hours:</strong> ${totalHours.toFixed(2)} hours</p>
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                  <thead><tr><th>Date</th><th>Time</th><th>Location</th><th>Hours</th></tr></thead>
-                  <tbody>${shiftRows}</tbody>
-                </table>
-                <p>Please review your schedule in the Black Point Portal and contact your supervisor if something appears incorrect.</p>
-              `
-            }),
-            base44.entities.Notification.create({
-              recipient_email: officerEmail,
-              type: 'shift_posted',
-              title: '📅 Your Schedule Has Been Published',
-              message: publishedSummary,
-              priority: 'high',
-              requires_acknowledgment: true,
-              source_name: 'System Scheduling',
-              is_read: false
-            })
-          ]);
-        }));
-      }
-      
-      return isReady;
+      const response = await base44.functions.invoke('publishScheduleWeek', {
+        week_start_date: format(currentWeekStart, 'yyyy-MM-dd'), is_ready: isReady,
+      });
+      const result = response?.data || response;
+      if (!result?.success) throw new Error(result?.error || 'Schedule publication failed');
+      return result;
     },
-    onSuccess: (isReady) => {
-      toast.success(isReady ? 'Week schedule published. Scheduled officers were sent one in-app alert and one Black Point schedule email.' : 'Week schedule hidden from officers and clients.');
+    onSuccess: (result) => {
+      if (!result.is_ready) toast.success('Week schedule hidden from officers and clients.');
+      else if (result.pending) toast.warning('Schedule and company announcement published. ' + result.pending + ' officer alert(s) still need delivery. Use Retry delivery.');
+      else toast.success('Schedule and company announcement published. ' + result.delivered + ' officer in-app alert(s) delivered.');
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
     },
     onError: (error, _isReady, context) => {
       if (context?.queryKey) queryClient.setQueryData(context.queryKey, context.previous);
       console.error('Unable to update week publication status:', error);
-      toast.error('The schedule publication signal could not be saved. The checkbox was restored; please try again.');
+      toast.error(error?.response?.data?.error || error?.message || 'Publication could not finish. Refresh the status and retry delivery.');
     },
     onSettled: (_data, _error, _isReady, context) => {
       queryClient.invalidateQueries({ queryKey: context?.queryKey || ['scheduleWeekStatus'] });
@@ -2747,6 +2657,17 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 {markWeekReadyMutation.isPending ? 'Sending…' : weekStatus?.is_ready ? 'Published' : 'Not Published'}
               </Badge>
             </div>
+
+            {weekStatus?.is_ready && (
+              <div className="flex items-center gap-3 text-sm text-slate-300">
+                <span>{weekStatus.delivery_status === 'complete'
+                  ? 'Company announcement posted; officer alerts delivered.'
+                  : 'Officer announcement delivery needs verification or retry.'}</span>
+                <Button variant="outline" disabled={markWeekReadyMutation.isPending} onClick={() => markWeekReadyMutation.mutate(true)}>
+                  Retry delivery
+                </Button>
+              </div>
+            )}
 
             {weekOfficersForPublication.length > 0 && (
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
