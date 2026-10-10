@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       '-evaluated_at',
       250,
     );
-    const operationalEvaluations = [...(assignedEvaluations || []), ...(partialEvaluations || [])];
+    const operationalEvaluations = [...(assignedEvaluations || []), ...(partialEvaluations || [])].filter(item => !item.superseded_by);
 
     // Remaining reads are sequential and bounded to prevent rate-limit bursts.
     const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 500);

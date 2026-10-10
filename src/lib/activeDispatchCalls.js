@@ -33,7 +33,7 @@ function isPulsePointCall(call) {
 
 function isVisibleActiveCall(call, now = Date.now()) {
   const status = String(call?.status || '').trim().toLowerCase();
-  if (TERMINAL_STATUSES.has(status)) return false;
+  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(status)) return false;
   if (isPulsePointCall(call)) return true;
   const stamp = callTimestamp(call);
   return stamp > 0 && now - stamp < ACTIVE_CALL_MAX_AGE_MS;

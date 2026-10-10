@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
     const activeCall = await withRetry(() => base44.asServiceRole.entities.DispatchCall.get(callId)).catch(() => null);
     const archivedCalls = !activeCall && simulation
-      ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1).catch(() => [])
+      ? await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: callId }, '-archived_date', 1)
       : [];
     const call = activeCall || archivedCalls?.[0] || null;
     // Keep every automatic-dispatch check lightweight. The prior implementation
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     if (!simulation && ['cleared', 'cancelled', 'canceled', 'closed', 'resolved'].includes(lower(call.status))) return Response.json({ success: true, skipped: true, reason: 'Call is no longer active' });
     const alert = input.property_alert_id
       ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
-      : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)).catch(() => []))?.[0] || null;
+      : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)))?.[0] || null;
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
     // Conditional update of the existing alert is the cross-worker claim. A
@@ -450,7 +450,7 @@ Deno.serve(async (req) => {
           });
           unitStatusChanged = true;
         }
-        const linkedUnits = await base44.asServiceRole.entities.Unit.filter({ user_id: unitId }).catch(() => []);
+        const linkedUnits = await base44.asServiceRole.entities.Unit.filter({ user_id: unitId });
         await Promise.all((linkedUnits || []).map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
           status: 'Dispatched',
           assigned_call_ids: Array.from(new Set([...(unit.assigned_call_ids || []).map(String), callId])),
@@ -458,7 +458,7 @@ Deno.serve(async (req) => {
         })));
 
         const assignmentEventKey = `autodispatch:${alert.id}:assignment:${unitId}`;
-        const existingLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: assignmentEventKey }, '-created_date', 1).catch(() => []);
+        const existingLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: assignmentEventKey }, '-created_date', 1);
         if (!existingLogs?.length) {
           const unitLabel = recommendation.unit_number ? `Unit ${recommendation.unit_number}` : (recommendation.officer_name || 'Assigned unit');
           await base44.asServiceRole.entities.CallStatusLog.create({
@@ -484,7 +484,7 @@ Deno.serve(async (req) => {
         }
 
         if (officer?.email) {
-          const existingNotifications = await base44.asServiceRole.entities.Notification.filter({ recipient_email: lower(officer.email), related_id: callId, type: 'call_assignment' }, '-created_date', 20).catch(() => []);
+          const existingNotifications = await base44.asServiceRole.entities.Notification.filter({ recipient_email: lower(officer.email), related_id: callId, type: 'call_assignment' }, '-created_date', 20);
           if (!existingNotifications?.length) {
             await base44.asServiceRole.entities.Notification.create({
               recipient_email: lower(officer.email),
@@ -520,7 +520,7 @@ Deno.serve(async (req) => {
     if (mode === 'live' && !simulation && staffingShortfall > 0) {
       const shortageKind = totalStaffedUnits === 0 ? 'no-eligible-unit' : 'backup-shortfall';
       const shortageEventKey = `autodispatch:${alert.id}:staffing-shortfall:${shortageKind}`;
-      const existingShortageLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: shortageEventKey }, '-created_date', 1).catch(() => []);
+      const existingShortageLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: shortageEventKey }, '-created_date', 1);
       if (!existingShortageLogs?.length) {
         const shortageMessage = totalStaffedUnits === 0
           ? `Property alert. No eligible unit available. CAD number ${cadNumber}.`
@@ -554,7 +554,7 @@ Deno.serve(async (req) => {
             recipient_email: lower(recipient.email),
             related_id: callId,
             title: notificationTitle,
-          }, '-created_date', 1).catch(() => []);
+          }, '-created_date', 1);
           if (!prior?.length) await base44.asServiceRole.entities.Notification.create({
             recipient_email: lower(recipient.email),
             type: 'system_issue',
