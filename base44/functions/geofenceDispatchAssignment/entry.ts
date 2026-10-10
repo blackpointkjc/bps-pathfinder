@@ -108,6 +108,50 @@ Deno.serve(async (req) => {
     const property = await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
 
+    // Automatic assignment is opt-in per property. Shadow remains the default;
+    // only an explicit saved live mode may change operational records.
+    const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
+    const liveApproved = Boolean(property.auto_dispatch_live_approved_at && property.auto_dispatch_live_approved_by);
+    const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
+    // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
+    const mode = requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
+    // Use the property's saved response-radius rule for both recommendations
+    // and LIVE assignment. The prior hardcoded 500-meter limit ignored the Admin
+    // setting and rejected otherwise eligible clocked-in officers.
+    const radius = Math.min(100, Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5)));
+    const nearbyLimitMeters = radius * 1609.344;
+
+    // A completed live evaluation is the permanent idempotency receipt for this
+    // property-alert event. Refreshes, ingestion reconnects, and timed rechecks
+    // must never assign or announce the same alert again.
+    if (mode === 'live' && !simulation) {
+      const completed = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({
+        property_alert_id: alert.id,
+        mode: 'live',
+        decision: 'assigned',
+        $or: [{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}],
+      }, '-evaluated_at', 1);
+      if (completed?.length) {
+        const selectedIds = new Set((completed[0].recommended_unit_ids || []).map(String));
+        return Response.json({
+          success: true,
+          mode: 'live',
+          shadow_mode: false,
+          simulation: false,
+          assignment_created: false,
+          unit_status_changed: false,
+          duplicate_event: true,
+          call_id: callId,
+          decision: 'assigned',
+          recommendations: (completed[0].ranking || []).filter((item: any) => selectedIds.has(String(item.unit_id))),
+          excluded_units: completed[0].excluded_units || [],
+          evaluation_id: completed[0].id,
+          staffing_shortfall: 0,
+          message: 'This property alert was already assigned. No duplicate action was taken.',
+        });
+      }
+    }
+
     let users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
     let activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
     let timeEntries = await withRetry(() => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1500));
@@ -167,49 +211,6 @@ Deno.serve(async (req) => {
       currentCalls = [call];
     }
 
-    // Automatic assignment is opt-in per property. Shadow remains the default;
-    // only an explicit saved live mode may change operational records.
-    const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
-    const liveApproved = Boolean(property.auto_dispatch_live_approved_at && property.auto_dispatch_live_approved_by);
-    const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
-    // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
-    const mode = requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
-    // Use the property's saved response-radius rule for both recommendations
-    // and LIVE assignment. The prior hardcoded 500-meter limit ignored the Admin
-    // setting and rejected otherwise eligible clocked-in officers.
-    const radius = Math.min(100, Math.max(0.1, Number(property.auto_dispatch_response_radius_miles || 5)));
-    const nearbyLimitMeters = radius * 1609.344;
-
-    // A completed live evaluation is the permanent idempotency receipt for this
-    // property-alert event. Refreshes, ingestion reconnects, and timed rechecks
-    // must never assign or announce the same alert again.
-    if (mode === 'live' && !simulation) {
-      const completed = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({
-        property_alert_id: alert.id,
-        mode: 'live',
-        decision: 'assigned',
-        $or: [{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}],
-      }, '-evaluated_at', 1);
-      if (completed?.length) {
-        const selectedIds = new Set((completed[0].recommended_unit_ids || []).map(String));
-        return Response.json({
-          success: true,
-          mode: 'live',
-          shadow_mode: false,
-          simulation: false,
-          assignment_created: false,
-          unit_status_changed: false,
-          duplicate_event: true,
-          call_id: callId,
-          decision: 'assigned',
-          recommendations: (completed[0].ranking || []).filter((item: any) => selectedIds.has(String(item.unit_id))),
-          excluded_units: completed[0].excluded_units || [],
-          evaluation_id: completed[0].id,
-          staffing_shortfall: 0,
-          message: 'This property alert was already assigned. No duplicate action was taken.',
-        });
-      }
-    }
     const requiredUnits = Math.max(1, Number(property.auto_dispatch_required_units || 1), property.auto_dispatch_backup_required ? 2 : 1);
     const requiredQualifications = list(property.auto_dispatch_required_qualifications);
     const requiredEquipment = list(property.auto_dispatch_required_equipment);

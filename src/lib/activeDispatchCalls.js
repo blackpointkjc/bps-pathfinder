@@ -110,7 +110,7 @@ function readLastGoodCalls() {
 }
 
 function saveLastGoodCalls(calls) {
-  if (!Array.isArray(calls) || calls.length === 0) return;
+  if (!Array.isArray(calls)) return;
   try {
     window.localStorage.setItem(CACHE_KEY, JSON.stringify({
       savedAt: Date.now(),
@@ -137,7 +137,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     if (cached.length) return cached.slice(0, limit);
     throw new Error('Active calls are waiting for the API retry window.');
   }
-  if (inFlight) return inFlight;
+  if (inFlight) return (await inFlight).slice(0, limit);
 
   inFlight = (async () => {
     let primaryError;
@@ -164,7 +164,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       return deduped;
     } catch (error) {
       primaryError = error;
-      if (/429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
+      if (Number(error?.status || error?.response?.status) === 429 || /429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
         requestBackoffUntil = Date.now() + 20_000;
         if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows);
         const cached = readLastGoodCalls();
@@ -176,7 +176,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     // Preserve a direct-read compatibility fallback while an updated backend
     // function is warming up, then fall back to the last verified local queue.
     try {
-      const rows = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', limit), 10000, 'Active call fallback');
+      const rows = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', BACKEND_FEED_LIMIT), 10000, 'Active call fallback');
       if (Array.isArray(rows)) {
         const deduped = dedupeOperationalCalls(rows);
         saveLastGoodCalls(deduped);
@@ -193,7 +193,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     inFlight = null;
   });
 
-  return inFlight;
+  return (await inFlight).slice(0, limit);
 }
 
 export function clearActiveDispatchCallMemoryCache() {

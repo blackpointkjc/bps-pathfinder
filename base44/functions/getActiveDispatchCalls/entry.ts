@@ -37,12 +37,22 @@ Deno.serve(async (req) => {
     if (blocked) return Response.json({ error: 'Operational access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const limit = Math.max(50, Math.min(200, Number(body?.limit || 100)));
+    const limit = Math.max(50, Math.min(500, Number(body?.limit || 100)));
     const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
     let cached = readCache.get(cacheKey);
-    if (!cached || Date.now() - cached.at >= 2000) {
+    if (!cached || Date.now() - cached.at >= 3000) {
       if (!cached?.pending) {
-        cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000) };
+        cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.filter({
+          manual_dismissed: {$ne:true},
+          status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
+          $or: [
+            {created_date:{$gte:new Date(Date.now()-ACTIVE_MAX_AGE_MS).toISOString()}},
+            {time_received:{$gte:new Date(Date.now()-ACTIVE_MAX_AGE_MS).toISOString()}},
+            {source_channel:{$regex:'pulsepoint',$options:'i'}},
+            {external_call_id:{$regex:'^pulsepoint:',$options:'i'}},
+            {source:{$regex:'^pulsepoint$',$options:'i'}},
+          ],
+        }, '-created_date', 1000) };
         readCache.set(cacheKey, cached);
       }
       try { cached.rows = await cached.pending!; cached.at = Date.now(); cached.pending = undefined; }
@@ -66,7 +76,7 @@ Deno.serve(async (req) => {
     console.error('getActiveDispatchCalls failed', error);
     return Response.json(
       { error: error?.message || 'Unable to load active dispatch calls' },
-      { status: 500 },
+      { status: Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests/i.test(String(error?.message)) ? 429 : 500 },
     );
   }
 });

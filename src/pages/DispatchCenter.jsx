@@ -26,30 +26,14 @@ import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficer
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
-import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
 
-const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v2';
-const DISPATCH_CALL_CACHE_MAX_AGE_MS = 65 * 60 * 1000;
+const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v3';
 const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 
-function readCachedDispatchCalls() {
-    try {
-        const cached = JSON.parse(window.localStorage.getItem(DISPATCH_CALL_CACHE_KEY) || 'null');
-        if (!cached || !Array.isArray(cached.calls) || Date.now() - Number(cached.savedAt || 0) > DISPATCH_CALL_CACHE_MAX_AGE_MS) return [];
-        return cached.calls.filter(call => {
-            const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
-            const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
-            const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000 ? upstreamAt : (createdAt || upstreamAt);
-            return receivedAt > 0 && Date.now() - receivedAt < ACTIVE_CALL_MAX_AGE_MS
-                && !['Cleared', 'Cancelled'].includes(call.status)
-                && call.manual_dismissed !== true;
-        });
-    } catch {
-        return [];
-    }
-}
+function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
 export default function DispatchCenter() {
     const navigate = useNavigate();

@@ -111,7 +111,7 @@ export function DashboardDataProvider({ children }) {
                     // block the current queue from painting. Keep the rows we already
                     // have on screen, recover in the background, then refresh once.
                     void refreshCadIngestionIfStale(callsData).then(recovery => {
-                        if (recovery?.reason === 'feed_fresh' || recovery?.reason === 'recent_attempt') return;
+                        if (recovery?.skipped || !recovery?.success) return;
                         window.setTimeout(() => {
                             lastRefreshTime.current = 0;
                             loadData(true);

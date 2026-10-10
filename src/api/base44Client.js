@@ -75,6 +75,7 @@ const readInflight = new Map();
 const writeInflight = new Map();
 const readQueue = [];
 let activeReads = 0;
+let activeBackgroundReads = 0;
 let activeWrites = 0;
 let recentRateLimitAt = null;
 let readRecoveryUntil = 0;
@@ -202,6 +203,9 @@ function pumpReads() {
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
+    // Reserve one of the two slots for auth/live CAD/status; a 60-second
+    // briefing must not occupy both slots before the call feed mounts.
+    if (readQueue[0].priority < 90 && activeBackgroundReads >= MAX_CONCURRENT_READS - 1) return;
     const nextWait = waitFor(readQueue[0]);
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
@@ -217,6 +221,7 @@ function pumpReads() {
     window.clearTimeout(job.queueTimer);
     job.markStarted();
     activeReads += 1;
+    if (job.priority < 90) activeBackgroundReads += 1;
     const startedAt = Date.now();
     Promise.resolve()
       .then(() => withRequestTimeout(Promise.resolve().then(job.task), readTimeoutMs(job.meta), 'Data request'))
@@ -254,6 +259,7 @@ function pumpReads() {
       })
       .finally(() => {
         activeReads -= 1;
+        if (job.priority < 90) activeBackgroundReads -= 1;
         pumpReads();
       });
   }
