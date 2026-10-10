@@ -1,0 +1,29 @@
+{
+  "name": "CadVoiceReceipt",
+  "type": "object",
+  "properties": {
+    "broadcast_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "played_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "broadcast_id",
+    "user_email",
+    "played_at"
+  ],
+  "rls": {
+    "create": false,
+    "update": false,
+    "delete": false,
+    "read": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
