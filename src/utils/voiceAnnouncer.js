@@ -220,6 +220,14 @@ async function nextQueuedSpeech() {
     // the first navigation prompt to sound male, then later prompts female.
     if (item.options.voiceProfile !== 'system_default') await waitForSpeechVoices();
     if (cancelGeneration !== speechCancelGeneration || activeSpeech?.sequence !== item.sequence) return;
+    if (item.options.canPlay && !(await item.options.canPlay())) {
+      if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
+      pendingSpeech = null;
+      item.resolve?.(false);
+      nextQueuedSpeech();
+      return;
+    }
+    if (cancelGeneration !== speechCancelGeneration || activeSpeech?.sequence !== item.sequence) { item.resolve?.(false); return; }
     const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
@@ -241,7 +249,7 @@ async function nextQueuedSpeech() {
         clearAutomaticRetry(true);
       }
       if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
-      if (!success && retryable && !wasCancelled) {
+      if (!success && retryable && !wasCancelled && !item.options.managedRecovery) {
         pendingSpeech = item;
         lastBlockedSpeech = item;
         scheduleAutomaticRetry(item);
@@ -268,7 +276,8 @@ async function nextQueuedSpeech() {
         lastBlockedSpeech = item;
         activeSpeech = null;
         window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: 'browser_blocked' } }));
-        scheduleAutomaticRetry(item);
+        if (item.options.managedRecovery) { pendingSpeech = null; lastBlockedSpeech = null; item.resolve?.(false); nextQueuedSpeech(); }
+        else scheduleAutomaticRetry(item);
       }
     }, 1800);
   } catch (error) {
@@ -277,13 +286,13 @@ async function nextQueuedSpeech() {
     activeSpeech = null;
     item.resolve?.(false);
     window.dispatchEvent(new CustomEvent('bps-voice-blocked', { detail: { text: item.clean, reason: error?.message || 'playback_failed' } }));
-    if (cancelGeneration === speechCancelGeneration) scheduleAutomaticRetry(item);
+    if (cancelGeneration === speechCancelGeneration && !item.options.managedRecovery) scheduleAutomaticRetry(item);
   }
 }
 
 function speakQueued(clean, options = {}, resolve = null) {
   if (!isVoiceSupported() || wasEventProcessed(options.eventId)) return false;
-  if (!claimEventForThisBrowser(options.eventId)) return false;
+  if (!options.managedRecovery && !claimEventForThisBrowser(options.eventId)) return false;
   const priority = PRIORITY[options.priority] ?? PRIORITY.normal;
   const duplicate = speechQueue.some(item => options.eventId && item.options.eventId === options.eventId);
   if (duplicate || (activeSpeech && options.eventId && activeSpeech.options.eventId === options.eventId)) return false;
@@ -360,7 +369,7 @@ export function announceVoice(text, options = {}) {
 // Promise form used by emergency notifications so a secondary alert tone can
 // be deliberately delayed until the spoken safety announcement has finished.
 export function announceVoiceAsync(text, options = {}) {
-  if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
+  if (!text || !isVoiceSupported() || (!options.force && !isVoiceEnabled())) return Promise.resolve(false);
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = String(text)
     .replace(/\bCAD\b/gi, 'cad')
@@ -371,6 +380,21 @@ export function announceVoiceAsync(text, options = {}) {
   return new Promise(resolve => {
     if (!speakQueued(clean, options, resolve)) resolve(false);
   });
+}
+
+export function cancelVoiceEvent(eventId) {
+  for (let i = speechQueue.length - 1; i >= 0; i -= 1) {
+    if (speechQueue[i].options.eventId === eventId) { speechQueue[i].resolve?.(false); speechQueue.splice(i, 1); }
+  }
+  if (pendingSpeech?.options.eventId === eventId) { pendingSpeech.resolve?.(false); pendingSpeech = null; }
+  if (lastBlockedSpeech?.options.eventId === eventId) lastBlockedSpeech = null;
+  if (activeSpeech?.options.eventId === eventId) {
+    activeSpeech.resolve?.(false);
+    speechCancelGeneration += 1;
+    activeSpeech = null;
+    window.speechSynthesis.cancel();
+    nextQueuedSpeech();
+  }
 }
 
 export function announceNavigationInstruction(instruction, distanceFeet) {
