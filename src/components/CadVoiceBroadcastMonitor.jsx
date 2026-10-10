@@ -6,7 +6,7 @@ import { announceVoiceAsync, cancelVoiceEvent } from '@/utils/voiceAnnouncer';
 export default function CadVoiceBroadcastMonitor({ user }) {
   useEffect(() => {
     if (!user?.id || !user?.email) return;
-    let disposed = false, busy = false, timer, speakingId;
+    let disposed = false, busy = false, timer, speakingId, lastRecovery = 0;
     const keyFor = id => 'bps:cad-broadcast-played:' + user.id + ':' + id;
     const invoke = async payload => {
       const response = await base44.functions.invoke('cad-voice-broadcast', payload);
@@ -19,7 +19,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
       const deliver = async () => {
         if (disposed) return;
         let played = false;
-        try { played = localStorage.getItem(keyFor(record.id)) === '1'; } catch {}
+        try { played = localStorage.getItem(keyFor(record.id)) === '1' || localStorage.getItem('bps-voice-event:' + eventId) === '1'; } catch {}
         if (!played) {
           speakingId = eventId;
           // Duty is checked on the server at playback, including after time spent
@@ -46,11 +46,11 @@ export default function CadVoiceBroadcastMonitor({ user }) {
     };
     const schedule = (ms = 60000) => {
       window.clearTimeout(timer);
-      if (!disposed) timer = window.setTimeout(recover, ms + Math.random() * 10000);
+      if (!disposed) timer = window.setTimeout(recover, ms + Math.random() * (ms < 10000 ? 1000 : 10000));
     };
     const recover = async () => {
       if (disposed || busy || navigator.onLine === false) { schedule(); return; }
-      busy = true;
+      busy = true; lastRecovery = Date.now();
       try {
         clearBase44ReadCacheMatching('function:cad-voice-broadcast:');
         const data = await invoke({action:'list'});
@@ -59,7 +59,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
         console.warn('CAD voice recovery will retry:', error?.message || 'Connection unavailable');
       } finally { busy = false; schedule(); }
     };
-    const wake = () => { if (!busy) schedule(300); };
+    const wake = () => { if (!busy) schedule(Math.max(300, 10000 - (Date.now() - lastRecovery))); };
     const dutyChanged = event => {
       const row = event?.data;
       if (!row || String(row.officer_email || row.email || '').toLowerCase() !== user.email.toLowerCase()) return;

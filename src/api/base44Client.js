@@ -23,6 +23,7 @@ let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 1000;
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
@@ -111,6 +112,7 @@ const recordRequestTrace = entry => {
 };
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
@@ -151,7 +153,7 @@ const sharedRateLimitUntil = () => {
   try {
     const until = Number(localStorage.getItem(RATE_LIMIT_KEY) || 0);
     // Ignore malformed/future state left behind by an older browser session.
-    return Number.isFinite(until) && until <= Date.now() + RATE_LIMIT_COOLDOWN_MS ? until : 0;
+    return Number.isFinite(until) && until <= Date.now() + 24 * 60 * 60_000 ? until : 0;
   } catch { return 0; }
 };
 const noteRateLimit = error => {
@@ -164,12 +166,12 @@ const noteRateLimit = error => {
     ? (Number.isFinite(seconds) ? recentRateLimitAt + Math.max(0, seconds) * 1000 : Date.parse(retryAfter))
     : 0;
   const recoveryMs = Number.isFinite(retryAt) && retryAt > recentRateLimitAt
-    ? Math.min(READ_QUEUE_TIMEOUT_MS - 5_000, retryAt - recentRateLimitAt)
+    ? retryAt - recentRateLimitAt
     : CRITICAL_RATE_LIMIT_RECOVERY_MS;
   readRecoveryUntil = Math.max(readRecoveryUntil, recentRateLimitAt + recoveryMs);
   // Concurrent failures belong to one recovery window, not a new minute each.
   if (sharedRateLimitUntil() > recentRateLimitAt) return;
-  const until = recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS;
+  const until = Math.max(recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS, retryAt || 0);
   try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch {}
 };
 const schedulePump = delay => {
@@ -187,14 +189,20 @@ function pumpReads() {
   // telemetry still honors the longer cooldown in the function wrapper below.
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
-  const waitForHead = readQueue[0]?.meta?.kind === 'auth' ? 0 : criticalRecovery;
+  const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
+    job.meta?.kind === 'auth' ? 0 : criticalRecovery,
+    job.priority < 90 ? cooldown : 0);
+  // A background cooldown never holds the head of the queue ahead of live CAD.
+  readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
+    || (a.priority >= 90 && b.priority < 90 ? -1 : b.priority >= 90 && a.priority < 90 ? 1 : score(b) - score(a)));
+  const waitForHead = waitFor(readQueue[0]);
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
     return;
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
-    const nextWait = readQueue[0]?.meta?.kind === 'auth' ? 0 : criticalRecovery;
+    const nextWait = waitFor(readQueue[0]);
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
       break;
@@ -235,7 +243,14 @@ function pumpReads() {
           duration_ms: Date.now() - startedAt,
           error: errorText(error).slice(0, 700),
         });
-        job.reject(error);
+        const status = Number(error?.response?.status || error?.status || 0);
+        const retryable = throttled || [502,503,504].includes(status) || /network error|failed to fetch/i.test(errorText(error));
+        job.attempt = (job.attempt || 0) + 1;
+        if (retryable && job.attempt <= 2 && Date.now() - job.queuedAt < READ_QUEUE_TIMEOUT_MS - 30000) {
+          job.readyAt = Date.now() + (throttled ? 1000 : 2000 * 2 ** job.attempt) + Math.random() * 3000;
+          job.armQueueTimeout(READ_QUEUE_TIMEOUT_MS - (Date.now() - job.queuedAt));
+          readQueue.push(job);
+        } else job.reject(error);
       })
       .finally(() => {
         activeReads -= 1;
@@ -287,6 +302,7 @@ function queuedRead(key, task, meta = {}) {
         reject(error);
       }, Math.max(5_000, delayMs));
     };
+    job.armQueueTimeout = armQueueTimeout;
     armQueueTimeout(READ_QUEUE_TIMEOUT_MS);
     job.priority = readPriority(meta);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
@@ -506,8 +522,9 @@ const functions = new Proxy(rawBase44.functions, {
       if (functionName === 'logLocation'
           && payload?.end_session !== true
           && payload?.force_publish !== true
-          && sharedRateLimitUntil() > Date.now()) {
-        const retryAfter = sharedRateLimitUntil();
+          && Math.max(readRecoveryUntil, sharedRateLimitUntil() > Date.now()
+            ? sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS + CRITICAL_RATE_LIMIT_RECOVERY_MS : 0) > Date.now()) {
+        const retryAfter = Math.max(readRecoveryUntil, sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS + CRITICAL_RATE_LIMIT_RECOVERY_MS);
         recordRequestTrace({
           label: requestLabel(meta),
           kind: 'function',
