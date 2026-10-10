@@ -759,11 +759,27 @@ export default function GlobalMessageBanner({ user }) {
         }
         knownIds.current.add(key);
         if (record.event_type === 'property_alert') playNotificationChime(true);
-        const announcementText = claim.announcement_text || record.announcement_text;
+        const autoAssignment = record.triggering_action === 'geofenceDispatchAssignment.live'
+          && ['unit_dispatched', 'additional_unit'].includes(record.event_type);
+        let announcementText = claim.announcement_text || record.announcement_text;
+        let initialClaim = null;
+        const initialKey = record.call_id ? `call:${record.call_id}:initial` : '';
+        if (autoAssignment && initialKey && claim.assignment_announcement_text) {
+          initialClaim = await claimAnnouncementEvent({
+            event_key: initialKey, event_id: record.id,
+            event_type: 'property_alert', cad_number: record.cad_number || '',
+          }).catch(error => ({ claimed: false, error }));
+          // The original property alert is already playing/queued, or was heard.
+          // Otherwise this utterance supplies the details followed by assignment.
+          if (!initialClaim.claimed && !initialClaim.error)
+            announcementText = claim.assignment_announcement_text;
+        }
         const accepted = speakNotification(announcementText, {
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
-          priority: record.event_type === 'property_alert' ? 'critical' : (record.announcement_priority || 'normal'),
+          // Same priority as the initial property alert: queue after it, never
+          // interrupt it or let an ordinary call-update jump between the pair.
+          priority: record.event_type === 'property_alert' || autoAssignment ? 'critical' : (record.announcement_priority || 'normal'),
           force: record.event_type === 'property_alert',
           volume: settings.volume,
           voiceProfile: settings.voice_profile,
@@ -772,6 +788,9 @@ export default function GlobalMessageBanner({ user }) {
           claim,
           record.event_key,
           accepted ? 'played' : (record.event_type === 'property_alert' ? 'blocked' : (isVoiceEnabled() ? 'blocked' : 'quiet')),
+        );
+        if (initialClaim?.claimed) await finalizeAnnouncementEvent(
+          initialClaim, initialKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
         );
         // Officer distress already has the full-width main emergency banner.
         // Keep this durable event as the one audio owner without drawing the

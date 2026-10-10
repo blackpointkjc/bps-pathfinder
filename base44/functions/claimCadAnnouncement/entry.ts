@@ -37,6 +37,8 @@ Deno.serve(async (req) => {
       'unit_acknowledged', 'unit_enroute', 'unit_on_scene', 'unit_cleared',
       'unit_available', 'priority_upgraded', 'call_cancelled', 'call_cleared', 'call_updated']);
     let announcementText = '';
+    let propertyAnnouncementText = '';
+    let assignmentAnnouncementText = '';
     if (routineTypes.has(clean(body.event_type))) {
       const event = await base44.asServiceRole.entities.CallStatusLog.get(clean(body.event_id)).catch(() => null);
       if (!event || clean(event.event_key) !== eventKey || !routineTypes.has(clean(event.event_type))) {
@@ -44,8 +46,10 @@ Deno.serve(async (req) => {
       }
       const call = await base44.asServiceRole.entities.DispatchCall.get(event.call_id).catch(() => null);
       const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: event.call_id });
-      const ids = new Set((call?.assigned_units || []).map(String));
-      for (const assignment of assignments || []) {
+      const autoAssignment = event.triggering_action === 'geofenceDispatchAssignment.live'
+        && ['unit_dispatched','additional_unit'].includes(event.event_type);
+      const ids = new Set((autoAssignment ? [event.unit_id] : (call?.assigned_units || [])).filter(Boolean).map(String));
+      for (const assignment of autoAssignment ? [] : (assignments || [])) {
         if (!['cleared', 'cancelled'].includes(clean(assignment.status).toLowerCase())) ids.add(String(assignment.unit_id));
       }
       // The departing officer must still hear their own unassignment/clear.
@@ -67,6 +71,16 @@ Deno.serve(async (req) => {
             : ['unit_dispatched','additional_unit'].includes(event.event_type)
               ? 'You have been assigned a call. Check your mobile data terminal.'
               : 'Your call has been updated. Check your mobile data terminal.';
+      if (autoAssignment) {
+        // Keep the property alert ahead of its assignment confirmation. Never
+        // replace this operational detail with the generic call-update wording.
+        propertyAnnouncementText = clean(event.announcement_text) ||
+          ['Property alert.', clean(event.incident_type || call?.incident) + '.',
+           'Location ' + clean(event.location || call?.location) + '.',
+           event.cad_number ? 'CAD number ' + clean(event.cad_number) + '.' : ''].filter(Boolean).join(' ');
+        assignmentAnnouncementText = 'You have been assigned a call. Check your mobile data terminal.';
+        announcementText = propertyAnnouncementText + ' ' + assignmentAnnouncementText;
+      }
     }
 
     const existing = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
@@ -107,9 +121,9 @@ Deno.serve(async (req) => {
       // A concurrent request whose newly-created receipt was removed must return
       // claimed:false or two devices can both speak the same event.
       const ownsClaim = String(earliest.id) === String(receipt.id);
-      return Response.json({ success: true, claimed: ownsClaim, announcement_text: announcementText, receipt: earliest, deduplicated: extras.length });
+      return Response.json({ success: true, claimed: ownsClaim, announcement_text: announcementText, property_announcement_text: propertyAnnouncementText, assignment_announcement_text: assignmentAnnouncementText, receipt: earliest, deduplicated: extras.length });
     }
-    return Response.json({ success: true, claimed: true, announcement_text: announcementText, receipt });
+    return Response.json({ success: true, claimed: true, announcement_text: announcementText, property_announcement_text: propertyAnnouncementText, assignment_announcement_text: assignmentAnnouncementText, receipt });
   } catch (error) {
     console.error('claimCadAnnouncement failed', error);
     return Response.json({ error: error?.message || 'Unable to claim announcement' }, { status: 500 });
