@@ -192,12 +192,29 @@ export default function AdminScheduling() {
       });
       const result = response?.data || response;
       if (!result?.success) throw new Error(result?.error || 'Schedule publication failed');
-      return result;
+      // Outlook errors must not undo a published schedule or its durable in-app alerts.
+      let emailFailures = 0;
+      for (const recipient of result.email_recipients || []) {
+        try {
+          await base44.integrations.Core.SendEmail({
+            to: recipient.email,
+            subject: 'Your Schedule - ' + result.week_start_date + ' to ' + result.week_end_date,
+            body: '<p>Your schedule for ' + result.week_start_date + ' through ' + result.week_end_date +
+              ' has been published with ' + Number(recipient.shifts) + ' shift(s).</p>' +
+              '<p><a href="https://bpspf.blackpointkjc.com/Schedule">Review My Schedule</a></p>',
+          });
+        } catch (error) {
+          emailFailures++;
+          console.warn('Schedule Outlook email failed:', error?.message);
+        }
+      }
+      return { ...result, emailFailures };
     },
     onSuccess: (result) => {
       if (!result.is_ready) toast.success('Week schedule hidden from officers and clients.');
       else if (result.pending) toast.warning('Schedule and company announcement published. ' + result.pending + ' officer alert(s) still need delivery. Use Retry delivery.');
       else toast.success('Schedule and company announcement published. ' + result.delivered + ' officer in-app alert(s) delivered.');
+      if (result.emailFailures) toast.warning(result.emailFailures + ' Outlook email(s) failed. The in-app alerts remain delivered.');
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
     },
     onError: (error, _isReady, context) => {

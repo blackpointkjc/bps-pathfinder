@@ -61,20 +61,22 @@ Deno.serve(async req => {
       audience:'company',priority:'important'
     });
     let delivered = 0;
-    const failed:string[] = [];
+    const emailRecipients:any[] = [];
     for (const [email, officerShifts] of groups) {
       await renew();
       const eventKey = publicationKey+':'+email;
       try {
         const existing = await db.Notification.filter({event_key:eventKey},'-created_date',1);
-        if (!existing.length) await db.Notification.create({
+        if (!existing.length) {
+          await db.Notification.create({
           recipient_email:email,type:'shift_posted',title:'Your Schedule Has Been Published',
           message:'Your schedule for '+start+' through '+end+' is published with '+officerShifts.length+' shift(s). Please review My Schedule and acknowledge this update.',
           event_key:eventKey,related_id:week.id,priority:'high',requires_acknowledgment:true,is_read:false,source_name:'System Scheduling'
-        });
+          });
+          emailRecipients.push({email,shifts:officerShifts.length});
+        }
         delivered++;
       } catch(error) {
-        failed.push(email);
         if (Number(error?.status || error?.response?.status) === 429 || /rate.?limit/i.test(String(error?.message))) {
           // Stop immediately; a retry will skip all already delivered notifications.
           break;
@@ -83,7 +85,7 @@ Deno.serve(async req => {
     }
     const pending = groups.size-delivered;
     await db.ScheduleWeekStatus.update(week.id,{delivery_status:pending?'pending':'complete',delivery_recipient_count:groups.size,delivery_sent_count:delivered,delivery_updated_at:new Date().toISOString()});
-    return Response.json({success:true,is_ready:true,delivered,pending,announcement_posted:true});
+    return Response.json({success:true,is_ready:true,delivered,pending,announcement_posted:true,email_recipients:emailRecipients,week_start_date:start,week_end_date:end});
   } catch(error) {
     console.error('Schedule publication failed',error?.message);
     return Response.json({error:published?'Schedule published; announcement delivery needs retry.':'Unable to publish schedule.',published},{status:500});
