@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const alert = await base44.asServiceRole.entities.PropertyAlert.get(alertId).catch(() => null);
     if (!alert) return Response.json({ error: 'Property alert not found' }, { status: 404 });
     const call = alert.callId ? await base44.asServiceRole.entities.DispatchCall.get(alert.callId).catch(() => null) : null;
-    const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: alertId }, '-evaluated_at', 20).catch(() => []);
+    const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: alertId, $or:[{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}] }, '-evaluated_at', 20).catch(() => []);
     const latest = evaluations?.[0] || null;
     const now = new Date().toISOString();
 

@@ -25,6 +25,7 @@ async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<
     } catch (error) {
       lastError = error;
       const message = lower(error?.message || error?.response?.data?.error);
+      if (Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests|429/.test(message)) throw error;
       const transient = message.includes('rate limit') || message.includes('429') || message.includes('timeout') || message.includes('temporar') || message.includes('500');
       if (!transient || attempt === attempts - 1) throw error;
       await wait(attempt === 0 ? 250 : 750);
@@ -42,6 +43,8 @@ function isFieldOfficer(user: any) {
 }
 
 Deno.serve(async (req) => {
+  let releaseLease = async () => {};
+  let renewLease = async () => {};
   try {
     const base44 = createClientFromRequest(req);
     let user = await base44.auth.me().catch(() => null);
@@ -80,6 +83,28 @@ Deno.serve(async (req) => {
       : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)).catch(() => []))?.[0] || null;
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
+    // Conditional update of the existing alert is the cross-worker claim. A
+    // failed claim/read must never be interpreted as permission to dispatch.
+    const token = crypto.randomUUID();
+    const leaseMs = 5 * 60_000;
+    const alertEntity = base44.asServiceRole.entities.PropertyAlert;
+    const claimed = await alertEntity.updateMany({
+      id: alert.id,
+      $or: [{auto_dispatch_locked_until: {$exists:false}}, {auto_dispatch_locked_until:null},
+        {auto_dispatch_locked_until: {$lte:new Date().toISOString()}}],
+    }, {$set:{auto_dispatch_lock_token:token,auto_dispatch_locked_until:new Date(Date.now()+leaseMs).toISOString()}});
+    if (claimed.updated !== 1) return Response.json({success:true,skipped:true,reason:'evaluation_in_progress'});
+    releaseLease = async () => {
+      await alertEntity.updateMany({id:alert.id,auto_dispatch_lock_token:token},
+        {$set:{auto_dispatch_lock_token:'',auto_dispatch_locked_until:new Date(0).toISOString()}});
+    };
+    renewLease = async () => {
+      const renewed = await alertEntity.updateMany({
+        id:alert.id,auto_dispatch_lock_token:token,auto_dispatch_locked_until:{$gt:new Date().toISOString()}
+      }, {$set:{auto_dispatch_locked_until:new Date(Date.now()+leaseMs).toISOString()}});
+      if (renewed.updated !== 1) throw new Error('Automatic-dispatch lease expired; retry safely');
+    };
+
     const property = await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
 
@@ -163,7 +188,8 @@ Deno.serve(async (req) => {
         property_alert_id: alert.id,
         mode: 'live',
         decision: 'assigned',
-      }, '-evaluated_at', 1).catch(() => []);
+        $or: [{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}],
+      }, '-evaluated_at', 1);
       if (completed?.length) {
         const selectedIds = new Set((completed[0].recommended_unit_ids || []).map(String));
         return Response.json({
@@ -368,6 +394,7 @@ Deno.serve(async (req) => {
           : staffingShortfall > 0 ? 'partially_assigned' : 'assigned';
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
 
+    await renewLease();
     let assignmentCreated = false;
     let unitStatusChanged = false;
     if (['assigned', 'partially_assigned'].includes(decision) && newRecommendations.length) {
@@ -377,11 +404,12 @@ Deno.serve(async (req) => {
       let hasPrimaryAssignment = existingCallAssignments.some((item: any) => lower(item.role) === 'primary');
 
       for (const recommendation of newRecommendations) {
+        await renewLease();
         const unitId = String(recommendation.unit_id);
         const assignmentRole = hasPrimaryAssignment ? 'backup' : 'primary';
         hasPrimaryAssignment = true;
         nextAssignedIds.add(unitId);
-        const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20).catch(() => []);
+        const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20);
         const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
         // Automatic dispatch must never resurrect an officer who already cleared this call.
         // A dispatcher can explicitly reassign later through the manual assignment workflow,
@@ -588,7 +616,8 @@ Deno.serve(async (req) => {
         : decision === 'partially_assigned' ? `Closest eligible unit(s) assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
     };
-    const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ event_key: eventKey }, '-evaluated_at', 1).catch(() => []);
+    await renewLease();
+    const existing = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ event_key: eventKey, $or:[{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}] }, '-evaluated_at', 1);
     const evaluation = existing?.length
       ? await base44.asServiceRole.entities.AutoDispatchEvaluation.update(existing[0].id, evaluationData)
       : await base44.asServiceRole.entities.AutoDispatchEvaluation.create(evaluationData);
@@ -614,6 +643,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('geofenceDispatchAssignment failed', error);
-    return Response.json({ error: error?.message || 'Unable to evaluate automatic dispatch' }, { status: 500 });
+    const limited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests|429/i.test(String(error?.message));
+    return Response.json({ error: error?.message || 'Unable to evaluate automatic dispatch' }, { status: limited ? 429 : 500, headers:limited ? {'Retry-After':'60'} : {} });
+  } finally {
+    await releaseLease().catch(error => console.warn('Dispatch lease release deferred to expiry', error?.message));
   }
 });

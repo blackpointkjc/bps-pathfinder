@@ -89,6 +89,13 @@
       "type": "string",
       "maxLength": 1000,
       "description": "Optional notes about this property alert"
+    },
+    "auto_dispatch_lock_token": {
+      "type": "string"
+    },
+    "auto_dispatch_locked_until": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

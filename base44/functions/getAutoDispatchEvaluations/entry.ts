@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     const latestByAlert = new Map<string, any>();
 
     for (const row of evaluations || []) {
+      if (row.superseded_by) continue;
       const key = String(row.property_alert_id || row.event_key || row.id || '');
       if (!key || latestByAlert.has(key)) continue;
       if (row.configuration_snapshot?.simulation === true || String(row.event_key || '').endsWith(':simulation')) continue;

@@ -72,6 +72,14 @@
     "description": {
       "type": "string",
       "maxLength": 2000
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "Canonical evaluation ID; nonempty marks retained historical duplicate"
+    },
+    "superseded_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

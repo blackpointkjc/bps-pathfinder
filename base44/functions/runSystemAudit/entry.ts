@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
       description: `${invalidAutoDispatchLocations.length} enabled property record(s) lack valid coordinates or response radius.`,
       count: invalidAutoDispatchLocations.length,
     });
-    const evaluations = datasets.AutoDispatchEvaluation || [];
+    const evaluations = (datasets.AutoDispatchEvaluation || []).filter(item => !item.superseded_by);
     const evaluationKeys = new Set<string>();
     const duplicateEvaluationKeys = new Set<string>();
     evaluations.forEach(item => {
