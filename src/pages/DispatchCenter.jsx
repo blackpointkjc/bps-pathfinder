@@ -115,7 +115,7 @@ export default function DispatchCenter() {
                 return;
             }
             setActiveCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: DISPATCH_CALL_CACHE_MAX_AGE_MS, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: ACTIVE_CALL_MAX_AGE_MS, limit: 200 });
                 try {
                     window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
