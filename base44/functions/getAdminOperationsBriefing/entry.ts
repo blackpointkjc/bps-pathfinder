@@ -1,5 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+// Warm-worker successful source cache avoids repeated company-wide scans.
+const sourceCache = new Map<string, { value:any[]; freshUntil:number; staleUntil:number }>();
+const sleep = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+
 Deno.serve(async req => {
   try {
     const api = createClientFromRequest(req);
@@ -10,8 +14,25 @@ Deno.serve(async req => {
 
     const sourceErrors:string[] = [];
     const read = async (label:string, callback:()=>Promise<any[]>) => {
-      try { const result = await callback(); return Array.isArray(result) ? result : []; }
-      catch(error) { sourceErrors.push(label); console.warn('Admin briefing source unavailable:',label); return null; }
+      const prior = sourceCache.get(label);
+      if (prior && prior.freshUntil > Date.now()) return prior.value;
+      for (let attempt=0; attempt<2; attempt++) {
+        try {
+          const result = await callback();
+          if (!Array.isArray(result)) throw new Error('Invalid source response');
+          sourceCache.set(label, { value:result, freshUntil:Date.now()+120000, staleUntil:Date.now()+600000 });
+          return result;
+        } catch(error:any) {
+          const rateLimited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests/i.test(String(error?.message || ''));
+          if (attempt === 0 && !rateLimited) { await sleep(300); continue; }
+          if (prior && prior.staleUntil > Date.now()) return prior.value;
+          sourceErrors.push(label);
+          console.warn('Admin briefing source unavailable:',label,error?.message || error);
+          return null;
+        }
+      }
+      sourceErrors.push(label);
+      return null;
     };
     // These operations are serialized to avoid introducing new Base44 request bursts.
     const users = await read('User directory',()=>api.asServiceRole.entities.User.list('-updated_date',1000));
