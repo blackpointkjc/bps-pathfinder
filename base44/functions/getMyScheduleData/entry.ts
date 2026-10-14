@@ -1,8 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const optionalErrors: string[] = [];
-async function readWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+async function readWithRetry(label: string, loader: () => Promise<any[]>, optional = false, optionalErrors: string[] = []) {
   const maxAttempts = optional ? 1 : 3;
   let lastError: any = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -32,7 +31,7 @@ Deno.serve(async (req) => {
       officer = await base44.asServiceRole.entities.User.get(String(body.preview_user_id)).catch(() => null);
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
-    optionalErrors.length = 0;
+    const optionalErrors: string[] = [];
     const officerEmail = String(officer.work_email || officer.pathfinder_email || officer.email || '').trim().toLowerCase();
 
     // Load the officer's core schedule first, then supporting datasets in a
@@ -50,27 +49,27 @@ Deno.serve(async (req) => {
     const vehicleAssignments = await readWithRetry(
       'vehicle assignments',
       () => base44.asServiceRole.entities.VehicleAssignment.list('-assignment_date', 1000),
-      true,
+      true, optionalErrors,
     );
     const dutySupervisorAssignments = await readWithRetry(
       'duty supervisor assignments',
       () => base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1000),
-      true,
+      true, optionalErrors,
     );
     const locations = await readWithRetry(
       'locations',
       () => base44.asServiceRole.entities.Location.list('site_name', 1000),
-      true,
+      true, optionalErrors,
     );
     const payrollPeriods = await readWithRetry(
       'payroll periods',
       () => base44.asServiceRole.entities.PayrollPeriod.list('-start_date', 200),
-      true,
+      true, optionalErrors,
     );
     const pto = await readWithRetry(
       'approved PTO',
       () => base44.asServiceRole.entities.TimeOffRequest.filter({ created_by_id: officer.id, status: 'approved' }, '-created_date', 500),
-      true,
+      true, optionalErrors,
     );
 
     return Response.json({
