@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -28,7 +29,7 @@ export default function DutySupervisorScheduling() {
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
   const { user, isLoadingAuth:userLoading } = useAuth();
   const roles = new Set((user?.additional_roles || []).map(lower));
-  const canManage = user?.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || user?.is_supervisor === true;
+  const canManage = hasSupervisorAccess(user);
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
   const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:async()=>{ const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'list'}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); return payload.assignments||[]; }, refetchInterval:5 * 60 * 1000 });

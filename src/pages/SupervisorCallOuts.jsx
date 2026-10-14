@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -109,7 +110,7 @@ export default function SupervisorCallOuts() {
     createCallOutMutation.mutate(formData);
   };
 
-  const isSupervisorOrAdmin = user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access');
+  const isSupervisorOrAdmin = hasSupervisorAccess(user);
 
   if (!isSupervisorOrAdmin) {
     return (

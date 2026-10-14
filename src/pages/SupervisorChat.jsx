@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,7 +43,7 @@ export default function SupervisorChat() {
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
-    enabled: !!user?.id && !!teamsConfig?.enabled && (user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
+    enabled: !!user?.id && !!teamsConfig?.enabled && hasSupervisorAccess(user),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -251,7 +252,7 @@ export default function SupervisorChat() {
     window.requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' }));
   }, [displayedMessages.length]);
 
-  if (user?.role !== 'supervisor' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
+  if (!hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
@@ -356,7 +357,7 @@ export default function SupervisorChat() {
                 placeholder="Type a message or @mention a supervisor..."
                 value={message}
                 onChange={setMessage}
-                users={(allUsers || []).filter(person => person?.role === 'admin' || (person?.additional_roles || []).map(role => String(role).toLowerCase()).includes('supervisor'))}
+                users={(allUsers || []).filter(person => hasSupervisorAccess(person))}
                 currentEmail={user?.email}
                 onMentionsChange={setMentionedUsers}
                 disabled={sendMessageMutation.isPending}
