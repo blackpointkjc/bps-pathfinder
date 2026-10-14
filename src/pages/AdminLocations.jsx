@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
@@ -215,7 +216,7 @@ export default function AdminLocations({ embedded = false }) {
     placeholderData: [],
   });
   const clientUsers = directoryUsers.filter(isClientAccount);
-  const supervisorUsers = directoryUsers.filter(u => (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('supervisor'));
+  const supervisorUsers = directoryUsers.filter(u => hasSupervisorAccess(u));
 
   const syncClientLocationAssignments = async () => {
     const result = await base44.functions.invoke('manageClientAssignments', { action: 'sync_all' });

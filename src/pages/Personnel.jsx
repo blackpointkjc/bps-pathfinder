@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -79,7 +80,7 @@ export default function Personnel({ embedded = false }) {
 
     const canForceStatus = (user = currentUser) => {
         const roles = Array.isArray(user?.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
-        return user?.role === 'admin' || user?.role === 'dispatch' || roles.includes('full_access') || roles.includes('supervisor') || roles.includes('dispatch');
+        return user?.role === 'admin' || user?.role === 'dispatch' || roles.includes('full_access') || hasSupervisorAccess(user) || roles.includes('dispatch');
     };
 
     const loadOverrides = async (actor = currentUser) => {

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useState, useMemo } from "react";
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useAuth } from '@/lib/AuthContext';
@@ -117,7 +118,7 @@ const recordMatchesOfficer = (record, officer, emailFields = ['officer_email'], 
 };
 const isPunctualityLeaderboardOfficer = (officer) => {
   const roles = new Set((officer?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
-  if (officer?.is_supervisor === true || roles.has('supervisor')) return false;
+  if (hasSupervisorAccess(officer)) return false;
   return roles.has('officer') || String(officer?.role || '').trim().toLowerCase() === 'officer';
 };
 
