@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -253,7 +254,7 @@ export default function DispatchCenter() {
                 || user.dispatch_role === true
                 || roles.has('dispatch')
                 || roles.has('cad_access')
-                || roles.has('supervisor')
+                || hasSupervisorAccess(user)
                 || roles.has('full_access');
             
             if (!hasDispatchAccess) {

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ export default function AdminPortalSettings() {
   };
 
   const isAdmin = user?.role === 'admin';
-  const isSupervisor = user?.additional_roles?.includes('supervisor');
+  const isSupervisor = hasSupervisorAccess(user);
   const isHR = user?.additional_roles?.includes('hr');
   const isClient = user?.additional_roles?.includes('client');
 

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertOctagon, Plus, Search, Edit2, CheckCircle2, History, Radio, Clock3 } from 'lucide-react';
@@ -108,7 +109,7 @@ export default function BOLOAlerts() {
 
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const canCreate = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || roles.has('officer') || roles.has('full_access') || roles.has('dispatch') || roles.has('cad_access')));
-  const isManager = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || roles.has('supervisor') || roles.has('full_access') || roles.has('dispatch')));
+  const isManager = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || hasSupervisorAccess(user) || roles.has('full_access') || roles.has('dispatch')));
 
   const activeCount = bolos.filter(b => b.status === 'active').length;
   const draftCount = bolos.filter(b => b.status === 'draft' && (isManager || b.issued_by_id === user?.id || b.created_by_id === user?.id)).length;

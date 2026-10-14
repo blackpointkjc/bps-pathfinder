@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -37,7 +38,7 @@ export default function AdminGeofenceAlerts({ embedded = false }) {
   });
 
   const isAdmin = user?.role === 'admin';
-  const isSupervisor = user?.additional_roles?.includes('supervisor');
+  const isSupervisor = hasSupervisorAccess(user);
   const canEditGeofences = isAdmin || ['full_access', 'support', 'support_staff'].some(role => user?.additional_roles?.includes(role));
   const geofenceEditorUrl = locationId => {
     const params = new URLSearchParams({

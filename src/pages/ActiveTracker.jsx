@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect } from 'react';
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ export default function ActiveTracker() {
   // permitted to publish the live officer-location record.
 
   const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const canTrack = roles.has('admin') || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access') || roles.has('dispatch') || user?.dispatch_role === true;
+  const canTrack = roles.has('admin') || roles.has('full_access') || hasSupervisorAccess(user) || roles.has('cad_access') || roles.has('dispatch') || user?.dispatch_role === true;
   const officerDisplay = (officer) => {
     const last = String(officer?.last_name || officer?.full_name || officer?.officer_name || '').trim().split(/\s+/).pop();
     return [officer?.rank, last].filter(Boolean).join(' ') || (officer?.unit_number ? `Unit ${officer.unit_number}` : 'Officer');

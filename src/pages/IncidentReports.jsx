@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useState, useEffect } from "react";
@@ -492,7 +493,7 @@ Provide:
         // Alert supervisors if critical
         if (supervisorAlert && !isDraft) {
           const supervisors = await listDirectoryUsers();
-          const supervisorList = supervisors.filter(u => u.additional_roles?.includes('supervisor'));
+          const supervisorList = supervisors.filter(u => hasSupervisorAccess(u));
           
           for (const supervisor of supervisorList) {
             await base44.entities.Notification.create({
