@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
     }, '-created_date', 500);
     const duplicateIds = (unreadForRecipient || []).filter((record: any) =>
       String(record.id) === notificationId
+      || (notification.event_key && String(record.event_key || '') === String(notification.event_key))
       || (
         notification.related_id
         && String(record.related_id || '') === String(notification.related_id)
@@ -44,19 +45,22 @@ Deno.serve(async (req) => {
       )
     ).map((record: any) => String(record.id));
 
-    await Promise.all([...new Set([notificationId, ...duplicateIds])].map(id =>
-      base44.asServiceRole.entities.Notification.update(id, {
+    const clearedIds = [...new Set([notificationId, ...duplicateIds])];
+    // Persist each acknowledgement and surface failures rather than claiming success.
+    for (const id of clearedIds) {
+      await base44.asServiceRole.entities.Notification.update(id, {
         is_read: true,
         acknowledged_at: acknowledgedAt,
         requires_acknowledgment: false,
-      })
-    ));
+      });
+    }
 
     return Response.json({
       success: true,
       notification_id: notificationId,
       acknowledged_at: acknowledgedAt,
-      cleared_count: new Set([notificationId, ...duplicateIds]).size,
+      cleared_count: clearedIds.length,
+      cleared_ids: clearedIds,
     });
   } catch (error) {
     console.error('acknowledgeScheduleNotification failed', error);

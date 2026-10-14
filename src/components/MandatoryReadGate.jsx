@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 export default function MandatoryReadGate({ user }) {
   const qc = useQueryClient();
   const [working, setWorking] = useState(false);
+  const [acknowledgedIds, setAcknowledgedIds] = useState(() => new Set());
   const roles = new Set([
     String(user?.role || '').toLowerCase(),
     ...(Array.isArray(user?.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : []),
@@ -28,7 +29,7 @@ export default function MandatoryReadGate({ user }) {
     queryKey: ['mandatoryScheduleAlerts', user?.email],
     queryFn: async () => {
       const records = await base44.entities.Notification.filter({ recipient_email: user.email, is_read: false }, '-created_date', 200);
-      return (records || []).filter(item => item.requires_acknowledgment === true && ['shift_posted', 'schedule_changed'].includes(item.type));
+      return (records || []).filter(item => item.is_read !== true && !item.acknowledged_at && item.requires_acknowledgment === true && ['shift_posted', 'schedule_changed'].includes(item.type));
     },
     enabled: scheduleAlertsEnabled,
     refetchInterval: 5 * 60 * 1000,
@@ -61,11 +62,11 @@ export default function MandatoryReadGate({ user }) {
   }, [enabled, user?.email, qc]);
 
   const queue = useMemo(() => {
-    const scheduleItems = scheduleAlerts.map(n => ({ type: 'schedule', id: n.id, sort: n.created_date, record: n }));
+    const scheduleItems = scheduleAlerts.filter(n => !acknowledgedIds.has(String(n.id))).map(n => ({ type: 'schedule', id: n.id, sort: n.created_date, record: n }));
     if (!enabled) return [];
     const mentionItems = mentions.map(m => ({ type: 'mention', id: m.id, sort: m.created_date, record: m }));
     return [...scheduleItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
-  }, [enabled, mentions, scheduleAlerts]);
+  }, [enabled, mentions, scheduleAlerts, acknowledgedIds]);
 
   const current = queue[0];
   if (!current) return null;
@@ -84,16 +85,16 @@ export default function MandatoryReadGate({ user }) {
           notification_id: current.id,
         });
         const payload = response?.data || response || {};
-        if (payload.error) throw new Error(payload.error);
+        if (payload.error || payload.success !== true) throw new Error(payload.error || 'Schedule acknowledgment was not confirmed by the server.');
+        setAcknowledgedIds(previous => new Set([...previous, String(current.id), ...(payload.cleared_ids || []).map(String)]));
         qc.setQueryData(['mandatoryScheduleAlerts', user?.email], records =>
           (records || []).filter(record => record.id !== current.id)
         );
       }
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
-      await Promise.all([
-        qc.refetchQueries({ queryKey: ['mandatoryChatMentions', user?.email] }),
-        qc.refetchQueries({ queryKey: ['mandatoryScheduleAlerts', user?.email] }),
-      ]);
+      // Keep the confirmed acknowledgement out of the popup immediately. Normal
+      // realtime invalidation and scheduled polling reconcile other notices later.
+      void qc.invalidateQueries({ queryKey: current.type === 'schedule' ? ['mandatoryScheduleAlerts', user?.email] : ['mandatoryChatMentions', user?.email], refetchType: 'none' });
     } catch (error) {
       console.error('Unable to acknowledge required notice:', error);
       toast.error(error?.response?.data?.error || error?.message || 'The notice could not be acknowledged.');
