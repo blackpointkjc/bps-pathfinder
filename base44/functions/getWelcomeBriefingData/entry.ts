@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     const roles = new Set([me.role, ...(me.additional_roles || [])].filter(Boolean).map(lower));
     const operational = !roles.has('client') && !roles.has('student') && me.user_type !== 'client';
     const officerLike = operational && (roles.has('officer') || roles.has('supervisor') || me.role === 'admin' || me.role === 'dispatch');
-    const supervisorLike = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access');
+    const supervisorLike = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || (me.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(me.rank || '').toLowerCase().replace(/[.]/g, '').trim()));
     const sourceErrors: string[] = [];
 
     async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean; attempts?: number } = {}) {

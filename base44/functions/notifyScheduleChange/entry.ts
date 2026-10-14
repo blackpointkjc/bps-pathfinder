@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     if (!actor) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = new Set((actor.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    if (!(actor.role === 'admin' || roles.has('full_access') || roles.has('supervisor'))) {
+    if (!(actor.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || (actor.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(actor.rank || '').toLowerCase().replace(/[.]/g, '').trim())))) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 

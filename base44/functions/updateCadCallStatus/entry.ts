@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    const allowed = user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || Boolean(user.dispatch_role) || user.role === 'dispatch';
+    const allowed = user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || Boolean(user.dispatch_role) || user.role === 'dispatch';
     if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};

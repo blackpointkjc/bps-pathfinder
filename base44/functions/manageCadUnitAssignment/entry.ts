@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access') || Boolean(user.dispatch_role);
+    const allowed = user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || Boolean(user.dispatch_role);
     if (!allowed) return Response.json({ error: 'CAD assignment access required' }, { status: 403 });
 
     const { action, call_id, unit_id } = await req.json().catch(() => ({}));

@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const roles = rolesOf(me);
     const canUseAdminQueue = me.role === 'admin' || roles.has('full_access');
     const canUseHrQueue = canUseAdminQueue || roles.has('hr') || normalized(me.rank) === 'human resources';
-    const canUseSupervisorReports = canUseAdminQueue || roles.has('supervisor') || me.is_supervisor === true;
+    const canUseSupervisorReports = canUseAdminQueue || roles.has('supervisor') || (me.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(me.rank || '').toLowerCase().replace(/[.]/g, '').trim()));
     const body = await req.json().catch(() => ({}));
     const requestedQueueRole = normalized(body?.queue_role);
     if (!canUseHrQueue && !(requestedQueueRole === 'supervisor_reports' && canUseSupervisorReports)) {
