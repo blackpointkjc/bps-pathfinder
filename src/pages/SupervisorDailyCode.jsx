@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -20,7 +21,7 @@ export default function SupervisorDailyCode() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isSupervisor = user?.additional_roles?.includes("supervisor") || user?.additional_roles?.includes("full_access");
+  const isSupervisor = hasSupervisorAccess(user);
   const isAdmin = user?.role === "admin";
 
   const { data: todayChecks, refetch: refetchChecks } = useQuery({

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,12 +46,12 @@ export default function SupervisorInspections() {
   });
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const hasSupervisorAccess = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('supervisor');
+  const supervisorAllowed = hasSupervisorAccess(user);
 
   const { data: filteredUsers = [], isLoading: officersLoading, error: officersError } = useQuery({
     queryKey: ['officerDirectory', 'supervisorInspections'],
     queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
-    enabled: hasSupervisorAccess,
+    enabled: supervisorAllowed,
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
@@ -60,7 +61,7 @@ export default function SupervisorInspections() {
   const { data: inspections = [], isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
     queryKey: ['inspectionReports'],
     queryFn: () => base44.entities.InspectionReport.list('-created_date', 500),
-    enabled: hasSupervisorAccess,
+    enabled: supervisorAllowed,
     initialData: [],
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -136,7 +137,7 @@ export default function SupervisorInspections() {
     }
   };
 
-  if (!hasSupervisorAccess) {
+  if (!supervisorAllowed) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />

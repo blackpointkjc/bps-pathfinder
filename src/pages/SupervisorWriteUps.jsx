@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -62,14 +63,14 @@ export default function SupervisorWriteUps() {
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'supervisorWriteUps'],
     queryFn: () => listDirectoryLocations('site_name', 1000),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
+    enabled: hasSupervisorAccess(user),
     initialData: [],
   });
 
   const { data: writeUps } = useQuery({
     queryKey: ['writeUpReports'],
     queryFn: () => base44.entities.WriteUpReport.list('-created_date'),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
+    enabled: hasSupervisorAccess(user),
   });
 
   // Auto-archive expired write-ups
@@ -198,7 +199,7 @@ export default function SupervisorWriteUps() {
   const filteredApprovedWriteUps = approvedWriteUps;
   const filteredArchivedWriteUps = archivedWriteUps;
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
+  if (!hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />

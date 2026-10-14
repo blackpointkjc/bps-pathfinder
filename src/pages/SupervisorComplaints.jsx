@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +40,7 @@ export default function SupervisorComplaints() {
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorComplaints'],
     queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
+    enabled: hasSupervisorAccess(user),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -48,7 +49,7 @@ export default function SupervisorComplaints() {
   const { data: myComplaints } = useQuery({
     queryKey: ['myComplaints', user?.id],
     queryFn: () => base44.entities.Complaint.filter({ created_by_id: user.id }),
-    enabled: !!user?.id && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access')),
+    enabled: !!user?.id && (hasSupervisorAccess(user)),
   });
 
   const createComplaintMutation = useMutation({
@@ -103,7 +104,7 @@ This is a formal notification and will be part of your personnel file pending in
 
   const activeOfficers = allUsers.filter(isOperationalOfficer);
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
+  if (!hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />

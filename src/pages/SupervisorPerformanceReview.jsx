@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
@@ -37,7 +38,7 @@ export default function SupervisorPerformanceReview() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    enabled: !!user && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access')),
+    enabled: !!user && (hasSupervisorAccess(user)),
     refetchInterval: 60000,
   });
 
@@ -262,7 +263,7 @@ export default function SupervisorPerformanceReview() {
     printWindow.document.close();
   };
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
+  if (!hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
         <ClipboardCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />

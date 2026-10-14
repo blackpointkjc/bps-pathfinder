@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
@@ -22,7 +23,7 @@ export default function Announcements() {
 
   const { data: announcements } = useQuery({
     queryKey: ['announcements'],
-    queryFn: () => base44.entities.Announcement.list('-created_date'),
+    queryFn: () => base44.entities.Announcement.list('-created_date', 500),
     enabled: !!user,
   });
 
@@ -50,14 +51,8 @@ export default function Announcements() {
   };
 
   const filteredAnnouncements = announcements?.filter(announcement => {
-    const isSupervisor = user?.role === 'admin' || user?.additional_roles?.includes('supervisor');
+    const isSupervisor = hasSupervisorAccess(user);
     if (announcement.audience === 'supervisors' && !isSupervisor) return false;
-    const createdDate = new Date(announcement.created_date);
-    const now = new Date();
-    const daysDiff = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
-    if (announcement.priority === 'normal') return daysDiff <= 7;
-    if (announcement.priority === 'important') return daysDiff <= 14;
-    if (announcement.priority === 'urgent') return daysDiff <= 30;
     return true;
   }) || [];
 

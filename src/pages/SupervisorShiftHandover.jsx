@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,11 +19,7 @@ const blank = () => ({
   command_summary:'', staffing_status:'', active_calls_summary:'', critical_incidents:'', bolo_safety_notes:'', unresolved_issues:'', pending_followups:'', equipment_fleet_status:'', client_site_concerns:''
 });
 const lower = value => String(value || '').trim().toLowerCase();
-const supervisorRanks = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
-const isSupervisor = user => {
-  const roles = new Set((user?.additional_roles || []).map(lower));
-  return user?.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || supervisorRanks.has(lower(user?.rank));
-};
+const isSupervisor = hasSupervisorAccess;
 const personLabel = user => [user?.rank, user?.last_name || user?.first_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'Supervisor';
 
 export default function SupervisorShiftHandover() {
