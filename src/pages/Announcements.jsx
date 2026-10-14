@@ -27,6 +27,15 @@ export default function Announcements() {
     enabled: !!user,
   });
 
+  // Published schedule weeks are company-visible operational bulletins. Show
+  // them separately; individual Notification records are recipient-private.
+  const { data: publishedWeeks = [], error: publicationError } = useQuery({
+    queryKey: ['announcementsPublishedScheduleWeeks'],
+    queryFn: () => base44.entities.ScheduleWeekStatus.filter({ is_ready: true }, '-week_start_date', 100),
+    enabled: !!user,
+    staleTime: 120000,
+  });
+
   const { data: announcementReceipts = [], isSuccess: receiptsLoaded } = useQuery({
     queryKey: ['announcementReceipts', user?.email],
     queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
@@ -217,7 +226,14 @@ export default function Announcements() {
               })}
               {announcementsError && <p role="alert" className="rounded-lg border border-red-600 bg-red-950/40 p-4 text-red-200">Announcements could not load: {announcementsError.message}</p>}
               {announcementsLoading && <p className="p-4 text-slate-300">Loading company announcements…</p>}
-              {!announcementsLoading && !announcementsError && !filteredAnnouncements.length && (
+              {publicationError && <p className="rounded-lg border border-amber-700/50 p-3 text-xs text-amber-200">Published schedule history could not load: {publicationError.message}</p>}
+              {publishedWeeks.map(week => (
+                <Card key={`published-week-${week.id}`} className="border border-cyan-900/60 bg-[#0f1a28] text-white">
+                  <CardHeader><CardTitle className="text-base text-cyan-200">Schedule Published · {week.week_start_date} – {week.week_end_date}</CardTitle></CardHeader>
+                  <CardContent className="text-sm text-slate-300">The company schedule for this week has been published. Review My Schedule for your assignments.</CardContent>
+                </Card>
+              ))}
+              {!announcementsLoading && !announcementsError && !filteredAnnouncements.length && !publishedWeeks.length && (
                 <Card className="border-none shadow-lg">
                   <CardContent className="p-12 text-center">
                     <Megaphone className="w-16 h-16 mx-auto mb-4 text-slate-300" />
