@@ -9,11 +9,13 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((me.additional_roles || []).map(lower));
-    const allowed = me.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || me.is_supervisor === true;
+    const rank = lower(me.rank).replace(/[.]/g, '').replace(/\s+/g, ' ');
+    const supervisorRanks = ['corporal','sergeant','first sergeant','lieutenant','lt','captain','major','lt colonel','lieutenant colonel','lt col','colonel'];
+    const allowed = me.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || me.is_supervisor === true || supervisorRanks.includes(rank);
     if (!allowed) return Response.json({ error: 'Duty supervisor scheduling requires administrator or supervisor access.' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const action = lower(body.action || 'save');
+    const action = lower(body.action || 'list');
     if (action === 'list') {
       const assignments = await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1500);
       return Response.json({ success: true, assignments: assignments || [] });
@@ -36,7 +38,7 @@ Deno.serve(async (req) => {
     const supervisor = (users || []).find((user: any) => lower(user.email) === lower(row.supervisor_email));
     if (!supervisor) return Response.json({ error: 'Selected duty supervisor was not found.' }, { status: 400 });
     const supervisorRoles = new Set((supervisor.additional_roles || []).map(lower));
-    const supervisorEligible = supervisor.role === 'admin' || supervisor.is_supervisor === true || supervisorRoles.has('supervisor') || supervisorRoles.has('full_access') || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal'].includes(lower(supervisor.rank));
+    const supervisorEligible = supervisor.role === 'admin' || supervisor.is_supervisor === true || supervisorRoles.has('supervisor') || supervisorRoles.has('full_access') || supervisorRanks.includes(lower(supervisor.rank).replace(/[.]/g, '').replace(/\s+/g, ' '));
     if (!supervisorEligible) return Response.json({ error: 'Selected employee is not eligible to serve as duty supervisor.' }, { status: 400 });
 
     const payload = {

@@ -28,7 +28,13 @@ export default function SupervisorDutyTimeline() {
   const { data: users = [] } = useQuery({ queryKey: ['dutyTimelineUsers'], queryFn: () => listDirectoryUsers('last_name', 1000), staleTime: 60000 });
   const { data: assignments = [], isLoading, error } = useQuery({
     queryKey: ['supervisorDutyTimeline'],
-    queryFn: () => base44.entities.DutySupervisorAssignment.list('-assignment_date', 1000),
+    queryFn: async () => {
+      const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action: 'list' });
+      const payload = response?.data || response || {};
+      if (!payload.success) throw new Error(payload.error || 'Duty supervisor schedule unavailable');
+      return payload.assignments || [];
+    },
+    retry: 1,
     refetchInterval: 2 * 60 * 1000,
   });
 
