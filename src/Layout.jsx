@@ -451,7 +451,7 @@ function hasRole(user, role) {
 function roleName(user) {
   if (user?.role === 'admin') return 'SYSTEM ADMIN';
   if (user?.role === 'dispatch') return 'DISPATCH';
-  if (hasRole(user, 'supervisor')) return 'SUPERVISOR';
+  if (hasRole(user, 'supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' '))) return 'SUPERVISOR';
   if (hasRole(user, 'hr') || String(user?.rank || '').toLowerCase() === 'human resources') return 'HUMAN RESOURCES';
   if (hasRole(user, 'support_staff') || String(user?.rank || '').toLowerCase() === 'support staff') return 'SUPPORT STAFF';
   if (hasRole(user, 'accounting')) return 'ACCOUNTING';
@@ -463,31 +463,24 @@ function roleName(user) {
 
 function allowedCenters(user) {
   const roles = normalizedRoles(user);
-  const fullAccess = hasFullAccess(user);
-  const rank = String(user?.rank || '').toLowerCase();
-  const withSupplementalCenters = centers => [...new Set([
-    ...centers,
-    ...(roles.has('accounting') ? ['accounting'] : []),
-    ...(roles.has('trainer') ? ['training'] : []),
-  ])];
-
-  // Client and Student are intentionally isolated portal identities.
+  const rank = String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
+  const supervisor = roles.has('supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(rank);
+  // Student and client accounts are separate identities, never employee overlays.
   if (roles.has('client') || user?.user_type === 'client') return ['client'];
-  if (roles.has('student')) return ['student'];
+  if (roles.has('student') || user?.user_type === 'student') return ['student'];
+  if (hasFullAccess(user)) return ['admin', ...(roles.has('accounting') ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
 
-  // Admin is the master soft-mirror workspace. CAD/Officer/Supervisor/HR/Client
-  // live inside Admin Center. Accounting remains a visible workspace whenever
-  // the employee carries the accounting additional role.
-  if (user?.role === 'admin' || fullAccess) return withSupplementalCenters(['admin']);
-  if (user?.role === 'dispatch') return withSupplementalCenters(['cad']);
-  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) return withSupplementalCenters(['supervisor', 'cad']);
-  if (roles.has('officer')) return withSupplementalCenters(['officer', 'cad']);
-  if (roles.has('hr') || rank === 'human resources') return withSupplementalCenters(['hr']);
-  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') return withSupplementalCenters(['support']);
-  if (roles.has('accounting')) return withSupplementalCenters(['accounting']);
-  if (roles.has('trainer')) return ['training'];
-
-  return roles.has('cad_access') ? withSupplementalCenters(['cad']) : withSupplementalCenters(['officer']);
+  // Combine ALL assigned workspaces. Previously an early return for dispatch,
+  // supervisor or officer discarded HR/training/accounting and secondary roles.
+  const centers = [];
+  if (supervisor) centers.push('supervisor', 'cad', 'officer');
+  if (roles.has('dispatch') || user?.role === 'dispatch' || roles.has('cad_access')) centers.push('cad');
+  if (roles.has('officer')) centers.push('officer', 'cad');
+  if (roles.has('hr') || rank === 'human resources') centers.push('hr');
+  if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
+  if (roles.has('accounting')) centers.push('accounting');
+  if (roles.has('trainer')) centers.push('training');
+  return [...new Set(centers.length ? centers : ['officer'])];
 }
 
 const CENTER_DEFAULT_PAGE = {
@@ -522,7 +515,7 @@ function canAccessPage(user, pageName) {
   if (!centers?.length) return true;
 
   const roles = normalizedRoles(user);
-  const rank = String(user?.rank || '').toLowerCase();
+  const rank = String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
   const clientOnly = roles.has('client') || user?.user_type === 'client';
   const studentOnly = roles.has('student');
   if (clientOnly) return centers.includes('client');
@@ -535,7 +528,7 @@ function canAccessPage(user, pageName) {
     const adminEmbedded = new Set(['admin','cad','officer','supervisor','hr','client']);
     if (centers.some(center => adminEmbedded.has(center))) return true;
   }
-  if (roles.has('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank)) {
+  if (roles.has('supervisor') || ['sergeant','sgt','lieutenant','lt','lt colonel','lieutenant colonel','lt col','captain','major','colonel'].includes(rank)) {
     if (centers.some(center => ['cad','supervisor','officer'].includes(center))) return true;
   }
   if (roles.has('trainer') && centers.includes('training')) return true;
@@ -755,7 +748,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 {!!unreadCounts.OutlookMail && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
               </Link>
               {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-cyan-500 hover:bg-[#153552]"><Radio className="h-3.5 w-3.5 text-cyan-300" /><span>Officer Chat</span>{!!unreadCounts.OfficerChat && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.OfficerChat > 99 ? '99+' : unreadCounts.OfficerChat}</span>}</Link>}
-              {(hasFullAccess(user) || hasRole(user, 'supervisor')) && <Link to={createPageUrl('SupervisorChat')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-emerald-500 hover:bg-[#153552]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /><span>Supervisor</span>{!!unreadCounts.SupervisorChat && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}</Link>}
+              {(hasFullAccess(user) || allowedCenters(user).includes('supervisor')) && <Link to={createPageUrl('SupervisorChat')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-emerald-500 hover:bg-[#153552]"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /><span>Supervisor</span>{!!unreadCounts.SupervisorChat && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}</Link>}
               <Link to={createPageUrl('Announcements')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-amber-500 hover:bg-[#153552]">
                 <Bell className="h-3.5 w-3.5 text-amber-300" /><span>Announcements</span>
                 {!!unreadCounts.Announcements && <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] text-white">{unreadCounts.Announcements > 99 ? '99+' : unreadCounts.Announcements}</span>}
@@ -770,7 +763,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             <Link to={createPageUrl('OfficerInbox')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><MessageCircle className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">TEAMS MESSAGES</span>}</Link>
             <Link to={createPageUrl('OutlookMail')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Mail className="h-4 w-4 text-blue-300" />{!collapsed && <span className="text-[11px] font-black">OUTLOOK MAIL</span>}</Link>
             {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Radio className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">OFFICER CHAT</span>}</Link>}
-            {(hasFullAccess(user) || hasRole(user, 'supervisor')) && <Link to={createPageUrl('SupervisorChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><ShieldCheck className="h-4 w-4 text-emerald-300" />{!collapsed && <span className="text-[11px] font-black">SUPERVISOR CHAT</span>}</Link>}
+            {(hasFullAccess(user) || allowedCenters(user).includes('supervisor')) && <Link to={createPageUrl('SupervisorChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><ShieldCheck className="h-4 w-4 text-emerald-300" />{!collapsed && <span className="text-[11px] font-black">SUPERVISOR CHAT</span>}</Link>}
             <Link to={createPageUrl('Announcements')} className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9]'} ${collapsed ? 'justify-center px-0' : ''}`}><Bell className="h-4 w-4 text-amber-300" />{!collapsed && <span className="text-[11px] font-black">ANNOUNCEMENTS</span>}</Link>
           </>
         )}
@@ -1286,7 +1279,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const available = allowedCenters(user);
     if (!available.includes(activeCenter)) setActiveCenter(available[0] || 'cad');
-  }, [user?.role, JSON.stringify(user?.additional_roles || [])]);
+  }, [user?.role, user?.rank, user?.user_type, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
     // Every signed-in operational user must receive property alerts. Some legacy
