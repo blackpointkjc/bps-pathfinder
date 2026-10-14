@@ -36,9 +36,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'list') {
+      // Ordinary employees only need their own records; avoid a 5,000-row
+      // company-wide scan for every PTO page load. Keep HR's full ledger intact.
       const requests = await readRowsWithRetry(
         'time off requests',
-        () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+        () => hasHR
+          ? base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)
+          : base44.asServiceRole.entities.TimeOffRequest.filter({ requested_by_email: String(user.email || '').toLowerCase() }, '-created_date', 250),
       );
       const visibleRequests = (requests || []).filter((entry: any) => {
         if (entry.reason === 'PTO workflow verification record') return false;
