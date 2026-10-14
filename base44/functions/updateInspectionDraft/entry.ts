@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = new Set((user.additional_roles || []).map((role) => String(role).toLowerCase()));
-    const supervisor = user.role === 'admin' || roles.has('supervisor') || roles.has('full_access');
+    const rank = String(user.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
+    const supervisor = user.role === 'admin' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['corporal','first sergeant','sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank);
     if (!supervisor) return Response.json({ error: 'Supervisor access required' }, { status: 403 });
 
     const { inspection_id, inspection } = await req.json();

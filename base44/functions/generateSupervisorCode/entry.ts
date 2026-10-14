@@ -6,7 +6,9 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const isSupervisor = user.additional_roles?.includes('supervisor');
+    const rank = String(user.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
+    const roles = new Set([user.role, ...(user.additional_roles || [])].map(value => String(value).toLowerCase()));
+    const isSupervisor = user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['corporal','first sergeant','sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank);
     const isAdmin = user.role === 'admin';
 
     if (!isSupervisor && !isAdmin) {

@@ -21,7 +21,7 @@ export default function Announcements() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const { data: announcements } = useQuery({
+  const { data: announcements, isLoading: announcementsLoading, error: announcementsError } = useQuery({
     queryKey: ['announcements'],
     queryFn: () => base44.entities.Announcement.list('-created_date', 500),
     enabled: !!user,
@@ -215,7 +215,9 @@ export default function Announcements() {
                   </Card>
                 );
               })}
-              {!filteredAnnouncements.length && (
+              {announcementsError && <p role="alert" className="rounded-lg border border-red-600 bg-red-950/40 p-4 text-red-200">Announcements could not load: {announcementsError.message}</p>}
+              {announcementsLoading && <p className="p-4 text-slate-300">Loading company announcements…</p>}
+              {!announcementsLoading && !announcementsError && !filteredAnnouncements.length && (
                 <Card className="border-none shadow-lg">
                   <CardContent className="p-12 text-center">
                     <Megaphone className="w-16 h-16 mx-auto mb-4 text-slate-300" />
