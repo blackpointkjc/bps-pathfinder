@@ -17,7 +17,7 @@ export default function SupervisorDailyCode() {
   const today = format(new Date(), "yyyy-MM-dd");
 
   const { data: user } = useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["supervisorDailyCodeAuthenticatedUser"],
     queryFn: () => base44.auth.me(),
   });
 
@@ -43,9 +43,13 @@ export default function SupervisorDailyCode() {
         rank: user.rank || "",
         last_name: user.last_name || "",
       });
-      setCodeRecord(res.data.code);
+      const payload = res?.data || res || {};
+      if (payload.error || !payload.code) throw new Error(payload.error || 'No supervisor code returned');
+      // The function returns {code: {code, code_date, ...}}, not the number itself.
+      setCodeRecord(typeof payload.code === 'object' ? payload.code : { code: payload.code });
     } catch (err) {
-      toast.error("Failed to generate code. Please try again.");
+      console.error('Supervisor daily code generation failed:', err);
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to generate code. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -55,7 +59,7 @@ export default function SupervisorDailyCode() {
     if (user && (isSupervisor || isAdmin)) {
       generateCode();
     }
-  }, [user]);
+  }, [user?.id, user?.email, user?.rank, isSupervisor, isAdmin]);
 
   const copyCode = () => {
     if (codeRecord?.code) {

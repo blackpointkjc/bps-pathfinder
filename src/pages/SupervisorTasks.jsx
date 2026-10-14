@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ export default function SupervisorTasks() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const { data: scopedTasks = {} } = useQuery({
+  const { data: scopedTasks = {}, isLoading: tasksLoading, error: tasksError } = useQuery({
     queryKey: ['supervisorScopedTasks', user?.id],
     queryFn: async () => {
       const response = await base44.functions.invoke('getSupervisorScopedTasks', {});
@@ -23,7 +24,7 @@ export default function SupervisorTasks() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    enabled: !!user && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access')),
+    enabled: hasSupervisorAccess(user),
     refetchInterval: 60000,
   });
 
@@ -35,7 +36,7 @@ export default function SupervisorTasks() {
   const allActivePerformanceReviews = [...pendingPerformanceReviews, ...performanceReviewFollowUps];
   const followUpInspections = scopedTasks.inspections || [];
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
+  if (user && !hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
@@ -62,6 +63,8 @@ export default function SupervisorTasks() {
           </p>
         </div>
 
+        {tasksLoading && <p role="status" className="rounded-lg border border-slate-700 p-3 text-slate-200">Loading supervisor action items…</p>}
+        {tasksError && <p role="alert" className="rounded-lg border border-red-700 bg-red-950/30 p-3 text-red-200">Unable to load supervisor action items: {tasksError.message}</p>}
         <div className="grid md:grid-cols-2 gap-4">
           <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-indigo-50 hover:shadow-xl transition-shadow">
             <CardHeader>
