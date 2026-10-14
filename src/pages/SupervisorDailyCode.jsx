@@ -154,7 +154,7 @@ export default function SupervisorDailyCode() {
 
               <div className="flex items-center gap-2 text-xs text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200">
                 <Clock className="w-3 h-3" />
-                Expires at midnight · Share this code only when an officer requests it during a site visit
+                Expires at the next 4:00 AM Eastern shift rollover · Share this code only when an officer requests it during a site visit
               </div>
             </div>
           ) : (

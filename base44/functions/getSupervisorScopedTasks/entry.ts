@@ -19,6 +19,7 @@ async function readRowsWithRetry(label:string, loader:()=>Promise<any[]>, option
 }
 const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
 const OPERATIONAL_RANKS = new Set(RANK_ORDER);
+const SUPERVISOR_RANKS = new Set(['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal']);
 const normalizeRank = (value:any) => {
   const rank = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
   return rank === 'lieutenant colonel' ? 'lt colonel' : rank;
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
     const request = await req.json().catch(() => ({}));
     const roles = rolesOf(me);
-    if (me.role !== 'admin' && normalized(me.role) !== 'supervisor' && me.is_supervisor !== true && !roles.has('supervisor') && !roles.has('full_access') && !OPERATIONAL_RANKS.has(normalizeRank(me.rank))) {
+    if (me.role !== 'admin' && normalized(me.role) !== 'supervisor' && me.is_supervisor !== true && !roles.has('supervisor') && !roles.has('full_access') && !SUPERVISOR_RANKS.has(normalizeRank(me.rank))) {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
     }
 
