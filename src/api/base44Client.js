@@ -18,7 +18,9 @@ const rawBase44 = createClient({
 // User writes always bypass this queue; only reads are capped and deduplicated.
 const MAX_CONCURRENT_READS = 2;
 // Concurrency alone does not limit fast completions; space starts to avoid bursts.
-const READ_START_GAP_MS = 700;
+// Reduce artificial startup serialization; existing 429 backoff and two-read
+// concurrency cap still protect the API when the service is throttled.
+const READ_START_GAP_MS = 400;
 let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
