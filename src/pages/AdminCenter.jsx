@@ -296,13 +296,14 @@ export default function AdminCenter() {
     const profile = previewPeople.find(person => String(person.id) === String(id));
     if (!profile) return;
     const roles = new Set([profile.role, ...(Array.isArray(profile.additional_roles) ? profile.additional_roles : profile.additional_roles ? [profile.additional_roles] : [])].filter(Boolean).map(value=>String(value).toLowerCase()));
-    const supervisorRanks = new Set(['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
+    const supervisorRanks = new Set(['corporal','sergeant','first sergeant','lieutenant','lt','captain','major','lt colonel','lieutenant colonel','lt col','colonel']);
+    const rank = String(profile.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
     const mode = roles.has('admin') || roles.has('full_access') ? 'admin' : isClientAccount(profile) ? 'client'
       : roles.has('student') || String(profile.user_type || '').toLowerCase() === 'student' ? 'student'
+      : profile.is_supervisor || roles.has('supervisor') || supervisorRanks.has(rank) ? 'supervisor'
+      : roles.has('dispatch') || roles.has('dispatcher') ? 'cad'
       : roles.has('hr') ? 'hr'
-      : roles.has('trainer') || roles.has('training') ? 'training'
-      : profile.is_supervisor || roles.has('supervisor') || roles.has('admin') || supervisorRanks.has(String(profile.rank || '').toLowerCase()) ? 'supervisor'
-      : roles.has('dispatch') || roles.has('dispatcher') ? 'cad' : 'officer';
+      : roles.has('trainer') || roles.has('training') ? 'training' : 'officer';
     setClientPreviewId('');
     setOfficerPreviewId('');
     if (mode === 'client') setClientPreviewId(profile.id, { ...profile, __client_preview: true, __auth_admin_id: signedInUser.id });
@@ -343,11 +344,32 @@ export default function AdminCenter() {
 
   const selectedPreviewId = selectedClient || selectedOfficer || selectedRoleUser;
   const currentPreview = previewPeople.find(person => String(person.id) === String(selectedPreviewId));
+  const previewRoles = new Set([currentPreview?.role, ...(Array.isArray(currentPreview?.additional_roles) ? currentPreview.additional_roles : [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const previewRank = String(currentPreview?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
+  const previewModes = currentPreview ? (isClientAccount(currentPreview) ? ['client'] : previewRoles.has('student') || currentPreview.user_type === 'student' ? ['student'] : [
+    ...(previewRoles.has('admin') || previewRoles.has('full_access') ? ['admin'] : []),
+    ...(currentPreview.is_supervisor || previewRoles.has('supervisor') || ['corporal','sergeant','first sergeant','lieutenant','lt','captain','major','lt colonel','lieutenant colonel','lt col','colonel'].includes(previewRank) ? ['supervisor','officer','cad'] : []),
+    ...(previewRoles.has('officer') ? ['officer','cad'] : []),
+    ...(previewRoles.has('dispatch') || previewRoles.has('dispatcher') || previewRoles.has('cad_access') ? ['cad'] : []),
+    ...(previewRoles.has('hr') ? ['hr'] : []),
+    ...(previewRoles.has('trainer') || previewRoles.has('training') ? ['training'] : []),
+  ]) : [];
+  const availablePreviewModes = [...new Set(previewModes.length ? previewModes : ['officer'])];
+  const switchPreviewMode = mode => {
+    if (!currentPreview || !availablePreviewModes.includes(mode)) return;
+    setShadowMode(mode);
+    setSelectedClient(mode === 'client' ? currentPreview.id : '');
+    setSelectedOfficer(mode === 'officer' ? currentPreview.id : '');
+    setSelectedRoleUser(!['client','officer'].includes(mode) ? currentPreview.id : '');
+    setOfficerPreviewId(currentPreview.id, { ...currentPreview, __officer_preview: true, __role_preview: mode, __auth_admin_id: signedInUser?.id });
+    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+  };
   const previewPicker = <AdminUserPreviewPicker users={previewPeople} selectedId={selectedPreviewId} loading={previewLoading} error={previewError} onSelect={choosePreviewUser} onRetry={()=>setPreviewRetry(value=>value+1)} />;
   if (shadowMode) return <div className="min-h-full bg-[#070d17]">
     <div className="sticky top-0 z-[70] flex flex-wrap items-center gap-3 border-b border-cyan-800 bg-[#081522] p-3 text-white">
       <Eye className="h-4 w-4 text-cyan-300"/>
       <div className="min-w-0 flex-1"><div className="text-xs text-cyan-300">ACCOUNT PREVIEW</div><div className="break-words text-sm font-bold">{currentPreview?.__label || 'Selected user'}</div></div>
+      {availablePreviewModes.length > 1 && <label className="flex items-center gap-2 text-xs text-slate-300">Assigned workspace <select aria-label="Preview assigned workspace" value={shadowMode} onChange={event => switchPreviewMode(event.target.value)} className="rounded border border-cyan-700 bg-[#07111f] px-2 py-2 text-white">{availablePreviewModes.map(mode => <option key={mode} value={mode}>{mode.toUpperCase()}</option>)}</select></label>}
       {previewPicker}
       <button type="button" onClick={exitShadow} className="min-h-10 rounded-lg border border-red-700 px-3 text-sm text-red-200">Exit preview</button>
     </div>{shadowContent}</div>;
