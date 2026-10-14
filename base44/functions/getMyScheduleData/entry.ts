@@ -1,19 +1,21 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const optionalErrors: string[] = [];
 async function readWithRetry(label: string, loader: () => Promise<any[]>, optional = false) {
+  const maxAttempts = optional ? 1 : 3;
   let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const rows = await loader();
       return Array.isArray(rows) ? rows : [];
     } catch (error) {
       lastError = error;
-      if (attempt < 2) await delay(450 * (attempt + 1));
+      if (attempt < maxAttempts - 1) await delay(450 * (attempt + 1));
     }
   }
   console.error(`getMyScheduleData could not load ${label}`, lastError);
-  if (optional) return [];
+  if (optional) { optionalErrors.push(label); return []; }
   throw lastError || new Error(`Unable to load ${label}`);
 }
 
@@ -30,6 +32,7 @@ Deno.serve(async (req) => {
       officer = await base44.asServiceRole.entities.User.get(String(body.preview_user_id)).catch(() => null);
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
+    optionalErrors.length = 0;
     const officerEmail = String(officer.work_email || officer.pathfinder_email || officer.email || '').trim().toLowerCase();
 
     // Load the officer's core schedule first, then supporting datasets in a
@@ -72,6 +75,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       schedules: schedules || [],
+      sourceErrors: [...optionalErrors],
       weekStatuses: weekStatuses || [],
       vehicleAssignments: (vehicleAssignments || []).filter((a: any) => String(a.primary_officer_email || '').toLowerCase() === officerEmail || String(a.partner_officer_email || '').toLowerCase() === officerEmail),
       dutySupervisorAssignments: dutySupervisorAssignments || [],

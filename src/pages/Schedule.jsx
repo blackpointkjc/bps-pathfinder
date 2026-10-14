@@ -279,6 +279,7 @@ export default function Schedule() {
             <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>LIVE UPDATES ENABLED</span></div>
           </div>
         </section>
+        {!!scheduleData.sourceErrors?.length && <div role="status" className="rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm text-amber-200">The core schedule loaded, but these supporting sections are temporarily unavailable: {scheduleData.sourceErrors.join(', ')}. Refresh to retry.</div>}
         {scheduleError && <div className="rounded-xl border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">Schedule data could not be loaded: {scheduleError.message}</div>}
 
         {currentPeriod && (
