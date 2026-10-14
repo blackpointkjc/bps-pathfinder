@@ -117,7 +117,7 @@ const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
-  if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries'].includes(meta?.name)) return 90;
+  if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
@@ -136,7 +136,7 @@ const readTimeoutMs = meta => {
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.
-  if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries'].includes(meta?.name)) return 60_000;
+  if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 60_000;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 35_000;
   return 20_000;
 };
@@ -194,7 +194,7 @@ function pumpReads() {
   const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
   const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
     job.meta?.kind === 'auth' ? 0 : criticalRecovery,
-    job.priority < 90 ? cooldown : 0);
+    job.priority < 70 ? cooldown : 0);
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
     || (a.priority >= 90 && b.priority < 90 ? -1 : b.priority >= 90 && a.priority < 90 ? 1 : score(b) - score(a)));

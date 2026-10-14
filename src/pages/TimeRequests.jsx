@@ -30,7 +30,7 @@ export default function TimeRequests() {
   // request page must be read-only; the old mount-time recalculation generated a
   // full ledger scan every visit and competed with time clock / CAD traffic.
 
-  const { data: requests = [], error: requestsError } = useQuery({
+  const { data: requests = [], isLoading: requestsLoading, error: requestsError } = useQuery({
     queryKey: ['timeOffRequests', user?.email],
     queryFn: async () => {
       const response = await base44.functions.invoke('getPTORequests', { action: 'list' });
@@ -40,7 +40,7 @@ export default function TimeRequests() {
     },
     enabled: !!user?.email,
     refetchInterval: 5 * 60 * 1000,
-    initialData: [],
+    staleTime: 60000,
   });
 
   const { data: ptoAdjustments = [] } = useQuery({
@@ -249,6 +249,7 @@ export default function TimeRequests() {
           </Card>
         )}
 
+        {requestsLoading && <div role="status" className="rounded-xl border border-slate-700 p-3 text-sm text-slate-300">Loading leave requests…</div>}
         {requestsError && (
           <Card className="border-red-700/50 bg-red-950/20">
             <CardContent className="p-4 text-red-300">Unable to load your PTO requests: {requestsError.message}</CardContent>

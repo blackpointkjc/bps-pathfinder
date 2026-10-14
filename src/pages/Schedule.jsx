@@ -33,8 +33,8 @@ export default function Schedule() {
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 60000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
   const payrollPeriods = scheduleData.payrollPeriods || [];
