@@ -46,7 +46,7 @@ export default function DutySupervisorScheduling() {
 
   const supervisors = useMemo(()=>users.filter(person=>{
     const r=new Set((person.additional_roles||[]).map(lower));
-    return !person.termination_date && (person.role==='admin'||person.is_supervisor===true||r.has('supervisor')||r.has('full_access')||['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal'].includes(lower(person.rank)));
+    return !person.termination_date && (hasSupervisorAccess(person));
   }).sort((a,b)=>String(a.last_name||a.full_name||'').localeCompare(String(b.last_name||b.full_name||''))),[users]);
 
   const windowStart=addDays(startOfDay(new Date()),dayOffset);

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -50,7 +51,7 @@ export default function AdminSupervisorCodes() {
   const generateAllCodes = async () => {
     if (!allUsers) return;
     setGeneratingAll(true);
-    const supervisors = allUsers.filter(u => u.additional_roles?.includes("supervisor") && !u.additional_roles?.includes("client"));
+    const supervisors = allUsers.filter(u => hasSupervisorAccess(u) && !u.additional_roles?.includes("client"));
     let generated = 0;
     for (const sup of supervisors) {
       try {

@@ -1,3 +1,4 @@
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -46,7 +47,7 @@ function TrainingRecordsContent({ embedded = false }) {
 
   const isAdmin = user?.role === "admin";
   const isTrainer = user?.additional_roles?.includes("trainer") || user?.additional_roles?.includes("full_access") || isAdmin;
-  const isSupervisor = user?.additional_roles?.includes("supervisor");
+  const isSupervisor = hasSupervisorAccess(user);
   const isHR = user?.additional_roles?.includes("hr");
   const canAccess = isAdmin || isTrainer || isSupervisor || isHR;
 
