@@ -1,7 +1,4 @@
-import React, { Suspense, useEffect, useState } from 'react';
-import Home from './pages/Home.jsx';
-import DispatchCenter from './pages/DispatchCenter.jsx';
-import CommandDashboard from './pages/CommandDashboard.jsx';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -11,7 +8,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
-import Layout from './Layout.jsx';
+import { pagesConfig } from './pages.config';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -21,29 +18,9 @@ import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
 import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
-// Load each route on demand, instead of shipping all pages at login.
-// Base44's generated pages.config eagerly imports every module; do not import it here.
-const routeModules = import.meta.glob('./pages/*.jsx');
-const Pages = Object.fromEntries(Object.entries(routeModules).map(([path, load]) => [
-  path.split('/').pop().replace(/\.jsx$/, ''), React.lazy(load),
-]));
-// Eager-load the landing and operational screens so the dispatch workflow
-// never depends on an additional route chunk resolving after sign-in.
-Object.assign(Pages, { Home, DispatchCenter, CommandDashboard });
-const mainPageKey = 'Home';
-const MainPage = Pages[mainPageKey];
-function WorkspaceFallback() {
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setSlow(true), 8000);
-    return () => window.clearTimeout(timeout);
-  }, []);
-  return <div role="status" className="flex min-h-32 flex-col items-center justify-center gap-3 bg-[#050a12] p-6 text-sm text-cyan-200">
-    <span>{slow ? 'This workspace is taking too long to load.' : 'Loading workspace…'}</span>
-    {slow && <button type="button" className="rounded-lg border border-cyan-600 px-4 py-2 font-bold text-white" onClick={() => window.location.reload()}>Reload workspace</button>}
-  </div>;
-}
-const pageFallback = <WorkspaceFallback />;
+const { Pages, Layout, mainPage } = pagesConfig;
+const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
 const DATA_SYNC_TERMS = {
   User: ['user', 'directory', 'officer', 'personnel', 'client', 'supervisor', 'training', 'currentuser', 'portal', 'rank', 'pto'],
@@ -335,7 +312,7 @@ const AuthenticatedApp = () => {
         path="/"
         element={MainPage ? (
           <LayoutWrapper currentPageName={mainPageKey}>
-            <Suspense fallback={pageFallback}><MainPage /></Suspense>
+            <MainPage />
           </LayoutWrapper>
         ) : <PageNotFound />}
       />
@@ -345,7 +322,7 @@ const AuthenticatedApp = () => {
           path={`/${path}`}
           element={
             <LayoutWrapper currentPageName={path}>
-              <Suspense fallback={pageFallback}><Page /></Suspense>
+              <Page />
             </LayoutWrapper>
           }
         />
