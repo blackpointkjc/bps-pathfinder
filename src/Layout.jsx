@@ -1406,7 +1406,7 @@ export default function Layout({ children, currentPageName }) {
     };
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') monitor();
-    }, 15000);
+    }, 60000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
