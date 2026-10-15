@@ -1,4 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
+import Home from './pages/Home.jsx';
+import DispatchCenter from './pages/DispatchCenter.jsx';
+import CommandDashboard from './pages/CommandDashboard.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -24,9 +27,23 @@ const routeModules = import.meta.glob('./pages/*.jsx');
 const Pages = Object.fromEntries(Object.entries(routeModules).map(([path, load]) => [
   path.split('/').pop().replace(/\.jsx$/, ''), React.lazy(load),
 ]));
+// Eager-load the landing and operational screens so the dispatch workflow
+// never depends on an additional route chunk resolving after sign-in.
+Object.assign(Pages, { Home, DispatchCenter, CommandDashboard });
 const mainPageKey = 'Home';
 const MainPage = Pages[mainPageKey];
-const pageFallback = <div role="status" className="flex min-h-32 items-center justify-center bg-[#050a12] p-6 text-sm text-cyan-200">Loading workspace…</div>;
+function WorkspaceFallback() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSlow(true), 8000);
+    return () => window.clearTimeout(timeout);
+  }, []);
+  return <div role="status" className="flex min-h-32 flex-col items-center justify-center gap-3 bg-[#050a12] p-6 text-sm text-cyan-200">
+    <span>{slow ? 'This workspace is taking too long to load.' : 'Loading workspace…'}</span>
+    {slow && <button type="button" className="rounded-lg border border-cyan-600 px-4 py-2 font-bold text-white" onClick={() => window.location.reload()}>Reload workspace</button>}
+  </div>;
+}
+const pageFallback = <WorkspaceFallback />;
 
 const DATA_SYNC_TERMS = {
   User: ['user', 'directory', 'officer', 'personnel', 'client', 'supervisor', 'training', 'currentuser', 'portal', 'rank', 'pto'],
