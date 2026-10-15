@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -8,21 +8,25 @@ import { queryClientInstance } from '@/lib/query-client';
 import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
-import { pagesConfig } from './pages.config';
+import Layout from './Layout.jsx';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
-import DispatcherShiftReports from './pages/DispatcherShiftReports';
-import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
 import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
-const { Pages, Layout, mainPage } = pagesConfig;
-const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : null;
+// Load each route on demand, instead of shipping all pages at login.
+// Base44's generated pages.config eagerly imports every module; do not import it here.
+const routeModules = import.meta.glob('./pages/*.jsx');
+const Pages = Object.fromEntries(Object.entries(routeModules).map(([path, load]) => [
+  path.split('/').pop().replace(/\.jsx$/, ''), React.lazy(load),
+]));
+const mainPageKey = 'Home';
+const MainPage = Pages[mainPageKey];
+const pageFallback = <div role="status" className="flex min-h-32 items-center justify-center bg-[#050a12] p-6 text-sm text-cyan-200">Loading workspace…</div>;
 
 const DATA_SYNC_TERMS = {
   User: ['user', 'directory', 'officer', 'personnel', 'client', 'supervisor', 'training', 'currentuser', 'portal', 'rank', 'pto'],
@@ -314,7 +318,7 @@ const AuthenticatedApp = () => {
         path="/"
         element={MainPage ? (
           <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
+            <Suspense fallback={pageFallback}><MainPage /></Suspense>
           </LayoutWrapper>
         ) : <PageNotFound />}
       />
@@ -324,13 +328,11 @@ const AuthenticatedApp = () => {
           path={`/${path}`}
           element={
             <LayoutWrapper currentPageName={path}>
-              <Page />
+              <Suspense fallback={pageFallback}><Page /></Suspense>
             </LayoutWrapper>
           }
         />
       ))}
-      <Route path="/DispatcherShiftReports" element={<LayoutWrapper currentPageName="DispatcherShiftReports"><DispatcherShiftReports /></LayoutWrapper>} />
-      <Route path="/SupervisorFieldOversight" element={<LayoutWrapper currentPageName="SupervisorFieldOversight"><SupervisorFieldOversight /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
         </Routes>
       </div>
