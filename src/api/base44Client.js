@@ -199,6 +199,24 @@ function pumpReads() {
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
     || (a.priority >= 90 && b.priority < 90 ? -1 : b.priority >= 90 && a.priority < 90 ? 1 : score(b) - score(a)));
+  // A known 429 recovery window is not an overloaded JavaScript queue. Fail
+  // waiting nonessential reads promptly, so page queries can show a meaningful
+  // throttling state rather than time out before the API is usable again.
+  const recoveryPending = Math.max(0, readRecoveryUntil - Date.now(), cooldown);
+  if (recoveryPending > 0) {
+    for (const job of [...readQueue]) {
+      if (job.meta?.kind === 'auth' || job.priority >= 90) continue;
+      const index = readQueue.indexOf(job);
+      if (index < 0) continue;
+      readQueue.splice(index, 1);
+      window.clearTimeout(job.queueTimer);
+      const error = new Error(`Base44 API is temporarily throttled. Retry after ${Math.ceil(recoveryPending / 1000)} seconds.`);
+      error.status = 429;
+      error.retry_after_ms = recoveryPending;
+      job.reject(error);
+    }
+  }
+  if (!readQueue.length) return;
   const waitForHead = waitFor(readQueue[0]);
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
@@ -297,7 +315,11 @@ function queuedRead(key, task, meta = {}) {
         if (index < 0) return;
         // Keep the total wait bounded even if other requests renew a cooldown.
         readQueue.splice(index, 1);
-        const error = new Error('Data request queue remained busy after recovery. Please retry.');
+        const throttleMs = Math.max(0, readRecoveryUntil - Date.now(), sharedRateLimitUntil() - Date.now());
+        const error = new Error(throttleMs > 0
+          ? `Base44 API is temporarily throttled. Retry after ${Math.ceil(throttleMs / 1000)} seconds.`
+          : 'This data request could not start in time because the application is busy. Please retry.');
+        if (throttleMs > 0) { error.status = 429; error.retry_after_ms = throttleMs; }
         recordRequestTrace({
           label: requestLabel(meta),
           kind: meta.kind || 'read',
@@ -311,6 +333,8 @@ function queuedRead(key, task, meta = {}) {
     };
     job.armQueueTimeout = armQueueTimeout;
     job.priority = readPriority(meta);
+    // Foreground requests remain bounded; throttle windows are detected and
+    // surfaced explicitly by the pump, not mistaken for a queue deadlock.
     armQueueTimeout(job.priority >= 70 ? 15000 : READ_QUEUE_TIMEOUT_MS);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
