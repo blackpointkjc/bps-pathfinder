@@ -205,7 +205,7 @@ function pumpReads() {
   const recoveryPending = Math.max(0, readRecoveryUntil - Date.now(), cooldown);
   if (recoveryPending > 0) {
     for (const job of [...readQueue]) {
-      if (job.meta?.kind === 'auth' || job.priority >= 90) continue;
+      if (job.meta?.kind === 'auth') continue;
       const index = readQueue.indexOf(job);
       if (index < 0) continue;
       readQueue.splice(index, 1);
@@ -216,7 +216,7 @@ function pumpReads() {
       job.reject(error);
     }
   }
-  if (!readQueue.length) return;
+  if (!readQueue.length) { window.clearTimeout(wakeTimer); return; }
   const waitForHead = waitFor(readQueue[0]);
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
