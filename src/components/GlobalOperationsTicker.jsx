@@ -245,7 +245,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
     const refresh = () => load();
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') load();
-    }, 15_000);
+    }, 60_000);
     window.addEventListener('bps-operational-resume', refresh);
     window.addEventListener('online', refresh);
 

@@ -149,11 +149,13 @@ export default function DispatchCenter() {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(async () => {
             if (document.visibilityState !== 'visible') return;
-            try { await requestCadLiveSync(); } catch (error) { console.warn('[Dispatch] guarded upstream sync failed', error?.message || error); }
+            // App-wide CadSourceSyncMonitor owns upstream ingestion. This screen
+            // only refreshes persisted calls; running ingestion here duplicates
+            // expensive backend work and causes 429s across every workspace.
             clearActiveDispatchCallMemoryCache();
             lastActiveCallsLoadRef.current = 0;
             loadActiveCalls(true);
-        }, 8000);
+        }, 20000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does
