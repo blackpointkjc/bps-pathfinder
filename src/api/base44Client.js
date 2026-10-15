@@ -50,6 +50,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getWelcomeBriefingData') return 90_000;
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
@@ -199,24 +200,12 @@ function pumpReads() {
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
     || (a.priority >= 90 && b.priority < 90 ? -1 : b.priority >= 90 && a.priority < 90 ? 1 : score(b) - score(a)));
-  // A known 429 recovery window is not an overloaded JavaScript queue. Fail
-  // waiting nonessential reads promptly, so page queries can show a meaningful
-  // throttling state rather than time out before the API is usable again.
+  // Only defer requests while the backend requests a cooldown. Never synthesize
+  // 429 errors for queued reads: the UI interprets them as *new* API throttles,
+  // repeatedly failing every briefing/task query and retriggering recovery.
+  // Authentication and already-cached data still resolve immediately.
   const recoveryPending = Math.max(0, readRecoveryUntil - Date.now(), cooldown);
-  if (recoveryPending > 0) {
-    for (const job of [...readQueue]) {
-      if (job.meta?.kind === 'auth') continue;
-      const index = readQueue.indexOf(job);
-      if (index < 0) continue;
-      readQueue.splice(index, 1);
-      window.clearTimeout(job.queueTimer);
-      const error = new Error(`Base44 API is temporarily throttled. Retry after ${Math.ceil(recoveryPending / 1000)} seconds.`);
-      error.status = 429;
-      error.retry_after_ms = recoveryPending;
-      job.reject(error);
-    }
-  }
-  if (!readQueue.length) { window.clearTimeout(wakeTimer); return; }
+  if (!readQueue.length) return;
   const waitForHead = waitFor(readQueue[0]);
   if (waitForHead > 0) {
     schedulePump(waitForHead + 25);
@@ -335,7 +324,7 @@ function queuedRead(key, task, meta = {}) {
     job.priority = readPriority(meta);
     // Foreground requests remain bounded; throttle windows are detected and
     // surfaced explicitly by the pump, not mistaken for a queue deadlock.
-    armQueueTimeout(job.priority >= 70 ? 15000 : READ_QUEUE_TIMEOUT_MS);
+    armQueueTimeout(READ_QUEUE_TIMEOUT_MS);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
     else readQueue.splice(insertAt, 0, job);

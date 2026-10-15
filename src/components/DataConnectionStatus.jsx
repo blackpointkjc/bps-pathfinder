@@ -14,7 +14,7 @@ export default function DataConnectionStatus() {
       const health = getBase44RequestHealth();
       const failed = queryClient.getQueryCache().getAll().filter(query => query.isActive() && query.state.status === 'error');
       const until = health.rateLimitedUntil ? Date.parse(health.rateLimitedUntil) : 0;
-      const quietUntil = Math.max(health.readRetryAt ? Date.parse(health.readRetryAt) : 0, until ? until - 45_000 : 0);
+      const quietUntil = Math.max(health.readRetryAt ? Date.parse(health.readRetryAt) : 0, until);
       // A previously observed 429 is not itself proof that the active page is broken.
       // Warn only when at least two visible queries are actually failing.
       setStatus(failed.length >= 2 ? { rateLimited: until > Date.now(), failed: failed.length } : null);
@@ -32,6 +32,7 @@ export default function DataConnectionStatus() {
   }, [queryClient]);
   if (!status) return null;
   const retry = () => {
+    if (getBase44RequestHealth().rateLimitedUntil) return;
     clearBase44ReadCache();
     void queryClient.refetchQueries({ type: 'active', predicate: query => query.state.status === 'error' }).catch(() => {});
     window.dispatchEvent(new CustomEvent('bps-operational-resume'));
