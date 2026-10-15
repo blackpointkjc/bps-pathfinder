@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       'callIncident', 'callLocation', 'callPriority', 'callStatus', 'cadNumber',
       'callTime', 'time_received', 'lifecycle_status', 'is_test', 'acknowledged'];
     const propertyAlerts = operational
-      ? await loadSource('property alerts', () => base44.asServiceRole.entities.PropertyAlert.filter({}, '-created_date', 150, 0, propertyFields))
+      ? await loadSource('property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 150))
       : [];
     const propertyAlertReceipts = operational
       ? await loadSource('property alert receipts', () => base44.asServiceRole.entities.PropertyAlertReceipt.filter({ user_email: email }, '-dismissed_at', 150, 0, ['id', 'call_id', 'property_id', 'dismissed_at']))

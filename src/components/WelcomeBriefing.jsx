@@ -256,7 +256,7 @@ export default function WelcomeBriefing({ user }) {
       } catch (error) {
         console.error('Welcome briefing unavailable:', error);
         scheduleRecovery();
-        setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary', 'property alerts'])));
+        setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary'])));
       } finally {
         if (active) {
           setLoading(false);
