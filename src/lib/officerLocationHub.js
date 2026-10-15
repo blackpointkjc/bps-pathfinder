@@ -310,8 +310,8 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
   // Never turn a known API throttle into another getOnDutyUnits request. Realtime
   // ActiveOfficer events already update the cached roster locally; keep using that
   // verified snapshot until the shared cooldown expires.
-  if (cached && getBase44RequestHealth().rateLimitedUntil) {
-    return { ...cached.payload, stale: true, rate_limited: true };
+  if ((cached || compatibleCached) && getBase44RequestHealth().rateLimitedUntil) {
+    return { ...(cached || compatibleCached).payload, stale: true, rate_limited: true };
   }
 
   if (force) {
@@ -341,6 +341,11 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
         snapshotCache.set('location', { at: cachedAt, payload: liveOnlyPayload });
       }
       return payload;
+    })
+    .catch(error => {
+      const fallback = snapshotCache.get(key) || (locationOnly ? snapshotCache.get('admin-location') : null);
+      if (fallback?.payload) return { ...fallback.payload, stale: true, rate_limited: /429|throttl|rate limit/i.test(String(error?.message || '')) };
+      throw error;
     })
     .finally(() => inflight.delete(key));
   inflight.set(key, request);
