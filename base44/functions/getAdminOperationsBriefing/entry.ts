@@ -13,6 +13,7 @@ Deno.serve(async req => {
       return Response.json({error:'Administrator access required'},{status:403});
 
     const sourceErrors:string[] = [];
+    const staleSources:string[] = [];
     const read = async (label:string, callback:()=>Promise<any[]>) => {
       const prior = sourceCache.get(label);
       if (prior && prior.freshUntil > Date.now()) return prior.value;
@@ -25,7 +26,7 @@ Deno.serve(async req => {
         } catch(error:any) {
           const rateLimited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests/i.test(String(error?.message || ''));
           if (attempt === 0 && !rateLimited) { await sleep(300); continue; }
-          if (prior && prior.staleUntil > Date.now()) return prior.value;
+          if (prior && prior.staleUntil > Date.now()) { staleSources.push(label); return prior.value; }
           sourceErrors.push(label);
           console.warn('Admin briefing source unavailable:',label,error?.message || error);
           return null;
@@ -51,7 +52,7 @@ Deno.serve(async req => {
     const enrollmentRows = (enrollments || []).filter((item:any)=>['invited','profile_submitted'].includes(item.status));
     const namesById = new Map((users || []).map((user:any)=>[String(user.id), [user.first_name,user.last_name].filter(Boolean).join(' ').trim() || user.full_name?.trim() || user.email || `Account ${user.id}`]));
     return Response.json({
-      success:true, generated_at:new Date().toISOString(), source_errors:sourceErrors,
+      success:true, generated_at:new Date().toISOString(), source_errors:sourceErrors, stale_sources:staleSources,
       status:{
         pending_employees: users === null ? null : pendingEmployees.length,
         pending_access_requests: access === null ? null : access.length,
