@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching, getBase44RequestHealth } from '@/api/base44Client';
 import { announceVoiceAsync, cancelVoiceEvent } from '@/utils/voiceAnnouncer';
 
 // Mounted by Layout so page navigation cannot disconnect operational audio.
@@ -51,9 +51,10 @@ export default function CadVoiceBroadcastMonitor({ user }) {
     };
     const recover = async () => {
       if (disposed || busy || navigator.onLine === false) { schedule(); return; }
+      const health = getBase44RequestHealth();
+      if (health.rateLimitedUntil || health.readRetryAt) { schedule(60000); return; }
       busy = true; lastRecovery = Date.now();
       try {
-        clearBase44ReadCacheMatching('function:cad-voice-broadcast:');
         const data = await invoke({action:'list'});
         for (const record of data.broadcasts || []) await process(record);
       } catch (error) {
