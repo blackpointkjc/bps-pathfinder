@@ -20,7 +20,7 @@ const MAX_CONCURRENT_READS = 2;
 // Concurrency alone does not limit fast completions; space starts to avoid bursts.
 // Reduce artificial startup serialization; existing 429 backoff and two-read
 // concurrency cap still protect the API when the service is throttled.
-const READ_START_GAP_MS = 400;
+const READ_START_GAP_MS = 125;
 let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
@@ -129,16 +129,17 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && ['manageOfficerPerformanceReviews','managePerformanceReviews'].includes(meta?.name)) return 70;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 84;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 55;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit'].includes(meta?.name)) return 20;
-  return 50;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing'].includes(meta?.name)) return 20;
+  // Give foreground page reads precedence over background scans.
+  return 72;
 };
 const readTimeoutMs = meta => {
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.
-  if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 60_000;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 35_000;
-  return 20_000;
+  if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 30_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 25_000;
+  return 12_000;
 };
 const requestLabel = meta => {
   if (!meta) return 'unknown';
@@ -253,7 +254,7 @@ function pumpReads() {
         const status = Number(error?.response?.status || error?.status || 0);
         const retryable = throttled || [502,503,504].includes(status) || /network error|failed to fetch/i.test(errorText(error));
         job.attempt = (job.attempt || 0) + 1;
-        if (retryable && job.attempt <= 2 && Date.now() - job.queuedAt < READ_QUEUE_TIMEOUT_MS - 30000) {
+        if (retryable && !throttled && job.attempt <= 1 && Date.now() - job.queuedAt < READ_QUEUE_TIMEOUT_MS - 30000) {
           job.readyAt = Date.now() + (throttled ? 1000 : 2000 * 2 ** job.attempt) + Math.random() * 3000;
           job.armQueueTimeout(READ_QUEUE_TIMEOUT_MS - (Date.now() - job.queuedAt));
           readQueue.push(job);
@@ -269,11 +270,9 @@ function pumpReads() {
 function queuedRead(key, task, meta = {}) {
   const cached = readCache.get(key);
   if (cached && Date.now() - cached.at < readCacheTtl(meta)) {
-    recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'cache_hit', duration_ms: 0 });
     return Promise.resolve(cached.value);
   }
   if (readInflight.has(key)) {
-    recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'read', mode: 'read', outcome: 'deduped_inflight', duration_ms: 0 });
     return readInflight.get(key);
   }
   let markStarted;
@@ -311,8 +310,8 @@ function queuedRead(key, task, meta = {}) {
       }, Math.max(5_000, delayMs));
     };
     job.armQueueTimeout = armQueueTimeout;
-    armQueueTimeout(READ_QUEUE_TIMEOUT_MS);
     job.priority = readPriority(meta);
+    armQueueTimeout(job.priority >= 70 ? 15000 : READ_QUEUE_TIMEOUT_MS);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
     else readQueue.splice(insertAt, 0, job);
