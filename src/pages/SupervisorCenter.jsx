@@ -1,4 +1,5 @@
 import { ClipboardCheck, Shield, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import React from 'react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import OfficerCenter from './OfficerCenter';
@@ -51,6 +52,22 @@ const OVERSIGHT_TOOLS = [
   { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
 ];
 
+class SupervisorSectionBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[SupervisorCenter] Section crashed:', this.props.section, error, info); }
+  componentDidUpdate(previous) { if (previous.section !== this.props.section && this.state.error) this.setState({ error: null }); }
+  render() {
+    if (this.state.error) return <div role="alert" className="m-4 rounded-xl border border-red-500/50 bg-red-950/30 p-5 text-white">
+      <h2 className="text-lg font-bold">This supervisor module could not load</h2>
+      <p className="mt-2 text-sm text-red-200">{this.state.error?.message || 'Unexpected error'}</p>
+      <p className="mt-2 text-xs text-slate-400">Other Supervisor Center sections remain available. Select another section or retry.</p>
+      <button type="button" onClick={() => this.setState({error:null})} className="mt-4 rounded-lg border border-cyan-500 px-3 py-2 text-sm font-bold">Retry Module</button>
+    </div>;
+    return this.props.children;
+  }
+}
+
 export default function SupervisorCenter({ embedded = false }) {
   return (
     <UnifiedCenter
@@ -62,7 +79,7 @@ export default function SupervisorCenter({ embedded = false }) {
       queryParam={embedded ? 'supervisor_section' : 'section'}
       embedded={embedded}
     >
-      {section => {
+      {section => <SupervisorSectionBoundary key={section} section={section}>{(() => {
         if (section === 'overview') return <SupervisorOverview />;
         if (section === 'officer') return <OfficerCenter embedded />;
         if (section === 'cad') return <CADCenter embedded />;
@@ -71,7 +88,7 @@ export default function SupervisorCenter({ embedded = false }) {
         if (section === 'callouts') return <SupervisorCallOuts />;
         if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
         return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
-      }}
+      })()}</SupervisorSectionBoundary>}
     </UnifiedCenter>
   );
 }
