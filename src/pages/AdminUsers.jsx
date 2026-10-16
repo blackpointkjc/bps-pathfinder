@@ -1,3 +1,4 @@
+import { getPayRangeForRank, nextUnitNumber, previewRankChange } from '@/utils/rankPolicy';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
@@ -209,7 +210,7 @@ export default function AdminUsers({ embedded = false }) {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
-        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('training');
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
       }});
       setShowDialog(false);
       setEditingUser(null);
@@ -250,39 +251,7 @@ export default function AdminUsers({ embedded = false }) {
     }
   });
 
-  const getRankSeries = (rank) => {
-    const seriesMap = {
-      'Colonel': { start: 100, end: 100 },
-      'Lt Colonel': { start: 200, end: 200 },
-      'Major': { start: 300, end: 349 },
-      'Captain': { start: 350, end: 399 },
-      'Lieutenant': { start: 400, end: 449 },
-      'First Sergeant': { start: 450, end: 499 },
-      'Sergeant': { start: 500, end: 549 },
-      'Corporal': { start: 550, end: 599 },
-      'Senior officer': { start: 600, end: 649 },
-      'Officer': { start: 650, end: 699 },
-      'Unarmed Officer': { start: 700, end: 799 }
-    };
-    return seriesMap[rank] || null;
-  };
-
-  const getNextAvailableUnitNumber = (rank) => {
-    const series = getRankSeries(rank);
-    if (!series) return "";
-
-    const usedNumbers = users
-      .filter(u => u.unit_number && parseInt(u.unit_number) >= series.start && parseInt(u.unit_number) <= series.end)
-      .map(u => parseInt(u.unit_number))
-      .sort((a, b) => a - b);
-
-    for (let i = series.start; i <= series.end; i++) {
-      if (!usedNumbers.includes(i)) {
-        return i.toString();
-      }
-    }
-    return series.start.toString();
-  };
+  const getNextAvailableUnitNumber = rank => nextUnitNumber(rank, users || [], editingUser || '');
 
   const checkAnniversariesAndBirthdays = async () => {
     setCheckingAnniversaries(true);
@@ -353,39 +322,10 @@ export default function AdminUsers({ embedded = false }) {
   };
 
   const handleRankChange = (newRank, isEdit = false) => {
-    const nextUnitNumber = getNextAvailableUnitNumber(newRank);
-    const payRange = getPayRangeForRank(newRank);
-    const currentRate = isEdit ? editFormData.hourly_rate : 0;
-    const isFlexible = ['Human Resources', 'Support Staff'].includes(newRank);
-
-    // Use lowest rate for rank, or keep current rate if it's higher (flexible ranks keep any rate)
-    const newRate = isFlexible ? (currentRate || payRange.min) : (currentRate && currentRate >= payRange.min ? currentRate : payRange.min);
-
-    if (isEdit) {
-      setEditFormData({
-        ...editFormData,
-        rank: newRank,
-        unit_number: nextUnitNumber,
-        hourly_rate: newRate
-      });
-    }
-  };
-
-  const getPayRangeForRank = (rank) => {
-    const payRanges = {
-      'Unarmed Officer': { min: 18.00, max: 20.00 },
-      'Officer': { min: 19.50, max: 21.50 },
-      'Senior officer': { min: 20.50, max: 22.50 },
-      'Corporal': { min: 21.00, max: 23.00 },
-      'Sergeant': { min: 22.00, max: 24.00 },
-      'First Sergeant': { min: 23.00, max: 25.00 },
-      'Lieutenant': { min: 24.00, max: 26.00 },
-      'Captain': { min: 25.00, max: 27.00 },
-      'Lt Colonel': { min: 27.50, max: 27.50 },
-      'Colonel': { min: 27.50, max: 27.50 },
-      'Major': { min: 27.50, max: 27.50 },
-    };
-    return payRanges[rank] || { min: 18.00, max: 20.00 };
+    if (!isEdit) return;
+    try {
+      setEditFormData(prev => ({...prev,...previewRankChange(selectedUser, newRank, users || [])}));
+    } catch(error) { alert(error.message); }
   };
 
   const handleEditUser = (userData) => {
@@ -549,7 +489,7 @@ export default function AdminUsers({ embedded = false }) {
       invalidateAppDirectory();
       await queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
-        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('training');
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
       }});
       window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: photoUrl } }));
       alert('Officer photo updated successfully.');

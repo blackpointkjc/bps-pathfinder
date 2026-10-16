@@ -1,3 +1,4 @@
+import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
 import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
@@ -145,7 +146,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
-        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('trainingcompliancematrix');
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('trainingcompliancematrix');
       }});
       setShowDialog(false);
       setEditingUser(null);
@@ -202,21 +203,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     );
   };
 
-  const getPayRangeForRank = (rank) => {
-    const payRanges = {
-      'Unarmed Officer': { min: 18.00, max: 20.00 },
-      'Officer': { min: 19.50, max: 21.50 },
-      'Senior officer': { min: 20.50, max: 22.50 },
-      'Corporal': { min: 21.00, max: 23.00 },
-      'Sergeant': { min: 22.00, max: 24.00 },
-      'First Sergeant': { min: 23.00, max: 25.00 },
-      'Lieutenant': { min: 24.00, max: 26.00 },
-      'Captain': { min: 25.00, max: 27.00 },
-      'Lt Colonel': { min: 27.50, max: 27.50 },
-      'Colonel': { min: 27.50, max: 27.50 },
-      'Major': { min: 27.50, max: 27.50 },
-    };
-    return payRanges[rank] || { min: 18.00, max: 20.00 };
+  const handleRankChange = rank => {
+    try { setEditFormData(prev => ({...prev,...previewRankChange(selectedUser, rank, users || [])})); }
+    catch(error) { alert(error.message); }
   };
 
   const handleEditUser = (userData) => {
@@ -393,7 +382,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       invalidateAppDirectory();
       await queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
-        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank');
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule');
       }});
       window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: photoUrl } }));
       alert('Officer photo updated successfully.');
@@ -684,7 +673,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Badge Number</Label><Input value={editFormData.badge_number || "Assigned on first Officer-role grant"} readOnly className="bg-slate-100" /></div>
                   <div>
                     <Label className="text-xs text-slate-500">Rank</Label>
-                    <Select value={editFormData.rank || "Officer"} onValueChange={(v) => setEditFormData(prev => ({...prev, rank: v, hourly_rate: Number(prev.hourly_rate) > 0 ? prev.hourly_rate : getPayRangeForRank(v).min}))}>
+                    <Select value={editFormData.rank || "Officer"} onValueChange={handleRankChange}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer','Human Resources','Support Staff'].map(r => (
@@ -693,7 +682,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs text-slate-500">Unit Number</Label><Input value={editFormData.unit_number || ""} onChange={(e) => setEditFormData({...editFormData, unit_number: e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">Unit Number</Label><Input value={editFormData.unit_number || ""} readOnly /><p className="mt-1 text-xs text-slate-500">Automatically assigned from the selected rank series when saved.</p></div>
                   <div>
                     <Label className="text-xs text-slate-500">Division</Label>
                     <select
