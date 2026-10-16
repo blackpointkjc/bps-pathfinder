@@ -32,7 +32,7 @@ export default function DutySupervisorScheduling() {
   const canManage = hasSupervisorAccess(user);
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
-  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:async()=>{ const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'list'}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); return payload.assignments||[]; }, refetchInterval:5 * 60 * 1000 });
+  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:async()=>{ try { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'list'}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); return payload.assignments||[]; } catch(error) { try { return await base44.entities.DutySupervisorAssignment.list('-assignment_date',1500); } catch { throw error; } } }, refetchInterval:5 * 60 * 1000 });
 
   useEffect(() => {
     let unsubscribe;
