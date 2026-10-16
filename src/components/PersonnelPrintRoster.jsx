@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { createPortal } from 'react-dom';
 import { COMMAND_TIERS, commandRank, reportingLabel, oversightLabel, assignmentLabel } from '@/utils/commandReporting';
 export const rosterPrintCss = `
@@ -43,6 +44,7 @@ function RosterCard({ person, users, contactEmail }) {
  </article>;
 }
 export function RosterPrintContent({ users, contactEmail }) {
+ users=[...users].sort(comparePersonnel);
  const commandRows = COMMAND_TIERS.flatMap(rank=>chunks(users.filter(p=>commandRank(p)===rank),2).map(people=>({rank,people})));
  const pages = chunks(commandRows,3).map(rows=>({title:'COMMAND STRUCTURE',rows}));
  const nonCommand=users.filter(p=>!COMMAND_TIERS.includes(commandRank(p)));

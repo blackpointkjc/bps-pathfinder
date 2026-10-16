@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 export const COMMAND_TIERS = ['Colonel', 'Lt Colonel', 'Major'];
 export const commandRank = person => {
   const rank = String(person?.rank || '').trim();
@@ -9,7 +10,7 @@ export const commandRank = person => {
 export const majorPlatoon = person => ['A','B'].includes(person?.oversight_platoon) ? person.oversight_platoon : ['A','B'].includes(person?.platoon) ? person.platoon : '';
 export const assignmentLabel = person => COMMAND_TIERS.includes(commandRank(person)) ? 'Command' : ['A','B'].includes(person?.platoon) ? `Platoon ${person.platoon}` : 'Unassigned';
 export function reportingSupervisors(person, users = []) {
-  if (commandRank(person) === 'Major') return users.filter(user => user.id !== person.id && commandRank(user) === 'Lt Colonel' && !user.termination_date && user.employment_status !== 'terminated');
+  if (commandRank(person) === 'Major') return users.filter(user => user.id !== person.id && commandRank(user) === 'Lt Colonel' && !user.termination_date && user.employment_status !== 'terminated').sort(comparePersonnel);
   return users.filter(user => user.id === person?.supervisor_id);
 }
 export const reportingLabel = (person, users, name) => reportingSupervisors(person, users).map(name).join(' & ') || (commandRank(person) === 'Colonel' ? 'Top of Command' : 'Awaiting assignment');
@@ -23,7 +24,7 @@ export function siteReportingChains(references = [], users = []) {
   while(current.length) {
    const level=current.filter(p=>!seen.has(p.id));
    if(!level.length) {incomplete=true;break;}
-   level.forEach(p=>seen.add(p.id)); levels.push(level);
+   level.sort(comparePersonnel); level.forEach(p=>seen.add(p.id)); levels.push(level);
    const next=new Map();
    for(const person of level) {
     const parents=reportingSupervisors(person,active);

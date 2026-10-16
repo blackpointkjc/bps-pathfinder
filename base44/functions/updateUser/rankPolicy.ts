@@ -21,7 +21,7 @@ export function normalizeRank(value: unknown) {
  if(rank==='armed officer') return 'Officer';
  return RANKS.find(item=>item.toLowerCase()===rank) || String(value || '').trim();
 }
-export const rankLevel = (value: unknown) => {const index=RANKS.indexOf(normalizeRank(value: unknown));return index<0?999:index;};
+export const rankLevel = (value: unknown) => {const index=RANKS.indexOf(normalizeRank(value));return index<0?999:index;};
 export function comparePersonnel(a: any,b: any) {
  const unit=(p: any)=>Number(p?.unit_number || p?.unitNumber)>0?Number(p.unit_number || p.unitNumber):999999;
  const name=(p: any)=>[p?.last_name || p?.lastName,p?.first_name || p?.firstName,p?.full_name,p?.email,p?.id].filter(Boolean).join(' ');

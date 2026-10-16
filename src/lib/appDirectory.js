@@ -1,3 +1,4 @@
+import { comparePersonnel, rankLevel } from '@/utils/rankPolicy';
 import { base44 } from '@/api/base44Client';
 import { getOfficerPreviewProfile } from '@/utils/officerPreview';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -275,7 +276,9 @@ export async function listSupervisorDirectoryOfficers(sort = 'last_name', limit 
 }
 
 function sortRows(rows, sort) {
-  if (!sort || !Array.isArray(rows)) return rows || [];
+  if (!Array.isArray(rows)) return rows || [];
+  if (rows.some(row=>rankLevel(row?.rank)<999)) return [...rows].sort(comparePersonnel);
+  if (!sort) return rows;
   const desc = String(sort).startsWith('-');
   const field = desc ? String(sort).slice(1) : String(sort);
   return [...rows].sort((a, b) => {
