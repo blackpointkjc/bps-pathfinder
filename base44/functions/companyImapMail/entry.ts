@@ -87,6 +87,9 @@ Deno.serve(async (req) => {
         secure: mailbox.imap_secure !== false,
         auth: { user: mailbox.username, pass: mailbox.password },
         logger: false,
+        connectionTimeout: 12000,
+        greetingTimeout: 12000,
+        socketTimeout: 20000,
       });
       try { await imap.connect(); } catch(error:any) {
         const message = String(error?.message || 'Connection failed');
@@ -121,7 +124,7 @@ Deno.serve(async (req) => {
 
     if (action === 'verify') {
       await base44.asServiceRole.entities.CompanyImapMailbox.update(mailbox.id, { last_verified_at: new Date().toISOString(), last_error: '' }).catch(() => null);
-      return json({ ok: true });
+      return json({ ok: true, mailbox_email: mailbox.mailbox_email, server: mailbox.imap_host });
     }
 
     if (action === 'folders') {
