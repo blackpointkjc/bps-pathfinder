@@ -1,4 +1,4 @@
-import { normalizeRank, PAY_RANGES, nextUnitNumber } from './rankPolicy.ts';
+import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -104,7 +104,10 @@ Deno.serve(async (req) => {
             while (usedBadges.has(String(next))) next++;
             updatePayload.badge_number = String(next);
           }
-          if (rankChanged || (officerNewlyGranted && !String(target.unit_number || '').trim())) {
+          const series = RANK_SERIES[rank];
+          const oldUnit = Number(target.unit_number);
+          const repairUnit = updates.rank !== undefined && series && (!Number.isSafeInteger(oldUnit) || oldUnit < series.start || oldUnit > series.end);
+          if (rankChanged || repairUnit || (officerNewlyGranted && !String(target.unit_number || '').trim())) {
             try { updatePayload.unit_number = nextUnitNumber(rank, targetUsers, userId); }
             catch (error) { return Response.json({error:error.message},{status:409}); }
           } else if (String(target.unit_number || '').trim()) {
