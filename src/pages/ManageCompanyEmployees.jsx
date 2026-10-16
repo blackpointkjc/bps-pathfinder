@@ -53,6 +53,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [imapMailboxId, setImapMailboxId] = useState('');
   const [imapSaving, setImapSaving] = useState(false);
+  const [imapTestReport, setImapTestReport] = useState(null);
   const [imapForm, setImapForm] = useState({
     mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true,
     smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true,
@@ -216,6 +217,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const handleEditUser = (userData) => {
     setEditingUser(userData.id);
     setImapMailboxId('');
+    setImapTestReport(null);
     setImapForm({ mailbox_email: '', display_name: '', imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true, smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
     if (isSystemAdmin) {
       base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
@@ -301,6 +303,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         ? await base44.entities.CompanyImapMailbox.update(imapMailboxId, payload)
         : await base44.entities.CompanyImapMailbox.create(payload);
       setImapMailboxId(saved.id || imapMailboxId);
+      setImapTestReport(null);
       setImapForm(current => ({ ...current, password: '' }));
       alert('Company IMAP mailbox assignment saved.');
     } catch (error) {
@@ -312,18 +315,15 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const verifyCompanyMailbox = async () => {
     if (!imapMailboxId) return alert('Save the company mailbox first.');
-    if (!imapForm.imap_host || !imapForm.username) return alert('Enter an IMAP host and username before testing.');
     try {
       setImapSaving(true);
-      const result = await base44.functions.invoke('companyImapMail', { action: 'verify', mailbox_id: imapMailboxId });
+      setImapTestReport(null);
+      const result = await base44.functions.invoke('companyImapMail', {action:'verify',mailbox_id:imapMailboxId});
       const payload = result?.data || result || {};
-      if (payload.error || payload.ok !== true) throw new Error(payload.error || 'The IMAP server did not confirm a successful connection.');
-      alert('Company mailbox connection verified successfully.');
-    } catch (error) {
-      alert('Mailbox verification failed: ' + (error?.message || 'Unknown error'));
-    } finally {
-      setImapSaving(false);
-    }
+      setImapTestReport(payload.error ? {ok:false,error:payload.error} : payload);
+    } catch(error) {
+      setImapTestReport({ok:false,error:error?.message || 'Connection test could not be completed'});
+    } finally { setImapSaving(false); }
   };
 
   const handlePhotoSelection = (file) => {
@@ -729,8 +729,16 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" onClick={saveCompanyMailbox} disabled={imapSaving}>{imapSaving ? 'Saving…' : 'Save Company Mailbox'}</Button>
-                  {imapMailboxId && <Button type="button" variant="outline" onClick={verifyCompanyMailbox} disabled={imapSaving}>Test IMAP Connection</Button>}
+                  {imapMailboxId && <Button type="button" variant="outline" onClick={verifyCompanyMailbox} disabled={imapSaving}>{imapSaving ? 'Testing email…' : 'Test Incoming & Outgoing Email'}</Button>}
                 </div>
+                {imapTestReport && <div role="status" className={`mt-3 rounded-lg border p-4 text-sm ${imapTestReport.ok ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : 'border-amber-300 bg-amber-50 text-amber-950'}`}>
+                  <div className="font-bold">{imapTestReport.ok ? 'Email connection verified' : 'Email connection needs attention'}</div>
+                  {imapTestReport.error && <div className="mt-2 break-words">{imapTestReport.error}</div>}
+                  {imapTestReport.imap && <div className="mt-2">IMAP login: {imapTestReport.imap.ok ? 'Passed' : 'Failed'} · {imapTestReport.imap.server}:{imapTestReport.imap.port}</div>}
+                  {imapTestReport.inbox && <div className="mt-1">Inbox access: {imapTestReport.inbox.ok ? `Passed (${imapTestReport.inbox.message_count} messages)` : `Failed — ${imapTestReport.inbox.error || 'Unable to open inbox'}`}</div>}
+                  {imapTestReport.smtp && <div className="mt-1">Outgoing SMTP: {imapTestReport.smtp.ok ? 'Authentication passed' : `Failed — ${imapTestReport.smtp.error || 'SMTP unavailable'}`}</div>}
+                  <div className="mt-2 text-xs">SMTP authentication confirms the sending connection is ready; it does not send a test message or guarantee delivery.</div>
+                </div>}
               </TabsContent>}
             </Tabs>
 
