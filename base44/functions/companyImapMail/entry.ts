@@ -120,19 +120,23 @@ Deno.serve(async (req) => {
       return json({ ok: true, message_id: info.messageId || '' });
     }
 
-    const client = await connectImap();
-
     if (action === 'verify') {
       const report: Record<string, unknown> = {
         mailbox_email: mailbox.mailbox_email,
-        imap: { ok: true, server: mailbox.imap_host, port: Number(mailbox.imap_port || 993) },
+        imap: { ok: false, server: mailbox.imap_host, port: Number(mailbox.imap_port || 993) },
         inbox: { ok: false }, smtp: { ok: false, server: mailbox.smtp_host, port: Number(mailbox.smtp_port || 465) },
       };
       try {
+        const client = await connectImap();
+        report.imap = {ok:true,server:mailbox.imap_host,port:Number(mailbox.imap_port || 993)};
         const lock = await client.getMailboxLock('INBOX');
         try { report.inbox = { ok:true, message_count: Number(client.mailbox?.exists || 0) }; }
         finally { lock.release(); }
-      } catch(error:any) { report.inbox = {ok:false,error:String(error?.message || 'INBOX unavailable')}; }
+      } catch(error:any) {
+        const message=String(error?.message || 'IMAP connection or inbox access failed');
+        if (!(report.imap as any).ok) report.imap = {ok:false,error:message,server:mailbox.imap_host,port:Number(mailbox.imap_port || 993)};
+        report.inbox = {ok:false,error:(report.imap as any).ok ? message : 'Cannot open inbox until IMAP login succeeds'};
+      }
       try {
         const transport = nodemailer.createTransport({
           host: String(mailbox.smtp_host || '').toLowerCase() === 'imap.purelymail.com' ? 'smtp.purelymail.com' : mailbox.smtp_host,
@@ -144,13 +148,15 @@ Deno.serve(async (req) => {
         report.smtp = {ok:true,server:mailbox.smtp_host,port:Number(mailbox.smtp_port || 465)};
         transport.close();
       } catch(error:any) { report.smtp = {ok:false,error:String(error?.message || 'SMTP authentication failed'),server:mailbox.smtp_host}; }
-      const ok = (report.inbox as any).ok && (report.smtp as any).ok;
+      const ok = (report.imap as any).ok && (report.inbox as any).ok && (report.smtp as any).ok;
       await base44.asServiceRole.entities.CompanyImapMailbox.update(mailbox.id, {
         ...(ok ? {last_verified_at:new Date().toISOString()} : {}),
-        last_error:ok ? '' : [(report.inbox as any).error,(report.smtp as any).error].filter(Boolean).join(' | '),
+        last_error:ok ? '' : [(report.imap as any).error,(report.inbox as any).error,(report.smtp as any).error].filter(Boolean).join(' | '),
       }).catch(()=>null);
       return json({ok, ...report});
     }
+
+    const client = await connectImap();
 
     if (action === 'folders') {
       const folders = await client.list();
