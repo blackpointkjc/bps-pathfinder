@@ -1,3 +1,4 @@
+import { parseServerTimestamp } from '@/lib/easternTime';
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
@@ -13,8 +14,8 @@ const severityConfig = {
 
 const formatTime = value => {
   if (!value) return 'Unknown time';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Unknown time';
+  const date = parseServerTimestamp(value);
+  if (!date || Number.isNaN(date.getTime())) return 'Unknown time';
   return date.toLocaleString('en-US', {
     timeZone: 'America/New_York',
     month: 'short',
@@ -58,7 +59,7 @@ export default function SystemStatus() {
         const serverResponse = await base44.functions.invoke('runSystemAudit', {});
         const serverAudit = serverResponse?.data || serverResponse || {};
         if (serverAudit.error) throw new Error(serverAudit.error);
-        const clientAudit = await runClientFunctionalAudit();
+        const clientAudit = serverAudit.scan_incomplete ? { findings:[], summary:{skipped:'server_scan_incomplete'}, incomplete_areas:['Page Code'] } : await runClientFunctionalAudit();
         const merged = new Map();
         for (const item of [...(serverAudit.findings || []), ...(clientAudit.findings || [])]) {
           const key = item.key || `${item.area}|${item.title}`;
@@ -66,7 +67,7 @@ export default function SystemStatus() {
         }
         findings = [...merged.values()];
         checkedAt = new Date().toISOString();
-        const audit = { ...serverAudit, findings, scanned_at:checkedAt, client_summary:clientAudit.summary, summary:{ ...serverAudit.summary, issues_found:findings.length, outages:findings.filter(item => item.severity === 'outage').length, degraded:findings.filter(item => item.severity === 'degraded').length } };
+        const audit = { ...serverAudit, findings, scanned_at:checkedAt, client_summary:clientAudit.summary, incomplete_areas:clientAudit.incomplete_areas || [], summary:{ ...serverAudit.summary, issues_found:findings.length, outages:findings.filter(item => item.severity === 'outage').length, degraded:findings.filter(item => item.severity === 'degraded').length } };
         const published = await base44.functions.invoke('publishSystemScan', { audit });
         if (published?.data?.error) throw new Error(published.data.error);
         clearBase44ReadCacheMatching('entity:SystemOutage:');

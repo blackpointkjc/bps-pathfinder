@@ -17,6 +17,7 @@ function combineAudits(serverAudit, clientAudit) {
     ...serverAudit,
     findings,
     client_summary: clientAudit.summary,
+    incomplete_areas: clientAudit.incomplete_areas || [],
     summary: {
       ...(serverAudit.summary || {}),
       areas_checked: (serverAudit.summary?.areas_checked || 0) + 5,
@@ -57,7 +58,7 @@ export default function AdminHourlySystemScan({ user }) {
           // not compete with itself for the same Base44 request allowance.
           const serverResponse = await base44.functions.invoke('runSystemAudit', {});
           const serverAudit = serverResponse?.data || serverResponse || {};
-          const clientAudit = await runClientFunctionalAudit({ includeFunctionalProbes: false });
+          const clientAudit = serverAudit.scan_incomplete ? { findings:[], summary:{skipped:'server_scan_incomplete'}, incomplete_areas:['Page Code'] } : await runClientFunctionalAudit({ includeFunctionalProbes: false });
           if (serverAudit.error) throw new Error(serverAudit.error);
           const audit = combineAudits(serverAudit, clientAudit);
           const publishResponse = await base44.functions.invoke('publishSystemScan', { audit });

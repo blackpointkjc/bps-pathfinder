@@ -75,11 +75,12 @@ Deno.serve(async (req) => {
         datasets[entityName] = Array.isArray(rows) ? rows : [];
       } catch (error: any) {
         datasets[entityName] = [];
+        const limited = error?.status === 429 || error?.response?.status === 429 || /rate.limit|too many requests|429/i.test(error?.message || '');
         serviceFailures.push({
-          area,
-          entityName,
-          message: error?.message || `The app could not read ${entityName} records.`,
+          area, entityName,
+          message: limited ? '429: ' + (error?.message || 'Request throttled') : error?.message || `The app could not read ${entityName} records.`,
         });
+        if (limited) break;
       }
       await delay(300);
     }
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
         area: 'System Audit',
         severity: 'degraded',
         title: 'Full application scan was safely paused by request throttling',
-        description: `Base44 temporarily limited ${throttledFailures.length} scan read(s). Operational modules were not marked down. The hourly scanner will retry automatically.`,
+        description: `Base44 temporarily limited ${throttledFailures.length} scan read(s). Operational modules were not marked down. Remaining scan reads were skipped immediately. The hourly scanner will retry after the recovery window.`,
         count: throttledFailures.length,
       };
       return Response.json({
