@@ -734,7 +734,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 {imapTestReport && <div role="status" className={`mt-3 rounded-lg border p-4 text-sm ${imapTestReport.ok ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : 'border-amber-300 bg-amber-50 text-amber-950'}`}>
                   <div className="font-bold">{imapTestReport.ok ? 'Email connection verified' : 'Email connection needs attention'}</div>
                   {imapTestReport.error && <div className="mt-2 break-words">{imapTestReport.error}</div>}
-                  {imapTestReport.imap && <div className="mt-2">IMAP login: {imapTestReport.imap.ok ? 'Passed' : 'Failed'} · {imapTestReport.imap.server}:{imapTestReport.imap.port}</div>}
+                  {imapTestReport.imap && <div className="mt-2">IMAP login: {imapTestReport.imap.ok ? 'Passed' : `Failed — ${imapTestReport.imap.error || 'Could not authenticate'}`} · {imapTestReport.imap.server}:{imapTestReport.imap.port}</div>}
                   {imapTestReport.inbox && <div className="mt-1">Inbox access: {imapTestReport.inbox.ok ? `Passed (${imapTestReport.inbox.message_count} messages)` : `Failed — ${imapTestReport.inbox.error || 'Unable to open inbox'}`}</div>}
                   {imapTestReport.smtp && <div className="mt-1">Outgoing SMTP: {imapTestReport.smtp.ok ? 'Authentication passed' : `Failed — ${imapTestReport.smtp.error || 'SMTP unavailable'}`}</div>}
                   <div className="mt-2 text-xs">SMTP authentication confirms the sending connection is ready; it does not send a test message or guarantee delivery.</div>
