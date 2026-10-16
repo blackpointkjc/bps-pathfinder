@@ -155,7 +155,11 @@ Deno.serve(async (req) => {
     for (const shift of schedules || []) {
       if (shift.archived === true || shift.is_open === true || lower(shift.officer_email) === 'open') continue;
       const start = wallMinutes(shift.start_time);
-      if (start < 0 || start > current.minutes - 5) continue;
+      // Allow a 15-minute grace period; don't send first-time alerts hours late.
+      const minutesLate = current.minutes - start;
+      if (start < 0 || minutesLate < 15) continue;
+      const taskKey = 'missed-clock-' + shift.id;
+      if (minutesLate > 30 && !(states || []).some((state:any) => state.task_key === taskKey && state.status === 'open')) continue;
       const scheduledStamp = wallStamp(current.date, start);
       const hasPunch = attendanceEntries.some((entry:any) => {
         if (lower(entry.officer_email) !== lower(shift.officer_email)) return false;
@@ -163,9 +167,9 @@ Deno.serve(async (req) => {
         const outStamp = entry.clock_out ? easternStamp(entry.clock_out) : wallStamp(current.date, current.minutes);
         if (inStamp == null || scheduledStamp == null) return false;
         const alreadyOnDuty = outStamp != null && inStamp <= scheduledStamp + 5 && outStamp >= scheduledStamp - 5;
-        const nearStart = Math.abs(inStamp - scheduledStamp) <= 240;
+        const nearStart = inStamp >= scheduledStamp - 15 && inStamp <= scheduledStamp + 15;
         const sameSite = lower(siteNameFrom(entry.location)) === lower(siteNameFrom(shift.location));
-        return alreadyOnDuty || nearStart || (sameSite && Math.abs(inStamp - scheduledStamp) <= 360);
+        return alreadyOnDuty || nearStart || (sameSite && inStamp <= scheduledStamp + 15 && outStamp != null && outStamp >= scheduledStamp);
       });
       if (hasPunch) continue;
       const officer = userByEmail.get(lower(shift.officer_email));
