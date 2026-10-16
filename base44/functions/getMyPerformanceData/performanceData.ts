@@ -16,7 +16,7 @@ async function cachedRows(cacheKey:string, ttlMs:number, loader:() => Promise<an
 }
 
 
-export async function loadPerformanceData(base44: any, officer: any, body: any) {
+export async function loadPerformanceData(base44: any, officer: any, body: any, options: { sharedCompanyRead?: boolean } = {}) {
     const email = lower(officer.work_email || officer.pathfinder_email || officer.email);
 
     const serviceErrors: Record<string, string> = {};
@@ -37,13 +37,14 @@ export async function loadPerformanceData(base44: any, officer: any, body: any) 
       await acquireReadSlot();
       try {
         let lastError:any = null;
-        for (let attempt = 0; attempt < 2; attempt += 1) {
+        const attempts = options.sharedCompanyRead ? 1 : 2;
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
           try {
             return await reader() || [];
           } catch (error) {
             lastError = error;
             const isRateLimit = error?.status === 429 || error?.response?.status === 429 || /rate.limit|429|too many requests/i.test(String(error?.message || ''));
-            if (!isRateLimit || attempt === 1) break;
+            if (!isRateLimit || attempt === attempts - 1) break;
             await new Promise(resolve => setTimeout(resolve, 1800));
           }
         }
