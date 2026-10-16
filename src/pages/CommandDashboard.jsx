@@ -1,8 +1,8 @@
+import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { normalizeRank } from '@/utils/rankDisplay';
 import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
@@ -22,16 +22,6 @@ const PRIORITY_CONFIG = {
     high:     { label: 'P2', color: '#f97316', bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', row: 'bg-orange-950/20 hover:bg-orange-950/40', badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
     medium:   { label: 'P3', color: '#eab308', bg: 'bg-yellow-500', text: 'text-yellow-400', border: 'border-yellow-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
     low:      { label: 'P4', color: '#3b82f6', bg: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
-};
-
-const UNIT_STATUS_COLORS = {
-    Available:        { dot: 'bg-green-400',  text: 'text-green-300',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
-    Dispatched:       { dot: 'bg-cyan-400',   text: 'text-cyan-300',   badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
-    Enroute:          { dot: 'bg-yellow-400', text: 'text-yellow-300', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
-    'On Scene':       { dot: 'bg-blue-400',   text: 'text-blue-300',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
-    Busy:             { dot: 'bg-orange-400', text: 'text-orange-300', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
-    'Out of Service': { dot: 'bg-gray-500',   text: 'text-gray-400',   badge: 'bg-gray-900/40 text-gray-400 border-gray-600/50' },
-    Dispatch:         { dot: 'bg-cyan-400',    text: 'text-cyan-300',    badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
 };
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
@@ -102,6 +92,7 @@ function CommandDashboardInner({ embedded = false }) {
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
+    const [statusSaving,setStatusSaving] = useState(false);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
     const [canonicalLoaded, setCanonicalLoaded] = useState(false);
@@ -206,6 +197,8 @@ function CommandDashboardInner({ embedded = false }) {
 
 
     const handleStatusChange = async (newStatus) => {
+        if (statusSaving) return;
+        setStatusSaving(true);
         const previousStatus = currentUser?.status;
         try {
             setCurrentUser(prev => ({ ...prev, status: newStatus }));
@@ -216,6 +209,8 @@ function CommandDashboardInner({ embedded = false }) {
             setCurrentUser(prev => ({ ...prev, status: previousStatus || 'Out of Service' }));
             const message = e?.response?.data?.error || e?.message || 'Unable to change status';
             window.alert(message);
+        } finally {
+            setStatusSaving(false);
         }
     };
 
@@ -402,42 +397,7 @@ function CommandDashboardInner({ embedded = false }) {
                 ))}
             </div>
 
-            {/* ── MY STATUS BAR ── */}
-            {currentUser && (
-                <div className="command-status-bar flex-none flex items-center gap-2 px-2.5 py-1.5 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
-                    {currentUser.profile_photo_url ? (
-                        <img src={currentUser.profile_photo_url} alt="" className="h-8 w-8 flex-shrink-0 rounded-full border border-gold/50 object-cover" />
-                    ) : (
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-[10px] font-black text-slate-300">
-                            {(currentUser.first_name?.[0] || '')}{(currentUser.last_name?.[0] || '')}
-                        </div>
-                    )}
-                    <span className="text-slate-400 font-mono text-[10px] tracking-widest flex-shrink-0">
-                        {currentUser.rank && currentUser.last_name
-                          ? `${normalizeRank(currentUser.rank)} ${currentUser.last_name}`.toUpperCase()
-                          : currentUser.unit_number
-                            ? `UNIT-${currentUser.unit_number}`
-                            : currentUser.full_name?.toUpperCase()} STATUS:
-                    </span>
-                    <div className="command-status-options flex min-w-max items-center gap-1.5">
-                        {myStatuses.map(s => {
-                            const cfg = UNIT_STATUS_COLORS[s];
-                            const isActive = currentUser.status === s;
-                            return (
-                                <button key={s} onClick={() => handleStatusChange(s)}
-                                    className={`h-6 whitespace-nowrap px-2 rounded-md font-mono text-[9px] font-bold border transition-all ${
-                                        isActive ? `${cfg.badge} ring-1 ring-offset-1 ring-offset-slate-900 ring-current` : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500'
-                                    }`}>
-                                    {s.toUpperCase()}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-
-            <AdminLiveLocationPrivacy currentUser={currentUser} />
+            <OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving} />
 
             {/* ── MAIN WORKSPACE ── */}
             <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">

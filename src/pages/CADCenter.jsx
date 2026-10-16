@@ -1,11 +1,10 @@
 import { Activity, AlertTriangle, History } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
+import UnitStatus from './UnitStatus';
 import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
@@ -23,6 +22,7 @@ const TOOLS = {
     { id: 'dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'officerqueue', label: 'Officer Queue', component: OfficerDispatchQueue },
     { id: 'map', label: 'Live Map', component: Navigation },
+    { id: 'units', label: 'Officer Status', component: UnitStatus },
   ],
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
@@ -32,7 +32,6 @@ const TOOLS = {
 };
 
 export default function CADCenter({ embedded = false }) {
-  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const sections = BASE_SECTIONS;
 
 

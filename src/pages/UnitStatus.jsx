@@ -10,7 +10,7 @@ function UnitStatusPage() {
     useEffect(() => subscribeOfficerLocationChanges(event => setUnits(rows => applyOfficerLocationEvent(rows, event))), []);
     return <div className="min-h-full bg-[#07111d] p-3 text-white sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><h1 className="text-xl font-bold">Unit Status</h1><p className="mt-1 text-sm text-slate-400">Officers in rank order, with current duty status and active calls.</p></div>
+            <div><h1 className="text-xl font-bold">Officer Status</h1><p className="mt-1 text-sm text-slate-400">Officers in rank order, with current duty status and active calls.</p></div>
             <button type="button" onClick={() => manualRefresh()} className="rounded border border-slate-600 px-3 py-2 text-sm">Refresh units</button>
         </div>
         {loading && <p role="status" className="mb-3 text-sm text-slate-300">Loading officers…</p>}

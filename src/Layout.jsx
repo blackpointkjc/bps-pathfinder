@@ -53,7 +53,7 @@ const CENTER_CONFIG = {
         ['Dispatch Center', 'DispatchCenter', Radio],
         ['Officer Queue', 'OfficerDispatchQueue', Radio],
         ['Live Map', 'Navigation', MapIcon],
-        ['Unit Status', 'UnitStatus', Users],
+        ['Officer Status', 'UnitStatus', Users],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
       { label: 'History & Intelligence', items: [
