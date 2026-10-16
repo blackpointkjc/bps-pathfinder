@@ -653,7 +653,7 @@ export default function AdminUsers({ embedded = false }) {
     };
     const config = categoryConfig[category];
     if (!config) return;
-    const officerRequired = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number'];
+    const officerRequired = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration'];
     if (category === 'officer') {
       const missing = officerRequired.filter(field => !String(userData[field] || '').trim());
       if (missing.length) {
@@ -661,9 +661,11 @@ export default function AdminUsers({ embedded = false }) {
         return;
       }
     }
+    const existingRank = String(userData.rank || '').trim();
+    const approvedRank = category === 'officer' && existingRank && !['pending assignment','officer','pending'].includes(existingRank.toLowerCase()) ? existingRank : config.rank;
     const response = await base44.functions.invoke('updateUser', {
       userId: userData.id,
-      updates: { role: 'user', additional_roles: config.roles, rank: config.rank },
+      updates: { role: 'user', additional_roles: config.roles, rank: approvedRank },
     });
     const payload = response?.data || response || {};
     if (payload.error || payload.success !== true) throw new Error(payload.error || 'Unable to approve account');
@@ -671,7 +673,7 @@ export default function AdminUsers({ embedded = false }) {
     // directory cache or navigation finishing. Do not remove before save success.
     setApprovedUserIds(previous => new Set([...previous, userData.id]));
     invalidateAppDirectory();
-    queryClient.setQueriesData({queryKey:['portalUsers']}, previous => Array.isArray(previous) ? previous.map(entry => entry.id === userData.id ? {...entry,role:'user',rank:config.rank,additional_roles:config.roles} : entry) : previous);
+    queryClient.setQueriesData({queryKey:['portalUsers']}, previous => Array.isArray(previous) ? previous.map(entry => entry.id === userData.id ? {...entry,role:'user',rank:approvedRank,additional_roles:config.roles} : entry) : previous);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] }),
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] }),
