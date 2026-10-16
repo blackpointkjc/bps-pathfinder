@@ -307,11 +307,12 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const verifyCompanyMailbox = async () => {
     if (!imapMailboxId) return alert('Save the company mailbox first.');
+    if (!imapForm.imap_host || !imapForm.username) return alert('Enter an IMAP host and username before testing.');
     try {
       setImapSaving(true);
       const result = await base44.functions.invoke('companyImapMail', { action: 'verify', mailbox_id: imapMailboxId });
       const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
+      if (payload.error || payload.ok !== true) throw new Error(payload.error || 'The IMAP server did not confirm a successful connection.');
       alert('Company mailbox connection verified successfully.');
     } catch (error) {
       alert('Mailbox verification failed: ' + (error?.message || 'Unknown error'));
