@@ -20,6 +20,8 @@ Deno.serve(async req => {
     const matching = (schedules || []).filter(shift => lower(shift.officer_email) === email && String(shift.shift_date || '').slice(0, 10) === date && !shift.archived && !shift.is_open && String(shift.id) === String(input.shift_id || '') && (!input.location || lower(shift.location).split(':')[0] === lower(input.location).split(':')[0]));
     if (!matching.length) return Response.json({ error: 'Scheduled shift not found for this officer/date. Choose an actual shift from the schedule.' }, { status: 409 });
     const shift = matching[0];
+    if (type === 'reassigned' && (!input.destination_location || !/^\d{2}:\d{2}$/.test(input.destination_start_time || '') || !/^\d{2}:\d{2}$/.test(input.destination_end_time || ''))) return Response.json({error:'Destination site and start/end times are required'}, {status:400});
+
     const existing = await base44.asServiceRole.entities.CallOut.filter({ officer_email: email, call_out_date: date }, '-created_date', 100);
     if ((existing || []).some(row => row.original_shift_id === shift.id && row.call_out_type === type && row.voided !== true)) {
       return Response.json({ error: 'This shift already has a recorded call-out of that type.' }, { status: 409 });
@@ -34,6 +36,7 @@ Deno.serve(async req => {
       supervisor_email: actor.email, supervisor_name: actor.full_name || [actor.first_name,actor.last_name].filter(Boolean).join(' ') || actor.email,
       affects_pto: type !== 'reassigned', exclude_original_incident_metric: type === 'reassigned' || !!input.exclude_original_incident_metric,
       admin_notified: false,
+      destination_start_time: input.destination_start_time || '', destination_end_time: input.destination_end_time || '',
     });
     try {
       await base44.asServiceRole.entities.Schedule.update(shift.id, {
@@ -50,16 +53,28 @@ Deno.serve(async req => {
     // archived as evidence and create a separately assignable open coverage shift.
     // Sent-home and reassigned events leave historical/split coverage intact.
     let coverageShiftId = '';
-    if (type === 'called_out') {
+    if (type === 'called_out' || type === 'sent_home') {
+      const remainingStart = type === 'sent_home' ? String(input.call_out_time || '').slice(0,5) : shift.start_time;
       const openShift = await base44.asServiceRole.entities.Schedule.create({
-        officer_email: 'OPEN', shift_date: shift.shift_date, start_time: shift.start_time,
+        officer_email: 'OPEN', shift_date: shift.shift_date, start_time: remainingStart,
         end_time: shift.end_time, location: shift.location, is_open: true,
         shift_type: shift.shift_type || 'normal', site_details: shift.site_details || '',
-        special_instructions: shift.special_instructions || '',
-        linked_shift_id: shift.id,
+        special_instructions: shift.special_instructions || '', linked_shift_id: shift.id,
       });
       coverageShiftId = String(openShift.id);
       await base44.asServiceRole.entities.Schedule.update(shift.id, { archived: true });
+      if (type === 'sent_home') {
+        const stamp = new Date(`${date}T${String(input.call_out_time || '').slice(0,5)}:00-04:00`);
+        // Apply the local reported time to any open time entry without deleting worked time.
+        if (Number.isFinite(stamp.getTime())) {
+          const entries = await base44.asServiceRole.entities.TimeEntry.filter({ officer_email: email }, '-clock_in', 50);
+          for (const entry of entries || []) {
+            if (entry.clock_in && !entry.clock_out && new Date(entry.clock_in).getTime() <= stamp.getTime()) {
+              await base44.asServiceRole.entities.TimeEntry.update(entry.id, { clock_out: stamp.toISOString() });
+            }
+          }
+        }
+      }
       // Duty supervisor coverage is a separate entity, so remove only same-date
       // blocks for the called-out person. Never delete other supervisors' blocks.
       const blocks = await base44.asServiceRole.entities.DutySupervisorAssignment.filter({ supervisor_email: email, assignment_date: date }, '-start_time', 100).catch(() => []);
@@ -67,7 +82,18 @@ Deno.serve(async req => {
         if (lower(block.status) !== 'cancelled') await base44.asServiceRole.entities.DutySupervisorAssignment.update(block.id, { status: 'cancelled' });
       }
     }
-    return Response.json({ success: true, callout_id: callout.id, shift_id: shift.id, coverage_shift_id: coverageShiftId });
+    let destinationShiftId = '';
+    if (type === 'reassigned') {
+      const destination = await base44.asServiceRole.entities.Schedule.create({
+        officer_email: email, shift_date: date, start_time: input.destination_start_time,
+        end_time: input.destination_end_time, location: input.destination_location,
+        is_open: false, linked_shift_id: shift.id, shift_type: shift.shift_type || 'normal',
+      });
+      destinationShiftId = String(destination.id);
+      // The original assignment is historical; destination is the new active shift.
+      await base44.asServiceRole.entities.Schedule.update(shift.id, { archived: true });
+    }
+    return Response.json({ success: true, callout_id: callout.id, shift_id: shift.id, coverage_shift_id: coverageShiftId, destination_shift_id: destinationShiftId });
   } catch (error) {
     return Response.json({ error: error?.message || 'Unable to record call-out' }, { status: 500 });
   }
