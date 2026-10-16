@@ -93,6 +93,7 @@ export default function Navigation() {
     const [navigationDisplayLocation, setNavigationDisplayLocation] = useState(null);
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
+    const [statusSaving, setStatusSaving] = useState(false);
     const [unitName] = useState(localStorage.getItem('unitName') || '');
     const [mapTheme, setMapTheme] = usePathfinderMapTheme();
     const [showCallSidebar, setShowCallSidebar] = useState(false);
@@ -607,11 +608,13 @@ export default function Navigation() {
     };
 
     const handleStatusChange = async (newStatus) => {
+        const previousStatus = unitStatusRef.current;
+        setStatusSaving(true);
         setUnitStatus(newStatus);
         unitStatusRef.current = newStatus;
         try {
             const stamp = new Date().toISOString();
-            const payload = await persistOfficerStatus(newStatus);
+            const payload = await persistOfficerStatus(newStatus, { force: true });
             if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => prev ? {
                 ...prev,
@@ -625,7 +628,11 @@ export default function Navigation() {
             fetchOtherUnits();
         } catch (e) {
             console.warn('[NAV] direct status update failed:', e?.message);
+            setUnitStatus(previousStatus);
+            unitStatusRef.current = previousStatus;
             toast.error('Unable to update status');
+        } finally {
+            setStatusSaving(false);
         }
     };
 
@@ -1434,7 +1441,10 @@ export default function Navigation() {
                             <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#1e2d4a] bg-[#111827] text-[9px] font-mono">
                                 <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[unitStatus] || 'bg-slate-500'}`} />
                                 <span className="text-white">{currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT'}</span>
-                                <span className="text-slate-500 ml-1">{unitStatus}</span>
+                                <select aria-label="My duty status" disabled={statusSaving} value={unitStatus} onChange={e => handleStatusChange(e.target.value)} className="max-w-[130px] rounded border border-slate-600 bg-slate-900 p-1 text-xs text-white disabled:opacity-50">
+                                    {!['Available','Enroute','On Scene','Busy','Out of Service','Dispatch'].includes(unitStatus) && <option>{unitStatus}</option>}
+                                    {['Available','Enroute','On Scene','Busy','Out of Service', ...(currentUser.dispatch_role || currentUser.role === 'dispatch' || currentUser.additional_roles?.includes('dispatch') ? ['Dispatch'] : [])].map(s => <option key={s}>{s}</option>)}
+                                </select>
                             </div>
                         )}
                     </div>
