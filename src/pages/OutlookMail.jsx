@@ -290,11 +290,11 @@ export default function OutlookMail() {
       setCompanyMailboxes(assigned);
       const status = await getOutlookConnectionStatus(user.id, user?.email || '').catch(() => ({ connected: false }));
       setConnection(status);
-      if (status?.connected) await loadMailbox('inbox', false, null, '');
-      else if (assigned[0]) {
+      if (assigned[0]) {
         setActiveMailbox(assigned[0]);
         await loadCompanyMailbox(assigned[0], 'INBOX');
-      } else {
+      } else if (status?.connected) await loadMailbox('inbox', false, null, '');
+      else {
         setLoading(false);
         setFolders([]);
         setMessages([]);
