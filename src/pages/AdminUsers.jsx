@@ -86,6 +86,7 @@ export default function AdminUsers({ embedded = false }) {
   });
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeTab, setActiveTab] = useState("active");
+  const [approvedUserIds, setApprovedUserIds] = useState(() => new Set());
   const [imapMailboxId, setImapMailboxId] = useState('');
   const [imapSaving, setImapSaving] = useState(false);
   const [imapForm, setImapForm] = useState({
@@ -642,7 +643,7 @@ export default function AdminUsers({ embedded = false }) {
       !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
   };
 
-  const activeUsers = users?.filter(u => !u.termination_date && isPendingUser(u)) || [];
+  const activeUsers = users?.filter(u => !u.termination_date && !approvedUserIds.has(u.id) && isPendingUser(u)) || [];
 
   const assignUserCategory = async (userData, category) => {
     const categoryConfig = {
@@ -665,7 +666,12 @@ export default function AdminUsers({ embedded = false }) {
       updates: { role: 'user', additional_roles: config.roles, rank: config.rank },
     });
     const payload = response?.data || response || {};
-    if (payload.error || payload.success === false) throw new Error(payload.error || 'Unable to approve account');
+    if (payload.error || payload.success !== true) throw new Error(payload.error || 'Unable to approve account');
+    // Immediately remove the approved account from pending, independent of the
+    // directory cache or navigation finishing. Do not remove before save success.
+    setApprovedUserIds(previous => new Set([...previous, userData.id]));
+    invalidateAppDirectory();
+    queryClient.setQueriesData({queryKey:['portalUsers']}, previous => Array.isArray(previous) ? previous.map(entry => entry.id === userData.id ? {...entry,role:'user',rank:config.rank,additional_roles:config.roles} : entry) : previous);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] }),
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] }),
