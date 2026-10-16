@@ -519,6 +519,18 @@ export default function TimeClock() {
   };
 
   const handleClockIn = async () => {
+    try {
+      const result = await base44.functions.invoke('checkOfficerClockInEligibility', {});
+      const eligibility = result?.data || result || {};
+      if (!eligibility.success) throw new Error(eligibility.error || 'Could not verify clock-in authorization');
+      if (!eligibility.allowed) {
+        setGeoError(`Clock-in restricted following a sent-home event. Try again after ${new Date(eligibility.eligible_at).toLocaleString()} (${eligibility.remaining_minutes} minutes remaining).`);
+        return;
+      }
+    } catch (error) {
+      setGeoError(`Clock-in eligibility could not be verified: ${error.message}. Contact your supervisor.`);
+      return;
+    }
     if (!selectedLocation) {
       setGeoError("Please select a location before clocking in.");
       return;
