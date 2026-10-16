@@ -6,7 +6,8 @@ export const commandRank = person => {
   if (/^colonel\b/i.test(rank)) return 'Colonel';
   return rank;
 };
-export const majorPlatoon = person => ['A','B'].includes(person?.platoon) ? person.platoon : '';
+export const majorPlatoon = person => ['A','B'].includes(person?.oversight_platoon) ? person.oversight_platoon : ['A','B'].includes(person?.platoon) ? person.platoon : '';
+export const assignmentLabel = person => COMMAND_TIERS.includes(commandRank(person)) ? 'Command' : ['A','B'].includes(person?.platoon) ? `Platoon ${person.platoon}` : 'Unassigned';
 export function reportingSupervisors(person, users = []) {
   if (commandRank(person) === 'Major') return users.filter(user => user.id !== person.id && commandRank(user) === 'Lt Colonel' && !user.termination_date && user.employment_status !== 'terminated');
   return users.filter(user => user.id === person?.supervisor_id);

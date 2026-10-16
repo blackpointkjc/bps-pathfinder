@@ -12,7 +12,7 @@ export default function MajorPlatoonAssignment({ person, onSaved }) {
   async function save() {
     setSaving(true); setError('');
     try {
-      const result=await base44.functions.invoke('updateUser',{userId:person.id,updates:{platoon:value}});
+      const result=await base44.functions.invoke('updateUser',{userId:person.id,updates:{platoon:'Command',oversight_platoon:value}});
       const payload=result?.data || result || {};
       if(!payload.success) throw new Error(payload.error || 'Unable to save platoon');
       invalidateAppDirectory();

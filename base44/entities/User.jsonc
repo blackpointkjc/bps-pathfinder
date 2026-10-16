@@ -2,6 +2,7 @@
   "name": "User",
   "type": "object",
   "properties": {
+    "oversight_platoon": {"type":"string","enum":["A","B",""],"description":"Major platoon oversight, separate from Command assignment"},
     "first_name": {
       "type": "string"
     },
@@ -229,6 +230,7 @@
       "items": {
         "type": "object",
         "properties": {
+    "oversight_platoon": {"type":"string","enum":["A","B",""],"description":"Major platoon oversight, separate from Command assignment"},
           "course_id": {
             "type": "string",
             "description": "e.g. 01E, 07R, CPR"

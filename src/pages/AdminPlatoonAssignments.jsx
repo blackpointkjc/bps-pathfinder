@@ -72,7 +72,8 @@ export default function AdminPlatoonAssignments() {
     const supervisor = users.find(u => u.id === state.supervisor_id) || null;
     const next = nextSupervisor(supervisor, users, state.platoon);
     const updates = {
-      platoon: user.rank === 'Major' ? (['A','B'].includes(user.platoon) ? user.platoon : 'Command') : COMMAND_RANKS.has(user.rank) ? 'Command' : state.platoon,
+      platoon: COMMAND_RANKS.has(user.rank) ? 'Command' : state.platoon,
+      ...(user.rank==='Major' && ['A','B'].includes(user.oversight_platoon || user.platoon) ? {oversight_platoon:user.oversight_platoon || user.platoon} : {}),
       supervisor_id: supervisor?.id || '',
       supervisor_email: supervisor?.email || '',
       supervisor_name: supervisor ? displayName(supervisor) : '',

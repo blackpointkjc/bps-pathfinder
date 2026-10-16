@@ -56,6 +56,7 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
     full_name: entry.full_name || '',
     rank: entry.rank || '',
     platoon: entry.platoon || '',
+    oversight_platoon: entry.oversight_platoon || '',
     supervisor_id: entry.supervisor_id || '',
     supervisor_name: entry.supervisor_name || '',
     unit_number: entry.unit_number || '',
