@@ -1,3 +1,4 @@
+import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1451,6 +1452,10 @@ export default function Navigation() {
                 </div>
             </div>
 
+
+            {!isNavigating && <div className="pointer-events-auto absolute right-3 top-14 z-[1011] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-lg shadow-xl">
+                <UnitDutyBoard units={[...(currentUser ? [{ ...currentUser, status: unitStatus }] : []), ...otherUnits.filter(u => u.id !== currentUser?.id && (u.email || u.officer_email) !== currentUser?.email)]} calls={activeCalls} />
+            </div>}
 
             {isNavigating && navDestination && (
                 <div className="pointer-events-auto absolute left-3 right-3 top-12 z-[1215] md:right-auto md:w-[560px]">

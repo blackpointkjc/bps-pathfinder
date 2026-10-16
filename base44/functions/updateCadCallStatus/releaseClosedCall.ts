@@ -50,7 +50,8 @@ export async function releaseClosedCall(entities: any, call: any) {
     const next = remaining[0];
     const current = await entities.User.get(user.id);
     const protectedStatus = ['out of service','distress','emergency','dispatch'].includes(lower(current.status)) || current.distress_active === true || sessions.some((s: any) => s.distress_active === true || ['distress','emergency'].includes(lower(s.status)));
-    const status = protectedStatus ? current.status : next ? (['dispatched','enroute','on scene','busy'].includes(lower(current.status)) ? current.status : 'Dispatched') : 'Available';
+    const distress = sessions.find((s: any) => ['distress','emergency'].includes(lower(s.status)));
+    const status = protectedStatus ? (distress?.status || current.status) : next ? (['dispatched','enroute','on scene','busy'].includes(lower(current.status)) ? current.status : 'Dispatched') : 'Available';
     const patch = {
       status, current_call_id: next ? String(next.id) : '',
       current_call_info: next ? [next.incident || 'Call for service', next.location].filter(Boolean).join(' · ').slice(0,500) : '',
@@ -58,7 +59,7 @@ export async function releaseClosedCall(entities: any, call: any) {
     };
     await entities.User.update(user.id, patch);
     for (const unit of units) await entities.Unit.update(unit.id, { ...patch, assigned_call_ids: remaining.map(c => String(c.id)) });
-    for (const session of sessions) await entities.ActiveOfficer.update(session.id, { ...patch, ...(!next ? { show_lights: false } : {}) });
+    for (const session of sessions) await entities.ActiveOfficer.update(session.id, { ...patch, ...(!next && !protectedStatus ? { show_lights: false } : {}) });
   }
   return { released_officer_ids: [...users.keys()] };
 }
