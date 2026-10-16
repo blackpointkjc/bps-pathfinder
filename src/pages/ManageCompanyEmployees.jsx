@@ -490,6 +490,48 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     </Card>
   );
 
+  const hierarchyRanks = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
+  const commandRanks = new Set(['Colonel','Lt Colonel','Major']);
+  const rankSort = (a,b) => {
+    const ai=hierarchyRanks.indexOf(a.rank), bi=hierarchyRanks.indexOf(b.rank);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || (Number(a.unit_number) || 9999) - (Number(b.unit_number) || 9999);
+  };
+  const renderHierarchyNode = (person, group, depth=0) => {
+    const children = depth < 14 ? group.filter(other => other.supervisor_id === person.id && other.id !== person.id).sort(rankSort) : [];
+    return <div key={person.id} className="flex min-w-0 flex-col items-center" style={{flex:'0 0 auto'}}>
+      <div className="w-[280px] max-w-[calc(100vw-48px)] rounded-xl border border-amber-600/60 bg-[#101b30] p-3 text-white shadow-lg">
+        <div className="flex items-start gap-3">
+          <button type="button" onClick={() => person.profile_photo_url && setFullPhoto({url:person.profile_photo_original_url || person.profile_photo_url,name:`${person.first_name || ''} ${person.last_name || ''}`})} aria-label={`View full photo of ${person.first_name} ${person.last_name}`} className="shrink-0">
+            {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-[78px] w-[64px] rounded-md border border-amber-600/60 object-cover"/> : <div className="flex h-[78px] w-[64px] items-center justify-center rounded-md bg-slate-700 font-bold">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
+          </button>
+          <div className="min-w-0 flex-1"><div className="text-[11px] font-black uppercase tracking-wider text-amber-300">{person.rank || 'Employee'}</div><div className="break-words text-sm font-black">{person.first_name} {person.last_name}</div><div className="mt-1 text-[11px] text-slate-300">Badge {person.badge_number || '—'} · Unit {person.unit_number || '—'}</div><div className="text-[11px] text-slate-300">{person.division || 'No division'} · {commandRanks.has(person.rank) ? 'Command' : `Platoon ${person.platoon || 'Unassigned'}`}</div></div>
+        </div>
+        <div className="mt-2 space-y-1 border-t border-slate-700 pt-2 text-[11px]"><div className="break-all text-slate-300">{person.email || 'No email'}</div><div className="text-slate-300">{person.mobile_phone || 'No phone recorded'}</div></div>
+        <Button type="button" size="sm" variant="outline" className="mt-3 w-full border-amber-500/70 bg-slate-900 text-white hover:bg-slate-700" onClick={() => handleEditUser(person)}><Edit className="mr-2 h-3.5 w-3.5"/> Edit Personnel</Button>
+      </div>
+      {children.length > 0 && <><div className="h-6 w-px bg-amber-600/70"/><div className="flex items-start justify-center gap-4 border-t border-amber-600/60 pt-4">{children.map(child => renderHierarchyNode(child,group,depth+1))}</div></>}
+    </div>;
+  };
+  const renderHierarchySection = (title, people) => {
+    const ids=new Set(people.map(person=>person.id));
+    const roots=people.filter(person=>!person.supervisor_id || !ids.has(person.supervisor_id) || person.supervisor_id===person.id).sort(rankSort);
+    return <section className="overflow-hidden rounded-2xl border border-amber-700/40 bg-[#0e1829]">
+      <div className="border-b border-amber-700/40 bg-[#15233a] px-4 py-3 text-center text-sm font-black uppercase tracking-[.15em] text-amber-300">{title} · {people.length} Personnel</div>
+      <div className="overflow-x-auto p-5">{roots.length ? <div className="flex min-w-max justify-center gap-5">{roots.map(person=>renderHierarchyNode(person,people))}</div> : <div className="py-6 text-center text-slate-400">No personnel assigned</div>}</div>
+    </section>;
+  };
+  const renderActiveHierarchy = people => {
+    const ranked=people.filter(person=>hierarchyRanks.includes(person.rank));
+    const other=people.filter(person=>!hierarchyRanks.includes(person.rank));
+    return <div className="space-y-5">
+      {renderHierarchySection('Shared Command',ranked.filter(person=>commandRanks.has(person.rank)))}
+      <div className="mx-auto h-6 w-px bg-amber-600/70"/>
+      <div className="grid gap-5 xl:grid-cols-2">{renderHierarchySection('Platoon A',ranked.filter(person=>person.platoon==='A' && !commandRanks.has(person.rank)))}{renderHierarchySection('Platoon B',ranked.filter(person=>person.platoon==='B' && !commandRanks.has(person.rank)))}</div>
+      {ranked.some(person=>!commandRanks.has(person.rank) && !['A','B'].includes(person.platoon)) && renderHierarchySection('Unassigned Platoon',ranked.filter(person=>!commandRanks.has(person.rank) && !['A','B'].includes(person.platoon)))}
+      {other.length>0 && <section className="space-y-3"><h2 className="text-lg font-black text-white">Other Company Personnel</h2><div className="grid gap-3 md:grid-cols-2">{other.map(person=>renderUserCard(person))}</div></section>}
+    </div>;
+  };
+
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <Dialog open={!!fullPhoto} onOpenChange={open => !open && setFullPhoto(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{fullPhoto?.name || 'Officer photo'}</DialogTitle></DialogHeader>{fullPhoto?.url && <img src={fullPhoto.url} alt={fullPhoto.name || 'Full officer photo'} className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
@@ -540,7 +582,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <TabsContent value="active" className="space-y-4 mt-4">
             {filterBySearch(activeEmployees).length === 0 ? (
               <Card className="p-8 text-center"><p className="text-slate-600">No active company employees found</p></Card>
-            ) : filterBySearch(activeEmployees).map(u => renderUserCard(u))}
+            ) : renderActiveHierarchy(filterBySearch(activeEmployees))}
           </TabsContent>
           <TabsContent value="terminated" className="space-y-4 mt-4">
             {filterBySearch(terminatedEmployees).map(u => renderUserCard(u, true))}
