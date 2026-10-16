@@ -3078,7 +3078,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                               <td className="p-3" rowSpan={daySchedules.length}>{format(day, 'EEEE')}</td>
                             </>
                           )}
-                          <td className="p-3">{schedule.start_time} - {schedule.end_time}</td>
+                          <td className="p-3">{schedule.start_time} - {schedule.end_time}{schedule.attendance_status && schedule.attendance_status !== 'scheduled' && <span className="ml-2 font-bold text-red-600">{schedule.attendance_status.replaceAll('_', ' ').toUpperCase()}</span>}</td>
                           <td className="p-3">{schedule.location.split(':')[0]}</td>
                           <td className="p-3 text-right font-semibold">
                             {calculateShiftHours(schedule.start_time, schedule.end_time).toFixed(2)}h
@@ -3201,7 +3201,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                         <td key={day.toString()} className="border border-slate-400 p-1 text-center">
                                           {daySchedules.map((schedule, idx) => (
                                             <div key={idx} className={`text-[7px] leading-tight mb-0.5 ${schedule.is_open ? 'bg-cyan-100' : ''} ${schedule.is_split_shift ? 'bg-purple-100' : ''}`}>
-                                              {schedule.start_time}-{schedule.end_time}
+                                              {schedule.start_time}-{schedule.end_time}{schedule.attendance_status && schedule.attendance_status !== 'scheduled' ? ` · ${schedule.attendance_status.replaceAll('_', ' ').toUpperCase()}` : ''}
                                             </div>
                                           ))}
                                         </td>
@@ -3415,6 +3415,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                             <Badge className="border border-blue-700/50 bg-blue-950/40 text-blue-200">{shift.start_time}–{shift.end_time}</Badge>
                             {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Overnight</Badge>}
                             {shift.is_open && <Badge className="border border-cyan-700/50 bg-cyan-950/40 text-cyan-200">Open</Badge>}
+                            {shift.attendance_status && shift.attendance_status !== 'scheduled' && <Badge className="border border-red-700/50 bg-red-950/40 text-red-200">{shift.attendance_status.replaceAll('_', ' ').toUpperCase()}</Badge>}
                           </div>
                         </div>
                         <div className="flex shrink-0 gap-1">
