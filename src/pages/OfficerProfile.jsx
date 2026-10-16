@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
+import { uploadInternalFile } from "@/lib/internalUpload";
 
 const FIREARM_PREFIXES = ["07", "08", "09", "10"];
 
@@ -67,6 +68,7 @@ function certificationStatus(cert) {
 export default function OfficerProfile() {
   const [uploading, setUploading] = useState(false);
   const [photoToCrop, setPhotoToCrop] = useState(null);
+  const [fullPhotoOpen, setFullPhotoOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [companyMailPassword, setCompanyMailPassword] = useState('');
@@ -250,7 +252,9 @@ export default function OfficerProfile() {
   const saveCroppedPhoto = async ({ dataUrl }) => {
     setUploading(true);
     try {
-      await updateProfileMutation.mutateAsync({ profile_photo_url: dataUrl });
+      const original = await uploadInternalFile(photoToCrop);
+      if (!original?.file_url) throw new Error('Could not preserve the full original photo');
+      await updateProfileMutation.mutateAsync({ profile_photo_url: dataUrl, profile_photo_original_url: original.file_url });
       setPhotoToCrop(null);
       alert('Profile photo cropped and updated successfully!');
     } catch (error) {
@@ -263,6 +267,7 @@ export default function OfficerProfile() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
+      <Dialog open={fullPhotoOpen} onOpenChange={setFullPhotoOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Full profile photo</DialogTitle></DialogHeader>{user?.profile_photo_url && <img src={user.profile_photo_original_url || user.profile_photo_url} alt="Full profile photo" className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
@@ -291,11 +296,11 @@ export default function OfficerProfile() {
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="relative">
                 {user?.profile_photo_url ? (
-                  <img
+                  <button type="button" onClick={() => setFullPhotoOpen(true)} aria-label="View full profile photo"><img
                     src={user.profile_photo_url}
                     alt="Profile"
                     className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
-                  />
+                  /></button>
                 ) : (
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-blue-200">
                     {user?.first_name?.charAt(0) || user?.full_name?.charAt(0) || 'U'}
