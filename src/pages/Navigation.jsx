@@ -1,3 +1,4 @@
+import { applyOfficerLocationEvent } from '@/lib/officerLocationHub';
 import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -82,6 +83,7 @@ export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [otherUnits, setOtherUnits] = useState([]);
+    const [dutyBoardUnits, setDutyBoardUnits] = useState([]);
     const [activeCalls, setActiveCalls] = useState([]);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
@@ -217,6 +219,7 @@ export default function Navigation() {
         const unsubscribe = subscribeOfficerLocationChanges((event) => {
             const type = String(event?.type || '').toLowerCase();
             const record = event?.data || event?.record || null;
+            setDutyBoardUnits(rows => applyOfficerLocationEvent(rows, event));
             const currentEmail = String(currentUser?.email || '').toLowerCase();
             const eventEmail = String(record?.officer_email || record?.email || '').toLowerCase();
 
@@ -1193,7 +1196,9 @@ export default function Navigation() {
             // defeated request deduplication and caused two getOnDutyUnits calls at
             // startup. Never fall back to raw ActiveOfficer rows.
             const payload = await getOfficerLocationSnapshot({ force });
-            const sourceUnits = (Array.isArray(payload.units) ? payload.units : payload.users || [])
+            const roster = Array.isArray(payload.units) ? payload.units : payload.users || [];
+            setDutyBoardUnits(roster);
+            const sourceUnits = roster
                 // Retained-session officers (map_visible) stay on the map with their
                 // last known position even when their live session recently ended.
                 .filter(unit => unit.session_active === true || unit.presence_online === true || unit.map_visible === true);
@@ -1391,7 +1396,7 @@ export default function Navigation() {
 
             {/* ══ TOP COMMAND BAR ══ */}
             <div className="absolute top-0 left-0 right-0 z-[1010] pointer-events-none">
-                <div className="flex items-center gap-3 px-3 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-b border-[#1e2d4a]">
+                <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-b border-[#1e2d4a]">
                     {/* Brand */}
                     <div className="flex items-center gap-2 pointer-events-auto">
                         <button onClick={() => navigate('/CommandDashboard')}
@@ -1426,7 +1431,7 @@ export default function Navigation() {
                     </div>
 
                     {/* Right metrics */}
-                    <div className="flex items-center gap-2 pointer-events-auto flex-shrink-0">
+                    <div className="flex w-full flex-wrap items-center justify-end gap-2 pointer-events-auto sm:w-auto">
                         <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#1e2d4a] bg-[#111827] text-[9px] font-mono text-slate-400">
                             <Users className="w-2.5 h-2.5 text-blue-400" />{onlineUnits.length} UNITS
                         </div>
@@ -1453,12 +1458,12 @@ export default function Navigation() {
             </div>
 
 
-            {!isNavigating && <div className="pointer-events-auto absolute right-3 top-14 z-[1011] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-lg shadow-xl">
-                <UnitDutyBoard units={[...(currentUser ? [{ ...currentUser, status: unitStatus }] : []), ...otherUnits.filter(u => u.id !== currentUser?.id && (u.email || u.officer_email) !== currentUser?.email)]} calls={activeCalls} />
+            {!isNavigating && <div className="pointer-events-auto absolute right-3 top-24 sm:top-14 z-[1011] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-lg shadow-xl">
+                <UnitDutyBoard units={[...(currentUser ? [{ ...currentUser, status: unitStatus }] : []), ...dutyBoardUnits.filter(u => u.id !== currentUser?.id && (u.email || u.officer_email) !== currentUser?.email)]} calls={activeCalls} />
             </div>}
 
             {isNavigating && navDestination && (
-                <div className="pointer-events-auto absolute left-3 right-3 top-12 z-[1215] md:right-auto md:w-[560px]">
+                <div className="pointer-events-auto absolute left-3 right-3 top-24 sm:top-12 z-[1215] md:right-auto md:w-[560px]">
                     <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,0,.72)]">
                         {(routing || navOffRoute) && (
                             <div className="flex items-center gap-2 border-b border-amber-500/30 bg-[#2a1a05] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">

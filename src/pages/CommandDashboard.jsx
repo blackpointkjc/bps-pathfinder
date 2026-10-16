@@ -105,6 +105,7 @@ function CommandDashboardInner({ embedded = false }) {
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
+    const [canonicalLoaded, setCanonicalLoaded] = useState(false);
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
@@ -144,7 +145,15 @@ function CommandDashboardInner({ embedded = false }) {
         const syncUnitStatus = async (force = false) => {
             try {
                 const payload = await getOfficerLocationSnapshot({ force });
-                if (active) setCanonicalStatusUsers(Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []));
+                if (active) {
+                    const rows = Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []);
+                    setCanonicalStatusUsers(rows);
+                    setCanonicalLoaded(true);
+                    setCurrentUser(previous => {
+                        const own = rows.find(u => String(u.email || u.officer_email || '').toLowerCase() === String(previous?.email || '').toLowerCase());
+                        return previous && own ? { ...previous, status: own.status, current_call_id: own.current_call_id, current_call_info: own.current_call_info } : previous;
+                    });
+                }
             } catch {}
         };
         // DashboardDataContext intentionally loads Active Calls first, then the
@@ -164,6 +173,11 @@ function CommandDashboardInner({ embedded = false }) {
             realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
         };
         const onLiveOfficerChanged = (event) => {
+            const record = event?.data || event?.record;
+            if (record?.status && event?.type !== 'delete') setCurrentUser(previous =>
+                previous && String(record.officer_email || record.email || '').toLowerCase() === String(previous.email || '').toLowerCase()
+                    ? { ...previous, status: record.status, current_call_id: record.current_call_id ?? previous.current_call_id, current_call_info: record.current_call_info ?? previous.current_call_info } : previous);
+
             setCanonicalStatusUsers(prev => applyOfficerLocationEvent(prev, event));
             window.clearTimeout(realtimeTimer);
             realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
@@ -289,7 +303,7 @@ function CommandDashboardInner({ embedded = false }) {
         return getRef(b) - getRef(a);
     });
 
-    const cadOfficerUnits = (canonicalStatusUsers.length ? canonicalStatusUsers : users).filter(isOperationalOfficer);
+    const cadOfficerUnits = (canonicalLoaded ? canonicalStatusUsers : users).filter(isOperationalOfficer);
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
