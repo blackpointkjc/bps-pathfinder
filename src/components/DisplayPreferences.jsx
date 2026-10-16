@@ -6,6 +6,13 @@ const TEXT_SIZES = ['standard', 'large', 'extra-large'];
 const TEXT_LABELS = { standard: 'Standard', large: 'Larger', 'extra-large': 'Largest' };
 
 export default function DisplayPreferences({ userId }) {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobile(query.matches);
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
   const storageKey = displayStorageKey(userId);
   const [settings, setSettings] = useState(() => {
     try { return readDisplayPreferences(window.localStorage, storageKey); }
@@ -16,9 +23,9 @@ export default function DisplayPreferences({ userId }) {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    Object.entries(settings).forEach(([key, value]) => root.setAttribute('data-pf-' + key, value));
+    Object.entries(settings).forEach(([key, value]) => root.setAttribute('data-pf-' + key, key === 'text' && isMobile ? 'standard' : value));
     return () => Object.keys(DISPLAY_DEFAULTS).forEach(key => root.removeAttribute('data-pf-' + key));
-  }, [settings]);
+  }, [settings, isMobile]);
 
   useEffect(() => {
     const sync = event => {
@@ -39,6 +46,8 @@ export default function DisplayPreferences({ userId }) {
       setSaveError(false);
     } catch { setSaveError(true); }
   };
+
+  if (isMobile) return null;
 
   return (
     <Popover>

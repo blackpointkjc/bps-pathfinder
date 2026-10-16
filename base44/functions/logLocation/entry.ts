@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       last_name: String(user.last_name || ''),
       rank: String(user.rank || ''),
       profile_photo_url: String(user.profile_photo_url || ''),
-      unit_number: String(body.unit_number || user.unit_number || ''),
+      unit_number: String(user.unit_number || ''),
       current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
       clock_in_time: String(body.clock_in_time || now),
       tracking_session_key: trackingSessionKey,

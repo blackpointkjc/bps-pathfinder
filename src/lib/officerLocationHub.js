@@ -76,8 +76,8 @@ export function applyOfficerLocationEvent(rows = [], event) {
 
     const next = { ...row };
     const fields = [
-      'status','session_active','current_call_id','current_call_info','current_location','unit_number',
-      'officer_name','first_name','last_name','rank','profile_photo_url','latitude',
+      'status','session_active','current_call_id','current_call_info','current_location',
+      'latitude',
       'longitude','heading','speed','accuracy','gps_updated_at','gps_source','last_update',
       'clock_in_time','tracking_session_key','live_location_hidden','live_location_privacy_user_id'
     ];
