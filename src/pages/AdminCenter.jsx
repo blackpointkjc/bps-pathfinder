@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users, X } from 'lucide-react';
+import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import AdminUserPreviewPicker from '@/components/AdminUserPreviewPicker';
 import CenterToolSection from '@/components/CenterToolSection';
