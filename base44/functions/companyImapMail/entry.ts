@@ -167,6 +167,28 @@ Deno.serve(async (req) => {
         report.smtp = {ok:true,server:mailbox.smtp_host,port:Number(mailbox.smtp_port || 465)};
         transport.close();
       } catch(error:any) { report.smtp = {ok:false,error:String(error?.message || 'SMTP authentication failed'),server:mailbox.smtp_host}; }
+      // A separate native TLS probe identifies connection restrictions without
+      // sending mailbox credentials or storing any message content.
+      if (!(report.inbox as any).ok) {
+        try {
+          const host = String(mailbox.imap_host || '');
+          const port = Number(mailbox.imap_port || 993);
+          const probe = Deno.connectTls({hostname:host,port});
+          const result = await Promise.race([
+            probe.then(conn => ({conn,timeout:false})),
+            new Promise<{conn:null,timeout:true}>(resolve => setTimeout(() => resolve({conn:null,timeout:true}),8000)),
+          ]);
+          if(result.timeout) {
+            probe.then(conn => conn.close()).catch(()=>null);
+            report.network = {ok:false,error:'Direct TLS probe timed out after 8 seconds: server or port may be blocked or unreachable from this backend',server:host,port};
+          } else {
+            result.conn?.close();
+            report.network = {ok:true,detail:'Direct TLS handshake to IMAP server succeeded; investigate IMAP session/login or server disconnect',server:host,port};
+          }
+        } catch(error:any) {
+          report.network = {ok:false,error:String(error?.message || 'Direct TLS probe failed'),server:mailbox.imap_host,port:Number(mailbox.imap_port || 993)};
+        }
+      }
       const ok = (report.imap as any).ok && (report.inbox as any).ok && (report.smtp as any).ok;
       await base44.asServiceRole.entities.CompanyImapMailbox.update(mailbox.id, {
         ...(ok ? {last_verified_at:new Date().toISOString()} : {}),

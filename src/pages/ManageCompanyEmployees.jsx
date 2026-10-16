@@ -736,6 +736,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   {imapTestReport.error && <div className="mt-2 break-words">{imapTestReport.error}</div>}
                   {imapTestReport.imap && <div className="mt-2">IMAP login: {imapTestReport.imap.ok ? 'Passed' : `Failed — ${imapTestReport.imap.error || 'Could not authenticate'}`} · {imapTestReport.imap.server}:{imapTestReport.imap.port}</div>}
                   {imapTestReport.inbox && <div className="mt-1">Inbox access: {imapTestReport.inbox.ok ? `Passed (${imapTestReport.inbox.message_count} messages)` : `Failed — ${imapTestReport.inbox.error || 'Unable to open inbox'}`}</div>}
+                  {imapTestReport.network && <div className="mt-2 border-t border-amber-200 pt-2">Backend to Purelymail TLS connection: {imapTestReport.network.ok ? 'Passed' : `Failed — ${imapTestReport.network.error}`}</div>}
                   {imapTestReport.smtp && <div className="mt-1">Outgoing SMTP: {imapTestReport.smtp.ok ? 'Authentication passed' : `Failed — ${imapTestReport.smtp.error || 'SMTP unavailable'}`}</div>}
                   <div className="mt-2 text-xs">SMTP authentication confirms the sending connection is ready; it does not send a test message or guarantee delivery.</div>
                 </div>}
