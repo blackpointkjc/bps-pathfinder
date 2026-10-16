@@ -33,6 +33,7 @@ const SECTIONS = [
 
 const COMMAND_TOOLS = [
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
+  { id: 'schedule', label: 'My Duty Schedule', component: Schedule },
   { id: 'callouts', label: 'Mark Officer Call-Out', component: SupervisorCallOuts },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },

@@ -98,6 +98,7 @@ const ADMIN_SUPERVISOR_TOOLS = {
     { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
     { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
+    { id: 'myschedule', label: 'My Duty Schedule', component: Schedule },
     { id: 'dutytimeline', label: 'Daily Duty Timeline', component: SupervisorDutyTimeline },
     { id: 'dutyschedule', label: 'Duty Supervisor Schedule', component: DutySupervisorScheduling },
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
