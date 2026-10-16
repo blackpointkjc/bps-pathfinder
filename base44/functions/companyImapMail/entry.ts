@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, mailbox_email: mailbox.mailbox_email });
     }
 
-    if (!mailbox.password) return json({ error: 'The company mailbox password has not been configured by an administrator.' }, 400);
+    if (!mailbox.password) return json({ error: 'No IMAP password is configured. For Microsoft 365, standard username/password IMAP often requires OAuth2; use the supported Microsoft connection rather than a normal login password.' }, 400);
 
     const connectImap = async () => {
       imap = new ImapFlow({
@@ -88,7 +88,11 @@ Deno.serve(async (req) => {
         auth: { user: mailbox.username, pass: mailbox.password },
         logger: false,
       });
-      await imap.connect();
+      try { await imap.connect(); } catch(error:any) {
+        const message = String(error?.message || 'Connection failed');
+        const hint = /auth|login|credential|authenticate|basic/i.test(message) && /office365|outlook\.office365|hotmail|outlook\.com/i.test(String(mailbox.imap_host || '')) ? ' Microsoft 365 may require OAuth2 rather than password authentication.' : '';
+        throw new Error(`IMAP connection failed: ${message}.${hint}`);
+      }
       return imap;
     };
 

@@ -129,7 +129,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         if (payload.error) throw new Error(payload.error);
         return payload;
       }
-      return base44.entities.User.update(id, profileUpdates);
+      const response = await base44.functions.invoke('updateUser', { userId: id, updates: profileUpdates });
+      const payload = response?.data || response || {};
+      if (!payload.success) throw new Error(payload.error || payload.details || 'Employee update failed');
+      return payload;
     },
     onSuccess: () => {
       invalidateAppDirectory();
@@ -243,7 +246,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       state: userData.state || "",
       zip: userData.zip || "",
       mobile_phone: userData.mobile_phone || "",
-      badge_number: userData.badge_number || userData.unit_number || "",
+      badge_number: userData.badge_number || "",
       rank: userData.rank || "Officer",
       unit_number: userData.unit_number || "",
       hire_date: userData.hire_date || format(new Date(), 'yyyy-MM-dd'),
