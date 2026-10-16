@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         const rank = String(entry.rank || '').toLowerCase();
         if (entryRoles.has('student') || type === 'student' || rank === 'student' || rank === 'student registration pending') return true;
         if (entryRoles.has('client') || ['client','pending'].includes(type) || rank === 'client') return false;
-        return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
+        return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('cad_access') || ['officer','corporal','sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank) || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
       })
       .map((entry: any) => ({
         id: entry.id,

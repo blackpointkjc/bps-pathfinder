@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, Printer } from "lucide-react";
@@ -68,16 +68,22 @@ function AdminCertificationAlertsContent({ embedded = false }) {
       let newAlertsCreated = 0;
       let alertsUpdated = 0;
       
-      for (const officer of allUsers.filter(hasOfficerAdditionalRole)) {
+      for (const officer of allUsers.filter(isOperationalOfficer)) {
         // Skip terminated officers
         if (officer.status === 'terminated' || officer.termination_date) continue;
         
         // Skip users without certifications
-        if (!officer.dcjs_expiration && !officer.firearm_expiration) continue;
+        if (!officer.dcjs_expiration && !officer.firearm_expiration && !(officer.officer_certifications || []).some(c => c.expiration_date)) continue;
         
+        // Derive the DCJS expiry from the same structured credentials used in Manage Officers.
+        const credentials = (officer.officer_certifications || []).filter(c => c.category === 'dcjs' && c.expiration_date && !String(c.notes || '').startsWith('Auto-converted from'));
+        const coreExpiry = credentials.filter(c => String(c.course_id || '').startsWith('01')).map(c => c.expiration_date).sort()[0];
+        const handgunExpiry = credentials.filter(c => String(c.course_id || '').startsWith('07')).map(c => c.expiration_date).sort()[0];
+        const dcjsExpiration = coreExpiry || officer.dcjs_expiration;
+        const firearmExpiration = handgunExpiry || officer.firearm_expiration;
         // Check DCJS expiration
-        if (officer.dcjs_expiration) {
-          const dcjsDate = parseISO(officer.dcjs_expiration);
+        if (dcjsExpiration) {
+          const dcjsDate = parseISO(dcjsExpiration);
           const daysUntil = differenceInDays(dcjsDate, today);
           
           if (daysUntil <= 60 && daysUntil >= 0) {
@@ -101,7 +107,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
                 officer_email: officer.email,
                 officer_name: `${officer.first_name} ${officer.last_name}`,
                 certification_type: 'dcjs',
-                expiration_date: officer.dcjs_expiration,
+                expiration_date: dcjsExpiration,
                 days_until_expiration: daysUntil,
                 completed: false,
                 last_alert_date: new Date().toISOString()
@@ -112,8 +118,8 @@ function AdminCertificationAlertsContent({ embedded = false }) {
         }
         
         // Check Firearm expiration
-        if (officer.firearm_expiration) {
-          const firearmDate = parseISO(officer.firearm_expiration);
+        if (firearmExpiration) {
+          const firearmDate = parseISO(firearmExpiration);
           const daysUntil = differenceInDays(firearmDate, today);
           
           if (daysUntil <= 60 && daysUntil >= 0) {
@@ -137,7 +143,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
                 officer_email: officer.email,
                 officer_name: `${officer.first_name} ${officer.last_name}`,
                 certification_type: 'firearm',
-                expiration_date: officer.firearm_expiration,
+                expiration_date: firearmExpiration,
                 days_until_expiration: daysUntil,
                 completed: false,
                 last_alert_date: new Date().toISOString()
@@ -353,7 +359,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
     );
   }
 
-  const officerEmails = new Set(allUsers.filter(hasOfficerAdditionalRole).map(officer => String(officer.email || '').toLowerCase()));
+  const officerEmails = new Set(allUsers.filter(isOperationalOfficer).map(officer => String(officer.email || '').toLowerCase()));
   const visibleAlerts = (certificationAlerts || []).filter(alert => officerEmails.has(String(alert.officer_email || '').toLowerCase()));
   const activeAlerts = visibleAlerts.filter(a => !a.completed);
   const completedAlerts = visibleAlerts.filter(a => a.completed);
