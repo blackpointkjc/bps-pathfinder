@@ -70,24 +70,21 @@ export default function SupervisorCallOuts() {
 
   const createCallOutMutation = useMutation({
     mutationFn: async (data) => {
-      const officer = allUsers.find(u => u.email === data.officer_email);
-      return await base44.entities.CallOut.create({
-        ...data,
-        officer_name: officer ? `${officer.first_name} ${officer.last_name}` : data.officer_email,
-        supervisor_email: user.email,
-        supervisor_name: `${user.first_name} ${user.last_name}`,
-        affects_pto: data.call_out_type !== 'reassigned',
-        exclude_original_incident_metric: data.call_out_type === 'reassigned' ? true : !!data.exclude_original_incident_metric,
-        location: data.call_out_type === 'reassigned' ? data.original_location : data.location,
-        admin_notified: false,
-      });
+      const response = await base44.functions.invoke('recordSupervisorCallOut', data);
+      const result = response?.data || response || {};
+      if (!result.success) throw new Error(result.error || 'Call-out not saved');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['callOuts'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['companyAnalytics'] });
+      queryClient.invalidateQueries({ queryKey: ['officerAnalytics'] });
       setShowDialog(false);
       resetForm();
-      alert('Call-out documented successfully. Admin has been notified.');
+      alert('Call-out recorded on the scheduled shift and added to the officer performance record.');
     },
+    onError: (error) => alert(error?.response?.data?.error || error?.message || 'Unable to record call-out'),
   });
 
   const resetForm = () => {
@@ -98,6 +95,9 @@ export default function SupervisorCallOuts() {
       call_out_time: format(new Date(), 'HH:mm'),
       reason: "",
       location: "",
+      original_location: "",
+      destination_location: "",
+      exclude_original_incident_metric: false,
     });
   };
 
