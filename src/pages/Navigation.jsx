@@ -1,4 +1,4 @@
-import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
+import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,7 +82,6 @@ export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [otherUnits, setOtherUnits] = useState([]);
-    const [dutyBoardUnits, setDutyBoardUnits] = useState([]);
     const [activeCalls, setActiveCalls] = useState([]);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
@@ -218,7 +217,6 @@ export default function Navigation() {
         const unsubscribe = subscribeOfficerLocationChanges((event) => {
             const type = String(event?.type || '').toLowerCase();
             const record = event?.data || event?.record || null;
-            setDutyBoardUnits(rows => applyOfficerLocationEvent(rows, event));
             const currentEmail = String(currentUser?.email || '').toLowerCase();
             const eventEmail = String(record?.officer_email || record?.email || '').toLowerCase();
 
@@ -1196,7 +1194,6 @@ export default function Navigation() {
             // startup. Never fall back to raw ActiveOfficer rows.
             const payload = await getOfficerLocationSnapshot({ force });
             const roster = Array.isArray(payload.units) ? payload.units : payload.users || [];
-            setDutyBoardUnits(roster);
             const sourceUnits = roster
                 // Retained-session officers (map_visible) stay on the map with their
                 // last known position even when their live session recently ended.
@@ -1442,27 +1439,14 @@ export default function Navigation() {
                                 <AlertTriangle className="w-2.5 h-2.5" />{unassignedCalls.length} UNSGN
                             </div>
                         )}
-                        {currentUser && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#1e2d4a] bg-[#111827] text-[9px] font-mono">
-                                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[unitStatus] || 'bg-slate-500'}`} />
-                                <span className="text-white">{currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT'}</span>
-                                <select aria-label="My duty status" disabled={statusSaving} value={unitStatus} onChange={e => handleStatusChange(e.target.value)} className="max-w-[130px] rounded border border-slate-600 bg-slate-900 p-1 text-xs text-white disabled:opacity-50">
-                                    {!['Available','Enroute','On Scene','Busy','Out of Service','Dispatch'].includes(unitStatus) && <option>{unitStatus}</option>}
-                                    {['Available','Enroute','On Scene','Busy','Out of Service', ...(currentUser.dispatch_role || currentUser.role === 'dispatch' || currentUser.additional_roles?.includes('dispatch') ? ['Dispatch'] : [])].map(s => <option key={s}>{s}</option>)}
-                                </select>
-                            </div>
-                        )}
                     </div>
                 </div>
+                <OfficerDutyStatusControl user={currentUser} status={unitStatus} onChange={handleStatusChange} saving={statusSaving} />
             </div>
 
 
-            {!isNavigating && <div className="pointer-events-auto absolute right-3 top-24 sm:top-14 z-[1011] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-lg shadow-xl">
-                <UnitDutyBoard units={[...(currentUser ? [{ ...currentUser, status: unitStatus }] : []), ...dutyBoardUnits.filter(u => u.id !== currentUser?.id && (u.email || u.officer_email) !== currentUser?.email)]} calls={activeCalls} />
-            </div>}
-
             {isNavigating && navDestination && (
-                <div className="pointer-events-auto absolute left-3 right-3 top-24 sm:top-12 z-[1215] md:right-auto md:w-[560px]">
+                <div className="pointer-events-auto absolute left-3 right-3 top-40 sm:top-24 z-[1215] md:right-auto md:w-[560px]">
                     <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,0,.72)]">
                         {(routing || navOffRoute) && (
                             <div className="flex items-center gap-2 border-b border-amber-500/30 bg-[#2a1a05] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">

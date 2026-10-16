@@ -17,17 +17,17 @@ export function dutyRows(units = [], calls = [], query = '', status = 'ALL') {
         .sort(comparePersonnel);
 }
 
-export default function UnitDutyBoard({ units = [], calls = [] }) {
+export default function UnitDutyBoard({ units = [], calls = [], fullPage = false }) {
     const [query, setQuery] = useState('');
-    const [status, setStatus] = useState('ON_DUTY');
-    const [expanded, setExpanded] = useState(false);
+    const [status, setStatus] = useState(fullPage ? 'ALL' : 'ON_DUTY');
+    const [expanded, setExpanded] = useState(fullPage);
     const rows = dutyRows(units, calls, query, status);
     return <section aria-label="Unit duty status" className="min-w-0 flex-none border-b border-slate-700 bg-[#07111d] p-2 text-slate-200">
         <div className="flex flex-wrap items-center gap-2">
-            <button type="button" aria-expanded={expanded} onClick={() => setExpanded(v => !v)} className="rounded border border-slate-600 px-3 py-1.5 text-xs font-bold">
+            <button type="button" hidden={fullPage} aria-expanded={expanded} onClick={() => setExpanded(v => !v)} className="rounded border border-slate-600 px-3 py-1.5 text-xs font-bold">
                 {expanded ? 'Hide units' : 'All units'} · {rows.length}
             </button>
-            <span className="text-xs text-slate-400">Duty status & assignments</span>
+            <span className="text-xs text-slate-400">{fullPage ? `${rows.length} officers` : 'Duty status & assignments'}</span>
             {expanded && <>
                 <input aria-label="Find unit" value={query} onChange={e => setQuery(e.target.value)} placeholder="Find officer, unit or call" className="min-w-0 flex-1 rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs" />
                 <select aria-label="Filter duty status" value={status} onChange={e => setStatus(e.target.value)} className="rounded border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs">
@@ -36,7 +36,7 @@ export default function UnitDutyBoard({ units = [], calls = [] }) {
                 </select>
             </>}
         </div>
-        {expanded && <div className="mt-2 grid max-h-[min(36vh,320px)] grid-cols-1 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 xl:grid-cols-3">
+        {expanded && <div className={`mt-2 grid grid-cols-1 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 xl:grid-cols-3 ${fullPage ? 'max-h-[calc(100vh-260px)]' : 'max-h-[min(36vh,320px)]'}`}>
             {rows.map(u => <article key={u.id || u.email || u.officer_email} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 p-2">
                 <div className="flex flex-wrap items-start justify-between gap-1 text-xs">
                     <strong className="min-w-0 break-words">{u.last_name ? [normalizeRank(u.rank),u.last_name].filter(Boolean).join(' ') : u.full_name || u.officer_name || 'Officer'}</strong>

@@ -1,4 +1,3 @@
-import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
@@ -439,8 +438,6 @@ function CommandDashboardInner({ embedded = false }) {
 
 
             <AdminLiveLocationPrivacy currentUser={currentUser} />
-
-            <UnitDutyBoard units={statusUnits} calls={calls} />
 
             {/* ── MAIN WORKSPACE ── */}
             <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">
