@@ -4,6 +4,7 @@ import CenterToolSection from '@/components/CenterToolSection';
 import OfficerCenter from './OfficerCenter';
 import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorTasks from './SupervisorTasks';
+import SupervisorCallOuts from './SupervisorCallOuts';
 import SupervisorDailyCode from './SupervisorDailyCode';
 import SupervisorInspections from './SupervisorInspections';
 import SupervisorPerformanceReview from './SupervisorPerformanceReview';
@@ -29,6 +30,7 @@ const SECTIONS = [
 
 const COMMAND_TOOLS = [
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
+  { id: 'callouts', label: 'Mark Officer Call-Out', component: SupervisorCallOuts },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
   { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
@@ -37,6 +39,7 @@ const COMMAND_TOOLS = [
 ];
 
 const OVERSIGHT_TOOLS = [
+  { id: 'callouts', label: 'Officer Call-Outs', component: SupervisorCallOuts },
   { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
   { id: 'reviews', label: 'Performance Reviews', component: SupervisorPerformanceReview },
   { id: 'writeups', label: 'Write-Ups', component: SupervisorWriteUps },
