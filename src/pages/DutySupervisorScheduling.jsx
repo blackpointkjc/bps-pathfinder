@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -47,7 +48,7 @@ export default function DutySupervisorScheduling() {
   const supervisors = useMemo(()=>users.filter(person=>{
     const r=new Set((person.additional_roles||[]).map(lower));
     return !person.termination_date && (hasSupervisorAccess(person));
-  }).sort((a,b)=>String(a.last_name||a.full_name||'').localeCompare(String(b.last_name||b.full_name||''))),[users]);
+  }).sort(comparePersonnel),[users]);
 
   const windowStart=addDays(startOfDay(new Date()),dayOffset);
   const dates=Array.from({length:7},(_,i)=>format(addDays(windowStart,i),'yyyy-MM-dd'));

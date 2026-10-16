@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useState, useMemo } from "react";
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
@@ -416,7 +417,7 @@ export default function AdminAnalytics() {
     const officers = performanceUsers.filter(isOperationalOfficer);
     return (selectedDivision === 'all' ? officers : officers.filter(u => String(u.division || '') === String(selectedDivision)))
       .filter(officer => officer?.id)
-      .sort((a, b) => String(a.last_name || a.full_name || a.email || '').localeCompare(String(b.last_name || b.full_name || b.email || '')));
+      .sort(comparePersonnel);
   }, [performanceUsers, selectedDivision]);
   const performanceOfficerKey = performanceOfficerUsers.map(officer => officer.id).join(',');
   const officerPerformanceSnapshots = useQuery({

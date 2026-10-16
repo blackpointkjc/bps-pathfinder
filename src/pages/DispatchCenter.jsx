@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
@@ -144,7 +145,7 @@ export default function DispatchCenter() {
                     email: unit.email || unit.officer_email,
                     label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
                 }))
-                .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || ''))));
+                .sort(comparePersonnel));
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(async () => {
@@ -297,7 +298,7 @@ export default function DispatchCenter() {
                     email: unit.email || unit.officer_email,
                     label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
                 }))
-                .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
+                .sort(comparePersonnel);
             setUnits(eligibleUnits);
             setUnitLoadStatus('ready');
         } catch (error) {

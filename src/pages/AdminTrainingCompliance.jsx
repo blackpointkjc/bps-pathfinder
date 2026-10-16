@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -1268,7 +1269,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               <Select value={recordForm.officer_email} onValueChange={v => setRecordForm(p => ({ ...p, officer_email: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select officer..." /></SelectTrigger>
                 <SelectContent>
-                  {officerUsers.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(u => (
+                  {officerUsers.sort(comparePersonnel).map(u => (
                     <SelectItem key={u.id} value={u.email}>{u.first_name} {u.last_name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1486,7 +1487,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Officers</SelectItem>
-                  {officerUsers.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(u => (
+                  {officerUsers.sort(comparePersonnel).map(u => (
                     <SelectItem key={u.email} value={u.email}>{u.first_name} {u.last_name}</SelectItem>
                   ))}
                 </SelectContent>

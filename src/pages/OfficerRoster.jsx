@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -59,11 +60,7 @@ export default function OfficerRoster() {
     
     // Sort each division's entries by unit number
     Object.keys(grouped).forEach(div => {
-      grouped[div].sort((a, b) => {
-        const unitA = parseInt(a.unit_number) || 999999;
-        const unitB = parseInt(b.unit_number) || 999999;
-        return unitA - unitB;
-      });
+      grouped[div].sort(comparePersonnel);
     });
     
     return grouped;

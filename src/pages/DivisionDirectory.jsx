@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -144,20 +145,7 @@ export default function DivisionDirectory() {
           displayRole
         };
       })
-      .sort((a, b) => {
-        // Primary sort by unit number (numerical)
-        const unitA = a.unit_number ? parseInt(a.unit_number) : 999999;
-        const unitB = b.unit_number ? parseInt(b.unit_number) : 999999;
-        
-        if (unitA !== unitB) {
-          return unitA - unitB;
-        }
-        
-        // Secondary sort by name if unit numbers are the same or missing
-        const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim();
-        const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim();
-        return nameA.localeCompare(nameB);
-      });
+      .sort(comparePersonnel);
   }, [allUsers, selectedDivision, searchQuery, user, userRankOrder]);
 
   if (isLoading) {

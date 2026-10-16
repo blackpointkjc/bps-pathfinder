@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -374,7 +375,7 @@ export default function WelcomeBriefing({ user }) {
       // provisioning must never erase a real clock-in from the staffing count.
       const vehicleRow = vehicleByEmail.get(email);
       return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
-    }).filter(Boolean).sort((a,b) => String(a.person?.last_name || a.email).localeCompare(String(b.person?.last_name || b.email)));
+    }).filter(Boolean).sort((a,b)=>comparePersonnel(a.person || {email:a.email},b.person || {email:b.email}));
   }, [brief.activeTimeEntries, userByEmail, unitByEmail, vehicleByEmail]);
   const scheduledDutyRows = useMemo(() => {
     const rows = (brief.todaySchedules || []).filter(item => {

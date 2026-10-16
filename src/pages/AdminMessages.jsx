@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -57,8 +58,7 @@ export default function AdminMessages() {
     return !roles.has('client') && !roles.has('student') && !roles.has('pending')
       && !['client', 'student', 'pending'].includes(userType)
       && accountStatus !== 'pending';
-  }).sort((a, b) => 
-    `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`)
+  }).sort(comparePersonnel
   ) || [];
 
   // Group messages by conversation partner

@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { getCurrentDirectoryUser, listDirectoryUsers } from '@/lib/appDirectory';
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
@@ -157,18 +158,7 @@ export default function AdminSupervisorReports() {
   const approvedWriteUps = writeUps?.filter(w => w.status === 'approved') || [];
 
   // Officer analytics and selectors must contain actual operational officers only.
-  const activeOfficers = allUsers?.filter(isOperationalOfficer).sort((a, b) => {
-    const unitA = a.unit_number;
-    const unitB = b.unit_number;
-    if (unitA && unitB) {
-      const numA = parseInt(unitA);
-      const numB = parseInt(unitB);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-    }
-    if (unitA && !unitB) return -1;
-    if (!unitA && unitB) return 1;
-    return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
-  }) || [];
+  const activeOfficers = allUsers?.filter(isOperationalOfficer).sort(comparePersonnel) || [];
 
   // Get date range label
   const getDateRangeLabel = () => {

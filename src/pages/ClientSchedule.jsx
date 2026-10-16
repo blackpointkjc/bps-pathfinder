@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
@@ -128,21 +129,7 @@ export default function ClientSchedule() {
   };
 
   const officerSchedules = groupByOfficer();
-  const sortedOfficers = Object.keys(officerSchedules).sort((a, b) => {
-    const unitA = getOfficerUnitNumber(a);
-    const unitB = getOfficerUnitNumber(b);
-    if (unitA && unitB) {
-      const numA = parseInt(unitA);
-      const numB = parseInt(unitB);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-      }
-    }
-    // Fallback to alphabetical sort using the full display name
-    const nameA = getOfficerFullDisplay(a);
-    const nameB = getOfficerFullDisplay(b);
-    return nameA.localeCompare(nameB);
-  });
+  const sortedOfficers = Object.keys(officerSchedules).sort((a,b)=>a==="OPEN"?1:b==="OPEN"?-1:comparePersonnel({rank:getOfficerRank(a),unit_number:getOfficerUnitNumber(a),email:a},{rank:getOfficerRank(b),unit_number:getOfficerUnitNumber(b),email:b}));
 
   if (clientLocations.length === 0) {
     return (

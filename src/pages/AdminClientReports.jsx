@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { useState } from "react";
@@ -337,7 +338,7 @@ export default function AdminClientReports() {
       .map(entry => entry.officer_email)
   )).map(email => allUsers?.find(u => u.email === email))
     .filter(Boolean)
-    .sort((a, b) => a.first_name.localeCompare(b.first_name));
+    .sort(comparePersonnel);
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">

@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -505,11 +506,7 @@ export default function AdminLocationTracker({ embedded = false }) {
       };
     })
     .filter(Boolean);
-  const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
-    const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
-    const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;
-    return nameA.localeCompare(nameB);
-  }) || [];
+  const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort(comparePersonnel) || [];
 
   if (!hasAccess) { // Updated to use hasAccess
     return (

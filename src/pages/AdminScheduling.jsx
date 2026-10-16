@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -519,33 +520,7 @@ export default function AdminScheduling() {
   ]), []);
 
   const sortOfficersByUnitNumber = useCallback((officerEmails) => {
-    return Array.from(officerEmails).sort((a, b) => {
-      if (a === "OPEN") return 1;
-      if (b === "OPEN") return -1;
-
-      const unitA = getOfficerUnitNumber(a);
-      const unitB = getOfficerUnitNumber(b);
-      
-      if (unitA && unitB) {
-        const numA = parseInt(unitA);
-        const numB = parseInt(unitB);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB;
-        }
-        return unitA.localeCompare(unitB);
-      }
-      
-      if (unitA && !unitB) return -1;
-      if (!unitA && unitB) return 1;
-      
-      const rankA = getOfficerRank(a);
-      const rankB = getOfficerRank(b);
-      const indexA = rankOrder.indexOf(rankA);
-      const indexB = rankOrder.indexOf(rankB);
-      const finalIndexA = indexA === -1 ? rankOrder.length : indexA;
-      const finalIndexB = indexB === -1 ? rankOrder.length : indexB;
-      return finalIndexA - finalIndexB;
-    });
+    return Array.from(officerEmails).sort((a,b)=>a==="OPEN"?1:b==="OPEN"?-1:comparePersonnel({rank:getOfficerRank(a),unit_number:getOfficerUnitNumber(a),email:a},{rank:getOfficerRank(b),unit_number:getOfficerUnitNumber(b),email:b}));
   }, [getOfficerUnitNumber, getOfficerRank, rankOrder]);
 
   const currentPeriod = getCurrentPayrollPeriod();
@@ -1734,16 +1709,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
                 });
                 
                 // Sort by unit number
-                const sortedOfficersForIndividualPages = Object.keys(officerHoursSummary).sort((a, b) => {
-                  const unitA = getOfficerUnitNumber(a);
-                  const unitB = getOfficerUnitNumber(b);
-                  if (unitA && unitB) {
-                    const numA = parseInt(unitA);
-                    const numB = parseInt(unitB);
-                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                  }
-                  return getOfficerName(a).localeCompare(getOfficerName(b));
-                });
+                const sortedOfficersForIndividualPages = Object.keys(officerHoursSummary).sort((a,b)=>a==="OPEN"?1:b==="OPEN"?-1:comparePersonnel({rank:getOfficerRank(a),unit_number:getOfficerUnitNumber(a),email:a},{rank:getOfficerRank(b),unit_number:getOfficerUnitNumber(b),email:b}));
                 
                 let totalRegular = 0;
                 let totalOT = 0;
@@ -1884,16 +1850,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
             officerHoursSummaryForPrint[schedule.officer_email] += calculateShiftHours(schedule.start_time, schedule.end_time);
           });
           
-          const sortedOfficersForPrint = Object.keys(officerHoursSummaryForPrint).sort((a, b) => {
-            const unitA = getOfficerUnitNumber(a);
-            const unitB = getOfficerUnitNumber(b);
-            if (unitA && unitB) {
-              const numA = parseInt(unitA);
-              const numB = parseInt(unitB);
-              if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-            }
-            return getOfficerName(a).localeCompare(getOfficerName(b));
-          });
+          const sortedOfficersForPrint = Object.keys(officerHoursSummaryForPrint).sort((a,b)=>a==="OPEN"?1:b==="OPEN"?-1:comparePersonnel({rank:getOfficerRank(a),unit_number:getOfficerUnitNumber(a),email:a},{rank:getOfficerRank(b),unit_number:getOfficerUnitNumber(b),email:b}));
           
           return sortedOfficersForPrint.map((email) => {
             const hours = officerHoursSummaryForPrint[email];
@@ -3840,18 +3797,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </SelectTrigger>
                 <SelectContent>
                   {activeOfficers
-                    .sort((a, b) => {
-                      const unitA = a.unit_number || "";
-                      const unitB = b.unit_number || "";
-                      if (unitA && unitB) {
-                        const numA = parseInt(unitA);
-                        const numB = parseInt(unitB);
-                        if (!isNaN(numA) && !isNaN(numB)) {
-                          return numA - numB;
-                        }
-                      }
-                      return getOfficerName(a.email).localeCompare(getOfficerName(b.email));
-                    })
+                    .sort(comparePersonnel)
                     .map((officer) => (
                       <SelectItem key={officer.email} value={officer.email}>
                         <div className="flex items-center gap-2">
@@ -4304,18 +4250,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             <ScrollArea className="h-96 border rounded-lg p-4">
               <div className="space-y-2">
                 {activeOfficers
-                  .sort((a, b) => {
-                    const unitA = a.unit_number || "";
-                    const unitB = b.unit_number || "";
-                    if (unitA && unitB) {
-                      const numA = parseInt(unitA);
-                      const numB = parseInt(unitB);
-                      if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                      }
-                    }
-                    return getOfficerName(a.email).localeCompare(getOfficerName(b.email));
-                  })
+                  .sort(comparePersonnel)
                   .map((officer) => {
                     const prevWeekStartStr = format(addDays(weekStart, -7), 'yyyy-MM-dd');
                     const prevWeekEndStr = format(addDays(weekEnd, -7), 'yyyy-MM-dd');

@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -250,11 +251,7 @@ export default function AdminOfficerRoster() {
 
           // Sort each division's entries by unit number
           Object.keys(grouped).forEach(div => {
-            grouped[div].sort((a, b) => {
-              const unitA = parseInt(a.unit_number) || 999999;
-              const unitB = parseInt(b.unit_number) || 999999;
-              return unitA - unitB;
-            });
+            grouped[div].sort(comparePersonnel);
           });
 
           // Sort divisions to put Headquarters first

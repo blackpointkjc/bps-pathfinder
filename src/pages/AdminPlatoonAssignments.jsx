@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
 import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
 import { useMemo, useState } from 'react';
@@ -33,7 +34,7 @@ function eligibleSupervisors(person, users, platoon) {
   const nearestAvailableRank = Math.max(...higher.map(candidate => rankIndex(candidate.rank)));
   return higher
     .filter(candidate => rankIndex(candidate.rank) === nearestAvailableRank)
-    .sort((a,b) => Number(a.unit_number || 9999) - Number(b.unit_number || 9999));
+    .sort(comparePersonnel);
 }
 
 function nearestSupervisor(person, users, platoon) {
@@ -61,7 +62,7 @@ export default function AdminPlatoonAssignments() {
     enabled:!!me,
   });
   const allowed = me?.role === 'admin' || rolesOf(me).has('full_access');
-  const operational = useMemo(() => users.filter(isOperational).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999)), [users]);
+  const operational = useMemo(() => users.filter(isOperational).sort(comparePersonnel), [users]);
   const effective = user => ({
     platoon: drafts[user.id]?.platoon ?? user.platoon ?? (COMMAND_RANKS.has(user.rank) ? 'Command' : ''),
     supervisor_id: drafts[user.id]?.supervisor_id ?? user.supervisor_id ?? '',

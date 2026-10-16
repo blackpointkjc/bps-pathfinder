@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import SiteChainOfCommand from '@/components/SiteChainOfCommand';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -113,11 +114,7 @@ export default function PostOrders() {
         firstName: user?.first_name || '',
         unitNumber: user?.unit_number || '',
       };
-    }).sort((a, b) => {
-      const unitA = parseInt(a.unitNumber) || 999999;
-      const unitB = parseInt(b.unitNumber) || 999999;
-      return unitA - unitB;
-    });
+    }).sort(comparePersonnel);
 
     return supervisorData.map(sup => {
       if (sup.rank && sup.lastName && sup.unitNumber) {

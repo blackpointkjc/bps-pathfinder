@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -572,12 +573,7 @@ export default function AdminPlannedShifts() {
               <Label>Assigned Officers (Optional - Select up to 3)</Label>
               <p className="text-xs text-slate-500 mb-2">Select officers to assign. Leave empty to create OPEN shifts for bidding.</p>
               <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2 bg-slate-50">
-                {allUsers?.filter(isOperationalOfficer).sort((a, b) => {
-                  const unitA = a.unit_number ? parseInt(a.unit_number) : 9999;
-                  const unitB = b.unit_number ? parseInt(b.unit_number) : 9999;
-                  if (unitA !== unitB) return unitA - unitB;
-                  return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
-                }).map((officer) => (
+                {allUsers?.filter(isOperationalOfficer).sort(comparePersonnel).map((officer) => (
                   <div key={officer.email} className="flex items-center space-x-2">
                     <Checkbox
                       id={`officer-${officer.email}`}

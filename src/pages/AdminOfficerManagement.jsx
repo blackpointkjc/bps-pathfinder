@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -87,7 +88,7 @@ export default function AdminOfficerManagement() {
   const filteredOfficers = useMemo(() => activeOfficers.filter(o => {
     const hay = `${rankLast(o)} ${o.unit_number || ''}`.toLowerCase();
     return hay.includes(searchTerm.trim().toLowerCase());
-  }).sort((a, b) => rankLast(a).localeCompare(rankLast(b))), [activeOfficers, searchTerm]);
+  }).sort(comparePersonnel), [activeOfficers, searchTerm]);
 
   const selectedOfficerRecord = officerByEmail.get(normalize(selectedOfficer));
   const { data: selectedOfficerPrivate = null } = useQuery({

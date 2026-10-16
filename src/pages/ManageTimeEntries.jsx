@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -386,7 +387,7 @@ export default function ManageTimeEntries() {
   }
 
   const groupedEntries = groupByOfficer(timeEntries);
-  const activeOfficers = allUsers.filter(isOperationalOfficer).sort((a, b) => String(a.last_name || a.full_name || a.email).localeCompare(String(b.last_name || b.full_name || b.email)));
+  const activeOfficers = allUsers.filter(isOperationalOfficer).sort(comparePersonnel);
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">

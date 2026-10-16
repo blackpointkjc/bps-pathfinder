@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -41,7 +42,7 @@ export default function SupervisorCallOuts() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorCallOuts'],
-    queryFn: async () => { const [all, scoped] = await Promise.all([listDirectoryUsers('last_name', 1500).catch(() => []), listSupervisorDirectoryOfficers('last_name', 1000).catch(() => [])]); const unique = new Map(); for (const row of [...all, ...scoped]) if (isOperationalOfficer(row)) unique.set(String(row.email).toLowerCase(), row); return [...unique.values()].sort((a,b) => String(a.last_name || '').localeCompare(String(b.last_name || ''))); },
+    queryFn: async () => { const [all, scoped] = await Promise.all([listDirectoryUsers('last_name', 1500).catch(() => []), listSupervisorDirectoryOfficers('last_name', 1000).catch(() => [])]); const unique = new Map(); for (const row of [...all, ...scoped]) if (isOperationalOfficer(row)) unique.set(String(row.email).toLowerCase(), row); return [...unique.values()].sort(comparePersonnel); },
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',

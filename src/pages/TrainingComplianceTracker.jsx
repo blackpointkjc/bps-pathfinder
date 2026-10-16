@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -786,7 +787,7 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
                 <SelectContent>
                   {allUsers
                     .filter(u => u.first_name && u.email)
-                    .sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`))
+                    .sort(comparePersonnel)
                     .map(u => {
                       const alreadyDone = trainingCompletions.some(
                         c => c.training_module_id === markCompleteDialog.id && c.officer_email === u.email && c.completed

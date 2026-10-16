@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import{useMemo}from'react';
 import{useQuery}from'@tanstack/react-query';
 import{Card,CardContent}from'@/components/ui/card';
@@ -13,8 +14,8 @@ const has=(u,r)=>(u.additional_roles||[]).map(x=>String(x).toLowerCase()).includ
 
 export default function VAContactSheet(){
  const{data:users=[],isLoading}=useQuery({queryKey:['vaCompanyContacts'],queryFn:()=>listDirectoryUsers()});
- const operational=useMemo(()=>users.filter(u=>isOperationalOfficer(u)&&OPERATIONAL_RANKS.includes(u.rank)).sort((a,b)=>rankOrder(a.rank)-rankOrder(b.rank)||String(a.last_name||'').localeCompare(String(b.last_name||''))),[users]);
- const staff=useMemo(()=>users.filter(u=>{if(u.termination_date||isOperationalOfficer(u))return false;return has(u,'hr')||has(u,'support_staff')||has(u,'support')||has(u,'company_staff')||['human resources','support staff','company staff'].includes(String(u.rank||'').toLowerCase())}).sort((a,b)=>String(a.last_name||'').localeCompare(String(b.last_name||''))),[users]);
+ const operational=useMemo(()=>users.filter(u=>isOperationalOfficer(u)&&OPERATIONAL_RANKS.includes(u.rank)).sort(comparePersonnel),[users]);
+ const staff=useMemo(()=>users.filter(u=>{if(u.termination_date||isOperationalOfficer(u))return false;return has(u,'hr')||has(u,'support_staff')||has(u,'support')||has(u,'company_staff')||['human resources','support staff','company staff'].includes(String(u.rank||'').toLowerCase())}).sort(comparePersonnel),[users]);
  const divisionGroups=useMemo(()=>operational.reduce((g,u)=>{const k=u.division||'Unassigned Division';(g[k]??=[]).push(u);return g},{}),[operational]);
  if(isLoading)return <div className="p-8 text-center text-slate-400">Loading contacts…</div>;
  const Person=({u})=><div className="grid gap-3 border-t border-slate-800 p-3 first:border-t-0 sm:grid-cols-2 md:grid-cols-[1.2fr_1fr_1.4fr_1fr_.7fr] md:items-center"><div><div className="font-bold text-white">{u.last_name}, {u.first_name}</div><div className="text-[10px] text-slate-500">{u.division||'Unassigned Division'}</div></div><div><Badge variant="outline" className="border-slate-700 text-slate-300">{u.rank||'Company Staff'}</Badge></div><a href={`mailto:${u.email}`} className="flex min-w-0 items-center gap-1 break-all text-xs text-blue-400 sm:break-normal"><Mail className="h-3 w-3 shrink-0"/><span className="min-w-0 sm:truncate">{u.email}</span></a><div className="min-w-0">{u.mobile_phone?<a href={`tel:${u.mobile_phone}`} className="flex items-center gap-1 break-all text-xs text-blue-400 sm:break-normal"><Phone className="h-3 w-3 shrink-0"/>{u.mobile_phone}</a>:<span className="text-xs text-slate-500">—</span>}</div><div className="text-xs text-slate-400">{u.unit_number?`Officer #${u.unit_number}`:'—'}</div></div>;
