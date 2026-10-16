@@ -1,3 +1,4 @@
+import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 
@@ -1161,7 +1162,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     await Promise.all(disappeared.slice(offset, offset + 4).map((row: any) =>
       base44.asServiceRole.entities.DispatchCall.update(row.id, {
         status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
-      }).catch((error: any) => console.warn('Fast CAD close failed', error?.message || error))
+      }).then(() => releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' })).catch((error: any) => console.warn('Fast CAD close failed', error?.message || error))
     ));
   }
   await Promise.allSettled(sideEffects);
@@ -1467,7 +1468,8 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.DispatchCall.update(record.id, {
           status: 'Cleared',
           time_closed: record.time_closed || new Date().toISOString(),
-        }).catch(() => null);
+        });
+        await releaseClosedCall(base44.asServiceRole.entities, { ...record, status: 'Cleared' });
         removed += 1;
       }
     }

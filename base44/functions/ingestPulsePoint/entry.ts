@@ -1,3 +1,4 @@
+import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { createDecipheriv, createHash } from 'node:crypto';
 
@@ -527,7 +528,7 @@ Deno.serve(async (req) => {
       if (!key.startsWith('pulsepoint:') || incomingKeys.has(key) || ['Cleared', 'Cancelled'].includes(String(row.status || ''))) continue;
       const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
       if (Number.isFinite(receivedAt) && receivedAt >= recentCutoff) {
-        await base44.asServiceRole.entities.DispatchCall.update(row.id, { status: 'Cleared', time_closed: row.time_closed || new Date().toISOString() }).catch(() => null);
+        await base44.asServiceRole.entities.DispatchCall.update(row.id, { status: 'Cleared', time_closed: row.time_closed || new Date().toISOString() }).then(() => releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' }));
         closed += 1;
       }
     }

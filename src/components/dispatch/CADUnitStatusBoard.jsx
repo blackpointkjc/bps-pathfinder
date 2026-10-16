@@ -98,18 +98,18 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
   const sourceUnits = canonicalLoaded ? canonicalUnits : units;
   const rosterUnits = useMemo(() => (sourceUnits || []).filter(u =>
     u?.status && u.status !== 'Dispatch'
-  ), [sourceUnits]);
+  ).sort(comparePersonnel), [sourceUnits]);
   const activeUnits = useMemo(() => rosterUnits.filter(u =>
-    u.session_active === true && u.status !== 'Out of Service'
+    u.status !== 'Out of Service'
   ), [rosterUnits]);
   const counts = useMemo(() => Object.fromEntries(STATUS_ORDER.slice(1).map(status => [
     status,
     status === 'Out of Service'
-      ? rosterUnits.filter(u => u.status === 'Out of Service' || u.session_active !== true).length
+      ? rosterUnits.filter(u => u.status === 'Out of Service').length
       : activeUnits.filter(u => u.status === status).length,
   ])), [rosterUnits, activeUnits]);
   const filtered = filter === 'Out of Service'
-    ? rosterUnits.filter(u => u.status === 'Out of Service' || u.session_active !== true)
+    ? rosterUnits.filter(u => u.status === 'Out of Service')
     : filter === 'All' ? rosterUnits : activeUnits.filter(u => u.status === filter);
   const statusUnits = rosterUnits;
   const canManageDistress = isDispatchOrAdmin(currentUser);

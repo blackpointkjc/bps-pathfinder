@@ -1,3 +1,4 @@
+import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -57,28 +58,6 @@ Deno.serve(async (req) => {
         resolution_reason: reason,
       });
       if (call) {
-        const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: call.id }, '-assigned_at', 100).catch(() => []);
-        for (const assignment of assignments || []) {
-          if (!['cleared', 'cancelled'].includes(lower(assignment.status))) {
-            await base44.asServiceRole.entities.CallAssignment.update(assignment.id, { status: 'cleared', cleared_at: now, description: `${assignment.description || ''} False alarm resolved: ${reason}`.trim().slice(0, 1000) });
-            const officer = await base44.asServiceRole.entities.User.get(assignment.unit_id).catch(() => null);
-            if (officer && String(officer.current_call_id || '') === String(call.id)) {
-              await base44.asServiceRole.entities.User.update(officer.id, { status: 'Available', current_call_id: '', current_call_info: '', status_since: now, last_updated: now });
-              const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: officer.email }, '-last_update', 10).catch(() => []);
-              for (const session of sessions || []) {
-                if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: 'Available', current_call_info: '', last_update: now });
-              }
-              const units = await base44.asServiceRole.entities.Unit.filter({ user_id: officer.id }, '-last_update_at', 20).catch(() => []);
-              for (const unit of units || []) {
-                await base44.asServiceRole.entities.Unit.update(unit.id, {
-                  status: 'Available',
-                  assigned_call_ids: (unit.assigned_call_ids || []).filter((id: string) => String(id) !== String(call.id)),
-                  last_update_at: now,
-                });
-              }
-            }
-          }
-        }
         await base44.asServiceRole.entities.DispatchCall.update(call.id, {
           status: 'Cancelled',
           manual_dismissed: true,
@@ -87,6 +66,7 @@ Deno.serve(async (req) => {
           time_cleared: now,
           disposition: `False alarm — ${reason}`.slice(0, 1000),
         });
+        await releaseClosedCall(base44.asServiceRole.entities, { ...call, status: 'Cancelled' });
         const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
         const eventKey = `autodispatch:${alertId}:false-alarm-resolved`;
         const logs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: eventKey }, '-created_date', 1).catch(() => []);
