@@ -606,7 +606,7 @@ export default function CallHistory() {
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{row.status || '—'}</span>
                                 </div>
                                 <div className="w-full text-left text-slate-500 md:w-16 lg:flex-shrink-0 md:text-center">
-                                    {row.assigned_units?.length > 0 ? <span className="text-green-400">{row.assigned_units.length}U</span> : '—'}
+                                    {row._assignedUnitDetails?.length ? <span className="text-green-400 break-words">{row._assignedUnitDetails.map(unit => unit.label).join(', ')}</span> : row.assigned_units?.length ? <span className="text-green-400">{row.assigned_units.length} unit(s)</span> : 'Unassigned'}
                                 </div>
                                 <div className="absolute right-3 mt-0 w-8 flex-shrink-0 text-center text-slate-600 md:static">
                                     {isExpanded ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />}
@@ -626,6 +626,7 @@ export default function CallHistory() {
                                     {row.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{row.caller_phone}</span></div>}
                                     {row.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{row.zone}</span></div>}
                                     {row.cross_street && <div><span className="text-slate-500">CROSS ST: </span><span className="text-white">{row.cross_street}</span></div>}
+                                    <div className="sm:col-span-2 lg:col-span-3"><span className="text-slate-500">ASSIGNED OFFICERS / UNITS: </span><span className="font-bold text-emerald-300">{row._assignedUnitDetails?.length ? row._assignedUnitDetails.map(unit => unit.label + (unit.role ? ' (' + unit.role + ')' : '')).join(', ') : 'No recorded unit assignment'}</span></div>
                                     {row._propertyCall && <div><span className="text-slate-500">MONITORED PROPERTY: </span><span className="font-bold text-amber-300">{row._propertyName || row._propertyAlert?.propertyName || 'Monitored property'}</span></div>}
                                     {row._propertyCall && row._propertyLifecycle && <div><span className="text-slate-500">PROPERTY ALERT STATUS: </span><span className="text-white">{String(row._propertyLifecycle).replaceAll('_', ' ')}</span></div>}
                                     {row._propertyCall && Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0 && <div><span className="text-slate-500">BOUNDARY DISTANCE: </span><span className="text-white">{Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft</span></div>}
