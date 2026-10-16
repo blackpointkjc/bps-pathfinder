@@ -250,14 +250,9 @@ export default function AdminAnalytics() {
     const segments = ['core', 'training', 'duty', 'calls', 'quality'];
     await Promise.all(segments.map(segment => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' })));
     await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'core'], type: 'active' });
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'duty'], type: 'active' }),
-      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'calls'], type: 'active' }),
-    ]);
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'training'], type: 'active' }),
-      queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', 'quality'], type: 'active' }),
-    ]);
+    for (const segment of ['duty','calls','training','quality']) {
+      await queryClient.refetchQueries({ queryKey: ['companyAnalyticsSegment', segment], type: 'active' });
+    }
     await queryClient.refetchQueries({ queryKey: ['companyOfficerPerformanceSnapshots'], type: 'active' });
   };
 
