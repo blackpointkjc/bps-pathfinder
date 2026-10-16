@@ -1,3 +1,4 @@
+import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -292,7 +293,7 @@ export default function AdminCenter() {
           ].filter(Boolean))];
           unique.set(String(person.id), { ...person, assigned_locations: assignedLocations, assigned_location: person.assigned_location || assignedLocations[0] || '', __label: name + ' — ' + (person.email || '') });
         }
-        const rows = [...unique.values()].sort((x,y)=>x.__label.localeCompare(y.__label));
+        const rows = [...unique.values()].sort(comparePersonnel);
         setPreviewPeople(rows);
       }).catch(() => { if (active) setPreviewError('Could not load users. Please retry.'); })
       .finally(() => { if (active) setPreviewLoading(false); });

@@ -32,7 +32,10 @@ export default function OfficerRoster() {
       return isOperationalOfficer(userRecord);
     });
     
-    return filtered;
+    return filtered.map(entry=>{
+      const current=allUsers.find(person=>String(person.email || '').toLowerCase()===String(entry.email || '').toLowerCase());
+      return {...entry,rank:current?.rank ?? entry.rank,unit_number:current?.unit_number ?? entry.unit_number,badge_number:current?.badge_number ?? entry.badge_number};
+    });
   }, [rosterEntries, allUsers]);
 
   const filteredEntries = activeEntries.filter(entry => {
