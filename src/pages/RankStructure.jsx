@@ -90,6 +90,22 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
   </section>;
 }
 
+function PrintOfficerNode({ person, people, depth = 0 }) {
+  const reports = people.filter(p => p.supervisor_id === person.id).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank));
+  return <div className="print-node" style={{display:'flex',flexDirection:'column',alignItems:'center',minWidth:0,flex:'1 1 0'}}>
+    <div className="print-officer" style={{width:'100%',maxWidth:260,background:'#101d32',color:'#fff',border:'1.5px solid #be9b46',borderRadius:8,padding:8,display:'flex',alignItems:'center',gap:8,boxSizing:'border-box'}}>
+      {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" style={{height:66,width:53,objectFit:'cover',border:'1px solid #be9b46',borderRadius:5}}/> : <div style={{height:66,width:53,background:'#273750',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10}}>NO PHOTO</div>}
+      <div style={{minWidth:0,wordBreak:'break-word'}}><div style={{fontSize:10,color:'#e8ce84',textTransform:'uppercase',fontWeight:800}}>{person.rank}</div><div style={{fontSize:12,fontWeight:800}}>{person.first_name} {person.last_name}</div><div style={{fontSize:9}}>Badge {person.badge_number || '—'} · Unit {person.unit_number || '—'}</div><div style={{fontSize:9}}>{person.division || 'No division'} · {person.platoon || 'Command'}</div></div>
+    </div>
+    {reports.length > 0 && depth < 12 && <><div style={{height:13,borderLeft:'2px solid #b79b54'}}/><div className="print-branches" style={{display:'flex',justifyContent:'center',gap:12,width:'100%',alignItems:'flex-start',borderTop:reports.length>1?'2px solid #b79b54':'none',paddingTop:10}}>{reports.map(child=><PrintOfficerNode key={child.id} person={child} people={people} depth={depth+1}/>)}</div></>}
+  </div>;
+}
+function PrintRosterBranch({title, people}) {
+  const ids=new Set(people.map(p=>p.id));
+  const roots=people.filter(p=>!p.supervisor_id || !ids.has(p.supervisor_id)).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank));
+  return <section className="print-section" style={{padding:'14px 10px',border:'1px solid #c0a45b',borderRadius:10,marginBottom:18}}><h2 style={{fontSize:15,letterSpacing:2,textAlign:'center',margin:'0 0 14px',borderBottom:'1px solid #c0a45b',paddingBottom:8,color:'#162640'}}>{title}</h2><div style={{display:'flex',gap:12,justifyContent:'center'}}>{roots.length?roots.map(person=><PrintOfficerNode key={person.id} person={person} people={people}/>):<p style={{fontSize:11}}>No active personnel assigned.</p>}</div></section>;
+}
+
 export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
@@ -101,21 +117,17 @@ export default function RankStructure(){
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
-    <style>{`@media print { @page { size: letter portrait; margin: 0.55in; } body { background:white !important; } body * { visibility:hidden !important; } #bps-print-roster, #bps-print-roster * { visibility:visible !important; } #bps-print-roster { display:block !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important; color:#111827 !important; background:white !important; } #bps-print-roster .roster-entry { break-inside:avoid; page-break-inside:avoid; } }`}</style>
-    <div id="bps-print-roster" style={{display:'none'}}>
-      <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>BLACK POINT SECURITY — PERSONNEL & COMMAND ROSTER</h1>
-      <p style={{fontSize:11,marginBottom:14}}>Current active personnel · Ranked highest to lowest · Prepared {new Date().toLocaleDateString()} · {active.length} personnel</p>
-      {active.map(person=>{
-        const supervisor=active.find(u=>u.id===person.supervisor_id);
-        return <div key={person.id} className="roster-entry" style={{display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid #ccc',padding:'9px 0',fontSize:11}}>
-          {person.profile_photo_url ? <img src={person.profile_photo_url} alt="Officer" style={{width:64,height:76,objectFit:'cover',border:'1px solid #bbb'}}/> : <div style={{width:64,height:76,background:'#eee',display:'flex',alignItems:'center',justifyContent:'center'}}>No photo</div>}
-          <div style={{flex:1,minWidth:0}}><strong style={{fontSize:14}}>{person.rank} {person.first_name} {person.last_name}</strong>
-            <div>Badge #{person.badge_number || 'Not issued'} · Unit {person.unit_number || 'Not assigned'} · {COMMAND_RANKS.has(person.rank)?'Command':`Platoon ${person.platoon || 'Unassigned'}`}</div>
-            <div>Division: {person.division || 'Unassigned'} · Reports to: {supervisor ? displayName(supervisor) : person.rank === 'Colonel' ? 'Top of Command' : 'Not assigned'}</div>
-            <div>Email: {contactEmail(person) || 'Not listed'} · Phone: {person.mobile_phone || 'Not listed'}</div>
-          </div>
-        </div>;
-      })}
+    <style>{`@media print { @page { size: landscape; margin: 0.38in; } body {background:#fff !important;} body * {visibility:hidden !important;} #bps-print-roster, #bps-print-roster * {visibility:visible !important;} #bps-print-roster {display:block !important;position:absolute !important;top:0 !important;left:0 !important;width:100% !important;background:white !important;color:#15243a !important;} #bps-print-roster .print-section {break-inside:avoid;page-break-inside:avoid;} #bps-print-roster .print-node {break-inside:avoid;} #bps-print-roster .print-officer {print-color-adjust:exact !important;-webkit-print-color-adjust:exact !important;} }`}</style>
+    <div id="bps-print-roster" style={{display:'none',fontFamily:'Arial, sans-serif'}}>
+      <header style={{background:'#101d32',color:'#fff',padding:20,borderBottom:'6px solid #b99a49',marginBottom:16,display:'flex',alignItems:'center',gap:18,printColorAdjust:'exact'}}>
+        <div style={{width:60,height:60,border:'2px solid #caa955',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:25,color:'#e9ca79'}}>BP</div>
+        <div><div style={{fontSize:23,fontWeight:900,letterSpacing:2}}>BLACK POINT SECURITY</div><div style={{fontSize:15,color:'#e9ca79',fontWeight:800,letterSpacing:1}}>PERSONNEL & COMMAND ROSTER</div><div style={{fontSize:10,marginTop:4}}>CHAIN OF COMMAND · {new Date().toLocaleDateString()} · {active.length} ACTIVE PERSONNEL</div></div>
+      </header>
+      <PrintRosterBranch title="SHARED COMMAND" people={active.filter(p=>COMMAND_RANKS.has(p.rank))}/>
+      <div style={{textAlign:'center',height:25,color:'#a9873a',fontWeight:800}}>│</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}><PrintRosterBranch title="PLATOON A" people={active.filter(p=>p.platoon==='A')}/><PrintRosterBranch title="PLATOON B" people={active.filter(p=>p.platoon==='B')}/></div>
+      {active.some(p=>!COMMAND_RANKS.has(p.rank) && !['A','B'].includes(p.platoon)) && <PrintRosterBranch title="PERSONNEL PENDING PLATOON ASSIGNMENT" people={active.filter(p=>!COMMAND_RANKS.has(p.rank) && !['A','B'].includes(p.platoon))}/>}
+      <footer style={{fontSize:9,borderTop:'1px solid #aaa',paddingTop:8,color:'#555'}}>BLACK POINT SECURITY · Official personnel hierarchy · Current assignments in Pathfinder</footer>
     </div>
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Shared command oversees both platoons. Each branch displays the assigned reporting chain.</p></div></div></div>
 
