@@ -29,7 +29,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [microsoftMe, setMicrosoftMe] = useState(null);
-  const needsMicrosoftConnection = /connection required|authorization expired|reconnect/i.test(syncError);
+  const needsMicrosoftConnection = /connection required|authorization expired|reconnect|not connected|sign.in|authentication required/i.test(syncError);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
   const messagesEndRef = useRef(null);
 
@@ -150,14 +150,18 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       if (stopped) return;
       await loadChats();
     };
-    // Load once on mount. TeamsNotificationMonitor owns subsequent list polling
-    // and broadcasts the shared result to this page.
-    refresh();
+    // Wait for Teams authentication status before invoking Graph.
+    if (!checkingMicrosoft && microsoftConnected) refresh();
+    else if (!checkingMicrosoft) setLoadingChats(false);
     return () => { stopped = true; };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, checkingMicrosoft, microsoftConnected]);
 
   useEffect(() => {
-    const onMicrosoftConnected = () => loadChats({ keepSelection: false });
+    const onMicrosoftConnected = () => {
+      getOutlookConnectionStatus(currentUser.id, currentUser.email || '').then(status => {
+        setMicrosoftConnected(Boolean(status?.connected));
+      }).catch(() => setMicrosoftConnected(false));
+    };
     window.addEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
     return () => window.removeEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
   }, [currentUser?.id]);
@@ -276,14 +280,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         {!checkingMicrosoft && !microsoftConnected && (
           <div className="border-b border-blue-800 bg-blue-950/40 p-3">
             <div className="text-xs font-bold text-white">Sign in with your Microsoft Teams account to view Teams messages.</div>
-            <div className="mt-1 text-xs text-blue-200">Company IMAP email and Microsoft Teams use separate sign-ins. If you already connected your Microsoft/Outlook account, Pathfinder signs you in automatically while that connection remains valid.</div>
+            <div className="mt-1 text-xs text-blue-200">Your Purelymail/IMAP email stays connected in Mail Center. Teams uses a separate Microsoft Teams sign-in—not an Outlook email setup. Once signed in, Pathfinder will reuse your Teams session while valid.</div>
             <button type="button" onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft Teams sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO MICROSOFT TEAMS</button>
           </div>
         )}
-        {syncError && (
+        {syncError && microsoftConnected && (
           <div className="border-b border-slate-800 bg-[#101725] p-3">
-            <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Connect Microsoft 365 to load your Teams conversations.' : `Teams could not refresh: ${syncError}`}</div>
-            {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
+            <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Your Teams session has expired. Sign in to Teams again.' : `Teams could not refresh: ${syncError}`}</div>
+            {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO TEAMS</button>}
           </div>
         )}
         <div className="flex-1 overflow-y-auto">
