@@ -1,4 +1,4 @@
-import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
+import LiveMapToolbar from '@/components/map/LiveMapToolbar';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +95,17 @@ export default function Navigation() {
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
     const [statusSaving, setStatusSaving] = useState(false);
+    const toolbarRef = useRef(null);
+    const [toolbarHeight,setToolbarHeight] = useState(110);
+    useEffect(() => {
+        const element = toolbarRef.current;
+        if (!element) return;
+        const measure = () => setToolbarHeight(Math.ceil(element.getBoundingClientRect().height));
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
     const [unitName] = useState(localStorage.getItem('unitName') || '');
     const [mapTheme, setMapTheme] = usePathfinderMapTheme();
     const [showCallSidebar, setShowCallSidebar] = useState(false);
@@ -1390,63 +1401,15 @@ export default function Navigation() {
                 </MapView>
             </div>
 
-            {/* ══ TOP COMMAND BAR ══ */}
-            <div className="absolute top-0 left-0 right-0 z-[1010] pointer-events-none">
-                <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-b border-[#1e2d4a]">
-                    {/* Brand */}
-                    <div className="flex items-center gap-2 pointer-events-auto">
-                        <button onClick={() => navigate('/CommandDashboard')}
-                            className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                            <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
-                            <div className="w-6 h-6 rounded bg-[#f5a623]/20 border border-[#f5a623]/40 flex items-center justify-center">
-                                <Radio className="w-3.5 h-3.5 text-[#f5a623]" />
-                            </div>
-                            <span className="text-[#f5a623] font-mono text-xs font-bold tracking-widest hidden sm:block">BPS CAD</span>
-                        </button>
-                        <span className="text-slate-600 text-xs">|</span>
-                        <span className="text-slate-400 font-mono text-[10px] tracking-widest">LIVE MAP</span>
-                    </div>
-
-                    {/* Status Pills */}
-                    <div className="flex items-center gap-1.5 pointer-events-auto flex-1 overflow-hidden">
-                        <button type="button" onClick={recenter} title="Request a precise GPS fix and center the map" className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono font-bold ${
-                            isLiveTracking ? 'bg-green-500/10 border-green-500/30 text-green-400' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-800 border-slate-700 text-slate-500'
-                        }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isLiveTracking ? 'bg-green-400 animate-pulse' : gpsQuality?.state === 'low_accuracy' ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
-                            {isLiveTracking ? `GPS${Number.isFinite(Number(gpsQuality?.accuracy)) ? ` ±${Math.round(Number(gpsQuality.accuracy))}m` : ''}` : gpsQuality?.state === 'low_accuracy' ? `GPS LOW ±${Math.round(Number(gpsQuality?.accuracy || 0))}m` : gpsQuality?.state === 'last_known' ? 'LAST KNOWN GPS' : gpsQuality?.state === 'denied' ? 'ALLOW LOCATION ACCESS' : gpsQuality?.state === 'acquiring' ? 'GPS ACQUIRING' : 'GPS UNAVAILABLE'}
-                        </button>
-                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[9px] font-mono ${
-                            isOnline ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-                        }`}>
-                            {isOnline ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
-                            {isOnline ? 'ONLINE' : 'OFFLINE'}
-                        </div>
-                        <div className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[9px] font-mono font-black ${speed > 2 ? 'border-cyan-500/40 bg-cyan-950/50 text-cyan-200' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>
-                            {Math.max(0, Math.round(Number(speed) || 0))} MPH
-                        </div>
-                    </div>
-
-                    {/* Right metrics */}
-                    <div className="flex w-full flex-wrap items-center justify-end gap-2 pointer-events-auto sm:w-auto">
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#1e2d4a] bg-[#111827] text-[9px] font-mono text-slate-400">
-                            <Users className="w-2.5 h-2.5 text-blue-400" />{onlineUnits.length} UNITS
-                        </div>
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#1e2d4a] bg-[#111827] text-[9px] font-mono text-slate-400">
-                            <Radio className="w-2.5 h-2.5 text-[#f5a623]" />{activeCalls.length} CALLS
-                        </div>
-                        {unassignedCalls.length > 0 && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-[9px] font-mono text-red-400 font-bold">
-                                <AlertTriangle className="w-2.5 h-2.5" />{unassignedCalls.length} UNSGN
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <OfficerDutyStatusControl user={currentUser} status={unitStatus} onChange={handleStatusChange} saving={statusSaving} />
+            <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
+                <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
+                    onBack={() => navigate('/CommandDashboard')} onRecenter={recenter}
+                    gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
+                    gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
             </div>
 
-
             {isNavigating && navDestination && (
-                <div className="pointer-events-auto absolute left-3 right-3 top-40 sm:top-24 z-[1215] md:right-auto md:w-[560px]">
+                <div style={{ top: toolbarHeight + 12 }} className="pointer-events-auto absolute left-3 right-3 z-[1215] md:right-auto md:w-[560px]">
                     <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,0,.72)]">
                         {(routing || navOffRoute) && (
                             <div className="flex items-center gap-2 border-b border-amber-500/30 bg-[#2a1a05] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
