@@ -1150,9 +1150,9 @@ export default function AdminUsers({ embedded = false }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Colonel">Colonel (100 series)</SelectItem>
-                    <SelectItem value="Lt Colonel">Lt Colonel (200 series)</SelectItem>
-                    <SelectItem value="Major">Major (300 series)</SelectItem>
+                    <SelectItem value="Colonel">Colonel (100)</SelectItem>
+                    <SelectItem value="Lt Colonel">Lt Colonel (101 onward)</SelectItem>
+                    <SelectItem value="Major">Major (200 series)</SelectItem>
                     <SelectItem value="Captain">Captain (350 series)</SelectItem>
                     <SelectItem value="Lieutenant">Lieutenant (400 series)</SelectItem>
                     <SelectItem value="First Sergeant">First Sergeant (450 series)</SelectItem>
@@ -1439,9 +1439,9 @@ export default function AdminUsers({ embedded = false }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Colonel">Colonel (100 series)</SelectItem>
-                    <SelectItem value="Lt Colonel">Lt Colonel (200 series)</SelectItem>
-                    <SelectItem value="Major">Major (300 series)</SelectItem>
+                    <SelectItem value="Colonel">Colonel (100)</SelectItem>
+                    <SelectItem value="Lt Colonel">Lt Colonel (101 onward)</SelectItem>
+                    <SelectItem value="Major">Major (200 series)</SelectItem>
                     <SelectItem value="Captain">Captain (350 series)</SelectItem>
                     <SelectItem value="Lieutenant">Lieutenant (400 series)</SelectItem>
                     <SelectItem value="First Sergeant">First Sergeant (450 series)</SelectItem>
