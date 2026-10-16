@@ -1,4 +1,3 @@
-import { applyOfficerLocationEvent } from '@/lib/officerLocationHub';
 import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
