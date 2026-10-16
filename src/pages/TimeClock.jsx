@@ -258,7 +258,7 @@ export default function TimeClock() {
   }, [user?.email, queryClient]);
 
   const clockInMutation = useMutation({
-    mutationFn: (data) => base44.entities.TimeEntry.create(data),
+    mutationFn: async data => { const response = await base44.functions.invoke('createVerifiedTimeEntry', data); const result = response?.data || response || {}; if (!result.success) throw new Error(result.error || 'Clock-in denied'); return result.entry; },
     onMutate: async (newEntry) => {
       await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
       const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
@@ -379,7 +379,7 @@ export default function TimeClock() {
       try {
         // Create the destination entry first. If closing the old entry fails, delete
         // this new row so the user never ends up with two active shifts.
-        newEntry = await base44.entities.TimeEntry.create(clockInData);
+        const response = await base44.functions.invoke('createVerifiedTimeEntry', clockInData); const result = response?.data || response || {}; if (!result.success) throw new Error(result.error || 'Clock-in denied'); newEntry = result.entry;
         await base44.entities.TimeEntry.update(activeEntry.id, {
           clock_out: switchedAt,
           clock_out_latitude: lat,
