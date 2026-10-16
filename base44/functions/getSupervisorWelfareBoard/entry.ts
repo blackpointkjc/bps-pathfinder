@@ -19,12 +19,13 @@ Deno.serve(async (req) => {
     // One bounded snapshot powers the entire supervisor overview. Read the
     // independent sources together so the board does not wait through five serial
     // database round trips before it can paint.
-    const [calls, allAssignments, welfareChecks, statusLogs, users] = await Promise.all([
+    const [calls, allAssignments, welfareChecks, statusLogs, users, dutyEntries] = await Promise.all([
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 300).catch(() => []),
       base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600).catch(() => []),
       base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []),
       base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []),
       base44.asServiceRole.entities.User.list('-updated_date', 750).catch(() => []),
+      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 750).catch(() => []),
     ]);
     const activeCalls = (calls || []).filter((call:any) => !terminalCall(call)).slice(0, 200);
     const activeCallIds = new Set(activeCalls.map((call:any) => String(call.id)));
@@ -36,11 +37,15 @@ Deno.serve(async (req) => {
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
     const now = Date.now();
+    const onDutyEmails = new Set((dutyEntries || []).filter((entry:any) => entry.clock_in && !entry.clock_out && entry.archived !== true).map((entry:any) => lower(entry.officer_email)));
     const board:any[] = [];
     for (const a of assignments || []) {
       const call:any = callById.get(String(a.call_id));
       const officer:any = userById.get(String(a.unit_id));
       if (!call || !officer) continue;
+      // Historical or off-duty assignments remain in CAD but are not current welfare escalations.
+      const assignedAtMs = new Date(a.assigned_at || 0).getTime();
+      if (!onDutyEmails.has(lower(officer.email)) || !Number.isFinite(assignedAtMs) || assignedAtMs <= 0 || now - assignedAtMs > 2 * 60 * 60 * 1000) continue;
       const anchor = lower(a.status) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));
       const pendingAckSeconds = Math.max(30, Number(call.welfare_acknowledgement_seconds || 120));
