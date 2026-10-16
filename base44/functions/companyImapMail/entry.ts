@@ -127,11 +127,28 @@ Deno.serve(async (req) => {
         inbox: { ok: false }, smtp: { ok: false, server: mailbox.smtp_host, port: Number(mailbox.smtp_port || 465) },
       };
       try {
-        const client = await connectImap();
+        let client = await connectImap();
         report.imap = {ok:true,server:mailbox.imap_host,port:Number(mailbox.imap_port || 993)};
-        const lock = await client.getMailboxLock('INBOX');
-        try { report.inbox = { ok:true, message_count: Number(client.mailbox?.exists || 0) }; }
-        finally { lock.release(); }
+        // A successful IMAP greeting/login does not guarantee that the session
+        // stays usable long enough to select INBOX. Retry a dropped session once.
+        let inboxError: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            if (attempt > 0) {
+              try { await client.logout(); } catch {}
+              client = await connectImap();
+            }
+            const mailboxInfo = await client.mailboxOpen('INBOX', {readOnly:true});
+            report.inbox = {ok:true,message_count:Number(mailboxInfo?.exists || 0),reconnected:attempt > 0};
+            inboxError = null;
+            break;
+          } catch (error:any) {
+            inboxError = error;
+            const message = String(error?.message || 'INBOX open failed');
+            if (attempt === 1 || !/connection not available|not connected|connection closed|socket|econnreset|timeout/i.test(message)) break;
+          }
+        }
+        if (inboxError) report.inbox = {ok:false,error:String(inboxError?.message || 'INBOX unavailable after reconnect'),connection_usable:client.usable === true};
       } catch(error:any) {
         const message=String(error?.message || 'IMAP connection or inbox access failed');
         if (!(report.imap as any).ok) report.imap = {ok:false,error:message,server:mailbox.imap_host,port:Number(mailbox.imap_port || 993)};
