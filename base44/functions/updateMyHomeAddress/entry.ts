@@ -10,11 +10,15 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
 
+    const resolveProfile = async () => {
+      const direct = await base44.asServiceRole.entities.User.get(user.id).catch(() => null);
+      if (direct && String(direct.email || '').toLowerCase() === String(user.email || '').toLowerCase()) return direct;
+      const rows = await base44.asServiceRole.entities.User.filter({ email: user.email }, '-updated_date', 1).catch(() => []);
+      return rows?.[0] || null;
+    };
+
     if (String(body.action || '').toLowerCase() === 'get') {
-      const profile = await base44.asServiceRole.entities.User.get(user.id).catch(async () => {
-        const rows = await base44.asServiceRole.entities.User.filter({ email: user.email }, '-updated_date', 1).catch(() => []);
-        return rows?.[0] || null;
-      });
+      const profile = await resolveProfile();
       return Response.json({
         success: true,
         address: clean(profile?.address, 160),
@@ -35,7 +39,11 @@ Deno.serve(async (req) => {
     if (!zip) return Response.json({ error: 'ZIP code is required' }, { status: 400 });
 
     // Self-service only: the authenticated user's id is the only update target.
-    await base44.asServiceRole.entities.User.update(user.id, { address, city, state, zip });
+    const profile = await resolveProfile();
+    if (!profile?.id) return Response.json({ error: 'Unable to locate your officer profile.' }, { status: 404 });
+    await base44.asServiceRole.entities.User.update(profile.id, { address, city, state, zip });
+    const verified = await base44.asServiceRole.entities.User.get(profile.id);
+    if ([['address',address],['city',city],['state',state],['zip',zip]].some(([key,value]) => String(verified?.[key] || '').trim() !== value)) throw new Error('Address could not be verified after saving. Please retry.');
 
     return Response.json({
       success: true,

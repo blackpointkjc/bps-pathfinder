@@ -74,6 +74,7 @@ export default function OfficerProfile() {
   const [savingCompanyMailPassword, setSavingCompanyMailPassword] = useState(false);
   const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
   const [savingHomeAddress, setSavingHomeAddress] = useState(false);
+  const [homeSaveStatus, setHomeSaveStatus] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -194,6 +195,7 @@ export default function OfficerProfile() {
       const result = await base44.functions.invoke('updateMyHomeAddress', payload);
       const saved = result?.data || result || {};
       if (saved.error) throw new Error(saved.error);
+      if (!saved.success) throw new Error('Home address was not confirmed saved.');
       const savedAddress = {
         address: saved.address || payload.address,
         city: saved.city || payload.city,
@@ -208,10 +210,10 @@ export default function OfficerProfile() {
         queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
       ]);
       window.dispatchEvent(new CustomEvent('bps-profile-home-address-updated', { detail: savedAddress }));
-      alert('Home navigation address updated successfully.');
+      setHomeSaveStatus({ ok: true, message: 'Saved and verified. The GPS Home shortcut will use this address.' });
     } catch (error) {
       console.error('Unable to update home navigation address:', error);
-      alert(error?.message || 'Unable to update your home navigation address.');
+      setHomeSaveStatus({ ok: false, message: error?.message || 'Unable to update your home navigation address.' });
     } finally {
       setSavingHomeAddress(false);
     }
@@ -451,6 +453,7 @@ export default function OfficerProfile() {
                 </div>
               </div>
             </div>
+            {homeSaveStatus && <div role="status" className={`mt-4 rounded-lg border px-3 py-2 text-sm font-semibold ${homeSaveStatus.ok ? 'border-emerald-600 bg-emerald-950/50 text-emerald-200' : 'border-red-600 bg-red-950/50 text-red-200'}`}>{homeSaveStatus.message}</div>}
             <Button type="button" onClick={saveHomeNavigationAddress} disabled={savingHomeAddress || !homeAddressForm.address.trim()} className="mt-5 bg-cyan-700 hover:bg-cyan-600">
               <MapPin className="mr-2 h-4 w-4" />{savingHomeAddress ? 'Saving…' : 'Save Home Navigation Address'}
             </Button>
