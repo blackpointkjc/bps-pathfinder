@@ -9,11 +9,11 @@ import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const actions = [
-  { label: 'Live Field Oversight', detail: 'Units, active calls, welfare and supervisor requests', icon: Radio, page: 'SupervisorFieldOversight' },
-  { label: 'Action Items', detail: 'Pending command tasks and required follow-up', icon: ClipboardList, page: 'SupervisorTasks' },
-  { label: 'Officer Inspections', detail: 'Field inspections and documented follow-up', icon: ClipboardCheck, page: 'SupervisorInspections' },
-  { label: 'Performance Reviews', detail: 'Supervisor review and signature workflow', icon: ShieldCheck, page: 'SupervisorPerformanceReview' },
-  { label: 'Write-Ups & Complaints', detail: 'Discipline, complaints and oversight records', icon: FileWarning, page: 'SupervisorWriteUps' },
+  { label: 'Live Field Oversight', detail: 'Units, active calls, welfare and supervisor requests', icon: Radio, section: 'command', tool: 'field' },
+  { label: 'Action Items', detail: 'Pending command tasks and required follow-up', icon: ClipboardList, section: 'command', tool: 'tasks' },
+  { label: 'Officer Inspections', detail: 'Field inspections and documented follow-up', icon: ClipboardCheck, section: 'oversight', tool: 'inspections' },
+  { label: 'Performance Reviews', detail: 'Supervisor review and signature workflow', icon: ShieldCheck, section: 'oversight', tool: 'reviews' },
+  { label: 'Write-Ups & Complaints', detail: 'Discipline, complaints and oversight records', icon: FileWarning, section: 'oversight', tool: 'writeups' },
 ];
 
 export default function SupervisorOverview() {
@@ -151,7 +151,7 @@ export default function SupervisorOverview() {
           <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="text-xs font-black uppercase tracking-[.16em] text-blue-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">Supervisor work queue</h3><div className="mt-4 space-y-2">{taskQueue.map(item => <div key={item.id} className="rounded-xl border border-slate-800 bg-[#0d1a2a] p-3"><div className="text-sm font-black">{item.title}</div><div className="text-xs font-bold text-blue-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div>{item.assignment_basis && <div className="mt-2 text-[10px] font-black uppercase tracking-wide text-cyan-300">{item.assignment_basis === 'nearest_gps' ? 'Closest supervisor by live GPS' : item.assignment_basis === 'nearest_site' ? 'Closest supervisor by current site' : 'Assigned by active workload'}{Number.isFinite(Number(item.assigned_distance_miles)) ? ` · ${Number(item.assigned_distance_miles).toFixed(1)} mi` : ''}</div>}<button type="button" onClick={()=>finishTask.mutate(item)} disabled={finishTask.isPending} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"><ShieldCheck className="h-3.5 w-3.5"/>{finishTask.isPending && finishTask.variables?.id===item.id ? 'FINISHING…' : 'MARK FINISHED'}</button></div>)}{!taskQueue.length && <div className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-sm text-slate-500">No personnel actions are waiting.</div>}</div></section>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{actions.map(({ label, detail, icon: Icon, page }) => <Link key={label} to={createPageUrl(page)} className="group rounded-2xl border border-slate-800 bg-[#0b1624] p-4 transition hover:-translate-y-0.5 hover:border-blue-500/40 hover:bg-[#102238]"><div className="flex items-start justify-between gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-blue-300"><Icon className="h-5 w-5"/></div><ArrowRight className="h-4 w-4 text-slate-600 transition group-hover:translate-x-1 group-hover:text-blue-300"/></div><div className="mt-4 text-sm font-black text-white">{label}</div><div className="mt-1 text-xs leading-5 text-slate-500">{detail}</div></Link>)}</div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{actions.map(({ label, detail, icon: Icon, section, tool }) => <Link key={label} to={`${createPageUrl('SupervisorCenter')}?section=${section}&tool=${tool}`} className="group rounded-2xl border border-slate-800 bg-[#0b1624] p-4 transition hover:-translate-y-0.5 hover:border-blue-500/40 hover:bg-[#102238]"><div className="flex items-start justify-between gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-blue-300"><Icon className="h-5 w-5"/></div><ArrowRight className="h-4 w-4 text-slate-600 transition group-hover:translate-x-1 group-hover:text-blue-300"/></div><div className="mt-4 text-sm font-black text-white">{label}</div><div className="mt-1 text-xs leading-5 text-slate-500">{detail}</div></Link>)}</div>
       </div>
     </div>
   );
