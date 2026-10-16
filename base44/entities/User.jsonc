@@ -166,6 +166,7 @@
     "profile_photo_url": {
       "type": "string"
     },
+    "profile_photo_original_url": { "type": "string", "description": "Full original uploaded photo without cropping" },
     "hidden_portals": {
       "type": "array",
       "items": {

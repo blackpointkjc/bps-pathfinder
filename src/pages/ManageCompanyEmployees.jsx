@@ -47,6 +47,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [editFormData, setEditFormData] = useState({});
+  const [fullPhoto, setFullPhoto] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeTab, setActiveTab] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
@@ -269,6 +270,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       additional_roles: userData.additional_roles || [],
       assigned_sites: userData.assigned_sites || [],
       profile_photo_url: userData.profile_photo_url || "",
+      profile_photo_original_url: userData.profile_photo_original_url || "",
       officer_certifications: Array.isArray(userData.officer_certifications) ? userData.officer_certifications : []
     });
     setSelectedUser(userData);
@@ -351,14 +353,20 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           console.warn('Profile photo file upload failed; using compressed image fallback:', uploadError?.message || uploadError);
         }
       }
+      let originalUrl = '';
+      if (photoToCrop) {
+        const original = await uploadInternalFile(photoToCrop);
+        originalUrl = original?.file_url || '';
+      }
+      if (!originalUrl) throw new Error('Original photo upload failed; image was not replaced.');
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,
-        updates: { profile_photo_url: photoUrl },
+        updates: { profile_photo_url: photoUrl, profile_photo_original_url: originalUrl },
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
-      setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl }));
-      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl } : prev);
+      setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl }));
+      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();
       await queryClient.invalidateQueries({ predicate: query => {
@@ -430,7 +438,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
             {userData.profile_photo_url ? (
-              <img src={userData.profile_photo_url} alt={`${userData.first_name} ${userData.last_name}`} className={`w-14 h-14 rounded-full object-cover ${isTerminated ? 'grayscale' : ''}`} />
+              <button type="button" onClick={() => setFullPhoto({url:userData.profile_photo_original_url || userData.profile_photo_url,name:`${userData.first_name || ''} ${userData.last_name || ''}`})} aria-label="View full officer photo"><img src={userData.profile_photo_url} alt={`${userData.first_name} ${userData.last_name}`} className={`w-14 h-14 rounded-full object-cover ${isTerminated ? 'grayscale' : ''}`} /></button>
             ) : (
               <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md ${isTerminated ? 'bg-gradient-to-br from-slate-400 to-slate-600' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}>
                 {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
@@ -484,6 +492,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+      <Dialog open={!!fullPhoto} onOpenChange={open => !open && setFullPhoto(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{fullPhoto?.name || 'Officer photo'}</DialogTitle></DialogHeader>{fullPhoto?.url && <img src={fullPhoto.url} alt={fullPhoto.name || 'Full officer photo'} className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
@@ -556,7 +565,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
               <div className="relative">
                 {(photoPreview || editFormData.profile_photo_url) ? (
-                  <img src={photoPreview || editFormData.profile_photo_url} alt="photo" className="w-20 h-20 rounded-full object-cover border-2 border-slate-300" />
+                  <button type="button" onClick={() => setFullPhoto({url:editFormData.profile_photo_original_url || photoPreview || editFormData.profile_photo_url,name:`${editFormData.first_name || ''} ${editFormData.last_name || ''}`})} aria-label="View full officer photo"><img src={photoPreview || editFormData.profile_photo_url} alt="photo" className="w-20 h-20 rounded-full object-cover border-2 border-slate-300" /></button>
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
                     {editFormData.first_name?.charAt(0)}{editFormData.last_name?.charAt(0)}
