@@ -193,7 +193,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
     // Save a credential once. Entry-level completion does not grant a renewal.
     // Multiple training codes can be attached to the same physical credential.
     certToSave.course_ids = [...new Set([certToSave.course_id, ...(certToSave.course_ids || [])].filter(Boolean))];
-    certToSave.renewal_course_ids = certToSave.course_ids.map(code => ENTRY_CONVERSIONS[code]).filter(Boolean);
+    certToSave.renewal_course_ids = [...new Set(certToSave.course_ids.map(code => ENTRY_CONVERSIONS[code]).filter(Boolean))];
     const updated = editingIdx !== null
       ? certs.map((c, i) => i === editingIdx ? certToSave : c)
       : [...certs.filter(c => !(c.category === 'dcjs' && c.course_id === certToSave.course_id && c.certificate_number === certToSave.certificate_number)), certToSave];
@@ -389,7 +389,8 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               {newCert.course_id && ENTRY_CONVERSIONS[newCert.course_id] && (
                 <p className="text-xs text-amber-700 mt-1">Renewal required: <strong>{ENTRY_CONVERSIONS[newCert.course_id]} — {DCJS_COURSES.find(c => c.id === ENTRY_CONVERSIONS[newCert.course_id])?.name || 'In-Service/Retraining'}</strong> when this credential expires. This is not a second active certification.</p>
               )}
-              <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3"><Label className="text-xs font-bold">Training codes covered by this one DCJS credential (select multiple)</Label><div className="mt-2 grid grid-cols-2 gap-2">{DCJS_COURSES.filter(c => c.level === 'Entry Level').map(c => <label key={c.id} className="flex items-center gap-2 text-xs text-slate-800"><Checkbox checked={(newCert.course_ids || [newCert.course_id]).includes(c.id)} onCheckedChange={checked => setNewCert(previous => ({ ...previous, course_ids: checked ? [...new Set([...(previous.course_ids?.length ? previous.course_ids : [previous.course_id]).filter(Boolean), c.id])] : (previous.course_ids?.length ? previous.course_ids : [previous.course_id]).filter(id => id !== c.id) }))}/>{c.id} — {c.name}</label>)}</div></div>
+              {(newCert.course_ids || []).length > 0 && <p className="text-xs text-amber-800">Renewal courses for selected codes: {[...new Set((newCert.course_ids || []).map(code=>ENTRY_CONVERSIONS[code]).filter(Boolean))].join(', ') || 'No mapped renewal course'}</p>}
+              <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3"><Label className="text-xs font-bold">Training codes covered by this one DCJS credential (select multiple)</Label><div className="mt-2 grid grid-cols-2 gap-2">{DCJS_COURSES.filter(c => c.level === 'Entry Level').map(c => <label key={c.id} className="flex items-center gap-2 text-xs text-slate-800"><Checkbox checked={(newCert.course_ids?.length ? newCert.course_ids : [newCert.course_id]).includes(c.id)} onCheckedChange={checked => setNewCert(previous => ({ ...previous, course_ids: checked ? [...new Set([...(previous.course_ids?.length ? previous.course_ids : [previous.course_id]).filter(Boolean), c.id])] : (previous.course_ids?.length ? previous.course_ids : [previous.course_id]).filter(id => id !== c.id) }))}/>{c.id} — {c.name}</label>)}</div></div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
