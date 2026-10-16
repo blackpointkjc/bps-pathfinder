@@ -24,7 +24,7 @@ export default function Schedule() {
   });
 
   const { data: scheduleData = {}, isLoading: schedulesLoading, error: scheduleError } = useQuery({
-    queryKey: ['myScheduleData', user?.email],
+    queryKey: ['myScheduleData', user?.id, user?.email],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyScheduleData', getOfficerPreviewRequest());
       let payload = result?.data || result || {};
@@ -256,7 +256,7 @@ export default function Schedule() {
   };
 
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['myScheduleData', user?.email] });
+    await queryClient.invalidateQueries({ queryKey: ['myScheduleData', user?.id, user?.email] });
     await queryClient.invalidateQueries({ queryKey: ['schedules'] });
     await queryClient.invalidateQueries({ queryKey: ['myApprovedPTO'] });
     await queryClient.invalidateQueries({ queryKey: ['openShifts'] });

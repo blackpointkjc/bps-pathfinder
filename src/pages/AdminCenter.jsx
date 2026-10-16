@@ -266,7 +266,7 @@ export default function AdminCenter() {
     return () => {
       setClientPreviewId('');
       setOfficerPreviewId('');
-      queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+      queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
     };
   }, [queryClient]);
   useEffect(() => {
@@ -316,7 +316,7 @@ export default function AdminCenter() {
     setSelectedOfficer(mode === 'officer' ? profile.id : '');
     setSelectedRoleUser(!['client','officer'].includes(mode) ? profile.id : '');
     // Reset identity-dependent cached results before mounting the selected account.
-    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
     setShadowMode(mode);
   };
 
@@ -326,7 +326,7 @@ export default function AdminCenter() {
     setOfficerPreviewId('');
     setSelectedOfficer('');
     setSelectedRoleUser('');
-    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
     setShadowMode('');
     navigate({ pathname: window.location.pathname, search: '?admin_center=admin' }, { replace: true });
   };
@@ -366,7 +366,7 @@ export default function AdminCenter() {
     setSelectedOfficer(mode === 'officer' ? currentPreview.id : '');
     setSelectedRoleUser(!['client','officer'].includes(mode) ? currentPreview.id : '');
     setOfficerPreviewId(currentPreview.id, { ...currentPreview, __officer_preview: true, __role_preview: mode, __auth_admin_id: signedInUser?.id });
-    queryClient.removeQueries({ predicate: query => ['currentUser', 'dashboardDirectoryProfile', 'dashboardPerformanceReviews', 'activeTimeEntry', 'myScheduleData', 'myTimeEntries', 'myPerformanceData', 'officerPerformanceReviews', 'myTrainingCompletions'].includes(query.queryKey[0]) });
+    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
   };
   const previewPicker = <AdminUserPreviewPicker users={previewPeople} selectedId={selectedPreviewId} loading={previewLoading} error={previewError} onSelect={choosePreviewUser} onRetry={()=>setPreviewRetry(value=>value+1)} />;
   if (shadowMode) return <div className="min-h-full bg-[#070d17]">

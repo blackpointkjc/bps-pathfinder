@@ -83,12 +83,15 @@ export default function OfficerProfile() {
         base44.auth.me(),
         getCurrentDirectoryUser(true),
       ]);
+      // During admin account preview the selected directory identity owns every
+      // displayed profile field; never merge the administrator on top of it.
+      if (directoryUser?.__officer_preview) return directoryUser;
       if (!authenticated?.email) return directoryUser || authenticated;
       const rows = await base44.entities.User.filter({ email: authenticated.email }).catch(() => []);
       return {
-        ...(directoryUser || {}),
         ...(authenticated || {}),
         ...(rows?.[0] || {}),
+        ...(directoryUser || {}),
       };
     },
     refetchInterval: 2 * 60 * 1000,
