@@ -12,8 +12,8 @@ import { UserX, Clock, AlertTriangle, Plus, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers, listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorCallOuts() {
   const [showDialog, setShowDialog] = useState(false);
@@ -39,7 +39,7 @@ export default function SupervisorCallOuts() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorCallOuts'],
-    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
+    queryFn: async () => { const [all, scoped] = await Promise.all([listDirectoryUsers('last_name', 1500).catch(() => []), listSupervisorDirectoryOfficers('last_name', 1000).catch(() => [])]); const unique = new Map(); for (const row of [...all, ...scoped]) if (isOperationalOfficer(row)) unique.set(String(row.email).toLowerCase(), row); return [...unique.values()].sort((a,b) => String(a.last_name || '').localeCompare(String(b.last_name || ''))); },
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
@@ -136,7 +136,7 @@ export default function SupervisorCallOuts() {
     );
   }
 
-  const officers = allUsers.filter(hasOfficerAdditionalRole);
+  const officers = allUsers.filter(isOperationalOfficer);
 
   const recentCallOuts = callOuts.slice(0, 50);
 

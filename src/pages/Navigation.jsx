@@ -1731,7 +1731,7 @@ export default function Navigation() {
                             aria-label={button.title}
                             aria-pressed={button.active}
                             disabled={button.disabled}
-                            className={`flex h-11 w-11 items-center justify-center transition-colors ${
+                            className={`flex min-h-11 w-[76px] flex-col items-center justify-center gap-0.5 px-1 py-1 transition-colors ${
                                 index < controls.length - 1 ? 'border-b border-[#263c52]' : ''
                             } ${
                                 button.active
@@ -1740,6 +1740,7 @@ export default function Navigation() {
                             } disabled:cursor-not-allowed disabled:opacity-30`}
                         >
                             {button.icon}
+                            <span className="max-w-full text-center text-[9px] font-bold leading-tight">{({ fitunits: 'All Units', recenter: 'My GPS', search: 'Search', home: 'Home', pick: 'Pick Point', calls: 'Calls', theme: 'Map Style', heatmap: 'Heatmap' })[button.key] || button.key}</span>
                         </button>
                     ))}
                 </div>
