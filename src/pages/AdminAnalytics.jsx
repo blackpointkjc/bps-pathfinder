@@ -245,6 +245,7 @@ export default function AdminAnalytics() {
   const refreshCompanyAnalytics = async () => {
     clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
     clearBase44ReadCacheMatching('function:getMyPerformanceData:');
+    clearBase44ReadCacheMatching('function:getCompanyPerformanceData:');
     await queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'], refetchType: 'none' });
     const segments = ['core', 'training', 'duty', 'calls', 'quality'];
     await Promise.all(segments.map(segment => queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment], refetchType: 'none' })));
@@ -269,12 +270,12 @@ export default function AdminAnalytics() {
   // two-wave load without the extra React render/dependency delay between waves.
   const secondarySegmentsEnabled = Boolean(user && coreAnalytics.data);
   const dutyAnalytics = useAnalyticsSegment('duty', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled && Boolean(dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
   // Keep analytics segments in two controlled waves so the backend does not
   // start four large multi-entity scans at once during a rate-limited session.
   const laterSegmentsEnabled = secondarySegmentsEnabled && Boolean(dutyAnalytics.data) && Boolean(callsAnalytics.data);
   const trainingAnalytics = useAnalyticsSegment('training', laterSegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const qualityAnalytics = useAnalyticsSegment('quality', laterSegmentsEnabled, analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', laterSegmentsEnabled && Boolean(trainingAnalytics.data), analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
@@ -388,6 +389,7 @@ export default function AdminAnalytics() {
         clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:');
         queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment', segment] });
         clearBase44ReadCacheMatching('function:getMyPerformanceData:');
+    clearBase44ReadCacheMatching('function:getCompanyPerformanceData:');
         queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'] });
         timers.delete(segment);
       }, 1500));
@@ -426,31 +428,17 @@ export default function AdminAnalytics() {
       const previous = queryClient.getQueryData(['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate]);
       const snapshots = { ...(previous?.snapshots || {}) };
       const errors = {};
-      // This deliberately uses the exact backend payload that powers each
-      // officer's My Performance page. Load sequentially to avoid a burst of
-      // 20+ entity reads per officer and the 429s the old analytics fan-out caused.
-      for (const officer of performanceOfficerUsers) {
-        try {
-          const result = await base44.functions.invoke('getMyPerformanceData', {
-            preview_user_id: officer.id,
-            start_date: analyticsStartDate,
-            end_date: analyticsEndDate,
-          });
-          let payload = result?.data || result || {};
-          if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
-          if (payload?.error) throw new Error(payload.error);
-          if (payload.is_partial || Object.keys(payload.service_errors || {}).length) {
-            const sources = Object.keys(payload.service_errors || {});
-            throw new Error(`Performance sources unavailable: ${sources.join(', ') || 'unknown'}. Last verified figures remain visible.`);
-          }
-          snapshots[officer.id] = payload;
-        } catch (error) {
-          errors[officer.id] = error?.message || 'Unable to load officer performance';
-        }
-      }
+      const result = await base44.functions.invoke('getCompanyPerformanceData', {
+        officer_ids: performanceOfficerUsers.map(officer => officer.id),
+        start_date: analyticsStartDate, end_date: analyticsEndDate,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      Object.assign(snapshots, payload.snapshots || {});
+      Object.assign(errors, payload.errors || {});
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
-    enabled: Boolean(user && coreAnalytics.data && performanceOfficerUsers.length),
+    enabled: Boolean(user && currentSegmentsReady && performanceOfficerUsers.length),
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,

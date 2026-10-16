@@ -47,6 +47,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'manageAutoDispatchConfig' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'managePlannedShifts' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 2 * 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
@@ -139,7 +140,7 @@ const readTimeoutMs = meta => {
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.
   if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 30_000;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData'].includes(meta?.name)) return 25_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','getCompanyPerformanceData'].includes(meta?.name)) return 25_000;
   return 12_000;
 };
 const requestLabel = meta => {
@@ -345,7 +346,7 @@ function invalidateReadCacheForWrite(meta = {}) {
     if (PERFORMANCE_ENTITY_NAMES.has(meta.name)) {
       addFunction('getCompanyAnalyticsData');
       addFunction('getCompanyAnalyticsSegment');
-      addFunction('getMyPerformanceData');
+      addFunction('getMyPerformanceData'); addFunction('getCompanyPerformanceData');
     }
     if (meta.name === 'User') prefixes.add('auth:me:');
     if (['User','Location','Division','OfficerRoster'].includes(meta.name)) {
@@ -383,7 +384,7 @@ function invalidateReadCacheForWrite(meta = {}) {
       addEntity('User'); addFunction('getAppDirectory'); addFunction('getOfficerDirectory'); prefixes.add('auth:me:');
     }
     if (/performance|timeentr|schedule|report|complaint|commendation|feedback|training|callout|duty/i.test(name)) {
-      addFunction('getCompanyAnalyticsData'); addFunction('getCompanyAnalyticsSegment'); addFunction('getMyPerformanceData');
+      addFunction('getCompanyAnalyticsData'); addFunction('getCompanyAnalyticsSegment'); addFunction('getMyPerformanceData'); addFunction('getCompanyPerformanceData');
     }
     // A management endpoint's cached list/get response must never survive its own write.
     addFunction(name);
