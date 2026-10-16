@@ -433,6 +433,23 @@ Deno.serve(async (req) => {
         page: 'ManageTimeEntries',
       });
     }
+    // Profile certifications are the source of truth even if legacy CertificationTodo
+    // rows were never generated. HR can see renewals without a manual alert scan.
+    if (queueRole === 'hr') {
+      const todayIso = now.date;
+      const cutoffIso = addDays(todayIso, 60);
+      for (const officer of users || []) {
+        if (!officer?.email || officer.termination_date) continue;
+        const certs = Array.isArray(officer.officer_certifications) ? officer.officer_certifications : [];
+        for (const cert of certs) {
+          const expires = String(cert.expiration_date || '').slice(0,10);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(expires) || expires > cutoffIso) continue;
+          const label = String(cert.training_name || cert.name || cert.course_id || 'Certification');
+          const fingerprint = String(cert.course_id || label).toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,60);
+          candidates.push({ id:`cert-profile-${officer.id}-${fingerprint}-${expires}`, source_id:String(officer.id), kind:'certification_renewal', priority:expires < todayIso ? 'critical' : 'high', title:'Officer Certification Renewal Required', person:displayName(officer), detail:`${label} expires ${expires} · ${officer.email}`, page:'AdminCertificationAlerts' });
+        }
+      }
+    }
     for (const cert of certificationTodos.filter((row:any) => row.completed !== true)) {
       const person = personFor(cert);
       candidates.push({ id:`cert-renewal-${cert.id}`, source_id:String(cert.id), kind:'certification_renewal', priority:Number(cert.days_until_expiration) <= 0 ? 'critical' : 'high', title:'Officer Certification Renewal Required', person:cert.officer_name || person.name, detail:`${cert.certification_type || 'Certification'} expires ${cert.expiration_date || 'date unavailable'} · ${cert.officer_email || ''}`, page:'AdminCertificationAlerts' });

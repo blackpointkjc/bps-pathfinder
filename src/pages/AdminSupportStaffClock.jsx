@@ -46,7 +46,7 @@ export default function AdminSupportStaffClock() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['mySupportTimeEntries', user?.email] });
 
   const clockIn = useMutation({
-    mutationFn: () => base44.entities.TimeEntry.create({
+    mutationFn: async () => { const response = await base44.functions.invoke('createVerifiedTimeEntry', {
       officer_email: user.email,
       clock_in: new Date().toISOString(),
       location: 'Office - Administrative',
@@ -54,7 +54,7 @@ export default function AdminSupportStaffClock() {
       clock_in_longitude: null,
       on_break: false,
       break_periods: [],
-    }),
+    }); const payload = response?.data || response || {}; if (!payload.success) throw new Error(payload.error || 'Clock-in denied'); return payload.entry; },
     onSuccess: refresh,
   });
 
