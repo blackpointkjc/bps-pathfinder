@@ -2,7 +2,7 @@ import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
+import { Shield, GitBranch, Mail, Phone, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
@@ -101,8 +101,25 @@ export default function RankStructure(){
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
+    <style>{`@media print { @page { size: letter portrait; margin: 0.55in; } body { background:white !important; } body * { visibility:hidden !important; } #bps-print-roster, #bps-print-roster * { visibility:visible !important; } #bps-print-roster { display:block !important; position:absolute !important; top:0 !important; left:0 !important; width:100% !important; color:#111827 !important; background:white !important; } #bps-print-roster .roster-entry { break-inside:avoid; page-break-inside:avoid; } }`}</style>
+    <div id="bps-print-roster" style={{display:'none'}}>
+      <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>BLACK POINT SECURITY — PERSONNEL & COMMAND ROSTER</h1>
+      <p style={{fontSize:11,marginBottom:14}}>Current active personnel · Ranked highest to lowest · Prepared {new Date().toLocaleDateString()} · {active.length} personnel</p>
+      {active.map(person=>{
+        const supervisor=active.find(u=>u.id===person.supervisor_id);
+        return <div key={person.id} className="roster-entry" style={{display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid #ccc',padding:'9px 0',fontSize:11}}>
+          {person.profile_photo_url ? <img src={person.profile_photo_url} alt="Officer" style={{width:64,height:76,objectFit:'cover',border:'1px solid #bbb'}}/> : <div style={{width:64,height:76,background:'#eee',display:'flex',alignItems:'center',justifyContent:'center'}}>No photo</div>}
+          <div style={{flex:1,minWidth:0}}><strong style={{fontSize:14}}>{person.rank} {person.first_name} {person.last_name}</strong>
+            <div>Badge #{person.badge_number || 'Not issued'} · Unit {person.unit_number || 'Not assigned'} · {COMMAND_RANKS.has(person.rank)?'Command':`Platoon ${person.platoon || 'Unassigned'}`}</div>
+            <div>Division: {person.division || 'Unassigned'} · Reports to: {supervisor ? displayName(supervisor) : person.rank === 'Colonel' ? 'Top of Command' : 'Not assigned'}</div>
+            <div>Email: {contactEmail(person) || 'Not listed'} · Phone: {person.mobile_phone || 'Not listed'}</div>
+          </div>
+        </div>;
+      })}
+    </div>
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Shared command oversees both platoons. Each branch displays the assigned reporting chain.</p></div></div></div>
 
+    {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
     <section className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-4 text-center"><div className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Shared Command</div><div className="mt-1 text-sm text-slate-400">Colonel · Lt Colonel · Major — oversight of Platoon A and Platoon B</div></div><CommandTree users={active} onOpen={setSelectedPerson}/></section>
 
     <div className="relative py-3"><div className="mx-auto h-8 w-px bg-amber-500/50"/><div className="mx-auto h-px w-1/2 bg-amber-500/40"/><div className="grid grid-cols-2"><div className="mx-auto h-7 w-px bg-amber-500/40"/><div className="mx-auto h-7 w-px bg-amber-500/40"/></div></div>
