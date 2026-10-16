@@ -508,6 +508,20 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             <p className="text-slate-600">{portalContext === 'hr' ? 'HR employee directory and account access management' : portalContext === 'training' ? 'Training-managed employee certifications and records' : 'Active company users and assigned operational roles'}</p>
           </div>
         </div>
+        {isSystemAdmin && <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-blue-800/60 bg-slate-900 p-3">
+          <span className="text-xs text-slate-200">Permanent badge register: Hiers 4001 · Sherrill 4002 · Jones 4003 · Robinson 4004 · Cook 4005. New officers start at 4006.</span>
+          <Button type="button" variant="outline" onClick={async () => {
+            if (!window.confirm('Set the five named officers’ permanent badge numbers to 4001–4005? This does not change unit numbers.')) return;
+            try {
+              const response = await base44.functions.invoke('initializePermanentBadges', {});
+              const payload = response?.data || response || {};
+              if (!payload.success) throw new Error([payload.error,...(payload.issues || [])].filter(Boolean).join(' · ') || 'Could not assign badges');
+              invalidateAppDirectory();
+              await refetchUsers();
+              alert('Permanent badge register saved and verified for all five officers.');
+            } catch (error) { alert('Badge assignment failed: ' + (error?.message || 'Unknown error')); }
+          }}>Apply Permanent Badges 4001–4005</Button>
+        </div>}
         <Input
           placeholder="Search by name, email, or rank..."
           value={searchQuery}
