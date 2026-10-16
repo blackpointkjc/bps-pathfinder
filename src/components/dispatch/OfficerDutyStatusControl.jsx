@@ -17,15 +17,15 @@ const badges = {
     Dispatch:'bg-cyan-900/40 text-cyan-300 border-cyan-600/50',
 };
 
-export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses }) {
+export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses, inline = false }) {
     if (!user) return null;
     const options = statuses || officerDutyStatuses(user);
     const selected = status || 'Out of Service';
-    const name = user.rank && user.last_name ? [normalizeRank(user.rank),user.last_name].join(' ') : user.unit_number ? 'Unit ' + user.unit_number : user.full_name || 'My';
-    return <div role="group" aria-label={`My duty status: ${selected}`} className="command-status-bar flex min-w-0 flex-none flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-800 bg-slate-900/80 px-3 py-2">
+    const name = inline && user.unit_number ? 'Unit ' + user.unit_number : user.rank && user.last_name ? [normalizeRank(user.rank),user.last_name].join(' ') : user.unit_number ? 'Unit ' + user.unit_number : user.full_name || 'My';
+    return <div role="group" aria-label={`My duty status: ${selected}`} className={`command-status-bar flex min-w-0 flex-none flex-wrap items-center gap-x-2 gap-y-1 ${inline ? 'sm:ml-auto' : 'border-t border-slate-800 bg-slate-900/80 px-3 py-1.5'}`}>
         <span className="min-w-0 break-words font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-400">{name} · Status</span>
         <div className="command-status-options flex min-w-0 flex-wrap items-center gap-1.5">
-            {options.map(option => <button type="button" key={option} disabled={saving} aria-label={`Set duty status to ${option}`} aria-pressed={selected === option} onClick={() => onChange(option)} className={`min-h-9 rounded-md border px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase transition-colors disabled:opacity-50 ${selected === option ? (badges[option] || badges['Out of Service']) + ' ring-1 ring-current ring-offset-1 ring-offset-slate-900' : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{option === 'Enroute' ? 'En Route' : option}</button>)}
+            {options.map(option => <button type="button" key={option} disabled={saving} aria-label={`Set duty status to ${option}`} aria-pressed={selected === option} onClick={() => onChange(option)} className={`min-h-7 rounded-md border px-2 py-1 font-mono text-[9px] font-bold uppercase transition-colors disabled:opacity-50 ${selected === option ? (badges[option] || badges['Out of Service']) + ' ring-1 ring-current ring-offset-1 ring-offset-slate-900' : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{option === 'Enroute' ? 'En Route' : option}</button>)}
         </div>
         {saving && <span role="status" className="text-xs text-slate-400">Saving…</span>}
     </div>;
