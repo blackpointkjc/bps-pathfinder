@@ -143,7 +143,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   const [dialogUploading, setDialogUploading] = useState(false);
 
   const certs = editFormData.officer_certifications || [];
-  const dcjsCerts = certs.filter(cert => cert.category === 'dcjs');
+  const dcjsCerts = certs.filter(cert => cert.category === 'dcjs' && !(/^Auto-converted from /i.test(cert.notes || '') && certs.some(original => ENTRY_CONVERSIONS[original.course_id] === cert.course_id && original.certificate_number === cert.certificate_number && original.issue_date === cert.issue_date)));
   const companyCerts = certs.filter(cert => cert.category !== 'dcjs');
 
   if (readOnly) {
@@ -189,7 +189,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   const saveCert = () => {
     const certToSave = { ...newCert };
 
-    if (certToSave.category === "dcjs" && ENTRY_CONVERSIONS[certToSave.course_id]) {
+    if (false && certToSave.category === "dcjs" && ENTRY_CONVERSIONS[certToSave.course_id]) {
       const convertsTo = ENTRY_CONVERSIONS[certToSave.course_id];
       const convertedCourse = DCJS_COURSES.find(c => c.id === convertsTo);
       certToSave.notes = (certToSave.notes ? certToSave.notes + " | " : "") + `Entry level completed — tracking as ${convertsTo} for renewals`;
