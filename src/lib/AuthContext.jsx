@@ -72,13 +72,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user?.id) return;
-    const unsubscribe = base44.entities.User.subscribe(event => {
+    let unsubscribe;
+    try { unsubscribe = base44.entities.User.subscribe(event => {
       const record = event?.data || event?.record;
       if (String(event?.id || record?.id || '') !== String(user.id) || !record) return;
       const fields = ['rank','unit_number','hourly_rate','first_name','last_name','full_name','profile_photo_url','division','platoon','oversight_platoon'];
       const patch = Object.fromEntries(fields.filter(key => record[key] !== undefined).map(key => [key,record[key]]));
       if (Object.keys(patch).length) setUser(previous => previous ? { ...previous, ...patch } : previous);
     });
+    } catch (error) { console.warn('Profile identity stream unavailable', error?.message); }
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
   }, [user?.id]);
 
