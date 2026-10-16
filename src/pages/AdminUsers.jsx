@@ -206,7 +206,7 @@ export default function AdminUsers({ embedded = false }) {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
@@ -214,7 +214,7 @@ export default function AdminUsers({ embedded = false }) {
       }});
       setShowDialog(false);
       setEditingUser(null);
-      alert('User updated successfully');
+      alert(result?.user ? ('Saved '+result.user.rank+' · Unit '+result.user.unit_number+' · $'+Number(result.user.hourly_rate || 0).toFixed(2)+'/hr'+(result.warnings?.length ? '\n'+result.warnings.join('\n') : '')) : 'User updated successfully');
     },
     onError: (error) => {
       alert('Failed to update user: ' + error.message);
