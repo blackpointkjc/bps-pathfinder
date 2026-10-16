@@ -54,28 +54,47 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'additional_roles must be an array' }, { status: 400 });
         }
 
-        // Apply officer defaults on the server, not only as temporary edit-form values.
-        const effectiveRoles = Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles.map((r:any)=>String(r).toLowerCase()) : [...targetRoles];
-        const operational = effectiveRoles.includes('officer') || effectiveRoles.includes('cad_access') || effectiveRoles.includes('supervisor');
+        // Personnel assignment policy: badge is permanent on first Officer grant;
+        // rank changes allocate the next available unit number; pay never decreases.
+        const oldRoles = new Set((target.additional_roles || []).map((v:any)=>String(v).toLowerCase()));
+        const newRoles = new Set((Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles : target.additional_roles || []).map((v:any)=>String(v).toLowerCase()));
+        const officerNow = newRoles.has('officer');
+        const officerNewlyGranted = officerNow && !oldRoles.has('officer');
+        const operational = officerNow || newRoles.has('cad_access') || newRoles.has('supervisor');
+        const rank = String(updatePayload.rank || target.rank || 'Officer').trim() || 'Officer';
         if (operational) {
-          const rank = String(updatePayload.rank || target.rank || 'Officer').trim() || 'Officer';
           if (!String(updatePayload.rank || target.rank || '').trim()) updatePayload.rank = rank;
-          const payMinimums:Record<string,number> = { 'Unarmed Officer':18, 'Officer':19.5, 'Senior Officer':20.5, 'Corporal':21, 'Sergeant':22, 'First Sergeant':23, 'Lieutenant':24, 'Captain':25, 'Lt Colonel':27.5, 'Colonel':27.5, 'Major':27.5 };
-          const currentPay = Number(updatePayload.hourly_rate ?? target.hourly_rate ?? 0);
-          if (!Number.isFinite(currentPay) || currentPay <= 0) updatePayload.hourly_rate = payMinimums[rank] ?? 19.5;
-          // Badge IDs must be unique. Use the unit number only if not in use;
-          // otherwise leave badge blank for deliberate administrator allocation.
-          if (!String(updatePayload.badge_number || target.badge_number || '').trim()) {
-            const candidate = String(updatePayload.unit_number || target.unit_number || '').trim();
-            if (candidate && !(targetUsers || []).some((person:any) => person.id !== userId && String(person.badge_number || '').trim() === candidate)) updatePayload.badge_number = candidate;
+          const payMinimums: Record<string, number> = { 'Unarmed Officer':18, 'Officer':19.5, 'Senior Officer':20.5, 'Corporal':21, 'Sergeant':22, 'First Sergeant':23, 'Lieutenant':24, 'Captain':25, 'Lt Colonel':27.5, 'Colonel':27.5, 'Major':27.5 };
+          const previousPay = Math.max(0, Number(target.hourly_rate || 0));
+          const requestedPay = Math.max(0, Number(updatePayload.hourly_rate || 0));
+          updatePayload.hourly_rate = Math.max(previousPay, requestedPay, payMinimums[rank] ?? 19.5);
+          const usedBadges = new Set((targetUsers || []).filter((person:any)=>person.id !== userId).map((person:any)=>String(person.badge_number || '').trim()).filter(Boolean));
+          // Once issued, the badge stays fixed even if the officer is promoted.
+          const originalBadge = String(target.badge_number || '').trim();
+          if (originalBadge) updatePayload.badge_number = originalBadge;
+          else if (officerNewlyGranted) {
+            let next = 100;
+            while (usedBadges.has(String(next))) next++;
+            updatePayload.badge_number = String(next);
+          }
+          const rankChanged = String(target.rank || '').trim().toLowerCase() !== rank.toLowerCase();
+          if (rankChanged || (officerNewlyGranted && !String(target.unit_number || '').trim())) {
+            const unitBases:Record<string,number> = { 'Officer':1000, 'Unarmed Officer':1000, 'Senior Officer':1100, 'Corporal':200, 'Sergeant':300, 'First Sergeant':350, 'Lieutenant':400, 'Captain':500, 'Major':600, 'Lt Colonel':700, 'Colonel':800 };
+            const beginning = unitBases[rank] ?? 1000;
+            const occupied = new Set((targetUsers || []).filter((person:any)=>person.id !== userId).map((person:any)=>String(person.unit_number || '').trim()));
+            let candidate = beginning;
+            while (occupied.has(String(candidate))) candidate++;
+            updatePayload.unit_number = String(candidate);
+          } else if (String(target.unit_number || '').trim()) {
+            updatePayload.unit_number = target.unit_number;
           }
         }
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
 
         // On the first admin approval of an officer, create an actionable
         // certification review for trainers without changing employee roles.
-        const newRoles = Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles.map((item:any) => String(item).toLowerCase()) : [];
-        const officerJustApproved = isSystemManager && !targetRoles.has('officer') && newRoles.includes('officer');
+        const approvedRoles = Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles.map((item:any) => String(item).toLowerCase()) : [];
+        const officerJustApproved = isSystemManager && !targetRoles.has('officer') && approvedRoles.includes('officer');
         if (officerJustApproved) {
           try {
             const approvedOfficer = { ...target, ...updatePayload };
