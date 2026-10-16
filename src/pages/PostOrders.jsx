@@ -94,7 +94,8 @@ export default function PostOrders() {
     
     const supervisorData = supervisorsToUse.map(email => {
       // First check officer roster
-      const rosterEntry = rosterEntries?.find(r => r.email === email && r.status === 'active');
+      const current = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
+      const rosterEntry = current || rosterEntries?.find(r => r.email === email && r.status === 'active');
       if (rosterEntry) {
         return {
           email,

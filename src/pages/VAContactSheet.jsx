@@ -9,7 +9,6 @@ import{isOperationalOfficer}from'@/lib/directoryUtils';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const OPERATIONAL_RANKS=['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
-const rankOrder=r=>{const i=OPERATIONAL_RANKS.indexOf(r);return i<0?99:i};
 const has=(u,r)=>(u.additional_roles||[]).map(x=>String(x).toLowerCase()).includes(r);
 
 export default function VAContactSheet(){

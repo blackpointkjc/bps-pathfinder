@@ -16,7 +16,6 @@ import { useAuth } from '@/lib/AuthContext';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
-const rankIndex = rank => { const i=RANKS.indexOf(rank); return i < 0 ? 99 : i; };
 const rolesOf = user => new Set((user?.additional_roles || []).map(r=>String(r).toLowerCase()));
 const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || user?.first_name || user?.email || ''}`.trim();
 const isOperational = user => isOperationalOfficer(user) && RANKS.includes(user?.rank);

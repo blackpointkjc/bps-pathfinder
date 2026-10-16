@@ -30,7 +30,6 @@ import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
-import { requestCadLiveSync } from '@/lib/cadCallFeed';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v3';
 const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
