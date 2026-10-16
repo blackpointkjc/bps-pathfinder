@@ -87,14 +87,16 @@ Deno.serve(async (req) => {
         secure: mailbox.imap_secure !== false,
         auth: { user: mailbox.username, pass: mailbox.password },
         logger: false,
-        connectionTimeout: 12000,
-        greetingTimeout: 12000,
-        socketTimeout: 20000,
+        connectionTimeout: 25000,
+        greetingTimeout: 20000,
+        socketTimeout: 30000,
       });
       try { await imap.connect(); } catch(error:any) {
         const message = String(error?.message || 'Connection failed');
         const hint = /auth|login|credential|authenticate|basic/i.test(message) && /office365|outlook\.office365|hotmail|outlook\.com/i.test(String(mailbox.imap_host || '')) ? ' Microsoft 365 may require OAuth2 rather than password authentication.' : '';
-        throw new Error(`IMAP connection failed: ${message}.${hint}`);
+        const networkHint = /establish connection in required time|etimedout|timeout|econnrefused|enotfound|network unreachable/i.test(message)
+          ? ' The IMAP server could not be reached reliably from the Pathfinder backend. This is a network/IMAP service connection problem, not evidence of an incorrect password. Confirm that outbound TLS traffic to the IMAP host on port 993 is permitted.' : '';
+        throw new Error(`IMAP connection failed: ${message}.${networkHint}${hint}`);
       }
       return imap;
     };
