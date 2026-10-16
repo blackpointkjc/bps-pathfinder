@@ -508,6 +508,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         </div>
         <div className="mt-2 space-y-1 border-t border-slate-700 pt-2 text-[11px]"><div className="break-all text-slate-300">{person.email || 'No email'}</div><div className="text-slate-300">{person.mobile_phone || 'No phone recorded'}</div></div>
         <Button type="button" size="sm" variant="outline" className="mt-3 w-full border-amber-500/70 bg-slate-900 text-white hover:bg-slate-700" onClick={() => handleEditUser(person)}><Edit className="mr-2 h-3.5 w-3.5"/> Edit Personnel</Button>
+        {canManageEmployees && person.additional_roles?.includes('officer') && <button type="button" className="mt-2 w-full text-center text-[11px] text-amber-300 underline underline-offset-2" onClick={async () => { if (await confirmInApp(`Move ${person.first_name} ${person.last_name} back to Pending Users? This removes their Officer role.`)) moveToPendingMutation.mutate(person); }}>Move to Pending Users</button>}
       </div>
       {children.length > 0 && <><div className="h-6 w-px bg-amber-600/70"/><div className="flex items-start justify-center gap-4 border-t border-amber-600/60 pt-4">{children.map(child => renderHierarchyNode(child,group,depth+1))}</div></>}
     </div>;
