@@ -68,12 +68,25 @@ Deno.serve(async (req) => {
           const previousPay = Math.max(0, Number(target.hourly_rate || 0));
           const requestedPay = Math.max(0, Number(updatePayload.hourly_rate || 0));
           updatePayload.hourly_rate = Math.max(previousPay, requestedPay, payMinimums[rank] ?? 19.5);
-          const usedBadges = new Set((targetUsers || []).filter((person:any)=>person.id !== userId).map((person:any)=>String(person.badge_number || '').trim()).filter(Boolean));
-          // Once issued, the badge stays fixed even if the officer is promoted.
+          const reserved:Record<string,string> = {
+            '6a72bbee2842d6338cbae513':'4001', // Colonel Hiers
+            '6a406e7f5968db44ad597d61':'4002', // Lt Colonel Sherrill
+            '6ac889ba810b2036456a6d24':'4003', // Lt Colonel Jones
+            '6ad1a4589148f235c2c15623':'4004', // Sergeant Robinson
+            '6ad1ab9d4b2e4e06c9916653':'4005', // Lieutenant Cook
+          };
           const originalBadge = String(target.badge_number || '').trim();
-          if (originalBadge) updatePayload.badge_number = originalBadge;
-          else if (officerNewlyGranted) {
-            let next = 100;
+          const usedBadges = new Set((targetUsers || []).filter((person:any)=>person.id !== userId).map((person:any)=>String(person.badge_number || '').trim()).filter(Boolean));
+          if (reserved[userId]) {
+            // Explicit one-time migration of the five founding badge identities.
+            if (usedBadges.has(reserved[userId])) return Response.json({error:`Reserved badge ${reserved[userId]} is already assigned to another employee`},{status:409});
+            updatePayload.badge_number = reserved[userId];
+          } else if (originalBadge) {
+            // All other issued badge numbers are immutable, including on promotion.
+            updatePayload.badge_number = originalBadge;
+          } else if (officerNewlyGranted) {
+            const issued = (targetUsers || []).map((person:any)=>Number(String(person.badge_number || '').trim())).filter((n:number)=>Number.isSafeInteger(n) && n >= 4001);
+            let next = Math.max(4005,...issued) + 1;
             while (usedBadges.has(String(next))) next++;
             updatePayload.badge_number = String(next);
           }

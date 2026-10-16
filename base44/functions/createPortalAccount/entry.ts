@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
       if (accountType === 'employee') {
         Object.assign(updates, {
           date_of_birth: date_of_birth || '',
-          badge_number: badge_number || '',
+          badge_number: (() => { const current = String(portalUser.badge_number || '').trim(); if (current) return current; const used = new Set((users || []).filter((u:any)=>u.id!==portalUser.id).map((u:any)=>String(u.badge_number || '').trim())); const issued = (users || []).map((u:any)=>Number(u.badge_number)).filter((n:number)=>Number.isSafeInteger(n)&&n>=4001); let candidate = Math.max(4005,...issued)+1; while(used.has(String(candidate)))candidate++; return String(candidate); })(),
           unit_number: unit_number || '',
           hire_date: hire_date || '',
           division: division || '',
