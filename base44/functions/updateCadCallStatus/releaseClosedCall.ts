@@ -30,6 +30,9 @@ export async function releaseClosedCall(entities: any, call: any) {
   for (const user of users.values()) {
     const units = await entities.Unit.filter({ user_id: user.id }, '-last_update_at', 100);
     const sessions = await entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 100);
+    const stillLinked = String(user.current_call_id || '') === callId || sessions.some((s: any) => String(s.current_call_id || '') === callId) || units.some((u: any) => (u.assigned_call_ids || []).map(String).includes(callId));
+    const hadActiveAssignment = assignments.some((a: any) => !['cleared','cancelled','canceled'].includes(lower(a.status)) && [user.id, user.email, ...units.map((u: any) => u.id), ...sessions.map((s: any) => s.id)].includes(a.unit_id));
+    if (!stillLinked && !hadActiveAssignment) continue;
     const aliases = [...new Set([user.id, user.email, ...units.map((u: any) => u.id), ...sessions.map((s: any) => s.id)].filter(Boolean).map(String))];
     const pending: any[] = [];
     for (const alias of aliases) pending.push(...await entities.CallAssignment.filter({ unit_id: alias }, '-assigned_at', 1000));
