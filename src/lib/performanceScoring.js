@@ -917,7 +917,8 @@ const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(
 export function buildOverallPerformance({ punctuality, trainingScore = null, jobDuty = null, callOutAttendance = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
   // Configured weights remain 55/15/15/3/3/3/3/3. A category with no actual
   // scoreable record is omitted rather than being displayed or counted as a fake
-  // 100%. The remaining real categories are re-normalized across their configured
+  // 100%. Explicit Major-and-above command credit is the policy exception.
+  // The remaining categories are re-normalized across their configured
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
     { label: 'On-Time Arrival', score: punctuality?.rate != null && (punctuality.total > 0 || punctuality.commandExempt) ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
