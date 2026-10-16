@@ -62,6 +62,26 @@ Deno.serve(async (req) => {
       firearm_expiration: computeFirearmExpiration(certs),
     };
     await base44.asServiceRole.entities.User.update(target.id, updates);
+    const verified = await base44.asServiceRole.entities.User.get(target.id);
+    if (JSON.stringify(verified?.officer_certifications || []) !== JSON.stringify(certs)) {
+      return Response.json({error:'Certification save could not be verified. Review the officer record before closing tasks.'}, {status:500});
+    }
+    // Review tasks are complete only after the certified officer record is persisted.
+    const reviewTasks = await base44.asServiceRole.entities.Task.filter({related_id:target.id,related_type:'general'},'-created_date',100).catch(()=>[]);
+    for (const task of reviewTasks || []) {
+      if (task.status !== 'completed' && /^Review new officer certifications$/i.test(String(task.title || ''))) {
+        await base44.asServiceRole.entities.Task.update(task.id,{status:'completed'});
+      }
+    }
+    const pendingAlerts = await base44.asServiceRole.entities.CertificationTodo.filter({officer_email:target.email},'-created_date',100).catch(()=>[]);
+    for (const alert of pendingAlerts || []) {
+      if (alert.completed) continue;
+      const family = alert.certification_type === 'firearm' ? FIREARM_PREFIXES : ['01'];
+      const currentExpiry = alert.certification_type === 'firearm' ? updates.firearm_expiration : updates.dcjs_expiration;
+      if (currentExpiry && currentExpiry > String(alert.expiration_date || '') && certs.some((cert:any) => family.some((code:string) => String(cert.course_id || '').startsWith(code)) && cert.expiration_date === currentExpiry)) {
+        await base44.asServiceRole.entities.CertificationTodo.update(alert.id,{completed:true,notes:'Renewal recorded and verified in officer certification file'});
+      }
+    }
 
     return Response.json({
       success: true,
