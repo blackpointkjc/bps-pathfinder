@@ -117,7 +117,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           },
         });
         const rolePayload = roleResult?.data || roleResult || {};
-        if (rolePayload.error) throw new Error(rolePayload.error);
+        if (!rolePayload.success) throw new Error(rolePayload.error || rolePayload.details || "Role update failed");
       }
 
       const profileUpdates = { ...userData };
@@ -605,7 +605,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                     </div>
                   </div>
                   <div><Label className="text-xs text-slate-500">Mobile Phone</Label><Input type="tel" value={editFormData.mobile_phone || ""} onChange={(e) => setEditFormData({...editFormData, mobile_phone: e.target.value})} /></div>
-                  <div><Label className="text-xs text-slate-500">Badge Number</Label><Input value={editFormData.badge_number || ""} onChange={(e) => setEditFormData({...editFormData, badge_number: e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">Badge Number</Label><Input value={editFormData.badge_number || "Assigned on first Officer-role grant"} readOnly className="bg-slate-100" /></div>
                   <div>
                     <Label className="text-xs text-slate-500">Rank</Label>
                     <Select value={editFormData.rank || "Officer"} onValueChange={(v) => setEditFormData(prev => ({...prev, rank: v, hourly_rate: Number(prev.hourly_rate) > 0 ? prev.hourly_rate : getPayRangeForRank(v).min}))}>
