@@ -25,6 +25,7 @@ export default function SupervisorCallOuts() {
     reason: "",
     location: "",
     original_location: "",
+    shift_id: "",
     destination_location: "",
     exclude_original_incident_metric: false,
   });
@@ -62,6 +63,15 @@ export default function SupervisorCallOuts() {
     refetchOnMount: 'always',
   });
 
+  const { data: scheduledShifts = [] } = useQuery({
+    queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
+    queryFn: () => base44.entities.Schedule.filter({ officer_email: formData.officer_email, shift_date: formData.call_out_date }, 'start_time', 100),
+    enabled: Boolean(formData.officer_email && formData.call_out_date),
+    initialData: [],
+  });
+  const availableShifts = scheduledShifts.filter(shift => shift.archived !== true && !shift.is_open);
+  const selectedShift = availableShifts.find(shift => shift.id === formData.shift_id);
+
   const { data: callOuts } = useQuery({
     queryKey: ['callOuts'],
     queryFn: () => base44.entities.CallOut.list('-call_out_date'),
@@ -80,6 +90,9 @@ export default function SupervisorCallOuts() {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       queryClient.invalidateQueries({ queryKey: ['companyAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['officerAnalytics'] });
+      queryClient.invalidateQueries({ queryKey: ['calloutScheduledShifts'] });
+      queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['hr'] });
       setShowDialog(false);
       resetForm();
       alert('Call-out recorded on the scheduled shift and added to the officer performance record.');
@@ -107,7 +120,8 @@ export default function SupervisorCallOuts() {
       alert('Select both the original property and the destination property/assignment.');
       return;
     }
-    createCallOutMutation.mutate(formData);
+    if (!selectedShift) { alert('Select an actual scheduled shift for this officer and date.'); return; }
+    createCallOutMutation.mutate({ ...formData, location: selectedShift.location });
   };
 
   const isSupervisorOrAdmin = hasSupervisorAccess(user);
@@ -270,7 +284,7 @@ export default function SupervisorCallOuts() {
                 <Input
                   type="date"
                   value={formData.call_out_date}
-                  onChange={(e) => setFormData({...formData, call_out_date: e.target.value})}
+                  onChange={(e) => setFormData({...formData, call_out_date: e.target.value, shift_id: ''})}
                   required
                 />
               </div>
@@ -285,6 +299,7 @@ export default function SupervisorCallOuts() {
               </div>
             </div>
 
+            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{formData.officer_email && !availableShifts.length && <p className="text-xs text-red-700">No scheduled shifts for this officer and date. Confirm the schedule before recording an absence.</p>}</div>
             {formData.call_out_type === 'reassigned' ? (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -336,7 +351,7 @@ export default function SupervisorCallOuts() {
               <p className={`text-sm ${formData.call_out_type === 'reassigned' ? 'text-blue-800' : 'text-amber-800'}`}>
                 <strong>Important:</strong> {formData.call_out_type === 'reassigned'
                   ? 'A reassignment does not count as an attendance call-out. Property-call Incident Report requirements at the original location after the reassignment time will be excluded from Job Duty performance.'
-                  : 'This will prevent PTO accrual for this officer on this date and will appear in attendance performance analytics.'}
+                  : 'This records the attendance event against the selected schedule, updates call-out performance calculations, and adds an HR review task. PTO treatment must be handled separately under HR policy.'}
               </p>
             </div>
 
