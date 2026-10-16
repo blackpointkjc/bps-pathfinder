@@ -447,7 +447,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             </div>
 
             <div className="flex gap-2">
-              <Button size="sm" onClick={saveCert} disabled={!newCert.course_id} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button type="button" size="sm" onClick={saveCert} disabled={!newCert.course_id} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {editingIdx !== null ? "Update" : "Add Certification"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setAddMode(null); setEditingIdx(null); setNewCert(BLANK_CERT); }}>Cancel</Button>
@@ -550,7 +550,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             </div>
 
             <div className="flex gap-2">
-              <Button size="sm" onClick={saveCert} disabled={!newCert.training_name} className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Button type="button" size="sm" onClick={saveCert} disabled={!newCert.training_name} className="bg-purple-600 hover:bg-purple-700 text-white">
                 {editingIdx !== null ? "Update" : "Add Certification"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setAddMode(null); setEditingIdx(null); setNewCert(BLANK_CERT); }}>Cancel</Button>
