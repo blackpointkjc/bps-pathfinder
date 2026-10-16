@@ -1,3 +1,4 @@
+import { registerDiagnosticPages } from '@/utils/appDiagnostics';
 import AppUpdateNotice from '@/components/AppUpdateNotice';
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,6 +24,7 @@ import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 const { Layout, mainPage } = pagesConfig;
 // Supplemental routes remain available before the builder regenerates pages.config.
 const Pages = { ...pagesConfig.Pages, UnitStatus };
+registerDiagnosticPages(Pages);
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 

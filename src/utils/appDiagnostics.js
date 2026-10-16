@@ -6,7 +6,12 @@ import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
 const STORAGE_KEY = 'pathfinder_runtime_issues_v1';
 const MAX_ISSUES = 100;
-const pageModules = import.meta.glob('/src/pages/*.{jsx,js,tsx,ts}');
+let pageModules = {};
+export function registerDiagnosticPages(pages) {
+  // Audit the exact route components loaded by this application version. Importing
+  // every source page separately made old tabs request deleted deployment chunks.
+  pageModules = Object.fromEntries(Object.entries(pages || {}).map(([name,Page]) => [name + '.jsx', async () => ({ default:Page })]));
+}
 const CURRENT_APP_SESSION_STARTED_AT = Date.now();
 
 const safeMessage = value => {
