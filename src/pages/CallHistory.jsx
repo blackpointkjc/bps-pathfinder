@@ -293,6 +293,8 @@ export default function CallHistory() {
                 mergedByCall.set(identity, {
                     ...secondary,
                     ...primary,
+                    _assignedUnitDetails: primary._assignedUnitDetails?.length ? primary._assignedUnitDetails : (secondary._assignedUnitDetails || []),
+                    assigned_units: primary.assigned_units?.length ? primary.assigned_units : (secondary.assigned_units || []),
                     _propertyCall: Boolean(primary._propertyCall || secondary._propertyCall),
                     _propertyAlert: primary._propertyAlert || secondary._propertyAlert || null,
                     _propertyName: primary._propertyName || secondary._propertyName || primary._propertyAlert?.propertyName || secondary._propertyAlert?.propertyName || '',
