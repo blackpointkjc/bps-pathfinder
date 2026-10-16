@@ -228,10 +228,9 @@ export default function OutlookMail() {
     if (!mailbox?.id) return;
     try {
       setLoading(true);
-      const [folderResult, messageResult] = await Promise.all([
-        invokeCompanyMail('folders', {}, mailbox),
-        invokeCompanyMail('messages', { folder: targetFolder, limit: 35 }, mailbox),
-      ]);
+      // Avoid opening two simultaneous IMAP sessions for the same account.
+      const messageResult = await invokeCompanyMail('messages', { folder: targetFolder, limit: 20 }, mailbox);
+      const folderResult = await invokeCompanyMail('folders', {}, mailbox).catch(() => ({ folders: [{id:'INBOX',path:'INBOX',displayName:'Inbox'}] }));
       const folderRows = (folderResult.folders || []).map(folder => ({ ...folder, id: folder.id || folder.path }));
       setFolders(folderRows);
       setFolderId(targetFolder);
@@ -239,7 +238,9 @@ export default function OutlookMail() {
       setMessages(messageResult.messages || []);
       setNextLink(null);
     } catch (error) {
-      toast.error(error?.message || 'Unable to load company mailbox.');
+      setMessages([]);
+      setFolders([{id:'INBOX',path:'INBOX',displayName:'Inbox'}]);
+      toast.error(`Company inbox could not load: ${error?.message || 'Check this mailbox assignment and try Refresh.'}`, {duration:12000});
     } finally {
       setLoading(false);
     }
@@ -286,7 +287,7 @@ export default function OutlookMail() {
     const initializeMail = async () => {
       const companyResult = await base44.functions.invoke('companyImapMail', { action: 'status' }).catch(() => null);
       const companyPayload = companyResult?.data || companyResult || {};
-      const assigned = (companyPayload.mailboxes || []).map(item => ({ ...item, _source: 'imap' }));
+      const assigned = (companyPayload.mailboxes || []).filter(item => item.active !== false && item.approved_by_company !== false && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(item.mailbox_email || ''))).filter((item,index,rows) => rows.findIndex(other => String(other.mailbox_email).toLowerCase() === String(item.mailbox_email).toLowerCase()) === index).map(item => ({ ...item, _source: 'imap' }));
       setCompanyMailboxes(assigned);
       const status = await getOutlookConnectionStatus(user.id, user?.email || '').catch(() => ({ connected: false }));
       setConnection(status);

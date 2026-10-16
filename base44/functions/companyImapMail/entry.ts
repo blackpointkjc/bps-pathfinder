@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
 
     if (action === 'status') {
       const isAdmin = caller.role === 'admin';
-      return json({ mailboxes: (records || []).map((row: any) => ({
+      return json({ mailboxes: (records || []).filter((row:any) => row.active !== false && row.approved_by_company !== false && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(row.mailbox_email || ''))).map((row: any) => ({
         id: row.id,
         user_id: row.user_id,
         mailbox_email: row.mailbox_email,
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (!mailbox) return json({ error: 'No company IMAP mailbox is assigned.' }, 404);
     const isAdmin = caller.role === 'admin';
     if (!isAdmin && String(mailbox.user_id) !== String(caller.id)) return json({ error: 'Mailbox access denied.' }, 403);
-    if (!mailbox.active || !mailbox.approved_by_company) return json({ error: 'This company mailbox is not active.' }, 403);
+    if (mailbox.active === false || mailbox.approved_by_company === false) return json({ error: 'This company mailbox is not active.' }, 403);
 
     if (action === 'update_password') {
       const nextPassword = String(body?.password || '');
