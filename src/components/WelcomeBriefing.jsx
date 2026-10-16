@@ -382,7 +382,12 @@ export default function WelcomeBriefing({ user }) {
       const person = userByEmail.get(normalized(item.officer_email));
       return !person || isCadOfficer(person);
     });
-    return rows.map(shiftRow => {
+    // Multiple same-day site shifts are legitimate schedule records, not
+    // separate officers. Display each officer once using their latest shift.
+    const uniqueShifts = new Map();
+    rows.sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+      .forEach(shift => uniqueShifts.set(normalized(shift.officer_email), shift));
+    return [...uniqueShifts.values()].map(shiftRow => {
       const email = normalized(shiftRow.officer_email);
       const person = userByEmail.get(email);
       const unitRow = unitByEmail.get(email);
@@ -503,13 +508,13 @@ export default function WelcomeBriefing({ user }) {
                           {scheduledDutyRows.length === 0 ? <div className="p-4 text-center text-xs text-slate-500">No officers are scheduled today.</div> : scheduledDutyRows.map(row => {
                             const name = row.person ? `${row.person.rank || 'Officer'} ${row.person.last_name || row.person.first_name || ''}`.trim() : row.email;
                             const location = String(row.shift.location || '').split(':')[0] || '—';
-                            const liveStatus = row.unit?.status || row.person?.status || 'Out of Service';
+                            const liveStatus = row.entry ? (row.unit?.status || row.person?.status || 'Available') : 'Out of Service';
                             return <div key={`${row.shift.id}-${row.email}`} className="grid gap-2 bg-slate-950/45 p-3 text-xs md:grid-cols-[1.35fr_.8fr_1fr_.8fr_.9fr_.9fr] md:items-center">
                               <div className="min-w-0"><div className="truncate font-black text-white">{name}</div><div className="mt-0.5 text-[9px] text-slate-500">{row.person?.unit_number ? `UNIT-${row.person.unit_number}` : row.email}</div></div>
                               <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Scheduled</span><span className="font-bold text-slate-200">{row.shift.start_time}-{row.shift.end_time}</span></div>
                               <div className="min-w-0"><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Location</span><span className="break-words text-slate-300">{location}</span></div>
                               <div><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${row.entry ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>{row.entry ? 'CLOCKED IN' : 'NOT CLOCKED IN'}</span>{row.entry?.clock_in && <div className="mt-1 text-[9px] text-slate-500">Since {new Date(row.entry.clock_in).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}</div>
-                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">CAD</span><span className="font-bold text-blue-300">{liveStatus}</span>{row.unit?.current_call_info && <div className="mt-0.5 line-clamp-1 text-[9px] text-slate-500">{row.unit.current_call_info}</div>}</div>
+                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">CAD</span><span className="font-bold text-blue-300">{liveStatus}</span>{row.entry && row.unit?.current_call_info && <div className="mt-0.5 line-clamp-1 text-[9px] text-slate-500">{row.unit.current_call_info}</div>}</div>
                               <div className="min-w-0"><div className="truncate font-bold text-amber-300">{row.vehicle?.vehicle_label || 'No vehicle'}</div><div className="mt-0.5 truncate text-[9px] text-blue-300">{row.unit?.partner_name || (row.shift.partner_officer_email ? `Partner: ${row.shift.partner_officer_email}` : 'No partner')}</div></div>
                             </div>;
                           })}
