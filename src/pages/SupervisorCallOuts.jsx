@@ -63,9 +63,9 @@ export default function SupervisorCallOuts() {
     refetchOnMount: 'always',
   });
 
-  const { data: scheduledShifts = [] } = useQuery({
+  const { data: scheduledShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery({
     queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
-    queryFn: () => base44.entities.Schedule.filter({ officer_email: formData.officer_email, shift_date: formData.call_out_date }, 'start_time', 100),
+    queryFn: async () => { const rows = await base44.entities.Schedule.list('-shift_date', 5000); return (rows || []).filter(shift => String(shift.officer_email || '').trim().toLowerCase() === String(formData.officer_email || '').trim().toLowerCase() && String(shift.shift_date || '').slice(0,10) === formData.call_out_date); },
     enabled: Boolean(formData.officer_email && formData.call_out_date),
     initialData: [],
   });
@@ -300,7 +300,7 @@ export default function SupervisorCallOuts() {
               </div>
             </div>
 
-            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{formData.officer_email && !availableShifts.length && <p className="text-xs text-red-700">No scheduled shifts for this officer and date. Confirm the schedule before recording an absence.</p>}</div>
+            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{shiftsLoading && <p className="text-xs text-blue-700">Loading officer shifts…</p>}{shiftsError && <p className="text-xs text-red-700">Unable to load shifts: {shiftsError.message}</p>}{formData.officer_email && !shiftsLoading && !shiftsError && !availableShifts.length && <p className="text-xs text-red-700">No matching published shift found for this officer/date. Check the schedule and officer email.</p>}</div>
             {formData.call_out_type === 'reassigned' ? (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">

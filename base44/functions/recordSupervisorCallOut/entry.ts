@@ -16,8 +16,8 @@ Deno.serve(async req => {
     if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !['called_out','sent_home','reassigned'].includes(type) || !String(input.reason || '').trim()) {
       return Response.json({ error: 'Officer, date, reason and valid type are required' }, { status: 400 });
     }
-    const schedules = await base44.asServiceRole.entities.Schedule.filter({ officer_email: email, shift_date: date }, 'start_time', 100);
-    const matching = (schedules || []).filter(shift => !shift.archived && !shift.is_open && String(shift.id) === String(input.shift_id || '') && (!input.location || lower(shift.location).split(':')[0] === lower(input.location).split(':')[0]));
+    const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
+    const matching = (schedules || []).filter(shift => lower(shift.officer_email) === email && String(shift.shift_date || '').slice(0, 10) === date && !shift.archived && !shift.is_open && String(shift.id) === String(input.shift_id || '') && (!input.location || lower(shift.location).split(':')[0] === lower(input.location).split(':')[0]));
     if (!matching.length) return Response.json({ error: 'Scheduled shift not found for this officer/date. Choose an actual shift from the schedule.' }, { status: 409 });
     const shift = matching[0];
     const existing = await base44.asServiceRole.entities.CallOut.filter({ officer_email: email, call_out_date: date }, '-created_date', 100);
