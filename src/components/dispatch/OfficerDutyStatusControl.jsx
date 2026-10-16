@@ -1,26 +1,32 @@
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { normalizeRank } from '@/utils/rankPolicy';
 
-export default function OfficerDutyStatusControl({ user, status, onChange, saving = false }) {
-    const [open,setOpen] = useState(false);
+export function officerDutyStatuses(user) {
+    const roles = new Set((user?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
+    const fieldRank = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'].includes(normalizeRank(user?.rank));
+    const fieldAccess = user?.role === 'admin' || user?.role === 'officer' || user?.is_supervisor || fieldRank || ['full_access','supervisor','officer','cad_access'].some(r => roles.has(r));
+    const dispatchAccess = user?.role === 'dispatch' || user?.dispatch_role || roles.has('dispatch');
+    return fieldAccess ? ['Available','Enroute','On Scene','Busy','Out of Service', ...(dispatchAccess ? ['Dispatch'] : [])] : ['Dispatch','Available','Out of Service'];
+}
+
+const badges = {
+    Available:'bg-green-900/40 text-green-300 border-green-600/50',
+    Enroute:'bg-yellow-900/40 text-yellow-300 border-yellow-600/50',
+    'On Scene':'bg-blue-900/40 text-blue-300 border-blue-600/50',
+    Busy:'bg-orange-900/40 text-orange-300 border-orange-600/50',
+    'Out of Service':'bg-gray-900/40 text-gray-300 border-gray-600/50',
+    Dispatch:'bg-cyan-900/40 text-cyan-300 border-cyan-600/50',
+};
+
+export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses }) {
     if (!user) return null;
-    const dispatchAccess = user.role === 'dispatch' || user.dispatch_role || (user.additional_roles || []).includes('dispatch');
-    const options = ['Available','Enroute','On Scene','Busy','Out of Service', ...(dispatchAccess ? ['Dispatch'] : [])];
+    const options = statuses || officerDutyStatuses(user);
     const selected = status || 'Out of Service';
-    return <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-            <button type="button" disabled={saving} aria-label={`My duty status: ${selected}. Unit ${user.unit_number || 'unassigned'}`} className="pointer-events-auto flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-left text-xs text-white shadow-sm disabled:opacity-60">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${selected === 'Available' ? 'bg-emerald-400' : selected === 'Out of Service' ? 'bg-slate-400' : 'bg-amber-400'}`} />
-                <span className="min-w-0 flex-1"><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-400">My status · Unit {user.unit_number || '—'}</span><span className="block truncate font-semibold">{saving ? 'Saving…' : selected}</span></span>
-                <span aria-hidden="true" className="shrink-0 text-slate-400">⌄</span>
-            </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" side="bottom" sideOffset={8} collisionPadding={12} className="z-[2500] w-[min(300px,calc(100vw-24px))] rounded-xl border border-slate-600 bg-slate-950 p-3 text-white shadow-2xl">
-            <h2 className="text-sm font-bold">Change my duty status</h2>
-            <p className="mb-3 mt-1 text-xs text-slate-400">Updates your status throughout Pathfinder.</p>
-            <div className="grid grid-cols-2 gap-2">
-                {options.map(option => <button type="button" key={option} disabled={saving} aria-pressed={selected === option} onClick={() => { setOpen(false); onChange(option); }} className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold disabled:opacity-50 ${selected === option ? 'border-cyan-400 bg-cyan-950 text-cyan-100' : 'border-slate-700 bg-slate-900 hover:border-slate-400'}`}>{option === 'Available' ? 'In Service / Available' : option}</button>)}
-            </div>
-        </PopoverContent>
-    </Popover>;
+    const name = user.rank && user.last_name ? [normalizeRank(user.rank),user.last_name].join(' ') : user.unit_number ? 'Unit ' + user.unit_number : user.full_name || 'My';
+    return <div role="group" aria-label={`My duty status: ${selected}`} className="command-status-bar flex min-w-0 flex-none flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-800 bg-slate-900/80 px-3 py-2">
+        <span className="min-w-0 break-words font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-400">{name} · Status</span>
+        <div className="command-status-options flex min-w-0 flex-wrap items-center gap-1.5">
+            {options.map(option => <button type="button" key={option} disabled={saving} aria-label={`Set duty status to ${option}`} aria-pressed={selected === option} onClick={() => onChange(option)} className={`min-h-9 rounded-md border px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase transition-colors disabled:opacity-50 ${selected === option ? (badges[option] || badges['Out of Service']) + ' ring-1 ring-current ring-offset-1 ring-offset-slate-900' : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white'}`}>{option === 'Enroute' ? 'En Route' : option}</button>)}
+        </div>
+        {saving && <span role="status" className="text-xs text-slate-400">Saving…</span>}
+    </div>;
 }
