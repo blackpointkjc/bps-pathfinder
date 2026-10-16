@@ -46,7 +46,7 @@ export function RosterPrintContent({ users, contactEmail }) {
  const commandRows = COMMAND_TIERS.flatMap(rank=>chunks(users.filter(p=>commandRank(p)===rank),2).map(people=>({rank,people})));
  const pages = chunks(commandRows,3).map(rows=>({title:'COMMAND STRUCTURE',rows}));
  const nonCommand=users.filter(p=>!COMMAND_TIERS.includes(commandRank(p)));
- const inlineRoster=pages.length===1 && commandRows.length<=3 && nonCommand.length<=2;
+ const inlineRoster=pages.length===1 && commandRows.length<=3 && users.length<=5 && nonCommand.length<=1;
  for (const letter of ['A','B','']) {
   const people=users.filter(p=>!COMMAND_TIERS.includes(commandRank(p)) && (letter ? p.platoon===letter : !['A','B'].includes(p.platoon)));
   const title=letter ? `PLATOON ${letter}` : 'PENDING PLATOON ASSIGNMENT';
