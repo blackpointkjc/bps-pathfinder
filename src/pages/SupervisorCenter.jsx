@@ -68,27 +68,29 @@ class SupervisorSectionBoundary extends React.Component {
   }
 }
 
+function SupervisorSectionContent({ section, embedded }) {
+  if (section === 'overview') return <SupervisorOverview />;
+  if (section === 'officer') return <OfficerCenter embedded />;
+  if (section === 'cad') return <CADCenter embedded />;
+  if (section === 'myschedule') return <Schedule />;
+  if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
+  if (section === 'callouts') return <SupervisorCallOuts />;
+  if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+  return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+}
+
 export default function SupervisorCenter({ embedded = false }) {
-  return (
-    <UnifiedCenter
-      eyebrow="Field Leadership"
-      title="Supervisor Center"
-      description="One supervisor workspace containing the complete Officer Center plus supervisor-only command, welfare, handoff, and oversight tools."
-      sections={SECTIONS}
-      defaultSection="overview"
-      queryParam={embedded ? 'supervisor_section' : 'section'}
-      embedded={embedded}
-    >
-      {section => <SupervisorSectionBoundary key={section} section={section}>{(() => {
-        if (section === 'overview') return <SupervisorOverview />;
-        if (section === 'officer') return <OfficerCenter embedded />;
-        if (section === 'cad') return <CADCenter embedded />;
-        if (section === 'myschedule') return <Schedule />;
-        if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
-        if (section === 'callouts') return <SupervisorCallOuts />;
-        if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
-        return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
-      })()}</SupervisorSectionBoundary>}
-    </UnifiedCenter>
-  );
+  return <UnifiedCenter
+    eyebrow="Field Leadership"
+    title="Supervisor Center"
+    description="Supervisor command, scheduling, field oversight and personnel workflows."
+    sections={SECTIONS}
+    defaultSection="overview"
+    queryParam={embedded ? 'supervisor_section' : 'section'}
+    embedded={embedded}
+  >
+    {section => <SupervisorSectionBoundary key={section} section={section}>
+      <SupervisorSectionContent section={section} embedded={embedded} />
+    </SupervisorSectionBoundary>}
+  </UnifiedCenter>;
 }
