@@ -1,3 +1,4 @@
+import { normalizeRank, PAY_RANGES, nextUnitNumber } from './rankPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
         // Never log submitted profile fields or sensitive identification details.
 
         // Update the user's profile using asServiceRole
-        const targetUsers = await base44.asServiceRole.entities.User.list();
+        const targetUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
         const target = (targetUsers || []).find((entry: any) => entry.id === userId);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
         const targetRoles = new Set((target.additional_roles || []).map((role: string) => String(role).toLowerCase()));
@@ -60,19 +61,27 @@ Deno.serve(async (req) => {
         }
 
         // Personnel assignment policy: badge is permanent on first Officer grant;
-        // rank changes allocate the next available unit number; pay never decreases.
+        // rank changes allocate within the configured rank series and reset rank pay.
         const oldRoles = new Set((target.additional_roles || []).map((v:any)=>String(v).toLowerCase()));
         const newRoles = new Set((Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles : target.additional_roles || []).map((v:any)=>String(v).toLowerCase()));
         const officerNow = newRoles.has('officer');
         const officerNewlyGranted = officerNow && !oldRoles.has('officer');
         const operational = officerNow || newRoles.has('cad_access') || newRoles.has('supervisor');
-        const rank = String(updatePayload.rank || target.rank || 'Officer').trim() || 'Officer';
+        const rank = normalizeRank(updatePayload.rank || target.rank || 'Officer');
+        const rankChanged = normalizeRank(target.rank) !== rank;
+        if (updatePayload.rank !== undefined) updatePayload.rank = rank;
         if (operational) {
           if (!String(updatePayload.rank || target.rank || '').trim()) updatePayload.rank = rank;
-          const payMinimums: Record<string, number> = { 'Unarmed Officer':18, 'Officer':19.5, 'Senior Officer':20.5, 'Corporal':21, 'Sergeant':22, 'First Sergeant':23, 'Lieutenant':24, 'Captain':25, 'Lt Colonel':27.5, 'Colonel':27.5, 'Major':27.5 };
-          const previousPay = Math.max(0, Number(target.hourly_rate || 0));
-          const requestedPay = Math.max(0, Number(updatePayload.hourly_rate || 0));
-          updatePayload.hourly_rate = Math.max(previousPay, requestedPay, payMinimums[rank] ?? 19.5);
+          const payRange = PAY_RANGES[rank];
+          if (payRange && (rankChanged || officerNewlyGranted)) {
+            const requested = Number(updatePayload.hourly_rate);
+            const intentionalRate = updatePayload.hourly_rate !== undefined && Number.isFinite(requested) && requested !== Number(target.hourly_rate);
+            updatePayload.hourly_rate = intentionalRate ? Math.min(payRange.max, Math.max(payRange.min, requested)) : payRange.min;
+          } else if (payRange && updatePayload.hourly_rate !== undefined) {
+            const requested = Number(updatePayload.hourly_rate);
+            if (!Number.isFinite(requested) || requested < 0) return Response.json({error:'Hourly rate must be a non-negative number'},{status:400});
+            updatePayload.hourly_rate = Math.max(payRange.min, requested);
+          }
           const reserved:Record<string,string> = {
             '6a72bbee2842d6338cbae513':'4001', // Colonel Hiers
             '6a406e7f5968db44ad597d61':'4002', // Lt Colonel Sherrill
@@ -95,16 +104,9 @@ Deno.serve(async (req) => {
             while (usedBadges.has(String(next))) next++;
             updatePayload.badge_number = String(next);
           }
-          const rankChanged = String(target.rank || '').trim().toLowerCase() !== rank.toLowerCase();
           if (rankChanged || (officerNewlyGranted && !String(target.unit_number || '').trim())) {
-            // Follow existing unit numbering for this rank; do not impose a made-up rank prefix.
-            const otherUsers = (targetUsers || []).filter((person:any)=>person.id !== userId);
-            const occupied = new Set(otherUsers.map((person:any)=>String(person.unit_number || '').trim()));
-            const rankNumbers = otherUsers.filter((person:any)=>String(person.rank || '').trim().toLowerCase() === rank.toLowerCase()).map((person:any)=>Number(person.unit_number)).filter((num:number)=>Number.isSafeInteger(num) && num > 0);
-            const allNumbers = otherUsers.map((person:any)=>Number(person.unit_number)).filter((num:number)=>Number.isSafeInteger(num) && num > 0);
-            let candidate = rankNumbers.length ? Math.max(...rankNumbers) + 1 : allNumbers.length ? Math.max(...allNumbers) + 1 : 101;
-            while (occupied.has(String(candidate))) candidate++;
-            updatePayload.unit_number = String(candidate);
+            try { updatePayload.unit_number = nextUnitNumber(rank, targetUsers, userId); }
+            catch (error) { return Response.json({error:error.message},{status:409}); }
           } else if (String(target.unit_number || '').trim()) {
             updatePayload.unit_number = target.unit_number;
           }
@@ -141,7 +143,8 @@ Deno.serve(async (req) => {
         
         return Response.json({
             success: true,
-            message: 'User updated successfully'
+            message: 'User updated successfully',
+            user: {id:userId, rank:updatePayload.rank || target.rank, unit_number:updatePayload.unit_number ?? target.unit_number, hourly_rate:updatePayload.hourly_rate ?? target.hourly_rate}
         });
         
     } catch (error) {
