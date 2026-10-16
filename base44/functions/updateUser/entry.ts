@@ -79,10 +79,12 @@ Deno.serve(async (req) => {
           }
           const rankChanged = String(target.rank || '').trim().toLowerCase() !== rank.toLowerCase();
           if (rankChanged || (officerNewlyGranted && !String(target.unit_number || '').trim())) {
-            const unitBases:Record<string,number> = { 'Officer':1000, 'Unarmed Officer':1000, 'Senior Officer':1100, 'Corporal':200, 'Sergeant':300, 'First Sergeant':350, 'Lieutenant':400, 'Captain':500, 'Major':600, 'Lt Colonel':700, 'Colonel':800 };
-            const beginning = unitBases[rank] ?? 1000;
-            const occupied = new Set((targetUsers || []).filter((person:any)=>person.id !== userId).map((person:any)=>String(person.unit_number || '').trim()));
-            let candidate = beginning;
+            // Follow existing unit numbering for this rank; do not impose a made-up rank prefix.
+            const otherUsers = (targetUsers || []).filter((person:any)=>person.id !== userId);
+            const occupied = new Set(otherUsers.map((person:any)=>String(person.unit_number || '').trim()));
+            const rankNumbers = otherUsers.filter((person:any)=>String(person.rank || '').trim().toLowerCase() === rank.toLowerCase()).map((person:any)=>Number(person.unit_number)).filter((num:number)=>Number.isSafeInteger(num) && num > 0);
+            const allNumbers = otherUsers.map((person:any)=>Number(person.unit_number)).filter((num:number)=>Number.isSafeInteger(num) && num > 0);
+            let candidate = rankNumbers.length ? Math.max(...rankNumbers) + 1 : allNumbers.length ? Math.max(...allNumbers) + 1 : 101;
             while (occupied.has(String(candidate))) candidate++;
             updatePayload.unit_number = String(candidate);
           } else if (String(target.unit_number || '').trim()) {
