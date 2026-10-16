@@ -2,6 +2,26 @@
   "name": "Schedule",
   "type": "object",
   "properties": {
+    "attendance_status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "called_out",
+        "sent_home",
+        "reassigned"
+      ],
+      "default": "scheduled"
+    },
+    "call_out_record_id": {
+      "type": "string"
+    },
+    "attendance_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "attendance_updated_by": {
+      "type": "string"
+    },
     "officer_email": {
       "type": "string",
       "description": "Email of the assigned officer, or 'OPEN' for open shifts"
