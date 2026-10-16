@@ -13,6 +13,7 @@ import AdminAutoDispatchControls from './AdminAutoDispatchControls';
 import AdminScheduling from './AdminScheduling';
 import FleetVehicleAssignments from './FleetVehicleAssignments';
 import DutySupervisorScheduling from './DutySupervisorScheduling';
+import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminPlannedShifts from './AdminPlannedShifts';
 import AdminShiftBids from './AdminShiftBids';
