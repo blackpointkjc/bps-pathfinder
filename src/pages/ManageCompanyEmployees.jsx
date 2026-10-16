@@ -55,7 +55,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [imapSaving, setImapSaving] = useState(false);
   const [imapForm, setImapForm] = useState({
     mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true,
-    smtp_host: '', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true,
+    smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true,
   });
 
   const queryClient = useQueryClient();

@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 
     if (action === 'send') {
       const transport = nodemailer.createTransport({
-        host: mailbox.smtp_host,
+        host: String(mailbox.smtp_host || '').toLowerCase() === 'imap.purelymail.com' ? 'smtp.purelymail.com' : mailbox.smtp_host,
         port: Number(mailbox.smtp_port || 465),
         secure: mailbox.smtp_secure !== false,
         auth: { user: mailbox.username, pass: mailbox.password },
