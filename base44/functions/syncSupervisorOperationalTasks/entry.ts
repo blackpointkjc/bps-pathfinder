@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     const tasks:any[] = [];
 
     for (const shift of schedules || []) {
-      if (shift.archived === true || shift.is_open === true || lower(shift.officer_email) === 'open') continue;
+      if (shift.archived === true || shift.is_open === true || lower(shift.officer_email) === 'open' || ['called_out','sent_home'].includes(lower(shift.attendance_status))) continue;
       const start = wallMinutes(shift.start_time);
       // Allow a 15-minute grace period; don't send first-time alerts hours late.
       const minutesLate = current.minutes - start;
