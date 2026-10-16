@@ -78,7 +78,8 @@ Deno.serve(async (req) => {
           ['Property alert.', clean(event.incident_type || call?.incident) + '.',
            'Location ' + clean(event.location || call?.location) + '.',
            event.cad_number ? 'CAD number ' + clean(event.cad_number) + '.' : ''].filter(Boolean).join(' ');
-        assignmentAnnouncementText = 'You have been assigned a call. Check your mobile data terminal.';
+        const namedUnit = clean(event.unit_name) || clean(user.unit_number && 'Unit ' + user.unit_number) || clean(user.rank + ' ' + user.last_name);
+        assignmentAnnouncementText = (namedUnit ? namedUnit + ', ' : '') + 'you have been assigned this call. Check your mobile data terminal.';
         announcementText = propertyAnnouncementText + ' ' + assignmentAnnouncementText;
       }
     }
