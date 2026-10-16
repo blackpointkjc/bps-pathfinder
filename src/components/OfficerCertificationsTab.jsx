@@ -198,7 +198,8 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
       ? certs.map((c, i) => i === editingIdx ? certToSave : c)
       : [...certs.filter(c => !(c.category === 'dcjs' && c.course_id === certToSave.course_id && c.certificate_number === certToSave.certificate_number)), certToSave];
     if (onSaveCert) {
-      await onSaveCert(updated);
+      try { await onSaveCert(updated); }
+      catch (error) { window.alert(error?.message || 'Certification could not be saved'); return; }
     }
     setEditFormData(current => ({ ...current, officer_certifications: updated }));
 

@@ -243,7 +243,15 @@ export default function OfficerCertificationCenter() {
                   <div className="min-w-0"><h2 className="truncate text-xl font-black text-white">{[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email}</h2><p className="text-xs text-slate-400">{[selectedUser.rank, selectedUser.unit_number && `Unit ${selectedUser.unit_number}`, selectedUser.division].filter(Boolean).join(' · ')}</p>{selectedUser.dcjs_number && <p className="mt-1 text-xs text-slate-500">DCJS #{selectedUser.dcjs_number}</p>}</div>
                   <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setPushOpen(true)}><Send className="mr-2 h-4 w-4" />Push Training</Button><Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save className="mr-2 h-4 w-4" />{saveMutation.isPending ? 'Saving…' : 'Save Certifications'}</Button></div>
                 </div>
-                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} />
+                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} onSaveCert={async certs => {
+                  const result = await base44.functions.invoke('manageOfficerCertifications', { user_id:selectedUser.id, officer_certifications:certs });
+                  const payload = result?.data || result || {};
+                  if (!payload.success) throw new Error(payload.error || 'Certification save failed');
+                  invalidateTrainingUsers();
+                  await queryClient.invalidateQueries({queryKey:['trainingUsers']});
+                  await queryClient.invalidateQueries({queryKey:['roleWorkQueue']});
+                  toast.success('Certification added and saved');
+                }} />
               </div>
             )}
           </CardContent>

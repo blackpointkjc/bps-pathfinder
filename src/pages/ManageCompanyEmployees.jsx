@@ -686,7 +686,15 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </fieldset>
               </TabsContent>
               <TabsContent value="certs" className="mt-4">
-                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} readOnly={isHrReadOnly} />
+                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} readOnly={isHrReadOnly} onSaveCert={async certs => {
+                  const result = await base44.functions.invoke('manageOfficerCertifications',{user_id:editingUser,officer_certifications:certs});
+                  const payload = result?.data || result || {};
+                  if (!payload.success) throw new Error(payload.error || 'Certification save failed');
+                  invalidateAppDirectory();
+                  await queryClient.invalidateQueries({queryKey:['trainingUsers']});
+                  await queryClient.invalidateQueries({queryKey:['roleWorkQueue']});
+                  alert('Officer certification saved and review tasks updated.');
+                }} />
               </TabsContent>
               <TabsContent value="emergency" className="space-y-4 mt-4">
                 <fieldset disabled={isHrReadOnly}>
