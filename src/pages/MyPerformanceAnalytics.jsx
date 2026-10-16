@@ -266,8 +266,8 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts') },
-    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `One weighted category. Breakdown: DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'On-Time Arrival', score: (onTimeStats.total > 0 || onTimeStats.commandExempt) ? onTimeStats.rate : null, detail: (onTimeStats.commandExempt ? 'Command exemption: late/early punches remain visible without deductions. ' : '') + (onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts')) },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: (jobDuty.commandExempt ? 'Command exemption: missing reports remain visible without deductions; QR duties still count. ' : '') + `One weighted category. Breakdown: DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
     { label: 'Training Completion', score: trainingStats.total > 0 ? trainingStats.percentage : null, detail: trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'No assigned training/compliance records' },
     { label: 'Bid Standing', score: bidStats.score, detail: bidStats.score != null ? `${bidStats.accepted} assigned shift bid${bidStats.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
@@ -278,6 +278,11 @@ export default function MyPerformanceAnalytics() {
 
   const performanceFactors = useMemo(() => {
     const factors = [];
+    if (jobDuty.commandExempt) factors.push({
+      metric: 'Command performance exemption', value: 'Major and above', severity: 'neutral',
+      reason: 'Late/early punches and missing DAR/incident reports stay visible but do not lower the score. Missing shifts, QR duties, training, call-outs, feedback, reviews and other applicable measures still count.',
+      details: [],
+    });
 
     if (onTimeStats.exempt > 0) {
       const exemptDetails = onTimeStats.details

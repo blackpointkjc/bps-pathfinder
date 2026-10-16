@@ -1,4 +1,8 @@
+import { normalizeRank } from '@/utils/rankPolicy';
+
 const EASTERN_TIME_ZONE = 'America/New_York';
+
+export const isCommandPerformanceExempt = officer => ['Major','Lt Colonel','Colonel'].includes(normalizeRank(officer?.rank));
 
 export const emailKey = value => String(value || '').trim().toLowerCase();
 
@@ -286,7 +290,11 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   }
 
   const total = onTime + late + missed + overrun;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, exempt, total, details };
+  const commandExempt = isCommandPerformanceExempt(officer);
+  const rawRate = total ? Math.round((onTime / total) * 100) : null;
+  const rate = commandExempt ? (total ? Math.round(((onTime + late + overrun) / total) * 100) : 100) : rawRate;
+  return { rate, rawRate, commandExempt, onTime, late, missed, overrun, exempt, total,
+    details: details.map(detail => ({ ...detail, command_exempt: commandExempt && ['late','overrun'].includes(detail.status) })) };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -815,18 +823,22 @@ export function calculateJobDutyCompliance({
   const incidentScore = incidentRequired ? Math.round((incidentCompleted / incidentRequired) * 100) : null;
   const qrScore = qrRequired ? Math.round((qrCompleted / qrRequired) * 100) : null;
   const totalRequired = darRequired + incidentRequired + qrRequired;
+  const commandExempt = isCommandPerformanceExempt(officer);
   const totalMissed = Math.max(0, darRequired - darCompleted)
     + Math.max(0, incidentRequired - incidentCompleted)
     + Math.max(0, qrRequired - qrCompleted);
   // Job Duty must move when additional required duties are missed. A pure completion
   // ratio makes 0/8 and 0/15 both equal 0%, which hides the difference in performance.
   // Each missed required duty lowers Job Duty by 5 points, capped at zero.
-  const score = totalRequired > 0 ? Math.max(0, 100 - (totalMissed * 5)) : null;
+  const countedMissed = commandExempt ? Math.max(0, qrRequired - qrCompleted) : totalMissed;
+  const score = commandExempt || totalRequired > 0 ? Math.max(0, 100 - (countedMissed * 5)) : null;
 
   return {
     score,
-    dailyActivity: { required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
-    incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
+    commandExempt,
+    countedMissed,
+    dailyActivity: { commandExempt, required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
+    incidentReports: { commandExempt, required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
     qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
     dutySessions: darSessions.map(session => ({
@@ -908,7 +920,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   // 100%. The remaining real categories are re-normalized across their configured
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
-    { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
+    { label: 'On-Time Arrival', score: punctuality?.rate != null && (punctuality.total > 0 || punctuality.commandExempt) ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
     { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
