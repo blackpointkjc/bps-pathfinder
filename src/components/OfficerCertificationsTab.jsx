@@ -190,35 +190,14 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   const saveCert = () => {
     const certToSave = { ...newCert };
 
-    if (false && certToSave.category === "dcjs" && ENTRY_CONVERSIONS[certToSave.course_id]) {
-      const convertsTo = ENTRY_CONVERSIONS[certToSave.course_id];
-      const convertedCourse = DCJS_COURSES.find(c => c.id === convertsTo);
-      certToSave.notes = (certToSave.notes ? certToSave.notes + " | " : "") + `Entry level completed — tracking as ${convertsTo} for renewals`;
-      const renewalCert = {
-        ...certToSave,
-        course_id: convertsTo,
-        training_name: convertedCourse?.name || convertsTo,
-        status: "active",
-        notes: `Auto-converted from ${certToSave.course_id}`,
-        cert_file_url: "",
-      };
-      let updated;
-      if (editingIdx !== null) {
-        updated = certs.map((c, i) => i === editingIdx ? certToSave : c);
-      } else {
-        const filtered = certs.filter(c => c.course_id !== certToSave.course_id && c.course_id !== convertsTo);
-        updated = [...filtered, certToSave, renewalCert];
-      }
-      setEditFormData({ ...editFormData, officer_certifications: updated });
-    } else {
-      let updated;
-      if (editingIdx !== null) {
-        updated = certs.map((c, i) => i === editingIdx ? certToSave : c);
-      } else {
-        updated = [...certs.filter(c => !(c.category === 'dcjs' && c.course_id === certToSave.course_id && c.certificate_number === certToSave.certificate_number)), certToSave];
-      }
-      setEditFormData({ ...editFormData, officer_certifications: updated });
-    }
+    // Save a credential once. Entry-level completion does not grant a renewal.
+    // Multiple training codes can be attached to the same physical credential.
+    certToSave.course_ids = [...new Set([certToSave.course_id, ...(certToSave.course_ids || [])].filter(Boolean))];
+    certToSave.renewal_course_ids = certToSave.course_ids.map(code => ENTRY_CONVERSIONS[code]).filter(Boolean);
+    const updated = editingIdx !== null
+      ? certs.map((c, i) => i === editingIdx ? certToSave : c)
+      : [...certs.filter(c => !(c.category === 'dcjs' && c.course_id === certToSave.course_id && c.certificate_number === certToSave.certificate_number)), certToSave];
+    setEditFormData({ ...editFormData, officer_certifications: updated });
 
     setNewCert(BLANK_CERT);
     setAddMode(null);
