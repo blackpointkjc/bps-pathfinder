@@ -224,7 +224,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
 
   const startEdit = (idx) => {
     setEditingIdx(idx);
-    setNewCert({ ...certs[idx] });
+    setNewCert({ ...certs[idx], course_ids: recoveredCodes(certs[idx]), renewal_course_ids: [...new Set(recoveredCodes(certs[idx]).map(code => ENTRY_CONVERSIONS[code]).filter(Boolean))] });
     setAddMode(certs[idx].category === "dcjs" ? "dcjs" : "company");
   };
 
