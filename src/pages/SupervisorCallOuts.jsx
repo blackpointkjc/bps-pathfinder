@@ -109,6 +109,7 @@ export default function SupervisorCallOuts() {
       reason: "",
       location: "",
       original_location: "",
+      shift_id: "",
       destination_location: "",
       exclude_original_incident_metric: false,
     });
@@ -246,7 +247,7 @@ export default function SupervisorCallOuts() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Officer *</Label>
-              <Select value={formData.officer_email} onValueChange={(value) => setFormData({...formData, officer_email: value})}>
+              <Select value={formData.officer_email} onValueChange={(value) => setFormData({...formData, officer_email: value, shift_id: ''})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select officer..." />
                 </SelectTrigger>
