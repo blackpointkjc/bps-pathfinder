@@ -1,3 +1,5 @@
+import SiteChainOfCommand from '@/components/SiteChainOfCommand';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -31,6 +33,9 @@ export default function ClientDocuments() {
     queryKey: ['generalPostOrders'],
     queryFn: () => base44.entities.GeneralPostOrder.list('sort_order'),
   });
+
+  const {data: directoryUsers = []} = useQuery({queryKey:['clientPostOrderChainUsers'],queryFn:()=>listDirectoryUsers(),enabled:!!user});
+  const {data: directoryLocations = []} = useQuery({queryKey:['clientPostOrderChainLocations'],queryFn:()=>listDirectoryLocations(),enabled:!!user});
 
   const toggleExpand = (id) => setExpandedOrders(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -94,6 +99,7 @@ export default function ClientDocuments() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
+                  <SiteChainOfCommand assignedSupervisors={directoryLocations.find(location=>location.site_name===order.site_name)?.assigned_supervisors?.length ? directoryLocations.find(location=>location.site_name===order.site_name).assigned_supervisors : order.assigned_supervisors || []} users={directoryUsers}/>
                   <div className="grid md:grid-cols-2 gap-4">
                     {order.property_manager_name && (
                       <div>
@@ -156,6 +162,7 @@ export default function ClientDocuments() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
+                  <SiteChainOfCommand assignedSupervisors={directoryLocations.find(location=>location.site_name===order.site_name)?.assigned_supervisors?.length ? directoryLocations.find(location=>location.site_name===order.site_name).assigned_supervisors : order.assigned_supervisors || []} users={directoryUsers}/>
                     {order.access_codes && (
                       <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
                         <p className="text-sm font-semibold text-amber-900 mb-1">Access Codes</p>

@@ -1,3 +1,4 @@
+import SiteChainOfCommand from '@/components/SiteChainOfCommand';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -223,7 +224,8 @@ export default function PostOrders() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-sm font-semibold text-green-700">Assigned Supervisors:</p>
-                    <p className="text-slate-900 font-medium">{getSupervisorNames(selectedPostOrder.assigned_supervisors)}</p>
+                    <p className="break-words text-slate-900 font-medium">{getSupervisorNames(selectedPostOrder.assigned_supervisors)}</p>
+                    <SiteChainOfCommand assignedSupervisors={siteLocation?.assigned_supervisors?.length ? siteLocation.assigned_supervisors : selectedPostOrder.assigned_supervisors || []} users={allUsers || []}/>
                   </div>
                   {selectedPostOrder.property_manager_name && (
                     <div className="space-y-2">
