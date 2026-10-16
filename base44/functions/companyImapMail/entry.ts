@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { ImapFlow } from 'npm:imapflow@1.0.181';
+import { ImapFlow } from 'npm:imapflow@2';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { simpleParser } from 'npm:mailparser@3.7.2';
 
@@ -91,12 +91,17 @@ Deno.serve(async (req) => {
         greetingTimeout: 20000,
         socketTimeout: 30000,
       });
+      imap.on('error', (error:any) => console.warn('companyImapMail IMAP client error', {
+        code:String(error?.code || ''), message:String(error?.message || ''),
+        serverResponseCode:String(error?.serverResponseCode || ''),
+      }));
       try { await imap.connect(); } catch(error:any) {
         const message = String(error?.message || 'Connection failed');
         const hint = /auth|login|credential|authenticate|basic/i.test(message) && /office365|outlook\.office365|hotmail|outlook\.com/i.test(String(mailbox.imap_host || '')) ? ' Microsoft 365 may require OAuth2 rather than password authentication.' : '';
         const networkHint = /establish connection in required time|etimedout|timeout|econnrefused|enotfound|network unreachable/i.test(message)
           ? ' The IMAP server could not be reached reliably from the Pathfinder backend. This is a network/IMAP service connection problem, not evidence of an incorrect password. Confirm that outbound TLS traffic to the IMAP host on port 993 is permitted.' : '';
-        throw new Error(`IMAP connection failed: ${message}.${networkHint}${hint}`);
+        const reason = String(imap?.byeReason || error?.responseText || error?.serverResponseCode || '');
+        throw new Error(`IMAP connection failed: ${message}${reason ? ` (server: ${reason})` : ''}.${networkHint}${hint}`);
       }
       return imap;
     };
@@ -172,7 +177,7 @@ Deno.serve(async (req) => {
       // produced misleading fd errors unrelated to the remote mail service.
       if (!(report.inbox as any).ok) report.network = {
         ok:null,
-        detail:'Direct TLS socket probe unavailable in this runtime. See IMAP login and inbox results above; no independent network conclusion was made.',
+        detail:'IMAP connection diagnostics are shown above. An independent socket probe is not supported by this host.',
       };
       const ok = (report.imap as any).ok && (report.inbox as any).ok && (report.smtp as any).ok;
       await base44.asServiceRole.entities.CompanyImapMailbox.update(mailbox.id, {
