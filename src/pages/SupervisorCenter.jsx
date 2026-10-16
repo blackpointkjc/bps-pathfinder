@@ -23,6 +23,7 @@ const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
   { id: 'cad', label: 'CAD Center', description: 'Dispatch dashboard, active calls, and field response tools', icon: Radio },
+  { id: 'callouts', label: 'Officer Call-Outs', description: 'Mark absences and update schedule and performance', icon: ClipboardCheck },
   { id: 'dutytimeline', label: 'Daily Duty Timeline', description: 'See every duty supervisor across a complete 24-hour day', icon: ShieldCheck },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
@@ -63,6 +64,7 @@ export default function SupervisorCenter({ embedded = false }) {
         if (section === 'officer') return <OfficerCenter embedded />;
         if (section === 'cad') return <CADCenter embedded />;
         if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
+        if (section === 'callouts') return <SupervisorCallOuts />;
         if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
         return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
       }}
