@@ -54,6 +54,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [imapMailboxId, setImapMailboxId] = useState('');
   const [imapSaving, setImapSaving] = useState(false);
   const [imapTestReport, setImapTestReport] = useState(null);
+  const [revealedMailboxPassword, setRevealedMailboxPassword] = useState(null);
+  const [revealingMailboxPassword, setRevealingMailboxPassword] = useState(false);
   const [imapForm, setImapForm] = useState({
     mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true,
     smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true,
@@ -218,6 +220,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     setEditingUser(userData.id);
     setImapMailboxId('');
     setImapTestReport(null);
+    setRevealedMailboxPassword(null);
     setImapForm({ mailbox_email: '', display_name: '', imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true, smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
     if (isSystemAdmin) {
       base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
@@ -304,6 +307,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         : await base44.entities.CompanyImapMailbox.create(payload);
       setImapMailboxId(saved.id || imapMailboxId);
       setImapTestReport(null);
+      setRevealedMailboxPassword(null);
       setImapForm(current => ({ ...current, password: '' }));
       alert('Company IMAP mailbox assignment saved.');
     } catch (error) {
@@ -311,6 +315,21 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     } finally {
       setImapSaving(false);
     }
+  };
+
+  const toggleMailboxPassword = async () => {
+    if (revealedMailboxPassword !== null) { setRevealedMailboxPassword(null); return; }
+    if (!isSystemAdmin || !imapMailboxId || !editingUser) return;
+    try {
+      setRevealingMailboxPassword(true);
+      // Fetch only after an explicit administrator click; never place the
+      // existing credential into the editable password input or console logs.
+      const mailbox = await base44.entities.CompanyImapMailbox.get(imapMailboxId);
+      if (String(mailbox?.user_id) !== String(editingUser)) throw new Error('Selected mailbox does not belong to this officer.');
+      if (!mailbox?.password) throw new Error('The existing password is not available to this administrator.');
+      setRevealedMailboxPassword(String(mailbox.password));
+    } catch (error) { alert('Unable to reveal mailbox password: ' + (error?.message || 'Access denied')); }
+    finally { setRevealingMailboxPassword(false); }
   };
 
   const verifyCompanyMailbox = async () => {
@@ -592,7 +611,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={open => { setShowDialog(open); if (!open) setRevealedMailboxPassword(null); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{canManageEmployees ? 'Edit Employee Information' : 'Employee Information'}</DialogTitle>
@@ -769,6 +788,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Display Name</Label><Input placeholder="Officer Mailbox" value={imapForm.display_name} onChange={e => setImapForm({...imapForm, display_name:e.target.value})} /></div>
                   <div className="col-span-full rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">Company server settings are preconfigured from the existing Sergeant Robinson mailbox: secure IMAP port 993 and secure SMTP port 465. Only provide the officer mailbox address and its password; the mailbox must already exist at the mail provider.</div>
                   <div><Label className="text-xs text-slate-500">Mailbox Password</Label><Input type="password" placeholder={imapMailboxId ? 'Leave blank to keep current password' : 'Enter mailbox password'} value={imapForm.password} onChange={e => setImapForm({...imapForm, password:e.target.value})} /></div>
+                  {imapMailboxId && isSystemAdmin && <div className="col-span-full rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <Label className="text-xs text-slate-700">Current Officer Mailbox Password — Admin Only</Label>
+                    <div className="mt-2 flex flex-wrap items-center gap-2"><code className="min-w-0 flex-1 break-all rounded bg-white p-2 text-sm text-slate-900">{revealedMailboxPassword === null ? '••••••••••••' : revealedMailboxPassword}</code><Button type="button" variant="outline" size="sm" disabled={revealingMailboxPassword} onClick={toggleMailboxPassword}>{revealingMailboxPassword ? 'Loading…' : revealedMailboxPassword === null ? 'Show Password' : 'Hide Password'}</Button></div>
+                    <p className="mt-2 text-xs text-slate-600">Visible only on request to system administrators. Hide it before sharing your screen. The field above is for changing the password, not displaying the stored password.</p>
+                  </div>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" onClick={saveCompanyMailbox} disabled={imapSaving}>{imapSaving ? 'Saving…' : 'Save Company Mailbox'}</Button>
