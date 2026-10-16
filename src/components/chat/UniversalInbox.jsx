@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MessageCircle, Plus, Search, Send, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTeamsDirectChatMessages, listTeamsDirectChats, sendTeamsDirectMessage } from '@/lib/teamsGraph';
-import { beginOutlookConnection } from '@/lib/outlookGraph';
+import { beginOutlookConnection, getOutlookConnectionStatus } from '@/lib/outlookGraph';
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
 
@@ -23,6 +23,8 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [newThread, setNewThread] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [syncError, setSyncError] = useState('');
+  const [checkingMicrosoft, setCheckingMicrosoft] = useState(true);
+  const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -77,6 +79,18 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     return names.length ? names.join(', ') : 'Microsoft Teams Chat';
   };
 
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    let active = true;
+    setCheckingMicrosoft(true);
+    getOutlookConnectionStatus(currentUser.id, currentUser.email || '').then(status => {
+      if (active) setMicrosoftConnected(Boolean(status?.connected));
+    }).catch(() => { if (active) setMicrosoftConnected(false); }).finally(() => {
+      if (active) setCheckingMicrosoft(false);
+    });
+    return () => { active = false; };
+  }, [currentUser?.id, currentUser?.email]);
+
   const loadChats = async ({ keepSelection = true } = {}) => {
     if (!currentUser?.id) return;
     setLoadingChats(true);
@@ -87,6 +101,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       setChats(nextChats);
       publishUnreadCount(nextChats);
       setSyncError('');
+      setMicrosoftConnected(true);
       setSelectedChatId(current => {
         if (keepSelection && current && nextChats.some(chat => chat.id === current)) return current;
         return !isMobile && nextChats[0]?.id ? nextChats[0].id : '';
@@ -258,6 +273,13 @@ export default function UniversalInbox({ currentUser, users = [] }) {
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Teams conversations" className="w-full bg-transparent text-sm outline-none" /></div>
         </div>
+        {!checkingMicrosoft && !microsoftConnected && (
+          <div className="border-b border-blue-800 bg-blue-950/40 p-3">
+            <div className="text-xs font-bold text-white">Sign in with your Microsoft Teams account to view Teams messages.</div>
+            <div className="mt-1 text-xs text-blue-200">Company IMAP email and Microsoft Teams use separate sign-ins. If you already connected your Microsoft/Outlook account, Pathfinder signs you in automatically while that connection remains valid.</div>
+            <button type="button" onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft Teams sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO MICROSOFT TEAMS</button>
+          </div>
+        )}
         {syncError && (
           <div className="border-b border-slate-800 bg-[#101725] p-3">
             <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Connect Microsoft 365 to load your Teams conversations.' : `Teams could not refresh: ${syncError}`}</div>
