@@ -44,6 +44,7 @@ import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorOverview from './SupervisorOverview';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorTasks from './SupervisorTasks';
+import SupervisorCallOuts from './SupervisorCallOuts';
 import SupervisorDailyCode from './SupervisorDailyCode';
 import SupervisorInspections from './SupervisorInspections';
 import SupervisorPerformanceReview from './SupervisorPerformanceReview';
@@ -85,6 +86,7 @@ const ADMIN_SECTIONS = [
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
+  { id: 'callouts', label: 'Officer Call-Outs', description: 'Record an officer absence and update the schedule', icon: ClipboardCheck },
   { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },
 ];
@@ -210,6 +212,7 @@ function AdminSupervisorToolsOnly() {
   return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Complete supervisor tools for administrators, without the personal Officer Workspace." sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="overview" queryParam="admin_supervisor_section" embedded>
     {section => {
       if (section === 'overview') return <SupervisorOverview />;
+      if (section === 'callouts') return <SupervisorCallOuts />;
       return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />;
     }}
   </UnifiedCenter>;
