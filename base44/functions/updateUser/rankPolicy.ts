@@ -1,8 +1,8 @@
 // Shared personnel policy. This module contains no runtime or service dependencies.
 export const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 export const RANK_SERIES: Record<string, {start:number,end:number}> = {
- 'Colonel':{start:100,end:199},'Lt Colonel':{start:200,end:299},
- 'Major':{start:300,end:349},'Captain':{start:350,end:399},
+ 'Colonel':{start:100,end:100},'Lt Colonel':{start:101,end:199},
+ 'Major':{start:200,end:299},'Captain':{start:350,end:399},
  'Lieutenant':{start:400,end:449},'First Sergeant':{start:450,end:499},
  'Sergeant':{start:500,end:549},'Corporal':{start:550,end:599},
  'Senior officer':{start:600,end:649},'Officer':{start:650,end:699},
@@ -37,6 +37,11 @@ export function nextUnitNumber(rank: unknown, users: any[] = [], excludedId = ''
 }
 export function previewRankChange(original: any, rank: unknown, users: any[] = []) {
  const normalized=normalizeRank(rank);
- if(normalized===normalizeRank(original?.rank)) return {rank:normalized,unit_number:original?.unit_number || '',hourly_rate:original?.hourly_rate ?? getPayRangeForRank(normalized).min};
+ if(normalized===normalizeRank(original?.rank)) {
+  const series=RANK_SERIES[normalized];
+  const current=Number(original?.unit_number);
+  const valid=!series || (Number.isSafeInteger(current) && current>=series.start && current<=series.end);
+  return {rank:normalized,unit_number:valid ? original?.unit_number || '' : nextUnitNumber(normalized,users,original?.id),hourly_rate:original?.hourly_rate ?? getPayRangeForRank(normalized).min};
+ }
  return {rank:normalized,unit_number:nextUnitNumber(normalized,users,original?.id),hourly_rate:PAY_RANGES[normalized]?.min ?? original?.hourly_rate ?? 18};
 }
