@@ -399,6 +399,8 @@ function CommandDashboardInner({ embedded = false }) {
 
             <OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving} />
 
+            <AdminLiveLocationPrivacy currentUser={currentUser} />
+
             {/* ── MAIN WORKSPACE ── */}
             <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">
                 <div className="command-queue-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">

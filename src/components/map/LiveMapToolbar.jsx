@@ -1,6 +1,6 @@
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 export default function LiveMapToolbar({ user, status, saving, onStatusChange, onBack, onRecenter, gpsLabel, gpsActive, online, speed, unitCount, callCount, unassignedCount }) {
-    return <header aria-label="Live Map controls" className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-700 bg-[#0a1220]/95 px-2 py-1 text-white backdrop-blur">
+    return <header aria-label="Live Map controls" className="live-map-toolbar pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-700 bg-[#0a1220]/95 px-2 py-1 text-white backdrop-blur">
         <button type="button" onClick={onBack} className="flex h-7 shrink-0 items-center gap-1.5 text-xs font-bold"><span aria-hidden="true">←</span> Live Map</button>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px]">
             <button type="button" onClick={onRecenter} className={`min-w-0 text-left font-semibold ${gpsActive ? 'text-emerald-300' : 'text-amber-300'}`} title="Request a GPS fix and center the map">{gpsLabel}</button>
