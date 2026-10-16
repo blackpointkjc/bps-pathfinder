@@ -54,6 +54,22 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'additional_roles must be an array' }, { status: 400 });
         }
 
+        // Apply officer defaults on the server, not only as temporary edit-form values.
+        const effectiveRoles = Array.isArray(updatePayload.additional_roles) ? updatePayload.additional_roles.map((r:any)=>String(r).toLowerCase()) : [...targetRoles];
+        const operational = effectiveRoles.includes('officer') || effectiveRoles.includes('cad_access') || effectiveRoles.includes('supervisor');
+        if (operational) {
+          const rank = String(updatePayload.rank || target.rank || 'Officer').trim() || 'Officer';
+          if (!String(updatePayload.rank || target.rank || '').trim()) updatePayload.rank = rank;
+          const payMinimums:Record<string,number> = { 'Unarmed Officer':18, 'Officer':19.5, 'Senior Officer':20.5, 'Corporal':21, 'Sergeant':22, 'First Sergeant':23, 'Lieutenant':24, 'Captain':25, 'Lt Colonel':27.5, 'Colonel':27.5, 'Major':27.5 };
+          const currentPay = Number(updatePayload.hourly_rate ?? target.hourly_rate ?? 0);
+          if (!Number.isFinite(currentPay) || currentPay <= 0) updatePayload.hourly_rate = payMinimums[rank] ?? 19.5;
+          // Badge IDs must be unique. Use the unit number only if not in use;
+          // otherwise leave badge blank for deliberate administrator allocation.
+          if (!String(updatePayload.badge_number || target.badge_number || '').trim()) {
+            const candidate = String(updatePayload.unit_number || target.unit_number || '').trim();
+            if (candidate && !(targetUsers || []).some((person:any) => person.id !== userId && String(person.badge_number || '').trim() === candidate)) updatePayload.badge_number = candidate;
+          }
+        }
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
 
         // On the first admin approval of an officer, create an actionable

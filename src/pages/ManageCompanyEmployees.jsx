@@ -243,7 +243,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       state: userData.state || "",
       zip: userData.zip || "",
       mobile_phone: userData.mobile_phone || "",
-      badge_number: userData.badge_number || "",
+      badge_number: userData.badge_number || userData.unit_number || "",
       rank: userData.rank || "Officer",
       unit_number: userData.unit_number || "",
       hire_date: userData.hire_date || format(new Date(), 'yyyy-MM-dd'),
@@ -604,7 +604,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Badge Number</Label><Input value={editFormData.badge_number || ""} onChange={(e) => setEditFormData({...editFormData, badge_number: e.target.value})} /></div>
                   <div>
                     <Label className="text-xs text-slate-500">Rank</Label>
-                    <Select value={editFormData.rank || "Officer"} onValueChange={(v) => setEditFormData({...editFormData, rank: v})}>
+                    <Select value={editFormData.rank || "Officer"} onValueChange={(v) => setEditFormData(prev => ({...prev, rank: v, hourly_rate: Number(prev.hourly_rate) > 0 ? prev.hourly_rate : getPayRangeForRank(v).min}))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer','Human Resources','Support Staff'].map(r => (
