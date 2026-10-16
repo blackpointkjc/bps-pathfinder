@@ -171,6 +171,7 @@ import Summons from './pages/Summons';
 import WitnessSubpoenaRequest from './pages/WitnessSubpoenaRequest';
 import SupervisorCenter from './pages/SupervisorCenter';
 import SupervisorDutyTimeline from './pages/SupervisorDutyTimeline';
+import SupervisorFieldOversight from './pages/SupervisorFieldOversight';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
 import SupervisorDailyCode from './pages/SupervisorDailyCode';
@@ -323,6 +324,7 @@ export const PAGES = {
     "WitnessSubpoenaRequest": WitnessSubpoenaRequest,
     "SupervisorCenter": SupervisorCenter,
     "SupervisorDutyTimeline": SupervisorDutyTimeline,
+    "SupervisorFieldOversight": SupervisorFieldOversight,
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
     "SupervisorDailyCode": SupervisorDailyCode,
