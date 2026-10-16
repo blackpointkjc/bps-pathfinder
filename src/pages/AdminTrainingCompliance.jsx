@@ -166,7 +166,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
 
   // Merge TrainingModules into requirements-compatible list for dropdowns
   const allTrainingOptions = useMemo(() => {
-    const reqOptions = requirements.filter(r => r.active).map(r => ({
+    const reqOptions = requirements.filter(r => r.active !== false).map(r => ({
       id: r.id,
       training_name: r.training_name,
       category: r.category || 'other',
@@ -1121,10 +1121,10 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               <Select value="" onValueChange={v => { const opt = allTrainingOptions.find(o => o.id === v); if (opt) addTrainingToAssign(opt); }}>
                 <SelectTrigger><SelectValue placeholder="Add training from saved types..." /></SelectTrigger>
                 <SelectContent>
-                  {requirements.filter(r => r.active).length > 0 && (
+                  {requirements.filter(r => r.active !== false).length > 0 && (
                     <>
                       <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Compliance Rules</div>
-                      {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
+                      {requirements.filter(r => r.active !== false).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                     </>
                   )}
                   {trainingModules.filter(m => m.active !== false && !requirements.some(r => r.training_name.toLowerCase() === m.title.toLowerCase())).length > 0 && (
@@ -1157,7 +1157,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                               <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="__none__">None</SelectItem>
-                                {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
+                                {requirements.filter(r => r.active !== false).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             {renewalReq && <p className="text-slate-500 mt-0.5">Renewal: {renewalReq.training_name}</p>}
@@ -1300,10 +1300,10 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                   }}>
                     <SelectTrigger className="bg-white"><SelectValue placeholder="Select from saved classes..." /></SelectTrigger>
                     <SelectContent>
-                      {requirements.filter(r => r.active).length > 0 && (
+                      {requirements.filter(r => r.active !== false).length > 0 && (
                         <>
                           <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Compliance Rules</div>
-                          {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
+                          {requirements.filter(r => r.active !== false).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                         </>
                       )}
                       {trainingModules.filter(m => m.active !== false && !requirements.some(r => r.training_name.toLowerCase() === m.title.toLowerCase())).length > 0 && (
@@ -1331,7 +1331,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                       <SelectTrigger className="bg-white"><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
-                        {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
+                        {requirements.filter(r => r.active !== false).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1440,7 +1440,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                   <SelectTrigger><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
-                    {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
+                    {requirements.filter(r => r.active !== false).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1618,7 +1618,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                       <SelectTrigger><SelectValue placeholder="Select renewal training..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
-                        {requirements.filter(r => r.active).map(r => (
+                        {requirements.filter(r => r.active !== false).map(r => (
                           <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>
                         ))}
                       </SelectContent>

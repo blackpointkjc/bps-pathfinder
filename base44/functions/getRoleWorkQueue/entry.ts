@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.User.list('-updated_date', 2000)
     );
 
+    let certificationTodos: any[] = [];
     let callOuts: any[] = [];
     let schedules: any[] = [];
     let entries: any[] = [];
@@ -233,12 +234,13 @@ Deno.serve(async (req) => {
     let weekStatuses: any[] = [];
 
     if (queueRole === 'hr') {
-      [schedules, entries, timeOff, reviews, callOuts] = await loadLimited([
+      [schedules, entries, timeOff, reviews, callOuts, certificationTodos] = await loadLimited([
         () => safeList('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
         () => safeList('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
         () => safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)),
         () => safeList('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000)),
         () => safeList('call-outs', () => base44.asServiceRole.entities.CallOut.list('-call_out_date', 1500)),
+        () => safeList('certification renewals', () => base44.asServiceRole.entities.CertificationTodo.list('-days_until_expiration', 1000)),
       ]);
     } else {
       [
@@ -431,6 +433,10 @@ Deno.serve(async (req) => {
         page: 'ManageTimeEntries',
       });
     }
+    for (const cert of certificationTodos.filter((row:any) => row.completed !== true)) {
+      const person = personFor(cert);
+      candidates.push({ id:`cert-renewal-${cert.id}`, source_id:String(cert.id), kind:'certification_renewal', priority:Number(cert.days_until_expiration) <= 0 ? 'critical' : 'high', title:'Officer Certification Renewal Required', person:cert.officer_name || person.name, detail:`${cert.certification_type || 'Certification'} expires ${cert.expiration_date || 'date unavailable'} · ${cert.officer_email || ''}`, page:'AdminCertificationAlerts' });
+    }
     for (const callout of callOuts.filter((row: any) => row.voided !== true && ['called_out','sent_home','reassigned'].includes(normalized(row.call_out_type)))) {
       const person = personFor(callout);
       candidates.push({ id: `callout-review-${callout.id}`, source_id: String(callout.id), kind: 'call_out_review', priority: 'high', title: 'Officer Call-Out / Coverage Review', person: person.name, detail: `${callout.call_out_date} · ${callout.location || 'Scheduled assignment'} · ${callout.call_out_type} · ${callout.reason || 'Review coverage and attendance'}`, page: 'ManageTimeEntries' });
@@ -510,7 +516,7 @@ Deno.serve(async (req) => {
     }
 
     const allowedKinds = queueRole === 'hr'
-      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'pto', 'performance_review', 'annual_review_due'])
+      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'pto', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
         ? new Set(['report_review'])
         : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
@@ -569,6 +575,7 @@ Deno.serve(async (req) => {
       if (kind === 'missed_clock_in' || kind === 'late_clock_out') {
         return !loadErrorSet.has('schedules') && !loadErrorSet.has('time entries');
       }
+      if (kind === 'certification_renewal') return !loadErrorSet.has('certification renewals');
       if (kind === 'call_out_review') return !loadErrorSet.has('call-outs');
       if (kind === 'pto') return !loadErrorSet.has('time-off requests');
       if (kind === 'performance_review' || kind === 'annual_review_due') {
@@ -620,6 +627,7 @@ Deno.serve(async (req) => {
     // across hourly refreshes or page reloads.
     if (loadErrors.length) {
       const destinationFor = (kind: string) => {
+        if (kind === 'certification_renewal') return 'AdminCertificationAlerts';
         if (kind === 'call_out_review') return 'ManageTimeEntries';
         if (kind === 'pto') return 'AdminPTOApproval';
         if (kind === 'performance_review' || kind === 'annual_review_due') return 'AdminPerformanceReviews';
