@@ -310,7 +310,7 @@ export default function MyPerformanceAnalytics() {
       factors.push({
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
-        severity: 'negative',
+        severity: onTimeStats.commandExempt && !onTimeStats.missed ? 'neutral' : 'negative',
         reason: `${onTimeStats.onTime} on-time arrival${onTimeStats.onTime === 1 ? '' : 's'}, ${onTimeStats.late} late arrival${onTimeStats.late === 1 ? '' : 's'}, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}. Early clock-ins and late clock-outs are neutral for this metric.`, 
         details: problemDetails
       });
@@ -330,7 +330,7 @@ export default function MyPerformanceAnalytics() {
       factors.push({
         metric: 'Daily Activity Reports',
         value: `${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required}`,
-        severity: jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
+        severity: jobDuty.commandExempt ? 'neutral' : jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
         reason: jobDuty.dailyActivity.missed > 0
           ? `${jobDuty.dailyActivity.missed} continuous duty session${jobDuty.dailyActivity.missed === 1 ? ' is' : 's are'} missing a DAR. Switch Site segments are merged, and a submitted team DAR for the same session counts for all covered officers.`
           : `All ${jobDuty.dailyActivity.required} continuous duty session${jobDuty.dailyActivity.required === 1 ? '' : 's'} have a submitted DAR.`,
@@ -349,7 +349,7 @@ export default function MyPerformanceAnalytics() {
       factors.push({
         metric: 'Incident Reports',
         value: `${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required}`,
-        severity: jobDuty.incidentReports.missed > 0 ? 'negative' : 'positive',
+        severity: jobDuty.commandExempt ? 'neutral' : jobDuty.incidentReports.missed > 0 ? 'negative' : 'positive',
         reason: jobDuty.incidentReports.missed > 0
           ? `${jobDuty.incidentReports.missed} property CAD call${jobDuty.incidentReports.missed === 1 ? '' : 's'} still need a linked Incident Report. A submitted report from any officer linked to that CAD satisfies the shared call obligation.`
           : 'Every required property CAD call has a submitted linked Incident Report.',
@@ -490,7 +490,7 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Performance uses actual attendance, required job duties, and documented evaluation records. Missing required DARs, incident reports, and QR duties lower the Job Duty portion of the score. Metrics with no real record are omitted instead of being shown as a false score.</p>
+            <p className="text-xs text-blue-100">{jobDuty.commandExempt ? 'Major and above receive command credit for punctuality and report completion. Late/early punches and missing reports remain visible without deductions. Other applicable performance measures still count.' : 'Performance uses actual attendance, required job duties, and documented evaluation records. Missing required DARs, incident reports, and QR duties lower the Job Duty portion of the score. Metrics with no real record are omitted instead of being shown as a false score.'}</p>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-sm text-slate-600">

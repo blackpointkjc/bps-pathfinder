@@ -9,6 +9,7 @@ import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
 import { pagesConfig } from './pages.config';
+import UnitStatus from './pages/UnitStatus';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -18,7 +19,9 @@ import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
 import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
-const { Pages, Layout, mainPage } = pagesConfig;
+const { Layout, mainPage } = pagesConfig;
+// Supplemental routes remain available before the builder regenerates pages.config.
+const Pages = { ...pagesConfig.Pages, UnitStatus };
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
