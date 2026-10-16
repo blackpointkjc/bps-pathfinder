@@ -10,7 +10,8 @@ import { Users, Shield, Edit2, Wrench, Car, Server, TrendingUp, Clock, AlertTria
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { previewRankChange } from '@/utils/rankPolicy';
+import { listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 export default function AdminPortal({ embedded = false }) {
@@ -138,6 +139,7 @@ export default function AdminPortal({ embedded = false }) {
                     full_name: editingUser.full_name,
                     role: editingUser.role,
                     rank: editingUser.rank,
+                    hourly_rate: editingUser.hourly_rate,
                     last_name: editingUser.last_name,
                     unit_number: editingUser.unit_number,
                     dispatch_role: editingUser.dispatch_role || false,
@@ -149,7 +151,9 @@ export default function AdminPortal({ embedded = false }) {
             console.log('Update response:', response);
             
             if (response.data?.success) {
-                toast.success('User updated successfully');
+                invalidateAppDirectory();
+                const saved=response.data.user;
+                toast.success(saved ? `Saved ${saved.rank} · Unit ${saved.unit_number} · $${Number(saved.hourly_rate || 0).toFixed(2)}/hr` : 'User updated successfully');
                 setShowEditDialog(false);
                 await loadUsers();
             } else {
@@ -367,7 +371,7 @@ export default function AdminPortal({ embedded = false }) {
                             ))}
                             <div>
                                 <Label className="text-slate-500 font-mono text-[10px] tracking-widest">RANK</Label>
-                                <Select value={editingUser.rank || ''} onValueChange={v => setEditingUser({ ...editingUser, rank: v })}>
+                                <Select value={editingUser.rank || ''} onValueChange={v => { try { setEditingUser({...editingUser,...previewRankChange(users.find(person=>person.id===editingUser.id) || editingUser,v,users)}); } catch(error) { toast.error(error.message); } }}>
                                     <SelectTrigger className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono mt-1">
                                         <SelectValue placeholder="Select rank" />
                                     </SelectTrigger>

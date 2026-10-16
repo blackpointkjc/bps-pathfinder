@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
         // Keep existing directory mirrors current without creating or deleting officers.
         const warnings: string[] = [];
-        if (rankChanged || updatePayload.unit_number !== undefined) {
+        if (rankChanged || (updatePayload.unit_number !== undefined && updatePayload.unit_number !== target.unit_number)) {
           try {
             const mirrors = await base44.asServiceRole.entities.OfficerRoster.filter({email:target.email}, '-updated_date', 1000);
             for (const mirror of mirrors || []) {
