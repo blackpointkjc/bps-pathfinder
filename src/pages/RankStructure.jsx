@@ -1,3 +1,5 @@
+import CommandRankTiers from '@/components/CommandRankTiers';
+import { reportingLabel, reportingSupervisors, oversightLabel } from '@/utils/commandReporting';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -36,14 +38,14 @@ const composeUrl = person => `${createPageUrl('OutlookMail')}?compose=1&to=${enc
 
 function PersonCard({ person, users, onOpen, compact = false }) {
   const supervisor = users.find(u=>u.id===person.supervisor_id);
-  const supervisorText = supervisor ? displayName(supervisor) : person.rank === 'Colonel' ? 'Top of Command' : 'Awaiting assignment';
+  const supervisorText = reportingLabel(person, users, displayName);
   return <button type="button" onClick={()=>onOpen?.(person)} className={`w-full rounded-xl border border-slate-700 bg-slate-950/95 text-left shadow-lg shadow-black/20 transition hover:border-blue-500/70 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${compact ? 'max-w-[310px] p-3' : 'max-w-[360px] p-4'}`}>
     <div className="flex items-start gap-3">
       {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className={`${compact?'h-12 w-12':'h-14 w-14'} shrink-0 rounded-full border border-slate-700 object-cover`}/> : <div className={`flex ${compact?'h-12 w-12':'h-14 w-14'} shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-black`}>{person.first_name?.[0]}{person.last_name?.[0]}</div>}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0"><div className="break-words text-base font-black leading-5 text-white">{displayName(person)}</div><div className="mt-1 text-xs text-slate-400">Unit {person.unit_number || '—'} · {person.division || 'No division'}</div></div>
-          <Badge className="shrink-0 bg-blue-950 text-blue-300">{person.platoon === 'Command' ? 'Command' : `Platoon ${person.platoon || '—'}`}</Badge>
+          <Badge className="shrink-0 bg-blue-950 text-blue-300">{COMMAND_RANKS.has(person.rank) ? oversightLabel(person) : `Platoon ${person.platoon || '—'}`}</Badge>
         </div>
       </div>
     </div>
@@ -55,8 +57,8 @@ function PersonCard({ person, users, onOpen, compact = false }) {
 function OfficerDialog({ person, users, open, onOpenChange, onPhotoOpen }) {
   if(!person) return null;
   const supervisor=users.find(u=>u.id===person.supervisor_id);
-  const directReports=users.filter(u=>u.supervisor_id===person.id);
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<button type="button" aria-label="Enlarge full officer photograph" onClick={()=>onPhotoOpen(person)}><img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/></button>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div><div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {person.division||'No division'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{COMMAND_RANKS.has(person.rank)?'Shared Command':`Platoon ${person.platoon||'—'}`}</Badge></div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{contactEmail(person)||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{supervisor?displayName(supervisor):(person.rank==='Colonel'?'Top of Command':'Awaiting assignment')}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Direct Reports</div><div className="mt-1 text-sm font-semibold">{directReports.length?directReports.map(displayName).join(', '):'None'}</div></div></div><div className="flex flex-wrap gap-2">{contactEmail(person)&&<Link to={composeUrl(person)} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email in Pathfinder</Link>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
+  const directReports=users.filter(u=>reportingSupervisors(u, users).some(s=>s.id===person.id));
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<button type="button" aria-label="Enlarge full officer photograph" onClick={()=>onPhotoOpen(person)}><img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/></button>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div><div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {person.division||'No division'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{COMMAND_RANKS.has(person.rank)?oversightLabel(person):`Platoon ${person.platoon||'—'}`}</Badge></div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{contactEmail(person)||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{reportingLabel(person, users, displayName)}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Direct Reports</div><div className="mt-1 text-sm font-semibold">{directReports.length?directReports.map(displayName).join(', '):'None'}</div></div></div><div className="flex flex-wrap gap-2">{contactEmail(person)&&<Link to={composeUrl(person)} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email in Pathfinder</Link>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
 }
 
 function OrgTreeNode({ person, branch, allUsers, onOpen }) {
@@ -74,10 +76,7 @@ function OrgTreeNode({ person, branch, allUsers, onOpen }) {
 }
 
 function CommandTree({ users, onOpen }) {
-  const command = users.filter(u=>COMMAND_RANKS.has(u.rank));
-  const commandIds = new Set(command.map(u=>u.id));
-  const roots = command.filter(u=>!u.supervisor_id || !commandIds.has(u.supervisor_id)).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank));
-  return <div className="overflow-x-auto pb-2"><div className="mx-auto flex min-w-max justify-center px-6">{roots.map(root=><OrgTreeNode key={root.id} person={{...root,platoon:'Command'}} branch={command.map(u=>({...u,platoon:'Command'}))} allUsers={users} onOpen={onOpen}/>)}</div></div>;
+  return <CommandRankTiers users={users} renderPerson={person=><PersonCard person={person} users={users} onOpen={onOpen}/>}/>;
 }
 
 function PlatoonBranch({ letter, users, allUsers, onOpen }) {
@@ -123,7 +122,7 @@ export default function RankStructure(){
         <div style={{width:60,height:60,border:'2px solid #caa955',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:25,color:'#e9ca79'}}>BP</div>
         <div><div style={{fontSize:23,fontWeight:900,letterSpacing:2}}>BLACK POINT SECURITY</div><div style={{fontSize:15,color:'#e9ca79',fontWeight:800,letterSpacing:1}}>PERSONNEL & COMMAND ROSTER</div><div style={{fontSize:10,marginTop:4}}>CHAIN OF COMMAND · {new Date().toLocaleDateString()} · {active.length} ACTIVE PERSONNEL</div></div>
       </header>
-      <PrintRosterBranch title="SHARED COMMAND" people={active.filter(p=>COMMAND_RANKS.has(p.rank))}/>
+      <section className="print-section"><h2 style={{textAlign:"center"}}>COMMAND — MAJORS REPORT TO BOTH LT COLONELS</h2><CommandRankTiers users={active} renderPerson={person=><div><PrintOfficerNode person={person} people={[]}/><div style={{fontSize:10,textAlign:"center"}}>{reportingLabel(person,active,displayName)} · {oversightLabel(person)}</div></div>}/></section>
       <div style={{textAlign:'center',height:25,color:'#a9873a',fontWeight:800}}>│</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}><PrintRosterBranch title="PLATOON A" people={active.filter(p=>p.platoon==='A')}/><PrintRosterBranch title="PLATOON B" people={active.filter(p=>p.platoon==='B')}/></div>
       {active.some(p=>!COMMAND_RANKS.has(p.rank) && !['A','B'].includes(p.platoon)) && <PrintRosterBranch title="PERSONNEL PENDING PLATOON ASSIGNMENT" people={active.filter(p=>!COMMAND_RANKS.has(p.rank) && !['A','B'].includes(p.platoon))}/>}
@@ -132,7 +131,7 @@ export default function RankStructure(){
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Shared command oversees both platoons. Each branch displays the assigned reporting chain.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    <section className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-4 text-center"><div className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Shared Command</div><div className="mt-1 text-sm text-slate-400">Colonel · Lt Colonel · Major — oversight of Platoon A and Platoon B</div></div><CommandTree users={active} onOpen={setSelectedPerson}/></section>
+    <section className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-4 text-center"><div className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Shared Command</div><div className="mt-1 text-sm text-slate-400">Colonel → both Lt Colonels → both Majors. Each Major oversees an assigned platoon.</div></div><CommandTree users={active} onOpen={setSelectedPerson}/></section>
 
     <div className="relative py-3"><div className="mx-auto h-8 w-px bg-amber-500/50"/><div className="mx-auto h-px w-1/2 bg-amber-500/40"/><div className="grid grid-cols-2"><div className="mx-auto h-7 w-px bg-amber-500/40"/><div className="mx-auto h-7 w-px bg-amber-500/40"/></div></div>
 
