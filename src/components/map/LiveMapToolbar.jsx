@@ -9,7 +9,7 @@ export default function LiveMapToolbar({ user, status, saving, onStatusChange, o
                 {unassignedCount > 0 && <span className="rounded-md bg-red-950 px-2 py-1 text-red-200">{unassignedCount} unassigned</span>}
             </div>
         </div>
-        <div className="mt-1 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(150px,220px)] items-center gap-3">
+        <div className="mt-1 grid min-w-0 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(150px,220px)] items-center gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
                 <button type="button" onClick={onRecenter} className={`min-w-0 break-words text-left font-semibold ${gpsActive ? 'text-emerald-300' : 'text-amber-300'}`} title="Request a GPS fix and center the map">{gpsLabel}</button>
                 <span className={online ? 'text-blue-300' : 'text-red-300'}>{online ? 'Connected' : 'Offline'}</span>

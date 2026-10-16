@@ -1461,7 +1461,7 @@ export default function Navigation() {
             )}
 
             {!isNavigating && Math.max(0, Math.round(Number(speed) || 0)) > 0 && (
-                <div className="pointer-events-none absolute left-3 top-12 z-[1214]">
+                <div style={{ top: toolbarHeight + 12 }} className="pointer-events-none absolute left-3 z-[1214]">
                     <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
@@ -1478,7 +1478,7 @@ export default function Navigation() {
 
             {/* Street address search and destination routing */}
             {showAddressSearch && (
-                <div className={`absolute left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto ${isNavigating ? 'top-56' : 'top-12'}`}>
+                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="absolute left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
@@ -1562,7 +1562,7 @@ export default function Navigation() {
 
             {/* ══ UNMAPPED CALLS PANEL ══ */}
             {unmappedCalls.length > 0 && (
-                <div className="absolute top-[34px] right-14 z-[1005] pointer-events-auto">
+                <div style={{ top: toolbarHeight }} className="absolute right-14 z-[1005] pointer-events-auto">
                     <button
                         onClick={() => setShowUnmapped(v => !v)}
                         className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-900/80 border border-yellow-500/50 rounded-b-lg text-yellow-400 font-mono text-[10px] font-bold backdrop-blur-sm"
@@ -1607,7 +1607,7 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="absolute right-3 top-16 z-[1210] pointer-events-auto"
+                style={{ top: toolbarHeight + 40 }} className="absolute right-3 z-[1210] pointer-events-auto"
             >
                 <div className="flex flex-col overflow-hidden rounded-xl border border-[#31475e] bg-[#07111f]/95 shadow-2xl backdrop-blur-md">
                     {[
@@ -1747,7 +1747,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 320 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute bottom-[64px] right-0 top-[42px] z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
+                        style={{ top: toolbarHeight + 8 }} className={`absolute bottom-[64px] right-0 z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
                     >
                         {/* Header / collapsed edge tab */}
                         <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>
