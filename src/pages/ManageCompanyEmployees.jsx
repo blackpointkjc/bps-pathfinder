@@ -292,9 +292,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         display_name: imapForm.display_name.trim() || imapForm.mailbox_email.trim(),
         approved_by_company: true,
         active: imapForm.active !== false,
-        imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true,
-        smtp_host: 'imap.purelymail.com', smtp_port: 465, smtp_secure: true,
-        username: imapForm.mailbox_email.trim().toLowerCase(), updated_by: user?.email || '',
+        imap_host: imapMailboxId ? imapForm.imap_host.trim() || 'imap.purelymail.com' : 'imap.purelymail.com', imap_port: imapMailboxId ? Number(imapForm.imap_port || 993) : 993, imap_secure: imapMailboxId ? imapForm.imap_secure !== false : true,
+        smtp_host: imapMailboxId ? imapForm.smtp_host.trim() || 'imap.purelymail.com' : 'imap.purelymail.com', smtp_port: imapMailboxId ? Number(imapForm.smtp_port || 465) : 465, smtp_secure: imapMailboxId ? imapForm.smtp_secure !== false : true,
+        username: imapMailboxId ? (imapForm.username.trim() || imapForm.mailbox_email.trim().toLowerCase()) : imapForm.mailbox_email.trim().toLowerCase(), updated_by: user?.email || '',
         ...(imapForm.password ? { password: imapForm.password } : {}),
       };
       const saved = imapMailboxId
