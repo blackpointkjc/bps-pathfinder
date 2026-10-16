@@ -216,7 +216,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const handleEditUser = (userData) => {
     setEditingUser(userData.id);
     setImapMailboxId('');
-    setImapForm({ mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true, smtp_host: '', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
+    setImapForm({ mailbox_email: '', display_name: '', imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true, smtp_host: 'imap.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
     if (isSystemAdmin) {
       base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
         const mailbox = rows?.[0];
@@ -279,8 +279,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const saveCompanyMailbox = async () => {
     if (!editingUser || !selectedUser || !isSystemAdmin) return;
-    if (!imapForm.mailbox_email.trim() || !imapForm.imap_host.trim() || !imapForm.smtp_host.trim() || !imapForm.username.trim()) {
-      alert('Company email, IMAP host, SMTP host, and username are required.');
+    if (!imapForm.mailbox_email.trim()) {
+      alert('Company email address is required.');
       return;
     }
     try {
@@ -292,9 +292,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         display_name: imapForm.display_name.trim() || imapForm.mailbox_email.trim(),
         approved_by_company: true,
         active: imapForm.active !== false,
-        imap_host: imapForm.imap_host.trim(), imap_port: Number(imapForm.imap_port || 993), imap_secure: imapForm.imap_secure !== false,
-        smtp_host: imapForm.smtp_host.trim(), smtp_port: Number(imapForm.smtp_port || 465), smtp_secure: imapForm.smtp_secure !== false,
-        username: imapForm.username.trim(), updated_by: user?.email || '',
+        imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true,
+        smtp_host: 'imap.purelymail.com', smtp_port: 465, smtp_secure: true,
+        username: imapForm.mailbox_email.trim().toLowerCase(), updated_by: user?.email || '',
         ...(imapForm.password ? { password: imapForm.password } : {}),
       };
       const saved = imapMailboxId
@@ -738,11 +738,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label className="text-xs text-slate-500">Company Email</Label><Input type="email" placeholder="officer@company.com" value={imapForm.mailbox_email} onChange={e => setImapForm({...imapForm, mailbox_email:e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Display Name</Label><Input placeholder="Officer Mailbox" value={imapForm.display_name} onChange={e => setImapForm({...imapForm, display_name:e.target.value})} /></div>
-                  <div><Label className="text-xs text-slate-500">IMAP Host</Label><Input placeholder="imap.company.com" value={imapForm.imap_host} onChange={e => setImapForm({...imapForm, imap_host:e.target.value})} /></div>
-                  <div><Label className="text-xs text-slate-500">IMAP Port</Label><Input type="number" value={imapForm.imap_port} onChange={e => setImapForm({...imapForm, imap_port:Number(e.target.value)||993})} /></div>
-                  <div><Label className="text-xs text-slate-500">SMTP Host</Label><Input placeholder="smtp.company.com" value={imapForm.smtp_host} onChange={e => setImapForm({...imapForm, smtp_host:e.target.value})} /></div>
-                  <div><Label className="text-xs text-slate-500">SMTP Port</Label><Input type="number" value={imapForm.smtp_port} onChange={e => setImapForm({...imapForm, smtp_port:Number(e.target.value)||465})} /></div>
-                  <div><Label className="text-xs text-slate-500">Username</Label><Input value={imapForm.username} onChange={e => setImapForm({...imapForm, username:e.target.value})} /></div>
+                  <div className="col-span-full rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">Company server settings are preconfigured from the existing Sergeant Robinson mailbox: secure IMAP port 993 and secure SMTP port 465. Only provide the officer mailbox address and its password; the mailbox must already exist at the mail provider.</div>
                   <div><Label className="text-xs text-slate-500">Mailbox Password</Label><Input type="password" placeholder={imapMailboxId ? 'Leave blank to keep current password' : 'Enter mailbox password'} value={imapForm.password} onChange={e => setImapForm({...imapForm, password:e.target.value})} /></div>
                 </div>
                 <div className="flex flex-wrap gap-2">
