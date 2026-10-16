@@ -1,3 +1,4 @@
+import { releaseClosedCall } from './releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -18,6 +19,7 @@ Deno.serve(async (req) => {
     const call = await base44.asServiceRole.entities.DispatchCall.get(callId);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
     if (call.status === newStatus) {
+      if (['Cleared','Cancelled'].includes(newStatus)) await releaseClosedCall(base44.asServiceRole.entities, call);
       return Response.json({ success: true, status: newStatus, duplicate_transition: true });
     }
 
@@ -38,13 +40,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.DispatchCall.update(callId, update);
 
     if (newStatus === 'Cleared' || newStatus === 'Cancelled') {
-      const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 200).catch(() => []);
-      await Promise.all((assignments || [])
-        .filter((assignment: any) => String(assignment.status || '').toLowerCase() !== 'cleared')
-        .map((assignment: any) => base44.asServiceRole.entities.CallAssignment.update(assignment.id, {
-          status: 'cleared',
-          cleared_at: assignment.cleared_at || now,
-        }).catch(() => null)));
+      await releaseClosedCall(base44.asServiceRole.entities, { ...call, ...update });
     }
 
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;

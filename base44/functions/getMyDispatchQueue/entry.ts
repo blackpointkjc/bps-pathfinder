@@ -1,3 +1,4 @@
+import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (v: unknown) => String(v || '').trim().toLowerCase();
@@ -25,6 +26,7 @@ Deno.serve(async (req) => {
         // Reconcile stale officer assignments when dispatch/upstream already closed
         // or archived the CAD call. Leaving CallAssignment active is what caused a
         // cleared call to reappear in the officer queue on the next refresh.
+        if (call) await releaseClosedCall(base44.asServiceRole.entities, call);
         const stale = activeAssignments.filter((a: any) => String(a.call_id) === String(callId));
         const closedAt = new Date().toISOString();
         await Promise.all(stale.map((assignment: any) =>
