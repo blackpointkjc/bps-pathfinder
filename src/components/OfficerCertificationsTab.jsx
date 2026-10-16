@@ -144,6 +144,14 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   const [dialogUploading, setDialogUploading] = useState(false);
 
   const certs = editFormData.officer_certifications || [];
+  // Legacy records stored one checkbox per converted course. Reconstruct their
+  // shared credential selections for display without deleting historical entries.
+  const recoveredCodes = cert => {
+    const own = [cert.course_id, ...(cert.course_ids || [])].filter(Boolean);
+    if (!cert.certificate_number || !cert.issue_date) return [...new Set(own)];
+    const siblings = certs.filter(item => item.category === 'dcjs' && item.certificate_number === cert.certificate_number && item.issue_date === cert.issue_date);
+    return [...new Set([...own, ...siblings.flatMap(item => [item.course_id, ...(item.course_ids || [])]).filter(Boolean)])];
+  };
   const dcjsCerts = certs.filter(cert => cert.category === 'dcjs' && !(/^Auto-converted from /i.test(cert.notes || '') && certs.some(original => ENTRY_CONVERSIONS[original.course_id] === cert.course_id && original.certificate_number === cert.certificate_number && original.issue_date === cert.issue_date)));
   const companyCerts = certs.filter(cert => cert.category !== 'dcjs');
 
@@ -158,6 +166,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               {cert.expiration_date ? ` • Expires ${format(new Date(cert.expiration_date), 'MM/dd/yyyy')}` : ''}
             </p>
             {cert.certificate_number && <p className="mt-1 text-xs text-slate-600">Card/Certificate #: {cert.certificate_number}</p>}
+            {recoveredCodes(cert).length > 1 && <p className="mt-1 text-xs font-semibold text-blue-700">Codes checked on shared credential: {recoveredCodes(cert).join(', ')}</p>}
             {cert.notes && <p className="mt-1 text-xs text-slate-600">{cert.notes}</p>}
           </div>
           <StatusBadge cert={cert} />
@@ -282,6 +291,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               {cert.expiration_date && <span>Expires: {format(new Date(cert.expiration_date), 'MM/dd/yyyy')}</span>}
               {cert.certificate_number && <span className="font-medium text-slate-700">Card #: {cert.certificate_number}</span>}
             </div>
+            {recoveredCodes(cert).length > 1 && <p className="text-xs font-semibold text-blue-700">Codes on this credential: {recoveredCodes(cert).join(', ')}</p>}
             {cert.notes && <p className="text-xs text-slate-400 mt-1 italic">{cert.notes}</p>}
 
             {/* File section */}
