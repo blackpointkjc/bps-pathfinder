@@ -13,6 +13,7 @@ import AdminAutoDispatchControls from './AdminAutoDispatchControls';
 import AdminScheduling from './AdminScheduling';
 import FleetVehicleAssignments from './FleetVehicleAssignments';
 import DutySupervisorScheduling from './DutySupervisorScheduling';
+import Schedule from './Schedule';
 import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminPlannedShifts from './AdminPlannedShifts';
@@ -86,6 +87,7 @@ const ADMIN_SECTIONS = [
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
+  { id: 'myschedule', label: 'My Duty Schedule', description: 'Published personal officer shifts', icon: Calendar },
   { id: 'callouts', label: 'Officer Call-Outs', description: 'Record an officer absence and update the schedule', icon: ClipboardCheck },
   { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },
@@ -213,6 +215,7 @@ function AdminSupervisorToolsOnly() {
     {section => {
       if (section === 'overview') return <SupervisorOverview />;
       if (section === 'callouts') return <SupervisorCallOuts />;
+      if (section === 'myschedule') return <Schedule />;
       return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />;
     }}
   </UnifiedCenter>;

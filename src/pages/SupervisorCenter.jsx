@@ -2,6 +2,7 @@ import { ClipboardCheck, Shield, ShieldCheck, LayoutDashboard } from 'lucide-rea
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import OfficerCenter from './OfficerCenter';
+import Schedule from './Schedule';
 import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorCallOuts from './SupervisorCallOuts';
@@ -22,6 +23,7 @@ import { Radio } from 'lucide-react';
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
+  { id: 'myschedule', label: 'My Duty Schedule', description: 'Your published officer shifts', icon: Shield },
   { id: 'cad', label: 'CAD Center', description: 'Dispatch dashboard, active calls, and field response tools', icon: Radio },
   { id: 'callouts', label: 'Officer Call-Outs', description: 'Mark absences and update schedule and performance', icon: ClipboardCheck },
   { id: 'dutytimeline', label: 'Daily Duty Timeline', description: 'See every duty supervisor across a complete 24-hour day', icon: ShieldCheck },
@@ -63,6 +65,7 @@ export default function SupervisorCenter({ embedded = false }) {
         if (section === 'overview') return <SupervisorOverview />;
         if (section === 'officer') return <OfficerCenter embedded />;
         if (section === 'cad') return <CADCenter embedded />;
+        if (section === 'myschedule') return <Schedule />;
         if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
         if (section === 'callouts') return <SupervisorCallOuts />;
         if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;

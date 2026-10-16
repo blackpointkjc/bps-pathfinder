@@ -46,7 +46,28 @@ Deno.serve(async req => {
       await base44.asServiceRole.entities.CallOut.update(callout.id, { voided: true }).catch(() => null);
       throw error;
     }
-    return Response.json({ success: true, callout_id: callout.id, shift_id: shift.id });
+    // A complete call-out vacates the active roster. Keep the original shift
+    // archived as evidence and create a separately assignable open coverage shift.
+    // Sent-home and reassigned events leave historical/split coverage intact.
+    let coverageShiftId = '';
+    if (type === 'called_out') {
+      const openShift = await base44.asServiceRole.entities.Schedule.create({
+        officer_email: 'OPEN', shift_date: shift.shift_date, start_time: shift.start_time,
+        end_time: shift.end_time, location: shift.location, is_open: true,
+        shift_type: shift.shift_type || 'normal', site_details: shift.site_details || '',
+        special_instructions: shift.special_instructions || '',
+        linked_shift_id: shift.id,
+      });
+      coverageShiftId = String(openShift.id);
+      await base44.asServiceRole.entities.Schedule.update(shift.id, { archived: true });
+      // Duty supervisor coverage is a separate entity, so remove only same-date
+      // blocks for the called-out person. Never delete other supervisors' blocks.
+      const blocks = await base44.asServiceRole.entities.DutySupervisorAssignment.filter({ supervisor_email: email, assignment_date: date }, '-start_time', 100).catch(() => []);
+      for (const block of blocks) {
+        if (lower(block.status) !== 'cancelled') await base44.asServiceRole.entities.DutySupervisorAssignment.update(block.id, { status: 'cancelled' });
+      }
+    }
+    return Response.json({ success: true, callout_id: callout.id, shift_id: shift.id, coverage_shift_id: coverageShiftId });
   } catch (error) {
     return Response.json({ error: error?.message || 'Unable to record call-out' }, { status: 500 });
   }
