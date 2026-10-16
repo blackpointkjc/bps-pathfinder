@@ -663,6 +663,10 @@ export default function AdminUsers({ embedded = false }) {
     }
     const existingRank = String(userData.rank || '').trim();
     const approvedRank = category === 'officer' && existingRank && !['pending assignment','officer','pending'].includes(existingRank.toLowerCase()) ? existingRank : config.rank;
+    if (category === 'officer' && !String(userData.dcjs_number || '').trim()) {
+      const accepted = window.confirm('This officer has no DCJS registration number on file. Approve the personnel account while keeping DCJS verification outstanding for Training/HR? This does not certify the officer for field duty.');
+      if (!accepted) return;
+    }
     const response = await base44.functions.invoke('updateUser', {
       userId: userData.id,
       updates: { role: 'user', additional_roles: config.roles, rank: approvedRank },
