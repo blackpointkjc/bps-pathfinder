@@ -43,6 +43,32 @@ Deno.serve(async (req) => {
       throw new Error(`Call data unavailable. ${activeRead.error}; ${archivedRead.error}`);
     }
 
+    // Keep historical unit attribution even after a call is closed.
+    const assignmentRead = await readWithRetry('Call assignments', () => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1500), []);
+    const userRead = await readWithRetry('Officer directory', () => base44.asServiceRole.entities.User.list('-updated_date', 750), []);
+    const unitRead = await readWithRetry('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 500), []);
+    const usersById = new Map((userRead.data || []).map((person: any) => [String(person.id), person]));
+    const unitsById = new Map((unitRead.data || []).map((unit: any) => [String(unit.id), unit]));
+    const assignmentsByCall = new Map<string, any[]>();
+    for (const assignment of assignmentRead.data || []) {
+      const id = String(assignment.call_id || '');
+      if (!id) continue;
+      if (!assignmentsByCall.has(id)) assignmentsByCall.set(id, []);
+      assignmentsByCall.get(id)!.push(assignment);
+    }
+    const assignmentDetails = (callId: string, existing: any[] = []) => {
+      const records = assignmentsByCall.get(callId) || [];
+      const ids = [...new Set([...existing.map(String), ...records.map((item: any) => String(item.unit_id || ''))].filter(Boolean))];
+      return ids.map(id => {
+        const unit = unitsById.get(id);
+        const officer = usersById.get(String(unit?.user_id || id));
+        const number = officer?.unit_number || unit?.unit_number || '';
+        const name = officer?.full_name || [officer?.rank, officer?.last_name || officer?.first_name].filter(Boolean).join(' ');
+        const label = [number ? 'Unit ' + number : '', name].filter(Boolean).join(' — ') || 'Unit ID ' + id;
+        const assignment = records.find((item: any) => String(item.unit_id) === id);
+        return { unit_id: id, label, officer_name: name || '', unit_number: number, role: assignment?.role || '', assigned_at: assignment?.assigned_at || '', status: assignment?.status || '' };
+      });
+    };
     const activeById = new Map((active || []).map((row: any) => [String(row.id), row]));
     const archivedByOriginalId = new Map<string, any>();
     for (const row of archived || []) {
@@ -86,6 +112,7 @@ Deno.serve(async (req) => {
         original_call_id: source === 'archived' ? (originalId || row.original_call_id || '') : row.original_call_id,
         call_id: row.call_id || fingerprintAlert?.callId || row.id,
         _source: source,
+        _assignedUnitDetails: assignmentDetails(originalId, Array.isArray(row.assigned_units) ? row.assigned_units : []),
         _propertyCall: Boolean(alert),
         _propertyAlert: alert || null,
         _propertyName: alert?.propertyName || '',
@@ -141,7 +168,8 @@ Deno.serve(async (req) => {
         agency: 'MONITORING',
         status: alert.callStatus || (['resolved', 'false_alarm', 'test'].includes(String(alert.lifecycle_status || '').toLowerCase()) ? 'Closed' : (alert.acknowledged ? 'Closed' : 'Pending')),
         description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
-        assigned_units: [],
+        assigned_units: assignmentDetails(callId).map((item: any) => item.unit_id),
+        _assignedUnitDetails: assignmentDetails(callId),
         _source: 'property_alert',
         _propertyCall: true,
         _propertyAlert: alert,
@@ -161,7 +189,7 @@ Deno.serve(async (req) => {
         propertyAlerts: alertByCallId.size,
         syntheticPropertyRows: syntheticPropertyRows.length,
       },
-      warnings: [activeRead.error, archivedRead.error, alertRead.error].filter(Boolean),
+      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error].filter(Boolean),
     });
   } catch (error) {
     console.error('getCallHistoryFeed failed:', error);
