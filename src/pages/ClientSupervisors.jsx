@@ -34,10 +34,6 @@ export default function ClientSupervisors() {
     initialData: [],
   });
 
-  const siteSupervisorGroups = siteLocations.map(location => {
-    const assigned = new Set((location.assigned_supervisors || []).map(email => String(email || '').trim().toLowerCase()));
-    return { location, supervisors: (allUsers || []).filter(u => !u.termination_date && assigned.has(String(u.email || '').trim().toLowerCase())) };
-  });
 
   const commandRanks = new Set(['senior corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
   const assignedDivisions = new Set(siteLocations.map(loc => String(loc.division || '').trim().toLowerCase()).filter(Boolean));
@@ -86,13 +82,11 @@ export default function ClientSupervisors() {
             <p className="text-sm text-slate-400">Direct site supervisors organized by each property in your portfolio</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {siteSupervisorGroups.map(({ location, supervisors }) => (
+            {siteLocations.map(location => (
               <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-bold text-white">{location.site_name}</p><p className="text-xs text-slate-500">{location.address || location.division || ''}</p></div><Badge className="bg-slate-800 text-slate-300">{supervisors.length} assigned</Badge></div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-bold text-white">{location.site_name}</p><p className="text-xs text-slate-500">{location.address || location.division || ''}</p></div><Badge className="bg-slate-800 text-slate-300">{location.assigned_supervisors?.length || 0} assigned</Badge></div>
                 <SiteChainOfCommand assignedSupervisors={location.assigned_supervisors || []} users={allUsers || []}/>
-                {supervisors.length > 0 ? <div className="grid gap-3 md:grid-cols-2">{supervisors.map(supervisor => (
-                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4"><div className="flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-700 font-bold text-white">{supervisor.first_name?.charAt(0)}{supervisor.last_name?.charAt(0)}</div><div className="min-w-0"><p className="break-words font-bold text-white">{supervisor.first_name} {supervisor.last_name}</p><Badge className={`${getRankColor(supervisor.rank)} text-xs`}>{supervisor.rank}</Badge>{supervisor.unit_number && <p className="mt-1 text-xs text-slate-400">Unit #{supervisor.unit_number}</p>}</div></div></div>
-                ))}</div> : <p className="text-sm text-slate-400">No direct site supervisor is currently assigned.</p>}
+
               </div>
             ))}
           </CardContent>
