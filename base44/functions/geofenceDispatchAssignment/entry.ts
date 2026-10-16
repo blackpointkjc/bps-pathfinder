@@ -83,6 +83,13 @@ Deno.serve(async (req) => {
       : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)))?.[0] || null;
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
+    // Do not dispatch historical feed items when a unit comes online later.
+    // Use the original incident time, never the ingestion/updated timestamp.
+    const incidentAt = new Date(call.time_received || alert.callTime || alert.time_received || call.created_date || 0).getTime();
+    const incidentAgeMs = Date.now() - incidentAt;
+    if (!simulation && (!Number.isFinite(incidentAt) || incidentAt <= 0 || incidentAgeMs < -60_000 || incidentAgeMs > 15 * 60_000)) {
+      return Response.json({ success: true, skipped: true, reason: 'Historical or invalid incident time; automatic dispatch is limited to calls received within 15 minutes' });
+    }
     // Conditional update of the existing alert is the cross-worker claim. A
     // failed claim/read must never be interpreted as permission to dispatch.
     const token = crypto.randomUUID();
@@ -217,7 +224,7 @@ Deno.serve(async (req) => {
     const requiredRanks = list(property.auto_dispatch_required_ranks);
     const now = Date.now();
     const freshCutoff = now - 2 * 60 * 1000;
-    const heartbeatCutoff = now - 15 * 60 * 1000;
+    const heartbeatCutoff = now - 5 * 60 * 1000;
 
     const activeByEmail = new Map<string, any>();
     for (const active of activeOfficers || []) {
@@ -268,7 +275,10 @@ Deno.serve(async (req) => {
       // only for accounts whose legacy clock-in flow records clock_in_time on the
       // live session but has not created a TimeEntry row.
       const sessionHasWorkClock = Boolean(liveSessionFresh && session?.clock_in_time);
-      const clockedIn = Boolean(openEntry || sessionHasWorkClock);
+      const clockInAt = new Date(openEntry?.clock_in || session?.clock_in_time || 0).getTime();
+      const clockedIn = Boolean(liveSessionFresh && (openEntry || sessionHasWorkClock)
+        && Number.isFinite(clockInAt) && clockInAt > 0
+        && (simulation || clockInAt <= incidentAt));
       const status = lower((liveSessionFresh ? session?.status : '') || officer.status || (openEntry ? 'Available' : ''));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
@@ -281,7 +291,7 @@ Deno.serve(async (req) => {
 
       // GPS improves ranking but is not an eligibility requirement. If location
       // cannot be obtained, a true open TimeEntry is the authoritative fallback.
-      if (!clockedIn) reasons.push('Officer is not currently clocked in');
+      if (!clockedIn) reasons.push('Officer was not clocked in when the call occurred or lacks a recent active session');
       if (status !== 'available') reasons.push(`Status is ${session?.status || officer.status || 'unknown'}, not Available`);
       if (busyUnitIds.has(String(officer.id))) reasons.push('Officer has another active call assignment');
 
