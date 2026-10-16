@@ -51,11 +51,13 @@ Deno.serve(async req => {
     }
     // A complete call-out vacates the active roster. Keep the original shift
     // archived as evidence and create a separately assignable open coverage shift.
-    // Sent-home and reassigned events leave historical/split coverage intact.
+    // All three events vacate the remaining original coverage; an open shift lets relief accept the post.
     let coverageShiftId = '';
-    if (type === 'called_out' || type === 'sent_home') {
-      const remainingStart = type === 'sent_home' ? String(input.call_out_time || '').slice(0,5) : shift.start_time;
-      const openShift = await base44.asServiceRole.entities.Schedule.create({
+    if (['called_out','sent_home','reassigned'].includes(type)) {
+      const remainingStart = type === 'called_out' ? shift.start_time : String(input.call_out_time || '').slice(0,5);
+      if (!/^\d{2}:\d{2}$/.test(remainingStart)) throw new Error('A valid effective time is required to release remaining coverage.');
+      const linkedOpen = (schedules || []).find(row => row.is_open === true && row.archived !== true && String(row.linked_shift_id || '') === String(shift.id));
+      const openShift = linkedOpen || await base44.asServiceRole.entities.Schedule.create({
         officer_email: 'OPEN', shift_date: shift.shift_date, start_time: remainingStart,
         end_time: shift.end_time, location: shift.location, is_open: true,
         shift_type: shift.shift_type || 'normal', site_details: shift.site_details || '',
