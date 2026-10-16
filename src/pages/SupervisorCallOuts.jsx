@@ -27,6 +27,8 @@ export default function SupervisorCallOuts() {
     original_location: "",
     shift_id: "",
     destination_location: "",
+    destination_start_time: "",
+    destination_end_time: "",
     exclude_original_incident_metric: false,
   });
 
@@ -111,14 +113,16 @@ export default function SupervisorCallOuts() {
       original_location: "",
       shift_id: "",
       destination_location: "",
+    destination_start_time: "",
+    destination_end_time: "",
       exclude_original_incident_metric: false,
     });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.call_out_type === 'reassigned' && (!formData.original_location || !formData.destination_location)) {
-      alert('Select both the original property and the destination property/assignment.');
+    if (formData.call_out_type === 'reassigned' && (!formData.original_location || !formData.destination_location || !formData.destination_start_time || !formData.destination_end_time)) {
+      alert('Select both sites and the destination shift start/end times.');
       return;
     }
     if (!selectedShift) { alert('Select an actual scheduled shift for this officer and date.'); return; }
@@ -321,6 +325,8 @@ export default function SupervisorCallOuts() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div><Label>New Shift Start *</Label><Input type="time" value={formData.destination_start_time} onChange={event => setFormData(current => ({...current,destination_start_time:event.target.value}))}/></div>
+                <div><Label>New Shift End *</Label><Input type="time" value={formData.destination_end_time} onChange={event => setFormData(current => ({...current,destination_end_time:event.target.value}))}/></div>
                 <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                   Incident-report requirements at the original property after this reassignment time will be excluded from the officer's Job Duty metric.
                 </div>

@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 function certStatus(cert) {
   if (!cert?.expiration_date) return cert?.status === 'pending' ? 'pending' : 'active';
@@ -63,7 +63,7 @@ export default function OfficerCertificationCenter() {
   const { data: currentUser } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const officerUsers = useMemo(
-    () => users.filter(u => hasOfficerAdditionalRole(u) && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated'),
+    () => users.filter(u => isOperationalOfficer(u) && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated'),
     [users]
   );
 

@@ -23,7 +23,7 @@ import OfficerCertificationCenter from '@/components/training/OfficerCertificati
 import TrainingComplianceTracker from './TrainingComplianceTracker';
 import AdminCertificationAlerts from './AdminCertificationAlerts';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Navigate } from 'react-router-dom';
 
 const CATEGORIES = [
@@ -203,7 +203,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
     return [...reqOptions, ...uniqueModules];
   }, [requirements, trainingModules]);
 
-  const officerUsers = allUsers.filter(u => hasOfficerAdditionalRole(u) && u.first_name && u.email && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated');
+  const officerUsers = allUsers.filter(u => isOperationalOfficer(u) && u.first_name && u.email && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated');
   const studentUsers = allUsers.filter(u => {
     const roles = (u.additional_roles || []).map(role => String(role).toLowerCase());
     const type = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
