@@ -385,8 +385,15 @@ export default function WelcomeBriefing({ user }) {
     // Multiple same-day site shifts are legitimate schedule records, not
     // separate officers. Display each officer once using their latest shift.
     const uniqueShifts = new Map();
-    rows.sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
-      .forEach(shift => uniqueShifts.set(normalized(shift.officer_email), shift));
+    const timeParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+    const currentMinutes = Number(timeParts.find(part => part.type === 'hour')?.value || 0) * 60 + Number(timeParts.find(part => part.type === 'minute')?.value || 0);
+    const startMinutes = shift => { const match = String(shift.start_time || '').match(/^(\d{1,2}):(\d{2})/); return match ? Number(match[1]) * 60 + Number(match[2]) : 0; };
+    rows.sort((a, b) => startMinutes(a) - startMinutes(b))
+      .forEach(shift => {
+        const key = normalized(shift.officer_email);
+        const previous = uniqueShifts.get(key);
+        if (!previous || startMinutes(shift) <= currentMinutes && (startMinutes(previous) > currentMinutes || startMinutes(shift) >= startMinutes(previous))) uniqueShifts.set(key, shift);
+      });
     return [...uniqueShifts.values()].map(shiftRow => {
       const email = normalized(shiftRow.officer_email);
       const person = userByEmail.get(email);
