@@ -1,3 +1,4 @@
+import { inspectPageModules } from '@/utils/pageAssetHealth';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { getAppDirectory } from '@/lib/appDirectory';
 import { runVoiceDedupeSelfTest } from '@/utils/voiceAnnouncer';
@@ -90,27 +91,18 @@ const finding = (key, area, severity, title, description, count) => ({
 export async function runClientFunctionalAudit({ includeFunctionalProbes = true } = {}) {
   const startedAt = Date.now();
   const findings = [];
-  const moduleFailures = [];
-  let loadedModules = 0;
-
-  await Promise.all(Object.entries(pageModules).map(async ([path, loader]) => {
-    try {
-      const loaded = await loader();
-      if (!loaded?.default) throw new Error('Page module has no default component export');
-      loadedModules += 1;
-    } catch (error) {
-      moduleFailures.push({ path, message: safeMessage(error) });
-    }
-  }));
-
-  if (moduleFailures.length) {
-    moduleFailures.forEach((failure, index) => findings.push(finding(
-      `code:page-module:${index}`,
-      'Page Code',
-      'outage',
-      `Page module failed to load: ${failure.path.split('/').pop()}`,
-      failure.message,
-    )));
+  const moduleAudit = await inspectPageModules(pageModules, { shouldPause: () => Boolean(getBase44RequestHealth().rateLimitedUntil) });
+  const moduleFailures = moduleAudit.failures;
+  const loadedModules = moduleAudit.loaded;
+  const incompleteAreas = moduleAudit.incomplete ? ['Page Code'] : [];
+  moduleFailures.forEach(failure => findings.push(finding(
+    `code:page-module:${failure.path}`, 'Page Code', 'outage',
+    `Page module failed to load: ${failure.path.split('/').pop()}`, failure.message,
+  )));
+  if (moduleAudit.assetFailures.length) {
+    findings.push(finding('assets:update-required','Page Code','degraded','Page assets need a refresh',
+      'A page download failed, often after an application update or interrupted connection. Refresh Pathfinder to load the current release. ' + moduleAudit.assetFailures.map(f => f.path.split('/').pop()).join(', '),moduleAudit.assetFailures.length));
+    window.dispatchEvent(new CustomEvent('bps-app-assets-unavailable'));
   }
 
   const requiredSdk = [
@@ -281,8 +273,10 @@ export async function runClientFunctionalAudit({ includeFunctionalProbes = true 
 
   return {
     findings,
+    incomplete_areas: incompleteAreas,
     summary: {
-      page_modules_checked: Object.keys(pageModules).length,
+      page_modules_registered: Object.keys(pageModules).length,
+      page_modules_checked: moduleAudit.checked,
       page_modules_loaded: loadedModules,
       module_failures: moduleFailures.length,
       runtime_errors_24h: recentRuntime.length,

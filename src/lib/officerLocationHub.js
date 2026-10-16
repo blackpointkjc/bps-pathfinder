@@ -76,6 +76,7 @@ export function applyOfficerLocationEvent(rows = [], event) {
 
     const next = { ...row };
     const fields = [
+      ...(event?.directory_profile ? ['unit_number','rank','first_name','last_name','full_name','officer_name','profile_photo_url'] : []),
       'status','session_active','current_call_id','current_call_info','current_location',
       'latitude',
       'longitude','heading','speed','accuracy','gps_updated_at','gps_source','last_update',
@@ -362,16 +363,17 @@ export async function getOfficerLocationHistory(officerEmail) {
 
 export function subscribeOfficerLocationChanges(listener) {
   if (typeof listener !== 'function') return () => {};
-  try {
-    const unsubscribe = base44.entities.ActiveOfficer.subscribe(event => {
-      // Apply the realtime ActiveOfficer event to every cached roster snapshot
-      // before notifying UI consumers. Components can now paint the new status
-      // immediately instead of waiting for another getOnDutyUnits round trip.
-      applyRealtimeEventToSnapshotCache(event);
-      listener(event);
-    });
-    return typeof unsubscribe === 'function' ? unsubscribe : () => {};
-  } catch {
-    return () => {};
+  const subscriptions = [];
+  for (const name of ['ActiveOfficer','User']) {
+    try {
+      const unsubscribe = base44.entities[name].subscribe(rawEvent => {
+        const event = name === 'User' ? { ...rawEvent, directory_profile:true } : rawEvent;
+        if (name === 'User' && event.type === 'delete') { clearSnapshotCache(); return; }
+        applyRealtimeEventToSnapshotCache(event);
+        listener(event);
+      });
+      if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
+    } catch { /* Other streams and the periodic canonical refresh remain active. */ }
   }
+  return () => subscriptions.forEach(unsubscribe => unsubscribe());
 }

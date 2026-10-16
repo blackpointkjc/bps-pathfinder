@@ -6,8 +6,8 @@ import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
-    Layers, Radio, MapPin, Users,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
+    Layers, MapPin, Users,
+    Eye, EyeOff, Crosshair, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -238,6 +238,7 @@ export default function Navigation() {
                 setCurrentUser(previous => previous ? {
                     ...previous,
                     ...(record.status !== undefined ? { status: record.status } : {}),
+                    ...(event.directory_profile && record.unit_number !== undefined ? { unit_number: record.unit_number, rank: record.rank || previous.rank } : {}),
                     ...(record.current_call_id !== undefined ? { current_call_id: record.current_call_id } : {}),
                     ...(record.current_call_info !== undefined ? { current_call_info: record.current_call_info } : {}),
                 } : previous);
@@ -1211,6 +1212,7 @@ export default function Navigation() {
                 .filter(unit => unit.session_active === true || unit.presence_online === true || unit.map_visible === true);
             const currentEmail = currentUser?.email?.toLowerCase();
             const self = sourceUnits.find(unit => String(unit.officer_email || unit.email || '').toLowerCase() === currentEmail);
+            if (self) setCurrentUser(previous => previous ? { ...previous, unit_number:self.unit_number, rank:self.rank } : previous);
             // Server positions are a labelled fallback while this device acquires GPS.
             if (!getLiveLocation(30000) && self) {
                 const live = validPosition(self.latitude, self.longitude);

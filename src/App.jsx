@@ -1,3 +1,4 @@
+import AppUpdateNotice from '@/components/AppUpdateNotice';
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
@@ -310,6 +311,7 @@ const AuthenticatedApp = () => {
         {user && <BackgroundLocationTracker user={user} />}
         <GlobalDataRealtimeSync enabled={Boolean(user)} />
         <DataConnectionStatus />
+        <AppUpdateNotice />
         <Routes location={location}>
       <Route
         path="/"
