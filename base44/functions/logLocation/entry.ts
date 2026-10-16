@@ -57,8 +57,12 @@ async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const authenticatedUser = await base44.auth.me();
+    if (!authenticatedUser) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Token/browser profiles can retain an old unit and rank after promotion.
+    // Read the authoritative employee record before any identity/status write.
+    const user = await base44.asServiceRole.entities.User.get(authenticatedUser.id);
+    if (!user) return Response.json({ error: 'Officer account unavailable' }, { status: 401 });
 
     const liveLocationHidden = await isLiveLocationHidden(base44, user);
     const body = await req.json().catch(() => ({}));
