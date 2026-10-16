@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.User.list('-updated_date', 2000)
     );
 
+    let callOuts: any[] = [];
     let schedules: any[] = [];
     let entries: any[] = [];
     let dailyReports: any[] = [];
@@ -232,11 +233,12 @@ Deno.serve(async (req) => {
     let weekStatuses: any[] = [];
 
     if (queueRole === 'hr') {
-      [schedules, entries, timeOff, reviews] = await loadLimited([
+      [schedules, entries, timeOff, reviews, callOuts] = await loadLimited([
         () => safeList('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
         () => safeList('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
         () => safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 1000)),
         () => safeList('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000)),
+        () => safeList('call-outs', () => base44.asServiceRole.entities.CallOut.list('-call_out_date', 1500)),
       ]);
     } else {
       [
@@ -285,7 +287,7 @@ Deno.serve(async (req) => {
     const activeEntries = (entries || []).filter((entry: any) => entry.clock_in && !entry.clock_out && entry.archived !== true);
     const attendanceEntries = (entries || []).filter((entry: any) => entry.clock_in && entry.archived !== true);
     const missedClockIns = queueRole === 'hr' ? (schedules || []).filter((shift: any) => {
-      if (shift.archived === true || shift.is_open === true || normalized(shift.officer_email) === 'open') return false;
+      if (shift.archived === true || shift.is_open === true || normalized(shift.officer_email) === 'open' || ['called_out','sent_home'].includes(normalized(shift.attendance_status))) return false;
       if (String(shift.shift_date || '') !== now.date) return false;
       const start = parseWallMinutes(shift.start_time);
       if (start < 0 || start > fiveMinutesAgo) return false;
@@ -429,6 +431,10 @@ Deno.serve(async (req) => {
         page: 'ManageTimeEntries',
       });
     }
+    for (const callout of callOuts.filter((row: any) => row.voided !== true && ['called_out','sent_home','reassigned'].includes(normalized(row.call_out_type)))) {
+      const person = personFor(callout);
+      candidates.push({ id: `callout-review-${callout.id}`, source_id: String(callout.id), kind: 'call_out_review', priority: 'high', title: 'Officer Call-Out / Coverage Review', person: person.name, detail: `${callout.call_out_date} · ${callout.location || 'Scheduled assignment'} · ${callout.call_out_type} · ${callout.reason || 'Review coverage and attendance'}`, page: 'ManageTimeEntries' });
+    }
     for (const item of lateClockOuts) {
       const person = personFor(item.entry);
       candidates.push({
@@ -504,7 +510,7 @@ Deno.serve(async (req) => {
     }
 
     const allowedKinds = queueRole === 'hr'
-      ? new Set(['missed_clock_in', 'late_clock_out', 'pto', 'performance_review', 'annual_review_due'])
+      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'pto', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
         ? new Set(['report_review'])
         : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
@@ -563,6 +569,7 @@ Deno.serve(async (req) => {
       if (kind === 'missed_clock_in' || kind === 'late_clock_out') {
         return !loadErrorSet.has('schedules') && !loadErrorSet.has('time entries');
       }
+      if (kind === 'call_out_review') return !loadErrorSet.has('call-outs');
       if (kind === 'pto') return !loadErrorSet.has('time-off requests');
       if (kind === 'performance_review' || kind === 'annual_review_due') {
         return !loadErrorSet.has('performance reviews') && !loadErrorSet.has('employee directory');
@@ -613,6 +620,7 @@ Deno.serve(async (req) => {
     // across hourly refreshes or page reloads.
     if (loadErrors.length) {
       const destinationFor = (kind: string) => {
+        if (kind === 'call_out_review') return 'ManageTimeEntries';
         if (kind === 'pto') return 'AdminPTOApproval';
         if (kind === 'performance_review' || kind === 'annual_review_due') return 'AdminPerformanceReviews';
         if (kind === 'missed_clock_in' || kind === 'late_clock_out') return 'ManageTimeEntries';
