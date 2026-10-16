@@ -216,7 +216,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const handleEditUser = (userData) => {
     setEditingUser(userData.id);
     setImapMailboxId('');
-    setImapForm({ mailbox_email: '', display_name: '', imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true, smtp_host: 'imap.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
+    setImapForm({ mailbox_email: '', display_name: '', imap_host: 'imap.purelymail.com', imap_port: 993, imap_secure: true, smtp_host: 'smtp.purelymail.com', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
     if (isSystemAdmin) {
       base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
         const mailbox = rows?.[0];
@@ -293,7 +293,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         approved_by_company: true,
         active: imapForm.active !== false,
         imap_host: imapMailboxId ? imapForm.imap_host.trim() || 'imap.purelymail.com' : 'imap.purelymail.com', imap_port: imapMailboxId ? Number(imapForm.imap_port || 993) : 993, imap_secure: imapMailboxId ? imapForm.imap_secure !== false : true,
-        smtp_host: imapMailboxId ? imapForm.smtp_host.trim() || 'imap.purelymail.com' : 'imap.purelymail.com', smtp_port: imapMailboxId ? Number(imapForm.smtp_port || 465) : 465, smtp_secure: imapMailboxId ? imapForm.smtp_secure !== false : true,
+        smtp_host: imapMailboxId ? imapForm.smtp_host.trim() || 'smtp.purelymail.com' : 'smtp.purelymail.com', smtp_port: imapMailboxId ? Number(imapForm.smtp_port || 465) : 465, smtp_secure: imapMailboxId ? imapForm.smtp_secure !== false : true,
         username: imapMailboxId ? (imapForm.username.trim() || imapForm.mailbox_email.trim().toLowerCase()) : imapForm.mailbox_email.trim().toLowerCase(), updated_by: user?.email || '',
         ...(imapForm.password ? { password: imapForm.password } : {}),
       };
