@@ -1,4 +1,4 @@
-import { inspectPageModules } from '@/utils/pageAssetHealth';
+import { inspectPageModules, isAssetLoadError } from '@/utils/pageAssetHealth';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { getAppDirectory } from '@/lib/appDirectory';
 import { runVoiceDedupeSelfTest } from '@/utils/voiceAnnouncer';
@@ -34,7 +34,7 @@ export function recordRuntimeIssue(issue = {}) {
     const now = new Date().toISOString();
     const entry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      type: issue.type || 'runtime_error',
+      type: isAssetLoadError(message) ? 'asset_load_error' : issue.type || 'runtime_error',
       message,
       page: issue.page || window.location.pathname || 'unknown',
       source: issue.source || '',
@@ -50,6 +50,7 @@ export function recordRuntimeIssue(issue = {}) {
       && item.page === entry.page
       && new Date(item.occurred_at || 0).getTime() >= duplicateCutoff
     );
+    if (isAssetLoadError(message)) window.dispatchEvent(new CustomEvent('bps-app-assets-unavailable'));
     if (isDuplicate) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...current].slice(0, MAX_ISSUES)));
   } catch {
@@ -255,7 +256,7 @@ export async function runClientFunctionalAudit({ includeFunctionalProbes = true 
   // current outage. Scan errors captured during this loaded app session; any error
   // that recurs after refresh is still reported immediately.
   const cutoff = Math.max(Date.now() - (24 * 60 * 60 * 1000), CURRENT_APP_SESSION_STARTED_AT);
-  const recentRuntime = getRuntimeIssues().filter(item => new Date(item.occurred_at || 0).getTime() >= cutoff);
+  const recentRuntime = getRuntimeIssues().filter(item => !isAssetLoadError(item.message) && new Date(item.occurred_at || 0).getTime() >= cutoff);
   const groupedRuntime = new Map();
   recentRuntime.forEach(item => {
     const key = `${item.page}|${item.message}`;
