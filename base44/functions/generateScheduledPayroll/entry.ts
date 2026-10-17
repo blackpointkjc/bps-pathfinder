@@ -154,7 +154,18 @@ Deno.serve(async (req) => {
       `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`;
     const existingKeys = new Set((existingPayroll || []).map(payrollKey));
     const existingByKey = new Map((existingPayroll || []).map((item: any) => [payrollKey(item), item]));
-    const recalculateExisting = manualRun && body.force === true;
+    // Reconcile existing reports when underlying punches or reimbursements change.
+    const forceAll = manualRun && body.force === true;
+    const eligiblePeriod = (candidate:any) => Boolean(candidate?.start_date && candidate?.end_date && candidate.start_date <= easternToday);
+    const latestInputUpdate = (candidate:any, email:string) => {
+      const sourceRows = (entries || []).filter((row:any) => String(row.officer_email || '').toLowerCase() === email && row.clock_in && dateOnly(row.clock_in) >= candidate.start_date && dateOnly(row.clock_in) <= candidate.end_date);
+      const reimbursements = (expenseReports || []).filter((row:any) => String(row.officer_email || '').toLowerCase() === email && row.expense_date >= candidate.start_date && row.expense_date <= candidate.end_date);
+      const pto = (ptoUsage || []).filter((row:any) => String(row.officer_email || '').toLowerCase() === email && row.usage_date >= candidate.start_date && row.usage_date <= candidate.end_date);
+      return Math.max(0,...[...sourceRows,...reimbursements,...pto].map((row:any)=>Date.parse(row.updated_date || row.created_date || '') || 0));
+    };
+    const isStale = (candidate:any, current:any) => Boolean(current && latestInputUpdate(candidate,String(current.officer_email || '').toLowerCase()) > (Date.parse(current.last_recalculated_at || current.updated_date || current.created_date || '') || 0) + 1000);
+    const hasStaleReports = (candidate:any) => (existingPayroll || []).some((row:any) => row.pay_period_start === candidate.start_date && row.pay_period_end === candidate.end_date && isStale(candidate,row));
+
     const hasMissingEligibleOfficer = (candidate: any) => {
       const eligibleEmails = new Set<string>();
       for (const timeEntry of entries || []) {
@@ -181,11 +192,11 @@ Deno.serve(async (req) => {
     const period = body.period_id
       ? (periods || []).find((item: any) => item.id === body.period_id)
       : [...(periods || [])]
-          .filter((item: any) => item.end_date <= endedDate)
-          .sort((a: any, b: any) => String(a.end_date).localeCompare(String(b.end_date)))
-          .find(hasMissingEligibleOfficer);
+          .filter((item: any) => eligiblePeriod(item) && (item.end_date <= endedDate || hasStaleReports(item)))
+          .sort((a: any, b: any) => String(b.end_date).localeCompare(String(a.end_date)))
+          .find((item:any) => hasMissingEligibleOfficer(item) || hasStaleReports(item));
     if (!period) return Response.json({ success: true, skipped: true, reason: `No incomplete payroll period ended on or before ${endedDate}` });
-    if (body.period_id && !recalculateExisting && !hasMissingEligibleOfficer(period)) {
+    if (body.period_id && !forceAll && !hasMissingEligibleOfficer(period) && !hasStaleReports(period)) {
       return Response.json({ success: true, skipped: true, period_id: period.id, period_name: period.period_name, reason: 'Every eligible officer already has a payroll record for this period' });
     }
 
@@ -236,7 +247,11 @@ Deno.serve(async (req) => {
     for (const [email, data] of grouped.entries()) {
       const key = `${email}|${period.start_date}|${period.end_date}`;
       const existingForKey = existingByKey.get(key);
-      if (existingForKey && !recalculateExisting) { duplicates += 1; continue; }
+      if (existingForKey && !forceAll && !isStale(period,existingForKey)) { duplicates += 1; continue; }
+      if (existingForKey && ['paid','exported','approved'].includes(String(existingForKey.status || '').toLowerCase())) {
+        skippedNoRate.push(`${email}: finalized payroll changed and needs an audited adjustment; original payment preserved`);
+        continue;
+      }
       const officer = data.officer;
       const baseRate = Number(officer.hourly_rate);
       const overtimeRate = Number(officer.overtime_rate_override || baseRate * overtimeMultiplier);
@@ -269,7 +284,8 @@ Deno.serve(async (req) => {
       const reimbursementTotal = round(officerExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount || 0), 0));
       // Approved expenses are reimbursements, not taxable wages. Keep gross pay
       // unchanged and add reimbursement only to the amount paid to the officer.
-      const net = gross + reimbursementTotal;
+      const deductions = existingForKey ? ['federal_tax','state_tax','social_security','medicare','other_deductions'].reduce((sum:number,key:string) => sum + Number(existingForKey[key] || 0), 0) : 0;
+      const net = gross + reimbursementTotal - deductions;
 
       const payrollData = {
         officer_email: email,
@@ -300,11 +316,11 @@ Deno.serve(async (req) => {
           tax_free: true,
         }))),
         total_payment_due: round(gross + reimbursementTotal),
-        federal_tax: 0,
-        state_tax: 0,
-        social_security: 0,
-        medicare: 0,
-        other_deductions: 0,
+        federal_tax: Number(existingForKey?.federal_tax || 0),
+        state_tax: Number(existingForKey?.state_tax || 0),
+        social_security: Number(existingForKey?.social_security || 0),
+        medicare: Number(existingForKey?.medicare || 0),
+        other_deductions: Number(existingForKey?.other_deductions || 0),
         net_pay: round(net),
         qualified_overtime_premium: 0,
         qualified_tips: 0,
@@ -314,7 +330,7 @@ Deno.serve(async (req) => {
         payment_method: officer.payment_method || 'direct_deposit',
         notes: `${existingForKey ? 'Recalculated' : 'Automatically generated'} after ${period.period_name || 'payroll period'} ended.${reimbursementTotal > 0 ? ` Includes $${reimbursementTotal.toFixed(2)} in tax-free expense reimbursements.` : ''}`,
         last_recalculated_at: new Date().toISOString(),
-        payroll_source: existingForKey ? 'manual_recalculation' : 'scheduled_generation',
+        payroll_source: existingForKey ? 'automatic_source_reconciliation' : 'scheduled_generation',
       };
       const payrollEntry = existingForKey
         ? await base44.asServiceRole.entities.PayrollEntry.update(existingForKey.id, payrollData)
@@ -331,15 +347,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (period.status !== 'closed') await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { status: 'closed' });
+    if (period.end_date <= endedDate && period.status !== 'closed') await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { status: 'closed' });
     const next = (periods || []).filter((item: any) => item.start_date > period.end_date).sort((a: any, b: any) => a.start_date.localeCompare(b.start_date))[0];
-    if (next && next.status !== 'current') await base44.asServiceRole.entities.PayrollPeriod.update(next.id, { status: 'current' });
+    if (period.end_date <= endedDate && next && next.start_date <= easternToday && next.status !== 'current') await base44.asServiceRole.entities.PayrollPeriod.update(next.id, { status: 'current' });
 
     const accountingUsers = (users || []).filter((user: any) => {
       const roles = (user.additional_roles || []).map((role: unknown) => String(role).toLowerCase());
       return user.role === 'admin' || roles.includes('accounting') || roles.includes('full_access');
     });
-    for (const user of accountingUsers) {
+    if (created > 0 || updated > 0 || skippedNoRate.length > 0) for (const user of accountingUsers) {
       if (!user.email) continue;
       await base44.asServiceRole.entities.Notification.create({
         recipient_email: user.email,
@@ -353,7 +369,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, skipped_no_rate: skippedNoRate });
+    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, adjustment_required: skippedNoRate });
   } catch (error) {
     console.error('generateScheduledPayroll failed', error);
     return Response.json({ error: error?.message || 'Unable to generate scheduled payroll' }, { status: 500 });

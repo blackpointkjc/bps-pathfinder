@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { accountingBulkCreate, accountingCreate, accountingUpdate } from '@/lib/accountingRecordsApi';
@@ -582,6 +582,8 @@ export default function AccountingPayroll() {
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     return sum + (entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow));
   }, 0) : 0;
+  const historicReports = [...payrollEntries].filter(entry=>entry.pay_period_start && entry.pay_period_end).sort((a,b)=>String(b.pay_period_end).localeCompare(String(a.pay_period_end)));
+  const historicalPeriods = [...new Set(historicReports.map(entry=>`${entry.pay_period_start}|${entry.pay_period_end}`))];
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
   const currentReportEntries = selectedPayrollEntries.filter(entry => ['ready', 'exported', 'draft', 'approved', 'paid'].includes(entry.status));
@@ -1066,9 +1068,20 @@ export default function AccountingPayroll() {
 
       <Tabs defaultValue="ready" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="ready">Payroll Reports ({currentReportEntries.length})</TabsTrigger>
+          <TabsTrigger value="ready">Current Period ({currentReportEntries.length})</TabsTrigger>
+          <TabsTrigger value="history">Historical Reports ({historicReports.length})</TabsTrigger>
         </TabsList>
-
+        <TabsContent value="history" className="space-y-3">
+          <Card><CardContent className="space-y-3 p-5"><h3 className="text-lg font-bold text-slate-900">Payroll Archive — All Saved Periods</h3>
+            {!historicalPeriods.length && <p className="text-sm text-slate-500">No saved payroll reports exist.</p>}
+            {historicalPeriods.map(key=>{
+              const [start,end]=key.split('|');
+              const records=historicReports.filter(entry=>entry.pay_period_start===start && entry.pay_period_end===end);
+              return <div key={key} className="rounded-lg border border-slate-200 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="font-semibold text-slate-900">{safeFormatDate(start)} – {safeFormatDate(end)} · {records.length} reports</div><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport(records)}><Printer className="mr-2 h-4 w-4"/>Print Archived Period</Button></div>
+                <div className="mt-2 space-y-1">{records.map(entry=>{const officer=officers.find(row=>String(row.email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase());return <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm text-slate-700"><span>{officer?`${officer.first_name} ${officer.last_name}`:entry.officer_email} · {Number(entry.hours_worked||0).toFixed(2)}h · {entry.status}</span><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport([entry])}>Itemized</Button></div>})}</div></div>;
+            })}
+          </CardContent></Card>
+        </TabsContent>
         {[
           { key: 'ready', entries: currentReportEntries }
         ].map(({ key, entries }) => (
