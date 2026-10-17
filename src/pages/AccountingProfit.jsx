@@ -347,7 +347,7 @@ export default function AccountingProfit() {
           @page { margin: 0.5in; }
         }
       `}</style>
-      <div className="container mx-auto max-w-7xl p-4 md:p-6 print-area">
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 py-4 sm:px-5 md:py-6 print-area">
       <section className="relative mb-6 overflow-hidden rounded-[30px] border border-slate-700/80 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-2xl md:p-8">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -402,6 +402,7 @@ export default function AccountingProfit() {
       {accountingLoading && (
         <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
       )}
+      {Number(companyLedger.unverified_rate_shifts||0)>0 && <div role="alert" className="mb-5 rounded-xl border border-amber-500/50 bg-amber-950/30 p-4 text-sm text-amber-100">{companyLedger.unverified_rate_shifts} shift(s) have unverified historical billing rates. The company revenue and profit figures are withheld until contract rates are verified in Billing. Historical invoices must not be sent with unverified rates.</div>}
 
       {/* Print Date Range Display */}
       <div className="hidden print:block mb-6 p-4 bg-slate-50 rounded-lg border">
@@ -411,7 +412,7 @@ export default function AccountingProfit() {
       </div>
 
       {/* Financial summary */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mx-auto mb-6 grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {[
           { label: 'Accrued service revenue', value: Number(companyLedger.earned_service_revenue || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
           { label: 'Total invoiced', value: Number(companyLedger.billed_total || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
@@ -423,26 +424,22 @@ export default function AccountingProfit() {
         ].map(metric => {
           const Icon = metric.icon;
           return (
-            <Card key={metric.label} className={`overflow-hidden rounded-2xl border bg-slate-900/85 text-white shadow-lg ${metric.border}`}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{metric.label}</p>
-                    <p className={`mt-3 break-words text-3xl font-black tracking-tight ${metric.color}`}>
-                      {companyLedger.complete === undefined ? '—' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    </p>
-                    <p className="mt-2 text-sm leading-5 text-slate-400">{metric.note}</p>
-                  </div>
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-                    <Icon className={`h-5 w-5 ${metric.color}`} />
-                  </div>
+            <Card key={metric.label} className={`min-w-0 overflow-hidden rounded-2xl border bg-slate-900/85 text-white shadow-lg ${metric.border}`}>
+              <CardContent className="flex h-full min-h-[170px] min-w-0 flex-col items-center justify-center p-4 text-center sm:p-5">
+                <div className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                  <Icon className={`h-5 w-5 ${metric.color}`} />
                 </div>
+                <p className="max-w-full break-words text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-slate-400">{metric.label}</p>
+                <p className={`mt-2 w-full break-words text-[clamp(1.2rem,1.9vw,1.85rem)] font-black leading-tight tracking-tight ${metric.color}`}>
+                  {companyLedger.complete !== true || (Number(companyLedger.unverified_rate_shifts||0)>0 && ['Accrued service revenue','Estimated profit'].includes(metric.label)) ? 'Review required' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </p>
+                <p className="mt-2 text-xs leading-4 text-slate-400">{metric.note}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
-      <div className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mx-auto mb-7 grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {[
           { label: 'Selected-period service hours', value: `${totalServiceHours.toFixed(2)}h`, icon: Clock3 },
           { label: 'Selected-period approved payroll hours', value: `${totalApprovedPayrollHours.toFixed(2)}h`, icon: WalletCards },
@@ -451,9 +448,9 @@ export default function AccountingProfit() {
         ].map(item => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-950/50 px-4 py-3">
+            <div key={item.label} className="flex min-h-[95px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-slate-700/80 bg-slate-950/50 p-3 text-center">
               <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-              <div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.label}</p><p className="truncate text-sm font-bold text-slate-200">{item.value}</p></div>
+              <div className="min-w-0"><p className="break-words text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.label}</p><p className="mt-1 break-words text-base font-bold text-slate-200">{item.value}</p></div>
             </div>
           );
         })}
