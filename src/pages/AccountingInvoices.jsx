@@ -64,7 +64,7 @@ export default function AccountingInvoices() {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'run_now'});
       const data=response?.data||response||{};
       if(data.error) throw new Error(data.error);
-      setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s).`);
+      setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s), ${data.processing_failed || 0} site processing failure(s).`);
       queryClient.invalidateQueries({queryKey:['accountingData']});
       queryClient.invalidateQueries({queryKey:['accountingFinance']});
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }

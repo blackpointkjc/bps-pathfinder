@@ -160,10 +160,11 @@ Deno.serve(async(req)=>{
     }
     const prefix=today.slice(2,4);
     let sequence=Math.max(0,...(invoices||[]).map((invoice:any)=>String(invoice.invoice_number||'')).filter((number:string)=>number.startsWith(prefix)).map((number:string)=>Number(number.slice(2))||0));
-    let created=0,updated=0,sent=0,deliveryFailed=0,skipped=0,held=0;
+    let created=0,updated=0,sent=0,deliveryFailed=0,skipped=0,held=0,processingFailed=0;
     const results:any[]=[];
     const selected=body.location_id ? (locations||[]).filter((row:any)=>row.id===body.location_id) : (locations||[]);
     for(const location of selected){
+      try {
       if (!location?.site_name || !(Number(location.site_bill_rate)>0)) {skipped++;continue;}
       const name=siteOf(location.site_name);
       const keys=action==='backfill_drafts' ? Array.from({length:16},(_,i)=>{const end=dateOffset(lastSaturday,-7*i);return [dateOffset(end,-6),end]}) : [[periodStart,periodEnd]];
@@ -243,7 +244,24 @@ Deno.serve(async(req)=>{
           console.error('Automated invoice email failed',number,message);
         }
       }
+      } catch(siteError:any) {
+        processingFailed++;
+        const detail=String(siteError?.message||'Unable to process site invoice');
+        console.error('Invoice generator failed for site',String(location?.site_name||''),detail);
+        results.push({site:String(location?.site_name||'Unknown'),status:'processing_failed',error:detail});
+      }
     }
-    return Response.json({success:true,period_start:periodStart,period_end:periodEnd,created,updated,sent,delivery_failed:deliveryFailed,skipped,held,results,recipient_fallback:MANAGEMENT_EMAIL});
+    const runSummary={period_start:periodStart,period_end:periodEnd,created,updated,sent,delivery_failed:deliveryFailed,processing_failed:processingFailed,skipped,held,results,recipient_fallback:MANAGEMENT_EMAIL};
+    try {
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type:'Invoice',entity_id:'weekly-billing',
+        action:manual?'manual_invoice_run':'automatic_monday_invoice_run',
+        actor_id:manual?'accounting':'automation',actor_name:manual?'Accounting':'Monday Billing Scheduler',
+        before_value:'',after_value:JSON.stringify(runSummary),
+        notes:`${created} new, ${updated} revised, ${sent} email provider accepted, ${deliveryFailed} email failed, ${processingFailed} sites failed, ${held} overlap held`,
+        timestamp:new Date().toISOString(),
+      });
+    } catch(error:any) {console.warn('Billing run audit could not be recorded',String(error?.message||error));}
+    return Response.json({success:processingFailed===0 && deliveryFailed===0,...runSummary});
   } catch(error:any){console.error('generateWeeklyInvoices failed',error);return Response.json({error:error?.message||'Unable to generate invoices'},{status:500});}
 });
