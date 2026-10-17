@@ -52,7 +52,7 @@ export default function AccountingInvoices() {
     enabled: isAccountingRole,
     staleTime: 15000,
     refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -84,27 +84,29 @@ export default function AccountingInvoices() {
       // Create invoice record
       const invoice = await accountingCreate('Invoice', invoiceData);
       
-      // Create notification for client
-      await base44.entities.Notification.create({
+      // Portal notification is best effort, and not an emailed invoice.
+      try { await base44.entities.Notification.create({
         recipient_email: invoiceData.client_email,
         type: 'invoice',
         title: `New Invoice - ${invoiceData.invoice_number}`,
         message: `Invoice for ${invoiceData.site_name} from ${format(new Date(invoiceData.period_start), 'MMM d')} to ${format(new Date(invoiceData.period_end), 'MMM d, yyyy')}. Total: $${invoiceData.total_amount.toFixed(2)}`,
         priority: 'normal',
         action_link: '/ClientPayrollReport',
-      });
+      }); } catch(error) { console.warn('Invoice saved; portal notification could not be created:',error?.message); }
 
       return invoice;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountingOverviewSnapshot'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-      alert('✅ Invoice created and sent to client!');
+      alert('Invoice saved to the client billing ledger. A portal notification is attempted; no email delivery is guaranteed.');
     },
   });
 
   const generateInvoice = async () => {
+    if (clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
     if (!selectedClient || !selectedSite) {
       alert('Please select a client and site');
       return;
@@ -181,7 +183,7 @@ export default function AccountingInvoices() {
 
     } catch (error) {
       console.error('Invoice generation error:', error);
-      alert('Failed to generate invoice');
+      alert('Failed to generate invoice: ' + (error?.message || 'Unknown error'));
     } finally {
       setGenerating(false);
     }
@@ -229,6 +231,7 @@ export default function AccountingInvoices() {
   }, { hours: 0, amount: 0, activeShifts: 0 });
 
   const generateAllSitesInvoices = async () => {
+    if (clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
     if (!selectedClient) {
       alert('Please select a client first');
       return;
@@ -242,6 +245,8 @@ export default function AccountingInvoices() {
 
     setGenerating(true);
     try {
+      let nextInvoiceIndex = invoices.filter(inv => String(inv.invoice_number || '').startsWith(String(new Date().getFullYear()).slice(-2))).length + 1;
+      let invoicesCreated = 0;
       for (const location of clientSites) {
         const siteName = location.site_name;
         const billRate = Number(location.site_bill_rate || 0);
@@ -284,8 +289,7 @@ export default function AccountingInvoices() {
         });
         const currentYear = new Date().getFullYear().toString().slice(-2);
         const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
-        const nextNumber = yearInvoices.length + 1;
-        const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
+        const invoiceNumber = `${currentYear}${String(nextInvoiceIndex++).padStart(3, '0')}`;
         
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 15);
@@ -304,8 +308,9 @@ export default function AccountingInvoices() {
           due_date: format(dueDate, 'yyyy-MM-dd'),
           status: 'sent'
         });
+        invoicesCreated += 1;
       }
-      alert(`✅ Invoices generated and sent for ${clientSites.length} site(s)!`);
+      alert(`${invoicesCreated} invoice(s) saved to the billing ledger. This does not confirm email delivery.`);
     } catch (error) {
       console.error('Bulk invoice generation error:', error);
       alert('Error generating invoices');

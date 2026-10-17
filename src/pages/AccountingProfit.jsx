@@ -39,7 +39,7 @@ export default function AccountingProfit() {
     enabled: isAccountingRole,
     staleTime: 15000,
     refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -59,7 +59,7 @@ export default function AccountingProfit() {
     if (!isAccountingRole) return undefined;
     const refresh = () => refetchProfit();
     const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
+    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule', 'CompanyExpense', 'ExpenseReport', 'PTOUsage']) {
       try {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
@@ -102,7 +102,9 @@ export default function AccountingProfit() {
   const filteredCompanyExpenses = companyExpenses.filter(expense => {
     const status = String(expense.status || '').toLowerCase();
     const expenseDate = expense.paid_date || expense.expense_date || expense.created_date;
-    return status === 'paid' && isDateInRange(expenseDate);
+    // Officer reimbursements are already counted from approved ExpenseReports.
+    // Their ledger mirror must not be counted a second time.
+    return status === 'paid' && !String(expense.reference_number || '').startsWith('OFFICER-EXP-') && isDateInRange(expenseDate);
   });
 
   const filteredPTO = ptoUsage.filter(usage =>
@@ -359,7 +361,7 @@ export default function AccountingProfit() {
             <h1 className="text-3xl font-black tracking-tight md:text-5xl">Company Profit Report</h1>
             <p className="mt-3 max-w-2xl text-base text-slate-300">Earned billing, gross accrued wages, operating costs, and margin—calculated from live operational records.</p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-400">
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />Live as of {format(liveNow, 'MMM d, yyyy h:mm:ss a')}</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />Calculated at {format(liveNow, 'MMM d, yyyy h:mm:ss a')} · Last synced {accountingData.as_of ? format(new Date(accountingData.as_of), 'h:mm:ss a') : 'not yet'}</span>
               {accountingFetching && <span className="inline-flex items-center gap-2 text-sky-300"><RefreshCw className="h-3.5 w-3.5 animate-spin" />Refreshing</span>}
             </div>
           </div>
@@ -368,7 +370,7 @@ export default function AccountingProfit() {
               <RefreshCw className={`mr-2 h-4 w-4 ${accountingFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
+            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
               <Download className="mr-2 h-4 w-4" />
               Open Professional Report
             </Button>
@@ -395,7 +397,7 @@ export default function AccountingProfit() {
       {!accountingError && accountingLoadErrors.length > 0 && (
         <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-600/50 bg-amber-950/30 p-4 text-amber-100">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-          <div><p className="font-bold">Some financial sources are temporarily unavailable</p><p className="mt-1 text-sm text-amber-200">Available totals remain visible. Refresh after the remaining sources recover.</p></div>
+          <div><p className="font-bold">Some financial sources are temporarily unavailable</p><p className="mt-1 text-sm text-amber-200">These are incomplete provisional figures, not a verified company profit total. Missing: {accountingLoadErrors.join(', ')}.</p></div>
         </div>
       )}
       {accountingLoading && (

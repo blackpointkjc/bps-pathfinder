@@ -18,17 +18,25 @@ Deno.serve(async (req) => {
     const action = String(body.action || '');
 
     if (action === 'create_company') {
-      const record = await base44.asServiceRole.entities.CompanyExpense.create(body.data || {});
+      const data = body.data || {};
+      const amount = Number(data.amount);
+      if (!data.vendor || !data.description || !data.expense_date || !Number.isFinite(amount) || amount <= 0 || !['paid','unpaid'].includes(String(data.status))) {
+        return Response.json({error:'A valid vendor, date, description, positive amount, and paid/unpaid status are required.'},{status:400});
+      }
+      const record = await base44.asServiceRole.entities.CompanyExpense.create({...data,amount:money(amount),paid_date:data.status==='paid'?(data.paid_date||data.expense_date):''});
       return Response.json({ success: true, record });
     }
     if (action === 'delete_company') {
+      const existing = await base44.asServiceRole.entities.CompanyExpense.get(String(body.id || '')).catch(()=>null);
+      if (!existing) return Response.json({error:'Expense not found'},{status:404});
+      if (String(existing.reference_number || '').startsWith('OFFICER-EXP-')) return Response.json({error:'Approved officer reimbursements must not be deleted from the company ledger.'},{status:409});
       await base44.asServiceRole.entities.CompanyExpense.delete(body.id);
       return Response.json({ success: true });
     }
     if (action === 'approve_report' || action === 'reject_report') {
-      const reports = await base44.asServiceRole.entities.ExpenseReport.filter({ id: body.id });
-      const report = reports?.[0];
+      const report = await base44.asServiceRole.entities.ExpenseReport.get(String(body.id || '')).catch(()=>null);
       if (!report) return Response.json({ error: 'Expense report not found' }, { status: 404 });
+      if (String(report.status || '').toLowerCase() !== 'pending') return Response.json({error:'This expense has already been reviewed. Refresh the approval queue.'},{status:409});
       const status = action === 'approve_report' ? 'approved' : 'rejected';
       const now = new Date().toISOString();
       // Travel reimbursement is policy-driven: ending odometer minus starting
