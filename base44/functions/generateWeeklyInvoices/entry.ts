@@ -41,6 +41,7 @@ Deno.serve(async(req)=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
+    if (!['scheduled','run_now','backfill_drafts','send_existing'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
     const manual=action!=='scheduled';
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);

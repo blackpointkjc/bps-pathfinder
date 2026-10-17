@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, report: updated, ledger, payroll_period: payrollPeriod, payroll_entry: payrollEntry });
     }
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
-  } catch (error) {
+  } catch (error:any) {
     console.error('manageAccountingExpenses failed', error);
     return Response.json({ error: error?.message || 'Unable to manage expenses' }, { status: 500 });
   }

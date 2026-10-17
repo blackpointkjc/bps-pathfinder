@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, adjustment_required: skippedNoRate });
-  } catch (error) {
+  } catch (error:any) {
     console.error('generateScheduledPayroll failed', error);
     return Response.json({ error: error?.message || 'Unable to generate scheduled payroll' }, { status: 500 });
   }

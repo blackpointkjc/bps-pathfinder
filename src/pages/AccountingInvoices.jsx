@@ -76,7 +76,6 @@ export default function AccountingInvoices() {
   const clients = accountingData.clients || [];
   const locations = accountingData.locations || [];
   const timeEntries = accountingData.timeEntries || [];
-  const officers = accountingData.users || [];
   const config = accountingData.config || null;
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];

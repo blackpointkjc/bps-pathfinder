@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       w2Forms: w2Forms || [],
       schedules: schedules || [],
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getAccountingData failed', error);
     return Response.json({ error: error?.message || 'Unable to load accounting data' }, { status: 500 });
   }

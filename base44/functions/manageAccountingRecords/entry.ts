@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
-  } catch (error) {
+  } catch (error:any) {
     console.error('manageAccountingRecords failed', error);
     return Response.json({ error: error?.message || 'Unable to update accounting records' }, { status: 500 });
   }
