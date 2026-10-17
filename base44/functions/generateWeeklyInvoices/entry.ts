@@ -175,10 +175,17 @@ Deno.serve(async(req)=>{
         // Never create another invoice for a service interval already billed
         // under a different date range (legacy monthly/multi-week records).
         const overlap=(invoices||[]).find((old:any)=>
-          !existingInvoice && siteOf(old.site_name).toLowerCase()===name.toLowerCase() &&
+          String(old.id)!==String(existingInvoice?.id||'') &&
+          siteOf(old.site_name).toLowerCase()===name.toLowerCase() &&
           old.period_start<=end && old.period_end>=start &&
           !['void','cancelled'].includes(String(old.status||'').toLowerCase()));
-        if(overlap){held++;results.push({site:name,status:'overlap_requires_review',invoice_number:overlap.invoice_number});continue;}
+        if(overlap){
+          held++;
+          results.push({site:name,status:'overlap_requires_review',invoice_number:overlap.invoice_number,
+            existing_invoice_number:existingInvoice?.invoice_number||null,
+            reason:'Another invoice covers some or all of these service dates. The charges and line items must be reconciled before another bill is sent.'});
+          continue;
+        }
         const rows=(entries||[]).filter((entry:any)=>entry.clock_in&&entry.clock_out&&entry.archived!==true&&siteOf(entry.location)===name&&easternDate(entry.clock_in)>=start&&easternDate(entry.clock_in)<=end);
         if(!rows.length){skipped++;continue;}
         let totalHours=0,total=0;
