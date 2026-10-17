@@ -10,6 +10,7 @@
       "type": "string",
       "description": "Full address of the site"
     },
+    "billing_contact_email": {"type":"string","description":"Verified client billing recipient; if empty automated invoices go to management@blackpointkjc.com"},
     "site_email": {
       "type": "string",
       "description": "Email address for site manager/contact (reports will be sent here)"
