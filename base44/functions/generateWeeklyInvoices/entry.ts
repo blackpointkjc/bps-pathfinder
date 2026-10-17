@@ -171,7 +171,7 @@ Deno.serve(async(req)=>{
       for(const [start,end] of keys){
         const key=`${name.toLowerCase()}|${start}|${end}`;
         const existingInvoice=existingByKey.get(key);
-        if (existingInvoice && ['paid','void','cancelled'].includes(String(existingInvoice.status||'').toLowerCase())) {skipped++;continue;}
+        if (existingInvoice && ['paid','partial','pending','overdue','void','cancelled'].includes(String(existingInvoice.status||'').toLowerCase())) {skipped++;continue;}
         // Never create another invoice for a service interval already billed
         // under a different date range (legacy monthly/multi-week records).
         const overlap=(invoices||[]).find((old:any)=>

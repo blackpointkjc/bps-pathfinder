@@ -25,6 +25,8 @@ export default function AccountingInvoices() {
   const [billingRunIssues, setBillingRunIssues] = useState([]);
   const [savingBillingEmail, setSavingBillingEmail] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [paymentDrafts, setPaymentDrafts] = useState({});
+  const [savingPaymentId, setSavingPaymentId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -109,6 +111,32 @@ export default function AccountingInvoices() {
     }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
   };
+  const updateInvoicePayment = async (invoice, forcedStatus) => {
+    const state=paymentDrafts[invoice.id] || {};
+    const target=forcedStatus || state.status || String(invoice.status || 'pending');
+    const amount=target==='paid'?Number(invoice.total_amount):state.amount_paid !== undefined?Number(state.amount_paid):Number(invoice.amount_paid||0);
+    if(invoice.billing_review_required) return setBillingStatus('Review and verify this invoice’s historical contract rate before posting payments.');
+    if(!window.confirm(`Save invoice #${invoice.invoice_number} as ${target.toUpperCase()} with $${amount.toFixed(2)} received? This updates the company accounting ledger.`))return;
+    setSavingPaymentId(invoice.id);
+    try {
+      const response=await base44.functions.invoke('manageAccountingRecords',{
+        action:'update_invoice_payment',invoice_id:invoice.id,payment_status:target,amount_paid:amount,
+        payment_reference:state.payment_reference||invoice.payment_reference||'',payment_method:state.payment_method||invoice.payment_method||'',
+        paid_date:new Date().toISOString().slice(0,10),
+      });
+      const result=response?.data||response||{};
+      if(result.error)throw new Error(result.error);
+      queryClient.setQueryData(['accountingFinance'],previous => previous ? ({...previous,
+        invoices:(previous.invoices||[]).map(row=>row.id===invoice.id?{...row,...(result.record||{})}:row),
+      }):previous);
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey:['accountingFinance']}),
+        queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']}),
+      ]);
+      setBillingStatus(`Invoice ${invoice.invoice_number} updated to ${target.toUpperCase()} — $${amount.toFixed(2)} received, balance $${Math.max(0,Number(invoice.total_amount)-amount).toFixed(2)}.`);
+    }catch(error){setBillingStatus(`Could not update invoice ${invoice.invoice_number}: ${error?.response?.data?.error||error?.message||'Server rejected update'}`);}
+    finally{setSavingPaymentId(null);}
+  };
   const sendExistingInvoice = async invoice => {
     if (!window.confirm(`Send invoice ${invoice.invoice_number} for ${invoice.site_name}? It will use that site's saved billing contact or management@blackpointkjc.com.`)) return;
     setGenerating(true);
@@ -170,9 +198,9 @@ export default function AccountingInvoices() {
                 const clientName = client ? (`${client.first_name || ''} ${client.last_name || ''}`.trim() || client.full_name || client.email) : (invoice.delivery_email || invoice.client_email || 'Client');
                 
                 return (
-                  <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
+                  <div key={invoice.id} className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:bg-slate-100 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-5">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
                         <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <HistoricalRateEditor key={invoice.id} invoice={invoice} saving={generating} onApprove={approveHistoricalRate}/>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
@@ -192,7 +220,7 @@ export default function AccountingInvoices() {
                         {invoice.due_date && ` • Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}`}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between gap-4 md:block md:text-right">
+                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 lg:block lg:text-right">
                       <p className="text-2xl font-bold text-green-600">
                         ${invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </p>
@@ -480,6 +508,21 @@ export default function AccountingInvoices() {
                         <Download className="w-4 h-4 mr-1" />
                         View / Print
                       </Button>
+                    </div>
+                    <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 lg:col-span-2">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-black uppercase tracking-wide text-slate-700">Payment tracking</span>
+                        <span className="text-sm font-bold text-slate-800">Received: ${Number(invoice.amount_paid|| (invoice.status==='paid'?invoice.total_amount:0)).toFixed(2)} · Balance: ${Math.max(0,Number(invoice.total_amount||0)-Number(invoice.amount_paid||(invoice.status==='paid'?invoice.total_amount:0))).toFixed(2)}</span>
+                      </div>
+                      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(125px,1fr)_minmax(120px,1fr)_minmax(130px,1fr)_minmax(140px,1fr)_auto_auto] xl:items-end">
+                        <div><Label className="text-xs text-slate-600">Payment status</Label><Select value={paymentDrafts[invoice.id]?.status || (['paid','partial','pending','overdue'].includes(invoice.status)?invoice.status:'pending')} onValueChange={value=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],status:value}}))}><SelectTrigger className="w-full"><SelectValue/></SelectTrigger><SelectContent>{['pending','partial','paid','overdue'].map(status=><SelectItem key={status} value={status}>{status==='pending'?'Pending Payment':status.charAt(0).toUpperCase()+status.slice(1)}</SelectItem>)}</SelectContent></Select></div>
+                        <div><Label className="text-xs text-slate-600">Payment received ($)</Label><Input type="number" min="0" max={invoice.total_amount} step="0.01" value={paymentDrafts[invoice.id]?.amount_paid ?? (invoice.amount_paid||0)} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],amount_paid:event.target.value}}))} /></div>
+                        <div><Label className="text-xs text-slate-600">Payment method</Label><Input placeholder="ACH, check, card..." value={paymentDrafts[invoice.id]?.payment_method ?? (invoice.payment_method||'')} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],payment_method:event.target.value}}))}/></div>
+                        <div><Label className="text-xs text-slate-600">Reference / check #</Label><Input placeholder="Payment reference" value={paymentDrafts[invoice.id]?.payment_reference ?? (invoice.payment_reference||'')} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],payment_reference:event.target.value}}))}/></div>
+                        <Button type="button" variant="outline" disabled={savingPaymentId===invoice.id || invoice.billing_review_required} onClick={()=>updateInvoicePayment(invoice)} className="whitespace-nowrap">{savingPaymentId===invoice.id?'Saving…':'Save Status'}</Button>
+                        <Button type="button" disabled={savingPaymentId===invoice.id || invoice.status==='paid' || invoice.billing_review_required} onClick={()=>updateInvoicePayment(invoice,'paid')} className="whitespace-nowrap bg-emerald-700 text-white hover:bg-emerald-600">Mark Paid</Button>
+                      </div>
+                      {invoice.status==='draft' && <p className="mt-2 text-xs text-amber-700">This invoice is still a draft. Recording a payment does not mean the invoice was emailed to the client.</p>}
                     </div>
                   </div>
                 );
