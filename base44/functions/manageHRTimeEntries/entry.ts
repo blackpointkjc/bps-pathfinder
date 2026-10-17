@@ -211,7 +211,7 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
       social_security: 0,
       medicare: 0,
       other_deductions: 0,
-      net_pay: round(gross),
+      net_pay: round(gross + reimbursementTotal),
       status: 'draft',
       notes: 'Live draft recalculated after an audited HR time-entry decision.',
     });
@@ -219,6 +219,19 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
   }
 
   for (const payrollRow of payrollRows) {
+    // Never rewrite a finalized payment. Record an auditable outstanding
+    // adjustment instead, which payroll/accounting can review explicitly.
+    if (['paid','exported','approved'].includes(String(payrollRow.status || '').toLowerCase())) {
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type:'PayrollEntry',entity_id:payrollRow.id,action:'post_finalization_time_correction',
+        actor_id:'system',actor_name:'Pathfinder Payroll Reconciliation',
+        before_value:JSON.stringify({hours_worked:payrollRow.hours_worked,gross_pay:payrollRow.gross_pay,status:payrollRow.status}),
+        after_value:JSON.stringify({hours_worked:calculated.hours_worked,gross_pay:calculated.gross_pay,source_time_entry_id:touchedEntry.id}),
+        notes:'Payroll finalized before a time-entry correction; do not overwrite paid amounts. Review adjustment with accounting.',
+        timestamp:recalculatedAt,
+      }).catch((error:any)=>console.warn('Payroll adjustment audit could not save',String(error?.message||error)));
+      continue;
+    }
     const deductions = Number(payrollRow.federal_tax || 0)
       + Number(payrollRow.state_tax || 0)
       + Number(payrollRow.social_security || 0)
@@ -226,7 +239,7 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
       + Number(payrollRow.other_deductions || 0);
     await base44.asServiceRole.entities.PayrollEntry.update(payrollRow.id, {
       ...calculated,
-      net_pay: round(Math.max(0, gross - deductions)),
+      net_pay: round(Math.max(0, gross - deductions) + reimbursementTotal),
       total_payment_due: round(Math.max(0, gross - deductions) + reimbursementTotal),
     });
   }

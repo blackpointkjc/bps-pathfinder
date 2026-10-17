@@ -99,6 +99,15 @@ Deno.serve(async (req) => {
       const siteOf=(v:any)=>String(v||'').split(/\s*(?::|\s-\s)\s*/)[0].trim();
       const locationBySite=new Map(locations.map((row:any)=>[siteOf(row.site_name),row]));
       let serviceHours=0,earnedRevenue=0,onDuty=0,unverifiedRates=0;
+      const approvedInvoiceRates=new Map<string,number>();
+      for (const invoice of invoices) {
+        if (!invoice.billing_rate_verified_at || !Number(invoice.billing_rate_verified_value) || ['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
+        let shifts:any[]=[];
+        try {shifts=JSON.parse(invoice.shifts||'[]');}catch{}
+        for(const shift of (Array.isArray(shifts)?shifts:[])) {
+          if(shift.clockIn) approvedInvoiceRates.set(`${siteOf(invoice.site_name)}|${shift.clockIn}`,Number(shift.rate||invoice.billing_rate_verified_value));
+        }
+      }
       for (const entry of timeEntries) {
         if (!entry?.clock_in || entry.archived===true) continue;
         const day=easternDay(new Date(entry.clock_in));
@@ -123,8 +132,9 @@ Deno.serve(async (req) => {
         const standard=Number(historical?.rate)||Number(location?.site_bill_rate)||0;
         const special=type==='holiday_coverage'||type==='rush_coverage'||unarmed;
         const laterRateChange=history.some((item:any)=>String(item.effective_date)>day);
-        const rate=special?(Number(location?.[field])||standard):standard;
-        if (!location || rate<=0 || (history.length>0&&!historical) || (special&&laterRateChange)) unverifiedRates++;
+        const approved=approvedInvoiceRates.get(`${site}|${entry.clock_in}`);
+        const rate=approved|| (special?(Number(location?.[field])||standard):standard);
+        if (!location || rate<=0 || (!approved && ((history.length>0&&!historical) || (special&&laterRateChange)))) unverifiedRates++;
         serviceHours+=hours;earnedRevenue+=hours*rate;
         if(!entry.clock_out)onDuty++;
       }

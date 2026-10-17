@@ -87,6 +87,17 @@ Deno.serve(async(req)=>{
         return {...item,rate:verifiedRate.toFixed(2),amount:amount.toFixed(2)};
       });
       const actor=await base44.auth.me();
+      const locations=await base44.asServiceRole.entities.Location.list('site_name',2000);
+      const location=(locations||[]).find((site:any)=>siteOf(site.site_name).toLowerCase()===siteOf(invoice.site_name).toLowerCase());
+      if (!location) return Response.json({error:'Site missing: cannot apply approved rate to company billing records'},{status:409});
+      const priorHistory=Array.isArray(location.site_rate_history)?location.site_rate_history:[];
+      const effective=String(invoice.period_start);
+      const conflicts=priorHistory.filter((row:any)=>row.effective_date>effective&&row.effective_date<=invoice.period_end);
+      if(conflicts.length) return Response.json({error:'The invoice crosses a contract rate change. Verify rates by shift rather than applying one flat rate to the entire period.'},{status:409});
+      const history=priorHistory.filter((row:any)=>row.effective_date!==effective);
+      history.push({effective_date:effective,rate:verifiedRate,changed_by:String(actor?.email||actor?.id||'accounting')});
+      history.sort((a:any,b:any)=>String(a.effective_date).localeCompare(String(b.effective_date)));
+      await base44.asServiceRole.entities.Location.update(location.id,{site_rate_history:history});
       const record=await base44.asServiceRole.entities.Invoice.update(invoice.id,{
         shifts:JSON.stringify(revised),bill_rate:verifiedRate,total_amount:dollars(total),
         billing_review_required:false,billing_review_reason:'',delivery_status:'pending',
@@ -172,7 +183,14 @@ Deno.serve(async(req)=>{
         let totalHours=0,total=0;
         const reviewReasons=new Set<string>();
         const shifts=rows.map((entry:any)=>{
-          const h=hours(entry);const rateResult=hourlyRate(entry,location,schedules||[]);const rate=rateResult.rate;
+          const h=hours(entry);
+          // An audited rate approved for this existing invoice must survive
+          // future automatic reruns; do not overwrite it with the site's newer rate.
+          const approved=Number(existingInvoice?.billing_rate_verified_value||0);
+          const rateResult=approved>0 && existingInvoice?.billing_rate_verified_at
+            ? {rate:approved,needsReview:false,reason:''}
+            : hourlyRate(entry,location,schedules||[]);
+          const rate=rateResult.rate;
           if(rateResult.needsReview) reviewReasons.add(rateResult.reason || 'Review historical billing rate');
           totalHours+=h;total+=h*rate;
           const officer=byOfficer.get(String(entry.officer_email||'').toLowerCase()) as any;
@@ -199,7 +217,12 @@ Deno.serve(async(req)=>{
         }
         const before=existingInvoice?{total_amount:existingInvoice.total_amount,total_hours:existingInvoice.total_hours,shifts:existingInvoice.shifts,status:existingInvoice.status,updated_at:existingInvoice.updated_date}:null;
         const revision=Number(existingInvoice?.revision||1)+(existingInvoice&&!unchanged?1:0);
-        const audit=existingInvoice&&!unchanged?JSON.stringify([...(Array.isArray(existingInvoice.revision_history)?existingInvoice.revision_history:[]),{when:new Date().toISOString(),reason:'Recalculated using current service records and effective historical rates',prior:before}].slice(-20)):existingInvoice?.revision_history;
+        let priorRevisions:any[]=[];
+        try {
+          const prior=typeof existingInvoice?.revision_history==='string'?JSON.parse(existingInvoice.revision_history):(existingInvoice?.revision_history||[]);
+          priorRevisions=Array.isArray(prior)?prior:[];
+        } catch { priorRevisions=[]; }
+        const audit=existingInvoice&&!unchanged?JSON.stringify([...priorRevisions,{when:new Date().toISOString(),reason:'Recalculated using current service records and effective historical rates',prior:before}].slice(-50)):existingInvoice?.revision_history;
         const invoice=existingInvoice
           ? await base44.asServiceRole.entities.Invoice.update(existingInvoice.id,{...invoiceData,revision,revision_history:audit||''})
           : await base44.asServiceRole.entities.Invoice.create({...invoiceData,revision:1});

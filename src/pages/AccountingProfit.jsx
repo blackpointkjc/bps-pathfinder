@@ -78,6 +78,14 @@ export default function AccountingProfit() {
   };
 
   // Accrue completed and currently active shifts throughout the selected period.
+  const approvedRates=new Map();
+  for (const invoice of invoices) {
+    if (!invoice.billing_rate_verified_at || ['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
+    let shifts=[];
+    try {shifts=JSON.parse(invoice.shifts||'[]')}catch{}
+    for (const item of (Array.isArray(shifts)?shifts:[])) if (item.clockIn) approvedRates.set(`${normalizeSiteName(invoice.site_name)}|${item.clockIn}`,Number(item.rate||invoice.billing_rate_verified_value||0));
+  }
+
   const filteredEntries = timeEntries.filter(entry =>
     entry.clock_in && entry.archived !== true && isDateInRange(entry.clock_in)
   );
@@ -128,7 +136,6 @@ export default function AccountingProfit() {
   const hoursByOfficer = {};
   const payrollHoursByOfficer = {};
   const revenueBySite = {};
-  let unverifiedRevenueShifts = 0;
   const payrollBySite = {};
   const hoursBySite = {};
   const payrollHoursBySite = {};
@@ -151,8 +158,8 @@ export default function AccountingProfit() {
     const rawPayrollHours = entry.clock_out ? calculatePayrollHours(entry) : rawServiceHours;
     const serviceHours = entry.clock_out ? Math.round(rawServiceHours * 100) / 100 : rawServiceHours;
     const payrollHours = entry.clock_out ? Math.round(rawPayrollHours * 100) / 100 : rawPayrollHours;
-    const { rate: billRate, needsReview } = resolveBillingRate(entry, location, schedules);
-    if (needsReview || !billRate) unverifiedRevenueShifts += 1;
+    const { rate: calculatedRate } = resolveBillingRate(entry, location, schedules);
+    const billRate=approvedRates.get(`${siteName}|${entry.clock_in}`) || calculatedRate;
     // Client billing follows the true service record. Payroll follows the approved
     // payroll hours, so an administrator can limit pay without altering punches.
     const revenue = serviceHours * billRate;
