@@ -30,16 +30,16 @@ export default function AccountingExpenses() {
   const allowed = user?.role === 'admin' || user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access');
 
   const { data: accountingData = {}, isLoading, error } = useQuery({
-    queryKey: ['accountingData', 'expenses'],
+    queryKey: ['accountingFinance'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'expenses' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: allowed,
-    staleTime: 15000,
-    refetchInterval: 30000,
+    staleTime: 30000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -59,8 +59,8 @@ export default function AccountingExpenses() {
   };
   const refresh = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] }),
-      queryClient.invalidateQueries({ queryKey: ['accountingOverviewSnapshot'] }),
+      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] }),
+      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] }),
     ]);
   };
 

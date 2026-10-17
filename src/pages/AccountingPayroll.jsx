@@ -66,9 +66,9 @@ export default function AccountingPayroll() {
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
   const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchPayroll } = useQuery({
-    queryKey: ['accountingData', 'payroll'],
+    queryKey: ['accountingFinance'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'payroll' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
@@ -76,7 +76,7 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -146,7 +146,7 @@ export default function AccountingPayroll() {
         setPayrollCatchup({state:'current',message:payload.reason});
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+      await queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
       await refetchPayroll();
       setPayrollCatchup({
         state: payload.created > 0 || payload.updated > 0 ? 'created' : 'current',
@@ -166,7 +166,7 @@ export default function AccountingPayroll() {
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
       setGenerating(false);
       alert('✅ Gross payroll generated. Use “Print Master + Itemized Payroll” to print the consolidated report and every officer sheet for transfer to your payroll system.');
     },
@@ -186,7 +186,7 @@ export default function AccountingPayroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollConfig'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
       setShowConfigDialog(false);
       alert('✅ Configuration saved!');
     }

@@ -35,17 +35,17 @@ export default function AccountingOverview() {
   const [liveNow,setLiveNow] = useState(() => new Date());
   useEffect(() => { const timer=window.setInterval(()=>{if (document.visibilityState==='visible') setLiveNow(new Date());},1000); return ()=>window.clearInterval(timer); },[]);
   const { data: payload = {}, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['accountingOverviewSnapshot'],
+    queryKey: ['accountingFinance'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'overview' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
       const response = result?.data || result || {};
       if (response.error) throw new Error(response.error);
       return response;
     },
-    staleTime: 60000,
+    staleTime: 30000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
   });
 

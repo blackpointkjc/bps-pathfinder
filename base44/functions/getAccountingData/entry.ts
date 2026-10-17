@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
       expenses: ['users','expenseReports','companyExpenses'],
       profit: ['users','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
       overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','invoices','timeEntries','locations','schedules'],
+      finance: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
       full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','timeOffRequests','ptoUsage','w2Forms','schedules'],
     };
     const selected = scopeTables[scope] || scopeTables.full;
@@ -48,13 +49,13 @@ Deno.serve(async (req) => {
       while (cursor < selected.length) {
         const key = selected[cursor++];
         const source = tableLoads[key];
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < 4; attempt++) {
           try {
             const rows = await source.load();
             result[key] = Array.isArray(rows) ? rows : [];
             break;
           } catch (error:any) {
-            if (attempt === 0) { await delay(500); continue; }
+            if (attempt < 3) { await delay((attempt+1)*900); continue; }
             console.error(`getAccountingData could not load ${source.label}`,error?.message || error);
             loadErrors.push(source.label);
             result[key] = [];
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
     // Server-calculated financial roll-up. Display only what was retrieved;
     // source failures are returned as partial and never silently treated as $0.
     let financialSummary: any = null;
-    if (scope === 'overview') {
+    if (scope === 'overview' || scope === 'finance' || scope === 'full') {
       const now = new Date();
       const easternDay = (date:Date) => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
       const today=easternDay(now);
@@ -127,17 +128,54 @@ Deno.serve(async (req) => {
         serviceHours+=hours;earnedRevenue+=hours*rate;
         if(!entry.clock_out)onDuty++;
       }
-      const outstanding=invoices.filter((item:any)=>['sent','overdue'].includes(String(item.status||'').toLowerCase()) && String(item.delivery_status||'').toLowerCase()==='accepted').reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.total_amount||0)-Number(item.amount_paid||0)),0);
-      const unpaid=companyExpenses.filter((item:any)=>String(item.status||'').toLowerCase()==='unpaid').reduce((sum:number,item:any)=>sum+Number(item.amount||0),0);
-      const hoursComplete=!loadErrors.includes('time entries');
-      const revenueComplete=hoursComplete && !loadErrors.includes('locations') && !loadErrors.includes('schedules') && unverifiedRates===0;
-      const invoicesComplete=!loadErrors.includes('client invoices');
-      const billsComplete=!loadErrors.includes('company expenses');
-      financialSummary={period_start:rangeStart,period_end:rangeEnd,service_hours:Math.round(serviceHours*100)/100,earned_service_revenue:Math.round(earnedRevenue*100)/100,on_duty:onDuty,unverified_rate_shifts:unverifiedRates,hours_complete:hoursComplete,revenue_complete:revenueComplete,invoices_complete:invoicesComplete,bills_complete:billsComplete,outstanding_client_invoices:Math.round(outstanding*100)/100,unpaid_company_bills:Math.round(unpaid*100)/100,invoice_count:invoices.length,
-        unverified_sent_count:invoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase()) && String(row.delivery_status||'').toLowerCase()!=='accepted').length,
-        invoice_review_count:invoices.filter((row:any)=>row.billing_review_required===true).length,
-        invoice_draft_count:invoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
-        expense_count:companyExpenses.length,as_of:new Date().toISOString(),complete:loadErrors.length===0};
+      // One reconciled company-wide ledger is shared by the dashboard,
+      // invoice center, payroll center and profitability. Duplicates for the
+      // exact same site/service period count only once in financial totals.
+      const canonical = new Map<string,any>();
+      for (const invoice of invoices) {
+        if(['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
+        const key=`${siteOf(invoice.site_name).toLowerCase()}|${invoice.period_start}|${invoice.period_end}`;
+        const current=canonical.get(key);
+        const priority=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:String(record.status||'').toLowerCase()==='sent'?3:String(record.status||'').toLowerCase()==='overdue'?3:1;
+        if(!current||priority(invoice)>priority(current)||(priority(invoice)===priority(current)&&String(invoice.created_date||'')<String(current.created_date||''))) canonical.set(key,invoice);
+      }
+      const uniqueInvoices=[...canonical.values()];
+      const billableInvoices=uniqueInvoices.filter((row:any)=>['paid','sent','overdue'].includes(String(row.status||'').toLowerCase()));
+      const billedTotal=billableInvoices.reduce((sum:number,row:any)=>sum+Number(row.total_amount||0),0);
+      const clientPayments=billableInvoices.reduce((sum:number,row:any)=>{
+        const paid=Number(row.amount_paid||0);
+        return sum+(paid>0?Math.min(Number(row.total_amount||0),paid):String(row.status||'').toLowerCase()==='paid'?Number(row.total_amount||0):0);
+      },0);
+      const outstanding=Math.max(0,billedTotal-clientPayments);
+      const recordedPayroll=(payrollEntries||[]).reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
+      const payrollPaid=(payrollEntries||[]).filter((row:any)=>String(row.status||'').toLowerCase()==='paid').reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
+      const reimbursable=(expenseReports||[]).filter((row:any)=>['approved','reimbursed','paid'].includes(String(row.status||'').toLowerCase())).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      const operating=(companyExpenses||[]).filter((row:any)=>['paid','unpaid'].includes(String(row.status||'').toLowerCase())&&!String(row.reference_number||'').startsWith('OFFICER-EXP-')).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      const unpaid=companyExpenses.filter((row:any)=>String(row.status||'').toLowerCase()==='unpaid').reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      const alltimeServiceHours=timeEntries.reduce((sum:number,row:any)=>{
+        if(row.archived===true||!row.clock_in) return sum;
+        const a=Date.parse(row.clock_in),b=row.clock_out?Date.parse(row.clock_out):Date.now();
+        if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a)return sum;
+        const breaks=(Array.isArray(row.break_periods)?row.break_periods:[]).reduce((acc:number,item:any)=>{const start=Date.parse(item.start),end=item.end?Date.parse(item.end):row.on_break?b:NaN;return Number.isFinite(start)&&Number.isFinite(end)&&end>start?acc+Math.max(0,Math.min(end,b)-Math.max(start,a)):acc},0);
+        return sum+Math.max(0,(b-a-breaks)/3600000);
+      },0);
+      const formatAmount=(amount:number)=>Math.round(amount*100)/100;
+      const complete=loadErrors.length===0;
+      financialSummary={period_start:rangeStart,period_end:rangeEnd,
+        service_hours:formatAmount(alltimeServiceHours),period_service_hours:formatAmount(serviceHours),
+        earned_service_revenue:formatAmount(earnedRevenue),on_duty:onDuty,
+        billed_total:formatAmount(billedTotal),client_payments:formatAmount(clientPayments),
+        outstanding_client_invoices:formatAmount(outstanding),unpaid_company_bills:formatAmount(unpaid),
+        payroll_total:formatAmount(recordedPayroll),payroll_paid:formatAmount(payrollPaid),
+        operating_expenses:formatAmount(operating+reimbursable),
+        estimated_profit:formatAmount(billedTotal-recordedPayroll-operating-reimbursable),
+        unverified_rate_shifts:unverifiedRates,invoice_count:uniqueInvoices.length,
+        unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
+        invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,
+        invoice_draft_count:uniqueInvoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
+        expense_count:companyExpenses.length,
+        as_of:new Date().toISOString(),complete,load_errors:loadErrors,
+      };
     }
 
     return Response.json({

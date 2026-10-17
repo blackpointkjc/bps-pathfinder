@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,28 +34,26 @@ export default function AccountingInvoices() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isAccountingRole = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
-  const { data: accountingData = {}, isLoading: clientsLoading, error: clientsError, refetch: refetchAccounting } = useQuery({
-    queryKey: ['accountingData', 'invoices'],
+  const { data: accountingData = {}, error: clientsError, refetch: refetchAccounting } = useQuery({
+    queryKey: ['accountingFinance'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'invoices' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 15000,
+    staleTime: 30000,
     refetchOnMount: 'always',
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 
   const clients = accountingData.clients || [];
   const locations = accountingData.locations || [];
-  const timeEntries = accountingData.timeEntries || [];
   const config = accountingData.config || null;
   const invoices = accountingData.invoices || [];
-  const schedules = accountingData.schedules || [];
 
   const runInvoices = async () => {
     if (generating) return;
@@ -67,7 +65,7 @@ export default function AccountingInvoices() {
       if(data.error) throw new Error(data.error);
       setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s).`);
       queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
+      queryClient.invalidateQueries({queryKey:['accountingFinance']});
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
     finally { setGenerating(false); }
   };
@@ -80,7 +78,7 @@ export default function AccountingInvoices() {
       const payload=result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
+      queryClient.invalidateQueries({queryKey:['accountingFinance']});
       setBillingStatus(`Billing recipient saved for ${location.site_name}: ${billingEmailInput || 'management@blackpointkjc.com (fallback)'}`);
     }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
     finally {setSavingBillingEmail(false);}
@@ -95,7 +93,7 @@ export default function AccountingInvoices() {
       const payload=response?.data||response||{};
       if(payload.error)throw new Error(payload.error);
       queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
+      queryClient.invalidateQueries({queryKey:['accountingFinance']});
       setBillingStatus(`Invoice ${invoice.invoice_number} recalculated at verified rate $${value.toFixed(2)}/hour. Review before sending.`);
     }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
@@ -109,7 +107,7 @@ export default function AccountingInvoices() {
       if(payload.error) throw new Error(payload.error);
       setBillingStatus(`Invoice ${invoice.invoice_number} accepted by email provider for ${payload.recipient}.`);
       queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
+      queryClient.invalidateQueries({queryKey:['accountingFinance']});
     }catch(error){setBillingStatus(`Invoice email failed: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
   };

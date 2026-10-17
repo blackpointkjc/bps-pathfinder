@@ -29,17 +29,17 @@ export default function AccountingProfit() {
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
   const { data: accountingData = {}, isLoading: accountingLoading, isFetching: accountingFetching, error: accountingError, refetch: refetchProfit } = useQuery({
-    queryKey: ['accountingData', 'profit'],
+    queryKey: ['accountingFinance'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'profit' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 15000,
+    staleTime: 30000,
     refetchOnMount: 'always',
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
