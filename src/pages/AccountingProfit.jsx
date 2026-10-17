@@ -31,13 +31,13 @@ export default function AccountingProfit() {
   const { data: accountingData = {}, isLoading: accountingLoading, isFetching: accountingFetching, error: accountingError, refetch: refetchProfit } = useQuery({
     queryKey: ['accountingData', 'profit'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', {});
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'profit' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 0,
+    staleTime: 15000,
     refetchOnMount: 'always',
     refetchInterval: 60000,
     refetchIntervalInBackground: false,

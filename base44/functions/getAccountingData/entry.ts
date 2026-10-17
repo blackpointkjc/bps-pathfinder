@@ -12,67 +12,62 @@ Deno.serve(async (req) => {
 
     const input = await req.json().catch(() => ({}));
     const scope = String(input?.scope || 'full').trim().toLowerCase();
-    const payrollOnly = scope === 'payroll';
-    const overviewOnly = scope === 'overview';
-    const fullAccounting = !payrollOnly && !overviewOnly;
+    // Load only the tables required by the active accounting screen; a full
+    // 14-table read used to block every tab and exacerbate API 429s.
+    const scopeTables: Record<string,string[]> = {
+      payroll: ['users','periods','payrollEntries','configs','timeEntries'],
+      invoices: ['users','invoices','locations','timeEntries','schedules'],
+      expenses: ['users','expenseReports','companyExpenses'],
+      profit: ['users','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
+      overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','invoices','timeEntries','locations','schedules'],
+      full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','timeOffRequests','ptoUsage','w2Forms','schedules'],
+    };
+    const selected = scopeTables[scope] || scopeTables.full;
     const loadErrors: string[] = [];
-    const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
-
-    const safeList = async (label: string, loader: () => Promise<any[]>) => {
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          const rows = await loader();
-          return Array.isArray(rows) ? rows : [];
-        } catch (error) {
-          lastError = error;
-          if (attempt < 2) await delay(700 * (attempt + 1));
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const tableLoads: Record<string, { label:string; load:() => Promise<any[]> }> = {
+      users: {label:'employee directory',load:()=>base44.asServiceRole.entities.User.list('last_name',1500)},
+      periods: {label:'payroll periods',load:()=>base44.asServiceRole.entities.PayrollPeriod.list('-start_date',500)},
+      payrollEntries: {label:'payroll entries',load:()=>base44.asServiceRole.entities.PayrollEntry.list('-created_date',3000)},
+      configs: {label:'payroll configuration',load:()=>base44.asServiceRole.entities.PayrollConfig.list('config_name',50)},
+      timeEntries: {label:'time entries',load:()=>base44.asServiceRole.entities.TimeEntry.list('-clock_in',5000)},
+      invoices: {label:'client invoices',load:()=>base44.asServiceRole.entities.Invoice.list('-created_date',2000)},
+      locations: {label:'locations',load:()=>base44.asServiceRole.entities.Location.list('site_name',1000)},
+      expenseReports: {label:'expense reimbursements',load:()=>base44.asServiceRole.entities.ExpenseReport.list('-created_date',2000)},
+      companyExpenses: {label:'company expenses',load:()=>base44.asServiceRole.entities.CompanyExpense.list('-expense_date',2000)},
+      timeOffRequests: {label:'time-off requests',load:()=>base44.asServiceRole.entities.TimeOffRequest.list('-created_date',2000)},
+      ptoUsage: {label:'PTO usage',load:()=>base44.asServiceRole.entities.PTOUsage.list('-usage_date',5000)},
+      w2Forms: {label:'W-2 forms',load:()=>base44.asServiceRole.entities.W2Form.list('-tax_year',2000)},
+      schedules: {label:'schedules',load:()=>base44.asServiceRole.entities.Schedule.list('-shift_date',5000)},
+    };
+    const result: Record<string,any[]> = {};
+    // Bounded concurrency improves latency without dumping every entity call
+    // into the Base44 rate limiter simultaneously.
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < selected.length) {
+        const key = selected[cursor++];
+        const source = tableLoads[key];
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const rows = await source.load();
+            result[key] = Array.isArray(rows) ? rows : [];
+            break;
+          } catch (error:any) {
+            if (attempt === 0) { await delay(500); continue; }
+            console.error(`getAccountingData could not load ${source.label}`,error?.message || error);
+            loadErrors.push(source.label);
+            result[key] = [];
+          }
         }
       }
-      console.error(`getAccountingData could not load ${label}`, lastError);
-      loadErrors.push(label);
-      return [];
     };
-
-    const load = async (label: string, loader: () => Promise<any[]>) => {
-      const rows = await safeList(label, loader);
-      await delay(175);
-      return rows;
-    };
-
-    // Each scope loads only the records its screen uses. Reads are serialized and
-    // retried so one transient Base44 rate limit cannot blank the whole center.
-    const users = await load('employee directory', () => base44.asServiceRole.entities.User.list('last_name', 1500));
-    const periods = await load('payroll periods', () => base44.asServiceRole.entities.PayrollPeriod.list('-start_date', 500));
-    const payrollEntries = await load('payroll entries', () => base44.asServiceRole.entities.PayrollEntry.list('-created_date', 3000));
-
-    let configs: any[] = [];
-    let timeEntries: any[] = [];
-    let invoices: any[] = [];
-    let locations: any[] = [];
-    let expenseReports: any[] = [];
-    let companyExpenses: any[] = [];
-    let timeOffRequests: any[] = [];
-    let ptoUsage: any[] = [];
-    let w2Forms: any[] = [];
-    let schedules: any[] = [];
-
-    if (payrollOnly || fullAccounting) {
-      configs = await load('payroll configuration', () => base44.asServiceRole.entities.PayrollConfig.list('config_name', 50));
-      timeEntries = await load('time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000));
-    }
-    if (overviewOnly || fullAccounting) {
-      expenseReports = await load('expense reimbursements', () => base44.asServiceRole.entities.ExpenseReport.list('-created_date', 2000));
-    }
-    if (fullAccounting) {
-      invoices = await load('client invoices', () => base44.asServiceRole.entities.Invoice.list('-created_date', 2000));
-      locations = await load('locations', () => base44.asServiceRole.entities.Location.list('site_name', 1000));
-      companyExpenses = await load('company expenses', () => base44.asServiceRole.entities.CompanyExpense.list('-expense_date', 2000));
-      timeOffRequests = await load('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 2000));
-      ptoUsage = await load('PTO usage', () => base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000));
-      w2Forms = await load('W-2 forms', () => base44.asServiceRole.entities.W2Form.list('-tax_year', 2000));
-      schedules = await load('schedules', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000));
-    }
+    await Promise.all(Array.from({length:Math.min(3,selected.length)},()=>worker()));
+    const {
+      users=[], periods=[], payrollEntries=[], configs=[], timeEntries=[], invoices=[],
+      locations=[], expenseReports=[], companyExpenses=[], timeOffRequests=[],
+      ptoUsage=[], w2Forms=[], schedules=[],
+    } = result;
 
     const clients = (users || []).filter((u: any) => {
       const r = new Set((u.additional_roles || []).map((x: string) => String(x).toLowerCase()));
@@ -82,6 +77,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       scope,
+      as_of: new Date().toISOString(),
       partial: loadErrors.length > 0,
       load_errors: loadErrors,
       users: users || [],

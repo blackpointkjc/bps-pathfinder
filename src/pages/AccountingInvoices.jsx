@@ -44,13 +44,13 @@ export default function AccountingInvoices() {
   const { data: accountingData = {}, isLoading: clientsLoading, error: clientsError, refetch: refetchAccounting } = useQuery({
     queryKey: ['accountingData', 'invoices'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', {});
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'invoices' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 0,
+    staleTime: 15000,
     refetchOnMount: 'always',
     refetchInterval: 60000,
     refetchIntervalInBackground: false,

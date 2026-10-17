@@ -112,31 +112,9 @@ export default function AccountingPayroll() {
     }
   }, [latestEndedPayrollPeriod, selectedPeriodId]);
 
-  useEffect(() => {
-    if (!isAccountingRole || accountingLoading || !selectedPeriodId) return;
-    const period = payrollPeriods.find(item => item.id === selectedPeriodId);
-    const today = format(new Date(), 'yyyy-MM-dd');
-    if (!period?.end_date || period.end_date > today || payrollCatchupAttempts.current.has(period.id)) return;
-    payrollCatchupAttempts.current.add(period.id);
-    setPayrollCatchup({ state: 'running', message: `Checking ${period.period_name} for missing payroll reports…` });
-    base44.functions.invoke('generateScheduledPayroll', { force: true, period_id: period.id, action: 'run_now' })
-      .then(result => {
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
-        setPayrollCatchup({
-          state: payload.created > 0 || payload.updated > 0 ? 'created' : 'current',
-          message: payload.created > 0 || payload.updated > 0
-            ? `${payload.created || 0} payroll report${payload.created === 1 ? '' : 's'} created and ${payload.updated || 0} recalculated for ${period.period_name}.`
-            : `${period.period_name} payroll reports are current.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-        refetchPayroll();
-      })
-      .catch(error => {
-        payrollCatchupAttempts.current.delete(period.id);
-        setPayrollCatchup({ state: 'error', message: `Automatic payroll catch-up failed: ${error?.message || 'Unknown error'}` });
-      });
-  }, [isAccountingRole, accountingLoading, selectedPeriodId, payrollPeriods, queryClient, refetchPayroll]);
+  // Scheduled payroll runs from the backend. Never force-recalculate historic
+  // payroll automatically merely because the accounting page was opened.
+  // The explicit Run Selected button below is the authorized write action.
 
   const runSelectedPayrollNow = async () => {
     const period = payrollPeriods.find(item => item.id === selectedPeriodId);
@@ -155,6 +133,10 @@ export default function AccountingPayroll() {
       const result = await base44.functions.invoke('generateScheduledPayroll', { force: true, period_id: period.id, action: 'run_now' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      if (payload.skipped && payload.reason) {
+        setPayrollCatchup({state:'current',message:payload.reason});
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       await refetchPayroll();
       setPayrollCatchup({
