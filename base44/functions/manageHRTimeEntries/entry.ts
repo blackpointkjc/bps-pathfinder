@@ -262,7 +262,7 @@ async function syncTouchedPayrollRecords(base44: any, entries: any[]) {
 async function syncPayrollWithoutBreakingHr(base44: any, entries: any[]) {
   try {
     return { updated: await syncTouchedPayrollRecords(base44, entries), warning: '' };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Time entry saved, but payroll refresh failed', error);
     return {
       updated: 0,
@@ -422,7 +422,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ error: 'Unsupported action' }, { status: 400 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('manageHRTimeEntries failed', error);
     return Response.json({ error: error?.message || 'Unable to manage HR time entries' }, { status: 500 });
   }
