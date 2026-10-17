@@ -20,6 +20,9 @@ export default function AccountingInvoices() {
   const defaultPeriod = getDefaultBillingPeriod();
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
+  const [billingEmailInput, setBillingEmailInput] = useState('');
+  const [billingStatus, setBillingStatus] = useState('');
+  const [savingBillingEmail, setSavingBillingEmail] = useState(false);
   const [startDate, setStartDate] = useState(defaultPeriod.startDate);
   const [endDate, setEndDate] = useState(defaultPeriod.endDate);
   const [invoiceNotes, setInvoiceNotes] = useState("");
@@ -79,116 +82,48 @@ export default function AccountingInvoices() {
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
 
-  const generateInvoiceMutation = useMutation({
-    mutationFn: async (invoiceData) => {
-      // Create invoice record
-      const invoice = await accountingCreate('Invoice', invoiceData);
-      
-      // Portal notification is best effort, and not an emailed invoice.
-      try { await base44.entities.Notification.create({
-        recipient_email: invoiceData.client_email,
-        type: 'invoice',
-        title: `New Invoice - ${invoiceData.invoice_number}`,
-        message: `Invoice for ${invoiceData.site_name} from ${format(new Date(invoiceData.period_start), 'MMM d')} to ${format(new Date(invoiceData.period_end), 'MMM d, yyyy')}. Total: $${invoiceData.total_amount.toFixed(2)}`,
-        priority: 'normal',
-        action_link: '/ClientPayrollReport',
-      }); } catch(error) { console.warn('Invoice saved; portal notification could not be created:',error?.message); }
-
-      return invoice;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accountingOverviewSnapshot'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-      // The caller reports results after its own single-site or batch run.
-      // Alerting here caused a blocking dialog for every site in batch billing.
-    },
-  });
-
+  const generateInvoices = async (action, siteId = '') => {
+    if (clientsError || (accountingData.load_errors || []).length) throw new Error('Billing data is incomplete. Refresh and retry.');
+    const response = await base44.functions.invoke('generateWeeklyInvoices', {
+      action, ...(siteId ? {location_id:siteId} : {}),
+      period_start:startDate, period_end:endDate,
+    });
+    const payload=response?.data || response || {};
+    if (payload.error) throw new Error(payload.error);
+    await Promise.all([
+      queryClient.invalidateQueries({queryKey:['accountingData']}),
+      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']}),
+    ]);
+    setBillingStatus(`${payload.created || 0} invoice(s) created · ${payload.sent || 0} email(s) accepted by provider · ${payload.delivery_failed || 0} delivery error(s) · ${payload.skipped || 0} unchanged/no billable shifts.`);
+    return payload;
+  };
   const generateInvoice = async () => {
-    if (clientsLoading || clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
-    if (!selectedClient || !selectedSite) {
-      alert('Please select a client and site');
-      return;
-    }
-
+    const location=locations.find(row=>normalizeSiteName(row.site_name)===normalizeSiteName(selectedSite));
+    if (!location) return alert('Select a billable site first.');
     setGenerating(true);
-
+    try {await generateInvoices('run_now',location.id);}
+    catch(error){setBillingStatus(`Invoice generation failed: ${error?.message || 'Unknown error'}`);}
+    finally {setGenerating(false);}
+  };
+  const saveBillingContact = async () => {
+    const location=locations.find(row=>normalizeSiteName(row.site_name)===normalizeSiteName(selectedSite));
+    if (!location) return alert('Select the site whose client billing address needs updating.');
     try {
-      const location = locations.find(l => normalizeSiteName(l.site_name) === normalizeSiteName(selectedSite));
-      const billRate = Number(location?.site_bill_rate || 0);
-
-      if (!billRate) {
-        alert('Site has no bill rate set. Please set the bill rate in Manage Locations.');
-        setGenerating(false);
-        return;
-      }
-
-      // Filter time entries for this site and date range
-      const siteEntries = timeEntries.filter(entry => {
-        if (!entry.clock_in || !entry.clock_out) return false;
-        const entrySite = normalizeSiteName(entry.location);
-        if (entrySite !== normalizeSiteName(selectedSite)) return false;
-        const entryDate = String(entry.clock_in).slice(0, 10);
-        return entryDate >= startDate && entryDate <= endDate;
-      });
-
-      if (!siteEntries.length) throw new Error('No completed, billable shifts were found at this site in the selected period. Active shifts appear in the live preview but are not invoiced until clock-out.');
-      let totalHours = 0;
-      let totalAmount = 0;
-      const shifts = [];
-
-      siteEntries.forEach(entry => {
-        const hours = Math.round(calculateLiveHours(entry) * 100) / 100;
-        const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
-        totalHours += hours;
-        totalAmount += hours * rate;
-        const officer = officers.find(o => o.email === entry.officer_email);
-        shifts.push({
-          date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
-          officer: officer ? `${officer.first_name} ${officer.last_name}` : 'Officer',
-          clockIn: format(new Date(entry.clock_in), 'HH:mm'),
-          clockOut: format(new Date(entry.clock_out), 'HH:mm'),
-          hours: hours.toFixed(2),
-          rate: rate.toFixed(2),
-          rateType: rateLabel,
-          amount: (hours * rate).toFixed(2)
-        });
-      });
-      
-      // Allocate a number beyond the highest existing sequence (not list length).
-      const currentYear = new Date().getFullYear().toString().slice(-2);
-      const nextNumber = Math.max(0,...invoices.map(inv => String(inv.invoice_number||'')).filter(value=>value.startsWith(currentYear)).map(value=>Number(value.slice(2))||0))+1;
-      const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
-      
-      // Net 15: payment is due 15 calendar days after issue.
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 15);
-
-      // Send invoice data to client
-      await generateInvoiceMutation.mutateAsync({
-        client_email: selectedClient,
-        invoice_number: invoiceNumber,
-        site_name: selectedSite,
-        period_start: startDate,
-        period_end: endDate,
-        total_hours: totalHours,
-        bill_rate: billRate,
-        total_amount: totalAmount,
-        shifts: JSON.stringify(shifts),
-        notes: invoiceNotes,
-        due_date: format(dueDate, 'yyyy-MM-dd'),
-        status: 'sent'
-      });
-      alert('Invoice saved to the billing ledger. No email delivery is guaranteed.');
-
-    } catch (error) {
-      console.error('Invoice generation error:', error);
-      alert('Failed to generate invoice: ' + (error?.message || 'Unknown error'));
-    } finally {
-      setGenerating(false);
-    }
+      setSavingBillingEmail(true);
+      const result=await base44.functions.invoke('manageAccountingRecords',{action:'set_billing_contact',location_id:location.id,contact_email:billingEmailInput});
+      const payload=result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      await queryClient.invalidateQueries({queryKey:['accountingData']});
+      setBillingStatus(`Billing recipient saved for ${location.site_name}: ${billingEmailInput || 'management@blackpointkjc.com (fallback)'}`);
+    }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
+    finally {setSavingBillingEmail(false);}
+  };
+  const backfillInvoices = async () => {
+    if (!window.confirm('Create missing weekly invoices for the past 16 weeks as DRAFTS for review? No historical emails will be sent automatically.')) return;
+    setGenerating(true);
+    try {await generateInvoices('backfill_drafts');}
+    catch(error){setBillingStatus(`Historical invoice draft generation failed: ${error?.message || 'Unknown error'}`);}
+    finally {setGenerating(false);}
   };
 
   if (!isAccountingRole) {
@@ -213,10 +148,10 @@ export default function AccountingInvoices() {
   ].filter(Boolean));
   const clientLocations = selectedClient
     ? locations.filter(location => location.assigned_client_email === selectedClient || assignedSiteNames.has(location.site_name))
-    : [];
+    : locations;
 
   const liveInvoicePreview = timeEntries.reduce((summary, entry) => {
-    if (!selectedClient || !entry.clock_in || entry.archived === true) return summary;
+    if (!entry.clock_in || entry.archived === true) return summary;
     const entryDate = String(entry.clock_in).slice(0, 10);
     if (entryDate < startDate || entryDate > endDate) return summary;
     const entrySite = normalizeSiteName(entry.location);
@@ -233,92 +168,10 @@ export default function AccountingInvoices() {
   }, { hours: 0, amount: 0, activeShifts: 0 });
 
   const generateAllSitesInvoices = async () => {
-    if (clientsLoading || clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
-    if (!selectedClient) {
-      alert('Please select a client first');
-      return;
-    }
-
-    const clientSites = clientLocations;
-    if (clientSites.length === 0) {
-      alert('This client has no assigned sites');
-      return;
-    }
-
     setGenerating(true);
-    try {
-      const currentYearPrefix = String(new Date().getFullYear()).slice(-2);
-      let nextInvoiceIndex = Math.max(0,...invoices.map(inv=>String(inv.invoice_number||'')).filter(value=>value.startsWith(currentYearPrefix)).map(value=>Number(value.slice(2))||0))+1;
-      let invoicesCreated = 0;
-      for (const location of clientSites) {
-        const siteName = location.site_name;
-        const billRate = Number(location.site_bill_rate || 0);
-
-        if (!billRate) {
-          console.warn(`Skipping ${siteName} - no bill rate set`);
-          continue;
-        }
-
-        const siteEntries = timeEntries.filter(entry => {
-          if (!entry.clock_in || !entry.clock_out) return false;
-          const entrySite = normalizeSiteName(entry.location);
-          if (entrySite !== normalizeSiteName(siteName)) return false;
-          const entryDate = String(entry.clock_in).slice(0, 10);
-          return entryDate >= startDate && entryDate <= endDate;
-        });
-
-        if (siteEntries.length === 0) continue;
-
-        let totalHours = 0;
-        let totalAmount = 0;
-        const shifts = [];
-
-        siteEntries.forEach(entry => {
-          const hours = Math.round(calculateLiveHours(entry) * 100) / 100;
-          const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
-          totalHours += hours;
-          totalAmount += hours * rate;
-          const officer = officers.find(o => o.email === entry.officer_email);
-          shifts.push({
-            date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
-            officer: officer ? `${officer.first_name} ${officer.last_name}` : 'Officer',
-            clockIn: format(new Date(entry.clock_in), 'HH:mm'),
-            clockOut: format(new Date(entry.clock_out), 'HH:mm'),
-            hours: hours.toFixed(2),
-            rate: rate.toFixed(2),
-            rateType: rateLabel,
-            amount: (hours * rate).toFixed(2)
-          });
-        });
-        const currentYear = new Date().getFullYear().toString().slice(-2);
-        const invoiceNumber = `${currentYear}${String(nextInvoiceIndex++).padStart(3, '0')}`;
-        
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 15);
-
-        await generateInvoiceMutation.mutateAsync({
-          client_email: selectedClient,
-          invoice_number: invoiceNumber,
-          site_name: siteName,
-          period_start: startDate,
-          period_end: endDate,
-          total_hours: totalHours,
-          bill_rate: billRate,
-          total_amount: totalAmount,
-          shifts: JSON.stringify(shifts),
-          notes: invoiceNotes,
-          due_date: format(dueDate, 'yyyy-MM-dd'),
-          status: 'sent'
-        });
-        invoicesCreated += 1;
-      }
-      alert(`${invoicesCreated} invoice(s) saved to the billing ledger. This does not confirm email delivery.`);
-    } catch (error) {
-      console.error('Bulk invoice generation error:', error);
-      alert('Error generating invoices: ' + (error?.message || 'Unknown error'));
-    } finally {
-      setGenerating(false);
-    }
+    try {await generateInvoices('run_now');}
+    catch(error){setBillingStatus(`Company billing failed: ${error?.message || 'Unknown error'}`);}
+    finally {setGenerating(false);}
   };
 
   return (
@@ -348,6 +201,8 @@ export default function AccountingInvoices() {
         </div>
       </div>
 
+      {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-4 text-sm font-semibold text-blue-950">{billingStatus}</div>}
+      <div className="mb-4 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={backfillInvoices}>Create Missing Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={clientsLoading} onClick={()=>refetchAccounting()}>Refresh Actual Billing Data</Button></div>
       <Card id="invoice-generator" className="mb-6 scroll-mt-6 rounded-2xl border-slate-200 bg-white shadow-sm">
         <CardHeader>
           <CardTitle>Invoice Generator</CardTitle>
@@ -355,13 +210,13 @@ export default function AccountingInvoices() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Select Client</Label>
+              <Label>Filter by Client (optional)</Label>
               {clientsLoading && <p className="mb-2 text-xs text-slate-500">Loading client accounts…</p>}
               {clientsError && <p className="mb-2 text-xs text-red-600">Client accounts could not be loaded. Refresh and try again.</p>}
-              {!clientsLoading && !clientsError && clients.length === 0 && <p className="mb-2 text-xs text-amber-700">No active client accounts are assigned yet.</p>}
+              {!clientsLoading && !clientsError && clients.length === 0 && <p className="mb-2 text-xs text-amber-700">No client portal accounts exist yet. Billing still works by site; unconfigured recipients go to management@blackpointkjc.com.</p>}
               <Select value={selectedClient} onValueChange={v=>{setSelectedClient(v);setSelectedSite('');}}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose client..." />
+                  <SelectValue placeholder="All billable locations" />
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map(client => (
@@ -379,8 +234,8 @@ export default function AccountingInvoices() {
               <Label>Select Site</Label>
               <Select 
                 value={selectedSite} 
-                onValueChange={setSelectedSite}
-                disabled={!selectedClient}
+                onValueChange={name => { setSelectedSite(name); const match=locations.find(row=>row.site_name===name);setBillingEmailInput(match?.billing_contact_email || ''); }}
+                disabled={clientsLoading}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose site..." />
@@ -395,6 +250,11 @@ export default function AccountingInvoices() {
               </Select>
             </div>
 
+            <div className="md:col-span-2 rounded-xl border border-slate-200 p-3">
+              <Label>Verified Client Billing Email for Selected Site</Label>
+              <div className="mt-2 flex flex-wrap gap-2"><Input type="email" className="min-w-[220px] flex-1" placeholder="Blank sends to management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)} /><Button type="button" disabled={!selectedSite || savingBillingEmail} onClick={saveBillingContact}>{savingBillingEmail?'Saving…':'Save Billing Recipient'}</Button></div>
+              <p className="mt-1 text-xs text-slate-500">Set this to the verified client's billing mailbox. Unset sites route invoices to Black Point management rather than a personal administrator email.</p>
+            </div>
             <div>
               <Label>Period Start</Label>
               <Input
@@ -419,7 +279,7 @@ export default function AccountingInvoices() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live Sunday–Saturday invoice preview</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {selectedClient ? (selectedSite || 'All assigned properties') : 'Select a client to view live billing'}
+                  {selectedSite || 'All billable company properties'}
                 </p>
               </div>
               <div className="flex gap-6">
@@ -434,7 +294,7 @@ export default function AccountingInvoices() {
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Updates every second. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in.
+              Accrues locally each second from the most recently synced time entries. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in.
             </p>
           </div>
 
@@ -471,7 +331,7 @@ export default function AccountingInvoices() {
 
       <Card className="rounded-2xl border-slate-200 shadow-sm">
         <CardHeader>
-          <CardTitle>Recent Invoices ({invoices.length})</CardTitle>
+          <CardTitle>Invoice Ledger — Actual Records ({invoices.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
@@ -489,7 +349,7 @@ export default function AccountingInvoices() {
                   <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p>
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
                           invoice.status === 'overdue' ? 'bg-red-600' :

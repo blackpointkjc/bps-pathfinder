@@ -13,6 +13,16 @@ Deno.serve(async (req) => {
     }
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    if (body.action === 'set_billing_contact') {
+      const id=String(body.location_id || '');
+      const email=String(body.contact_email || '').trim().toLowerCase();
+      if (!id) return Response.json({error:'Location is required'},{status:400});
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({error:'Enter a valid client billing email address or leave blank for management fallback'},{status:400});
+      const location=await base44.asServiceRole.entities.Location.get(id).catch(()=>null);
+      if (!location) return Response.json({error:'Location not found'},{status:404});
+      const record=await base44.asServiceRole.entities.Location.update(id,{billing_contact_email:email});
+      return Response.json({success:true,record});
+    }
     const entity = String(body.entity || '');
     const action = String(body.action || '');
     if (!ALLOWED_ENTITIES.has(entity)) return Response.json({ error: 'Unsupported accounting entity' }, { status: 400 });
