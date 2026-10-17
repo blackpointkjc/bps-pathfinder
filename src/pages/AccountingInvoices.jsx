@@ -106,7 +106,7 @@ export default function AccountingInvoices() {
   });
 
   const generateInvoice = async () => {
-    if (clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
+    if (clientsLoading || clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
     if (!selectedClient || !selectedSite) {
       alert('Please select a client and site');
       return;
@@ -231,7 +231,7 @@ export default function AccountingInvoices() {
   }, { hours: 0, amount: 0, activeShifts: 0 });
 
   const generateAllSitesInvoices = async () => {
-    if (clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
+    if (clientsLoading || clientsError || (accountingData.load_errors || []).length) { alert('Billing records are incomplete. Refresh billing before generating invoices.'); return; }
     if (!selectedClient) {
       alert('Please select a client first');
       return;
@@ -330,7 +330,7 @@ export default function AccountingInvoices() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
             onClick={generateAllSitesInvoices}
-            disabled={generating || !selectedClient}
+            disabled={generating || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length || !selectedClient}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -357,7 +357,7 @@ export default function AccountingInvoices() {
               {clientsLoading && <p className="mb-2 text-xs text-slate-500">Loading client accounts…</p>}
               {clientsError && <p className="mb-2 text-xs text-red-600">Client accounts could not be loaded. Refresh and try again.</p>}
               {!clientsLoading && !clientsError && clients.length === 0 && <p className="mb-2 text-xs text-amber-700">No active client accounts are assigned yet.</p>}
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
+              <Select value={selectedClient} onValueChange={v=>{setSelectedClient(v);setSelectedSite('');}}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose client..." />
                 </SelectTrigger>

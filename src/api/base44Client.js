@@ -132,7 +132,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 84;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 55;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 50;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing'].includes(meta?.name)) return 20;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing','getAccountingData'].includes(meta?.name)) return 20;
   // Give foreground page reads precedence over background scans.
   return 72;
 };
@@ -141,7 +141,7 @@ const readTimeoutMs = meta => {
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.
   if (meta?.kind === 'function' && ['getWelcomeBriefingData', 'getRoleWorkQueue', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 30_000;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','getCompanyPerformanceData'].includes(meta?.name)) return 25_000;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','getCompanyAnalyticsSegment','getMyPerformanceData','getCompanyPerformanceData','getAccountingData'].includes(meta?.name)) return 30_000;
   return 12_000;
 };
 const requestLabel = meta => {

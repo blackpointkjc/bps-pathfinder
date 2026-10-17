@@ -70,7 +70,7 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -117,6 +117,9 @@ export default function AccountingPayroll() {
   // The explicit Run Selected button below is the authorized write action.
 
   const runSelectedPayrollNow = async () => {
+    if (accountingError || (accountingData.load_errors || []).length) {
+      setPayrollCatchup({state:'error',message:'Payroll source data is incomplete. Retry loading before generating payroll.'}); return;
+    }
     const period = payrollPeriods.find(item => item.id === selectedPeriodId);
     const today = format(new Date(), 'yyyy-MM-dd');
     if (!period) {
@@ -951,7 +954,7 @@ export default function AccountingPayroll() {
               </SelectTrigger>
               <SelectContent>
                 {payrollPeriods.map(period => {
-                  const holidays = period.holidays_in_period ? JSON.parse(period.holidays_in_period) : [];
+                  const holidays = (() => { try { const parsed = JSON.parse(period.holidays_in_period || '[]'); return Array.isArray(parsed) ? parsed : []; } catch { return []; } })();
                   return (
                     <SelectItem key={period.id} value={period.id}>
                       {period.period_name} ({safeFormatDate(period.start_date, 'MMM d')} - {safeFormatDate(period.end_date, 'MMM d, yyyy')})
@@ -968,7 +971,7 @@ export default function AccountingPayroll() {
             <Button
               type="button"
               onClick={runSelectedPayrollNow}
-              disabled={generating || !selectedPeriod || selectedPeriod.end_date > format(new Date(), 'yyyy-MM-dd')}
+              disabled={generating || accountingLoading || !!accountingError || accountingLoadErrors.length > 0 || !selectedPeriod || selectedPeriod.end_date > format(new Date(), 'yyyy-MM-dd')}
               className="bg-purple-700 text-white hover:bg-purple-800"
             >
               <Zap className="mr-2 h-4 w-4" />
