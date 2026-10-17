@@ -79,7 +79,19 @@ export default function SupervisorFieldOversight() {
     }
     return [...byOfficer.values()];
   }, [locationPayload.users]);
-  const liveUnits = useMemo(() => onlineUnits.filter(unit => lower(unit.status) !== 'out of service'), [onlineUnits]);
+  // Reconcile the Unit Status panel against the current CAD assignment board.
+  // A browser GPS heartbeat or yesterday's current_call_info never proves that
+  // an officer is currently dispatched. Preserve a manually selected Busy state
+  // when it is not linked to a stale call.
+  const liveUnits = useMemo(() => onlineUnits.map(unit => {
+    const assigned=(welfarePayload.board||[]).filter(row=>lower(row.officer_email)===lower(unit.officer_email||unit.email)).sort((a,b)=>Date.parse(b.assigned_at||0)-Date.parse(a.assigned_at||0))[0];
+    const raw=lower(unit.status);
+    const callLinked=Boolean(unit.current_call_id);
+    const stale= ['dispatched','enroute','en route','on scene'].includes(raw)||(raw==='busy'&&callLinked);
+    const status=assigned ? ['enroute','en_route'].includes(lower(assigned.assignment_status))?'Enroute':lower(assigned.assignment_status)==='on_scene'?'On Scene':'Dispatched'
+      : stale?'Available':unit.status||'Signed In';
+    return {...unit,status,current_call_id:assigned?.call_id||'',current_call_info:assigned?[assigned.incident,assigned.location].filter(Boolean).join(' · '):''};
+  }).filter(unit=>lower(unit.status)!=='out of service'),[onlineUnits,welfarePayload.board]);
   const activeCalls = welfarePayload.active_calls || [];
   const officerLabel = unit => displayByEmail[lower(unit?.officer_email || unit?.email)] || [unit?.rank, unit?.last_name].filter(Boolean).join(' ') || 'Officer';
   const mappedUnits = useMemo(() => onlineUnits.filter(unit => unit?.show_on_map !== false && hasUsablePosition(unit)), [onlineUnits]);

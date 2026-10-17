@@ -15,13 +15,32 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ unit_id: me.id }, '-assigned_at', 500).catch(() => []);
+    const [directAssignments, ownedUnits, sessions, lastShifts] = await Promise.all([
+      base44.asServiceRole.entities.CallAssignment.filter({unit_id:me.id},'-assigned_at',250),
+      base44.asServiceRole.entities.Unit.filter({user_id:me.id},'-last_update_at',20).catch(()=>[]),
+      base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:me.email},'-last_update',10).catch(()=>[]),
+      base44.asServiceRole.entities.TimeEntry.filter({officer_email:me.email},'-clock_in',5).catch(()=>[]),
+    ]);
+    const aliases=[String(me.id),String(me.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(sessions||[]).map((row:any)=>String(row.id))].filter(Boolean);
+    const alternate=aliases.filter(id=>id!==String(me.id));
+    const extraAssignments=(await Promise.all(alternate.map(id=>base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',60).catch(()=>[])))).flat();
+    const assignments=[...new Map([...(directAssignments||[]),...extraAssignments].map((row:any)=>[row.id,row])).values()];
+    const openShift=(lastShifts||[]).find((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true);
+    const shiftStart=openShift ? Date.parse(openShift.clock_in)-5*60*1000 : Date.now()-12*60*60*1000;
+    const recentCutoff=Number.isFinite(shiftStart)?shiftStart:Date.now()-12*60*60*1000;
     const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []);
-    const activeAssignments = (assignments || []).filter((a: any) => !['cleared','cancelled'].includes(lower(a.status)));
-    const callIds = [...new Set(activeAssignments.map((a: any) => String(a.call_id || '')).filter(Boolean))];
+    const activeAssignments=(assignments||[]).filter((a:any)=> !['cleared','cancelled','canceled'].includes(lower(a.status))
+      && Number.isFinite(Date.parse(a.assigned_at||a.created_date||''))
+      && Date.parse(a.assigned_at||a.created_date||'')>=recentCutoff);
+    // CAD's assigned_units is a second explicit assignment source when a
+    // legacy dispatcher wrote the call but missed its CallAssignment row.
+    const linkedCalls=(await Promise.all(aliases.map(id=>base44.asServiceRole.entities.DispatchCall.filter({assigned_units:{$in:[id]}},'-created_date',40).catch(()=>[])))).flat()
+      .filter((call:any)=>!isTerminalCall(call) && Date.parse(call.time_dispatched||call.created_date||'')>=recentCutoff);
+    const linkedById=new Map(linkedCalls.map((call:any)=>[String(call.id),call]));
+    const callIds = [...new Set([...activeAssignments.map((a: any) => String(a.call_id || '')),...linkedById.keys()].filter(Boolean))];
     const calls: any[] = [];
     for (const callId of callIds) {
-      const call = await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
+      const call = linkedById.get(callId) || await base44.asServiceRole.entities.DispatchCall.get(callId).catch(() => null);
       if (!call || isTerminalCall(call)) {
         // Reconcile stale officer assignments when dispatch/upstream already closed
         // or archived the CAD call. Leaving CallAssignment active is what caused a
@@ -46,7 +65,7 @@ Deno.serve(async (req) => {
       const notes = await base44.asServiceRole.entities.CallNote.filter({ call_id: call.id }, '-created_date', 100).catch(() => []);
       queue.push({
         ...call,
-        assignment,
+        assignment:assignment || {status:'pending',assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id},
         dispatch_notes: notes || [],
         welfare_check: (welfareChecks || []).find((check:any) => String(check.call_id) === String(call.id) && lower(check.status) === 'pending') || null,
         queue_priority: priorityWeight[lower(call.priority)] ?? 2,

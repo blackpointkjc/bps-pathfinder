@@ -302,12 +302,13 @@ Deno.serve(async (req) => {
     }
 
     // Fetch independent roster inputs together; completed shifts are not needed.
-    const [timeEntries, activeOfficers, users] = await Promise.all([
+    const [timeEntries, activeOfficers, users, recentAssignments] = await Promise.all([
       readWithRetry(() => base44.asServiceRole.entities.TimeEntry.filter({
         archived: { $ne: true }, $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }],
       }, '-clock_in', 500), 'open time entries'),
       readWithRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 500), 'active officer sessions'),
       readWithRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 500), 'officer directory'),
+      readWithRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 220), 'recent CAD assignments'),
     ]);
 
     const openByEmail = new Map<string, any>();
@@ -458,6 +459,31 @@ Deno.serve(async (req) => {
         };
       });
 
+    // Only confirmed, current-shift CAD assignments determine dispatched status.
+    // GPS presence and User/ActiveOfficer current_call_info are not dispatch
+    // authority; they can retain an unrelated call long after it was cleared.
+    const usersById = new Map((users || []).map((user:any)=>[String(user.id),user]));
+    const currentAssignmentRows = (recentAssignments || []).filter((row:any)=>{
+      if (['cleared','cancelled','canceled'].includes(lower(row.status))) return false;
+      const officer = usersById.get(String(row.unit_id));
+      if (!officer) return false;
+      const assignedAt = Date.parse(row.assigned_at || row.created_date || '');
+      const shift = openByEmail.get(lower(officer.email));
+      const shiftFloor = shift?.clock_in ? Date.parse(shift.clock_in) - 5*60*1000 : Date.now()-12*60*60*1000;
+      return Number.isFinite(assignedAt) && assignedAt>=shiftFloor && assignedAt<=Date.now()+60*1000;
+    });
+    const dispatchById = new Map<string,any>();
+    const candidateCallIds = [...new Set(currentAssignmentRows.map((row:any)=>String(row.call_id)).filter(Boolean))].slice(0,20);
+    const dispatchCalls = await Promise.all(candidateCallIds.map(id=>base44.asServiceRole.entities.DispatchCall.get(id).catch(()=>null)));
+    const activeCallsById = new Map(dispatchCalls.filter((call:any)=>call && call.manual_dismissed!==true && !['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call.status))).map((call:any)=>[String(call.id),call]));
+    for (const assignment of currentAssignmentRows) {
+      const call=activeCallsById.get(String(assignment.call_id));
+      if(!call)continue;
+      const id=String(assignment.unit_id);
+      const prior=dispatchById.get(id);
+      if(!prior || Date.parse(assignment.assigned_at||'')>Date.parse(prior.assignment.assigned_at||'')) dispatchById.set(id,{assignment,call});
+    }
+
     // Canonical Unit Status Board feed: TimeEntry owns duty state while the app
     // session owns only presence/GPS. A clocked-in officer keeps their selected
     // CAD status across refreshes, no movement, GPS loss, internet loss, and app
@@ -495,7 +521,19 @@ Deno.serve(async (req) => {
         const normalizedLiveStatus = lower(newestLiveStatus);
         // Location privacy and the absence of an open clock row never change CAD status.
         // Explicit status/clock-out actions own the authoritative User/session value.
-        const resolvedStatus = newestLiveStatus;
+        const confirmedDispatch=dispatchById.get(String(user.id));
+        const pendingStatus=lower(confirmedDispatch?.assignment?.status);
+        const assignmentStatus = pendingStatus==='enroute'||pendingStatus==='en_route'?'Enroute'
+          : pendingStatus==='on_scene'?'On Scene':'Dispatched';
+        const manualStatus = user.status || 'Available';
+        const staleDispatchStatus=['dispatched','enroute','en route','on scene'].includes(lower(newestLiveStatus))
+          || (lower(newestLiveStatus)==='busy' && (active?.current_call_id || user.current_call_id));
+        const resolvedStatus = ['out of service','distress','emergency'].includes(lower(newestLiveStatus))
+          ? newestLiveStatus : confirmedDispatch ? assignmentStatus
+          : staleDispatchStatus ? (['busy','available'].includes(lower(manualStatus)) && !user.current_call_id ? manualStatus : 'Available')
+          : newestLiveStatus;
+        const confirmedCallId = confirmedDispatch?.call?.id || '';
+        const confirmedCallInfo = confirmedDispatch?.call ? [confirmedDispatch.call.incident||'Call for service',confirmedDispatch.call.location].filter(Boolean).join(' · ').slice(0,500) : '';
         const gpsTs = new Date(active?.gps_updated_at || 0).getTime();
         const accuracy = Number(active?.accuracy);
         const reliableAccuracy = Number(active?.reliable_accuracy);
@@ -556,8 +594,8 @@ Deno.serve(async (req) => {
           unit_number: user.unit_number || active?.unit_number || '',
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
-          current_call_id: clockedIn ? (active?.current_call_id || user.current_call_id || '') : '',
-          current_call_info: clockedIn ? (active?.current_call_info || user.current_call_info || '') : '',
+          current_call_id: confirmedCallId,
+          current_call_info: confirmedCallInfo,
           current_location: signedInRetained
             ? (active?.current_location || openEntry?.location || user.assigned_location || '')
             : (openEntry?.location || user.assigned_location || ''),
