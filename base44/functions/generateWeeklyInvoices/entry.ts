@@ -15,14 +15,30 @@ const dateOffset = (key:string,day:number) => {const d=new Date(key+'T12:00:00Z'
 const dollars=(n:number)=>Math.round(n*100)/100;
 const eligibleClient = (user:any) => (user?.additional_roles || []).some((role:string)=>String(role).toLowerCase()==='client') || String(user?.user_type || '').toLowerCase()==='client' || String(user?.rank || '').toLowerCase()==='client';
 const scheduleFor = (entry:any,schedules:any[]) => schedules.find((row:any)=>row.archived!==true && String(row.officer_email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase() && siteOf(row.location)===siteOf(entry.location) && String(row.shift_date||'').slice(0,10)===easternDate(entry.clock_in));
+const rateAtDate = (location:any, day:string) => {
+  const rateHistory=(Array.isArray(location?.site_rate_history)?location.site_rate_history:[])
+    .filter((item:any)=>item.effective_date && Number(item.rate)>0)
+    .sort((a:any,b:any)=>String(a.effective_date).localeCompare(String(b.effective_date)));
+  const applicable=rateHistory.filter((item:any)=>String(item.effective_date)<=day).at(-1);
+  return {rate:Number(applicable?.rate || location?.site_bill_rate || 0),
+    needsReview:rateHistory.length>0 && !applicable,
+    reason:rateHistory.length>0 && !applicable ? `Historical billing rate is not recorded before ${rateHistory[0].effective_date}` : ''};
+};
 const hourlyRate = (entry:any,location:any,schedules:any[]) => {
   const shift=scheduleFor(entry,schedules);
   const type=String(shift?.shift_type||'normal').toLowerCase();
   const unarmed=/\bunarmed\b/i.test(`${shift?.site_details||''} ${shift?.special_instructions||''}`);
-  let field=unarmed?'site_bill_rate_unarmed':'site_bill_rate';
-  if(type==='holiday_coverage') field=unarmed?'site_bill_rate_holiday_unarmed':'site_bill_rate_holiday_armed';
-  if(type==='rush_coverage') field=unarmed?'site_bill_rate_rush_unarmed':'site_bill_rate_rush_armed';
-  return Number(location[field]) || Number(location.site_bill_rate_unarmed && unarmed ? location.site_bill_rate_unarmed : location.site_bill_rate) || 0;
+  const base=rateAtDate(location,easternDate(entry.clock_in));
+  // Rate history currently tracks standard bill rates only; never present an
+  // unverified historical special rate as finalized billable revenue.
+  if(type==='holiday_coverage' || type==='rush_coverage' || unarmed) {
+    const suffix=type==='holiday_coverage'?'holiday':type==='rush_coverage'?'rush':'standard';
+    const field=type==='holiday_coverage'||type==='rush_coverage' ? `site_bill_rate_${suffix}_${unarmed?'unarmed':'armed'}` : 'site_bill_rate_unarmed';
+    const special=Number(location?.[field])||base.rate;
+    const changed=(Array.isArray(location?.site_rate_history)?location.site_rate_history:[]).some((item:any)=>String(item.effective_date||'')>easternDate(entry.clock_in));
+    return {rate:special,needsReview:base.needsReview||changed,reason:base.reason || (changed?'Historical special/unarmed rate needs verification':'')};
+  }
+  return base;
 };
 const hours = (entry:any) => {
   const start=Date.parse(entry.clock_in), end=Date.parse(entry.clock_out);
@@ -57,6 +73,7 @@ Deno.serve(async(req)=>{
       const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
       if(!invoice) return Response.json({error:'Invoice not found'},{status:404});
       if(invoice.status==='sent'||invoice.status==='paid') return Response.json({error:'Invoice was already sent or paid; duplicate email blocked.'},{status:409});
+      if(invoice.billing_review_required === true) return Response.json({error:`Historical rate must be reviewed before this invoice can be sent: ${invoice.billing_review_reason || 'Unverified billing rate'}`},{status:409});
       const locations=await base44.asServiceRole.entities.Location.list('site_name',2000);
       const location=(locations||[]).find((row:any)=>siteOf(row.site_name)===siteOf(invoice.site_name));
       const recipient=String(body.contact_email || location?.billing_contact_email || '').trim().toLowerCase();
@@ -109,8 +126,10 @@ Deno.serve(async(req)=>{
         const rows=(entries||[]).filter((entry:any)=>entry.clock_in&&entry.clock_out&&entry.archived!==true&&siteOf(entry.location)===name&&easternDate(entry.clock_in)>=start&&easternDate(entry.clock_in)<=end);
         if(!rows.length){skipped++;continue;}
         let totalHours=0,total=0;
+        const reviewReasons=new Set<string>();
         const shifts=rows.map((entry:any)=>{
-          const h=hours(entry);const rate=hourlyRate(entry,location,schedules||[]);
+          const h=hours(entry);const rateResult=hourlyRate(entry,location,schedules||[]);const rate=rateResult.rate;
+          if(rateResult.needsReview) reviewReasons.add(rateResult.reason || 'Review historical billing rate');
           totalHours+=h;total+=h*rate;
           const officer=byOfficer.get(String(entry.officer_email||'').toLowerCase()) as any;
           return {date:easternDate(entry.clock_in),officer:officer?`${officer.rank||''} ${officer.last_name||''}`.trim():'Officer',clockIn:entry.clock_in,clockOut:entry.clock_out,hours:h.toFixed(2),rate:rate.toFixed(2),amount:dollars(h*rate).toFixed(2)};
@@ -125,11 +144,13 @@ Deno.serve(async(req)=>{
         const reason=target===MANAGEMENT_EMAIL?'Client billing email not configured. Routed to management for review.':'';
         sequence++;
         const number=`${prefix}${String(sequence).padStart(3,'0')}`;
-        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:Number(location.site_bill_rate),total_amount:dollars(total),shifts:JSON.stringify(shifts),due_date:dateOffset(today,15),status:'draft',delivery_status:'pending',notes:reason || 'Automatically generated weekly invoice.'};
+        const needsReview=reviewReasons.size>0;
+        const reviewReason=[...reviewReasons].join('; ');
+        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:Number(location.site_bill_rate),total_amount:dollars(total),shifts:JSON.stringify(shifts),due_date:dateOffset(today,15),status:'draft',delivery_status:needsReview?'review_required':'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
         const invoice=await base44.asServiceRole.entities.Invoice.create(invoiceData);
         created++;existing.add(key);
-        // Historical drafts require accounting review and are never silently emailed.
-        if(action==='backfill_drafts') {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:'draft',recipient:target});continue;}
+        // Historical drafts and unverified rates must never be emailed silently.
+        if(action==='backfill_drafts' || needsReview) {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:needsReview?'review_required':'draft',recipient:target});continue;}
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {
