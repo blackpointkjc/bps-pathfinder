@@ -406,10 +406,13 @@ export default function AccountingProfit() {
       {/* Financial summary */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
+          { label: 'Accrued service revenue', value: Number(companyLedger.earned_service_revenue || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
           { label: 'Total invoiced', value: Number(companyLedger.billed_total || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
           { label: 'Recorded payroll', value: Number(companyLedger.payroll_total || 0), icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Company-wide' },
           { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Company-wide' },
           { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Company-wide' },
+          { label: 'Client payments', value: Number(companyLedger.client_payments || 0), icon: WalletCards, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Company-wide' },
+          { label: 'Outstanding invoices', value: Number(companyLedger.outstanding_client_invoices || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Company-wide' },
         ].map(metric => {
           const Icon = metric.icon;
           return (

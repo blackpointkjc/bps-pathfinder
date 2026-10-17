@@ -94,8 +94,8 @@ Deno.serve(async (req) => {
       const easternDay = (date:Date) => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
       const today=easternDay(now);
       const current = periods.find((p:any)=>p.start_date<=today&&p.end_date>=today);
-      const rangeStart=current?.start_date||`${today.slice(0,7)}-01`;
-      const rangeEnd=current?.end_date||today;
+      const rangeStart='1900-01-01';
+      const rangeEnd=today;
       const siteOf=(v:any)=>String(v||'').split(/\s*(?::|\s-\s)\s*/)[0].trim();
       const locationBySite=new Map(locations.map((row:any)=>[siteOf(row.site_name),row]));
       let serviceHours=0,earnedRevenue=0,onDuty=0,unverifiedRates=0;
@@ -152,23 +152,16 @@ Deno.serve(async (req) => {
       const reimbursable=(expenseReports||[]).filter((row:any)=>['approved','reimbursed','paid'].includes(String(row.status||'').toLowerCase())).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
       const operating=(companyExpenses||[]).filter((row:any)=>['paid','unpaid'].includes(String(row.status||'').toLowerCase())&&!String(row.reference_number||'').startsWith('OFFICER-EXP-')).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
       const unpaid=companyExpenses.filter((row:any)=>String(row.status||'').toLowerCase()==='unpaid').reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
-      const alltimeServiceHours=timeEntries.reduce((sum:number,row:any)=>{
-        if(row.archived===true||!row.clock_in) return sum;
-        const a=Date.parse(row.clock_in),b=row.clock_out?Date.parse(row.clock_out):Date.now();
-        if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a)return sum;
-        const breaks=(Array.isArray(row.break_periods)?row.break_periods:[]).reduce((acc:number,item:any)=>{const start=Date.parse(item.start),end=item.end?Date.parse(item.end):row.on_break?b:NaN;return Number.isFinite(start)&&Number.isFinite(end)&&end>start?acc+Math.max(0,Math.min(end,b)-Math.max(start,a)):acc},0);
-        return sum+Math.max(0,(b-a-breaks)/3600000);
-      },0);
       const formatAmount=(amount:number)=>Math.round(amount*100)/100;
       const complete=loadErrors.length===0;
       financialSummary={period_start:rangeStart,period_end:rangeEnd,
-        service_hours:formatAmount(alltimeServiceHours),period_service_hours:formatAmount(serviceHours),
+        service_hours:formatAmount(serviceHours),period_service_hours:formatAmount(serviceHours),
         earned_service_revenue:formatAmount(earnedRevenue),on_duty:onDuty,
         billed_total:formatAmount(billedTotal),client_payments:formatAmount(clientPayments),
         outstanding_client_invoices:formatAmount(outstanding),unpaid_company_bills:formatAmount(unpaid),
         payroll_total:formatAmount(recordedPayroll),payroll_paid:formatAmount(payrollPaid),
         operating_expenses:formatAmount(operating+reimbursable),
-        estimated_profit:formatAmount(billedTotal-recordedPayroll-operating-reimbursable),
+        estimated_profit:formatAmount(earnedRevenue-recordedPayroll-operating-reimbursable),
         unverified_rate_shifts:unverifiedRates,invoice_count:uniqueInvoices.length,
         unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
         invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,

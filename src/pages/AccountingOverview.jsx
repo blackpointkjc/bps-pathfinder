@@ -90,6 +90,7 @@ export default function AccountingOverview() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Payroll Entries',payrollEntries.length,DollarSign,'Entries loaded for payroll review'],['Current Period',currentPeriod?.period_name || currentPeriod?.name || currentPeriod?.start_date || '—',CalendarClock,'Active/latest payroll period'],['Pending Expenses',pendingExpenses.length,AlertTriangle,'Reimbursements awaiting action'],['Period Payroll',`$${totalPaymentDue.toLocaleString(undefined,{maximumFractionDigits:2})}`,Receipt,'Recorded payroll for the shown period']].map(([label,value,Icon,detail]) => <div key={label} className="bps-kpi-card rounded-2xl border border-slate-800 bg-[#0b1624] p-5"><div className="bps-kpi-icon bg-emerald-500/10 text-emerald-300"><Icon className="h-5 w-5"/></div><span className="bps-kpi-value text-2xl font-black">{value}</span><div className="bps-kpi-label text-sm font-black">{label}</div><div className="bps-kpi-detail text-xs text-slate-500">{detail}</div></div>)}</div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
+          ['Accrued Service Revenue',moneySummary('earned_service_revenue')],
           ['Service Hours',summary.service_hours==null?'—':`${Number(summary.service_hours).toFixed(2)}h`],
           ['Total Invoiced',moneySummary('billed_total')],
           ['Client Payments',moneySummary('client_payments')],
