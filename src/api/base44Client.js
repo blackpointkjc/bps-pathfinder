@@ -131,7 +131,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && ['manageOfficerPerformanceReviews','managePerformanceReviews'].includes(meta?.name)) return 70;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 84;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 55;
-  if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 90_000;
+  if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 50;
   if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing'].includes(meta?.name)) return 20;
   // Give foreground page reads precedence over background scans.
   return 72;

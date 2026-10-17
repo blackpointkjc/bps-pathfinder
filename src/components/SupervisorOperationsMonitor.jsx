@@ -84,9 +84,12 @@ export default function SupervisorOperationsMonitor({ user, enabled = true }) {
     // Realtime subscriptions are installed immediately below, but the expensive
     // multi-table reconciliation must not compete with CAD/location during the
     // first paint. Emergency source changes still schedule a near-immediate run.
-    schedule(8000, false);
-    const reportStartupTimer = window.setTimeout(() => schedule(250, true), 30000);
-    const interval = window.setInterval(run, 60000);
+    // Avoid a large reconciliation request while a newly opened page is loading.
+    // Entity subscriptions still schedule changes; routine reconciliation is
+    // deliberately less frequent than critical CAD/location polling.
+    schedule(45000, false);
+    const reportStartupTimer = window.setTimeout(() => refreshReportQueue(false), 90000);
+    const interval = window.setInterval(run, 3 * 60 * 1000);
 
     const reportEntities = new Set([
       'DailyActivityReport','ShiftReport','IncidentReport','TrespassingNotice','ParkingViolation',
@@ -113,7 +116,7 @@ export default function SupervisorOperationsMonitor({ user, enabled = true }) {
       'OpenDoorReport',
     ]) {
       try {
-        const unsubscribe = base44.entities[entity].subscribe(() => schedule(700, reportEntities.has(entity)));
+        const unsubscribe = base44.entities[entity].subscribe(() => schedule(5000, reportEntities.has(entity)));
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch (error) {
         console.warn(`[Supervisor Operations] Realtime unavailable for ${entity}:`, error?.message || error);
