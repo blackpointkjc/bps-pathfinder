@@ -39,7 +39,8 @@ Deno.serve(async (req) => {
     const clientEmail = String(target.email || '').toLowerCase();
     const targetId = String(target.id || '');
     const initialAssignedSites = new Set([...assigned].map(siteOf).filter(Boolean));
-    const visibleInvoices = (invoices || []).filter((invoice: any) => {
+    const visibleInvoicesRaw = (invoices || []).filter((invoice: any) => {
+      if(['void','cancelled'].includes(String(invoice.status || '').toLowerCase())) return false;
       const invoiceEmail = String(invoice.client_email || '').toLowerCase();
       const invoiceClientId = String(invoice.client_id || invoice.client_user_id || '');
       const invoiceSite = siteOf(invoice.site_name || invoice.location);
@@ -47,6 +48,17 @@ Deno.serve(async (req) => {
         || (targetId && invoiceClientId === targetId)
         || (invoiceSite && initialAssignedSites.has(invoiceSite));
     });
+    // Hide duplicates created by earlier billing jobs. Retain the original
+    // records for audit; never present a second payable invoice for the same
+    // property and service period in the client's portal.
+    const uniqueInvoices=new Map<string,any>();
+    const rank=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:['sent','overdue'].includes(String(record.status||'').toLowerCase())?3:1;
+    for(const invoice of visibleInvoicesRaw){
+      const key=`${siteOf(invoice.site_name || invoice.location)}|${invoice.period_start}|${invoice.period_end}`;
+      const prior=uniqueInvoices.get(key);
+      if(!prior||rank(invoice)>rank(prior)||(rank(invoice)===rank(prior)&&String(invoice.created_date||'')<String(prior.created_date||''))) uniqueInvoices.set(key,invoice);
+    }
+    const visibleInvoices=[...uniqueInvoices.values()];
     // Keep inactive and previously assigned locations visible when they have client ownership,
     // invoice history, or time-entry history. Inactivation stops future scheduling; it must not
     // erase historical billing or the configured rate from the client portal.

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Building2, Clock3, DollarSign, Download, RefreshCw, TrendingDown, TrendingUp, Users, WalletCards } from "lucide-react";
+import { AlertTriangle, Building2, Clock3, DollarSign, Download, RefreshCw, TrendingUp, Users, WalletCards } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { calculatePaidHours, calculatePayrollHours } from "@/lib/payrollCalculations";
 import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
@@ -17,7 +17,7 @@ export default function AccountingProfit() {
   const [liveNow, setLiveNow] = useState(() => new Date());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
+    const timer = window.setInterval(() => setLiveNow(new Date()), 15000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -56,8 +56,7 @@ export default function AccountingProfit() {
   const accountingLoadErrors = accountingData.load_errors || [];
   const companyLedger = accountingData.financialSummary || {}; 
 
-  useEffect(() => {
-    if (!isAccountingRole) return undefined;
+  if (!isAccountingRole) return undefined;
     const refresh = () => refetchProfit();
     const unsubscribers = [];
     for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule', 'CompanyExpense', 'ExpenseReport', 'PTOUsage']) {

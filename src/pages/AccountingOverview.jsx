@@ -33,7 +33,7 @@ const payrollDateLabel = row => {
 
 export default function AccountingOverview() {
   const [liveNow,setLiveNow] = useState(() => new Date());
-  useEffect(() => { const timer=window.setInterval(()=>{if (document.visibilityState==='visible') setLiveNow(new Date());},1000); return ()=>window.clearInterval(timer); },[]);
+  useEffect(() => { const timer=window.setInterval(()=>{if (document.visibilityState==='visible') setLiveNow(new Date());},15000); return ()=>window.clearInterval(timer); },[]);
   const { data: payload = {}, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['accountingFinance'],
     queryFn: async () => {
@@ -59,8 +59,6 @@ export default function AccountingOverview() {
   const currentPeriod = periods.find(row=>row.start_date<=todayKey&&row.end_date>=todayKey) || [...periods].filter(row=>row.end_date<todayKey).sort((a,b)=>String(b.end_date).localeCompare(String(a.end_date)))[0];
   const thisPeriodPayroll = currentPeriod ? payrollEntries.filter(row => row.pay_period_start===currentPeriod.start_date && row.pay_period_end===currentPeriod.end_date) : [];
   const totalPaymentDue = thisPeriodPayroll.reduce((sum,row) => sum + Number(row.total_payment_due ?? row.gross_pay ?? row.net_pay ?? 0), 0);
-  const allExpenses=payload.companyExpenses||[];
-  const allInvoices=payload.invoices||[];
   const timeEntries=payload.timeEntries||[];
   const locations=payload.locations||[];
   const schedules=payload.schedules||[];
