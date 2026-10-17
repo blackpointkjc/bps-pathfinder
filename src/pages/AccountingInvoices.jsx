@@ -173,7 +173,7 @@ export default function AccountingInvoices() {
     ...(selectedClientRecord?.assigned_sites || []),
   ].filter(Boolean));
   const clientLocations = selectedClient
-    ? locations.filter(location => location.assigned_client_email === selectedClient || assignedSiteNames.has(location.site_name))
+    ? locations.filter(location => location.billing_contact_email === selectedClient || (assignedSiteNames.has(location.site_name) && (location.billing_contact_email===selectedClient || clients.some(client=>client.email===selectedClient&&!client.billing_contact_only))))
     : locations;
 
   const liveInvoicePreview = timeEntries.reduce((summary, entry) => {
@@ -183,7 +183,8 @@ export default function AccountingInvoices() {
     const entrySite = normalizeSiteName(entry.location);
     const location = clientLocations.find(item => normalizeSiteName(item.site_name) === entrySite);
     if (!location || (selectedSite && entrySite !== normalizeSiteName(selectedSite))) return summary;
-    const { rate } = resolveBillingRate(entry, location, schedules);
+    const { rate, needsReview } = resolveBillingRate(entry, location, schedules);
+    if (needsReview) summary.reviewShifts++;
     if (!rate) return summary;
     const rawHours = calculateLiveHours(entry, liveNow);
     const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
@@ -191,7 +192,7 @@ export default function AccountingInvoices() {
     summary.amount += hours * rate;
     summary.activeShifts += entry.clock_out ? 0 : 1;
     return summary;
-  }, { hours: 0, amount: 0, activeShifts: 0 });
+  }, { hours: 0, amount: 0, activeShifts: 0, reviewShifts: 0 });
 
   const generateAllSitesInvoices = async () => {
     setGenerating(true);
@@ -320,7 +321,7 @@ export default function AccountingInvoices() {
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Accrues locally each second from the most recently synced time entries. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in.
+              Accrues locally each second from the most recently synced time entries. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in. {liveInvoicePreview.reviewShifts > 0 && `${liveInvoicePreview.reviewShifts} shift(s) have unverified historical rates; preview revenue is provisional.`}
             </p>
           </div>
 
