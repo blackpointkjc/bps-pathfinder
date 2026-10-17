@@ -52,10 +52,35 @@ Deno.serve(async(req)=>{
     const part=(name:string)=>eastern.find(item=>item.type===name)?.value||'';
     if(!manual && (part('weekday')!=='Mon'||Number(part('hour'))!==8)) return Response.json({success:true,skipped:true,reason:'Automatic invoice generation runs Mondays at 8 AM Eastern'});
     const today=`${part('year')}-${part('month')}-${part('day')}`;
-    const lastSaturday=dateOffset(today,-2);
+    if(action==='send_existing') {
+      const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
+      if(!invoice) return Response.json({error:'Invoice not found'},{status:404});
+      if(invoice.status==='sent'||invoice.status==='paid') return Response.json({error:'Invoice was already sent or paid; duplicate email blocked.'},{status:409});
+      const locations=await base44.asServiceRole.entities.Location.list('site_name',2000);
+      const location=(locations||[]).find((row:any)=>siteOf(row.site_name)===siteOf(invoice.site_name));
+      const recipient=String(body.contact_email || location?.billing_contact_email || '').trim().toLowerCase();
+      const target=isEmail(recipient)?recipient:MANAGEMENT_EMAIL;
+      const subject=`Black Point Invoice ${invoice.invoice_number} — ${invoice.site_name} (${invoice.period_start}–${invoice.period_end})`;
+      let shifts:any[]=[];
+      try {shifts=JSON.parse(invoice.shifts || '[]')}catch{}
+      const rows=(Array.isArray(shifts)?shifts:[]).map((shift:any)=>`<tr><td>${encode(shift.date)}</td><td>${encode(shift.hours)}</td><td>$${encode(shift.rate)}</td><td>$${encode(shift.amount)}</td></tr>`).join('');
+      const bodyHtml=`<div style="font:14px Arial,sans-serif"><h2 style="background:#101d32;color:#e7c16e;padding:18px">BLACK POINT SECURITY — INVOICE ${encode(invoice.invoice_number)}</h2><p>Service: ${encode(invoice.site_name)}<br>Dates: ${encode(invoice.period_start)} – ${encode(invoice.period_end)}<br>Due: ${encode(invoice.due_date)}</p><table cellspacing="6"><tr><th>Date</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>${rows}</table><h2>Amount due: $${Number(invoice.total_amount||0).toFixed(2)}</h2><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject,body:bodyHtml});
+        await base44.asServiceRole.entities.Invoice.update(invoice.id,{client_email:target,delivery_email:target,delivery_status:'accepted',delivery_error:'',sent_at:new Date().toISOString(),status:'sent'});
+        return Response.json({success:true,invoice_number:invoice.invoice_number,sent:1,recipient:target});
+      } catch(error:any) {
+        await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_email:target,delivery_status:'failed',delivery_error:String(error?.message||'Mail provider failed')}).catch(()=>null);
+        return Response.json({error:`Invoice email was not accepted: ${String(error?.message||'Mail provider failed')}`},{status:502});
+      }
+    }
+
+    const weekday=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(part('weekday'));
+    const sinceLastSaturday=((weekday+1)%7)||7;
+    const lastSaturday=dateOffset(today,-sinceLastSaturday);
     const startDefault=dateOffset(lastSaturday,-6);
-    const periodStart=body.period_start || startDefault;
-    const periodEnd=body.period_end || lastSaturday;
+    const periodStart=action==='backfill_drafts'?startDefault:(body.period_start || startDefault);
+    const periodEnd=action==='backfill_drafts'?lastSaturday:(body.period_end || lastSaturday);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
     const [entries,locations,users,invoices,schedules]=await Promise.all([
       base44.asServiceRole.entities.TimeEntry.list('-clock_in',10000),
@@ -103,7 +128,7 @@ Deno.serve(async(req)=>{
         const invoice=await base44.asServiceRole.entities.Invoice.create(invoiceData);
         created++;existing.add(key);
         // Historical drafts require accounting review and are never silently emailed.
-        if(action==='backfill_drafts'||action==='preview') {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:'draft',recipient:target});continue;}
+        if(action==='backfill_drafts') {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:'draft',recipient:target});continue;}
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {

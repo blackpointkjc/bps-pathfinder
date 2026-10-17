@@ -55,7 +55,8 @@ export default function AccountingOverview() {
   const expenses = payload.expenseReports || [];
   const loadErrors = payload.load_errors || [];
   const pendingExpenses = expenses.filter(row => String(row.status || '').toLowerCase() === 'pending');
-  const currentPeriod = periods.find(row => ['open','current','active'].includes(String(row.status || '').toLowerCase())) || periods[0];
+  const todayKey=liveNow.toISOString().slice(0,10);
+  const currentPeriod = periods.find(row=>row.start_date<=todayKey&&row.end_date>=todayKey) || [...periods].filter(row=>row.end_date<todayKey).sort((a,b)=>String(b.end_date).localeCompare(String(a.end_date)))[0];
   const thisPeriodPayroll = currentPeriod ? payrollEntries.filter(row => row.pay_period_start===currentPeriod.start_date && row.pay_period_end===currentPeriod.end_date) : [];
   const totalPaymentDue = thisPeriodPayroll.reduce((sum,row) => sum + Number(row.total_payment_due ?? row.gross_pay ?? row.net_pay ?? 0), 0);
   const allExpenses=payload.companyExpenses||[];

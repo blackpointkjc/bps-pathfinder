@@ -118,6 +118,18 @@ export default function AccountingInvoices() {
     }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
     finally {setSavingBillingEmail(false);}
   };
+  const sendExistingInvoice = async invoice => {
+    if (!window.confirm(`Send invoice ${invoice.invoice_number} for ${invoice.site_name}? It will use that site's saved billing contact or management@blackpointkjc.com.`)) return;
+    setGenerating(true);
+    try {
+      const result=await base44.functions.invoke('generateWeeklyInvoices',{action:'send_existing',invoice_id:invoice.id});
+      const payload=result?.data || result || {};
+      if(payload.error) throw new Error(payload.error);
+      setBillingStatus(`Invoice ${invoice.invoice_number} accepted by email provider for ${payload.recipient}.`);
+      await queryClient.invalidateQueries({queryKey:['accountingData']});
+    }catch(error){setBillingStatus(`Invoice email failed: ${error?.message || 'Unknown error'}`);}
+    finally {setGenerating(false);}
+  };
   const backfillInvoices = async () => {
     if (!window.confirm('Create missing weekly invoices for the past 16 weeks as DRAFTS for review? No historical emails will be sent automatically.')) return;
     setGenerating(true);
@@ -185,7 +197,7 @@ export default function AccountingInvoices() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
             onClick={generateAllSitesInvoices}
-            disabled={generating || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length || !selectedClient}
+            disabled={generating || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -349,7 +361,7 @@ export default function AccountingInvoices() {
                   <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.status === 'draft' && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
                           invoice.status === 'overdue' ? 'bg-red-600' :
