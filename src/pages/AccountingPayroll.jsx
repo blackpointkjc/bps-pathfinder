@@ -862,7 +862,7 @@ export default function AccountingPayroll() {
     }
     const esc = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const money = value => Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const period = selectedPeriod || payrollPeriods.find(p => entriesToReport.some(e => e.pay_period_start === p.start_date && e.pay_period_end === p.end_date));
+    const period = payrollPeriods.find(p => entriesToReport.some(e => e.pay_period_start === p.start_date && e.pay_period_end === p.end_date)) || selectedPeriod;
     const start = period?.start_date || entriesToReport[0]?.pay_period_start || '';
     const end = period?.end_date || entriesToReport[0]?.pay_period_end || '';
     const entryForOfficer = payrollEntry => timeEntries
