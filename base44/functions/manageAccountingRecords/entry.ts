@@ -13,6 +13,36 @@ Deno.serve(async (req) => {
     }
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    if (body.action === 'update_invoice_payment') {
+      const invoiceId=String(body.invoice_id || '');
+      if (!invoiceId) return Response.json({error:'Invoice ID required'},{status:400});
+      const current=await base44.asServiceRole.entities.Invoice.get(invoiceId).catch(()=>null);
+      if (!current) return Response.json({error:'Invoice not found'},{status:404});
+      const target=String(body.payment_status || '').toLowerCase();
+      if (!['pending','partial','paid','overdue'].includes(target)) return Response.json({error:'Choose pending, partial, paid, or overdue'},{status:400});
+      if (current.status==='void') return Response.json({error:'Voided invoices cannot be paid'},{status:409});
+      if (current.billing_review_required === true) return Response.json({error:'Verify the historical billing rates before recording payment'},{status:409});
+      const total=Math.round(Number(current.total_amount || 0)*100)/100;
+      if (!(total > 0)) return Response.json({error:'Invoice has no positive billable amount'},{status:400});
+      const previousPaid=Math.max(0,Number(current.amount_paid || (current.status==='paid'?total:0)));
+      const inputAmount=body.amount_paid===''||body.amount_paid===undefined||body.amount_paid===null ? previousPaid : Number(body.amount_paid);
+      const paid=target==='paid' ? total : Math.round(inputAmount*100)/100;
+      if (!Number.isFinite(paid) || paid<0 || paid>total) return Response.json({error:'Received payment must be from zero to the invoice total'},{status:400});
+      if (paid + 0.005 < previousPaid) return Response.json({error:'Received payments cannot be reduced here. Use an audited refund/adjustment procedure.'},{status:409});
+      if (target==='partial' && !(paid>0 && paid<total)) return Response.json({error:'Partial payment must be greater than zero but less than the balance'},{status:400});
+      if (['pending','overdue'].includes(target) && paid >= total) return Response.json({error:'A fully paid invoice must be marked Paid'},{status:400});
+      const now=new Date().toISOString();
+      const paidDate=target==='paid'?String(body.paid_date || now.slice(0,10)):'';
+      if (target==='paid' && !/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) return Response.json({error:'Valid payment date required'},{status:400});
+      const updates={status:target,amount_paid:paid,paid_date:paidDate,
+        payment_method:String(body.payment_method || current.payment_method || '').slice(0,120),
+        payment_reference:String(body.payment_reference || current.payment_reference || '').slice(0,140),
+        payment_notes:String(body.notes || current.payment_notes || '').slice(0,1000),
+        payment_updated_by:String(user.email || user.id),payment_updated_at:now};
+      const record=await base44.asServiceRole.entities.Invoice.update(invoiceId,updates);
+      try {await base44.asServiceRole.entities.AuditLog.create({entity_type:'Invoice',entity_id:invoiceId,action:'update_invoice_payment',actor_id:String(user.id),actor_name:String(user.email||''),before_value:JSON.stringify({status:current.status,amount_paid:previousPaid,paid_date:current.paid_date}),after_value:JSON.stringify(updates),timestamp:now,notes:'Accounting payment/status update'});} catch(e:any){console.error('Invoice updated but payment audit could not be saved:',e?.message);}
+      return Response.json({success:true,record});
+    }
     if (body.action === 'set_billing_contact') {
       const id=String(body.location_id || '');
       const email=String(body.contact_email || '').trim().toLowerCase();

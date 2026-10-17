@@ -47,11 +47,19 @@
       "type": "number",
       "description": "Total invoice amount"
     },
+    "amount_paid": {"type":"number","default":0,"description":"Cumulative client payment received and confirmed by accounting"},
+    "payment_method": {"type":"string"},
+    "payment_reference": {"type":"string"},
+    "payment_notes": {"type":"string"},
+    "payment_updated_by": {"type":"string"},
+    "payment_updated_at": {"type":"string","format":"date-time"},
     "status": {
       "type": "string",
       "enum": [
         "draft",
         "sent",
+        "pending",
+        "partial",
         "paid",
         "overdue",
         "void"

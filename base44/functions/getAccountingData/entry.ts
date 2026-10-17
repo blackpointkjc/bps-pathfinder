@@ -146,11 +146,11 @@ Deno.serve(async (req) => {
         if(['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
         const key=`${siteOf(invoice.site_name).toLowerCase()}|${invoice.period_start}|${invoice.period_end}`;
         const current=canonical.get(key);
-        const priority=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:String(record.status||'').toLowerCase()==='sent'?3:String(record.status||'').toLowerCase()==='overdue'?3:1;
+        const priority=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:['sent','pending','partial','overdue'].includes(String(record.status||'').toLowerCase())?3:1;
         if(!current||priority(invoice)>priority(current)||(priority(invoice)===priority(current)&&String(invoice.created_date||'')<String(current.created_date||''))) canonical.set(key,invoice);
       }
       const uniqueInvoices=[...canonical.values()];
-      const billableInvoices=uniqueInvoices.filter((row:any)=>['paid','sent','overdue'].includes(String(row.status||'').toLowerCase()));
+      const billableInvoices=uniqueInvoices.filter((row:any)=>['paid','sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase()));
       const billedTotal=billableInvoices.reduce((sum:number,row:any)=>sum+Number(row.total_amount||0),0);
       const clientPayments=billableInvoices.reduce((sum:number,row:any)=>{
         const paid=Number(row.amount_paid||0);
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         operating_expenses:formatAmount(operating+reimbursable),
         estimated_profit:formatAmount(earnedRevenue-recordedPayroll-operating-reimbursable),
         unverified_rate_shifts:unverifiedRates,invoice_count:uniqueInvoices.length,
-        unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
+        unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
         invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,
         invoice_draft_count:uniqueInvoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
         expense_count:companyExpenses.length,
