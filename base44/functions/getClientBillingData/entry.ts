@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     if (!isClient && !isAdminPreview) return Response.json({ error: 'Client access required' }, { status: 403 });
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    let target = user;
+    let target: any = user;
 
     // Admin/full-access preview can request a specific client account.
     if (isAdminPreview && body.client_id) {
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       invoices: visibleInvoices,
       schedules: (schedules || []).filter((shift: any) => assignedSites.has(siteOf(shift.location))),
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getClientBillingData failed', error);
     return Response.json({ error: error?.message || 'Unable to load client billing data' }, { status: 500 });
   }

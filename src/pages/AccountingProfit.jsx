@@ -56,18 +56,6 @@ export default function AccountingProfit() {
   const accountingLoadErrors = accountingData.load_errors || [];
   const companyLedger = accountingData.financialSummary || {}; 
 
-  if (!isAccountingRole) return undefined;
-    const refresh = () => refetchProfit();
-    const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule', 'CompanyExpense', 'ExpenseReport', 'PTOUsage']) {
-      try {
-        const unsubscribe = base44.entities[entity].subscribe(refresh);
-        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
-      } catch { /* Fifteen-second polling remains active. */ }
-    }
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [isAccountingRole, refetchProfit]);
-
   if (!isAccountingRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
