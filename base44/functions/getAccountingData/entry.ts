@@ -121,9 +121,13 @@ Deno.serve(async (req) => {
         serviceHours+=hours;earnedRevenue+=hours*rate;
         if(!entry.clock_out)onDuty++;
       }
-      const outstanding=invoices.filter((item:any)=>['sent','overdue'].includes(String(item.status||'').toLowerCase())).reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.total_amount||0)-Number(item.amount_paid||0)),0);
+      const outstanding=invoices.filter((item:any)=>['sent','overdue'].includes(String(item.status||'').toLowerCase()) && String(item.delivery_status||'').toLowerCase()==='accepted').reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.total_amount||0)-Number(item.amount_paid||0)),0);
       const unpaid=companyExpenses.filter((item:any)=>String(item.status||'').toLowerCase()==='unpaid').reduce((sum:number,item:any)=>sum+Number(item.amount||0),0);
-      financialSummary={period_start:rangeStart,period_end:rangeEnd,service_hours:Math.round(serviceHours*100)/100,earned_service_revenue:Math.round(earnedRevenue*100)/100,on_duty: onDuty,outstanding_client_invoices:Math.round(outstanding*100)/100,unpaid_company_bills:Math.round(unpaid*100)/100,invoice_count:invoices.length,expense_count:companyExpenses.length,as_of:new Date().toISOString(),complete:loadErrors.length===0};
+      financialSummary={period_start:rangeStart,period_end:rangeEnd,service_hours:Math.round(serviceHours*100)/100,earned_service_revenue:Math.round(earnedRevenue*100)/100,on_duty: onDuty,outstanding_client_invoices:Math.round(outstanding*100)/100,unpaid_company_bills:Math.round(unpaid*100)/100,invoice_count:invoices.length,
+        unverified_sent_count:invoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase()) && String(row.delivery_status||'').toLowerCase()!=='accepted').length,
+        invoice_review_count:invoices.filter((row:any)=>row.billing_review_required===true).length,
+        invoice_draft_count:invoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
+        expense_count:companyExpenses.length,as_of:new Date().toISOString(),complete:loadErrors.length===0};
     }
 
     return Response.json({
