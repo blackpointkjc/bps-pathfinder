@@ -320,7 +320,7 @@ export default function AccountingInvoices() {
 
           <Button
             onClick={generateInvoice}
-            disabled={generating || !selectedClient || !selectedSite}
+            disabled={generating || !selectedSite || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length}
             className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
           >
             {generating ? (
@@ -334,7 +334,7 @@ export default function AccountingInvoices() {
           </Button>
 
           <p className="text-xs text-purple-900">
-            Invoice will be automatically sent to client portal and notify them via email
+            Generates the invoice from completed billable shifts. Email is sent through the provider to the site's verified billing address, or management@blackpointkjc.com if no client contact is configured. Sent status requires provider acceptance; it does not prove final delivery.
           </p>
         </CardContent>
       </Card>
