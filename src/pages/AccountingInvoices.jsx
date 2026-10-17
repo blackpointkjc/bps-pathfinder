@@ -54,6 +54,7 @@ export default function AccountingInvoices() {
   const locations = accountingData.locations || [];
   const config = accountingData.config || null;
   const invoices = accountingData.invoices || [];
+  const companyLedger=accountingData.financialSummary || {}; 
 
   const runInvoices = async () => {
     if (generating) return;
@@ -70,7 +71,7 @@ export default function AccountingInvoices() {
     finally { setGenerating(false); }
   };
   const saveBillingContact = async () => {
-    const location=locations.find(row=>normalizeSiteName(row.site_name)===normalizeSiteName(selectedSite));
+    const location=locations.find(row=>row.site_name===selectedSite);
     if (!location) return alert('Select the site whose client billing address needs updating.');
     try {
       setSavingBillingEmail(true);
@@ -137,6 +138,9 @@ export default function AccountingInvoices() {
         <Input type="email" className="min-w-[220px] flex-1" placeholder="Blank uses management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)}/>
         <Button type="button" variant="outline" disabled={!selectedSite||savingBillingEmail} onClick={saveBillingContact}>{savingBillingEmail?'Saving…':'Save Address'}</Button>
       </div></CardContent></Card>
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[
+        ['Total Invoiced',companyLedger.billed_total],['Client Payments',companyLedger.client_payments],['Outstanding Invoices',companyLedger.outstanding_client_invoices],['Estimated Profit',companyLedger.estimated_profit],
+      ].map(([title,value])=><div key={title} className="rounded-xl border bg-white p-4"><div className="text-xs font-bold uppercase text-slate-500">{title}</div><div className="mt-2 text-xl font-black text-slate-900">{value==null?'—':`$${Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`}</div></div>)}</div>
       {(clientsError || accountingData.partial) && <div className="mb-4 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">{clientsError ? `Billing data load failed: ${clientsError.message}` : `Some billing sources need retry: ${(accountingData.load_errors||[]).join(', ')}`} <button className="ml-2 underline" onClick={()=>refetchAccounting()}>Retry</button></div>}
       <Card className="rounded-2xl border-slate-200 shadow-sm">
         <CardHeader>

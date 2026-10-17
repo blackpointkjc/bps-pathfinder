@@ -54,6 +54,7 @@ export default function AccountingProfit() {
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
   const accountingLoadErrors = accountingData.load_errors || [];
+  const companyLedger = accountingData.financialSummary || {}; 
 
   useEffect(() => {
     if (!isAccountingRole) return undefined;
@@ -321,10 +322,10 @@ export default function AccountingProfit() {
             </div>
           </header>
           <section class="metrics">
-            <div class="metric"><div class="label">Revenue</div><div class="value positive">${money(totalRevenue)}</div></div>
+            <div class="metric"><div class="label">Selected period revenue</div><div class="value positive">${money(totalRevenue)}</div></div>
             <div class="metric"><div class="label">Payroll</div><div class="value">${money(totalPayroll)}</div></div>
             <div class="metric"><div class="label">Operating costs</div><div class="value">${money(totalExpenses + ptoCost)}</div></div>
-            <div class="metric"><div class="label">Net profit</div><div class="value ${netProfit >= 0 ? 'positive' : 'negative'}">${money(netProfit)}</div></div>
+            <div class="metric"><div class="label">Selected period estimated profit</div><div class="value ${netProfit >= 0 ? 'positive' : 'negative'}">${money(netProfit)}</div></div>
             <div class="metric"><div class="label">Expenses</div><div class="value">${money(totalExpenses)}</div></div>
             <div class="metric"><div class="label">PTO cost</div><div class="value">${money(ptoCost)}</div></div>
             <div class="metric"><div class="label">Net margin</div><div class="value">${profitMargin.toFixed(1)}%</div></div>
@@ -362,7 +363,7 @@ export default function AccountingProfit() {
               Financial operations
             </div>
             <h1 className="text-3xl font-black tracking-tight md:text-5xl">Company Profit Report</h1>
-            <p className="mt-3 max-w-2xl text-base text-slate-300">Earned billing, gross accrued wages, operating costs, and margin—calculated from live operational records.</p>
+            <p className="mt-3 max-w-2xl text-base text-slate-300">Company ledger totals above; selected-period operational breakdown below.</p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-400">
               <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />Calculated at {format(liveNow, 'MMM d, yyyy h:mm:ss a')} · Last synced {accountingData.as_of ? format(new Date(accountingData.as_of), 'h:mm:ss a') : 'not yet'}</span>
               {accountingFetching && <span className="inline-flex items-center gap-2 text-sky-300"><RefreshCw className="h-3.5 w-3.5 animate-spin" />Refreshing</span>}
@@ -403,7 +404,7 @@ export default function AccountingProfit() {
           <div><p className="font-bold">Some financial sources are temporarily unavailable</p><p className="mt-1 text-sm text-amber-200">These are incomplete provisional figures, not a verified company profit total. Missing: {accountingLoadErrors.join(', ')}.</p></div>
         </div>
       )}
-      {unverifiedRevenueShifts > 0 && <div className="mb-5 rounded-2xl border border-orange-600/50 bg-orange-950/30 p-4 text-sm text-orange-100">Profitability is provisional: {unverifiedRevenueShifts} shift(s) lack a verified historical billing rate. Verify their effective rates before exporting a financial report.</div>}
+
       {accountingLoading && (
         <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
       )}
@@ -418,10 +419,10 @@ export default function AccountingProfit() {
       {/* Financial summary */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'Earned billing', value: totalRevenue, icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: `${totalServiceHours.toFixed(1)} service hours` },
-          { label: 'Gross accrued wages', value: totalPayroll, icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: `${totalApprovedPayrollHours.toFixed(1)} approved payroll hours` },
-          { label: 'Operating costs', value: totalExpenses, icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Approved reimbursements and paid expenses' },
-          { label: 'Net profit', value: netProfit, icon: netProfit >= 0 ? TrendingUp : TrendingDown, color: netProfit >= 0 ? 'text-violet-300' : 'text-red-300', border: netProfit >= 0 ? 'border-violet-500/35' : 'border-red-500/35', note: `${profitMargin.toFixed(1)}% net margin` },
+          { label: 'Total invoiced', value: Number(companyLedger.billed_total || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
+          { label: 'Recorded payroll', value: Number(companyLedger.payroll_total || 0), icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Company-wide' },
+          { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Company-wide' },
+          { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Company-wide' },
         ].map(metric => {
           const Icon = metric.icon;
           return (
@@ -431,7 +432,7 @@ export default function AccountingProfit() {
                   <div className="min-w-0">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{metric.label}</p>
                     <p className={`mt-3 break-words text-3xl font-black tracking-tight ${metric.color}`}>
-                      {metric.value < 0 ? '-' : ''}${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {companyLedger.complete === undefined ? '—' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </p>
                     <p className="mt-2 text-sm leading-5 text-slate-400">{metric.note}</p>
                   </div>
