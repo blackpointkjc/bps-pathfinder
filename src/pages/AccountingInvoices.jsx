@@ -75,6 +75,19 @@ export default function AccountingInvoices() {
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
     finally { setGenerating(false); }
   };
+  const reconcileHistoricalDrafts = async () => {
+    if(!window.confirm('Recalculate existing UNSENT invoice drafts for the past 16 weeks using effective historical contract rates? This will not email any invoice or change a paid/sent invoice. Unverified rates will remain flagged for review.')) return;
+    setGenerating(true);
+    setBillingStatus('Reconciling historical invoice drafts from recorded time entries and contract rate history…');
+    try {
+      const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'backfill_drafts'});
+      const data=response?.data || response || {};
+      if(data.error)throw new Error(data.error);
+      setBillingStatus(`Historical draft reconciliation: ${data.created||0} new drafts, ${data.updated||0} updated, ${data.held||0} overlapping invoices held, ${data.processing_failed||0} errors. No emails sent.`);
+      await queryClient.invalidateQueries({queryKey:['accountingFinance']});
+    }catch(error){setBillingStatus(`Historical draft reconciliation failed: ${error?.response?.data?.error||error?.message||'Server error'}`);}
+    finally{setGenerating(false);}
+  };
   const saveBillingContact = async () => {
     const location=locations.find(row=>row.site_name===selectedSite);
     if (!location) return alert('Select the site whose client billing address needs updating.');
@@ -170,6 +183,7 @@ export default function AccountingInvoices() {
         <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Company-wide invoices, service revenue, recipients and payments</p></div>
         <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
       </div>
+      <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={reconcileHistoricalDrafts}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
       {billingRunIssues.length>0 && <div className="mb-4 space-y-2 rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><strong>Billing items requiring action</strong>{billingRunIssues.map((item,index)=><div key={`${item.site}-${index}`} className="border-t border-amber-300 pt-2"><strong>{item.site || 'Unassigned site'}</strong> — {item.status==='overlap_requires_review' ? `Existing invoice #${item.invoice_number} covers these dates; a second invoice was not sent.` : item.status==='legacy_delivery_unconfirmed' ? `Invoice #${item.invoice_number} was held because prior email delivery cannot be confirmed.` : `Billing failed: ${item.error || 'Review this site'}`}</div>)}</div>}
       <Card className="mb-5 border-slate-200"><CardContent className="p-4"><Label>Client Invoice Delivery Address</Label><div className="mt-2 flex flex-wrap items-center gap-2">
