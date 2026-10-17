@@ -74,6 +74,17 @@ Deno.serve(async (req) => {
       return !u.termination_date && (r.has('client') || String(u.rank || '').toLowerCase() === 'client' || String(u.user_type || '').toLowerCase() === 'client');
     });
 
+    // A site may have an assigned billing contact even when that contact has
+    // not created a Pathfinder client-portal login. Do not hide billable sites
+    // merely because the User directory contains no client-role accounts.
+    const knownClients = new Set(clients.map((c:any)=>String(c.email||'').toLowerCase()));
+    for (const site of locations || []) {
+      const email=String(site.assigned_client_email || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || knownClients.has(email)) continue;
+      clients.push({email,full_name: String(site.assigned_client_name || site.client_name || email), billing_contact_only:true});
+      knownClients.add(email);
+    }
+
     return Response.json({
       success: true,
       scope,

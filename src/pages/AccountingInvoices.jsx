@@ -128,7 +128,7 @@ export default function AccountingInvoices() {
       const siteEntries = timeEntries.filter(entry => {
         if (!entry.clock_in || !entry.clock_out) return false;
         const entrySite = normalizeSiteName(entry.location);
-        if (entrySite !== selectedSite) return false;
+        if (entrySite !== normalizeSiteName(selectedSite)) return false;
         const entryDate = String(entry.clock_in).slice(0, 10);
         return entryDate >= startDate && entryDate <= endDate;
       });
@@ -218,8 +218,8 @@ export default function AccountingInvoices() {
     const entryDate = String(entry.clock_in).slice(0, 10);
     if (entryDate < startDate || entryDate > endDate) return summary;
     const entrySite = normalizeSiteName(entry.location);
-    const location = clientLocations.find(item => item.site_name === entrySite);
-    if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
+    const location = clientLocations.find(item => normalizeSiteName(item.site_name) === entrySite);
+    if (!location || (selectedSite && entrySite !== normalizeSiteName(selectedSite))) return summary;
     const { rate } = resolveBillingRate(entry, location, schedules);
     if (!rate) return summary;
     const rawHours = calculateLiveHours(entry, liveNow);
@@ -259,7 +259,7 @@ export default function AccountingInvoices() {
         const siteEntries = timeEntries.filter(entry => {
           if (!entry.clock_in || !entry.clock_out) return false;
           const entrySite = normalizeSiteName(entry.location);
-          if (entrySite !== siteName) return false;
+          if (entrySite !== normalizeSiteName(siteName)) return false;
           const entryDate = String(entry.clock_in).slice(0, 10);
           return entryDate >= startDate && entryDate <= endDate;
         });
@@ -366,7 +366,7 @@ export default function AccountingInvoices() {
                     <SelectItem key={client.email} value={client.email}>
                       {client.first_name && client.last_name 
                         ? `${client.first_name} ${client.last_name}` 
-                        : client.email}
+                        : (client.full_name && client.full_name !== client.email ? `${client.full_name} (${client.email})` : client.email)}
                     </SelectItem>
                   ))}
                 </SelectContent>
