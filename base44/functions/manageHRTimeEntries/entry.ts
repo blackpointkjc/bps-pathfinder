@@ -218,6 +218,7 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
     return 1;
   }
 
+  let synchronized=0;
   for (const payrollRow of payrollRows) {
     // Never rewrite a finalized payment. Record an auditable outstanding
     // adjustment instead, which payroll/accounting can review explicitly.
@@ -242,9 +243,10 @@ async function syncPayrollPeriodForEntry(base44: any, touchedEntry: any) {
       net_pay: round(Math.max(0, gross - deductions) + reimbursementTotal),
       total_payment_due: round(Math.max(0, gross - deductions) + reimbursementTotal),
     });
+    synchronized++;
   }
 
-  return payrollRows.length;
+  return synchronized;
 }
 
 async function syncTouchedPayrollRecords(base44: any, entries: any[]) {

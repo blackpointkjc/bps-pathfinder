@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
     if (action === 'approve_report' || action === 'reject_report') {
       const report = await base44.asServiceRole.entities.ExpenseReport.get(String(body.id || '')).catch(()=>null);
       if (!report) return Response.json({ error: 'Expense report not found' }, { status: 404 });
-      if (String(report.status || '').toLowerCase() !== 'pending') return Response.json({error:'This expense has already been reviewed. Refresh the approval queue.'},{status:409});
+      const alreadyApproved=action==='approve_report' && String(report.status || '').toLowerCase()==='approved';
+      if (String(report.status || '').toLowerCase() !== 'pending' && !alreadyApproved) return Response.json({error:'This expense has already been reviewed. Refresh the approval queue.'},{status:409});
       const status = action === 'approve_report' ? 'approved' : 'rejected';
       const now = new Date().toISOString();
       // Travel reimbursement is policy-driven: ending odometer minus starting
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
           report.expense_date && period.start_date <= report.expense_date && period.end_date >= report.expense_date
         ) || null;
       }
-      const updated = await base44.asServiceRole.entities.ExpenseReport.update(report.id, {
+      const updated = alreadyApproved ? report : await base44.asServiceRole.entities.ExpenseReport.update(report.id, {
         status,
         amount: approvedAmount,
         tax_free: true,
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
             payrollEntry = await base44.asServiceRole.entities.PayrollEntry.update(payrollEntry.id, {
               tax_free_reimbursements: reimbursementTotal,
               expense_reimbursement_detail: JSON.stringify(details),
-              total_payment_due: money(gross + reimbursementTotal),
+              total_payment_due: money(gross + reimbursementTotal - Number(payrollEntry.federal_tax || 0) - Number(payrollEntry.state_tax || 0) - Number(payrollEntry.social_security || 0) - Number(payrollEntry.medicare || 0) - Number(payrollEntry.other_deductions || 0)),
               net_pay: money(gross + reimbursementTotal - Number(payrollEntry.federal_tax || 0) - Number(payrollEntry.state_tax || 0) - Number(payrollEntry.social_security || 0) - Number(payrollEntry.medicare || 0) - Number(payrollEntry.other_deductions || 0)),
               notes: `${payrollEntry.notes || ''} Tax-free expense reimbursement attached from ${report.expense_date}.`.trim(),
             });
