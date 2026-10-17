@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         }
       }
     };
-    await Promise.all(Array.from({length:Math.min(3,selected.length)},()=>worker()));
+    await Promise.all(Array.from({length:Math.min(2,selected.length)},()=>worker()));
     const {
       users=[], periods=[], payrollEntries=[], configs=[], timeEntries=[], invoices=[],
       locations=[], expenseReports=[], companyExpenses=[], timeOffRequests=[],

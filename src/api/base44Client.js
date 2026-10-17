@@ -127,12 +127,13 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   if (meta?.kind === 'function' && ['getCallHistoryFeed','getDispatchCallLinkFeed','getIncidentReportHistory','getLocationAuditReport','manageBolo','manageHRTimeEntries','manageDutySupervisorSchedule','manageAutoDispatchConfig'].includes(meta?.name)) return 80;
+  if (meta?.kind === 'function' && meta?.name === 'getAccountingData') return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
   if (meta?.kind === 'function' && ['manageOfficerPerformanceReviews','managePerformanceReviews'].includes(meta?.name)) return 70;
   if (meta?.kind === 'function' && meta?.name === 'getMyPerformanceData') return 84;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsSegment') return 55;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 50;
-  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing','getAccountingData'].includes(meta?.name)) return 20;
+  if (meta?.kind === 'function' && ['getCompanyAnalyticsData','runSystemAudit','getAdminOperationsBriefing'].includes(meta?.name)) return 20;
   // Give foreground page reads precedence over background scans.
   return 72;
 };
