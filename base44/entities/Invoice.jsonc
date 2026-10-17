@@ -6,6 +6,9 @@
       "type": "string",
       "description": "Invoice number in format YY + sequential number (e.g., 26001, 26002)"
     },
+    "billing_rate_verified_by": {"type":"string"},
+    "billing_rate_verified_at": {"type":"string","format":"date-time"},
+    "billing_rate_verified_value": {"type":"number"},
     "billing_review_required": {"type":"boolean","default":false},
     "billing_review_reason": {"type":"string"},
     "delivery_email": {"type":"string","description":"Actual outgoing invoice email recipient"},

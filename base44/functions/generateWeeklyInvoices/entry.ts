@@ -57,7 +57,7 @@ Deno.serve(async(req)=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
-    if (!['scheduled','run_now','backfill_drafts','send_existing'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
+    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
     const manual=action!=='scheduled';
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);
@@ -69,6 +69,33 @@ Deno.serve(async(req)=>{
     const part=(name:string)=>eastern.find(item=>item.type===name)?.value||'';
     if(!manual && (part('weekday')!=='Mon'||Number(part('hour'))!==8)) return Response.json({success:true,skipped:true,reason:'Automatic invoice generation runs Mondays at 8 AM Eastern'});
     const today=`${part('year')}-${part('month')}-${part('day')}`;
+    if(action==='approve_historical_rate') {
+      const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
+      if (!invoice) return Response.json({error:'Invoice not found'},{status:404});
+      if(String(invoice.status || '').toLowerCase() !== 'draft') return Response.json({error:'Only unsent draft invoices can be repriced'},{status:409});
+      const verifiedRate=Number(body.verified_rate);
+      if (!Number.isFinite(verifiedRate) || verifiedRate<=0 || verifiedRate>10000) return Response.json({error:'A positive documented contract billing rate is required'},{status:400});
+      let details:any[]=[];
+      try {details=JSON.parse(invoice.shifts||'[]')} catch {}
+      if(!Array.isArray(details)||!details.length) return Response.json({error:'Invoice has no itemized shifts to recalculate'},{status:409});
+      let total=0;
+      const revised=details.map((item:any)=>{
+        const originalRate=Number(item.rate||0);
+        const rawHours=originalRate>0 ? Number(item.amount||0)/originalRate : Number(item.hours||0);
+        const amount=dollars(rawHours*verifiedRate);
+        total+=amount;
+        return {...item,rate:verifiedRate.toFixed(2),amount:amount.toFixed(2)};
+      });
+      const actor=await base44.auth.me();
+      const record=await base44.asServiceRole.entities.Invoice.update(invoice.id,{
+        shifts:JSON.stringify(revised),bill_rate:verifiedRate,total_amount:dollars(total),
+        billing_review_required:false,billing_review_reason:'',delivery_status:'pending',
+        billing_rate_verified_by:String(actor?.email||actor?.id||'accounting'),
+        billing_rate_verified_at:new Date().toISOString(),billing_rate_verified_value:verifiedRate,
+        notes:`Accounting verified the historical bill rate at $${verifiedRate.toFixed(2)} per service hour; ${new Date().toISOString()} by ${actor?.email||'accounting'}. Original invoice number preserved.`,
+      });
+      return Response.json({success:true,invoice_number:record.invoice_number,total_amount:record.total_amount,verified_rate:verifiedRate});
+    }
     if(action==='send_existing') {
       const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
       if(!invoice) return Response.json({error:'Invoice not found'},{status:404});

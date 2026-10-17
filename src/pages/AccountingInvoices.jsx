@@ -21,6 +21,7 @@ export default function AccountingInvoices() {
   const [selectedSite, setSelectedSite] = useState("");
   const [billingEmailInput, setBillingEmailInput] = useState('');
   const [billingStatus, setBillingStatus] = useState('');
+  const [historicalRateInputs, setHistoricalRateInputs] = useState({});
   const [savingBillingEmail, setSavingBillingEmail] = useState(false);
   const [startDate, setStartDate] = useState(defaultPeriod.startDate);
   const [endDate, setEndDate] = useState(defaultPeriod.endDate);
@@ -115,6 +116,21 @@ export default function AccountingInvoices() {
       setBillingStatus(`Billing recipient saved for ${location.site_name}: ${billingEmailInput || 'management@blackpointkjc.com (fallback)'}`);
     }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
     finally {setSavingBillingEmail(false);}
+  };
+  const approveHistoricalRate = async invoice => {
+    const value=Number(historicalRateInputs[invoice.id]);
+    if(!Number.isFinite(value)||value<=0) return setBillingStatus('Enter a valid verified historical contract rate first.');
+    if(!window.confirm(`Verify that $${value.toFixed(2)}/hour was the correct contractual billing rate for ${invoice.site_name} during ${invoice.period_start}–${invoice.period_end}. Recalculate this unsent invoice?`)) return;
+    setGenerating(true);
+    try {
+      const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'approve_historical_rate',invoice_id:invoice.id,verified_rate:value});
+      const payload=response?.data||response||{};
+      if(payload.error)throw new Error(payload.error);
+      await queryClient.invalidateQueries({queryKey:['accountingData']});
+      setBillingStatus(`Invoice ${invoice.invoice_number} recalculated at verified rate $${value.toFixed(2)}/hour. Review before sending.`);
+      setHistoricalRateInputs(current=>({...current,[invoice.id]:''}));
+    }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}
+    finally {setGenerating(false);}
   };
   const sendExistingInvoice = async invoice => {
     if (!window.confirm(`Send invoice ${invoice.invoice_number} for ${invoice.site_name}? It will use that site's saved billing contact or management@blackpointkjc.com.`)) return;
@@ -359,7 +375,7 @@ export default function AccountingInvoices() {
                   <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <div className="mt-2 flex flex-wrap items-center gap-2"><Input type="number" min="0.01" step="0.01" className="w-36" placeholder="Verified $/hour" value={historicalRateInputs[invoice.id] || ''} onChange={event=>setHistoricalRateInputs(current=>({...current,[invoice.id]:event.target.value}))}/><Button type="button" size="sm" variant="outline" disabled={generating} onClick={()=>approveHistoricalRate(invoice)}>Apply Verified Rate</Button></div>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
                           invoice.status === 'overdue' ? 'bg-red-600' :
