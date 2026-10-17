@@ -15,6 +15,12 @@ import { format, isValid, parseISO, startOfWeek } from "date-fns";
 import { calculatePaidHours, calculatePayrollHours } from "@/lib/payrollCalculations";
 import { calculateLiveHours } from "@/lib/billingRates";
 
+const easternEntryDay = timestamp => {
+  if (!timestamp) return '';
+  const date=new Date(timestamp);
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date) : '';
+};
+
 const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
   if (!dateStr) return 'N/A';
   try {
@@ -563,7 +569,7 @@ export default function AccountingPayroll() {
 
   const selectedPeriod = payrollPeriods.find(period => period.id === selectedPeriodId);
   const accruedGross = selectedPeriod ? timeEntries.reduce((sum, entry) => {
-    const entryDate = String(entry.clock_in || '').slice(0, 10);
+    const entryDate = easternEntryDay(entry.clock_in);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     const officer = officers.find(item => String(item.email).toLowerCase() === String(entry.officer_email).toLowerCase());
     const rawHours = entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow);
@@ -578,7 +584,7 @@ export default function AccountingPayroll() {
   );
   const totalGross = hasGeneratedPayroll ? generatedGross : accruedGross;
   const totalPayrollHours = selectedPeriod ? timeEntries.reduce((sum, entry) => {
-    const entryDate = String(entry.clock_in || '').slice(0, 10);
+    const entryDate = easternEntryDay(entry.clock_in);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     return sum + (entry.clock_out ? calculatePayrollHours(entry) : calculateLiveHours(entry, liveNow));
   }, 0) : 0;
@@ -868,8 +874,8 @@ export default function AccountingPayroll() {
     const entryForOfficer = payrollEntry => timeEntries
       .filter(item => item.archived !== true && item.clock_in && item.clock_out &&
         String(item.officer_email || '').toLowerCase() === String(payrollEntry.officer_email || '').toLowerCase() &&
-        String(item.clock_in).slice(0, 10) >= payrollEntry.pay_period_start &&
-        String(item.clock_in).slice(0, 10) <= payrollEntry.pay_period_end)
+        easternEntryDay(item.clock_in) >= payrollEntry.pay_period_start &&
+        easternEntryDay(item.clock_in) <= payrollEntry.pay_period_end)
       .sort((a, b) => new Date(a.clock_in) - new Date(b.clock_in));
     const reportHoursForEntry = payrollEntry => {
       const shifts = entryForOfficer(payrollEntry);

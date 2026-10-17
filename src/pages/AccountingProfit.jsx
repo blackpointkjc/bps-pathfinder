@@ -84,7 +84,8 @@ export default function AccountingProfit() {
 
   const isDateInRange = (value) => {
     if (!value) return false;
-    const dateKey = String(value).slice(0, 10);
+    const d = new Date(value);
+    const dateKey = Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(d) : String(value).slice(0,10);
     return dateKey >= startDate && dateKey <= endDate;
   };
 

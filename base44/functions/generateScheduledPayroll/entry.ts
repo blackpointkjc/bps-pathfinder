@@ -37,14 +37,15 @@ function paidHours(entry: any) {
 }
 
 function sundayKey(value: unknown) {
-  const date = new Date(String(value));
-  const sunday = new Date(date);
+  const key=dateOnly(value);
+  if (!key) return '';
+  const sunday = new Date(`${key}T12:00:00Z`);
   sunday.setUTCDate(sunday.getUTCDate() - sunday.getUTCDay());
   return sunday.toISOString().slice(0, 10);
 }
 
 function holidayName(value: unknown) {
-  const date = new Date(String(value));
+  const date = new Date(`${dateOnly(value)}T12:00:00Z`);
   const month = date.getUTCMonth() + 1;
   const day = date.getUTCDate();
   const weekday = date.getUTCDay();
@@ -315,7 +316,7 @@ Deno.serve(async (req) => {
           description: expense.description || '',
           tax_free: true,
         }))),
-        total_payment_due: round(gross + reimbursementTotal),
+        total_payment_due: round(net),
         federal_tax: Number(existingForKey?.federal_tax || 0),
         state_tax: Number(existingForKey?.state_tax || 0),
         social_security: Number(existingForKey?.social_security || 0),
