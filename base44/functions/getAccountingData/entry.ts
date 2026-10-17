@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
       const rangeEnd=current?.end_date||today;
       const siteOf=(v:any)=>String(v||'').split(/\s*(?::|\s-\s)\s*/)[0].trim();
       const locationBySite=new Map(locations.map((row:any)=>[siteOf(row.site_name),row]));
-      let serviceHours=0,earnedRevenue=0,onDuty=0;
+      let serviceHours=0,earnedRevenue=0,onDuty=0,unverifiedRates=0;
       for (const entry of timeEntries) {
         if (!entry?.clock_in || entry.archived===true) continue;
         const day=easternDay(new Date(entry.clock_in));
@@ -117,13 +117,23 @@ Deno.serve(async (req) => {
         let field=unarmed?'site_bill_rate_unarmed':'site_bill_rate';
         if(type==='holiday_coverage')field=unarmed?'site_bill_rate_holiday_unarmed':'site_bill_rate_holiday_armed';
         else if(type==='rush_coverage')field=unarmed?'site_bill_rate_rush_unarmed':'site_bill_rate_rush_armed';
-        const rate=Number(location?.[field])||Number(unarmed?location?.site_bill_rate_unarmed:location?.site_bill_rate)||Number(location?.site_bill_rate)||0;
+        const history=(Array.isArray(location?.site_rate_history)?location.site_rate_history:[]).filter((item:any)=>item.effective_date&&Number(item.rate)>0).sort((a:any,b:any)=>String(a.effective_date).localeCompare(String(b.effective_date)));
+        const historical=history.filter((item:any)=>String(item.effective_date)<=day).at(-1);
+        const standard=Number(historical?.rate)||Number(location?.site_bill_rate)||0;
+        const special=type==='holiday_coverage'||type==='rush_coverage'||unarmed;
+        const laterRateChange=history.some((item:any)=>String(item.effective_date)>day);
+        const rate=special?(Number(location?.[field])||standard):standard;
+        if (!location || rate<=0 || (history.length>0&&!historical) || (special&&laterRateChange)) unverifiedRates++;
         serviceHours+=hours;earnedRevenue+=hours*rate;
         if(!entry.clock_out)onDuty++;
       }
       const outstanding=invoices.filter((item:any)=>['sent','overdue'].includes(String(item.status||'').toLowerCase()) && String(item.delivery_status||'').toLowerCase()==='accepted').reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.total_amount||0)-Number(item.amount_paid||0)),0);
       const unpaid=companyExpenses.filter((item:any)=>String(item.status||'').toLowerCase()==='unpaid').reduce((sum:number,item:any)=>sum+Number(item.amount||0),0);
-      financialSummary={period_start:rangeStart,period_end:rangeEnd,service_hours:Math.round(serviceHours*100)/100,earned_service_revenue:Math.round(earnedRevenue*100)/100,on_duty: onDuty,outstanding_client_invoices:Math.round(outstanding*100)/100,unpaid_company_bills:Math.round(unpaid*100)/100,invoice_count:invoices.length,
+      const hoursComplete=!loadErrors.includes('time entries');
+      const revenueComplete=hoursComplete && !loadErrors.includes('locations') && !loadErrors.includes('schedules') && unverifiedRates===0;
+      const invoicesComplete=!loadErrors.includes('client invoices');
+      const billsComplete=!loadErrors.includes('company expenses');
+      financialSummary={period_start:rangeStart,period_end:rangeEnd,service_hours:Math.round(serviceHours*100)/100,earned_service_revenue:Math.round(earnedRevenue*100)/100,on_duty:onDuty,unverified_rate_shifts:unverifiedRates,hours_complete:hoursComplete,revenue_complete:revenueComplete,invoices_complete:invoicesComplete,bills_complete:billsComplete,outstanding_client_invoices:Math.round(outstanding*100)/100,unpaid_company_bills:Math.round(unpaid*100)/100,invoice_count:invoices.length,
         unverified_sent_count:invoices.filter((row:any)=>['sent','overdue'].includes(String(row.status||'').toLowerCase()) && String(row.delivery_status||'').toLowerCase()!=='accepted').length,
         invoice_review_count:invoices.filter((row:any)=>row.billing_review_required===true).length,
         invoice_draft_count:invoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,

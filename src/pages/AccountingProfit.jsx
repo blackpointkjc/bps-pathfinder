@@ -102,10 +102,10 @@ export default function AccountingProfit() {
 
   const filteredCompanyExpenses = companyExpenses.filter(expense => {
     const status = String(expense.status || '').toLowerCase();
-    const expenseDate = expense.paid_date || expense.expense_date || expense.created_date;
+    const expenseDate = expense.expense_date || expense.created_date || expense.paid_date;
     // Officer reimbursements are already counted from approved ExpenseReports.
     // Their ledger mirror must not be counted a second time.
-    return status === 'paid' && !String(expense.reference_number || '').startsWith('OFFICER-EXP-') && isDateInRange(expenseDate);
+    return ['paid', 'unpaid'].includes(status) && !String(expense.reference_number || '').startsWith('OFFICER-EXP-') && isDateInRange(expenseDate);
   });
 
   const filteredPTO = ptoUsage.filter(usage =>
@@ -140,6 +140,7 @@ export default function AccountingProfit() {
   const hoursByOfficer = {};
   const payrollHoursByOfficer = {};
   const revenueBySite = {};
+  let unverifiedRevenueShifts = 0;
   const payrollBySite = {};
   const hoursBySite = {};
   const payrollHoursBySite = {};
@@ -162,7 +163,8 @@ export default function AccountingProfit() {
     const rawPayrollHours = entry.clock_out ? calculatePayrollHours(entry) : rawServiceHours;
     const serviceHours = entry.clock_out ? Math.round(rawServiceHours * 100) / 100 : rawServiceHours;
     const payrollHours = entry.clock_out ? Math.round(rawPayrollHours * 100) / 100 : rawPayrollHours;
-    const { rate: billRate } = resolveBillingRate(entry, location, schedules);
+    const { rate: billRate, needsReview } = resolveBillingRate(entry, location, schedules);
+    if (needsReview || !billRate) unverifiedRevenueShifts += 1;
     // Client billing follows the true service record. Payroll follows the approved
     // payroll hours, so an administrator can limit pay without altering punches.
     const revenue = serviceHours * billRate;
@@ -371,7 +373,7 @@ export default function AccountingProfit() {
               <RefreshCw className={`mr-2 h-4 w-4 ${accountingFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
+            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0 || unverifiedRevenueShifts > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
               <Download className="mr-2 h-4 w-4" />
               Open Professional Report
             </Button>
@@ -401,6 +403,7 @@ export default function AccountingProfit() {
           <div><p className="font-bold">Some financial sources are temporarily unavailable</p><p className="mt-1 text-sm text-amber-200">These are incomplete provisional figures, not a verified company profit total. Missing: {accountingLoadErrors.join(', ')}.</p></div>
         </div>
       )}
+      {unverifiedRevenueShifts > 0 && <div className="mb-5 rounded-2xl border border-orange-600/50 bg-orange-950/30 p-4 text-sm text-orange-100">Profitability is provisional: {unverifiedRevenueShifts} shift(s) lack a verified historical billing rate. Verify their effective rates before exporting a financial report.</div>}
       {accountingLoading && (
         <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
       )}

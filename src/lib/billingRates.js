@@ -47,6 +47,22 @@ export const findScheduleForEntry = (entry, schedules = []) => {
   ) || null;
 };
 
+export const billingRateAtDate = (location, timestamp) => {
+  const date = new Date(timestamp);
+  const key = Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+    : String(timestamp || '').slice(0, 10);
+  const history = (Array.isArray(location?.site_rate_history) ? location.site_rate_history : [])
+    .filter(item => item?.effective_date && Number(item?.rate) > 0)
+    .sort((a, b) => String(a.effective_date).localeCompare(String(b.effective_date)));
+  const applicable = history.filter(item => String(item.effective_date) <= key).at(-1);
+  return {
+    historicalRate: Number(applicable?.rate) || Number(location?.site_bill_rate) || 0,
+    needsReview: Boolean(history.length && !applicable),
+    hasLaterChanges: history.some(item => String(item.effective_date) > key),
+  };
+};
+
 export const resolveBillingRate = (entry, location, schedules = []) => {
   const schedule = findScheduleForEntry(entry, schedules);
   const shiftType = String(schedule?.shift_type || 'normal').toLowerCase();
@@ -63,10 +79,14 @@ export const resolveBillingRate = (entry, location, schedules = []) => {
     label = isUnarmed ? 'Rush unarmed' : 'Rush armed';
   }
 
-  const baseRate = Number(location?.[isUnarmed ? 'site_bill_rate_unarmed' : 'site_bill_rate']) ||
-    Number(location?.site_bill_rate) || 0;
+  const historical = billingRateAtDate(location, entry?.clock_in);
+  const specialShift = shiftType === 'holiday_coverage' || shiftType === 'rush_coverage' || isUnarmed;
+  const historicalSpecialUnverified = specialShift && historical.hasLaterChanges;
+  const baseRate = historical.historicalRate;
   return {
-    rate: Number(location?.[field]) || baseRate,
+    rate: specialShift ? Number(location?.[field]) || baseRate : baseRate,
+    needsReview: historical.needsReview || historicalSpecialUnverified,
+    rateNote: historical.needsReview ? 'Billing rate before the first recorded rate change has not been verified.' : historicalSpecialUnverified ? 'Historical special coverage rate needs review.' : '', 
     rateField: field,
     rateLabel: label,
     shiftType,
