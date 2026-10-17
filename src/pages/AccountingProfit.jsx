@@ -444,10 +444,10 @@ export default function AccountingProfit() {
       </div>
       <div className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'Service hours', value: `${totalServiceHours.toFixed(2)}h`, icon: Clock3 },
-          { label: 'Approved payroll hours', value: `${totalApprovedPayrollHours.toFixed(2)}h`, icon: WalletCards },
+          { label: 'Selected-period service hours', value: `${totalServiceHours.toFixed(2)}h`, icon: Clock3 },
+          { label: 'Selected-period approved payroll hours', value: `${totalApprovedPayrollHours.toFixed(2)}h`, icon: WalletCards },
           { label: 'PTO labor cost', value: `$${ptoCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Users },
-          { label: 'Total operating outlay', value: `$${(totalExpenses + ptoCost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Building2 },
+          { label: 'Selected-period operating outlay', value: `$${(totalExpenses + ptoCost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Building2 },
         ].map(item => {
           const Icon = item.icon;
           return (

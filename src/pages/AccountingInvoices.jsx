@@ -136,7 +136,7 @@ export default function AccountingInvoices() {
   return (
     <div className="container mx-auto max-w-7xl p-4 md:p-6 min-h-screen">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-slate-950 p-6 text-white">
-        <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Invoices, recipients and payment records</p></div>
+        <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Company-wide invoices, service revenue, recipients and payments</p></div>
         <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
       </div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
