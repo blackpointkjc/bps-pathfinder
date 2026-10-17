@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       const paidDate=String(body.paid_date || new Date().toISOString().slice(0,10));
       if(status==='paid'&&!/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) return Response.json({error:'A valid paid date is required'},{status:400});
       const record=await base44.asServiceRole.entities.CompanyExpense.update(id,{status,paid_date:status==='paid'?paidDate:'',notes:`${String(current.notes||'').trim()}\n${status==='paid'?'Marked paid':'Marked unpaid'} by ${me.email} on ${new Date().toISOString()}${body.reference?` · ${String(body.reference).slice(0,140)}`:''}`.trim()});
-      try{await base44.asServiceRole.entities.AuditLog.create({entity_type:'CompanyExpense',entity_id:id,action:'update_company_bill_status',actor_id:String(me.id),actor_name:String(me.email||''),before_value:JSON.stringify({status:current.status,paid_date:current.paid_date}),after_value:JSON.stringify({status,paid_date:record.paid_date}),timestamp:new Date().toISOString(),notes:'Company bills / expenses payment status changed'});}catch(error:any){console.error('Bill status saved; audit write failed',error?.message);}
+      try{await base44.asServiceRole.entities.AuditLog.create({entity_type:'CompanyExpense',entity_id:id,action:'status_change',actor_id:String(me.id),actor_name:String(me.email||''),before_value:JSON.stringify({status:current.status,paid_date:current.paid_date}),after_value:JSON.stringify({status,paid_date:record.paid_date}),timestamp:new Date().toISOString(),description:'Company bills / expenses payment status changed'});}catch(error:any){console.error('Bill status saved; audit write failed',error?.message);}
       return Response.json({success:true,record});
     }
     if (action === 'delete_company') {

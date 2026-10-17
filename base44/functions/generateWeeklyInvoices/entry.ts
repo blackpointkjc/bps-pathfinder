@@ -262,10 +262,10 @@ Deno.serve(async(req)=>{
     try {
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type:'Invoice',entity_id:'weekly-billing',
-        action:manual?'manual_invoice_run':'automatic_monday_invoice_run',
+        action:'create',
         actor_id:manual?'accounting':'automation',actor_name:manual?'Accounting':'Monday Billing Scheduler',
         before_value:'',after_value:JSON.stringify(runSummary),
-        notes:`${created} new, ${updated} revised, ${sent} email provider accepted, ${deliveryFailed} email failed, ${processingFailed} sites failed, ${held} overlap held`,
+        description:`${manual?'Manual':'Scheduled Monday'} invoice run: ${created} new, ${updated} revised, ${sent} email provider accepted, ${deliveryFailed} email failed, ${processingFailed} sites failed, ${held} overlap held`,
         timestamp:new Date().toISOString(),
       });
     } catch(error:any) {console.warn('Billing run audit could not be recorded',String(error?.message||error));}

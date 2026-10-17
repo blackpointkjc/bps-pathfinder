@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
         payment_notes:String(body.notes || current.payment_notes || '').slice(0,1000),
         payment_updated_by:String(user.email || user.id),payment_updated_at:now};
       const record=await base44.asServiceRole.entities.Invoice.update(invoiceId,updates);
-      try {await base44.asServiceRole.entities.AuditLog.create({entity_type:'Invoice',entity_id:invoiceId,action:'update_invoice_payment',actor_id:String(user.id),actor_name:String(user.email||''),before_value:JSON.stringify({status:current.status,amount_paid:previousPaid,paid_date:current.paid_date}),after_value:JSON.stringify(updates),timestamp:now,notes:'Accounting payment/status update'});} catch(e:any){console.error('Invoice updated but payment audit could not be saved:',e?.message);}
+      try {await base44.asServiceRole.entities.AuditLog.create({entity_type:'Invoice',entity_id:invoiceId,action:'status_change',actor_id:String(user.id),actor_name:String(user.email||''),before_value:JSON.stringify({status:current.status,amount_paid:previousPaid,paid_date:current.paid_date}),after_value:JSON.stringify(updates),timestamp:now,description:'Accounting invoice payment/status update'});} catch(e:any){console.error('Invoice updated but payment audit could not be saved:',e?.message);}
       return Response.json({success:true,record});
     }
     if (body.action === 'set_billing_contact') {
