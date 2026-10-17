@@ -11,6 +11,8 @@
     "billing_rate_verified_value": {"type":"number"},
     "billing_review_required": {"type":"boolean","default":false},
     "billing_review_reason": {"type":"string"},
+    "revision": {"type":"number","description":"Invoice document version"},
+    "revision_history": {"type":"string","description":"JSON audit log of prior in-place invoice revisions"},
     "delivery_email": {"type":"string","description":"Actual outgoing invoice email recipient"},
     "delivery_status": {"type":"string","description":"pending, accepted, or failed. Accepted does not prove final delivery"},
     "delivery_error": {"type":"string"},

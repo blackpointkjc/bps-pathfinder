@@ -124,6 +124,7 @@ Deno.serve(async(req)=>{
     const sinceLastSaturday=((weekday+1)%7)||7;
     const lastSaturday=dateOffset(today,-sinceLastSaturday);
     const startDefault=dateOffset(lastSaturday,-6);
+    // One-button billing always targets the most recently completed service week.
     const periodStart=action==='backfill_drafts'?startDefault:(body.period_start || startDefault);
     const periodEnd=action==='backfill_drafts'?lastSaturday:(body.period_end || lastSaturday);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
@@ -137,10 +138,18 @@ Deno.serve(async(req)=>{
     const clients=(users||[]).filter(eligibleClient);
     const byEmail=new Map(clients.map((client:any)=>[String(client.email||'').toLowerCase(),client]));
     const byOfficer=new Map((users||[]).map((person:any)=>[String(person.email||'').toLowerCase(),person]));
-    const existing=new Set((invoices||[]).map((invoice:any)=>`${siteOf(invoice.site_name).toLowerCase()}|${invoice.period_start}|${invoice.period_end}`));
+    const existingByKey=new Map<string,any>();
+    for(const invoice of invoices||[]) {
+      const key=`${siteOf(invoice.site_name).toLowerCase()}|${invoice.period_start}|${invoice.period_end}`;
+      // Prefer payment/sending history to a duplicate draft, and the oldest
+      // number when duplicate invoices were created for an identical period.
+      const current=existingByKey.get(key);
+      const priority=(row:any)=>String(row.status||'').toLowerCase()==='paid'?3:String(row.status||'').toLowerCase()==='sent'?2:1;
+      if(!current || priority(invoice)>priority(current) || (priority(invoice)===priority(current) && String(invoice.invoice_number||'')<String(current.invoice_number||''))) existingByKey.set(key,invoice);
+    }
     const prefix=today.slice(2,4);
     let sequence=Math.max(0,...(invoices||[]).map((invoice:any)=>String(invoice.invoice_number||'')).filter((number:string)=>number.startsWith(prefix)).map((number:string)=>Number(number.slice(2))||0));
-    let created=0,sent=0,deliveryFailed=0,skipped=0;
+    let created=0,updated=0,sent=0,deliveryFailed=0,skipped=0,held=0;
     const results:any[]=[];
     const selected=body.location_id ? (locations||[]).filter((row:any)=>row.id===body.location_id) : (locations||[]);
     for(const location of selected){
@@ -149,7 +158,15 @@ Deno.serve(async(req)=>{
       const keys=action==='backfill_drafts' ? Array.from({length:16},(_,i)=>{const end=dateOffset(lastSaturday,-7*i);return [dateOffset(end,-6),end]}) : [[periodStart,periodEnd]];
       for(const [start,end] of keys){
         const key=`${name.toLowerCase()}|${start}|${end}`;
-        if(existing.has(key)){skipped++;continue;}
+        const existingInvoice=existingByKey.get(key);
+        if (existingInvoice && ['paid','void','cancelled'].includes(String(existingInvoice.status||'').toLowerCase())) {skipped++;continue;}
+        // Never create another invoice for a service interval already billed
+        // under a different date range (legacy monthly/multi-week records).
+        const overlap=(invoices||[]).find((old:any)=>
+          !existingInvoice && siteOf(old.site_name).toLowerCase()===name.toLowerCase() &&
+          old.period_start<=end && old.period_end>=start &&
+          !['void','cancelled'].includes(String(old.status||'').toLowerCase()));
+        if(overlap){held++;results.push({site:name,status:'overlap_requires_review',invoice_number:overlap.invoice_number});continue;}
         const rows=(entries||[]).filter((entry:any)=>entry.clock_in&&entry.clock_out&&entry.archived!==true&&siteOf(entry.location)===name&&easternDate(entry.clock_in)>=start&&easternDate(entry.clock_in)<=end);
         if(!rows.length){skipped++;continue;}
         let totalHours=0,total=0;
@@ -169,19 +186,31 @@ Deno.serve(async(req)=>{
         const provided=String(body.contact_email || location.billing_contact_email || matchedClient?.email || '').trim().toLowerCase();
         const target=isEmail(provided)?provided:MANAGEMENT_EMAIL;
         const reason=target===MANAGEMENT_EMAIL?'Client billing email not configured. Routed to management for review.':'';
-        sequence++;
-        const number=`${prefix}${String(sequence).padStart(3,'0')}`;
+        if (!existingInvoice) sequence++;
+        const number=existingInvoice?.invoice_number || `${prefix}${String(sequence).padStart(3,'0')}`;
         const needsReview=reviewReasons.size>0;
         const reviewReason=[...reviewReasons].join('; ');
-        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:Number(location.site_bill_rate),total_amount:dollars(total),shifts:JSON.stringify(shifts),due_date:dateOffset(today,15),status:'draft',delivery_status:needsReview?'review_required':'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
-        const invoice=await base44.asServiceRole.entities.Invoice.create(invoiceData);
-        created++;existing.add(key);
+        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:totalHours>0?dollars(total/totalHours):Number(location.site_bill_rate),total_amount:dollars(total),shifts:JSON.stringify(shifts),due_date:existingInvoice?.due_date || dateOffset(today,15),status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:needsReview?'review_required':existingInvoice?.delivery_status||'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
+        const oldShifts=String(existingInvoice?.shifts||'');
+        const unchanged=Boolean(existingInvoice && dollars(Number(existingInvoice.total_amount||0))===dollars(total) && Number(existingInvoice.total_hours||0).toFixed(2)===totalHours.toFixed(2) && oldShifts===invoiceData.shifts);
+        if (unchanged && existingInvoice?.delivery_status==='accepted') {skipped++;continue;}
+        if (existingInvoice?.status==='sent' && !existingInvoice?.sent_at && !existingInvoice?.delivery_status) {
+          held++;results.push({site:name,status:'legacy_delivery_unconfirmed',invoice_number:number});continue;
+        }
+        const before=existingInvoice?{total_amount:existingInvoice.total_amount,total_hours:existingInvoice.total_hours,shifts:existingInvoice.shifts,status:existingInvoice.status,updated_at:existingInvoice.updated_date}:null;
+        const revision=Number(existingInvoice?.revision||1)+(existingInvoice&&!unchanged?1:0);
+        const audit=existingInvoice&&!unchanged?JSON.stringify([...(Array.isArray(existingInvoice.revision_history)?existingInvoice.revision_history:[]),{when:new Date().toISOString(),reason:'Recalculated using current service records and effective historical rates',prior:before}].slice(-20)):existingInvoice?.revision_history;
+        const invoice=existingInvoice
+          ? await base44.asServiceRole.entities.Invoice.update(existingInvoice.id,{...invoiceData,revision,revision_history:audit||''})
+          : await base44.asServiceRole.entities.Invoice.create({...invoiceData,revision:1});
+        if(existingInvoice) updated++; else created++;
+        existingByKey.set(key,invoice);
         // Historical drafts and unverified rates must never be emailed silently.
         if(action==='backfill_drafts' || needsReview) {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:needsReview?'review_required':'draft',recipient:target});continue;}
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point Invoice ${number} — ${name} (${start}–${end})`,body:emailBody});
+          await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point ${existingInvoice?'Revised ':''}Invoice ${number} — ${name} (${start}–${end})`,body:emailBody});
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_status:'accepted',delivery_email:target,sent_at:new Date().toISOString()});
           sent++;results.push({invoice_number:number,site:name,status:'sent',recipient:target});
         } catch(error:any) {
@@ -192,6 +221,6 @@ Deno.serve(async(req)=>{
         }
       }
     }
-    return Response.json({success:true,period_start:periodStart,period_end:periodEnd,created,sent,delivery_failed:deliveryFailed,skipped,results,recipient_fallback:MANAGEMENT_EMAIL});
+    return Response.json({success:true,period_start:periodStart,period_end:periodEnd,created,updated,sent,delivery_failed:deliveryFailed,skipped,held,results,recipient_fallback:MANAGEMENT_EMAIL});
   } catch(error:any){console.error('generateWeeklyInvoices failed',error);return Response.json({error:error?.message||'Unable to generate invoices'},{status:500});}
 });
