@@ -163,7 +163,7 @@ export default function AccountingInvoices() {
             <div className="space-y-3">
               {invoices.map(invoice => {
                 const client = clients.find(c => c.email === invoice.client_email);
-                const clientName = client ? `${client.first_name} ${client.last_name}` : invoice.client_email;
+                const clientName = client ? (`${client.first_name || ''} ${client.last_name || ''}`.trim() || client.full_name || client.email) : (invoice.delivery_email || invoice.client_email || 'Client');
                 
                 return (
                   <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
@@ -199,7 +199,7 @@ export default function AccountingInvoices() {
                         onClick={() => {
                           const shifts = JSON.parse(invoice.shifts || '[]');
                           const client = clients.find(c => c.email === invoice.client_email);
-                          const clientName = client ? `${client.first_name} ${client.last_name}` : invoice.client_email;
+                          const clientName = client ? (`${client.first_name || ''} ${client.last_name || ''}`.trim() || client.full_name || client.email) : (invoice.delivery_email || invoice.client_email || 'Client');
                           
                           const invoiceWindow = window.open('', '_blank');
                           invoiceWindow.document.write(`

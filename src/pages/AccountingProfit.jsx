@@ -361,7 +361,7 @@ export default function AccountingProfit() {
               <RefreshCw className={`mr-2 h-4 w-4 ${accountingFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0 || unverifiedRevenueShifts > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
+            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
               <Download className="mr-2 h-4 w-4" />
               Open Professional Report
             </Button>
