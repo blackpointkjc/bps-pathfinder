@@ -22,6 +22,7 @@ export default function AccountingInvoices() {
   const [selectedSite, setSelectedSite] = useState("");
   const [billingEmailInput, setBillingEmailInput] = useState('');
   const [billingStatus, setBillingStatus] = useState('');
+  const [billingRunIssues, setBillingRunIssues] = useState([]);
   const [savingBillingEmail, setSavingBillingEmail] = useState(false);
   const [generating, setGenerating] = useState(false);
   const queryClient = useQueryClient();
@@ -59,12 +60,14 @@ export default function AccountingInvoices() {
   const runInvoices = async () => {
     if (generating) return;
     setGenerating(true);
+    setBillingRunIssues([]);
     setBillingStatus('Generating and reconciling invoices for the last completed service week…');
     try {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'run_now'});
       const data=response?.data||response||{};
       if(data.error) throw new Error(data.error);
       setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s), ${data.processing_failed || 0} site processing failure(s).`);
+      setBillingRunIssues((data.results || []).filter(item => ['overlap_requires_review','legacy_delivery_unconfirmed','processing_failed','delivery_failed'].includes(String(item.status))));
       queryClient.invalidateQueries({queryKey:['accountingData']});
       queryClient.invalidateQueries({queryKey:['accountingFinance']});
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
@@ -140,6 +143,7 @@ export default function AccountingInvoices() {
         <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
       </div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
+      {billingRunIssues.length>0 && <div className="mb-4 space-y-2 rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><strong>Billing items requiring action</strong>{billingRunIssues.map((item,index)=><div key={`${item.site}-${index}`} className="border-t border-amber-300 pt-2"><strong>{item.site || 'Unassigned site'}</strong> — {item.status==='overlap_requires_review' ? `Existing invoice #${item.invoice_number} covers these dates; a second invoice was not sent.` : item.status==='legacy_delivery_unconfirmed' ? `Invoice #${item.invoice_number} was held because prior email delivery cannot be confirmed.` : `Billing failed: ${item.error || 'Review this site'}`}</div>)}</div>}
       <Card className="mb-5 border-slate-200"><CardContent className="p-4"><Label>Client Invoice Delivery Address</Label><div className="mt-2 flex flex-wrap items-center gap-2">
         <Select value={selectedSite} onValueChange={name=>{setSelectedSite(name);const site=locations.find(row=>row.site_name===name);setBillingEmailInput(site?.billing_contact_email||'')}}><SelectTrigger className="w-[260px] max-w-full"><SelectValue placeholder="Select site to edit recipient"/></SelectTrigger><SelectContent>{locations.map(site=><SelectItem key={site.id} value={site.site_name}>{site.site_name}</SelectItem>)}</SelectContent></Select>
         <Input type="email" className="min-w-[220px] flex-1" placeholder="Blank uses management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)}/>
