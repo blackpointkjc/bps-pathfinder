@@ -5,35 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { DollarSign, Plus, Send, FileText, Download } from "lucide-react";
+import { DollarSign, Send, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 const INVOICE_LOGO_URL = "/black-point-shield.webp";
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
+function HistoricalRateEditor({invoice, saving, onApprove}) {
+  const [rate,setRate]=useState('');
+  return <div className="mt-2 flex flex-wrap items-center gap-2"><Input type="number" min="0.01" step="0.01" className="w-36" placeholder="Rate per hour" value={rate} onChange={event=>setRate(event.target.value)}/><Button type="button" size="sm" variant="outline" disabled={saving} onClick={()=>onApprove(invoice,rate)}>Save Rate</Button></div>;
+}
+
 export default function AccountingInvoices() {
-  const defaultPeriod = getDefaultBillingPeriod();
-  const [selectedClient, setSelectedClient] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
   const [billingEmailInput, setBillingEmailInput] = useState('');
   const [billingStatus, setBillingStatus] = useState('');
-  const [historicalRateInputs, setHistoricalRateInputs] = useState({});
   const [savingBillingEmail, setSavingBillingEmail] = useState(false);
-  const [startDate, setStartDate] = useState(defaultPeriod.startDate);
-  const [endDate, setEndDate] = useState(defaultPeriod.endDate);
-  const [invoiceNotes, setInvoiceNotes] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [liveNow, setLiveNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -60,20 +50,6 @@ export default function AccountingInvoices() {
     refetchOnWindowFocus: true,
   });
 
-  useEffect(() => {
-    if (!isAccountingRole) return undefined;
-    const refresh = () => refetchAccounting();
-    const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
-      try {
-        const unsubscribe = base44.entities[entity].subscribe(refresh);
-        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
-      } catch {
-        // Fifteen-second polling remains active when realtime is unavailable.
-      }
-    }
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [isAccountingRole, refetchAccounting]);
   const clients = accountingData.clients || [];
   const locations = accountingData.locations || [];
   const timeEntries = accountingData.timeEntries || [];
@@ -81,28 +57,19 @@ export default function AccountingInvoices() {
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
 
-  const generateInvoices = async (action, siteId = '') => {
-    if (clientsError || (accountingData.load_errors || []).length) throw new Error('Billing data is incomplete. Refresh and retry.');
-    const response = await base44.functions.invoke('generateWeeklyInvoices', {
-      action, ...(siteId ? {location_id:siteId} : {}),
-      period_start:startDate, period_end:endDate,
-    });
-    const payload=response?.data || response || {};
-    if (payload.error) throw new Error(payload.error);
-    await Promise.all([
-      queryClient.invalidateQueries({queryKey:['accountingData']}),
-      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']}),
-    ]);
-    setBillingStatus(`${payload.created || 0} invoice(s) created · ${payload.sent || 0} email(s) accepted by provider · ${payload.delivery_failed || 0} delivery error(s) · ${payload.skipped || 0} unchanged/no billable shifts.`);
-    return payload;
-  };
-  const generateInvoice = async () => {
-    const location=locations.find(row=>normalizeSiteName(row.site_name)===normalizeSiteName(selectedSite));
-    if (!location) return alert('Select a billable site first.');
+  const runInvoices = async () => {
+    if (generating) return;
     setGenerating(true);
-    try {await generateInvoices('run_now',location.id);}
-    catch(error){setBillingStatus(`Invoice generation failed: ${error?.message || 'Unknown error'}`);}
-    finally {setGenerating(false);}
+    setBillingStatus('Generating and reconciling invoices for the last completed service week…');
+    try {
+      const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'run_now'});
+      const data=response?.data||response||{};
+      if(data.error) throw new Error(data.error);
+      setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s).`);
+      queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
+    } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
+    finally { setGenerating(false); }
   };
   const saveBillingContact = async () => {
     const location=locations.find(row=>normalizeSiteName(row.site_name)===normalizeSiteName(selectedSite));
@@ -112,13 +79,14 @@ export default function AccountingInvoices() {
       const result=await base44.functions.invoke('manageAccountingRecords',{action:'set_billing_contact',location_id:location.id,contact_email:billingEmailInput});
       const payload=result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      await queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
       setBillingStatus(`Billing recipient saved for ${location.site_name}: ${billingEmailInput || 'management@blackpointkjc.com (fallback)'}`);
     }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
     finally {setSavingBillingEmail(false);}
   };
-  const approveHistoricalRate = async invoice => {
-    const value=Number(historicalRateInputs[invoice.id]);
+  const approveHistoricalRate = async (invoice, inputRate) => {
+    const value=Number(inputRate);
     if(!Number.isFinite(value)||value<=0) return setBillingStatus('Enter a valid verified historical contract rate first.');
     if(!window.confirm(`Verify that $${value.toFixed(2)}/hour was the correct contractual billing rate for ${invoice.site_name} during ${invoice.period_start}–${invoice.period_end}. Recalculate this unsent invoice?`)) return;
     setGenerating(true);
@@ -126,9 +94,9 @@ export default function AccountingInvoices() {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'approve_historical_rate',invoice_id:invoice.id,verified_rate:value});
       const payload=response?.data||response||{};
       if(payload.error)throw new Error(payload.error);
-      await queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
       setBillingStatus(`Invoice ${invoice.invoice_number} recalculated at verified rate $${value.toFixed(2)}/hour. Review before sending.`);
-      setHistoricalRateInputs(current=>({...current,[invoice.id]:''}));
     }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
   };
@@ -140,18 +108,11 @@ export default function AccountingInvoices() {
       const payload=result?.data || result || {};
       if(payload.error) throw new Error(payload.error);
       setBillingStatus(`Invoice ${invoice.invoice_number} accepted by email provider for ${payload.recipient}.`);
-      await queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingData']});
+      queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']});
     }catch(error){setBillingStatus(`Invoice email failed: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
   };
-  const backfillInvoices = async () => {
-    if (!window.confirm('Create missing weekly invoices for the past 16 weeks as DRAFTS for review? No historical emails will be sent automatically.')) return;
-    setGenerating(true);
-    try {await generateInvoices('backfill_drafts');}
-    catch(error){setBillingStatus(`Historical invoice draft generation failed: ${error?.message || 'Unknown error'}`);}
-    finally {setGenerating(false);}
-  };
-
   if (!isAccountingRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
@@ -166,196 +127,19 @@ export default function AccountingInvoices() {
     );
   }
 
-  const selectedClientRecord = clients.find(client => client.email === selectedClient);
-  const assignedSiteNames = new Set([
-    selectedClientRecord?.assigned_location,
-    ...(selectedClientRecord?.assigned_locations || []),
-    ...(selectedClientRecord?.assigned_sites || []),
-  ].filter(Boolean));
-  const clientLocations = selectedClient
-    ? locations.filter(location => location.billing_contact_email === selectedClient || (assignedSiteNames.has(location.site_name) && (location.billing_contact_email===selectedClient || clients.some(client=>client.email===selectedClient&&!client.billing_contact_only))))
-    : locations;
-
-  const liveInvoicePreview = timeEntries.reduce((summary, entry) => {
-    if (!entry.clock_in || entry.archived === true) return summary;
-    const entryDate = String(entry.clock_in).slice(0, 10);
-    if (entryDate < startDate || entryDate > endDate) return summary;
-    const entrySite = normalizeSiteName(entry.location);
-    const location = clientLocations.find(item => normalizeSiteName(item.site_name) === entrySite);
-    if (!location || (selectedSite && entrySite !== normalizeSiteName(selectedSite))) return summary;
-    const { rate, needsReview } = resolveBillingRate(entry, location, schedules);
-    if (needsReview) summary.reviewShifts++;
-    if (!rate) return summary;
-    const rawHours = calculateLiveHours(entry, liveNow);
-    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
-    summary.hours += hours;
-    summary.amount += hours * rate;
-    summary.activeShifts += entry.clock_out ? 0 : 1;
-    return summary;
-  }, { hours: 0, amount: 0, activeShifts: 0, reviewShifts: 0 });
-
-  const generateAllSitesInvoices = async () => {
-    setGenerating(true);
-    try {await generateInvoices('run_now');}
-    catch(error){setBillingStatus(`Company billing failed: ${error?.message || 'Unknown error'}`);}
-    finally {setGenerating(false);}
-  };
-
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl min-h-screen">
-      <div className="mb-8 rounded-3xl bg-slate-950 p-6 md:p-8 text-white shadow-xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="inline-flex rounded-full bg-blue-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-300 mb-3">Accounts receivable</div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Client Invoices</h1>
-          <p className="text-slate-300 mt-2">Create, deliver, review, and print professional client invoices</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button
-            onClick={generateAllSitesInvoices}
-            disabled={generating || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            All Sites
-          </Button>
-          <Button
-            onClick={() => document.getElementById('invoice-generator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Single Site
-          </Button>
-        </div>
+    <div className="container mx-auto max-w-7xl p-4 md:p-6 min-h-screen">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-slate-950 p-6 text-white">
+        <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Invoices, recipients and payment records</p></div>
+        <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
       </div>
-
-      {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-4 text-sm font-semibold text-blue-950">{billingStatus}</div>}
-      <div className="mb-4 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={backfillInvoices}>Create Missing Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={clientsLoading} onClick={()=>refetchAccounting()}>Refresh Actual Billing Data</Button></div>
-      <Card id="invoice-generator" className="mb-6 scroll-mt-6 rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle>Invoice Generator</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Filter by Client (optional)</Label>
-              {clientsLoading && <p className="mb-2 text-xs text-slate-500">Loading client accounts…</p>}
-              {clientsError && <p className="mb-2 text-xs text-red-600">Client accounts could not be loaded. Refresh and try again.</p>}
-              {!clientsLoading && !clientsError && clients.length === 0 && <p className="mb-2 text-xs text-amber-700">No client portal accounts exist yet. Billing still works by site; unconfigured recipients go to management@blackpointkjc.com.</p>}
-              <Select value={selectedClient} onValueChange={v=>{setSelectedClient(v);setSelectedSite('');}}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All billable locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map(client => (
-                    <SelectItem key={client.email} value={client.email}>
-                      {client.first_name && client.last_name 
-                        ? `${client.first_name} ${client.last_name}` 
-                        : (client.full_name && client.full_name !== client.email ? `${client.full_name} (${client.email})` : client.email)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Select Site</Label>
-              <Select 
-                value={selectedSite} 
-                onValueChange={name => { setSelectedSite(name); const match=locations.find(row=>row.site_name===name);setBillingEmailInput(match?.billing_contact_email || ''); }}
-                disabled={clientsLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose site..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientLocations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.site_name}>
-                      {loc.site_name} {loc.site_bill_rate ? `($${loc.site_bill_rate}/hr)` : '(No rate set)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="md:col-span-2 rounded-xl border border-slate-200 p-3">
-              <Label>Verified Client Billing Email for Selected Site</Label>
-              <div className="mt-2 flex flex-wrap gap-2"><Input type="email" className="min-w-[220px] flex-1" placeholder="Blank sends to management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)} /><Button type="button" disabled={!selectedSite || savingBillingEmail} onClick={saveBillingContact}>{savingBillingEmail?'Saving…':'Save Billing Recipient'}</Button></div>
-              <p className="mt-1 text-xs text-slate-500">Set this to the verified client's billing mailbox. Unset sites route invoices to Black Point management rather than a personal administrator email.</p>
-            </div>
-            <div>
-              <Label>Period Start</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label>Period End</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live Sunday–Saturday invoice preview</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {selectedSite || 'All billable company properties'}
-                </p>
-              </div>
-              <div className="flex gap-6">
-                <div>
-                  <p className="text-xs text-slate-500">Hours</p>
-                  <p className="text-xl font-bold text-slate-900">{liveInvoicePreview.hours.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Current amount</p>
-                  <p className="text-xl font-bold text-emerald-700">{'$'}{liveInvoicePreview.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                </div>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Accrues locally each second from the most recently synced time entries. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in. {liveInvoicePreview.reviewShifts > 0 && `${liveInvoicePreview.reviewShifts} shift(s) have unverified historical rates; preview revenue is provisional.`}
-            </p>
-          </div>
-
-          <div>
-            <Label>Invoice Notes (Optional)</Label>
-            <Textarea
-              placeholder="Additional notes for the invoice..."
-              value={invoiceNotes}
-              onChange={(e) => setInvoiceNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <Button
-            onClick={generateInvoice}
-            disabled={generating || !selectedSite || clientsLoading || !!clientsError || !!(accountingData.load_errors || []).length}
-            className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
-          >
-            {generating ? (
-              <>Generating Invoice...</>
-            ) : (
-              <>
-                <Send className="w-5 h-5 mr-2" />
-                Generate & Send Invoice to Client
-              </>
-            )}
-          </Button>
-
-          <p className="text-xs text-purple-900">
-            Generates the invoice from completed billable shifts. Email is sent through the provider to the site's verified billing address, or management@blackpointkjc.com if no client contact is configured. Sent status requires provider acceptance; it does not prove final delivery.
-          </p>
-        </CardContent>
-      </Card>
-
+      {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
+      <Card className="mb-5 border-slate-200"><CardContent className="p-4"><Label>Client Invoice Delivery Address</Label><div className="mt-2 flex flex-wrap items-center gap-2">
+        <Select value={selectedSite} onValueChange={name=>{setSelectedSite(name);const site=locations.find(row=>row.site_name===name);setBillingEmailInput(site?.billing_contact_email||'')}}><SelectTrigger className="w-[260px] max-w-full"><SelectValue placeholder="Select site to edit recipient"/></SelectTrigger><SelectContent>{locations.map(site=><SelectItem key={site.id} value={site.site_name}>{site.site_name}</SelectItem>)}</SelectContent></Select>
+        <Input type="email" className="min-w-[220px] flex-1" placeholder="Blank uses management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)}/>
+        <Button type="button" variant="outline" disabled={!selectedSite||savingBillingEmail} onClick={saveBillingContact}>{savingBillingEmail?'Saving…':'Save Address'}</Button>
+      </div></CardContent></Card>
+      {(clientsError || accountingData.partial) && <div className="mb-4 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">{clientsError ? `Billing data load failed: ${clientsError.message}` : `Some billing sources need retry: ${(accountingData.load_errors||[]).join(', ')}`} <button className="ml-2 underline" onClick={()=>refetchAccounting()}>Retry</button></div>}
       <Card className="rounded-2xl border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle>Invoice Ledger — Actual Records ({invoices.length})</CardTitle>
@@ -376,7 +160,7 @@ export default function AccountingInvoices() {
                   <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <div className="mt-2 flex flex-wrap items-center gap-2"><Input type="number" min="0.01" step="0.01" className="w-36" placeholder="Verified $/hour" value={historicalRateInputs[invoice.id] || ''} onChange={event=>setHistoricalRateInputs(current=>({...current,[invoice.id]:event.target.value}))}/><Button type="button" size="sm" variant="outline" disabled={generating} onClick={()=>approveHistoricalRate(invoice)}>Apply Verified Rate</Button></div>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <HistoricalRateEditor key={invoice.id} invoice={invoice} saving={generating} onApprove={approveHistoricalRate}/>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
                           invoice.status === 'overdue' ? 'bg-red-600' :
