@@ -101,7 +101,8 @@ export default function AccountingInvoices() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-      alert('Invoice saved to the client billing ledger. A portal notification is attempted; no email delivery is guaranteed.');
+      // The caller reports results after its own single-site or batch run.
+      // Alerting here caused a blocking dialog for every site in batch billing.
     },
   });
 
@@ -133,6 +134,7 @@ export default function AccountingInvoices() {
         return entryDate >= startDate && entryDate <= endDate;
       });
 
+      if (!siteEntries.length) throw new Error('No completed, billable shifts were found at this site in the selected period. Active shifts appear in the live preview but are not invoiced until clock-out.');
       let totalHours = 0;
       let totalAmount = 0;
       const shifts = [];
@@ -155,10 +157,9 @@ export default function AccountingInvoices() {
         });
       });
       
-      // Generate invoice number: YY + sequential number
+      // Allocate a number beyond the highest existing sequence (not list length).
       const currentYear = new Date().getFullYear().toString().slice(-2);
-      const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
-      const nextNumber = yearInvoices.length + 1;
+      const nextNumber = Math.max(0,...invoices.map(inv => String(inv.invoice_number||'')).filter(value=>value.startsWith(currentYear)).map(value=>Number(value.slice(2))||0))+1;
       const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
       
       // Net 15: payment is due 15 calendar days after issue.
@@ -180,6 +181,7 @@ export default function AccountingInvoices() {
         due_date: format(dueDate, 'yyyy-MM-dd'),
         status: 'sent'
       });
+      alert('Invoice saved to the billing ledger. No email delivery is guaranteed.');
 
     } catch (error) {
       console.error('Invoice generation error:', error);
@@ -245,7 +247,8 @@ export default function AccountingInvoices() {
 
     setGenerating(true);
     try {
-      let nextInvoiceIndex = invoices.filter(inv => String(inv.invoice_number || '').startsWith(String(new Date().getFullYear()).slice(-2))).length + 1;
+      const currentYearPrefix = String(new Date().getFullYear()).slice(-2);
+      let nextInvoiceIndex = Math.max(0,...invoices.map(inv=>String(inv.invoice_number||'')).filter(value=>value.startsWith(currentYearPrefix)).map(value=>Number(value.slice(2))||0))+1;
       let invoicesCreated = 0;
       for (const location of clientSites) {
         const siteName = location.site_name;
@@ -288,7 +291,6 @@ export default function AccountingInvoices() {
           });
         });
         const currentYear = new Date().getFullYear().toString().slice(-2);
-        const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
         const invoiceNumber = `${currentYear}${String(nextInvoiceIndex++).padStart(3, '0')}`;
         
         const dueDate = new Date();
@@ -313,7 +315,7 @@ export default function AccountingInvoices() {
       alert(`${invoicesCreated} invoice(s) saved to the billing ledger. This does not confirm email delivery.`);
     } catch (error) {
       console.error('Bulk invoice generation error:', error);
-      alert('Error generating invoices');
+      alert('Error generating invoices: ' + (error?.message || 'Unknown error'));
     } finally {
       setGenerating(false);
     }

@@ -33,7 +33,7 @@ export default function AccountingPayroll() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [liveNow, setLiveNow] = useState(() => new Date());
   const [payrollCatchup, setPayrollCatchup] = useState({ state: 'idle', message: '' });
-  const payrollCatchupAttempts = useRef(new Set());
+
 
   useEffect(() => {
     const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
@@ -148,7 +148,7 @@ export default function AccountingPayroll() {
           ? `${payload.created || 0} payroll report${payload.created === 1 ? '' : 's'} created and ${payload.updated || 0} recalculated for ${period.period_name}.`
           : `${period.period_name} is current. No payroll values required changes.`,
       });
-      payrollCatchupAttempts.current.add(period.id);
+
     } catch (error) {
       setPayrollCatchup({ state: 'error', message: `Payroll run failed: ${error?.response?.data?.error || error?.message || 'Unknown error'}` });
     } finally {
