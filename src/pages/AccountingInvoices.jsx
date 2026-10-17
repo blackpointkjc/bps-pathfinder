@@ -53,7 +53,7 @@ export default function AccountingInvoices() {
   const clients = accountingData.clients || [];
   const locations = accountingData.locations || [];
   const config = accountingData.config || null;
-  const invoices = accountingData.invoices || [];
+  const invoices = (accountingData.invoices || []).filter(invoice => !['void','cancelled'].includes(String(invoice.status || '').toLowerCase()));
   const companyLedger=accountingData.financialSummary || {}; 
 
   const runInvoices = async () => {
@@ -93,7 +93,14 @@ export default function AccountingInvoices() {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'approve_historical_rate',invoice_id:invoice.id,verified_rate:value});
       const payload=response?.data||response||{};
       if(payload.error)throw new Error(payload.error);
-      queryClient.invalidateQueries({queryKey:['accountingData']});
+      // Update the shared UI cache immediately, then reconcile other ledgers
+      // from the server once without blocking the rate editor.
+      queryClient.setQueryData(['accountingFinance'], previous => previous ? ({
+        ...previous,
+        invoices: (previous.invoices||[]).map(item=>item.id===invoice.id ? ({...item,...(payload.invoice||{}),
+          total_amount:payload.total_amount,bill_rate:value,billing_review_required:false,
+          billing_review_reason:'',delivery_status:'pending'}) : item),
+      }) : previous);
       queryClient.invalidateQueries({queryKey:['accountingFinance']});
       setBillingStatus(`Invoice ${invoice.invoice_number} recalculated at verified rate $${value.toFixed(2)}/hour. Review before sending.`);
     }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}

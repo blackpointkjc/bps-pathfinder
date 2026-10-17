@@ -94,12 +94,12 @@ Deno.serve(async(req)=>{
         billing_rate_verified_at:new Date().toISOString(),billing_rate_verified_value:verifiedRate,
         notes:`Accounting verified the historical bill rate at $${verifiedRate.toFixed(2)} per service hour; ${new Date().toISOString()} by ${actor?.email||'accounting'}. Original invoice number preserved.`,
       });
-      return Response.json({success:true,invoice_number:record.invoice_number,total_amount:record.total_amount,verified_rate:verifiedRate});
+      return Response.json({success:true,invoice_number:record.invoice_number,total_amount:record.total_amount,verified_rate:verifiedRate,invoice:record});
     }
     if(action==='send_existing') {
       const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
       if(!invoice) return Response.json({error:'Invoice not found'},{status:404});
-      if(invoice.status==='sent'||invoice.status==='paid') return Response.json({error:'Invoice was already sent or paid; duplicate email blocked.'},{status:409});
+      if(invoice.status==='paid'||(invoice.status==='sent'&&invoice.delivery_status!=='failed')) return Response.json({error:'Invoice already sent or paid; duplicate email blocked.'},{status:409});
       if(invoice.billing_review_required === true) return Response.json({error:`Historical rate must be reviewed before this invoice can be sent: ${invoice.billing_review_reason || 'Unverified billing rate'}`},{status:409});
       const locations=await base44.asServiceRole.entities.Location.list('site_name',2000);
       const location=(locations||[]).find((row:any)=>siteOf(row.site_name)===siteOf(invoice.site_name));
@@ -215,7 +215,7 @@ Deno.serve(async(req)=>{
           sent++;results.push({invoice_number:number,site:name,status:'sent',recipient:target});
         } catch(error:any) {
           const message=String(error?.message||'Delivery provider error');
-          await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'draft',delivery_status:'failed',delivery_error:message}).catch(()=>null);
+          await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:'failed',delivery_error:message}).catch(()=>null);
           deliveryFailed++;results.push({invoice_number:number,site:name,status:'delivery_failed',recipient:target,error:message});
           console.error('Automated invoice email failed',number,message);
         }
