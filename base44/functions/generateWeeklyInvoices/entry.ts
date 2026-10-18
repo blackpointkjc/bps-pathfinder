@@ -115,7 +115,8 @@ Deno.serve(async(req)=>{
       const locations=await base44.asServiceRole.entities.Location.list('site_name',2000);
       const location=(locations||[]).find((row:any)=>siteOf(row.site_name)===siteOf(invoice.site_name));
       const recipient=String(body.contact_email || location?.billing_contact_email || '').trim().toLowerCase();
-      const target=isEmail(recipient)?recipient:MANAGEMENT_EMAIL;
+      if(!isEmail(recipient))return Response.json({error:'A verified billing contact email is required for this site. Save the client billing address before sending; management fallback is disabled.'},{status:409});
+      const target=recipient;
       const subject=`Black Point Invoice ${invoice.invoice_number} — ${invoice.site_name} (${invoice.period_start}–${invoice.period_end})`;
       let shifts:any[]=[];
       try {shifts=JSON.parse(invoice.shifts || '[]')}catch{}
@@ -179,8 +180,10 @@ Deno.serve(async(req)=>{
           held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:'Overlapping invoice requires review',overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
         }
         const loc=siteMap.get(siteOf(invoice.site_name).toLowerCase()) as any;
+        if(!loc){held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'unknown_site',error:'Billing site no longer exists; review before sending'});continue;}
         const recipient=String(loc?.billing_contact_email||'').toLowerCase().trim();
-        const target=isEmail(recipient)?recipient:MANAGEMENT_EMAIL;
+        if(!isEmail(recipient)) {held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'missing_billing_contact',error:'Client billing email is not configured. Email not attempted.'});continue;}
+        const target=recipient;
         const lines=items.map((row:any)=>`<tr><td>${encode(row.date)}</td><td>${encode(row.hours)}</td><td>$${encode(row.rate)}</td><td>$${encode(row.amount)}</td></tr>`).join('');
         const total=Number(invoice.total_amount||0);
         try{
