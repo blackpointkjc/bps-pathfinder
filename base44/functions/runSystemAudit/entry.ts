@@ -275,7 +275,10 @@ Deno.serve(async (req) => {
         if(receiptsForKey.length > 1) duplicateReceiptKeys.add(key);
         if(receiptsForKey.filter(receipt => String(receipt.state || '').toLowerCase() === 'played').length > 1) repeatedPlayedKeys.add(key);
       });
-    if (duplicateReceiptKeys.size) add(findings, {
+    // Duplicate quiet receipts are an informational ingestion artifact, not an
+    // operational incident. Only repeated played receipts warrant an active
+    // system issue; preserve quiet receipt rows for historical investigation.
+    if (repeatedPlayedKeys.size) add(findings, {
       key: 'audio:duplicate-receipts',
       area: 'Alerts & Announcements',
       severity: repeatedPlayedKeys.size ? 'outage' : 'degraded',
