@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
     }
 
     const input = await req.json().catch(() => ({}));
+    const lowerStatus=(v:any)=>String(v||'').toLowerCase();
     const scope = String(input?.scope || 'full').trim().toLowerCase();
     // Load only the tables required by the active accounting screen; a full
     // 14-table read used to block every tab and exacerbate API 429s.
@@ -18,7 +19,7 @@ Deno.serve(async (req) => {
       payroll: ['users','periods','payrollEntries','configs','timeEntries'],
       invoices: ['users','invoices','locations','timeEntries','schedules'],
       expenses: ['users','expenseReports','companyExpenses','recurringBills'],
-      profit: ['users','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
+      profit: ['users','configs','payrollEntries','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
       overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','recurringBills','invoices','timeEntries','locations','schedules'],
       finance: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
       full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','timeOffRequests','ptoUsage','w2Forms','schedules'],
@@ -95,8 +96,14 @@ Deno.serve(async (req) => {
       const easternDay = (date:Date) => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
       const today=easternDay(now);
       const current = periods.find((p:any)=>p.start_date<=today&&p.end_date>=today);
-      const rangeStart='1900-01-01';
-      const rangeEnd=today;
+      const requestedStart=String(input?.start_date||'');
+      const requestedEnd=String(input?.end_date||'');
+      if((requestedStart&&!/^\d{4}-\d{2}-\d{2}$/.test(requestedStart))||(requestedEnd&&!/^\d{4}-\d{2}-\d{2}$/.test(requestedEnd)))return Response.json({error:'Valid financial start and end dates are required'},{status:400});
+      const rangeStart=requestedStart||'1900-01-01';
+      const rangeEnd=requestedEnd||today;
+      if(rangeEnd<rangeStart)return Response.json({error:'End date must be on or after start date'},{status:400});
+      const inRange=(value:any)=>{const raw=String(value||'');if(!raw)return false;const day=/^\d{4}-\d{2}-\d{2}$/.test(raw)?raw:easternDay(new Date(raw));return day>=rangeStart&&day<=rangeEnd;};
+      const overlaps=(start:any,end:any)=>String(end||'')>=rangeStart&&String(start||'')<=rangeEnd;
       const siteOf=(v:any)=>String(v||'').split(/\s*(?::|\s-\s)\s*/)[0].trim();
       const locationBySite=new Map(locations.map((row:any)=>[siteOf(row.site_name),row]));
       let serviceHours=0,earnedRevenue=0,onDuty=0,unverifiedRates=0;
@@ -150,7 +157,7 @@ Deno.serve(async (req) => {
         const priority=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:['sent','pending','partial','overdue'].includes(String(record.status||'').toLowerCase())?3:1;
         if(!current||priority(invoice)>priority(current)||(priority(invoice)===priority(current)&&String(invoice.created_date||'')<String(current.created_date||''))) canonical.set(key,invoice);
       }
-      const uniqueInvoices=[...canonical.values()];
+      const uniqueInvoices=[...canonical.values()].filter((invoice:any)=>invoice.period_start&&invoice.period_end?overlaps(invoice.period_start,invoice.period_end):inRange(invoice.created_date));
       const billableInvoices=uniqueInvoices.filter((row:any)=>['paid','sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase()));
       const billedTotal=billableInvoices.reduce((sum:number,row:any)=>sum+Number(row.total_amount||0),0);
       const clientPayments=billableInvoices.reduce((sum:number,row:any)=>{
@@ -158,11 +165,16 @@ Deno.serve(async (req) => {
         return sum+(paid>0?Math.min(Number(row.total_amount||0),paid):String(row.status||'').toLowerCase()==='paid'?Number(row.total_amount||0):0);
       },0);
       const outstanding=Math.max(0,billedTotal-clientPayments);
-      const recordedPayroll=(payrollEntries||[]).reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
-      const payrollPaid=(payrollEntries||[]).filter((row:any)=>String(row.status||'').toLowerCase()==='paid').reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
-      const reimbursable=(expenseReports||[]).filter((row:any)=>['approved','reimbursed','paid'].includes(String(row.status||'').toLowerCase())).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
-      const operating=(companyExpenses||[]).filter((row:any)=>['paid','unpaid'].includes(String(row.status||'').toLowerCase())&&!String(row.reference_number||'').startsWith('OFFICER-EXP-')).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
-      const unpaid=companyExpenses.filter((row:any)=>String(row.status||'').toLowerCase()==='unpaid').reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      const relevantPayroll=(payrollEntries||[]).filter((row:any)=>overlaps(row.pay_period_start,row.pay_period_end));
+      const recordedPayroll=relevantPayroll.reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
+      const approvedPayroll=relevantPayroll.filter((row:any)=>['approved','paid'].includes(lowerStatus(row.status))).reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
+      const payrollPaid=relevantPayroll.filter((row:any)=>lowerStatus(row.status)==='paid').reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
+      const pendingPayroll=Math.max(0,recordedPayroll-approvedPayroll);
+      const reimbursable=(expenseReports||[]).filter((row:any)=>['approved','reimbursed','paid'].includes(lowerStatus(row.status))&&inRange(row.expense_date||row.created_date)).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      // PAYROLL- and OFFICER-EXP- are financial mirror rows; including them
+      // again here double counts the wages/reimbursements already listed above.
+      const operating=(companyExpenses||[]).filter((row:any)=>['paid','unpaid'].includes(lowerStatus(row.status))&&inRange(row.expense_date||row.created_date)&&!['PAYROLL-','OFFICER-EXP-'].some(prefix=>String(row.reference_number||'').startsWith(prefix))).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
+      const unpaid=companyExpenses.filter((row:any)=>lowerStatus(row.status)==='unpaid'&&inRange(row.expense_date||row.created_date)&&!['PAYROLL-','OFFICER-EXP-'].some(prefix=>String(row.reference_number||'').startsWith(prefix))).reduce((sum:number,row:any)=>sum+Number(row.amount||0),0);
       const formatAmount=(amount:number)=>Math.round(amount*100)/100;
       const complete=loadErrors.length===0;
       financialSummary={period_start:rangeStart,period_end:rangeEnd,
@@ -170,10 +182,11 @@ Deno.serve(async (req) => {
         earned_service_revenue:formatAmount(earnedRevenue),on_duty:onDuty,
         billed_total:formatAmount(billedTotal),client_payments:formatAmount(clientPayments),
         outstanding_client_invoices:formatAmount(outstanding),unpaid_company_bills:formatAmount(unpaid),
-        payroll_total:formatAmount(recordedPayroll),payroll_paid:formatAmount(payrollPaid),
+        payroll_total:formatAmount(recordedPayroll),approved_payroll_expense:formatAmount(approvedPayroll),
+        pending_payroll_approval:formatAmount(pendingPayroll),payroll_paid:formatAmount(payrollPaid),
         operating_expenses:formatAmount(operating+reimbursable),
-        estimated_profit:formatAmount(earnedRevenue-recordedPayroll-operating-reimbursable),
-        unverified_rate_shifts:unverifiedRates,invoice_count:uniqueInvoices.length,
+        estimated_profit:formatAmount(earnedRevenue-approvedPayroll-operating-reimbursable),
+        unverified_rate_shifts:unverifiedRates,profit_is_estimate:unverifiedRates>0||pendingPayroll>0,invoice_count:uniqueInvoices.length,
         unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
         invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,
         invoice_draft_count:uniqueInvoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
