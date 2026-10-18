@@ -256,6 +256,18 @@ const AuthenticatedApp = () => {
 
   if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
 
+  // A former employee may still have a valid provider identity. Never mount
+  // operational modules for a terminated profile, even after password reset.
+  if (user && (Boolean(user.termination_date) || String(user.employment_status||'').toLowerCase()==='terminated' || String(user.account_status||'').toLowerCase()==='terminated')) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-white">
+      <div className="w-full max-w-lg rounded-2xl border border-red-700 bg-slate-900 p-8 text-center">
+        <h1 className="text-2xl font-black">EMPLOYMENT TERMINATED — ACCESS REVOKED</h1>
+        <p className="mt-4 text-slate-300">Your employment with Black Point has ended. Your Pathfinder personnel record is retained for historical purposes, but access to dashboards, CAD, and employee functions is disabled.</p>
+        <p className="mt-4 text-sm text-slate-400">Contact Black Point administration if you believe this is incorrect.</p>
+      </div>
+    </div>
+  );
+
   // Authentication alone is not portal authorization. Newly invited users stay
   // in restricted onboarding until an administrator assigns their category.
   const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
