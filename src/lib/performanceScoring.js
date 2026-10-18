@@ -5,6 +5,7 @@ const EASTERN_TIME_ZONE = 'America/New_York';
 export const isCommandPerformanceExempt = officer => ['Major','Lt Colonel','Colonel'].includes(normalizeRank(officer?.rank));
 
 export const emailKey = value => String(value || '').trim().toLowerCase();
+const siteKey = value => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim().toLowerCase();
 
 function dateParts(value) {
   const date = value instanceof Date ? value : new Date(value);
@@ -45,7 +46,8 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
   if (clockWall == null) return null;
 
   const candidates = schedules
-    .filter(s => emailKey(s.officer_email) === email && s.archived !== true && s.is_open !== true && s.shift_date && s.start_time && s.end_time)
+    .filter(s => emailKey(s.officer_email) === email && s.archived !== true && s.is_open !== true && s.shift_date && s.start_time && s.end_time
+      && (!siteKey(entry.location) || !siteKey(s.location) || siteKey(entry.location) === siteKey(s.location)))
     .map(schedule => {
       let start = wallClockMinute(schedule.shift_date, schedule.start_time);
       let end = wallClockMinute(schedule.shift_date, schedule.end_time);
@@ -55,7 +57,9 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
       const distance = Math.abs(clockWall - start);
       // Keep a broad window for genuinely late/early punches, but do not pair a punch
       // to an unrelated shift simply because it shares a calendar date.
-      const plausible = clockWall >= start - 360 && clockWall <= end + 360;
+      // A clock-in hours before a shift is not its arrival. Permit a one-hour
+      // early clock-in for legitimate prep while keeping late-punch review broad.
+      const plausible = clockWall >= start - 60 && clockWall <= Math.min(end, start + 240);
       return plausible ? { schedule, start, end, inside, distance } : null;
     })
     .filter(Boolean)
@@ -133,7 +137,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   const usedEntries = new Set();
   for (const schedule of eligibleSchedules) {
     const candidates = timeEntries
-      .filter(entry => entry?.clock_in && !usedEntries.has(String(entry.id || '')))
+      .filter(entry => entry?.clock_in && entry.archived !== true && !usedEntries.has(String(entry.id || '')))
       .map(entry => ({ entry, matched: matchTimeEntryToSchedule(entry, [schedule]) }))
       .filter(item => item.matched)
       .sort((a, b) => new Date(a.entry.clock_in).getTime() - new Date(b.entry.clock_in).getTime());
@@ -145,8 +149,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     if (!entry) {
       const scheduledStartWall = wallClockMinute(schedule.shift_date, schedule.start_time);
       const spanning = timeEntries
-        .filter(candidate => candidate?.clock_in)
+        .filter(candidate => candidate?.clock_in && candidate.archived !== true)
         .filter(candidate => emailKey(candidate.officer_email) === emailKey(schedule.officer_email))
+        .filter(candidate => !siteKey(candidate.location) || !siteKey(schedule.location) || siteKey(candidate.location) === siteKey(schedule.location))
         .map(candidate => {
           const inWall = wallClockMinute(easternDateKey(candidate.clock_in), easternTimeKey(candidate.clock_in));
           const outWall = candidate.clock_out
