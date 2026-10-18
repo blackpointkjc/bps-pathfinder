@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from '@/lib/billingRates';
-import { DollarSign, FileText, Receipt, TrendingUp, ArrowRight, CalendarClock, AlertTriangle } from 'lucide-react';
+import { DollarSign, FileText, Receipt, TrendingUp, ArrowRight, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 
 const actions = [
   { label: 'Payroll Center', detail: 'Generate and review payroll entries', icon: DollarSign, page: 'AccountingPayroll' },
@@ -14,22 +13,6 @@ const actions = [
   { label: 'Expenses', detail: 'Bills, officer reimbursements and approvals', icon: Receipt, page: 'AccountingExpenses' },
   { label: 'Company Profit', detail: 'Revenue, labor, expenses and profitability', icon: TrendingUp, page: 'AccountingProfit' },
 ];
-
-const formatPayrollDate = value => {
-  if (!value) return '';
-  const parsed = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-  return Number.isNaN(parsed.getTime())
-    ? ''
-    : parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-};
-
-const payrollDateLabel = row => {
-  const start = formatPayrollDate(row.pay_period_start);
-  const end = formatPayrollDate(row.pay_period_end);
-  const payDate = formatPayrollDate(row.pay_date);
-  const period = start && end ? `Period ${start} – ${end}` : start ? `Period starting ${start}` : '';
-  return [period, payDate ? `Pay date ${payDate}` : ''].filter(Boolean).join(' · ') || 'Payroll dates unavailable';
-};
 
 export default function AccountingOverview() {
   const [liveNow,setLiveNow] = useState(() => new Date());
@@ -49,16 +32,10 @@ export default function AccountingOverview() {
     refetchIntervalInBackground: false,
   });
 
-  const directory = buildDirectoryIndex(payload.users || []);
-  const payrollEntries = payload.payrollEntries || payload.payroll_entries || [];
   const periods = payload.payrollPeriods || payload.payroll_periods || payload.periods || [];
-  const expenses = payload.expenseReports || [];
   const loadErrors = payload.load_errors || [];
-  const pendingExpenses = expenses.filter(row => String(row.status || '').toLowerCase() === 'pending');
   const todayKey=liveNow.toISOString().slice(0,10);
   const currentPeriod = periods.find(row=>row.start_date<=todayKey&&row.end_date>=todayKey) || [...periods].filter(row=>row.end_date<todayKey).sort((a,b)=>String(b.end_date).localeCompare(String(a.end_date)))[0];
-  const thisPeriodPayroll = currentPeriod ? payrollEntries.filter(row => row.pay_period_start===currentPeriod.start_date && row.pay_period_end===currentPeriod.end_date) : [];
-  const totalPaymentDue = thisPeriodPayroll.reduce((sum,row) => sum + Number(row.total_payment_due ?? row.gross_pay ?? row.net_pay ?? 0), 0);
   const timeEntries=payload.timeEntries||[];
   const locations=payload.locations||[];
   const schedules=payload.schedules||[];
@@ -77,7 +54,6 @@ export default function AccountingOverview() {
   },{hours:0,earned:0,onDuty:0});
   const summary = payload.financialSummary || {};
   const moneySummary = key => summary[key] == null ? '—' : `$${Number(summary[key]).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  const recentPayroll = payrollEntries.slice(0,5);
 
   return (
     <div className="min-h-[calc(100vh-190px)] bg-[#070d17] p-4 text-white md:p-6">
