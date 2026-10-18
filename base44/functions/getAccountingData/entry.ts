@@ -51,18 +51,25 @@ Deno.serve(async (req) => {
       while (cursor < selected.length) {
         const key = selected[cursor++];
         const source = tableLoads[key];
+        let loaded = false;
         for (let attempt = 0; attempt < 4; attempt++) {
           try {
             const rows = await source.load();
             result[key] = Array.isArray(rows) ? rows : [];
+            loaded = true;
             break;
           } catch (error:any) {
             const throttled=Number(error?.status||error?.response?.status)===429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message||error));
-            if (!throttled && attempt < 2) { await delay((attempt+1)*650); continue; }
+            if (attempt < 3) {
+              await delay(throttled ? 1200 * (attempt + 1) : 650 * (attempt + 1));
+              continue;
+            }
             console.error(`getAccountingData could not load ${source.label}`,error?.message || error);
-            loadErrors.push(source.label);
-            result[key] = [];
           }
+        }
+        if (!loaded) {
+          if (!loadErrors.includes(source.label)) loadErrors.push(source.label);
+          result[key] = [];
         }
       }
     };
