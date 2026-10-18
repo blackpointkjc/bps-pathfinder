@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, claimed: ownsClaim, announcement_text: announcementText, property_announcement_text: propertyAnnouncementText, assignment_announcement_text: assignmentAnnouncementText, receipt: earliest, deduplicated: extras.length });
     }
     return Response.json({ success: true, claimed: true, announcement_text: announcementText, property_announcement_text: propertyAnnouncementText, assignment_announcement_text: assignmentAnnouncementText, receipt });
-  } catch (error) {
+  } catch (error:any) {
     console.error('claimCadAnnouncement failed', error);
     return Response.json({ error: error?.message || 'Unable to claim announcement' }, { status: 500 });
   }
