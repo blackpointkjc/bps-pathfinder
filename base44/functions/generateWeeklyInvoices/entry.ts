@@ -152,6 +152,9 @@ Deno.serve(async(req)=>{
     const byOfficer=new Map((users||[]).map((person:any)=>[String(person.email||'').toLowerCase(),person]));
     const existingByKey=new Map<string,any>();
     for(const invoice of invoices||[]) {
+      // Voided invoices are historical audit records; they must not prevent a
+      // replacement invoice for the same service dates.
+      if(['void','cancelled'].includes(String(invoice.status||'').toLowerCase()))continue;
       const key=`${siteOf(invoice.site_name).toLowerCase()}|${invoice.period_start}|${invoice.period_end}`;
       // Prefer payment/sending history to a duplicate draft, and the oldest
       // number when duplicate invoices were created for an identical period.

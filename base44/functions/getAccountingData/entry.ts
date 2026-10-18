@@ -185,7 +185,9 @@ Deno.serve(async (req) => {
         payroll_total:formatAmount(recordedPayroll),approved_payroll_expense:formatAmount(approvedPayroll),
         pending_payroll_approval:formatAmount(pendingPayroll),payroll_paid:formatAmount(payrollPaid),
         operating_expenses:formatAmount(operating+reimbursable),
-        estimated_profit:formatAmount(earnedRevenue-approvedPayroll-operating-reimbursable),
+        // Profit forecasts all earned labor, including generated checks that still
+        // await approval; only approved wages enter the posted payroll ledger.
+        estimated_profit:formatAmount(earnedRevenue-recordedPayroll-operating-reimbursable),
         unverified_rate_shifts:unverifiedRates,profit_is_estimate:unverifiedRates>0||pendingPayroll>0,invoice_count:uniqueInvoices.length,
         unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
         invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,

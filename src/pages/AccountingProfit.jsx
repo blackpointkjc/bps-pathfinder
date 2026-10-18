@@ -420,7 +420,7 @@ export default function AccountingProfit() {
           { label: 'Approved payroll expense', value: Number(companyLedger.approved_payroll_expense || 0), icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Approved/paid payroll checks within overlapping periods' },
           { label: 'Awaiting payroll approval', value: Number(companyLedger.pending_payroll_approval || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Generated payroll not yet booked as expense' },
           { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
-          { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Selected period' },
+          { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Includes pending payroll accrual, posted expenses, and provisional bill rates' },
           { label: 'Client payments', value: Number(companyLedger.client_payments || 0), icon: WalletCards, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Selected period' },
           { label: 'Outstanding invoices', value: Number(companyLedger.outstanding_client_invoices || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
         ].map(metric => {
