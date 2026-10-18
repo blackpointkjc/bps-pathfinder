@@ -16,7 +16,13 @@ Deno.serve(async req => {
   const end = restriction ? restriction + 12*3600000 : 0;
   if (end > Date.now()) return Response.json({error:`Clock-in blocked until ${new Date(end).toISOString()} after sent-home event`,eligible_at:new Date(end).toISOString()}, {status:423});
   const existing = await api.asServiceRole.entities.TimeEntry.filter({officer_email:email}, '-clock_in', 40);
-  if ((existing||[]).some((row:any)=>row.clock_in && !row.clock_out && row.archived !== true)) return Response.json({error:'Officer already has an active time entry'}, {status:409});
+  const open=(existing||[]).find((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true);
+  if(open){
+    const oldSite=String(open.location||'').split(' - ')[0].trim().toLowerCase();
+    const newSite=String(data.location||'').split(' - ')[0].trim().toLowerCase();
+    if(oldSite===newSite)return Response.json({success:true,entry:open,already_clocked_in:true,message:'The existing active shift was recovered; no duplicate punch was created.'});
+    return Response.json({error:`You already have an open shift at ${oldSite||'another site'}. Use Switch Site to transfer without losing hours.`,active_entry_id:open.id},{status:409});
+  }
   const saved = await api.asServiceRole.entities.TimeEntry.create({...data,officer_email:email});
   return Response.json({success:true,entry:saved});
  } catch(error:any) { return Response.json({error:error?.message || 'Unable to clock in'}, {status:500}); }

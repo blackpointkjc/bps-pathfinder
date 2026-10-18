@@ -268,9 +268,10 @@ export default function TimeClock() {
       return { previousEntry };
     },
     onError: (err, newEntry, context) => {
-      if (context?.previousEntry) {
-        queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
-      }
+      // Failed clock-in may be only a 429; never keep an unsaved optimistic
+      // shift as if it existed on the server.
+      queryClient.setQueryData(['activeTimeEntry', user?.email],context?.previousEntry||null);
+      setGeoError(err?.response?.data?.error||err?.message||'Clock-in could not be saved.');
     },
     onSuccess: (newEntry) => {
       // Reflect the successfully transferred segment immediately so a quick
