@@ -363,42 +363,16 @@ export default function TimeClock() {
       const boundaryCheck = verifyAgainstLocationBoundary(newLocation, lat, lng);
       if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
-      const switchedAt = new Date().toISOString();
-      const oldSite = activeEntry.location?.split(' - ')[0] || 'previous site';
-      const clockInData = {
-        officer_email: user?.email,
-        officer_name: user?.full_name || user?.email,
-        clock_in: switchedAt,
-        location: `${newSite} - ${newLocation.address || ''}`.trim(),
-        clock_in_latitude: lat,
-        clock_in_longitude: lng,
-        notes: `Switched from ${oldSite}`,
-      };
-
-      let newEntry = null;
-      try {
-        // Create the destination entry first. If closing the old entry fails, delete
-        // this new row so the user never ends up with two active shifts.
-        const response = await base44.functions.invoke('createVerifiedTimeEntry', clockInData); const result = response?.data || response || {}; if (!result.success) throw new Error(result.error || 'Clock-in denied'); newEntry = result.entry;
-        await base44.entities.TimeEntry.update(activeEntry.id, {
-          clock_out: switchedAt,
-          clock_out_latitude: lat,
-          clock_out_longitude: lng,
-          notes: [activeEntry.notes, `Switched to ${newSite}`].filter(Boolean).join('\n'),
-        });
-        return newEntry;
-      } catch (error) {
-        if (newEntry?.id) {
-          try {
-            const result = await base44.functions.invoke('rollbackMyTimeEntry', { time_entry_id: newEntry.id });
-            const payload = result?.data || result || {};
-            if (payload.error) throw new Error(payload.error);
-          } catch (rollbackError) {
-            console.error('Site switch rollback failed:', rollbackError);
-          }
-        }
-        throw error;
-      }
+      const response = await base44.functions.invoke('switchMyDutySite', {
+        active_entry_id: activeEntry.id,
+        location_id: newLocation.id,
+        latitude: lat,
+        longitude: lng,
+        accuracy: Number(currentPosition.coords.accuracy || 100),
+      });
+      const result = response?.data || response || {};
+      if (!result.success || !result.entry?.id) throw new Error(result.error || 'Server did not confirm site transfer. Refresh Time Clock before trying again.');
+      return result.entry;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
@@ -407,11 +381,11 @@ export default function TimeClock() {
       setSwitchingSite(false);
       setSelectedNewSite("");
       setGeoError(null); // Clear any geo error from previous operations
-      alert('✅ Successfully switched sites!');
+      setGeoError(null);
     },
     onError: (error) => {
       console.error("Site switch error:", error);
-      setGeoError(`Failed to switch sites: ${error.message}`);
+      setGeoError(`Failed to switch sites: ${error?.response?.data?.error || error?.message || 'Server did not complete the switch.'}`);
     }
   });
 
