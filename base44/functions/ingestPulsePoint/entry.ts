@@ -150,6 +150,7 @@ function statusFromUnits(units: any[] = []) {
 function priorityFor(type: string) {
   const text = String(type || '').toUpperCase();
   if (/CARDIAC|ARREST|MCI|MULTI CASUALTY|WORKING|EXPLOSION|STRUCTURE FIRE|RESCUE/.test(text)) return 'critical';
+  if (/(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/.test(text)) return 'high';
   if (/MEDICAL|TRAFFIC COLLISION|HAZMAT|GAS|FIRE|EMERGENCY|WATER RESCUE|TECHNICAL RESCUE/.test(text)) return 'high';
   if (/ALARM|INVESTIGATION|PUBLIC SERVICE|LIFT ASSIST|LOCKOUT/.test(text)) return 'medium';
   return 'low';

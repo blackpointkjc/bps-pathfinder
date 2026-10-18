@@ -113,7 +113,8 @@ Deno.serve(async (req) => {
     }
 
     const allowedPriorities = new Set(['low', 'medium', 'high', 'critical']);
-    const priority = allowedPriorities.has(data.priority) ? data.priority : 'medium';
+    const doa=/(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(data.incident||''));
+    const priority = doa && !['critical','high'].includes(data.priority) ? 'high' : allowedPriorities.has(data.priority) ? data.priority : 'medium';
     const now = new Date().toISOString();
     const createdCall = await base44.asServiceRole.entities.DispatchCall.create({
       ...data,

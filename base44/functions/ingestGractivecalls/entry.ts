@@ -8,6 +8,9 @@ async function announceAssignedCallUpdate(base44: any, previous: any, saved: any
   if (!fields.some(field => saved[field] !== undefined && String(saved[field] || '') !== String(previous[field] || ''))) return;
   const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: previous.id });
   if (!(previous.assigned_units || []).length && !(assignments || []).some((row: any) => !['cleared', 'cancelled'].includes(String(row.status || '').toLowerCase()))) return;
+  const changes=fields.filter(field=>saved[field]!==undefined&&String(saved[field]||'')!==String(previous[field]||''))
+    .map(field=>`${field==='description'?'Call notes':field.charAt(0).toUpperCase()+field.slice(1)}: ${String(previous[field]||'not listed').slice(0,100)} → ${String(saved[field]||'not listed').slice(0,100)}`);
+  const changeMessage=changes.join('; ').slice(0,950);
   const eventKey = `call:${previous.id}:updated:${saved.updated_date || new Date().toISOString()}`;
   const existing = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: eventKey }, '-created_date', 1);
   if (existing?.length) return;
@@ -19,7 +22,8 @@ async function announceAssignedCallUpdate(base44: any, previous: any, saved: any
     location: saved.location || previous.location || '',
     event_key: eventKey,
     event_type: 'call_updated',
-    announcement_text: 'Your assigned call has been updated. Check your mobile data terminal.',
+    notes:changeMessage,
+    announcement_text:`CAD ${String(saved.agency_cad_number||previous.agency_cad_number||previous.bps_reference||previous.call_id||'')}. Assigned call changed: ${changeMessage}.`,
     announcement_priority: 'normal',
     cad_number: String(saved.agency_cad_number || previous.agency_cad_number || previous.bps_reference || previous.call_id || ''),
     triggering_action: 'ingestGractivecalls.call_updated',
@@ -65,6 +69,7 @@ const normalizeStatus = (raw: unknown) => {
 const normalizePriority = (incident: unknown) => {
   const text = String(incident || '').toUpperCase();
   if (/SHOOT|STABB|ROBBERY|ARMED|PERSON SHOT|OFFICER (DOWN|NEEDS)|EXPLOSION/.test(text)) return 'critical';
+  if (/(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/.test(text)) return 'high';
   if (/ASSAULT|DOMESTIC.*VIOLENT|FIGHT|MISSING PERSON|PERSONAL INJURY|BURGLARY.*PROGRESS/.test(text)) return 'high';
   if (/CRASH|ACCIDENT|FIRE|EMS|SUSPICIOUS|LARCENY|DOMESTIC/.test(text)) return 'medium';
   return 'low';

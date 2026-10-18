@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
             ? 'Your assigned call has been cleared.'
             : ['unit_dispatched','additional_unit'].includes(event.event_type)
               ? 'You have been assigned a call. Check your mobile data terminal.'
-              : 'Your call has been updated. Check your mobile data terminal.';
+              : clean(event.announcement_text) || `${clean(event.unit_name) || 'Assigned unit'}: ${clean(event.notes) || `CAD ${clean(event.cad_number)} status ${clean(event.new_status)}`}`;
       if (autoAssignment) {
         // Keep the property alert ahead of its assignment confirmation. Never
         // replace this operational detail with the generic call-update wording.

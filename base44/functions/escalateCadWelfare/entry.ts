@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
     const cad = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
-    const unitLabel = officer.unit_number ? `Unit ${officer.unit_number}` : ([officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email);
+    const unitLabel = [officer.rank,officer.last_name||String(officer.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')||officer.full_name||'Officer';
+    const initiator=[me.rank,me.last_name||String(me.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')||'Supervisor';
     const eventKey = `welfare-escalation:${callId}:${unitId}:${Math.floor(Date.now()/60000)}`;
     const prior = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key:eventKey }, '-created_date', 1).catch(()=>[]);
     if (prior?.length) return Response.json({ success:true, duplicate:true });
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
       new_status:call.status || '',
       unit_id:unitId,
       unit_name:unitLabel,
-      notes:`WELFARE ESCALATION: ${reason}. Initiated by ${me.full_name || me.email}.`,
+      notes:`WELFARE ESCALATION: ${reason}. Initiated by ${initiator}.`,
       event_key:eventKey,
       event_type:'welfare_overdue',
       announcement_text:`Emergency traffic. Welfare check overdue for ${unitLabel} at ${call.location || 'the active call'}. CAD number ${cad}.`,
@@ -51,7 +52,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.CallNote.create({
       call_id:callId,
       author_id:me.id,
-      author_name:me.full_name || me.email || 'Command',
+      author_name:initiator,
       note:`[WELFARE ESCALATION] ${unitLabel}: ${reason}`,
       note_type:'hazard',
     }).catch(()=>null);
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success:true, escalated_at:now, recipients:recipients.length });
-  } catch (error) {
+  } catch (error:any) {
     console.error('escalateCadWelfare failed', error);
     return Response.json({ error:error?.message || 'Unable to escalate welfare check' }, { status:500 });
   }

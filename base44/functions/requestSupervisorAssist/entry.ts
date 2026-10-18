@@ -150,7 +150,9 @@ Deno.serve(async (req) => {
       unit_id:chosen.user.id, unit_name:label, notes:`Supervisor requested by ${me.full_name || me.email}. Closest available supervisor assigned automatically.`,
       event_key:eventKey, event_type:'additional_unit', announcement_text:`Supervisor requested. ${label}, respond to ${call.location || 'the active call'}. CAD number ${cad}.`, announcement_priority:'high', cad_number:String(cad), triggering_action:'requestSupervisorAssist', audio_enabled:true, sensitive:false
     });
-    await base44.asServiceRole.entities.CallNote.create({ call_id:callId, author_id:me.id, author_name:me.full_name || me.email || 'Requester', note:`[SUPERVISOR REQUEST] Closest available supervisor assigned: ${label} (${chosen.distance.toFixed(2)} mi).`, note_type:'update' }).catch(()=>null);
+    const requesterLast=String(me.last_name||me.full_name||'').trim().split(/\s+/).pop();
+    const requesterName=[me.rank,requesterLast].filter(Boolean).join(' ')||'Officer';
+    await base44.asServiceRole.entities.CallNote.create({ call_id:callId, author_id:me.id, author_name:requesterName, note:`[SUPERVISOR REQUEST] ${label} assigned for assistance (${chosen.distance.toFixed(2)} mi); awaiting acknowledgment, then En Route and On Scene.`, note_type:'update' }).catch(()=>null);
     await base44.asServiceRole.entities.Notification.create({ recipient_email:lower(chosen.user.email), type:'call_assignment', title:`Supervisor Assist · ${cad}`, message:`You were automatically assigned as the closest available supervisor to ${call.location || 'an active call'}.`, is_read:false, related_id:callId, priority:'high', requires_acknowledgment:true, source_name:'CAD Supervisor Request' }).catch(()=>null);
 
     return Response.json({ success:true, assigned:true, supervisor:{ id:chosen.user.id, name:label, unit_number:chosen.user.unit_number || '', distance_miles:Number(chosen.distance.toFixed(2)) }, assignment_id:assignment.id });
