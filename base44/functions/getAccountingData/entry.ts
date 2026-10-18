@@ -17,11 +17,11 @@ Deno.serve(async (req) => {
     const scopeTables: Record<string,string[]> = {
       payroll: ['users','periods','payrollEntries','configs','timeEntries'],
       invoices: ['users','invoices','locations','timeEntries','schedules'],
-      expenses: ['users','expenseReports','companyExpenses'],
-      profit: ['users','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
-      overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','invoices','timeEntries','locations','schedules'],
-      finance: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
-      full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','timeOffRequests','ptoUsage','w2Forms','schedules'],
+      expenses: ['users','expenseReports','companyExpenses','recurringBills'],
+      profit: ['users','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
+      overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','recurringBills','invoices','timeEntries','locations','schedules'],
+      finance: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
+      full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','timeOffRequests','ptoUsage','w2Forms','schedules'],
     };
     const selected = scopeTables[scope] || scopeTables.full;
     const loadErrors: string[] = [];
@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       locations: {label:'locations',load:()=>base44.asServiceRole.entities.Location.list('site_name',1000)},
       expenseReports: {label:'expense reimbursements',load:()=>base44.asServiceRole.entities.ExpenseReport.list('-created_date',2000)},
       companyExpenses: {label:'company expenses',load:()=>base44.asServiceRole.entities.CompanyExpense.list('-expense_date',2000)},
+      recurringBills: {label:'recurring monthly bills',load:()=>base44.asServiceRole.entities.RecurringCompanyBill.list('next_due_date',1000)},
       timeOffRequests: {label:'time-off requests',load:()=>base44.asServiceRole.entities.TimeOffRequest.list('-created_date',2000)},
       ptoUsage: {label:'PTO usage',load:()=>base44.asServiceRole.entities.PTOUsage.list('-usage_date',5000)},
       w2Forms: {label:'W-2 forms',load:()=>base44.asServiceRole.entities.W2Form.list('-tax_year',2000)},
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
     await Promise.all(Array.from({length:Math.min(2,selected.length)},()=>worker()));
     const {
       users=[], periods=[], payrollEntries=[], configs=[], timeEntries=[], invoices=[],
-      locations=[], expenseReports=[], companyExpenses=[], timeOffRequests=[],
+      locations=[], expenseReports=[], companyExpenses=[], recurringBills=[], timeOffRequests=[],
       ptoUsage=[], w2Forms=[], schedules=[],
     } = result;
 
@@ -201,6 +202,7 @@ Deno.serve(async (req) => {
       locations: locations || [],
       expenseReports: expenseReports || [],
       companyExpenses: companyExpenses || [],
+      recurringBills: recurringBills || [],
       timeOffRequests: timeOffRequests || [],
       ptoUsage: ptoUsage || [],
       w2Forms: w2Forms || [],

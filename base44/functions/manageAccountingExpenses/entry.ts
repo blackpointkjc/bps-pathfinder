@@ -1,3 +1,4 @@
+import {postRecurringBills} from '../postRecurringCompanyBills/recurring.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const categoryMap: Record<string,string> = {
@@ -17,6 +18,28 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || '');
 
+    if(action==='create_recurring'){
+      const data=body.data||{};
+      const amount=Number(data.amount);
+      const due=String(data.start_date||'');
+      if(!data.vendor||!data.description||!data.category||!Number.isFinite(amount)||amount<=0||!/^\d{4}-\d{2}-\d{2}$/.test(due))return Response.json({error:'Vendor, description, category, positive amount, and first due date are required'},{status:400});
+      const day=Number(due.slice(8,10));
+      const record=await base44.asServiceRole.entities.RecurringCompanyBill.create({
+        vendor:String(data.vendor).trim(),description:String(data.description).trim(),category:data.category,amount:money(amount),
+        site_name:String(data.site_name||''),start_date:due,next_due_date:due,day_of_month:day,status_on_post:data.status_on_post==='paid'?'paid':'unpaid',active:true,notes:String(data.notes||''),
+      });
+      return Response.json({success:true,record});
+    }
+    if(action==='set_recurring_active'){
+      const record=await base44.asServiceRole.entities.RecurringCompanyBill.get(String(body.id||'')).catch(()=>null);
+      if(!record)return Response.json({error:'Recurring bill not found'},{status:404});
+      const saved=await base44.asServiceRole.entities.RecurringCompanyBill.update(record.id,{active:body.active===true});
+      return Response.json({success:true,record:saved});
+    }
+    if(action==='post_due_recurring'){
+      const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      return Response.json(await postRecurringBills(base44.asServiceRole.entities,today));
+    }
     if (action === 'create_company') {
       const data = body.data || {};
       const amount = Number(data.amount);
