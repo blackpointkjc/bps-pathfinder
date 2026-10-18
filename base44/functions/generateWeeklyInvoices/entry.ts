@@ -161,7 +161,7 @@ Deno.serve(async(req)=>{
     // Historical sending does not require time punches or schedules, but must load
     // assigned client users to resolve billing emails consistently with creation.
     const [entries,locations,users,invoices,schedules]=action==='send_ready_drafts'
-      ? [[],await base44.asServiceRole.entities.Location.list('site_name',300),await base44.asServiceRole.entities.User.list(undefined,2000),await base44.asServiceRole.entities.Invoice.list('-created_date',2000),[]]
+      ? [[],await base44.asServiceRole.entities.Location.list('site_name',100),await base44.asServiceRole.entities.User.list(undefined,200),await base44.asServiceRole.entities.Invoice.list('-created_date',500),[]]
       : await Promise.all([
           base44.asServiceRole.entities.TimeEntry.list('-clock_in',10000),
           base44.asServiceRole.entities.Location.list('site_name',2000),
@@ -192,7 +192,7 @@ Deno.serve(async(req)=>{
         const duplicates=active.filter((other:any)=>other.id!==invoice.id&&siteOf(other.site_name).toLowerCase()===siteOf(invoice.site_name).toLowerCase()
           &&other.period_start<=invoice.period_end&&other.period_end>=invoice.period_start);
         if(duplicates.some((other:any)=>String(other.status||'').toLowerCase()!=='draft'||String(other.invoice_number||'')<String(invoice.invoice_number||''))){
-          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:'Overlapping invoice requires review',overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
+          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:`Overlaps invoice(s) ${duplicates.map((row:any)=>'#'+row.invoice_number).join(', ')} for the same site and service dates; review the billed shifts before sending.`,overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
         }
         const loc=siteMap.get(siteOf(invoice.site_name).toLowerCase()) as any;
         if(!loc){held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'unknown_site',error:'Billing site no longer exists; review before sending'});continue;}
