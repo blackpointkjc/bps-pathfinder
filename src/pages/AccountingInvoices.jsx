@@ -124,6 +124,18 @@ export default function AccountingInvoices() {
     const nextDue=issued.filter(row=>row.due_date>=today).map(row=>row.due_date).sort()[0]||invoices.filter(row=>row.due_date>=today).map(row=>row.due_date).sort()[0]||null;
     return {drafts,issued:issued.length,pastDue:pastDue.length,ready:ready.length,nextDue,today,lateFees:invoices.reduce((sum,row)=>sum+Number(row.late_fee_amount||0),0)};
   })();
+  const sendVerifiedDrafts=async()=>{
+    setGenerating(true);setBillingStatus('Verifying historical drafts, service date overlaps and confirmed billing rates before sending…');
+    try{
+      const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'send_ready_drafts'});
+      const data=response?.data||response||{};
+      if(data.error)throw new Error(data.error);
+      setBillingRunIssues((data.results||[]).filter(row=>row.status!=='sent').map(row=>({...row,invoice_number:row.invoice_number||row.invoice,status:row.status,error:row.error||row.status})));
+      setBillingStatus(`Historical invoicing: ${data.sent||0} verified invoices emailed; ${data.held||0} held for rate/overlap/date review; ${data.failed||0} send failures; ${data.due_dates_updated||0} due dates corrected.`);
+      await syncInvoiceData();
+    }catch(error){setBillingStatus(`Historical invoice processing failed: ${error?.response?.data?.error||error?.message||'Server failure'}`);}
+    finally{setGenerating(false);}
+  };
   const runInvoices = async () => {
     if (generating) return;
     setGenerating(true);
@@ -248,7 +260,7 @@ export default function AccountingInvoices() {
         <div className="mt-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={checkingOverdue||generating} onClick={()=>checkOverdueInvoices('preview')}>{checkingOverdue?'Checking…':'Check Overdue Eligibility'}</Button><Button type="button" disabled={checkingOverdue||generating} onClick={()=>askConfirmation('Process Overdue Invoices','Mark truly past-due issued invoices overdue, assess each one-time 10% charge, update client balances, and request notices. Future due dates and drafts will be skipped.',()=>checkOverdueInvoices('run_now'))}>Process Overdue Now</Button></div>
         {overdueReport?.summary && <p role="status" className="mt-2 rounded bg-white p-2 text-xs">As of {overdueReport.as_of?.slice(0,10)}: {overdueReport.summary.eligible} eligible; {overdueReport.summary.future_due} not yet due; {overdueReport.summary.drafts} drafts; {overdueReport.summary.not_provider_accepted} awaiting verified email acceptance; {overdueReport.summary.under_review} under rate review. {overdueReport.summary.future_dated_overdue>0?`${overdueReport.summary.future_dated_overdue} record(s) are incorrectly labeled overdue before their due date and need reconciliation.`:''}</p>}
       </div>
-      <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={()=>askConfirmation('Reconcile Historical Invoices','Recalculate only unsent invoice drafts for the past 16 weeks. Sent and paid invoices will not be changed.',reconcileHistoricalDrafts)}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
+      <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={()=>askConfirmation('Reconcile Historical Invoices','Recalculate only unsent invoice drafts for the past 16 weeks. Sent and paid invoices will not be changed.',reconcileHistoricalDrafts)}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>askConfirmation('Issue Verified Historical Drafts','Send previously unsent invoices whose rates and items are verified. Invoice due dates will use period end + 15 days; overlapping invoices are held to avoid double billing.',sendVerifiedDrafts)}>Send All Verified Drafts</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
       {billingRunIssues.length>0 && <div className="mb-4 space-y-2 rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><strong>Billing items requiring action</strong>{billingRunIssues.map((item,index)=><div key={`${item.site}-${index}`} className="border-t border-amber-300 pt-2"><strong>{item.site || 'Unassigned site'}</strong> — {item.status==='overlap_requires_review' ? `Existing invoice #${item.invoice_number} covers these dates; a second invoice was not sent.` : item.status==='legacy_delivery_unconfirmed' ? `Invoice #${item.invoice_number} was held because prior email delivery cannot be confirmed.` : `Billing failed: ${item.error || 'Review this site'}`}</div>)}</div>}
       <Card className="mb-5 border-slate-200"><CardContent className="space-y-3 p-4">

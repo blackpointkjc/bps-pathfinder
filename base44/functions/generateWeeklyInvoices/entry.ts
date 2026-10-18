@@ -57,7 +57,7 @@ Deno.serve(async(req)=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
-    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
+    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice','send_ready_drafts'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
     const manual=action!=='scheduled';
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);
@@ -153,6 +153,46 @@ Deno.serve(async(req)=>{
       base44.asServiceRole.entities.Invoice.list('-created_date',5000),
       base44.asServiceRole.entities.Schedule.list('-shift_date',10000),
     ]);
+    // Recover older verified drafts without silently duplicating overlapping
+    // service periods or sending invoices whose historical rates need review.
+    if(action==='send_ready_drafts'){
+      let sent=0,held=0,failed=0,updated=0;
+      const results:any[]=[];
+      const siteMap=new Map((locations||[]).map((row:any)=>[siteOf(row.site_name).toLowerCase(),row]));
+      const active=(invoices||[]).filter((row:any)=>!['void','cancelled'].includes(String(row.status||'').toLowerCase()));
+      for(const invoice of active.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').sort((a:any,b:any)=>String(a.period_start).localeCompare(String(b.period_start)))){
+        const fixedDue=dateOffset(String(invoice.period_end||today),15);
+        if(invoice.due_date!==fixedDue){await base44.asServiceRole.entities.Invoice.update(invoice.id,{due_date:fixedDue});updated++;}
+        if(invoice.billing_review_required===true||String(invoice.delivery_status||'').toLowerCase()==='review_required'){
+          held++;results.push({invoice:invoice.invoice_number,status:'rate_review_required'});continue;
+        }
+        let items:any[]=[];try{items=JSON.parse(invoice.shifts||'[]')}catch{}
+        if(!Array.isArray(items)||!items.length||items.some((row:any)=>!(Number(row.rate)>0))||!(Number(invoice.total_amount)>0)||String(invoice.period_end||'')>=today){
+          held++;results.push({invoice:invoice.invoice_number,status:'invalid_lines_or_open_period'});continue;
+        }
+        const duplicates=active.filter((other:any)=>other.id!==invoice.id&&siteOf(other.site_name).toLowerCase()===siteOf(invoice.site_name).toLowerCase()
+          &&other.period_start<=invoice.period_end&&other.period_end>=invoice.period_start);
+        if(duplicates.some((other:any)=>String(other.status||'').toLowerCase()!=='draft'||String(other.invoice_number||'')<String(invoice.invoice_number||''))){
+          held++;results.push({invoice:invoice.invoice_number,status:'overlapping_invoice',overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
+        }
+        const loc=siteMap.get(siteOf(invoice.site_name).toLowerCase()) as any;
+        const recipient=String(loc?.billing_contact_email||'').toLowerCase().trim();
+        const target=isEmail(recipient)?recipient:MANAGEMENT_EMAIL;
+        const lines=items.map((row:any)=>`<tr><td>${encode(row.date)}</td><td>${encode(row.hours)}</td><td>$${encode(row.rate)}</td><td>$${encode(row.amount)}</td></tr>`).join('');
+        const total=Number(invoice.total_amount||0);
+        try{
+          await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point Invoice ${encode(invoice.invoice_number)} — ${encode(invoice.site_name)}`,
+            body:`<div style="font:14px Arial,sans-serif"><h2>BLACK POINT — INVOICE ${encode(invoice.invoice_number)}</h2><p>Property: ${encode(invoice.site_name)}<br>Service: ${encode(invoice.period_start)} through ${encode(invoice.period_end)}<br><b>Due ${fixedDue}</b></p><table><tr><th>Date</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>${lines}</table><h2>$${total.toFixed(2)}</h2><p>One-time 10% late charge may apply after the due date under your service agreement.</p></div>`});
+          await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_email:target,client_email:target,delivery_status:'accepted',delivery_error:'',due_date:fixedDue,sent_at:new Date().toISOString()});
+          sent++;results.push({invoice:invoice.invoice_number,status:'sent',recipient:target});
+          const clientsForSite=(users||[]).filter((u:any)=>eligibleClient(u)&&(
+            String(u.email||'').toLowerCase()===target||String(loc?.assigned_client_email||'').toLowerCase()===String(u.email||'').toLowerCase()||
+            [u.assigned_location,...(u.assigned_locations||[]),...(u.assigned_sites||[])].some((x:any)=>siteOf(x).toLowerCase()===siteOf(invoice.site_name).toLowerCase())));
+          for(const u of clientsForSite.slice(0,20))await base44.asServiceRole.entities.Notification.create({recipient_email:String(u.email).toLowerCase(),type:'invoice_due',title:`Invoice ${invoice.invoice_number} issued`,message:`${invoice.site_name}: $${total.toFixed(2)}, due ${fixedDue}. View in Client Center.`,related_id:String(invoice.id),is_read:false,priority:'normal',action_link:'/ClientPayrollReport'}).catch(()=>null);
+        }catch(error:any){failed++;await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_status:'failed',delivery_error:String(error?.message||'Email not accepted')}).catch(()=>null);results.push({invoice:invoice.invoice_number,status:'failed',error:String(error?.message||'Mail service failed')});}
+      }
+      return Response.json({success:failed===0,sent,held,failed,due_dates_updated:updated,results});
+    }
     const clients=(users||[]).filter(eligibleClient);
     const byEmail=new Map(clients.map((client:any)=>[String(client.email||'').toLowerCase(),client]));
     const byOfficer=new Map((users||[]).map((person:any)=>[String(person.email||'').toLowerCase(),person]));
@@ -226,10 +266,13 @@ Deno.serve(async(req)=>{
         const number=existingInvoice?.invoice_number || `${prefix}${String(sequence).padStart(3,'0')}`;
         const needsReview=reviewReasons.size>0;
         const reviewReason=[...reviewReasons].join('; ');
-        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:totalHours>0?dollars(total/totalHours):Number(location.site_bill_rate),total_amount:dollars(total),base_amount:dollars(total),late_fee_amount:0,late_fee_rate:0.10,shifts:JSON.stringify(shifts),due_date:existingInvoice?.due_date || dateOffset(today,15),status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:needsReview?'review_required':existingInvoice?.delivery_status||'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
+        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:totalHours>0?dollars(total/totalHours):Number(location.site_bill_rate),total_amount:dollars(total),base_amount:dollars(total),late_fee_amount:0,late_fee_rate:0.10,shifts:JSON.stringify(shifts),due_date:dateOffset(end,15),status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:needsReview?'review_required':existingInvoice?.delivery_status||'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
         const oldShifts=String(existingInvoice?.shifts||'');
         const unchanged=Boolean(existingInvoice && dollars(Number(existingInvoice.total_amount||0))===dollars(total) && Number(existingInvoice.total_hours||0).toFixed(2)===totalHours.toFixed(2) && oldShifts===invoiceData.shifts);
-        if (unchanged && existingInvoice?.delivery_status==='accepted') {skipped++;continue;}
+        if (unchanged && existingInvoice?.delivery_status==='accepted') {
+          if(existingInvoice.due_date!==invoiceData.due_date)await base44.asServiceRole.entities.Invoice.update(existingInvoice.id,{due_date:invoiceData.due_date});
+          skipped++;continue;
+        }
         if (existingInvoice?.status==='sent' && !existingInvoice?.sent_at && !existingInvoice?.delivery_status) {
           held++;results.push({site:name,status:'legacy_delivery_unconfirmed',invoice_number:number});continue;
         }
