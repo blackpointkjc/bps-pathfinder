@@ -49,7 +49,11 @@ export default function IncidentReports() {
   const linkedReportId = React.useMemo(()=>new URLSearchParams(window.location.search).get('view_report_id')||'',[]);
   const {data:linkedReport,isLoading:linkedReportLoading,error:linkedReportError,refetch:refetchLinkedReport}=useQuery({
     queryKey:['linkedIncidentReportView',linkedReportId],enabled:!!linkedReportId,
-    queryFn:()=>base44.entities.IncidentReport.get(linkedReportId),retry:1,staleTime:60000,
+    queryFn:async()=>{
+      const report=await base44.entities.IncidentReport.get(linkedReportId).catch(()=>null);
+      if(!report?.id)throw new Error('The linked incident report is missing or no longer available. Ask command to repair the historical CAD report link.');
+      return report;
+    },retry:1,staleTime:60000,
   });
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [historyOfficerEmail, setHistoryOfficerEmail] = useState('self');
@@ -1200,7 +1204,8 @@ Provide:
       </CardContent></Card>}
     </div>;
   }
-  if (reportsLoading) {
+  const fromCallNavigation=new URLSearchParams(window.location.search).get('from_call')==='true';
+  if (reportsLoading && !fromCallNavigation && !showForm) {
     return (
       <div className="p-8 text-center">
         <p className="text-slate-600">Loading reports...</p>
@@ -1208,7 +1213,7 @@ Provide:
     );
   }
 
-  if (reportsError) {
+  if (reportsError && !fromCallNavigation && !showForm) {
     return (
       <div className="p-8 text-center space-y-4">
         <AlertTriangle className="w-10 h-10 mx-auto text-red-600" />
