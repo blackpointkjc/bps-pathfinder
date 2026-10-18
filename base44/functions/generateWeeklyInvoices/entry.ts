@@ -346,5 +346,10 @@ Deno.serve(async(req)=>{
       });
     } catch(error:any) {console.warn('Billing run audit could not be recorded',String(error?.message||error));}
     return Response.json({success:processingFailed===0 && deliveryFailed===0,...runSummary});
-  } catch(error:any){console.error('generateWeeklyInvoices failed',error);return Response.json({error:error?.message||'Unable to generate invoices'},{status:500});}
+  } catch(error:any){
+    const message=String(error?.message||'Unable to generate invoices');
+    const throttled=Number(error?.status||error?.response?.status)===429||/rate limit|too many requests|\b429\b/i.test(message);
+    console.error('generateWeeklyInvoices failed',message);
+    return Response.json({error:throttled?'Base44 request allowance temporarily exhausted. Historical invoice sending was stopped; retry after API traffic recovers.':message,rate_limited:throttled,retry_after_seconds:throttled?60:undefined},{status:throttled?429:500});
+  }
 });
