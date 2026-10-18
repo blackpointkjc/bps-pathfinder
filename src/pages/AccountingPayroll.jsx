@@ -189,7 +189,15 @@ export default function AccountingPayroll() {
         const period=payrollPeriods.find(p=>p.start_date===entry.pay_period_start&&p.end_date===entry.pay_period_end);
         if(period){
           setSelectedPeriodId(period.id);
-          setPayrollCatchup({state:'error',message:`${message} The affected period is now selected. Use “Run Selected Payroll Report Now” and review the recalculated amount before approving.`});
+          try {
+            setPayrollCatchup({state:'running',message:'Time entries changed. Recalculating this payroll period before approval…'});
+            const response=await base44.functions.invoke('generateScheduledPayroll',{force:true,period_id:period.id,action:'run_now'});
+            const result=response?.data||response||{};
+            if(result.error)throw new Error(result.error);
+            await queryClient.invalidateQueries({queryKey:['accountingPayroll']});
+            await refetchPayroll();
+            setPayrollCatchup({state:'current',message:`Payroll period ${period.period_name||period.end_date} has been recalculated. Review the revised hours and gross amount, then click Approve Paycheck again. No check was approved automatically.`});
+          } catch(recalculateError){setPayrollCatchup({state:'error',message:`${message} Automatic recalculation failed: ${recalculateError?.response?.data?.error||recalculateError?.message||'Unknown error'}. Run Selected Payroll Report Now manually.`});}
         }else setPayrollCatchup({state:'error',message:`${message} The payroll period record is missing; reconcile the period in Payroll Settings.`});
       }else setPayrollCatchup({state:'error',message});
     }
