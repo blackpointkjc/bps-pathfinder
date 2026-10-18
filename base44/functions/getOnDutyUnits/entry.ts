@@ -655,6 +655,8 @@ Deno.serve(async (req) => {
           status: resolvedStatus,
           status_source: confirmedDispatch ? 'confirmed_cad_assignment' : 'user_duty_status',
           additional_roles: user.additional_roles || [],
+          dispatch_hold_new_calls:user.dispatch_hold_new_calls===true,
+          dispatch_hold_reason:user.dispatch_hold_reason||'',
           current_call_id: confirmedCallId,
           current_call_info: confirmedCallInfo,
           current_location: signedInRetained

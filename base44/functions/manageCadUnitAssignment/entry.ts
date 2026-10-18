@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
     const canonicalUnitId = resolvedOfficer?.id || unit_id;
 
     if (action === 'assign') {
+      if(resolvedOfficer?.dispatch_hold_new_calls===true)return Response.json({error:`Dispatch has blocked new calls for ${[resolvedOfficer.rank,resolvedOfficer.last_name].filter(Boolean).join(' ')}. Clear the hold in Dispatch Center before assigning.`,code:'OFFICER_NEW_CALLS_ON_HOLD'},{status:409});
       if (!assigned.map((id: any) => String(id)).includes(String(canonicalUnitId))) {
         const assignedOfficer = resolvedOfficer;
         if (assignedOfficer?.email) {

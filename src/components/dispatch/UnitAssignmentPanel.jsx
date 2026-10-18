@@ -17,10 +17,12 @@ const displayUnitName = (unit) => {
 };
 const displayProperty = (unit) => String(unit?.current_location || unit?.assigned_location || unit?.location || 'No current property').split(':')[0].trim();
 
-export default function UnitAssignmentPanel({ call, calls = [], units = [], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
+export default function UnitAssignmentPanel({ call, calls = [], units = [], allAssignments=[], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [destinationByOfficer,setDestinationByOfficer]=useState({});
     const [reassigning,setReassigning]=useState('');
+    const [holding,setHolding]=useState('');
+    const [localHold,setLocalHold]=useState({});
     const queryClient=useQueryClient();
     const {data:assignments=[]}=useQuery({
         queryKey:['cadUnitRoles',call?.id],enabled:!!call?.id,
@@ -34,19 +36,25 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
     const isAssigned = unit => assignedUnitIds.includes(String(unit.id)) || Boolean(unit.active_officer_id && assignedUnitIds.includes(String(unit.active_officer_id)));
     const assignedUnits = units.filter(u => isAssigned(u) && isOperationalUnit(u));
     
-    const availableUnits = units.filter(u => 
-        isOperationalUnit(u) &&
-        !isAssigned(u) &&
-        String(u.status || '').trim().toLowerCase() === 'available' &&
-        u.connection_stale !== true &&
-        (searchTerm === '' || 
-            u.unit_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.rank?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
-    const otherActiveUnits = units.filter(u => isOperationalUnit(u) && !isAssigned(u)
-        && String(u.status || '').trim().toLowerCase() !== 'available');
+    const holdOf=unit=>localHold[unit.id]??unit.dispatch_hold_new_calls===true;
+    const isOperationalStatus=status=>!['out of service','distress','offline'].includes(String(status||'').toLowerCase());
+    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&u.connection_stale!==true&&!holdOf(u)
+      &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
+    const heldUnits=units.filter(u=>isOperationalUnit(u)&&holdOf(u));
+    const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!availableUnits.includes(u)&&!heldUnits.includes(u));
+    const currentCallCount=unit=>(allAssignments||[]).filter(row=>String(row.unit_id)===String(unit.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase())).length;
+    const changeHold=async(unit,hold)=>{
+      setHolding(unit.id);
+      try{
+        const response=await base44.functions.invoke('setOfficerDispatchHold',{officer_id:unit.id,hold,reason:hold?'Temporarily unavailable for new assignments by dispatch':''});
+        const data=response?.data||response||{};
+        if(!data.success)throw new Error(data.error||'Hold not saved');
+        setLocalHold(prev=>({...prev,[unit.id]:hold}));
+        toast.success(data.message);
+        await onUpdate?.();
+      }catch(error){toast.error(error?.response?.data?.error||error?.message||'Dispatch hold failed');}
+      finally{setHolding('');}
+    };
 
     const handleAssignUnit = async (unit) => {
         if (!call) return;
@@ -68,7 +76,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
             onUpdate();
         } catch (error) {
             console.error('Error assigning unit:', error);
-            toast.error('Failed to assign unit');
+            toast.error(error?.response?.data?.error||error?.message||'Failed to assign unit');
         }
     };
 
@@ -140,7 +148,8 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
                                         <span className={roleOf(unit)==='primary'?'text-emerald-300':'text-blue-300'}>{roleOf(unit)==='primary'?'PRIMARY UNIT':roleOf(unit)==='backup'?'ADDITIONAL UNIT':'ROLE NOT YET VERIFIED'}</span>
-                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
+                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)} · {unit.status||'Duty active'}</p>
+                                        <p className="text-[10px] text-emerald-300">{currentCallCount(unit)} active call(s)</p>
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1">
@@ -171,7 +180,8 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
 
             {/* Available Units */}
             <div className="flex min-h-0 flex-1 flex-col">
-                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Available for Dispatch ({availableUnits.length})</p>
+                <p className="mb-1 text-[10px] font-black tracking-wider text-slate-300">Eligible for New Calls ({availableUnits.length}) · Available, En Route, On Scene & Busy</p>
+                <p className="mb-2 text-[10px] text-cyan-300">Officers can have several assigned calls. Only Dispatch Hold prevents new assignments.</p>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <Input
@@ -192,7 +202,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
                         </div>
                     ) : availableUnits.length === 0 ? (
                         <div className="text-xs text-slate-400 text-center p-2">
-                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No units are currently available for a new dispatch.'}
+                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No signed-in officers can receive another call. Review Dispatch Holds and connection status.'}
                         </div>
                     ) : (
                         availableUnits.map(unit => {
@@ -205,12 +215,14 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#101b29] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#142236]">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
-                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
+                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)} · {unit.status||'Duty active'}</p>
+                                        <p className="text-[10px] text-emerald-300">{currentCallCount(unit)} active call(s)</p>
                                         <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[9px] font-bold text-blue-300">
                                             {unit.unit_number && <span>UNIT {unit.unit_number}</span>}
                                             {distance && <span className="text-slate-500">{(distance * 0.621371).toFixed(1)} mi</span>}
                                         </div>
                                     </div>
+                                    <Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,true)} className="mr-1 h-9 border-amber-700 text-amber-300">Hold</Button>
                                     <Button
                                         size="sm"
                                         onClick={() => handleAssignUnit(unit)}
@@ -223,6 +235,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
                         })
                     )}
                 </div>
+                {!!heldUnits.length&&<div className="mt-3 rounded-lg border border-amber-700/50 bg-amber-950/15 p-2"><p className="mb-2 text-[10px] font-black text-amber-300">DISPATCH HOLD · NEW CALLS BLOCKED ({heldUnits.length})</p>{heldUnits.map(unit=><div key={unit.id} className="flex items-center justify-between gap-2 border-t border-slate-800 py-1.5 text-xs"><span>{displayUnitName(unit)} · {currentCallCount(unit)} active call(s)</span><Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,false)} className="h-8 border-emerald-700 text-emerald-300">Resume Calls</Button></div>)}</div>}
                 {otherActiveUnits.length > 0 && !searchTerm && (
                     <div className="mt-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-2">
                         <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">On duty but unavailable ({otherActiveUnits.length})</p>

@@ -1038,7 +1038,7 @@ export default function DispatchCenter() {
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">CALL SELECTED</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
-                                    <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
+                                    <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} allAssignments={cadAssignmentRows} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
                                 </div>
                             </div>
                         ) : mobileView === 'assignment' ? (

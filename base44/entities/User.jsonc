@@ -31,6 +31,10 @@
     "rank": {
       "type": "string"
     },
+    "dispatch_hold_new_calls": {"type":"boolean","default":false,"description":"Dispatch command has temporarily blocked new call assignments for this officer; existing calls remain assigned."},
+    "dispatch_hold_reason": {"type":"string"},
+    "dispatch_hold_at": {"type":"string","format":"date-time"},
+    "dispatch_hold_by": {"type":"string"},
     "unit_number": {
       "type": "string"
     },
