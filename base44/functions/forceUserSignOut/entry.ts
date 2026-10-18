@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
             heading: null,
             speed: 0,
             accuracy: null,
+            current_call_id: '',
             current_call_info: '',
           }).catch(() => null)
         ));
@@ -185,6 +186,7 @@ Deno.serve(async (req) => {
         heading: null,
         speed: 0,
         accuracy: null,
+        current_call_id: '',
         current_call_info: '',
       }).catch(() => null);
     }
