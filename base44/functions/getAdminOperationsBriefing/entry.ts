@@ -80,7 +80,7 @@ Deno.serve(async req => {
         })),
       ],
     });
-  } catch(error) {
+  } catch(error:any) {
     console.error('Admin operations briefing unavailable',error?.message || error);
     return Response.json({error:'Unable to load administrator operations briefing'},{status:500});
   }

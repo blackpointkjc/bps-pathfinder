@@ -56,9 +56,9 @@ Deno.serve(async (req) => {
       if (['unit_reassigned', 'unit_cleared', 'call_cleared'].includes(event.event_type) && event.unit_id) ids.add(String(event.unit_id));
       let assigned = ids.has(String(user.id)) || ids.has(userEmail);
       for (const id of assigned ? [] : ids) {
-        const unit = await base44.asServiceRole.entities.Unit.get(id).catch(() => null);
+        const unit = await base44.asServiceRole.entities.Unit.get(String(id)).catch(() => null);
         if (String(unit?.user_id || '') === String(user.id) || clean(unit?.user_email).toLowerCase() === userEmail) { assigned = true; break; }
-        const session = await base44.asServiceRole.entities.ActiveOfficer.get(id).catch(() => null);
+        const session = await base44.asServiceRole.entities.ActiveOfficer.get(String(id)).catch(() => null);
         if (clean(session?.officer_email).toLowerCase() === userEmail) { assigned = true; break; }
       }
       if (!assigned) return Response.json({ success: true, claimed: false, not_recipient: true });

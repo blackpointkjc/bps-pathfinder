@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
       description:`Supervisor requested by ${me.full_name || me.email}. Automatically assigned as closest eligible supervisor.`
     });
 
+    if (!assignment?.id) return Response.json({error:'Supervisor assignment record could not be confirmed'},{status:502});
     const assignedUnits = Array.from(new Set([...(call.assigned_units || []).map(String), String(chosen.user.id)]));
     await base44.asServiceRole.entities.DispatchCall.update(callId, { assigned_units: assignedUnits });
     await base44.asServiceRole.entities.User.update(chosen.user.id, { status:'Dispatched', current_call_id:callId, current_call_info:`Supervisor assist · ${call.agency_cad_number || call.bps_reference || call.call_id || call.id}`, status_since:nowIso, last_updated:nowIso }).catch(()=>null);
@@ -156,7 +157,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.Notification.create({ recipient_email:lower(chosen.user.email), type:'call_assignment', title:`Supervisor Assist · ${cad}`, message:`You were automatically assigned as the closest available supervisor to ${call.location || 'an active call'}.`, is_read:false, related_id:callId, priority:'high', requires_acknowledgment:true, source_name:'CAD Supervisor Request' }).catch(()=>null);
 
     return Response.json({ success:true, assigned:true, supervisor:{ id:chosen.user.id, name:label, unit_number:chosen.user.unit_number || '', distance_miles:Number(chosen.distance.toFixed(2)) }, assignment_id:assignment.id });
-  } catch (error) {
+  } catch (error:any) {
     console.error('requestSupervisorAssist failed', error);
     return Response.json({ error:error?.message || 'Unable to request supervisor' }, { status:500 });
   }

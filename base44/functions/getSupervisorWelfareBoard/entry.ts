@@ -49,6 +49,13 @@ Deno.serve(async (req) => {
       if(email && !openDutyByEmail.has(email))openDutyByEmail.set(email,entry);
     }
     const onDutyEmails = new Set(openDutyByEmail.keys());
+    const lastConfirmedWelfare=new Map<string,any>();
+    for(const check of (welfareChecks||[])){
+      if(lower(check.status)!=='ok'||!check.response_at)continue;
+      const key=`${check.call_id}|${check.unit_id}`;
+      const previous=lastConfirmedWelfare.get(key);
+      if(!previous||Date.parse(check.response_at)>Date.parse(previous.response_at))lastConfirmedWelfare.set(key,check);
+    }
     const board:any[] = [];
     for (const a of assignments || []) {
       const call:any = callById.get(String(a.call_id));
@@ -63,7 +70,11 @@ Deno.serve(async (req) => {
       const trustedAction=action&&Date.parse(action.created_date||'')>=Date.parse(a.assigned_at||'');
       const currentStatus=trustedAction&&action.event_type==='unit_on_scene'?'on_scene'
         :trustedAction&&action.event_type==='unit_enroute'?'enroute':a.status;
-      const anchor = lower(currentStatus) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
+      const lastWelfare=lastConfirmedWelfare.get(`${call.id}|${officer.id}`);
+      const anchor = lower(currentStatus)==='on_scene' ? (
+        [a.assigned_at, trustedAction&&action.event_type==='unit_on_scene'?action.created_date:null,lastWelfare?.response_at]
+          .filter(Boolean).sort((a:any,b:any)=>Date.parse(a)-Date.parse(b)).at(-1) || a.assigned_at
+      ) : lower(currentStatus)==='accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));
       const pendingAckSeconds = Math.max(30, Number(call.welfare_acknowledgement_seconds || 120));
       const sceneWelfareSeconds = Math.max(60, Number(call.welfare_check_seconds || 900));
