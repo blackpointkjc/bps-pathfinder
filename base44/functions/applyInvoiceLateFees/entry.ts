@@ -54,8 +54,9 @@ Deno.serve(async req=>{
       // Only one notice per invoice fee. Retry failed notification next run.
       if(original.late_notice_status==='accepted')continue;
       const site=locations.find((row:any)=>String(row.site_name||'').trim()===String(original.site_name||'').trim());
-      const recipient=String(site?.billing_contact_email||original.delivery_email||'management@blackpointkjc.com').trim().toLowerCase();
-      const target=emailOk(recipient)?recipient:'management@blackpointkjc.com';
+      const recipient=String(site?.billing_contact_email||'').trim().toLowerCase();
+      if(!emailOk(recipient)) {results.push({invoice:original.invoice_number,site:original.site_name,error:'Late fee posted, but notice held: verified client billing contact required'});continue;}
+      const target=recipient;
       try{
         await base44.asServiceRole.integrations.Core.SendEmail({to:target,
           subject:`Black Point invoice ${original.invoice_number} — Overdue, 10% late fee assessed`,
