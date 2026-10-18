@@ -157,23 +157,26 @@ Deno.serve(async(req)=>{
     // service periods or sending invoices whose historical rates need review.
     const issueVerifiedDrafts=async()=>{
       let sent=0,held=0,failed=0,updated=0;
+      let providerCooldown=false;
       const results:any[]=[];
       const siteMap=new Map((locations||[]).map((row:any)=>[siteOf(row.site_name).toLowerCase(),row]));
       const active=(invoices||[]).filter((row:any)=>!['void','cancelled'].includes(String(row.status||'').toLowerCase()));
       for(const invoice of active.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').sort((a:any,b:any)=>String(a.period_start).localeCompare(String(b.period_start)))){
-        const fixedDue=dateOffset(String(invoice.period_end||today),15);
+        const fixedDue=/^\d{4}-\d{2}-\d{2}$/.test(String(invoice.period_end||'')) ? dateOffset(String(invoice.period_end),15) : '';
+        if (!fixedDue) {held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'invalid_period_end',error:'Invoice is missing a valid period end date'});continue;}
         if(invoice.due_date!==fixedDue){await base44.asServiceRole.entities.Invoice.update(invoice.id,{due_date:fixedDue});updated++;}
+        if(providerCooldown){held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'email_provider_cooldown',error:'Email provider limit reached earlier in this run; not attempted'});continue;}
         if(invoice.billing_review_required===true||String(invoice.delivery_status||'').toLowerCase()==='review_required'){
-          held++;results.push({invoice:invoice.invoice_number,status:'rate_review_required'});continue;
+          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'rate_review_required',error:'Historical billing rate requires verification'});continue;
         }
         let items:any[]=[];try{items=JSON.parse(invoice.shifts||'[]')}catch{}
         if(!Array.isArray(items)||!items.length||items.some((row:any)=>!(Number(row.rate)>0))||!(Number(invoice.total_amount)>0)||String(invoice.period_end||'')>=today){
-          held++;results.push({invoice:invoice.invoice_number,status:'invalid_lines_or_open_period'});continue;
+          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'invalid_lines_or_open_period',error:'Invalid invoice lines or service period not yet closed'});continue;
         }
         const duplicates=active.filter((other:any)=>other.id!==invoice.id&&siteOf(other.site_name).toLowerCase()===siteOf(invoice.site_name).toLowerCase()
           &&other.period_start<=invoice.period_end&&other.period_end>=invoice.period_start);
         if(duplicates.some((other:any)=>String(other.status||'').toLowerCase()!=='draft'||String(other.invoice_number||'')<String(invoice.invoice_number||''))){
-          held++;results.push({invoice:invoice.invoice_number,status:'overlapping_invoice',overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
+          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:'Overlapping invoice requires review',overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
         }
         const loc=siteMap.get(siteOf(invoice.site_name).toLowerCase()) as any;
         const recipient=String(loc?.billing_contact_email||'').toLowerCase().trim();
@@ -184,14 +187,14 @@ Deno.serve(async(req)=>{
           await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point Invoice ${encode(invoice.invoice_number)} — ${encode(invoice.site_name)}`,
             body:`<div style="font:14px Arial,sans-serif"><h2>BLACK POINT — INVOICE ${encode(invoice.invoice_number)}</h2><p>Property: ${encode(invoice.site_name)}<br>Service: ${encode(invoice.period_start)} through ${encode(invoice.period_end)}<br><b>Due ${fixedDue}</b></p><table><tr><th>Date</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>${lines}</table><h2>$${total.toFixed(2)}</h2><p>One-time 10% late charge may apply after the due date under your service agreement.</p></div>`});
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_email:target,client_email:target,delivery_status:'accepted',delivery_error:'',due_date:fixedDue,sent_at:new Date().toISOString()});
-          sent++;results.push({invoice:invoice.invoice_number,status:'sent',recipient:target});
+          sent++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'sent',recipient:target});
           const clientsForSite=(users||[]).filter((u:any)=>eligibleClient(u)&&(
             String(u.email||'').toLowerCase()===target||String(loc?.assigned_client_email||'').toLowerCase()===String(u.email||'').toLowerCase()||
             [u.assigned_location,...(u.assigned_locations||[]),...(u.assigned_sites||[])].some((x:any)=>siteOf(x).toLowerCase()===siteOf(invoice.site_name).toLowerCase())));
           for(const u of clientsForSite.slice(0,20))await base44.asServiceRole.entities.Notification.create({recipient_email:String(u.email).toLowerCase(),type:'invoice_due',title:`Invoice ${invoice.invoice_number} issued`,message:`${invoice.site_name}: $${total.toFixed(2)}, due ${fixedDue}. View in Client Center.`,related_id:String(invoice.id),is_read:false,priority:'normal',action_link:'/ClientPayrollReport'}).catch(()=>null);
-        }catch(error:any){failed++;await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_status:'failed',delivery_error:String(error?.message||'Email not accepted')}).catch(()=>null);results.push({invoice:invoice.invoice_number,status:'failed',error:String(error?.message||'Mail service failed')});}
+        }catch(error:any){const message=String(error?.message||'Mail service failed');failed++;await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_status:'failed',delivery_error:message}).catch(()=>null);results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'failed',error:message});if(/hourly limit|daily email limit|rate.limit|too many (requests|emails)|quota|cooldown/i.test(message)){providerCooldown=true;}}
       }
-      return {success:failed===0,sent,held,failed,due_dates_updated:updated,results};
+      return {success:failed===0,sent,held,failed,due_dates_updated:updated,email_provider_cooldown:providerCooldown,results};
     };
     if(action==='send_ready_drafts')return Response.json(await issueVerifiedDrafts());
     const clients=(users||[]).filter(eligibleClient);
