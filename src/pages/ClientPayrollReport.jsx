@@ -350,25 +350,25 @@ export default function ClientPayrollReport() {
 
       {/* Invoice Notification Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="!w-[min(96vw,1200px)] !max-w-[1200px] max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle>📋 New Invoices Available</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {clientInvoices.length === 0 ? (
               <p className="text-slate-600">No invoices at this time.</p>
             ) : (
               clientInvoices.map(invoice => {
                 const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
                 return (
-                  <Card key={invoice.id} className="border border-slate-200">
+                  <Card key={invoice.id} className="min-w-0 max-w-full overflow-hidden border border-slate-200"> 
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 break-words">
                           <p className="text-sm font-medium text-slate-600">Invoice #{invoice.invoice_number}</p>
                           <p className="font-semibold text-slate-900">{invoice.site_name}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="min-w-0 text-right">
                           <Badge className={invoice.status === 'paid' ? 'bg-green-600' : invoice.status === 'overdue' ? 'bg-red-600' : 'bg-blue-600'}>
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
@@ -378,9 +378,9 @@ export default function ClientPayrollReport() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="bg-slate-50 rounded-lg overflow-x-auto">
-                        <table className="w-full text-sm">
+                    <CardContent className="min-w-0 max-w-full space-y-4 px-3 sm:px-6">
+                      <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-lg bg-slate-50" tabIndex={0} aria-label="Scrollable invoice line items">
+                        <table className="w-full min-w-[760px] text-sm"> 
                           <thead>
                             <tr className="border-b border-slate-200 bg-slate-100">
                               <th className="text-left p-3 font-medium text-slate-700">Employee</th>
@@ -407,11 +407,11 @@ export default function ClientPayrollReport() {
                           </tbody>
                         </table>
                       </div>
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                      <div className="flex flex-wrap justify-between items-start gap-3 pt-4 border-t border-slate-200">
                         <div>
                           <p className="text-sm text-slate-600">Total Hours: <span className="font-semibold text-slate-900">{invoice.total_hours?.toFixed(2)}</span></p>
                         </div>
-                        <div className="text-right">
+                        <div className="min-w-0 max-w-full break-words text-right">
                           <p className="text-sm text-slate-600">Invoice Total</p>
                           {Number(invoice.late_fee_amount||0)>0&&<><p className="text-xs text-slate-600">Services: ${Number(invoice.base_amount||Number(invoice.total_amount)-Number(invoice.late_fee_amount)).toFixed(2)}</p><p className="text-sm font-semibold text-red-700">10% Late fee: ${Number(invoice.late_fee_amount).toFixed(2)}</p></>}
                           <p className="text-2xl font-bold text-green-600">${Number(invoice.total_amount||0).toFixed(2)}</p>
@@ -428,7 +428,7 @@ export default function ClientPayrollReport() {
                         <div className="text-xs text-slate-500">
                           Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => printStoredInvoice(invoice)}>
+                        <Button variant="outline" size="sm" className="max-w-full whitespace-normal" onClick={() => printStoredInvoice(invoice)}>
                           <Download className="w-4 h-4 mr-2" />
                           View / Print Invoice
                         </Button>
