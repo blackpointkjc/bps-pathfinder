@@ -111,6 +111,9 @@ async function claimAnnouncementEvent(data) {
     return { claimed: false, local_duplicate: true };
   }
   const claim = async () => {
+    // This must happen *inside* the cross-tab Web Lock: the earlier fast-path
+    // local check occurred before the lock and allowed a second queued claim.
+    if(eventKey&&hasLocalAnnouncementClaim(eventKey))return {claimed:false,local_duplicate:true};
     const response = await base44.functions.invoke('claimCadAnnouncement', {
       ...data,
       device_id: navigator.userAgent.slice(0, 250),

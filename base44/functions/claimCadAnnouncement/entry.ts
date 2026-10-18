@@ -111,6 +111,10 @@ Deno.serve(async (req) => {
       event_type: clean(body.event_type),
     });
 
+    // Give a concurrent in-flight request a brief chance to create its
+    // receipt before deciding which device owns the audio claim. This narrows
+    // the race even across browsers without shared Web Locks.
+    await new Promise(resolve=>setTimeout(resolve,220));
     // Self-heal: a concurrent claim for the same user/event can pass the
     // existence check above at the same instant and create a duplicate receipt.
     // Re-query and keep only the earliest; the audit flags duplicates of this

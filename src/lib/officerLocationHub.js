@@ -10,8 +10,8 @@ import { base44, clearBase44ReadCacheMatching, getBase44RequestHealth } from '@/
 const SNAPSHOT_TTL_MS = 60_000;
 const FORCE_REFRESH_DEDUPE_MS = 45_000;
 const MAX_USABLE_GPS_ACCURACY_METERS = 2000;
-const GPS_PUBLISH_MIN_MS = 10 * 1000;
-const HEARTBEAT_PUBLISH_MIN_MS = 60 * 1000;
+const GPS_PUBLISH_MIN_MS = 30 * 1000;
+const HEARTBEAT_PUBLISH_MIN_MS = 2 * 60 * 1000;
 const CROSS_KIND_BURST_GAP_MS = 5 * 1000;
 const PUBLISH_LOCK_PREFIX = 'bps:pathfinder:location-publish:';
 const PUBLISH_STAMP_PREFIX = 'bps:pathfinder:location-publish-at:';
@@ -275,6 +275,7 @@ export async function publishOfficerLocation(data = {}) {
     }
 
     const attemptedAt = Date.now();
+    if(minimumGap>0)notePublishAt(email||'current-user',kind,attemptedAt);
     const response = await base44.functions.invoke('logLocation', { ...data, force_publish: false });
     const payload = response?.data || response || {};
     if (payload.error) throw new Error(payload.error);

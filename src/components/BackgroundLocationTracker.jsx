@@ -299,7 +299,10 @@ export default function BackgroundLocationTracker({ user }) {
         // External NMEA/USB is a live tactical source: publish it at near-live
         // cadence instead of holding a good fix for 30-60 seconds. Moving browser
         // GPS stays conservative to avoid unnecessary backend pressure.
-        const livePushIntervalMs = fix.source === 'external_serial' ? 5000 : moving ? 15000 : 30000;
+        const livePushIntervalMs = moving ? 30000 : 60000;
+        // Keep high-frequency serial/browser fixes locally for navigation;
+        // cloud GPS persists at most every 30 seconds while moving and every
+        // minute while parked. ActiveOfficer realtime pushes still drive maps.
         if (uploadInFlightRef.current || now < rateLimitBackoffUntilRef.current) return;
         if (!restoreLiveSharing && now - Math.max(lastGpsPushRef.current, lastGpsAttemptRef.current) < livePushIntervalMs) return;
         lastGpsAttemptRef.current = now;

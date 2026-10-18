@@ -304,7 +304,13 @@ export const AuthProvider = ({ children }) => {
 
     let active = true;
     let unsubscribe;
-    const checkForcedSignOut = async () => {
+    let lastCheckAt=0;
+    let checking=false;
+    const checkForcedSignOut = async (force=false) => {
+      // One auth check at a time; CAD pages, realtime and tab-focus all share
+      // this AuthContext. A 20-second timer produced 45 reads/15 minutes.
+      if(checking||(!force&&Date.now()-lastCheckAt<90000)||document.visibilityState==='hidden')return;
+      lastCheckAt=Date.now();checking=true;
       try {
         const controls = await base44.entities.UserSessionControl.filter({
           user_id: user.id,
@@ -344,17 +350,17 @@ export const AuthProvider = ({ children }) => {
         base44.auth.logout(window.location.href);
       } catch (error) {
         console.warn('[AUTH] Force sign-out check unavailable:', error?.message);
-      }
+      } finally {checking=false;}
     };
 
     checkForcedSignOut();
     try {
-      unsubscribe = base44.entities.UserSessionControl.subscribe(() => checkForcedSignOut());
+      unsubscribe = base44.entities.UserSessionControl.subscribe(() => checkForcedSignOut(true));
     } catch (_) {}
     // Realtime is the primary path; this is only a dropped-subscription fallback.
     // Do not re-query on every window focus/Alt-Tab because that created request
     // bursts across several open Pathfinder windows.
-    const interval = window.setInterval(checkForcedSignOut, 20 * 1000);
+    const interval = window.setInterval(checkForcedSignOut, 2 * 60 * 1000);
     const checkOnResume = () => { if (document.visibilityState === 'visible') checkForcedSignOut(); };
     window.addEventListener('focus', checkOnResume);
     document.addEventListener('visibilitychange', checkOnResume);
