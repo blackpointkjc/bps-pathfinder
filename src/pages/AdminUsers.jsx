@@ -106,10 +106,17 @@ export default function AdminUsers({ embedded = false }) {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
-    queryFn: async () => await listDirectoryUsers(undefined, 1000, true) || [],
+    queryFn: async () => {
+      const response=await base44.functions.invoke('getAdminUserAccounts',{});
+      const result=response?.data||response||{};
+      if(result.error || !Array.isArray(result.users))throw new Error(result.error||'Administrator account directory unavailable');
+      return result.users;
+    },
     enabled: hasAccess,
     retry: 1,
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchOnMount:'always',
+    refetchOnWindowFocus:true,
   });
 
   const { data: accessRequests = [] } = useQuery({
@@ -572,7 +579,7 @@ export default function AdminUsers({ embedded = false }) {
   console.log('Total users loaded:', users?.length);
   console.log('Is loading:', isLoading);
   console.log('Error:', error);
-  console.log('Users data:', users);
+  // Avoid logging full personnel profiles or private identity fields.
 
   // Pending users have no assigned portal category. Support is an independent
   // employee login and must never require an Officer/reporting-officer role.
