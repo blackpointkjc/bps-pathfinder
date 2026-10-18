@@ -60,8 +60,12 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
     })
     .filter(Boolean)
     .sort((a, b) => {
+      // An early punch for the next scheduled block can fall inside a previous
+      // block. Match the nearest scheduled START, not merely the first interval
+      // containing the timestamp; otherwise valid early arrivals are misattributed.
+      if (a.distance !== b.distance) return a.distance - b.distance;
       if (a.inside !== b.inside) return a.inside ? -1 : 1;
-      return a.distance - b.distance;
+      return a.start - b.start;
     });
 
   return candidates[0]?.schedule || null;
