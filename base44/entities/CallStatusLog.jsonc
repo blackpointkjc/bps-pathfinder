@@ -54,6 +54,7 @@
         "priority_call",
         "bolo_published",
         "unit_dispatched",
+        "unit_acknowledged",
         "unit_enroute",
         "unit_on_scene",
         "unit_cleared",
