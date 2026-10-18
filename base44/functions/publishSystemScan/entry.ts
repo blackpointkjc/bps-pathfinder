@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       activeByKey.set(String(issue.issue_key), issue);
     }
     const currentIssueKeys = new Set<string>();
+    const updatedIssueIds = new Set<string>();
     let issueRowsCreated = 0;
     let issueRowsResolved = 0;
     const newlyDetectedIssues: any[] = [];
@@ -80,6 +81,7 @@ Deno.serve(async (req) => {
         occurrence_count: Math.max(1, Number(existing?.occurrence_count || 0) + 1),
       };
       if (existing) {
+        updatedIssueIds.add(String(existing.id));
         await base44.asServiceRole.entities.SystemOutage.update(existing.id, issueData);
       } else {
         const createdIssue = await base44.asServiceRole.entities.SystemOutage.create(issueData);
@@ -89,7 +91,7 @@ Deno.serve(async (req) => {
     }
     for (const [issueKey, issue] of activeByKey.entries()) {
       if (currentIssueKeys.has(issueKey)) continue;
-      if ([...currentIssueKeys].some(key => issueKey.startsWith(key + ':') && issue.issue_key === activeByKey.get(key)?.issue_key)) continue;
+      if (updatedIssueIds.has(String(issue.id))) continue;
       if ((audit.incomplete_areas || []).includes(issue.component)) continue;
       if (audit.scan_incomplete || findings.some((finding:any) => String(finding.key || '').startsWith('service:') || finding.key === 'auto-dispatch:evaluation-read')) continue;
       await base44.asServiceRole.entities.SystemOutage.update(issue.id, {
