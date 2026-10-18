@@ -406,6 +406,7 @@ const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'SupervisorChat']);
 const _COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
 
 function hasFullAccess(user) {
+  if (user?.user_type === 'client' || user?.rank === 'Client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client')) return false;
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
 }
 
@@ -466,7 +467,7 @@ function allowedCenters(user) {
   const rank = String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
   const supervisor = roles.has('supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(rank);
   // Student and client accounts are separate identities, never employee overlays.
-  if (roles.has('client') || user?.user_type === 'client') return ['client'];
+  if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
   if (hasFullAccess(user)) return ['admin', ...(roles.has('accounting') ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
 
@@ -507,6 +508,10 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
+  // A client identity is exclusive: deny every non-client route, including
+  // shared/unmapped pages and communication tools, regardless of stale roles.
+  const clientIdentity = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
+  if (clientIdentity) return pageName === 'ClientCenter' || (PAGE_TO_CENTERS[pageName] || []).includes('client') && !(PAGE_TO_CENTERS[pageName] || []).some(center => center !== 'client');
   const studentAccess = normalizedRoles(user).has('student');
   if (studentAccess) return pageName === 'StudentPortal';
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
