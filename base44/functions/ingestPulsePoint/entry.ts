@@ -507,8 +507,11 @@ Deno.serve(async (req) => {
     for (const row of incoming) {
       const existing = existingByExternal.get(row.external_call_id);
       if (!existing) continue;
+      const normalized=priorityFor(row.incident);
+      const rank:any={low:0,medium:1,high:2,critical:3};
+      const safePriority=(rank[String(row.priority||'low').toLowerCase()]??0)>=(rank[normalized]??0)?row.priority:normalized;
       const patch = {
-        ...row,
+        ...row,priority:safePriority,
         bps_reference: '',
         call_id: 'PP',
         source_first_seen_at: existing.source_first_seen_at || existing.created_date || new Date().toISOString(),

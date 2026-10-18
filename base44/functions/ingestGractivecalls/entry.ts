@@ -436,7 +436,14 @@ async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
 }
 
 function persistableCall(call: any) {
-  return call || {};
+  if(!call)return {};
+  // Always normalize at the final persistence boundary, not only when the
+  // upstream row is first parsed. Website/API merges and rechecks must never
+  // downgrade a D.O.A. incident to Low on the next one-minute sync.
+  const required=normalizePriority(call.incident);
+  const rank:any={low:0,medium:1,high:2,critical:3};
+  const current=String(call.priority||'low').toLowerCase();
+  return {...call,priority:(rank[current]??0)>=(rank[required]??0)?current:required};
 }
 
 function changed(existing: any, incoming: any) {
@@ -1282,7 +1289,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
     }
     let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming).map(call => ({
-      ...call,
+      ...persistableCall(call),
       source_first_seen_at: call.source_first_seen_at || sourceObservedAt,
     }));
     // Website-only rows do not carry map coordinates. Geocode only the newest
