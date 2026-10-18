@@ -443,15 +443,12 @@ export default function Dashboard({ embedded = false }) {
                   <Calendar className="w-4 h-4 text-violet-400" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Today's Schedule</span>
                 </div>
-                {todaySchedule ? (
-                  <div>
-                    <p className="text-2xl md:text-3xl font-bold text-white">
-                      {todaySchedule.start_time}
-                      <span className="text-slate-500 text-xl"> – {todaySchedule.end_time}</span>
-                    </p>
-                    <p className="text-sm text-slate-300 mt-2 font-medium flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {todaySchedule.location}
-                    </p>
+                {todaySchedule?.length ? (
+                  <div className="space-y-3">
+                    {todaySchedule.map(shift => <div key={shift.id} className="border-b border-violet-400/20 pb-2 last:border-0 last:pb-0">
+                      <p className="text-xl md:text-2xl font-bold text-white">{shift.start_time}<span className="text-slate-400"> – {shift.end_time}</span></p>
+                      <p className="text-sm text-slate-300 mt-1 font-medium flex items-start gap-1"><MapPin className="w-3 h-3 mt-1 shrink-0" /> {shift.location}</p>
+                    </div>)}
                   </div>
                 ) : (
                   <p className="text-lg md:text-xl text-slate-400 font-medium">No shift scheduled</p>
@@ -540,7 +537,7 @@ export default function Dashboard({ embedded = false }) {
         )}
 
         {/* Today's Shift Banner */}
-        {todaySchedule && (
+        {todaySchedule?.length > 0 && (
           <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-950/50 to-indigo-950/30 backdrop-blur-xl p-4 md:p-5">
             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-violet-500/15 blur-2xl" />
             <div className="relative flex items-start gap-3">
@@ -548,9 +545,9 @@ export default function Dashboard({ embedded = false }) {
                 <Calendar className="h-4 w-4 md:h-5 md:w-5 text-violet-400" />
               </div>
               <div className="text-violet-100 text-sm md:text-base">
-                <strong className="text-white">Today's Shift:</strong> {todaySchedule.location} • {todaySchedule.start_time} - {todaySchedule.end_time}
-                {todaySchedule.special_instructions && (
-                  <span className="block mt-1 text-xs md:text-sm text-violet-300">{todaySchedule.special_instructions}</span>
+                <strong className="text-white">Today's Shift:</strong> {todaySchedule.map(shift=>`${shift.location} • ${shift.start_time} - ${shift.end_time}`).join(' | ')}
+                {todaySchedule.some(shift=>shift.special_instructions) && (
+                  <span className="block mt-1 text-xs md:text-sm text-violet-300">{todaySchedule.map(shift=>shift.special_instructions).filter(Boolean).join(' | ')}</span>
                 )}
               </div>
             </div>
