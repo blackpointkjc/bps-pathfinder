@@ -20,14 +20,21 @@ Deno.serve(async (req) => {
     // membership still must be closed so the call cannot return to their queue.
     if (!['Acknowledged','Cleared'].includes(status) && call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
 
+    const [ownedUnits, ownedSessions]=await Promise.all([
+      base44.asServiceRole.entities.Unit.filter({user_id:user.id},'-last_update_at',30).catch(()=>[]),
+      base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:user.email},'-last_update',15).catch(()=>[]),
+    ]);
+    const aliases=[String(user.id),String(user.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(ownedSessions||[]).map((row:any)=>String(row.id))];
+    const assignmentRows=(await Promise.all(aliases.map(id=>base44.asServiceRole.entities.CallAssignment.filter({call_id,unit_id:id},'-assigned_at',30).catch(()=>[])))).flat();
+    const hasActiveAssignment=assignmentRows.some((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
     const assignedIds = assigned.map((id:any) => String(id));
-    if (!assignedIds.includes(String(user.id)) && user.role !== 'admin') {
+    if (!assignedIds.some((id:string)=>aliases.includes(id)) && !hasActiveAssignment && user.role !== 'admin') {
       return Response.json({ error: 'You must be assigned to this call before changing its status' }, { status: 403 });
     }
 
     const now = new Date().toISOString();
-    const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id, unit_id: user.id }).catch(() => []);
+    const assignments = assignmentRows;
     const assignmentStatus = status === 'Acknowledged' ? 'accepted' : status === 'Enroute' ? 'enroute' : status === 'On Scene' ? 'on_scene' : 'cleared';
     for (const assignment of assignments || []) {
       const patch: Record<string, unknown> = { status: assignmentStatus };
@@ -46,7 +53,7 @@ Deno.serve(async (req) => {
       if (status === 'On Scene' && !call.time_on_scene) update.time_on_scene = now;
       if (status === 'Cleared') {
         const allAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id }).catch(() => []);
-        const otherActive = (allAssignments || []).some((a: any) => String(a.unit_id) !== String(user.id) && !['cleared','cancelled'].includes(String(a.status || '').toLowerCase()));
+        const otherActive = (allAssignments || []).some((a: any) => !aliases.includes(String(a.unit_id)) && !['cleared','cancelled','canceled'].includes(String(a.status || '').toLowerCase()));
         if (otherActive) {
           delete update.status;
         } else {
@@ -57,7 +64,7 @@ Deno.serve(async (req) => {
         }
       }
       if (status === 'Cleared') {
-        update.assigned_units = assignedIds.filter((id: string) => id !== String(user.id));
+        update.assigned_units = assignedIds.filter((id:string)=>!aliases.includes(id));
       }
       if (Object.keys(update).length) await base44.asServiceRole.entities.DispatchCall.update(call_id, update);
     }

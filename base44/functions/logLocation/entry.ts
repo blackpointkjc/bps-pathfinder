@@ -109,6 +109,20 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, session_ended: true, records_updated: ended.filter(Boolean).length });
     }
 
+    // A forced sign-out must not be undone by an in-flight or background GPS
+    // heartbeat from the old browser tab. Only check control records when a
+    // retired presence tries to reactivate (not on every 10-second GPS ping).
+    if (records?.[0]?.session_active === false) {
+      const controls = await base44.asServiceRole.entities.UserSessionControl.filter({
+        user_id:user.id,action:'force_sign_out',active:true,
+      },'-issued_at',5).catch(()=>[]);
+      const blocked=(controls||[]).some((control:any)=>{
+        const expires=Date.parse(control.expires_at||'');
+        return Number.isFinite(expires)&&expires>Date.now();
+      });
+      if(blocked) return Response.json({error:'Your Pathfinder session was ended by an administrator. Sign in again after the forced sign-out is acknowledged.'},{status:403});
+    }
+
     // Duty status and app-session tracking are separate concerns. Going Out of
     // Service (clock-out, supervisor action, or the officer's own toggle) does
     // not end the signed-in app session, so it must not stop GPS publishing or

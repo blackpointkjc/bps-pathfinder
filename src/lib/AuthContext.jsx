@@ -348,12 +348,17 @@ export const AuthProvider = ({ children }) => {
     // Realtime is the primary path; this is only a dropped-subscription fallback.
     // Do not re-query on every window focus/Alt-Tab because that created request
     // bursts across several open Pathfinder windows.
-    const interval = window.setInterval(checkForcedSignOut, 5 * 60 * 1000);
+    const interval = window.setInterval(checkForcedSignOut, 20 * 1000);
+    const checkOnResume = () => { if (document.visibilityState === 'visible') checkForcedSignOut(); };
+    window.addEventListener('focus', checkOnResume);
+    document.addEventListener('visibilitychange', checkOnResume);
 
     return () => {
       active = false;
       if (typeof unsubscribe === 'function') unsubscribe();
       window.clearInterval(interval);
+      window.removeEventListener('focus', checkOnResume);
+      document.removeEventListener('visibilitychange', checkOnResume);
     };
   }, [isAuthenticated, user?.id, user?.email]);
 

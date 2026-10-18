@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({ success: true, queue, current_call_id: queue[0]?.id || '', count: queue.length });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getMyDispatchQueue failed', error);
     return Response.json({ error: error?.message || 'Unable to load officer dispatch queue' }, { status: 500 });
   }

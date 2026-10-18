@@ -37,7 +37,12 @@ Deno.serve(async (req) => {
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
     const now = Date.now();
-    const onDutyEmails = new Set((dutyEntries || []).filter((entry:any) => entry.clock_in && !entry.clock_out && entry.archived !== true).map((entry:any) => lower(entry.officer_email)));
+    const openDutyByEmail=new Map<string,any>();
+    for(const entry of (dutyEntries||[]).filter((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true)) {
+      const email=lower(entry.officer_email);
+      if(email && !openDutyByEmail.has(email))openDutyByEmail.set(email,entry);
+    }
+    const onDutyEmails = new Set(openDutyByEmail.keys());
     const board:any[] = [];
     for (const a of assignments || []) {
       const call:any = callById.get(String(a.call_id));
@@ -45,7 +50,9 @@ Deno.serve(async (req) => {
       if (!call || !officer) continue;
       // Historical or off-duty assignments remain in CAD but are not current welfare escalations.
       const assignedAtMs = new Date(a.assigned_at || 0).getTime();
-      if (!onDutyEmails.has(lower(officer.email)) || !Number.isFinite(assignedAtMs) || assignedAtMs <= 0 || now - assignedAtMs > 2 * 60 * 60 * 1000) continue;
+      const currentShift = openDutyByEmail.get(lower(officer.email));
+      const started = currentShift?.clock_in ? Date.parse(currentShift.clock_in)-5*60*1000 : now-12*60*60*1000;
+      if (!onDutyEmails.has(lower(officer.email)) || !Number.isFinite(assignedAtMs) || assignedAtMs < started || assignedAtMs > now+60000) continue;
       const anchor = lower(a.status) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));
       const pendingAckSeconds = Math.max(30, Number(call.welfare_acknowledgement_seconds || 120));

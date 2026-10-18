@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       ]);
       const now = new Date();
       const issuedAt = now.toISOString();
-      const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+      const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
       const actorName = [caller.rank, caller.last_name].filter(Boolean).join(' ') || caller.full_name || caller.email;
       const activeUserIds = new Set((units || [])
         .filter((unit: any) => lower(unit.status) !== 'out of service')
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const issuedAt = now.toISOString();
-    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
     const actorName = [caller.rank, caller.last_name].filter(Boolean).join(' ') || caller.full_name || caller.email;
 
     const earlier = await base44.asServiceRole.entities.UserSessionControl.filter({
