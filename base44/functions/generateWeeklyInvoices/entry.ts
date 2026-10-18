@@ -191,8 +191,34 @@ Deno.serve(async(req)=>{
         }
         const duplicates=active.filter((other:any)=>other.id!==invoice.id&&siteOf(other.site_name).toLowerCase()===siteOf(invoice.site_name).toLowerCase()
           &&other.period_start<=invoice.period_end&&other.period_end>=invoice.period_start);
+        // Reconcile against actual shifts, not solely intersecting invoice date ranges.
+        // Only published/issued line items can establish that work has already been billed.
+        const issued=duplicates.filter((row:any)=>['sent','paid','overdue','partial','pending'].includes(String(row.status||'').toLowerCase()));
+        const lineDay=(line:any)=>{const raw=String(line?.date||'');if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;const d=new Date(raw);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-CA',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(d):'';};
+        const lineKey=(line:any)=>[lineDay(line),Number(line?.hours||0).toFixed(2),String(line?.officer||'').trim().split(/\\s+/).at(-1)?.toLowerCase()||''].join('|');
+        const billedKeys=new Set<string>();
+        for(const old of issued){try{const lines=JSON.parse(old.shifts||'[]');if(Array.isArray(lines))for(const row of lines)billedKeys.add(lineKey(row));}catch{}}
+        const remaining=items.filter((row:any)=>!billedKeys.has(lineKey(row)));
+        if(issued.length && remaining.length<items.length){
+          const before={period_start:invoice.period_start,period_end:invoice.period_end,shifts:invoice.shifts,total_amount:invoice.total_amount,status:invoice.status};
+          let history:any[]=[];try{history=JSON.parse(invoice.revision_history||'[]');if(!Array.isArray(history))history=[];}catch{}
+          if(!remaining.length){
+            await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'void',delivery_status:'duplicate_reconciled',notes:[invoice.notes,`Superseded: all recorded shifts already included in issued invoice(s) ${issued.map((row:any)=>'#'+row.invoice_number).join(', ')}.`].filter(Boolean).join(' '),revision_history:JSON.stringify([...history,{when:new Date().toISOString(),reason:'Voided duplicate unsent draft after exact shift matching',prior:before}].slice(-50))});
+            updated++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'duplicate_reconciled',error:'Duplicate unsent draft voided; work already appears on an issued invoice.'});continue;
+          }
+          const dates=remaining.map(lineDay);
+          const newStart=dates.every(Boolean)?dates.slice().sort()[0]:'';
+          const newEnd=dates.every(Boolean)?dates.slice().sort().at(-1):'';
+          const stillOverlaps=issued.some((old:any)=>newStart<=old.period_end&&newEnd>=old.period_start);
+          if(newStart && newEnd && !stillOverlaps && remaining.every((row:any)=>Number.isFinite(Number(row.amount)))){
+            const total=remaining.reduce((sum:number,row:any)=>sum+Number(row.amount),0);
+            const countHours=remaining.reduce((sum:number,row:any)=>sum+Number(row.hours||0),0);
+            await base44.asServiceRole.entities.Invoice.update(invoice.id,{period_start:newStart,period_end:newEnd,due_date:dateOffset(newEnd,15),shifts:JSON.stringify(remaining),total_hours:dollars(countHours),total_amount:dollars(total),base_amount:dollars(total),delivery_status:'pending',notes:[invoice.notes,'Reconciled against issued invoice shifts; duplicate work excluded.'].filter(Boolean).join(' '),revision_history:JSON.stringify([...history,{when:new Date().toISOString(),reason:'Trimmed duplicate work and narrowed draft to unbilled shifts',prior:before}].slice(-50))});
+            updated++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'draft_reconciled',error:`Draft updated to unbilled shifts (${newStart}–${newEnd}); review before sending.`});continue;
+          }
+        }
         if(duplicates.some((other:any)=>String(other.status||'').toLowerCase()!=='draft'||String(other.invoice_number||'')<String(invoice.invoice_number||''))){
-          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:`Overlaps invoice(s) ${duplicates.map((row:any)=>'#'+row.invoice_number).join(', ')} for the same site and service dates; review the billed shifts before sending.`,overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
+          held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'overlapping_invoice',error:`Overlaps invoice(s) ${duplicates.map((row:any)=>'#'+row.invoice_number).join(', ')}; unbilled shifts or differing records require reconciliation.`,overlaps:duplicates.map((row:any)=>row.invoice_number)});continue;
         }
         const loc=siteMap.get(siteOf(invoice.site_name).toLowerCase()) as any;
         if(!loc){held++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'unknown_site',error:'Billing site no longer exists; review before sending'});continue;}
