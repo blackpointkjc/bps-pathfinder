@@ -69,8 +69,16 @@ Deno.serve(async (req) => {
         base44.asServiceRole.entities.CallStatusLog.filter({ call_id: call.id }, '-created_date', 120),
         base44.asServiceRole.entities.CallAssignment.filter({ call_id:call.id },'-assigned_at',80),
       ]);
+      const mirroredEvent=(row:any)=>{
+        const prefix={unit_acknowledged:'[ACKNOWLEDGED]',unit_enroute:'[ENROUTE]',unit_on_scene:'[ON SCENE]',unit_cleared:'[CLEARED]'}[String(row.event_type||'')];
+        if(!prefix)return false;
+        const eventAt=Date.parse(row.created_date||'');
+        return (notes||[]).some((note:any)=>String(note.author_id)===String(row.unit_id)
+          && String(note.note||'').startsWith(prefix)
+          && Math.abs(Date.parse(note.created_date||'')-eventAt)<15000);
+      };
       const sharedNotes=[...(notes||[]).map((row:any)=>({...row,kind:'note',author_name:actors.has(String(row.author_id))?named(actors.get(String(row.author_id))):row.author_name||'Dispatch',shown_at:row.created_date})),
-        ...(logs||[]).filter((row:any)=>row.event_type!=='call_updated'||row.notes||row.announcement_text).map((row:any)=>({
+        ...(logs||[]).filter((row:any)=>(row.event_type!=='call_updated'||row.notes||row.announcement_text)&&!mirroredEvent(row)).map((row:any)=>({
           id:`log-${row.id}`,kind:'activity',author_name:actors.has(String(row.unit_id))?named(actors.get(String(row.unit_id))):row.unit_name||'Dispatch',
           note:`[${String(row.event_type||'UPDATE').replaceAll('_',' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`,
           shown_at:row.created_date,
