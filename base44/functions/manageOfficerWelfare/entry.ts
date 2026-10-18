@@ -113,9 +113,11 @@ Deno.serve(async (req) => {
       if(!callId)return Response.json({error:'Select your assigned call to send a welfare check'},{status:400});
       const call=await base44.asServiceRole.entities.DispatchCall.get(callId).catch(()=>null);
       if(!call||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))return Response.json({error:'The active call is no longer available'},{status:404});
-      const assignmentRows=await base44.asServiceRole.entities.CallAssignment.filter({call_id:callId,unit_id:me.id},'-assigned_at',20);
-      if(!(assignmentRows||[]).some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))) && !(call.assigned_units||[]).map(String).includes(String(me.id)))return Response.json({error:'Only assigned personnel may submit a welfare check for this call'},{status:403});
-      const open=await base44.asServiceRole.entities.OfficerWelfareCheck.filter({call_id:callId,unit_id:String(me.id),status:'pending'},'-requested_at',1);
+      const allCallAssignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:callId},'-assigned_at',100);
+      const assignmentRows=(allCallAssignments||[]).filter((a:any)=>String(a.unit_id)===String(me.id));
+      if(!assignmentRows.some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))) && !(call.assigned_units||[]).map(String).includes(String(me.id)))return Response.json({error:'Only assigned personnel may submit a welfare check for this call'},{status:403});
+      const allWelfare=await base44.asServiceRole.entities.OfficerWelfareCheck.filter({call_id:callId},'-requested_at',100);
+      const open=(allWelfare||[]).filter((row:any)=>String(row.unit_id)===String(me.id)&&lower(row.status)==='pending').slice(0,1);
       if(open?.length){
         const updated=await base44.asServiceRole.entities.OfficerWelfareCheck.update(open[0].id,{status:'ok',response_at:now,response_by:String(me.id),response_note:'Officer voluntarily checked in — Welfare OK'});
         await closeWelfareNotifications(base44,open[0].id,now);

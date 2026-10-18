@@ -48,12 +48,17 @@ Deno.serve(async (req) => {
       const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: event.call_id });
       const autoAssignment = event.triggering_action === 'geofenceDispatchAssignment.live'
         && ['unit_dispatched','additional_unit'].includes(event.event_type);
-      const ids = new Set((autoAssignment ? [event.unit_id] : (call?.assigned_units || [])).filter(Boolean).map(String));
-      for (const assignment of autoAssignment ? [] : (assignments || [])) {
-        if (!['cleared', 'cancelled'].includes(clean(assignment.status).toLowerCase())) ids.add(String(assignment.unit_id));
+      // All events describing a particular officer must be delivered ONLY to
+      // that officer. Other responders may read the common log, but do not
+      // receive speech saying "you were unassigned" from someone else's call.
+      const privateUnitEvent=new Set(['unit_reassigned','unit_cleared','unit_acknowledged','unit_enroute','unit_on_scene','unit_available','unit_dispatched','additional_unit']);
+      const ids = new Set<string>();
+      if(privateUnitEvent.has(String(event.event_type))) {
+        if(event.unit_id)ids.add(String(event.unit_id));
+      } else {
+        for (const id of (call?.assigned_units||[]))if(id)ids.add(String(id));
+        for (const assignment of assignments||[])if(!['cleared','cancelled','canceled'].includes(clean(assignment.status).toLowerCase()))ids.add(String(assignment.unit_id));
       }
-      // The departing officer must still hear their own unassignment/clear.
-      if (['unit_reassigned', 'unit_cleared', 'call_cleared'].includes(event.event_type) && event.unit_id) ids.add(String(event.unit_id));
       let assigned = ids.has(String(user.id)) || ids.has(userEmail);
       for (const id of assigned ? [] : ids) {
         const unit = await base44.asServiceRole.entities.Unit.get(String(id)).catch(() => null);
@@ -63,7 +68,7 @@ Deno.serve(async (req) => {
       }
       if (!assigned) return Response.json({ success: true, claimed: false, not_recipient: true });
       announcementText = event.event_type === 'unit_reassigned'
-        ? 'You have been unassigned from the call.'
+        ? (clean(event.announcement_text)||'Dispatch advises: you are clear of the previous assignment. Acknowledge your reassignment instructions.')
         : event.event_type === 'call_cancelled'
           ? 'Your assigned call has been cancelled. Return 10-8.'
           : event.event_type === 'call_cleared'

@@ -31,8 +31,17 @@ Deno.serve(async req=>{
     const userIds=new Set([...notes,...logs].map((row:any)=>String(row.author_id||row.unit_id||'')).filter(Boolean));
     const [directory]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',450).catch(()=>[])]);
     const actors=new Map((directory||[]).filter((u:any)=>userIds.has(String(u.id))).map((u:any)=>[String(u.id),u]));
+    // Historical records predate canonical User IDs. Resolve legacy usernames,
+    // unit identifiers and email prefixes without changing the audit record.
+    const alias=new Map<string,any>();
+    for(const officer of directory||[]){
+      const keys=[officer.id,officer.email,officer.username,officer.unit_number&&`Unit ${officer.unit_number}`,
+        String(officer.email||'').split('@')[0],officer.full_name,[officer.rank,officer.last_name].filter(Boolean).join(' ')];
+      for(const key of keys)if(key)alias.set(lower(key),officer);
+    }
     const label=(id:string,fallback:string)=>{
-      if(actors.has(id))return name(actors.get(id));
+      const resolved=actors.get(id)||alias.get(lower(id))||alias.get(lower(fallback));
+      if(resolved)return name(resolved);
       if(fallback==='Dispatch'||fallback==='CAD')return fallback;
       if(/^(Colonel|Lt Colonel|Lieutenant Colonel|Major|Captain|Lieutenant|Sergeant|Sgt|Corporal|Officer)\s+/i.test(fallback))return fallback;
       return fallback.includes('@')?'Dispatch':`Officer ${fallback.split(/\s+/).pop()||'Unknown'}`;
