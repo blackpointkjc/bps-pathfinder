@@ -19,11 +19,13 @@ const categories = [
   ['equipment','Equipment'], ['supplies','Supplies'], ['fuel','Fuel'], ['maintenance','Maintenance'],
   ['professional_services','Professional services'], ['taxes_fees','Taxes & fees'], ['marketing','Marketing'], ['other','Other']
 ];
+const emptyRecurring={vendor:'',category:'rent',description:'',amount:'',site_name:'',start_date:format(new Date(),'yyyy-MM-dd'),status_on_post:'unpaid',notes:''};
 const emptyForm = { expense_date: format(new Date(), 'yyyy-MM-dd'), vendor: '', category: 'other', description: '', amount: '', site_name: '', reference_number: '', status: 'paid', due_date: '', paid_date: format(new Date(), 'yyyy-MM-dd'), notes: '' };
 
 export default function AccountingExpenses() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
+  const [recurringForm,setRecurringForm]=useState(emptyRecurring);
   const [reviewNotes, setReviewNotes] = useState({});
   const [selectedExpense, setSelectedExpense] = useState(null);
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
@@ -45,6 +47,7 @@ export default function AccountingExpenses() {
     refetchOnWindowFocus: false,
   });
   const expenses = accountingData.companyExpenses || [];
+  const recurringBills=accountingData.recurringBills || [];
   const officerExpenses = accountingData.expenseReports || [];
   const pending = officerExpenses.filter(item => String(item.status || '').toLowerCase() === 'pending');
   const approved = officerExpenses.filter(item => ['approved','reimbursed','paid'].includes(String(item.status || '').toLowerCase()));
@@ -72,6 +75,21 @@ export default function AccountingExpenses() {
     mutationFn: ({id,status}) => invokeExpense({action:'update_company_status',id,status,paid_date:format(new Date(),'yyyy-MM-dd')}),
     onSuccess: async (_,variables) => { await refresh();toast.success(`Bill marked ${variables.status}`); },
     onError: error => toast.error(error?.response?.data?.error || error?.message || 'Unable to update company bill'),
+  });
+  const saveRecurring=useMutation({
+    mutationFn:data=>invokeExpense({action:'create_recurring',data}),
+    onSuccess:async()=>{await refresh();setRecurringForm(emptyRecurring);toast.success('Monthly bill schedule saved. The next due occurrence will post automatically at 8 AM Eastern.');},
+    onError:e=>toast.error(e?.response?.data?.error||e?.message||'Recurring bill could not be saved'),
+  });
+  const changeRecurring=useMutation({
+    mutationFn:({id,active})=>invokeExpense({action:'set_recurring_active',id,active}),
+    onSuccess:async()=>{await refresh();toast.success('Recurring schedule updated');},
+    onError:e=>toast.error(e?.response?.data?.error||e?.message||'Could not change recurring schedule'),
+  });
+  const postRecurring=useMutation({
+    mutationFn:()=>invokeExpense({action:'post_due_recurring'}),
+    onSuccess:async result=>{await refresh();toast.success(`${result.posted||0} due recurring bill(s) posted to the expense ledger`);},
+    onError:e=>toast.error(e?.response?.data?.error||e?.message||'Due bills could not be posted'),
   });
   const removeExpense = useMutation({
     mutationFn: id => invokeExpense({ action: 'delete_company', id }),
@@ -108,10 +126,11 @@ export default function AccountingExpenses() {
     {!!loadErrors.length && <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Accounting records are incomplete: {loadErrors.join(', ')}. Financial actions are temporarily disabled to avoid acting on incomplete records.</div>}
 
     <Tabs defaultValue="ledger" className="space-y-5">
-      <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl bg-slate-100 p-1">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 sm:grid-cols-4">
         <TabsTrigger value="ledger">Ledger ({expenses.length})</TabsTrigger>
         <TabsTrigger value="pending">Pending approvals ({pending.length})</TabsTrigger>
         <TabsTrigger value="approved">Approved ({approved.length})</TabsTrigger>
+        <TabsTrigger value="recurring">Monthly Bills ({recurringBills.length})</TabsTrigger>
       </TabsList>
 
       <TabsContent value="ledger">
@@ -136,6 +155,25 @@ export default function AccountingExpenses() {
         </div>
       </TabsContent>
 
+      <TabsContent value="recurring" className="space-y-4">
+        <Card className="border-slate-200"><CardContent className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold">Monthly Recurring Bill Schedule</h2><Button type="button" variant="outline" disabled={postRecurring.isPending} onClick={()=>postRecurring.mutate()}>{postRecurring.isPending?'Posting due bills…':'Post Bills Due Now'}</Button></div>
+          <p className="text-sm text-slate-600">One unpaid or paid expense is posted on each scheduled monthly due date at 8 AM Eastern. Each occurrence has its own reference; retries will not intentionally duplicate the same bill.</p>
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();if(!financialSourcesReady)return toast.error('Accounting data is still loading.');saveRecurring.mutate({...recurringForm,amount:Number(recurringForm.amount)})}}>
+            <div><Label>Vendor</Label><Input required value={recurringForm.vendor} onChange={e=>setRecurringForm(prev=>({...prev,vendor:e.target.value}))}/></div>
+            <div><Label>Amount ($)</Label><Input type="number" min="0.01" step="0.01" required value={recurringForm.amount} onChange={e=>setRecurringForm(prev=>({...prev,amount:e.target.value}))}/></div>
+            <div><Label>First due date</Label><Input required type="date" value={recurringForm.start_date} onChange={e=>setRecurringForm(prev=>({...prev,start_date:e.target.value}))}/></div>
+            <div><Label>Default payment status</Label><Select value={recurringForm.status_on_post} onValueChange={value=>setRecurringForm(prev=>({...prev,status_on_post:value}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="unpaid">Unpaid · requires payment</SelectItem><SelectItem value="paid">Already paid automatically</SelectItem></SelectContent></Select></div>
+            <div><Label>Category</Label><Select value={recurringForm.category} onValueChange={value=>setRecurringForm(prev=>({...prev,category:value}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{categories.map(([key,label])=><SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Description</Label><Input required value={recurringForm.description} onChange={e=>setRecurringForm(prev=>({...prev,description:e.target.value}))}/></div>
+            <div><Label>Site / cost center</Label><Input value={recurringForm.site_name} onChange={e=>setRecurringForm(prev=>({...prev,site_name:e.target.value}))}/></div>
+            <div className="flex items-end"><Button type="submit" className="w-full" disabled={!financialSourcesReady || saveRecurring.isPending}>{saveRecurring.isPending?'Saving…':'Save Monthly Bill'}</Button></div>
+          </form>
+        </CardContent></Card>
+        <Card className="border-slate-200"><CardContent className="space-y-2 p-5"><h3 className="font-bold">Scheduled Monthly Bills</h3>
+          {recurringBills.length===0?<p className="py-5 text-sm text-slate-500">No monthly bill schedules configured.</p>:recurringBills.map(bill=><div key={bill.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"><div className="min-w-0"><div className="font-bold">{bill.vendor} · ${Number(bill.amount||0).toFixed(2)} / month</div><p className="text-sm text-slate-600">{bill.description} · Next due {bill.next_due_date||'Not scheduled'} · {bill.status_on_post||'unpaid'}</p></div><Button type="button" variant="outline" disabled={changeRecurring.isPending} onClick={()=>changeRecurring.mutate({id:bill.id,active:bill.active===false})}>{bill.active===false?'Resume Monthly Billing':'Pause Monthly Billing'}</Button></div>)}
+        </CardContent></Card>
+      </TabsContent>
       <TabsContent value="pending" className="space-y-3">
         {pending.length === 0 ? <Card><CardContent className="p-10 text-center text-slate-500">No pending officer expenses.</CardContent></Card> : pending.map(expense => <Card key={expense.id}><CardContent className="p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-start"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{expense.officer_name || expense.officer_email}</h3><Badge className="bg-amber-500">Pending</Badge></div><p className="mt-1 text-sm text-slate-600">{expense.description}</p><p className="mt-2 text-2xl font-black text-emerald-700">${Number(expense.amount || 0).toFixed(2)}</p><p className="text-xs text-slate-500">{expense.expense_date} • {String(expense.category || '').replaceAll('_',' ')}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={()=>setSelectedExpense({...expense,_source:'officer'})}><Eye className="mr-2 h-4 w-4"/>View Full Expense</Button>{expense.receipt_url && <Button variant="outline" size="sm" onClick={()=>window.open(expense.receipt_url,'_blank')}><Receipt className="mr-2 h-4 w-4"/>Receipt</Button>}</div></div><div className="w-full space-y-2 lg:w-80"><Label>Reviewer notes</Label><Textarea value={reviewNotes[expense.id] || ''} onChange={e=>setReviewNotes(current=>({...current,[expense.id]:e.target.value}))} placeholder="Optional approval notes or rejection reason"/><div className="grid grid-cols-2 gap-2"><Button disabled={!financialSourcesReady || reviewExpense.isPending} onClick={()=>reviewExpense.mutate({id:expense.id,approved:true})} className="bg-emerald-600 hover:bg-emerald-700"><Check className="mr-2 h-4 w-4"/>Approve</Button><Button variant="destructive" disabled={!financialSourcesReady || reviewExpense.isPending} onClick={()=>reviewExpense.mutate({id:expense.id,approved:false})}><X className="mr-2 h-4 w-4"/>Reject</Button></div></div></div></CardContent></Card>)}
       </TabsContent>
