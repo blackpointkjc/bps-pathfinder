@@ -269,8 +269,8 @@ Deno.serve(async(req)=>{
         const matchedClient=client || clients.find((item:any)=>(item.assigned_locations||[]).map(siteOf).includes(name)||(item.assigned_sites||[]).map(siteOf).includes(name)||siteOf(item.assigned_location)===name);
         // An internal/admin account mistakenly assigned as a client must not get invoices.
         const provided=String(body.contact_email || location.billing_contact_email || matchedClient?.email || '').trim().toLowerCase();
-        const target=isEmail(provided)?provided:MANAGEMENT_EMAIL;
-        const reason=target===MANAGEMENT_EMAIL?'Client billing email not configured. Routed to management for review.':'';
+        const target=isEmail(provided)?provided:'';
+        const reason=!target?'Client billing contact is missing. Invoice held for recipient verification.':'';
         if (!existingInvoice) sequence++;
         const number=existingInvoice?.invoice_number || `${prefix}${String(sequence).padStart(3,'0')}`;
         const needsReview=reviewReasons.size>0;
@@ -299,7 +299,7 @@ Deno.serve(async(req)=>{
         if(existingInvoice) updated++; else created++;
         existingByKey.set(key,invoice);
         // Historical drafts and unverified rates must never be emailed silently.
-        if(action==='backfill_drafts' || action==='create_draft' || needsReview) {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:needsReview?'review_required':'draft',recipient:target});continue;}
+        if(action==='backfill_drafts' || action==='create_draft' || needsReview || !target) {if(!target)held++;results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:!target?'missing_billing_contact':needsReview?'review_required':'draft',recipient:target,reason:reason||reviewReason});continue;}
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Unpaid invoices may be assessed one one-time 10% late fee after the due date, subject to the applicable client agreement.</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {
