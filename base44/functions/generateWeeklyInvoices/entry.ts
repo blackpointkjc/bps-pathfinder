@@ -163,11 +163,11 @@ Deno.serve(async(req)=>{
     const [entries,locations,users,invoices,schedules]=action==='send_ready_drafts'
       ? [[],await base44.asServiceRole.entities.Location.list('site_name',100),await base44.asServiceRole.entities.User.list(undefined,200),await base44.asServiceRole.entities.Invoice.list('-created_date',500),[]]
       : await Promise.all([
-          base44.asServiceRole.entities.TimeEntry.list('-clock_in',10000),
-          base44.asServiceRole.entities.Location.list('site_name',2000),
-          base44.asServiceRole.entities.User.list(undefined,2000),
-          base44.asServiceRole.entities.Invoice.list('-created_date',5000),
-          base44.asServiceRole.entities.Schedule.list('-shift_date',10000),
+          base44.asServiceRole.entities.TimeEntry.list('-clock_in',2500),
+          base44.asServiceRole.entities.Location.list('site_name',100),
+          base44.asServiceRole.entities.User.list(undefined,200),
+          base44.asServiceRole.entities.Invoice.list('-created_date',500),
+          base44.asServiceRole.entities.Schedule.list('-shift_date',2500),
         ]);
     // Recover older verified drafts without silently duplicating overlapping
     // service periods or sending invoices whose historical rates need review.
