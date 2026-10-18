@@ -511,7 +511,8 @@ function sameStreetBlock(callLocation: unknown, propertyAddress: unknown) {
 }
 
 function propertyMatch(call: any, location: any) {
-  if (location?.active === false || location?.property_monitoring_enabled !== true) return null;
+  const emergencyFour=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call?.incident||''));
+  if(location?.active===false || (!emergencyFour&&location?.property_monitoring_enabled!==true))return null;
 
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
@@ -696,7 +697,7 @@ async function reconcilePropertyAlerts(base44: any) {
     const stamp = new Date(call.time_received || call.created_date || 0).getTime();
     return Number.isFinite(stamp) && stamp >= recentHistoryCutoff;
   });
-  const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
+  const monitored = (locations || []).filter((location:any)=>location.active!==false);
   // A CAD source can recycle an old active call with a new internal row ID. Use
   // the call's source-time/incident/location fingerprint as the alert identity so
   // one real-world call can only create one property alert for a property.
@@ -889,9 +890,11 @@ async function reconcilePropertyAlerts(base44: any) {
     }
 
     const property = propertyById.get(String(alert.propertyId));
-    if (!property || property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live') continue;
+    const incident=(activeCalls.find((call:any)=>String(call.id)===String(alert.callId))?.incident || alert.callIncident || '');
+    const fourUnitCall=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(incident);
+    if (!property || (!fourUnitCall && (property.auto_dispatch_enabled !== true || property.auto_dispatch_mode !== 'live'))) continue;
     const latest = latestEvaluationByAlert.get(String(alert.id));
-    if (latest?.mode === 'live' && latest?.decision === 'assigned') continue;
+    if (latest?.mode === 'live' && latest?.decision === 'assigned' && (!fourUnitCall || (latest.recommended_unit_ids||[]).length>=4)) continue;
     const lastAt = new Date(latest?.evaluated_at || latest?.updated_date || 0).getTime();
     const intervalMs = Math.max(30, Number(property.auto_dispatch_recheck_seconds || 60)) * 1000;
     if (Number.isFinite(lastAt) && nowMs - lastAt < intervalMs) continue;
@@ -1062,7 +1065,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   }
   const archivedExternal = new Set((history || []).map((row: any) => externalKey(row)).filter(Boolean));
   const archivedLegacy = new Set((history || []).map((row: any) => legacyKey(row)).filter(Boolean));
-  const monitored = (locations || []).filter((row: any) => row.active !== false && row.property_monitoring_enabled === true);
+  const monitored = (locations || []).filter((row:any)=>row.active!==false);
   const callPropertyKeys = new Set<string>((alerts || []).map((row: any) => String(row.propertyId || '') + '|' + String(row.callId || '')));
   const alertKeys = new Set<string>((alerts || []).map((row: any) => String(row.source_key ||
     [row.propertyId || '', row.callTime || row.time_received || row.created_date || '',
@@ -1338,7 +1341,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
     ]);
     const immediateMonitored = (immediateLocations || [])
-      .filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
+      .filter((location:any)=>location.active!==false);
     const immediateCallPropertyKeys = new Set((immediateExistingAlerts || []).map((alert: any) =>
       `${String(alert?.propertyId || '')}|${String(alert?.callId || '')}`
     ));

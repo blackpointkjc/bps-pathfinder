@@ -117,11 +117,15 @@ Deno.serve(async (req) => {
 
     // Automatic assignment is opt-in per property. Shadow remains the default;
     // only an explicit saved live mode may change operational records.
+    // Company-wide critical staffing rule: property calls categorized as
+    // OFFICER or D.O.A. require four responding eligible units.
+    const fourUnitCall = /(?:^|[^A-Z0-9])(?:OFFICER|D\.?\s*O\.?\s*A\.?)(?=$|[^A-Z0-9])/i.test(String(call.incident||''));
+    const requiredUnits=Math.max(fourUnitCall?4:1,Number(property.auto_dispatch_required_units||1),property.auto_dispatch_backup_required?2:1);
     const configuredMode = property.auto_dispatch_enabled === true ? (property.auto_dispatch_mode || 'shadow') : 'disabled';
     const liveApproved = Boolean(property.auto_dispatch_live_approved_at && property.auto_dispatch_live_approved_by);
     const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
     // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
-    const mode = requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
+    const mode = fourUnitCall ? 'live' : requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
     // Use the property's saved response-radius rule for both recommendations
     // and LIVE assignment. The prior hardcoded 500-meter limit ignored the Admin
     // setting and rejected otherwise eligible clocked-in officers.
@@ -138,7 +142,7 @@ Deno.serve(async (req) => {
         decision: 'assigned',
         $or: [{superseded_by:{$exists:false}},{superseded_by:null},{superseded_by:''}],
       }, '-evaluated_at', 1);
-      if (completed?.length) {
+      if (completed?.length && (completed[0].recommended_unit_ids||[]).length>=requiredUnits) {
         const selectedIds = new Set((completed[0].recommended_unit_ids || []).map(String));
         return Response.json({
           success: true,
@@ -218,7 +222,6 @@ Deno.serve(async (req) => {
       currentCalls = [call];
     }
 
-    const requiredUnits = Math.max(1, Number(property.auto_dispatch_required_units || 1), property.auto_dispatch_backup_required ? 2 : 1);
     const requiredQualifications = list(property.auto_dispatch_required_qualifications);
     const requiredEquipment = list(property.auto_dispatch_required_equipment);
     const requiredRanks = list(property.auto_dispatch_required_ranks);

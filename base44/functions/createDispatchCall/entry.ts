@@ -117,8 +117,9 @@ Deno.serve(async (req) => {
     });
 
     const locations = await base44.asServiceRole.entities.Location.list('site_name', 300).catch(() => []);
+    const specialFourUnit=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(createdCall.incident||''));
     const monitoredMatches = (locations || [])
-      .filter((location: any) => location.active !== false && location.property_monitoring_enabled === true)
+      .filter((location:any)=>location.active!==false && (location.property_monitoring_enabled===true || specialFourUnit))
       .map((location: any) => ({ location, distance: callIsInsideProperty(createdCall, location) }))
       .filter((match: any) => match.distance !== null);
 
