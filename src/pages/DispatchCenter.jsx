@@ -416,13 +416,16 @@ export default function DispatchCenter() {
     };
 
     const loadCallNotes = async (callId) => {
-        if (!callId) return setCallNotes([]);
+        if (!callId) {setCallNotes([]);return;}
         try {
-            const notes = await base44.entities.CallNote.filter({ call_id: callId }, '-created_date', 100);
-            setCallNotes(notes || []);
-        } catch (error) {
-            console.warn('Unable to load call notes:', error);
-            setCallNotes([]);
+            const response = await withRequestTimeout(base44.functions.invoke('sharedCadTimeline', {call_id:callId,action:'read'}),16000,'Shared CAD notes');
+            const payload=response?.data||response||{};
+            if(!payload.success)throw new Error(payload.error||'Shared call notes could not load');
+            setCallNotes(Array.isArray(payload.notes)?payload.notes:[]);
+        } catch(error) {
+            console.warn('Unable to load shared call notes:',error);
+            toast.error(error?.response?.data?.error||error?.message||'Shared CAD notes temporarily unavailable');
+            // Preserve last known call notes. An API failure is not an empty log.
         }
     };
 
@@ -456,9 +459,13 @@ export default function DispatchCenter() {
         const refreshWelfare = () => loadWelfareChecks(selectedCall.id);
         let unsubscribe;
         let welfareUnsubscribe;
+        let statusUnsubscribe;
         try {
             unsubscribe = base44.entities.CallNote.subscribe(event => {
                 if (String(event?.data?.call_id || '') === String(selectedCall.id)) refreshNotes();
+            });
+            statusUnsubscribe=base44.entities.CallStatusLog.subscribe(event=>{
+                if(String(event?.data?.call_id||'')===String(selectedCall.id))refreshNotes();
             });
         } catch { /* polling below is fallback */ }
         try {
@@ -466,9 +473,10 @@ export default function DispatchCenter() {
                 if (String(event?.data?.call_id || '') === String(selectedCall.id)) refreshWelfare();
             });
         } catch { /* polling below is fallback */ }
-        const timer = setInterval(() => { refreshNotes(); refreshWelfare(); }, 2 * 60 * 1000);
+        const timer = setInterval(() => {if(document.visibilityState==='visible'){refreshNotes();refreshWelfare();}}, 20000);
         return () => {
             if (typeof unsubscribe === 'function') unsubscribe();
+            if (typeof statusUnsubscribe === 'function') statusUnsubscribe();
             if (typeof welfareUnsubscribe === 'function') welfareUnsubscribe();
             clearInterval(timer);
         };
@@ -549,26 +557,21 @@ export default function DispatchCenter() {
     };
 
     const addCallNote = async () => {
-        const text = noteText.trim();
-        if (!selectedCall || !text) return;
+        const text=noteText.trim(),callId=selectedCall?.id;
+        if (!callId || !text || savingNote) return;
         setSavingNote(true);
         try {
-            await base44.entities.CallNote.create({
-                call_id: selectedCall.id,
-                author_id: currentUser?.id || 'dispatch',
-                author_name: rankLastName(currentUser?.full_name || currentUser?.email || 'Dispatch'),
-                note: text,
-                note_type: 'update'
-            });
+            const response=await withRequestTimeout(base44.functions.invoke('sharedCadTimeline',{action:'post',call_id:callId,note:text}),16000,'Post CAD note');
+            const payload=response?.data||response||{};
+            if(!payload.success)throw new Error(payload.error||'The CAD server did not save this note');
             setNoteText('');
-            await loadCallNotes(selectedCall.id);
-            toast.success('CAD note added');
-        } catch (error) {
-            console.error('Note creation failed:', error);
-            toast.error('Unable to add note');
-        } finally {
-            setSavingNote(false);
-        }
+            setCallNotes(current=>[...current,{...payload.note,kind:'note',created_date:payload.note?.created_date||new Date().toISOString()}]);
+            void loadCallNotes(callId);
+            toast.success('Shared CAD note saved for dispatch and all assigned units.');
+        } catch(error) {
+            console.error('Shared CAD note creation failed:',error);
+            toast.error(error?.response?.data?.error||error?.message||'CAD note could not be saved. Retry; your text was retained.');
+        } finally {setSavingNote(false);}
     };
 
     const handleCallCreated = async (createdCall) => {
@@ -924,11 +927,11 @@ export default function DispatchCenter() {
                                     )}
                                     <div className="px-3 md:px-4 pb-3 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
                                         <div>
-                                            <div className="text-[9px] text-slate-500 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> CAD TIMELINE / NOTES</div>
-                                            <div className="bg-[#111827] border border-[#263653] rounded max-h-24 overflow-y-auto">
-                                                {callNotes.length === 0 ? <div className="p-2 text-[9px] text-slate-600">No dispatcher notes recorded.</div> : callNotes.map(note => (
+                                            <div className="text-[9px] text-slate-400 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> SHARED CAD TIMELINE · DISPATCH & ASSIGNED OFFICERS</div>
+                                            <div className="bg-[#111827] border border-[#263653] rounded max-h-64 min-h-32 overflow-y-auto">
+                                                {callNotes.length === 0 ? <div className="p-2 text-[9px] text-slate-600">No shared notes or verified CAD activity yet.</div> : callNotes.map(note => (
                                                     <div key={note.id} className="px-2 py-1.5 border-b border-[#1e2d4a] last:border-0 text-[9px]">
-                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{rankLastName(note.author_name)}</span><span>{formatEasternTime(note.created_date)} ET</span></div>
+                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{rankLastName(note.author_name)}</span><span>{formatEasternTime(note.created_date)} ET{note.kind==='activity'?' · CAD EVENT':''}</span></div>
                                                         <div className="text-slate-200 mt-0.5">{note.note}</div>
                                                     </div>
                                                 ))}
