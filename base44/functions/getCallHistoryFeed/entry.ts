@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       },
       warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error].filter(Boolean),
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getCallHistoryFeed failed:', error);
     return Response.json({ error: error?.message || 'Unable to load call history' }, { status: 500 });
   }
