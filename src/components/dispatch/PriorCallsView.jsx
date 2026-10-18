@@ -19,6 +19,7 @@ export default function PriorCallsView({ currentUser, units }) {
     const [dateTo, setDateTo] = useState('');
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [callNotes, setCallNotes] = useState([]);
+    const [notesError,setNotesError]=useState('');
 
     useEffect(() => {
         loadPriorCalls();
@@ -46,12 +47,15 @@ export default function PriorCallsView({ currentUser, units }) {
     };
 
     const loadCallNotes = async () => {
-        if (!selectedCall) return;
+        if (!selectedCall?.id) return;
+        setNotesError('');setCallNotes([]);
         try {
-            const notes = await base44.entities.CallNote.filter({ call_id: selectedCall.id });
-            setCallNotes(notes || []);
-        } catch (error) {
-            console.error('Error loading notes:', error);
+            const response=await base44.functions.invoke('sharedCadTimeline',{action:'read',call_id:selectedCall.id});
+            const result=response?.data||response||{};
+            if(!result.success)throw new Error(result.error||'Unable to retrieve archived CAD activity');
+            setCallNotes(result.notes||[]);
+        } catch(error) {
+            setNotesError(error?.response?.data?.error||error?.message||'Shared CAD history is unavailable');
         }
     };
 
@@ -304,7 +308,7 @@ export default function PriorCallsView({ currentUser, units }) {
                                             {getAssignedUnitsForCall(selectedCall).map(unit => (
                                                 <div key={unit.id} className="bg-slate-800 p-3 rounded-lg">
                                                     <p className="font-semibold text-white">{unit.unit_number}</p>
-                                                    <p className="text-xs text-slate-400">{unit.full_name}</p>
+                                                    <p className="text-xs text-slate-400">{[unit.rank||'Officer',unit.last_name||String(unit.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -312,9 +316,13 @@ export default function PriorCallsView({ currentUser, units }) {
                                 )}
 
                                 {/* Notes */}
-                                {callNotes.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-400 mb-3">COMPLETE SHARED CAD HISTORY · NOTES & EVENTS</h3>
+                                    {notesError&&<p role="alert" className="mb-3 text-sm text-red-300">{notesError}</p>}
+                                    {!notesError&&!callNotes.length&&<p className="text-xs text-slate-500">No saved notes or activity for this call.</p>}
+                                    {callNotes.length>0 && (
                                     <div>
-                                        <h3 className="text-sm font-semibold text-slate-400 mb-3">Call Notes</h3>
+
                                         <div className="space-y-2">
                                             {callNotes.map(note => (
                                                 <div key={note.id} className="bg-slate-800 p-3 rounded-lg">
@@ -329,7 +337,8 @@ export default function PriorCallsView({ currentUser, units }) {
                                             ))}
                                         </div>
                                     </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </ScrollArea>
                     </Card>

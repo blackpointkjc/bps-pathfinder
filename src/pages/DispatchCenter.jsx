@@ -622,11 +622,16 @@ export default function DispatchCenter() {
     const isPulsePointCall = (call) => String(call?.source_channel || call?.external_call_id || call?.source || '').toLowerCase().includes('pulsepoint');
     const pulsePointCalls = activeCalls.filter(isPulsePointCall);
 
+    const propertyAlertCalls=activeCalls.filter(call =>
+        Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
+        ||Boolean(findPropertyMatch(call,monitoredProperties)));
+    const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const allCalls = activeCalls.filter(call => {
-        const matchesFilter = queueFilter === 'all' ||
+        const property=propertyCallIds.has(String(call.id));
+        const matchesFilter = queueFilter === 'agency' || (property && (queueFilter === 'all' ||
             (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
             (queueFilter === 'priority' && ['critical', 'high'].includes(call.priority)) ||
-            call.status === queueFilter;
+            String(call.status||'').toLowerCase()===String(queueFilter).toLowerCase()));
         const haystack = `${call.call_id || ''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
     });
@@ -634,11 +639,10 @@ export default function DispatchCenter() {
     const statusUnits = units.filter(unit => Boolean(unit.status));
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
     const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
-    const unassignedCalls = activeCalls.filter(call => !call.assigned_units?.length);
-    const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(call.priority));
+    const unassignedCalls = propertyAlertCalls.filter(call => !call.assigned_units?.length);
+    const priorityCalls = propertyAlertCalls.filter(call => ['critical', 'high'].includes(call.priority));
     // "Old/wait" time is a Pathfinder property-monitoring metric only. General
     // GRAC/agency calls must never make this timer old or red.
-    const propertyAlertCalls = activeCalls.filter(call => Boolean(findPropertyMatch(call, monitoredProperties)));
     const callAgeMinutes = (call) => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000));
     const oldestPropertyCallMinutes = propertyAlertCalls.length
         ? Math.max(...propertyAlertCalls.map(callAgeMinutes))
@@ -776,7 +780,7 @@ export default function DispatchCenter() {
                         className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
                 </div>
                 {[
-                    ['all','ALL'], ['unassigned','UNASSIGNED'], ['priority','HIGH PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','ENROUTE'], ['On Scene','ON SCENE']
+                    ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED PROPERTY'], ['priority','HIGH PRIORITY PROPERTY'], ['New','NEW PROPERTY'], ['Dispatched','DISPATCHED PROPERTY'], ['Enroute','EN ROUTE PROPERTY'], ['On Scene','ON SCENE PROPERTY'], ['agency','ALL ACTIVE CALLS']
                 ].map(([value,label]) => (
                     <button key={value} onClick={() => setQueueFilter(value)} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label}</button>
                 ))}
@@ -788,7 +792,7 @@ export default function DispatchCenter() {
                 <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
                 }`}>OLDEST</button>
-                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {activeCalls.length}</span>
+                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {queueFilter==='agency'?activeCalls.length:propertyAlertCalls.length}</span>
             </div>
 
             {/* ══ MAIN GRID ══ */}
@@ -804,7 +808,7 @@ export default function DispatchCenter() {
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">ACTIVE CALLS · GRAC + PULSEPOINT</span>
+                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">{queueFilter==='agency'?'ALL ACTIVE CALLS · GRAC + PULSEPOINT':'PROPERTY CALLS · GRAC + PULSEPOINT'}</span>
                             <span className="ml-auto text-[10px] bg-red-500/20 text-red-200 px-2 rounded-full border border-red-500/40">PP {pulsePointCalls.length}</span>
                             <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
@@ -998,7 +1002,7 @@ export default function DispatchCenter() {
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">CALL SELECTED</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
-                                    <UnitAssignmentPanel call={selectedCall} units={units} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
+                                    <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
                                 </div>
                             </div>
                         ) : mobileView === 'assignment' ? (
