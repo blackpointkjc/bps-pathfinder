@@ -54,6 +54,10 @@ Deno.serve(async req=>{
       if(/^(Colonel|Lt Colonel|Lieutenant Colonel|Major|Captain|Lieutenant|Sergeant|Sgt|Corporal|Officer)\s+/i.test(fallback))return fallback;
       return fallback.includes('@')?'Dispatch':`Officer ${fallback.split(/\s+/).pop()||'Unknown'}`;
     };
+    const historicalText=(value:any)=>String(value||'').replace(/\bUnit\s+(\d+)\b/gi,(original:string,number:string)=>{
+      const officer=alias.get(lower(`Unit ${number}`));
+      return officer?name(officer):original;
+    });
     const mirrored=(log:any)=>{
       const prefixes:any={unit_acknowledged:'[ACKNOWLEDGED]',unit_enroute:'[ENROUTE]',unit_on_scene:'[ON SCENE]',unit_cleared:'[CLEARED]'};
       const prefix=prefixes[String(log.event_type||'')];if(!prefix)return false;
@@ -61,10 +65,10 @@ Deno.serve(async req=>{
       return (notes||[]).some((row:any)=>String(row.author_id)===String(log.unit_id)&&String(row.note||'').startsWith(prefix)&&Math.abs(Date.parse(row.created_date||'')-at)<20000);
     };
     const timeline=[
-      ...(notes||[]).map((row:any)=>({id:String(row.id),kind:'note',author_name:label(String(row.author_id||''),String(row.author_name||'Dispatch')),note:row.note||'',created_date:row.created_date})),
+      ...(notes||[]).map((row:any)=>({id:String(row.id),kind:'note',author_name:label(String(row.author_id||''),String(row.author_name||'Dispatch')),note:historicalText(row.note),created_date:row.created_date})),
       ...(logs||[]).filter((row:any)=>!mirrored(row)&&(row.event_type!=='call_updated'||row.notes||row.announcement_text)).map((row:any)=>({
         id:`activity-${row.id}`,kind:'activity',author_name:label(String(row.unit_id||''),String(row.unit_name||'Dispatch')),
-        note:`[${String(row.event_type||'CAD UPDATE').replace(/_/g,' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`,
+        note:historicalText(`[${String(row.event_type||'CAD UPDATE').replace(/_/g,' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`),
         created_date:row.created_date,
       })),
     ].sort((a:any,b:any)=>Date.parse(a.created_date||'')-Date.parse(b.created_date||''));
