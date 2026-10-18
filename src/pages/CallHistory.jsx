@@ -363,7 +363,7 @@ export default function CallHistory() {
     const openLinkedReport=link=>{
       const type=String(link.report_type||'').toLowerCase();
       const page=type.includes('daily')?'DailyActivityReports':type.includes('incident')?'IncidentReports':
-        type.includes('trespass')?'TrespassNotices':type.includes('complaint')?'CriminalComplaints':'IncidentReports';
+        type.includes('trespass')?'TrespassingNotices':type.includes('complaint')?'CriminalComplaints':'IncidentReports';
       const params=new URLSearchParams({view_report_id:String(link.report_id),report_number:String(link.report_number||link.report_id)});
       navigate(`${createPageUrl(page)}?${params.toString()}`);
     };
