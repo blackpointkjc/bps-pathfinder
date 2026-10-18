@@ -24,6 +24,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     const [holding,setHolding]=useState('');
     const [localHold,setLocalHold]=useState({});
     const queryClient=useQueryClient();
+    const {data:heldRoster=[],refetch:refetchHeldRoster}=useQuery({queryKey:['dispatchHeldOfficerRoster'],queryFn:async()=>{const response=await base44.functions.invoke('getHeldDispatchOfficers',{});return response?.data?.officers||[];},staleTime:30000,refetchInterval:60000,refetchIntervalInBackground:false});
     const {data:assignments=[]}=useQuery({
         queryKey:['cadUnitRoles',call?.id],enabled:!!call?.id,
         queryFn:()=>base44.entities.CallAssignment.filter({call_id:call.id},'-assigned_at',90),
@@ -40,7 +41,8 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     const isOperationalStatus=status=>!['out of service','distress','offline'].includes(String(status||'').toLowerCase());
     const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&u.connection_stale!==true&&!holdOf(u)
       &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
-    const heldUnits=units.filter(u=>isOperationalUnit(u)&&holdOf(u));
+    const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
+    for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
     const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!availableUnits.includes(u)&&!heldUnits.includes(u));
     const currentCallCount=unit=>(allAssignments||[]).filter(row=>String(row.unit_id)===String(unit.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase())).length;
     const changeHold=async(unit,hold)=>{
@@ -51,7 +53,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
         if(!data.success)throw new Error(data.error||'Hold not saved');
         setLocalHold(prev=>({...prev,[unit.id]:hold}));
         toast.success(data.message);
-        await onUpdate?.();
+        await Promise.allSettled([onUpdate?.(),refetchHeldRoster()]);
       }catch(error){toast.error(error?.response?.data?.error||error?.message||'Dispatch hold failed');}
       finally{setHolding('');}
     };
