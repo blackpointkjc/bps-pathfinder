@@ -46,6 +46,11 @@ function buildCallDescription(raw, cadNumber) {
 export default function IncidentReports() {
   const [showForm, setShowForm] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
+  const linkedReportId = React.useMemo(()=>new URLSearchParams(window.location.search).get('view_report_id')||'',[]);
+  const {data:linkedReport,isLoading:linkedReportLoading,error:linkedReportError,refetch:refetchLinkedReport}=useQuery({
+    queryKey:['linkedIncidentReportView',linkedReportId],enabled:!!linkedReportId,
+    queryFn:()=>base44.entities.IncidentReport.get(linkedReportId),retry:1,staleTime:60000,
+  });
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [historyOfficerEmail, setHistoryOfficerEmail] = useState('self');
   const [formData, setFormData] = useState({
@@ -1179,6 +1184,22 @@ Provide:
     printWindow.focus();
   };
 
+  // Historical CAD links must open one report directly, not block behind
+  // loading every report belonging to the current officer.
+  if(linkedReportId){
+    return <div className="mx-auto max-w-4xl space-y-4 p-5">
+      <div className="rounded-xl bg-[#0d1b2c] p-5 text-white"><h1 className="text-xl font-black">Black Point · Linked Incident Report</h1><p className="text-xs text-slate-300">Direct CAD-linked document view</p></div>
+      {linkedReportLoading&&<div className="rounded-lg border bg-white p-5 text-slate-700">Retrieving linked report record…</div>}
+      {linkedReportError&&<div className="rounded-lg border border-red-300 bg-white p-5 text-red-800">Unable to read this linked report: {linkedReportError?.message||'Permission or connection error'} <Button onClick={()=>refetchLinkedReport()} variant="outline">Retry</Button></div>}
+      {linkedReport&&<Card><CardContent className="space-y-4 p-6"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-black">Incident Report #{linkedReport.report_number||linkedReport.id}</h2><Badge>{linkedReport.status||'Recorded'}</Badge></div>
+        <p className="text-sm font-bold">{String(linkedReport.incident_type||'Incident').replace(/_/g,' ')} · {linkedReport.incident_date||'Date not recorded'} {linkedReport.incident_time||''}</p>
+        <p className="text-sm text-slate-700">{linkedReport.location||'Location not recorded'}</p>
+        <div className="rounded-lg border bg-slate-50 p-4"><h3 className="text-sm font-bold">Incident narrative</h3><p className="mt-2 whitespace-pre-wrap text-sm">{linkedReport.description||'No narrative recorded'}</p></div>
+        <div className="grid gap-3 text-sm sm:grid-cols-2"><div><strong>CAD Reference:</strong> {linkedReport.linked_call_number||'Not recorded'}</div><div><strong>Reporting officer:</strong> {linkedReport.reporting_officer_signature||linkedReport.reporting_officer_name||'Not recorded'}</div><div><strong>Action Taken:</strong> {linkedReport.action_taken||'Not recorded'}</div><div><strong>Police notified:</strong> {linkedReport.police_notified?'Yes':'No'}</div></div>
+        <div className="flex flex-wrap gap-2"><Button onClick={()=>printReport(linkedReport)}><Printer className="mr-2 h-4 w-4"/>Open Full Professional Report / Print</Button><Button variant="outline" onClick={()=>window.history.back()}>Back to Call History</Button></div>
+      </CardContent></Card>}
+    </div>;
+  }
   if (reportsLoading) {
     return (
       <div className="p-8 text-center">
