@@ -29,7 +29,7 @@ Deno.serve(async req=>{
     if((newAssignments||[]).some((a:any)=>String(a.unit_id)===officerId&&!['cleared','cancelled','canceled'].includes(lower(a.status)))||(target.assigned_units||[]).map(String).includes(officerId))return Response.json({error:'Officer is already assigned to the destination call'},{status:409});
     const now=new Date().toISOString();
     const targetUnits=[...new Set([...(target.assigned_units||[]).map(String),officerId])];
-    const others=(newAssignments||[]).some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status)));
+    const others=(newAssignments||[]).some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status)))||(target.assigned_units||[]).length>0;
     const cad=(call:any)=>call.agency_cad_number||call.bps_reference||call.call_id||call.id;
     const officerName=label(officer);
     // The new assignment is written first so a failure never leaves this officer
@@ -44,6 +44,8 @@ Deno.serve(async req=>{
       const oldUnits=(source.assigned_units||[]).map(String).filter((id:string)=>id!==officerId);
       await db.DispatchCall.update(sourceId,{assigned_units:oldUnits});
     }catch(error:any){
+      for(const row of oldRows)await db.CallAssignment.update(row.id,{status:row.status,cleared_at:row.cleared_at||null}).catch(()=>null);
+      await db.DispatchCall.update(sourceId,{assigned_units:(source.assigned_units||[]).map(String)}).catch(()=>null);
       await db.CallAssignment.update(created.id,{status:'cleared',cleared_at:now}).catch(()=>null);
       await db.DispatchCall.update(targetId,{assigned_units:(target.assigned_units||[]).map(String)}).catch(()=>null);
       // Do not claim a successful transfer with diverged assignment ledgers.

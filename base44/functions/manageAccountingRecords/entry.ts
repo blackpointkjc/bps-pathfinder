@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
       if (!current) return Response.json({error:'Invoice not found'},{status:404});
       const target=String(body.payment_status || '').toLowerCase();
       if (!['pending','partial','paid','overdue'].includes(target)) return Response.json({error:'Choose pending, partial, paid, or overdue'},{status:400});
+      if(String(body.payment_status||'').toLowerCase()==='overdue'&&String(current.due_date||'')>=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())) return Response.json({error:`Invoice ${current.invoice_number} is not past due; payment due ${current.due_date}. Overdue status and 10% fee are assigned automatically after the due date.`},{status:409});
       if (current.status==='void') return Response.json({error:'Voided invoices cannot be paid'},{status:409});
       if (current.billing_review_required === true) return Response.json({error:'Verify the historical billing rates before recording payment'},{status:409});
       const total=Math.round(Number(current.total_amount || 0)*100)/100;
