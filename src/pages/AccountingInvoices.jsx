@@ -9,6 +9,7 @@ import { DollarSign, Send, FileText, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const INVOICE_LOGO_URL = "/black-point-shield.webp";
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
@@ -20,6 +21,9 @@ function HistoricalRateEditor({invoice, saving, onApprove}) {
 
 export default function AccountingInvoices() {
   const [selectedSite, setSelectedSite] = useState("");
+  const [invoiceStart,setInvoiceStart]=useState('');
+  const [invoiceEnd,setInvoiceEnd]=useState('');
+  const [confirmAction,setConfirmAction]=useState(null);
   const [billingEmailInput, setBillingEmailInput] = useState('');
   const [billingStatus, setBillingStatus] = useState('');
   const [billingRunIssues, setBillingRunIssues] = useState([]);
@@ -59,6 +63,37 @@ export default function AccountingInvoices() {
   const invoices = (accountingData.invoices || []).filter(invoice => !['void','cancelled'].includes(String(invoice.status || '').toLowerCase()));
   const companyLedger=accountingData.financialSummary || {}; 
 
+  const askConfirmation=(title,message,execute)=>setConfirmAction({title,message,execute});
+  const syncInvoiceData=async()=>{
+    await Promise.all([
+      queryClient.invalidateQueries({queryKey:['accountingFinance']}),
+      queryClient.invalidateQueries({queryKey:['accountingProfit']}),
+    ]);
+  };
+  const saveSelectedInvoice=async()=>{
+    const site=locations.find(row=>row.site_name===selectedSite);
+    if(!site||!invoiceStart||!invoiceEnd)return setBillingStatus('Choose the billing site and service start/end dates.');
+    if(invoiceEnd<invoiceStart)return setBillingStatus('The service end date must not precede the start date.');
+    setGenerating(true);
+    setBillingStatus('Saving itemized invoice draft from recorded service shifts…');
+    try{
+      const response=await base44.functions.invoke('generateWeeklyInvoices',{
+        action:'create_draft',location_id:site.id,period_start:invoiceStart,period_end:invoiceEnd,
+      });
+      const payload=response?.data||response||{};
+      if(payload.error)throw new Error(payload.error);
+      if(payload.processing_failed)throw new Error((payload.results||[]).find(item=>item.error)?.error||'Invoice processing failed');
+      await syncInvoiceData();
+      if(payload.created||payload.updated){
+        setBillingStatus(`Invoice draft saved for ${site.site_name}, ${invoiceStart}–${invoiceEnd}. ${payload.created||0} created, ${payload.updated||0} updated. You can select another site/period and save again without reloading.`);
+        setInvoiceStart('');setInvoiceEnd('');
+      } else {
+        const issue=(payload.results||[]).find(item=>item.reason||item.error);
+        setBillingStatus(issue?.reason||`No new invoice saved: ${payload.held||0} overlapping interval(s), ${payload.skipped||0} without new billable hours. Existing invoices remain unchanged.`);
+      }
+    }catch(error){setBillingStatus(`Invoice could not be saved: ${error?.response?.data?.error||error?.message||'Server error'}`);}
+    finally{setGenerating(false);}
+  };
   const runInvoices = async () => {
     if (generating) return;
     setGenerating(true);
@@ -70,13 +105,11 @@ export default function AccountingInvoices() {
       if(data.error) throw new Error(data.error);
       setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s), ${data.processing_failed || 0} site processing failure(s).`);
       setBillingRunIssues((data.results || []).filter(item => ['overlap_requires_review','legacy_delivery_unconfirmed','processing_failed','delivery_failed'].includes(String(item.status))));
-      queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      await syncInvoiceData();
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
     finally { setGenerating(false); }
   };
   const reconcileHistoricalDrafts = async () => {
-    if(!window.confirm('Recalculate existing UNSENT invoice drafts for the past 16 weeks using effective historical contract rates? This will not email any invoice or change a paid/sent invoice. Unverified rates will remain flagged for review.')) return;
     setGenerating(true);
     setBillingStatus('Reconciling historical invoice drafts from recorded time entries and contract rate history…');
     try {
@@ -90,14 +123,13 @@ export default function AccountingInvoices() {
   };
   const saveBillingContact = async () => {
     const location=locations.find(row=>row.site_name===selectedSite);
-    if (!location) return alert('Select the site whose client billing address needs updating.');
+    if (!location) return setBillingStatus('Select the site whose billing address needs updating.');
     try {
       setSavingBillingEmail(true);
       const result=await base44.functions.invoke('manageAccountingRecords',{action:'set_billing_contact',location_id:location.id,contact_email:billingEmailInput});
       const payload=result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      await syncInvoiceData();
       setBillingStatus(`Billing recipient saved for ${location.site_name}: ${billingEmailInput || 'management@blackpointkjc.com (fallback)'}`);
     }catch(error){setBillingStatus(`Unable to save billing recipient: ${error?.message || 'Unknown error'}`);}
     finally {setSavingBillingEmail(false);}
@@ -105,7 +137,6 @@ export default function AccountingInvoices() {
   const approveHistoricalRate = async (invoice, inputRate) => {
     const value=Number(inputRate);
     if(!Number.isFinite(value)||value<=0) return setBillingStatus('Enter a valid verified historical contract rate first.');
-    if(!window.confirm(`Verify that $${value.toFixed(2)}/hour was the correct contractual billing rate for ${invoice.site_name} during ${invoice.period_start}–${invoice.period_end}. Recalculate this unsent invoice?`)) return;
     setGenerating(true);
     try {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'approve_historical_rate',invoice_id:invoice.id,verified_rate:value});
@@ -129,7 +160,6 @@ export default function AccountingInvoices() {
     const target=forcedStatus || state.status || String(invoice.status || 'pending');
     const amount=target==='paid'?Number(invoice.total_amount):state.amount_paid !== undefined?Number(state.amount_paid):Number(invoice.amount_paid||0);
     if(invoice.billing_review_required) return setBillingStatus('Review and verify this invoice’s historical contract rate before posting payments.');
-    if(!window.confirm(`Save invoice #${invoice.invoice_number} as ${target.toUpperCase()} with $${amount.toFixed(2)} received? This updates the company accounting ledger.`))return;
     setSavingPaymentId(invoice.id);
     try {
       const response=await base44.functions.invoke('manageAccountingRecords',{
@@ -151,15 +181,13 @@ export default function AccountingInvoices() {
     finally{setSavingPaymentId(null);}
   };
   const sendExistingInvoice = async invoice => {
-    if (!window.confirm(`Send invoice ${invoice.invoice_number} for ${invoice.site_name}? It will use that site's saved billing contact or management@blackpointkjc.com.`)) return;
     setGenerating(true);
     try {
       const result=await base44.functions.invoke('generateWeeklyInvoices',{action:'send_existing',invoice_id:invoice.id});
       const payload=result?.data || result || {};
       if(payload.error) throw new Error(payload.error);
       setBillingStatus(`Invoice ${invoice.invoice_number} accepted by email provider for ${payload.recipient}.`);
-      queryClient.invalidateQueries({queryKey:['accountingData']});
-      queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      await syncInvoiceData();
     }catch(error){setBillingStatus(`Invoice email failed: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
   };
@@ -183,9 +211,18 @@ export default function AccountingInvoices() {
         <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Company-wide invoices, service revenue, recipients and payments</p></div>
         <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
       </div>
-      <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={reconcileHistoricalDrafts}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
+      <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={()=>askConfirmation('Reconcile Historical Invoices','Recalculate only unsent invoice drafts for the past 16 weeks. Sent and paid invoices will not be changed.',reconcileHistoricalDrafts)}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
       {billingRunIssues.length>0 && <div className="mb-4 space-y-2 rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><strong>Billing items requiring action</strong>{billingRunIssues.map((item,index)=><div key={`${item.site}-${index}`} className="border-t border-amber-300 pt-2"><strong>{item.site || 'Unassigned site'}</strong> — {item.status==='overlap_requires_review' ? `Existing invoice #${item.invoice_number} covers these dates; a second invoice was not sent.` : item.status==='legacy_delivery_unconfirmed' ? `Invoice #${item.invoice_number} was held because prior email delivery cannot be confirmed.` : `Billing failed: ${item.error || 'Review this site'}`}</div>)}</div>}
+      <Card className="mb-5 border-slate-200"><CardContent className="space-y-3 p-4">
+        <div><h2 className="text-lg font-bold text-slate-900">Create Invoice for Recorded Service</h2><p className="text-sm text-slate-600">Choose a site and completed service dates. Save as a draft; review rates and send separately. Saving another date range or site does not require refreshing the page.</p></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_auto] lg:items-end">
+          <div><Label>Billable Site</Label><Select value={selectedSite} onValueChange={name=>{setSelectedSite(name);const site=locations.find(row=>row.site_name===name);setBillingEmailInput(site?.billing_contact_email||'')}}><SelectTrigger className="w-full"><SelectValue placeholder="Choose site"/></SelectTrigger><SelectContent>{locations.filter(loc=>Number(loc.site_bill_rate)>0).map(site=><SelectItem key={site.id} value={site.site_name}>{site.site_name}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Service Start</Label><Input type="date" value={invoiceStart} onChange={e=>setInvoiceStart(e.target.value)}/></div>
+          <div><Label>Service End</Label><Input type="date" value={invoiceEnd} onChange={e=>setInvoiceEnd(e.target.value)}/></div>
+          <Button type="button" disabled={generating||!selectedSite||!invoiceStart||!invoiceEnd} onClick={saveSelectedInvoice}>{generating?'Saving…':'Save Invoice Draft'}</Button>
+        </div>
+      </CardContent></Card>
       <Card className="mb-5 border-slate-200"><CardContent className="p-4"><Label>Client Invoice Delivery Address</Label><div className="mt-2 flex flex-wrap items-center gap-2">
         <Select value={selectedSite} onValueChange={name=>{setSelectedSite(name);const site=locations.find(row=>row.site_name===name);setBillingEmailInput(site?.billing_contact_email||'')}}><SelectTrigger className="w-[260px] max-w-full"><SelectValue placeholder="Select site to edit recipient"/></SelectTrigger><SelectContent>{locations.map(site=><SelectItem key={site.id} value={site.site_name}>{site.site_name}</SelectItem>)}</SelectContent></Select>
         <Input type="email" className="min-w-[220px] flex-1" placeholder="Blank uses management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)}/>
@@ -215,7 +252,7 @@ export default function AccountingInvoices() {
                   <div key={invoice.id} className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:bg-slate-100 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-5">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <HistoricalRateEditor key={invoice.id} invoice={invoice} saving={generating} onApprove={approveHistoricalRate}/>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>sendExistingInvoice(invoice)}>Send Reviewed Draft Invoice</button>}
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p><p className="text-xs text-slate-600">Delivery: {invoice.delivery_status || 'not recorded'} · Recipient: {invoice.delivery_email || invoice.client_email || 'none'}</p>{invoice.billing_review_required && <p className="mt-1 text-xs font-semibold text-red-700">Billing review required: {invoice.billing_review_reason || 'Historical rate unavailable'}</p>}{invoice.billing_review_required && invoice.status==='draft' && <HistoricalRateEditor key={invoice.id} invoice={invoice} saving={generating} onApprove={(invoice,rate)=>askConfirmation('Verify Contract Rate',`Confirm $${Number(rate).toFixed(2)} per hour for ${invoice.site_name} (${invoice.period_start}–${invoice.period_end}).`,()=>approveHistoricalRate(invoice,rate))}/>}{invoice.status === 'draft' && !invoice.billing_review_required && <button type="button" disabled={generating} className="mt-1 block rounded-md border border-emerald-600 px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50" onClick={()=>askConfirmation('Send Client Invoice',`Send invoice ${invoice.invoice_number} to the verified client billing email, or management@blackpointkjc.com if unavailable?`,()=>sendExistingInvoice(invoice))}>Send Reviewed Draft Invoice</button>}
                         <Badge className={
                           invoice.status === 'paid' ? 'bg-green-600' :
                           invoice.status === 'overdue' ? 'bg-red-600' :
@@ -533,8 +570,8 @@ export default function AccountingInvoices() {
                         <div><Label className="text-xs text-slate-600">Payment received ($)</Label><Input type="number" min="0" max={invoice.total_amount} step="0.01" value={paymentDrafts[invoice.id]?.amount_paid ?? (invoice.amount_paid||0)} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],amount_paid:event.target.value}}))} /></div>
                         <div><Label className="text-xs text-slate-600">Payment method</Label><Input placeholder="ACH, check, card..." value={paymentDrafts[invoice.id]?.payment_method ?? (invoice.payment_method||'')} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],payment_method:event.target.value}}))}/></div>
                         <div><Label className="text-xs text-slate-600">Reference / check #</Label><Input placeholder="Payment reference" value={paymentDrafts[invoice.id]?.payment_reference ?? (invoice.payment_reference||'')} onChange={event=>setPaymentDrafts(current=>({...current,[invoice.id]:{...current[invoice.id],payment_reference:event.target.value}}))}/></div>
-                        <Button type="button" variant="outline" disabled={savingPaymentId===invoice.id || invoice.billing_review_required} onClick={()=>updateInvoicePayment(invoice)} className="whitespace-nowrap">{savingPaymentId===invoice.id?'Saving…':'Save Status'}</Button>
-                        <Button type="button" disabled={savingPaymentId===invoice.id || invoice.status==='paid' || invoice.billing_review_required} onClick={()=>updateInvoicePayment(invoice,'paid')} className="whitespace-nowrap bg-emerald-700 text-white hover:bg-emerald-600">Mark Paid</Button>
+                        <Button type="button" variant="outline" disabled={savingPaymentId===invoice.id || invoice.billing_review_required} onClick={()=>askConfirmation('Save Invoice Payment Status',`Save invoice ${invoice.invoice_number} with updated payment details and status?`,()=>updateInvoicePayment(invoice))} className="whitespace-nowrap">{savingPaymentId===invoice.id?'Saving…':'Save Status'}</Button>
+                        <Button type="button" disabled={savingPaymentId===invoice.id || invoice.status==='paid' || invoice.billing_review_required} onClick={()=>askConfirmation('Mark Invoice Paid',`Confirm that the full $${Number(invoice.total_amount||0).toFixed(2)} was actually received for invoice ${invoice.invoice_number}. This does not initiate a transfer.`,()=>updateInvoicePayment(invoice,'paid'))} className="whitespace-nowrap bg-emerald-700 text-white hover:bg-emerald-600">Mark Paid</Button>
                       </div>
                       {invoice.status==='draft' && <p className="mt-2 text-xs text-amber-700">This invoice is still a draft. Recording a payment does not mean the invoice was emailed to the client.</p>}
                     </div>
@@ -545,6 +582,7 @@ export default function AccountingInvoices() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={!!confirmAction} onOpenChange={open=>{if(!open)setConfirmAction(null)}}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{confirmAction?.title||'Confirm Accounting Action'}</DialogTitle></DialogHeader><p className="text-sm text-slate-700">{confirmAction?.message}</p><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={()=>setConfirmAction(null)}>Cancel</Button><Button type="button" disabled={generating||!!savingPaymentId} onClick={()=>{const action=confirmAction?.execute;setConfirmAction(null);if(action)void action();}}>Confirm</Button></div></DialogContent></Dialog>
     </div>
   );
 }
