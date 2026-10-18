@@ -189,9 +189,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   // HR/member directory contains only internal employees. Client and student
   // accounts stay in their dedicated menus and never appear in this list.
-  const allEmployees = (users || []).filter(isCompanyEmployeeAccount);
-  const activeEmployees = allEmployees.filter(u => !u.termination_date);
-  const terminatedEmployees = allEmployees.filter(u => u.termination_date);
+  const isTerminated = u => Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated';
+  const allEmployees = (users || []).filter(u => isCompanyEmployeeAccount(u) || isTerminated(u));
+  const activeEmployees = allEmployees.filter(u => !isTerminated(u));
+  const terminatedEmployees = allEmployees.filter(isTerminated);
 
   const filterBySearch = (list) => {
     if (!searchQuery) return list;
