@@ -109,7 +109,7 @@ export default function OfficerDispatchQueue() {
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
       toast.success(action === 'ok' ? 'Welfare OK sent to dispatch.' : 'Assistance request sent to dispatch and command.');
-      await refetch();
+      await Promise.all([refetch(),refetchNotes()]);
     } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to respond to welfare check'); }
     finally { setWorking(false); }
   };
@@ -124,7 +124,7 @@ export default function OfficerDispatchQueue() {
       if (data.pending || data.request_recorded) toast.success(data.reason || 'Supervisor request sent and is awaiting an eligible supervisor.');
       else if (!data.assigned) toast.warning(data.reason || 'No eligible supervisor available right now.');
       else toast.success(`${data.supervisor?.name || 'Supervisor'} assigned${data.supervisor?.distance_miles != null ? ` (${data.supervisor.distance_miles} mi)` : ''}.`);
-      await refetch();
+      await Promise.all([refetch(),refetchNotes()]);
     } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to request supervisor'); }
     finally { setWorking(false); }
   };
