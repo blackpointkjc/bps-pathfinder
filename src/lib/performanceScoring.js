@@ -5,7 +5,7 @@ const EASTERN_TIME_ZONE = 'America/New_York';
 export const isCommandPerformanceExempt = officer => ['Major','Lt Colonel','Colonel'].includes(normalizeRank(officer?.rank));
 
 export const emailKey = value => String(value || '').trim().toLowerCase();
-const siteKey = value => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim().toLowerCase();
+// siteKey is shared with property-aware scoring and is declared below.
 
 function dateParts(value) {
   const date = value instanceof Date ? value : new Date(value);
