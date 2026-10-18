@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
       property_alerts_created: propertyAlerts.length,
       warnings,
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('createDispatchCall failed', error);
     return Response.json({ error: error?.message || 'Unable to create dispatch call' }, { status: 500 });
   }
