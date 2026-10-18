@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const targetId = String(target.id || '');
     const initialAssignedSites = new Set([...assigned].map(siteOf).filter(Boolean));
     const visibleInvoicesRaw = (invoices || []).filter((invoice: any) => {
-      if(['void','cancelled'].includes(String(invoice.status || '').toLowerCase())) return false;
+      if(['void','cancelled','draft'].includes(String(invoice.status || '').toLowerCase())) return false;
       const invoiceEmail = String(invoice.client_email || '').toLowerCase();
       const invoiceClientId = String(invoice.client_id || invoice.client_user_id || '');
       const invoiceSite = siteOf(invoice.site_name || invoice.location);
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // records for audit; never present a second payable invoice for the same
     // property and service period in the client's portal.
     const uniqueInvoices=new Map<string,any>();
-    const rank=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:['sent','overdue'].includes(String(record.status||'').toLowerCase())?3:1;
+    const rank=(record:any)=>String(record.status||'').toLowerCase()==='paid'?4:['sent','pending','partial','overdue'].includes(String(record.status||'').toLowerCase())?3:1;
     for(const invoice of visibleInvoicesRaw){
       const key=`${siteOf(invoice.site_name || invoice.location)}|${invoice.period_start}|${invoice.period_end}`;
       const prior=uniqueInvoices.get(key);
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const assignedSites = new Set([
       ...[...assigned].map(siteOf),
       ...(locations || [])
-        .filter((location: any) => String(location.assigned_client_email || '').toLowerCase() === clientEmail)
+        .filter((location: any) => [location.assigned_client_email, location.billing_contact_email].some((email:any)=>String(email||'').toLowerCase()===clientEmail))
         .map((location: any) => siteOf(location.site_name)),
       ...visibleInvoices.map((invoice: any) => siteOf(invoice.site_name)),
     ].filter(Boolean));
