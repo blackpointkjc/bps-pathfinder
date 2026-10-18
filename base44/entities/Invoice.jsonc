@@ -47,6 +47,12 @@
       "type": "number",
       "description": "Total invoice amount"
     },
+    "base_amount": {"type":"number","description":"Original service charge before late fees"},
+    "late_fee_amount": {"type":"number","default":0,"description":"One-time 10 percent late fee assessed after due date"},
+    "late_fee_rate": {"type":"number","default":0.1},
+    "late_fee_applied_at": {"type":"string","format":"date-time"},
+    "late_notice_status": {"type":"string"},
+    "late_notice_sent_at": {"type":"string","format":"date-time"},
     "amount_paid": {"type":"number","default":0,"description":"Cumulative client payment received and confirmed by accounting"},
     "payment_method": {"type":"string"},
     "payment_reference": {"type":"string"},

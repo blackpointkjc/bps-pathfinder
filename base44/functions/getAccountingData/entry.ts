@@ -165,6 +165,7 @@ Deno.serve(async (req) => {
         return sum+(paid>0?Math.min(Number(row.total_amount||0),paid):String(row.status||'').toLowerCase()==='paid'?Number(row.total_amount||0):0);
       },0);
       const outstanding=Math.max(0,billedTotal-clientPayments);
+      const lateFees=billableInvoices.reduce((sum:number,row:any)=>sum+Number(row.late_fee_amount||0),0);
       const relevantPayroll=(payrollEntries||[]).filter((row:any)=>overlaps(row.pay_period_start,row.pay_period_end));
       const recordedPayroll=relevantPayroll.reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
       const approvedPayroll=relevantPayroll.filter((row:any)=>['approved','paid'].includes(lowerStatus(row.status))).reduce((sum:number,row:any)=>sum+Number(row.gross_pay||0),0);
@@ -180,7 +181,7 @@ Deno.serve(async (req) => {
       financialSummary={period_start:rangeStart,period_end:rangeEnd,
         service_hours:formatAmount(serviceHours),period_service_hours:formatAmount(serviceHours),
         earned_service_revenue:formatAmount(earnedRevenue),on_duty:onDuty,
-        billed_total:formatAmount(billedTotal),client_payments:formatAmount(clientPayments),
+        billed_total:formatAmount(billedTotal),late_fees:formatAmount(lateFees),client_payments:formatAmount(clientPayments),
         outstanding_client_invoices:formatAmount(outstanding),unpaid_company_bills:formatAmount(unpaid),
         payroll_total:formatAmount(recordedPayroll),approved_payroll_expense:formatAmount(approvedPayroll),
         pending_payroll_approval:formatAmount(pendingPayroll),payroll_paid:formatAmount(payrollPaid),
