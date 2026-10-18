@@ -119,12 +119,12 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     };
 
     if (!call) {
-        return (
-            <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center">
-                <div className="text-[10px] font-black tracking-[.16em] text-slate-500">UNIT ASSIGNMENT</div>
-                <div className="mt-2 text-xs text-slate-400">Select an active call to view assigned and available field units.</div>
-            </div>
-        );
+        return <div className="space-y-3 rounded-xl border border-slate-700 bg-[#09121e] p-3">
+          <div className="text-xs font-black text-white">Dispatch · New-Call Availability</div>
+          <p className="text-xs text-slate-400">Dispatch can place or remove a Hold on any signed-in officer. Holds block only NEW calls, not assignments already in progress. Select a CAD call to assign units.</p>
+          {units.filter(isOperationalUnit).map(unit=><div key={unit.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs"><div className="min-w-0"><p className="font-black text-slate-100">{displayUnitName(unit)}</p><p className="text-slate-400">Unit {unit.unit_number||'—'} · {unit.status||'Status pending'}</p><p className={holdOf(unit)?'text-amber-300':'text-emerald-300'}>{holdOf(unit)?'HOLD: No new calls':'New calls permitted'}</p></div><Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,!holdOf(unit))} className={holdOf(unit)?'border-emerald-600 text-emerald-300':'border-amber-700 text-amber-300'}>{holding===unit.id?'Saving…':holdOf(unit)?'Remove Hold':'Hold New Calls'}</Button></div>)}
+          {!units.length&&<p className="text-xs text-amber-300">Awaiting the on-duty officer roster.</p>}
+        </div>;
     }
 
     const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'REFERENCE PENDING';
@@ -153,6 +153,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1">
+                                        <Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,!holdOf(unit))} className={`h-8 ${holdOf(unit)?'border-emerald-700 text-emerald-300':'border-amber-700 text-amber-300'}`}>{holding===unit.id?'Saving…':holdOf(unit)?'Remove Hold':'Hold New Calls'}</Button>
                                         <select aria-label={`Reassign ${unitName} to a different call`} value={destinationByOfficer[unit.id]||''} onChange={e=>setDestinationByOfficer(prev=>({...prev,[unit.id]:e.target.value}))} className="max-w-[160px] rounded border border-cyan-900 bg-slate-950 px-1 py-2 text-[10px] text-cyan-100">
                                             <option value="">Transfer to CAD…</option>
                                             {calls.filter(c=>String(c.id)!==String(call.id)&&!['cleared','cancelled','closed','resolved','completed'].includes(String(c.status||'').toLowerCase())&&c.manual_dismissed!==true).map(c=><option key={c.id} value={c.id}>{c.agency_cad_number||c.bps_reference||c.call_id||c.id} · {String(c.incident||'').slice(0,34)}</option>)}
