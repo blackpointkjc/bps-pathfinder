@@ -124,16 +124,16 @@ export default function Dashboard({ embedded = false }) {
   const { data: todaySchedule } = useQuery({
     queryKey: ['todaySchedule', user?.email],
     queryFn: async () => {
-      if (!user?.email) return null;
+      if (!user?.email) return [];
       const today = format(new Date(), 'yyyy-MM-dd');
       const email = String(user.email).trim().toLowerCase();
       const schedules = await base44.entities.Schedule.list('shift_date', 500);
-      return schedules.find(s =>
+      return schedules.filter(s =>
         s.shift_date === today &&
         String(s.officer_email || '').trim().toLowerCase() === email &&
         s.archived !== true &&
         s.is_open !== true
-      ) || null;
+      ).sort((a,b)=>String(a.start_time||'').localeCompare(String(b.start_time||'')));
     },
     enabled: !!user?.email,
     refetchInterval: 60000,
