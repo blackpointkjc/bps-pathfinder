@@ -20,10 +20,11 @@ const AGENCY_COLORS = {
     BPS: 'bg-gold/20 text-gold border-gold/30',
 };
 
+const historyCallStatus=row=>row?.time_cleared?'Cleared':row?.time_on_scene?'On Scene':row?.status||'New';
 const sentenceCase=(value)=>{
     const raw=String(value||'').trim();
     if(!raw)return '—';
-    return raw.toLowerCase().replace(/^(.)/,(_,a)=>a.toUpperCase())
+    return raw.replace(/\s+,/g,',').replace(/,([^\s])/g,', $1').toLowerCase().replace(/^(.)/,(_,a)=>a.toUpperCase())
         .replace(/\bd\.o\.a\./gi,'D.O.A.').replace(/\bems\b/gi,'EMS')
         .replace(/\bcad\b/gi,'CAD').replace(/\brpd\b/gi,'RPD')
         .replace(/\brfd\b/gi,'RFD').replace(/\bgrac\b/gi,'GRAC');
@@ -402,7 +403,7 @@ export default function CallHistory() {
                 row._propertyAlert?.description,
             ].some(value => String(value || '').toLowerCase().includes(q))) return false;
             if (agencyFilter !== 'ALL' && !row.agency?.includes(agencyFilter)) return false;
-            if (statusFilter !== 'ALL' && row.status !== statusFilter) return false;
+            if (statusFilter !== 'ALL' && historyCallStatus(row) !== statusFilter) return false;
             return true;
         }).sort((a, b) => {
             const aTime = parseServerDate(a.time_received || a.created_date)?.getTime() || 0;
@@ -614,10 +615,10 @@ export default function CallHistory() {
                 {sorted.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">— NO RECORDS MATCH FILTERS —</div>
                 ) : sorted.map((row, idx) => {
-                    const isActive = row._source === 'active' && !['Cleared', 'Cancelled'].includes(row.status);
+                    const isActive = row._source === 'active' && !['Cleared', 'Cancelled','Closed'].includes(historyCallStatus(row));
                     const agKey = agencyKey(row.agency);
                     const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
-                    const stCls = STATUS_COLORS[row.status] || 'bg-slate-700 text-slate-400 border-slate-600';
+                    const stCls = STATUS_COLORS[historyCallStatus(row)] || 'bg-slate-700 text-slate-400 border-slate-600';
                     const isExpanded = expandedId === (row.id);
                     return (
                         <div key={row.id}>
@@ -645,7 +646,7 @@ export default function CallHistory() {
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${agCls}`}>{row.agency || '—'}</span>
                                 </div>
                                 <div className="w-full md:w-24 lg:flex-shrink-0">
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{row.status || '—'}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{historyCallStatus(row)}</span>
                                 </div>
                                 <div className="w-full text-left text-slate-500 md:w-16 lg:flex-shrink-0 md:text-center">
                                     {row._assignedUnitDetails?.length ? <span className="text-green-400 break-words">{row._assignedUnitDetails.map(unit => unit.label).join(', ')}</span> : row.assigned_units?.length ? <span className="text-green-400">{row.assigned_units.length} unit(s)</span> : 'Unassigned'}

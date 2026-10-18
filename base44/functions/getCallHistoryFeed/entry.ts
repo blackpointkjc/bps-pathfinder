@@ -63,6 +63,8 @@ Deno.serve(async (req) => {
     };
 
     const usersById = new Map((userRead.data || []).map((person: any) => [String(person.id), person]));
+    const officersByEmail=new Map((userRead.data||[]).map((person:any)=>[String(person.email||'').toLowerCase(),person]));
+    const officersByNumber=new Map((userRead.data||[]).filter((p:any)=>p.unit_number).map((person:any)=>[String(person.unit_number||'').replace(/^0+/,''),person]));
     const unitsById = new Map((unitRead.data || []).map((unit: any) => [String(unit.id), unit]));
     const assignmentsByCall = new Map<string, any[]>();
     for (const assignment of assignmentRead.data || []) {
@@ -76,10 +78,13 @@ Deno.serve(async (req) => {
       const ids = [...new Set([...existing.map(String), ...records.map((item: any) => String(item.unit_id || ''))].filter(Boolean))];
       return ids.map(id => {
         const unit = unitsById.get(id);
-        const officer = usersById.get(String(unit?.user_id || id));
+        const officer = usersById.get(String(unit?.user_id || id))
+          ||officersByEmail.get(String(unit?.user_email||unit?.email||'').toLowerCase())
+          ||officersByNumber.get(String(unit?.unit_number||'').replace(/^0+/,''))
+          ||(userRead.data||[]).find((u:any)=>String(u.username||'').toLowerCase()===String(unit?.officer_name||'').toLowerCase());
         const number = officer?.unit_number || unit?.unit_number || '';
         const name = [officer?.rank||'Officer', officer?.last_name||String(officer?.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ');
-        const label = [number ? 'Unit ' + number : '', name].filter(Boolean).join(' — ') || 'Unit ID ' + id;
+        const label = [number ? 'Unit ' + number : '', name||'Officer not identified'].filter(Boolean).join(' — ');
         const assignment = records.find((item: any) => String(item.unit_id) === id);
         return { unit_id: id, label, officer_name: name || '', unit_number: number, role: assignment?.role || '', assigned_at: assignment?.assigned_at || '', status: assignment?.status || '' };
       });

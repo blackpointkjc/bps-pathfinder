@@ -218,7 +218,9 @@ Deno.serve(async(req)=>{
       try {
       if (!location?.site_name || !(Number(location.site_bill_rate)>0)) {skipped++;continue;}
       const name=siteOf(location.site_name);
-      const keys=action==='backfill_drafts' ? Array.from({length:16},(_,i)=>{const end=dateOffset(lastSaturday,-7*i);return [dateOffset(end,-6),end]}) : [[periodStart,periodEnd]];
+      const keys=['backfill_drafts','scheduled','run_now'].includes(action)
+        ? Array.from({length:16},(_,i)=>{const end=dateOffset(lastSaturday,-7*i);return [dateOffset(end,-6),end]})
+        : [[periodStart,periodEnd]];
       for(const [start,end] of keys){
         const key=`${name.toLowerCase()}|${start}|${end}`;
         const existingInvoice=existingByKey.get(key);
