@@ -473,6 +473,13 @@ Deno.serve(async (req) => {
       return Number.isFinite(assignedAt) && assignedAt>=shiftFloor && assignedAt<=Date.now()+60*1000;
     });
     const dispatchById = new Map<string,any>();
+    const recentStatusLogs=await base44.asServiceRole.entities.CallStatusLog.list('-created_date',250).catch(()=>[]);
+    const latestStatusByUnitCall=new Map<string,any>();
+    for(const log of recentStatusLogs||[]){
+      if(!log.unit_id||!log.call_id||!['unit_on_scene','unit_enroute','unit_acknowledged','unit_cleared'].includes(String(log.event_type||'')))continue;
+      const key=`${log.call_id}|${log.unit_id}`;
+      if(!latestStatusByUnitCall.has(key))latestStatusByUnitCall.set(key,log);
+    }
     const candidateCallIds = [...new Set(currentAssignmentRows.map((row:any)=>String(row.call_id)).filter(Boolean))].slice(0,20);
     const dispatchCalls = await Promise.all(candidateCallIds.map(id=>base44.asServiceRole.entities.DispatchCall.get(id).catch((error:any)=>{
       if(Number(error?.response?.status || error?.status)===404)return null;
@@ -569,8 +576,15 @@ Deno.serve(async (req) => {
         // Explicit status/clock-out actions own the authoritative User/session value.
         const confirmedDispatch=dispatchById.get(String(user.id));
         const pendingStatus=lower(confirmedDispatch?.assignment?.status);
-        const assignmentStatus = pendingStatus==='enroute'||pendingStatus==='en_route'?'Enroute'
-          : pendingStatus==='on_scene'?'On Scene':'Dispatched';
+        const verifiedAction=confirmedDispatch?latestStatusByUnitCall.get(`${confirmedDispatch.call.id}|${user.id}`):null;
+        const actionAfterAssignment=verifiedAction&&Date.parse(verifiedAction.created_date||'')>=Date.parse(confirmedDispatch.assignment.assigned_at||'');
+        const sceneConfirmed=Boolean(confirmedDispatch && (
+          pendingStatus==='on_scene' ||
+          (lower(active?.status)==='on scene' && String(active.current_call_id||'')===String(confirmedDispatch.call.id)) ||
+          (actionAfterAssignment && verifiedAction.event_type==='unit_on_scene')));
+        const assignmentStatus = sceneConfirmed?'On Scene'
+          : pendingStatus==='enroute'||pendingStatus==='en_route'||(actionAfterAssignment&&verifiedAction.event_type==='unit_enroute')?'Enroute'
+          :'Dispatched';
         const manualStatus = user.status || 'Available';
         const staleDispatchStatus=['dispatched','enroute','en route','on scene'].includes(lower(newestLiveStatus));
         const resolvedStatus = ['out of service','distress','emergency'].includes(lower(newestLiveStatus))

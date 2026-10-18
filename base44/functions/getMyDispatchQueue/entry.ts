@@ -75,9 +75,11 @@ Deno.serve(async (req) => {
           note:`[${String(row.event_type||'UPDATE').replaceAll('_',' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`,
           shown_at:row.created_date,
         }))].sort((a:any,b:any)=>new Date(a.shown_at||0).getTime()-new Date(b.shown_at||0).getTime());
+      const latestOwnEvent=(logs||[]).find((log:any)=>String(log.unit_id)===String(me.id)&&['unit_on_scene','unit_enroute','unit_acknowledged'].includes(String(log.event_type||''))&&Date.parse(log.created_date||'')>=Date.parse(assignment?.assigned_at||call.time_dispatched||call.created_date||''));
+      const ownStatus=latestOwnEvent?.event_type==='unit_on_scene'?'on_scene':latestOwnEvent?.event_type==='unit_enroute'?'enroute':assignment?.status||'pending';
       queue.push({
         ...call,
-        assignment:assignment || {status:'pending',assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id},
+        assignment:{...(assignment||{assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id}),status:ownStatus},
         dispatch_notes: sharedNotes,
         assigned_officers:(allCallAssignments||[]).filter((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))).map((a:any)=>({
           unit_id:a.unit_id,officer_name:actors.has(String(a.unit_id))?named(actors.get(String(a.unit_id))):`Unit ${a.unit_id}`,

@@ -28,7 +28,11 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:user.email},'-last_update',15).catch(()=>[]),
     ]);
     const aliases=[String(user.id),String(user.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(ownedSessions||[]).map((row:any)=>String(row.id))];
-    const assignmentRows=(await Promise.all(aliases.map(id=>base44.asServiceRole.entities.CallAssignment.filter({call_id,unit_id:id},'-assigned_at',30).catch(()=>[])))).flat();
+    // Combined call_id + unit_id filters were returning no matches for valid
+    // legacy assignments: the officer state changed but the CallAssignment
+    // remained ACCEPTED. Query by call and filter canonical unit aliases locally.
+    const allForCall=await base44.asServiceRole.entities.CallAssignment.filter({call_id},'-assigned_at',150);
+    const assignmentRows=(allForCall||[]).filter((row:any)=>aliases.includes(String(row.unit_id)));
     const hasActiveAssignment=assignmentRows.some((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
     const assignedIds = assigned.map((id:any) => String(id));
@@ -37,6 +41,9 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
+    const unitAlreadyOnScene=assignmentRows.some((a:any)=>String(a.status||'').toLowerCase()==='on_scene')
+      || ((ownedSessions||[]).some((session:any)=>String(session.current_call_id||'')===String(call_id)&&String(session.status||'').toLowerCase()==='on scene'));
+    if(unitAlreadyOnScene && ['Acknowledged','Enroute'].includes(status))return Response.json({success:true,status:'On Scene',duplicate_transition:true,message:'Your unit is already On Scene. Earlier stages will not overwrite arrival.'});
     const assignments = assignmentRows;
     const assignmentStatus = status === 'Acknowledged' ? 'accepted' : status === 'Enroute' ? 'enroute' : status === 'On Scene' ? 'on_scene' : 'cleared';
     for (const assignment of (assignments || []).filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))) {
@@ -58,7 +65,7 @@ Deno.serve(async (req) => {
       if (status === 'Enroute' && !call.time_enroute) update.time_enroute = now;
       if (status === 'On Scene' && !call.time_on_scene) update.time_on_scene = now;
       if (status === 'Cleared') {
-        const allAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id }).catch(() => []);
+        const allAssignments = allForCall;
         const otherActive = (allAssignments || []).some((a: any) => !aliases.includes(String(a.unit_id)) && !['cleared','cancelled','canceled'].includes(String(a.status || '').toLowerCase()));
         const otherLegacyAssigned=assignedIds.some((id:string)=>!aliases.includes(id));
         if (otherActive || otherLegacyAssigned) {

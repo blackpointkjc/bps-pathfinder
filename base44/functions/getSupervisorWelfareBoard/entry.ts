@@ -36,6 +36,12 @@ Deno.serve(async (req) => {
 
     const callById = new Map(activeCalls.map((c:any)=>[String(c.id), c]));
     const userById = new Map((users || []).map((u:any)=>[String(u.id), u]));
+    const latestActions=new Map<string,any>();
+    for(const log of (statusLogs||[])){
+      if(!log.call_id||!log.unit_id||!['unit_on_scene','unit_enroute','unit_acknowledged','unit_cleared'].includes(String(log.event_type||'')))continue;
+      const key=`${log.call_id}|${log.unit_id}`;
+      if(!latestActions.has(key))latestActions.set(key,log);
+    }
     const now = Date.now();
     const openDutyByEmail=new Map<string,any>();
     for(const entry of (dutyEntries||[]).filter((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true)) {
@@ -53,19 +59,23 @@ Deno.serve(async (req) => {
       const currentShift = openDutyByEmail.get(lower(officer.email));
       const started = currentShift?.clock_in ? Date.parse(currentShift.clock_in)-2*60*60*1000 : now-12*60*60*1000;
       if (!onDutyEmails.has(lower(officer.email)) || !Number.isFinite(assignedAtMs) || assignedAtMs < started || assignedAtMs > now+60000) continue;
-      const anchor = lower(a.status) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
+      const action=latestActions.get(`${call.id}|${officer.id}`);
+      const trustedAction=action&&Date.parse(action.created_date||'')>=Date.parse(a.assigned_at||'');
+      const currentStatus=trustedAction&&action.event_type==='unit_on_scene'?'on_scene'
+        :trustedAction&&action.event_type==='unit_enroute'?'enroute':a.status;
+      const anchor = lower(currentStatus) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));
       const pendingAckSeconds = Math.max(30, Number(call.welfare_acknowledgement_seconds || 120));
       const sceneWelfareSeconds = Math.max(60, Number(call.welfare_check_seconds || 900));
       const overdue = lower(a.status) === 'pending'
         ? elapsedSeconds >= pendingAckSeconds
-        : lower(a.status) === 'on_scene' ? elapsedSeconds >= sceneWelfareSeconds : false;
+        : lower(currentStatus) === 'on_scene' ? elapsedSeconds >= sceneWelfareSeconds : false;
       board.push({
         assignment_id:a.id, call_id:call.id, cad_number:call.agency_cad_number || call.bps_reference || call.call_id || call.id,
         incident:call.incident || 'Call for service', location:call.location || '', priority:call.priority || 'medium',
         unit_id:officer.id, unit_number:officer.unit_number || '', officer_email:lower(officer.email),
         officer_name:[String(officer.rank || '').trim(), String(officer.last_name || '').trim() || String(officer.full_name || '').trim().split(/\s+/).pop()].filter(Boolean).join(' ') || 'Officer',
-        assignment_status:a.status || 'pending', assigned_at:a.assigned_at || '', accepted_at:a.accepted_at || '', elapsed_seconds:elapsedSeconds, overdue,
+        assignment_status:currentStatus || 'pending', assigned_at:a.assigned_at || '', accepted_at:a.accepted_at || '', elapsed_seconds:elapsedSeconds, overdue,
       });
     }
     board.sort((a,b)=>Number(b.overdue)-Number(a.overdue) || b.elapsed_seconds-a.elapsed_seconds);
