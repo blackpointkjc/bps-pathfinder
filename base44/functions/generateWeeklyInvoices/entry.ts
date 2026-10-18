@@ -147,13 +147,17 @@ Deno.serve(async(req)=>{
     const periodStart=action==='backfill_drafts'?startDefault:(body.period_start || startDefault);
     const periodEnd=action==='backfill_drafts'?lastSaturday:(body.period_end || lastSaturday);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
-    const [entries,locations,users,invoices,schedules]=await Promise.all([
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in',10000),
-      base44.asServiceRole.entities.Location.list('site_name',2000),
-      base44.asServiceRole.entities.User.list(undefined,2000),
-      base44.asServiceRole.entities.Invoice.list('-created_date',5000),
-      base44.asServiceRole.entities.Schedule.list('-shift_date',10000),
-    ]);
+    // Historical sending does not require time punches, schedules or user directory.
+    // Read just two small collections sequentially to avoid an API burst.
+    const [entries,locations,users,invoices,schedules]=action==='send_ready_drafts'
+      ? [[],await base44.asServiceRole.entities.Location.list('site_name',300),[],await base44.asServiceRole.entities.Invoice.list('-created_date',2000),[]]
+      : await Promise.all([
+          base44.asServiceRole.entities.TimeEntry.list('-clock_in',10000),
+          base44.asServiceRole.entities.Location.list('site_name',2000),
+          base44.asServiceRole.entities.User.list(undefined,2000),
+          base44.asServiceRole.entities.Invoice.list('-created_date',5000),
+          base44.asServiceRole.entities.Schedule.list('-shift_date',10000),
+        ]);
     // Recover older verified drafts without silently duplicating overlapping
     // service periods or sending invoices whose historical rates need review.
     const issueVerifiedDrafts=async()=>{
