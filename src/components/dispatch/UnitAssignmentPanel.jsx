@@ -16,8 +16,10 @@ const displayUnitName = (unit) => {
 };
 const displayProperty = (unit) => String(unit?.current_location || unit?.assigned_location || unit?.location || 'No current property').split(':')[0].trim();
 
-export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
+export default function UnitAssignmentPanel({ call, calls = [], units = [], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [destinationByOfficer,setDestinationByOfficer]=useState({});
+    const [reassigning,setReassigning]=useState('');
     
     const assignedUnitIds = (call?.assigned_units || []).map(String);
     const isAssigned = unit => assignedUnitIds.includes(String(unit.id)) || Boolean(unit.active_officer_id && assignedUnitIds.includes(String(unit.active_officer_id)));
@@ -58,6 +60,21 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
             console.error('Error assigning unit:', error);
             toast.error('Failed to assign unit');
         }
+    };
+
+    const handleReassignUnit=async unit=>{
+        const targetId=destinationByOfficer[unit.id];
+        if(!targetId||targetId===call?.id)return toast.error('Choose a different active CAD call.');
+        setReassigning(unit.id);
+        try{
+            const response=await base44.functions.invoke('reassignCadOfficer',{source_call_id:call.id,destination_call_id:targetId,officer_id:unit.id});
+            const result=response?.data||response||{};
+            if(!result.success)throw new Error(result.error||'CAD did not confirm the reassignment');
+            toast.success(`${displayUnitName(unit)} reassigned to CAD ${result.to}. Officer-specific instructions sent.`);
+            setDestinationByOfficer(old=>({...old,[unit.id]:''}));
+            await onUpdate?.();
+        }catch(error){toast.error(error?.response?.data?.error||error?.message||'Reassignment failed');}
+        finally{setReassigning('');}
     };
 
     const handleUnassignUnit = async (unit) => {
@@ -113,6 +130,13 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
                                         <span className={String(unit.id)===String(assignedUnitIds[0])?'text-emerald-300':'text-blue-300'}>{String(unit.id)===String(assignedUnitIds[0])?'PRIMARY UNIT':'ADDITIONAL UNIT'}</span>
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        <select aria-label={`Reassign ${unitName} to a different call`} value={destinationByOfficer[unit.id]||''} onChange={e=>setDestinationByOfficer(prev=>({...prev,[unit.id]:e.target.value}))} className="max-w-[160px] rounded border border-cyan-900 bg-slate-950 px-1 py-2 text-[10px] text-cyan-100">
+                                            <option value="">Transfer to CAD…</option>
+                                            {calls.filter(c=>String(c.id)!==String(call.id)&&!['cleared','cancelled','closed','resolved','completed'].includes(String(c.status||'').toLowerCase())&&c.manual_dismissed!==true).map(c=><option key={c.id} value={c.id}>{c.agency_cad_number||c.bps_reference||c.call_id||c.id} · {String(c.incident||'').slice(0,34)}</option>)}
+                                        </select>
+                                        <Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleReassignUnit(unit)} className="h-8 border-cyan-700 text-cyan-300">{reassigning===unit.id?'Moving…':'REASSIGN'}</Button>
                                     </div>
                                     <Button
                                         variant="ghost"
