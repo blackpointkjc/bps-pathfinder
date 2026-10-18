@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
           old_status: call.status || '',
           new_status: call.status === 'New' ? 'Dispatched' : call.status,
           unit_id: canonicalUnitId,
-          unit_name: assignedOfficer?.unit_number ? `Unit ${assignedOfficer.unit_number}` : (assignedOfficer?.full_name || String(canonicalUnitId)),
+          unit_name: assignedOfficer ? [assignedOfficer.rank||'Officer',assignedOfficer.last_name||String(assignedOfficer.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ') : 'Assigned Officer',
           notes: isBackup ? 'Additional unit assigned' : 'Primary unit assigned',
           latitude: call.latitude,
           longitude: call.longitude,
@@ -153,11 +153,11 @@ Deno.serve(async (req) => {
         old_status: call.status || '',
         new_status: call.status || '',
         unit_id: canonicalUnitId,
-        unit_name: resolvedOfficer?.unit_number ? `Unit ${resolvedOfficer.unit_number}` : (resolvedOfficer?.full_name || String(canonicalUnitId)),
+        unit_name: resolvedOfficer ? [resolvedOfficer.rank||'Officer',resolvedOfficer.last_name||String(resolvedOfficer.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ') : 'Assigned Officer',
         notes: 'Unit removed from assignment by authorized dispatcher',
         event_key: `call:${call_id}:unassignment:${canonicalUnitId}:${now}`,
         event_type: 'unit_reassigned',
-        announcement_text: `Unit reassigned. CAD number ${cadNumber}.`,
+        announcement_text: `Dispatch advises: you are relieved of CAD ${cadNumber}. Return to available status unless otherwise directed.`,
         announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
         cad_number: String(cadNumber),
         triggering_action: 'manageCadUnitAssignment.unassign',
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
           recipient_email: String(officer.email).trim().toLowerCase(),
           type: 'call_unassignment',
           title: 'Unassigned from Call',
-          message: `You have been unassigned from ${incident} at ${location}.`,
+          message: `Dispatch advises: you are relieved of CAD ${cadNumber}, ${incident} at ${location}. Return to available status unless otherwise directed.`,
           is_read: false,
           related_id: call_id,
           priority: 'normal',
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, action });
-  } catch (error) {
+  } catch (error:any) {
     console.error('manageCadUnitAssignment failed', error);
     return Response.json({ error: error?.message || 'Unable to update unit assignment' }, { status: 500 });
   }

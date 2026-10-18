@@ -114,8 +114,13 @@ Deno.serve(async (req) => {
       const call=await base44.asServiceRole.entities.DispatchCall.get(callId).catch(()=>null);
       if(!call||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))return Response.json({error:'The active call is no longer available'},{status:404});
       const allCallAssignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:callId},'-assigned_at',100);
-      const assignmentRows=(allCallAssignments||[]).filter((a:any)=>String(a.unit_id)===String(me.id));
-      if(!assignmentRows.some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))) && !(call.assigned_units||[]).map(String).includes(String(me.id)))return Response.json({error:'Only assigned personnel may submit a welfare check for this call'},{status:403});
+      const [ownedUnits,ownedSessions]=await Promise.all([
+        base44.asServiceRole.entities.Unit.filter({user_id:me.id},'-last_update_at',15).catch(()=>[]),
+        base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:me.email},'-last_update',10).catch(()=>[]),
+      ]);
+      const aliases=[String(me.id),lower(me.email),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(ownedSessions||[]).map((row:any)=>String(row.id))];
+      const assignmentRows=(allCallAssignments||[]).filter((a:any)=>aliases.includes(String(a.unit_id)));
+      if(!assignmentRows.some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))) && !(call.assigned_units||[]).some((id:any)=>aliases.includes(String(id))))return Response.json({error:'Only assigned personnel may submit a welfare check for this call'},{status:403});
       const allWelfare=await base44.asServiceRole.entities.OfficerWelfareCheck.filter({call_id:callId},'-requested_at',100);
       const open=(allWelfare||[]).filter((row:any)=>String(row.unit_id)===String(me.id)&&lower(row.status)==='pending').slice(0,1);
       if(open?.length){
