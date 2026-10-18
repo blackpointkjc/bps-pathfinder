@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
       payrollEntries: {label:'payroll entries',load:()=>base44.asServiceRole.entities.PayrollEntry.list('-created_date',1500)},
       configs: {label:'payroll configuration',load:()=>base44.asServiceRole.entities.PayrollConfig.list('config_name',50)},
       timeEntries: {label:'time entries',load:()=>base44.asServiceRole.entities.TimeEntry.list('-clock_in',5000)},
-      invoices: {label:'client invoices',load:()=>base44.asServiceRole.entities.Invoice.list('-created_date',2000)},
-      locations: {label:'locations',load:()=>base44.asServiceRole.entities.Location.list('site_name',1000)},
+      invoices: {label:'client invoices',load:()=>base44.asServiceRole.entities.Invoice.list('-created_date',500)},
+      locations: {label:'locations',load:()=>base44.asServiceRole.entities.Location.list('site_name',100)},
       expenseReports: {label:'expense reimbursements',load:()=>base44.asServiceRole.entities.ExpenseReport.list('-created_date',2000)},
       companyExpenses: {label:'company expenses',load:()=>base44.asServiceRole.entities.CompanyExpense.list('-expense_date',2000)},
       recurringBills: {label:'recurring monthly bills',load:()=>base44.asServiceRole.entities.RecurringCompanyBill.list('next_due_date',1000)},
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
         }
       }
     };
-    await Promise.all(Array.from({length:Math.min(2,selected.length)},()=>worker()));
+    await Promise.all(Array.from({length:scope==='invoices'?1:Math.min(2,selected.length)},()=>worker()));
     const {
       users=[], periods=[], payrollEntries=[], configs=[], timeEntries=[], invoices=[],
       locations=[], expenseReports=[], companyExpenses=[], recurringBills=[], timeOffRequests=[],
