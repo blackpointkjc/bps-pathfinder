@@ -7,6 +7,7 @@ import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { findPropertyMatch, monitoredPropertiesFromLocations } from '@/utils/alertUtils';
+import {createReportCallLink} from '@/lib/reportCallLinking';
 
 const AGENCY_COLORS = {
     RPD: 'bg-blue-800 text-blue-200 border-blue-700',
@@ -19,6 +20,14 @@ const AGENCY_COLORS = {
     BPS: 'bg-gold/20 text-gold border-gold/30',
 };
 
+const sentenceCase=(value)=>{
+    const raw=String(value||'').trim();
+    if(!raw)return '—';
+    return raw.toLowerCase().replace(/^(.)/,(_,a)=>a.toUpperCase())
+        .replace(/\bd\.o\.a\./gi,'D.O.A.').replace(/\bems\b/gi,'EMS')
+        .replace(/\bcad\b/gi,'CAD').replace(/\brpd\b/gi,'RPD')
+        .replace(/\brfd\b/gi,'RFD').replace(/\bgrac\b/gi,'GRAC');
+};
 const STATUS_COLORS = {
     New: 'bg-red-900/60 text-red-300 border-red-700/50',
     Pending: 'bg-orange-900/60 text-orange-300 border-orange-700/50',
@@ -73,6 +82,9 @@ export default function CallHistory() {
     const [sortField, setSortField] = useState('time');
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
+    const [linkingCallId,setLinkingCallId]=useState(null);
+    const [existingReportNumber,setExistingReportNumber]=useState('');
+    const [linkBusy,setLinkBusy]=useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [warnings, setWarnings] = useState([]);
     const intervalRef = useRef(null);
@@ -325,6 +337,34 @@ export default function CallHistory() {
         clearBase44ReadCacheMatching('entity:DispatchCall:');
         clearBase44ReadCacheMatching('entity:CallHistory:');
         await loadAll();
+    };
+
+    const linkExistingIncidentReport=async row=>{
+        const number=existingReportNumber.trim();
+        if(!number)return toast.error('Enter the existing incident report number.');
+        setLinkBusy(true);
+        try{
+            const reportRows=await base44.entities.IncidentReport.filter({report_number:number},'-created_date',10);
+            if(reportRows.length!==1)throw new Error(reportRows.length?'Several reports match this number; contact command to reconcile.':'No incident report matches that number.');
+            const report=reportRows[0];
+            const callId=row.original_call_id||(row._source==='active'?row.id:'');
+            if(!callId)throw new Error('Original CAD call ID missing. Cannot safely link to an archived record.');
+            const callNumber=row.agency_cad_number||row.bps_reference||row.call_id||callId;
+            await createReportCallLink({callId,callNumber,reportType:'IncidentReport',reportId:report.id,reportNumber:report.report_number||report.id});
+            await base44.entities.IncidentReport.update(report.id,{linked_call_id:callId,linked_call_number:callNumber});
+            const item={id:`linked-${report.id}`,report_type:'IncidentReport',report_id:report.id,report_number:report.report_number||report.id,call_number:callNumber};
+            setRows(rows=>rows.map(candidate=>candidate.id===row.id?{...candidate,_linkedReports:[...(candidate._linkedReports||[]).filter(old=>old.report_id!==report.id),item]}:candidate));
+            setLinkingCallId(null);setExistingReportNumber('');
+            toast.success(`Incident report ${number} linked to CAD ${callNumber}.`);
+        }catch(error){toast.error(error?.response?.data?.error||error?.message||'Report linking failed');}
+        finally{setLinkBusy(false);}
+    };
+    const openLinkedReport=link=>{
+      const type=String(link.report_type||'').toLowerCase();
+      const page=type.includes('daily')?'DailyActivityReports':type.includes('incident')?'IncidentReports':
+        type.includes('trespass')?'TrespassNotices':type.includes('complaint')?'CriminalComplaints':'IncidentReports';
+      const params=new URLSearchParams({view_report_id:String(link.report_id),report_number:String(link.report_number||link.report_id)});
+      navigate(`${createPageUrl(page)}?${params.toString()}`);
     };
 
     const openIncidentReport = (row) => {
@@ -589,12 +629,12 @@ export default function CallHistory() {
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
                                 <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
-                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
-                                    {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
-                                    {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
+                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span>
+                                    {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">Active</span>}
+                                    {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">Property call</span>}
                                     {row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName) && (
                                         <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-amber-300">
-                                            <Building2 className="h-3 w-3" />{row._propertyName || row._propertyAlert?.propertyName}
+                                            <Building2 className="h-3 w-3" />{sentenceCase(row._propertyName || row._propertyAlert?.propertyName)}
                                         </div>
                                     )}
                                 </div>
@@ -629,7 +669,7 @@ export default function CallHistory() {
                                     {row.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{row.zone}</span></div>}
                                     {row.cross_street && <div><span className="text-slate-500">CROSS ST: </span><span className="text-white">{row.cross_street}</span></div>}
                                     <div className="sm:col-span-2 lg:col-span-3"><span className="text-slate-500">ASSIGNED OFFICERS / UNITS: </span><span className="font-bold text-emerald-300">{row._assignedUnitDetails?.length ? row._assignedUnitDetails.map(unit => unit.label + (unit.role ? ' (' + unit.role + ')' : '')).join(', ') : 'No recorded unit assignment'}</span></div>
-                                    {row._propertyCall && <div><span className="text-slate-500">MONITORED PROPERTY: </span><span className="font-bold text-amber-300">{row._propertyName || row._propertyAlert?.propertyName || 'Monitored property'}</span></div>}
+                                    {row._propertyCall && <div><span className="text-slate-500">Monitored property: </span><span className="font-bold text-amber-300">{sentenceCase(row._propertyName || row._propertyAlert?.propertyName || 'Monitored property')}</span></div>}
                                     {row._propertyCall && row._propertyLifecycle && <div><span className="text-slate-500">PROPERTY ALERT STATUS: </span><span className="text-white">{String(row._propertyLifecycle).replaceAll('_', ' ')}</span></div>}
                                     {row._propertyCall && Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0 && <div><span className="text-slate-500">BOUNDARY DISTANCE: </span><span className="text-white">{Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft</span></div>}
                                     {row.time_dispatched && <div><span className="text-slate-500">DISPATCHED: </span><span className="text-white">{fmtDT(row.time_dispatched)}</span></div>}
@@ -641,6 +681,12 @@ export default function CallHistory() {
                                             <span className="text-slate-300">{row.ai_summary}</span>
                                         </div>
                                     )}
+                                    <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#0a1320] p-3">
+                                      <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({row._linkedReports?.length||0})</p>
+                                      {!row._linkedReports?.length&&<p className="mt-1 text-xs text-slate-400">No report links recorded yet.</p>}
+                                      <div className="mt-2 flex flex-wrap gap-2">{(row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>
+                                      {linkingCallId===row.id&&<div className="mt-3 flex flex-wrap gap-2"><input value={existingReportNumber} onChange={e=>setExistingReportNumber(e.target.value)} placeholder="Existing incident report number" className="h-9 flex-1 rounded border border-slate-600 bg-slate-900 px-3 text-xs text-white"/><button disabled={linkBusy} onClick={event=>{event.stopPropagation();linkExistingIncidentReport(row);}} className="rounded bg-emerald-700 px-3 py-2 font-bold text-white">{linkBusy?'Linking…':'Link report'}</button><button onClick={event=>{event.stopPropagation();setLinkingCallId(null);}} className="rounded border border-slate-600 px-3 py-2">Cancel</button></div>}
+                                    </div>
                                     <div className="mt-2 flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap lg:col-span-3">
                                         {isActive && (
                                             <button onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${row.id}${row.latitude ? `&lat=${row.latitude}&lng=${row.longitude}` : ''}`)}
@@ -652,8 +698,9 @@ export default function CallHistory() {
                                             onClick={(event) => { event.stopPropagation(); openIncidentReport(row); }}
                                             className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-1.5 text-[10px] font-bold text-amber-300 transition-colors hover:bg-amber-500/20"
                                         >
-                                            CREATE / LINK INCIDENT REPORT
+                                            Create incident report
                                         </button>
+                                        <button type="button" onClick={event=>{event.stopPropagation();setLinkingCallId(row.id);setExistingReportNumber('');}} className="rounded border border-cyan-700 bg-cyan-950/30 px-3 py-1.5 text-[10px] font-bold text-cyan-200">Link existing report</button>
                                     </div>
                                 </div>
                             )}
