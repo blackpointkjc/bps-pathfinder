@@ -15,16 +15,16 @@ Deno.serve(async req=>{
     const rank=lower(me.rank);
     const command=me.role==='admin'||me.role==='dispatch'||me.dispatch_role===true||me.is_supervisor===true||roles.has('full_access')||roles.has('cad_access')||roles.has('dispatch')||roles.has('supervisor')||['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','sergeant','corporal'].includes(rank);
     const assignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:callId},'-assigned_at',100);
-    const alias=[String(me.id),lower(me.email)];
+    const unitAliases=[String(me.id),lower(me.email)];
     if(!command){
       const [units,sessions]=await Promise.all([
         base44.asServiceRole.entities.Unit.filter({user_id:me.id},'-last_update_at',15).catch(()=>[]),
         base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:me.email},'-last_update',10).catch(()=>[]),
       ]);
-      for(const row of [...(units||[]),...(sessions||[])])if(row.id)alias.push(String(row.id));
+      for(const row of [...(units||[]),...(sessions||[])])if(row.id)unitAliases.push(String(row.id));
     }
-    const owns=(assignments||[]).some((a:any)=>alias.includes(String(a.unit_id))&&!['cleared','cancelled','canceled'].includes(lower(a.status)))
-      ||(call.assigned_units||[]).some((id:any)=>alias.includes(String(id)));
+    const owns=(assignments||[]).some((a:any)=>unitAliases.includes(String(a.unit_id))&&!['cleared','cancelled','canceled'].includes(lower(a.status)))
+      ||(call.assigned_units||[]).some((id:any)=>unitAliases.includes(String(id)));
     if(!command&&!owns)return Response.json({error:'This CAD call is not assigned to your unit'},{status:403});
     if(action==='post'){
       const text=String(body.note||'').trim();
