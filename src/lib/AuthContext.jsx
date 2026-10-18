@@ -335,7 +335,13 @@ export const AuthProvider = ({ children }) => {
         try { localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY, JSON.stringify(forcedNotice)); } catch (_) {}
         playForcedSignOutBeep();
         await new Promise(resolve => window.setTimeout(resolve, 650));
-        await logout(true);
+        // The administrator already retired the server-side duty/location
+        // session. Do not wait for the normal logout's backend cleanup calls,
+        // which may be rate limited and can delay termination for minutes.
+        setUser(null);
+        setIsAuthenticated(false);
+        setAccountLock(null);
+        base44.auth.logout(window.location.href);
       } catch (error) {
         console.warn('[AUTH] Force sign-out check unavailable:', error?.message);
       }
