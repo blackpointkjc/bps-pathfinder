@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +21,14 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
     const [searchTerm, setSearchTerm] = useState('');
     const [destinationByOfficer,setDestinationByOfficer]=useState({});
     const [reassigning,setReassigning]=useState('');
+    const queryClient=useQueryClient();
+    const {data:assignments=[]}=useQuery({
+        queryKey:['cadUnitRoles',call?.id],enabled:!!call?.id,
+        queryFn:()=>base44.entities.CallAssignment.filter({call_id:call.id},'-assigned_at',90),
+        staleTime:15000,refetchInterval:30000,refetchIntervalInBackground:false,
+    });
+    const activeRoles=(assignments||[]).filter(row=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+    const roleOf=(unit)=>activeRoles.find(row=>String(row.unit_id)===String(unit.id))?.role||'unverified';
     
     const assignedUnitIds = (call?.assigned_units || []).map(String);
     const isAssigned = unit => assignedUnitIds.includes(String(unit.id)) || Boolean(unit.active_officer_id && assignedUnitIds.includes(String(unit.active_officer_id)));
@@ -55,6 +64,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
             toast.success(`${unitName} assigned to call`);
             // manageCadUnitAssignment creates the single durable CallStatusLog
             // announcement event. Do not speak from this rendering component.
+            await queryClient.invalidateQueries({queryKey:['cadUnitRoles',call.id]});
             onUpdate();
         } catch (error) {
             console.error('Error assigning unit:', error);
@@ -72,6 +82,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
             if(!result.success)throw new Error(result.error||'CAD did not confirm the reassignment');
             toast.success(`${displayUnitName(unit)} reassigned to CAD ${result.to}. Officer-specific instructions sent.`);
             setDestinationByOfficer(old=>({...old,[unit.id]:''}));
+            await queryClient.invalidateQueries({queryKey:['cadUnitRoles',call.id]});
             await onUpdate?.();
         }catch(error){toast.error(error?.response?.data?.error||error?.message||'Reassignment failed');}
         finally{setReassigning('');}
@@ -91,6 +102,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
 
             const unitName = displayUnitName(unit);
             toast.success(`${unitName} unassigned from call`);
+            await queryClient.invalidateQueries({queryKey:['cadUnitRoles',call.id]});
             onUpdate();
         } catch (error) {
             console.error('Error unassigning unit:', error);
@@ -127,7 +139,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], unit
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
-                                        <span className={String(unit.id)===String(assignedUnitIds[0])?'text-emerald-300':'text-blue-300'}>{String(unit.id)===String(assignedUnitIds[0])?'PRIMARY UNIT':'ADDITIONAL UNIT'}</span>
+                                        <span className={roleOf(unit)==='primary'?'text-emerald-300':'text-blue-300'}>{roleOf(unit)==='primary'?'PRIMARY UNIT':roleOf(unit)==='backup'?'ADDITIONAL UNIT':'ROLE NOT YET VERIFIED'}</span>
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>

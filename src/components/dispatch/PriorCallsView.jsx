@@ -10,7 +10,7 @@ import { Search, MapPin, Clock, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { EASTERN_TIME_ZONE, formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 
-export default function PriorCallsView({ currentUser, units }) {
+export default function PriorCallsView({ currentUser: _currentUser, units }) {
     const [priorCalls, setPriorCalls] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(true);
