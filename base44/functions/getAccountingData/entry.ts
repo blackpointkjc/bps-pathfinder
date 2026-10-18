@@ -109,11 +109,14 @@ Deno.serve(async (req) => {
       let serviceHours=0,earnedRevenue=0,onDuty=0,unverifiedRates=0;
       const approvedInvoiceRates=new Map<string,number>();
       for (const invoice of invoices) {
-        if (!invoice.billing_rate_verified_at || !Number(invoice.billing_rate_verified_value) || ['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
+        // An already-reconciled invoice itemizes the approved rate per shift;
+        // the older `billing_rate_verified_at` flag was only populated by manual
+        // overrides. It is not required for a valid, reviewed invoice.
+        if (invoice.billing_review_required===true || ['void','cancelled'].includes(String(invoice.status||'').toLowerCase())) continue;
         let shifts:any[]=[];
         try {shifts=JSON.parse(invoice.shifts||'[]');}catch{}
         for(const shift of (Array.isArray(shifts)?shifts:[])) {
-          if(shift.clockIn) approvedInvoiceRates.set(`${siteOf(invoice.site_name)}|${shift.clockIn}`,Number(shift.rate||invoice.billing_rate_verified_value));
+          if(shift.clockIn && Number(shift.rate||invoice.billing_rate_verified_value)>0) approvedInvoiceRates.set(`${siteOf(invoice.site_name)}|${shift.clockIn}`,Number(shift.rate||invoice.billing_rate_verified_value));
         }
       }
       for (const entry of timeEntries) {
@@ -158,6 +161,10 @@ Deno.serve(async (req) => {
         if(!current||priority(invoice)>priority(current)||(priority(invoice)===priority(current)&&String(invoice.created_date||'')<String(current.created_date||''))) canonical.set(key,invoice);
       }
       const uniqueInvoices=[...canonical.values()].filter((invoice:any)=>invoice.period_start&&invoice.period_end?overlaps(invoice.period_start,invoice.period_end):inRange(invoice.created_date));
+      // The report's invoice-review warning must follow the actual unresolved
+      // invoice ledger, not inferred provisional shift rates. Otherwise it can
+      // linger even after every affected invoice was reconciled.
+      const unresolvedInvoices=uniqueInvoices.filter((invoice:any)=>invoice.billing_review_required===true).length;
       // A historical row labeled Sent does not prove email delivery. Only
       // provider-accepted issues or payments explicitly recorded by Accounting
       // are recognized in receivables; unknown legacy sending stays in review.
@@ -195,9 +202,9 @@ Deno.serve(async (req) => {
         // Profit forecasts all earned labor, including generated checks that still
         // await approval; only approved wages enter the posted payroll ledger.
         estimated_profit:formatAmount(earnedRevenue-recordedPayroll-operating-reimbursable),
-        unverified_rate_shifts:unverifiedRates,profit_is_estimate:unverifiedRates>0||pendingPayroll>0,invoice_count:uniqueInvoices.length,
+        unverified_rate_shifts:unresolvedInvoices,profit_is_estimate:unresolvedInvoices>0||unverifiedRates>0||pendingPayroll>0,invoice_count:uniqueInvoices.length,
         unverified_sent_count:uniqueInvoices.filter((row:any)=>['sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase())&&String(row.delivery_status||'').toLowerCase()!=='accepted').length,
-        invoice_review_count:uniqueInvoices.filter((row:any)=>row.billing_review_required===true).length,
+        invoice_review_count:unresolvedInvoices,
         invoice_draft_count:uniqueInvoices.filter((row:any)=>String(row.status||'').toLowerCase()==='draft').length,
         expense_count:companyExpenses.length,
         as_of:new Date().toISOString(),complete,load_errors:loadErrors,

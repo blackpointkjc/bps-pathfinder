@@ -402,7 +402,7 @@ export default function AccountingProfit() {
       {accountingLoading && (
         <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
       )}
-      {Number(companyLedger.unverified_rate_shifts||0)>0 && <div role="status" className="mb-5 rounded-xl border border-amber-500/50 bg-amber-950/30 p-4 text-sm text-amber-100">{companyLedger.unverified_rate_shifts} shift(s) use estimated historical billing rates within this selected date range. Figures remain visible as provisional estimates; verify the relevant contract rate before sending an affected invoice.</div>}
+      {Number(companyLedger.invoice_review_count||0)>0 && <div role="status" className="mb-5 rounded-xl border border-amber-500/50 bg-amber-950/30 p-4 text-sm text-amber-100">{companyLedger.invoice_review_count} invoice(s) still require a billing-rate review within these selected dates. Review the specific outstanding invoice records in Client Billing.</div>}
 
       {/* Print Date Range Display */}
       <div className="hidden print:block mb-6 p-4 bg-slate-50 rounded-lg border">
