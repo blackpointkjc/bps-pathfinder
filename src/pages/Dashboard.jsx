@@ -127,7 +127,7 @@ export default function Dashboard({ embedded = false }) {
       if (!user?.email) return [];
       const today = format(new Date(), 'yyyy-MM-dd');
       const email = String(user.email).trim().toLowerCase();
-      const schedules = await base44.entities.Schedule.list('shift_date', 500);
+      const schedules = await base44.entities.Schedule.filter({shift_date:today,officer_email:email},'start_time',250);
       return schedules.filter(s =>
         s.shift_date === today &&
         String(s.officer_email || '').trim().toLowerCase() === email &&
