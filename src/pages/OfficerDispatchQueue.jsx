@@ -28,7 +28,7 @@ export default function OfficerDispatchQueue() {
       return data;
     },
     refetchInterval: 30000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     staleTime: 5000,

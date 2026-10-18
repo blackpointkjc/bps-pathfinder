@@ -26,9 +26,9 @@ export default function AccountingOverview() {
       return response;
     },
     staleTime: 30000,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 60000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: 90000,
     refetchIntervalInBackground: false,
   });
 

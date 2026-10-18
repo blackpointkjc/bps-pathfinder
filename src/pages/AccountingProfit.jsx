@@ -39,11 +39,11 @@ export default function AccountingProfit() {
       return payload;
     },
     enabled: isAccountingRole && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate) && endDate>=startDate,
-    staleTime: 30000,
-    refetchOnMount: 'always',
-    refetchInterval: 30000,
+    staleTime: 75000,
+    refetchOnMount: false,
+    refetchInterval: 90000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
   const timeEntries = accountingData.timeEntries || [];
   const officers = accountingData.users || [];

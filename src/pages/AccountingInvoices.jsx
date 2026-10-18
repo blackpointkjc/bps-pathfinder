@@ -52,11 +52,11 @@ export default function AccountingInvoices() {
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 30000,
-    refetchOnMount: 'always',
-    refetchInterval: 30000,
+    staleTime: 75000,
+    refetchOnMount: false,
+    refetchInterval: 90000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const clients = accountingData.clients || [];

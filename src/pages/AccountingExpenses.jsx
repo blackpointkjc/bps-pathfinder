@@ -41,9 +41,9 @@ export default function AccountingExpenses() {
     },
     enabled: allowed,
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: 90000,
     refetchIntervalInBackground: false,
-    refetchOnMount: 'always',
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
   const expenses = accountingData.companyExpenses || [];

@@ -78,10 +78,10 @@ export default function AccountingPayroll() {
     },
     enabled: isAccountingRole,
     staleTime: 0,
-    refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchOnMount: false,
+    refetchInterval: 90000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
