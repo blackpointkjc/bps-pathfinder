@@ -52,9 +52,9 @@ export default function AccountingInvoices() {
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 75000,
+    staleTime: 180000,
     refetchOnMount: false,
-    refetchInterval: 90000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
@@ -69,11 +69,9 @@ export default function AccountingInvoices() {
   const syncInvoiceData=async()=>{
     // Accounting saves are committed on the server before cache refresh. A
     // throttled reload must not make a successful invoice look like it failed.
-    await Promise.allSettled([
-      queryClient.invalidateQueries({queryKey:['accountingBilling']}),
-      queryClient.invalidateQueries({queryKey:['accountingFinance']}),
-      queryClient.invalidateQueries({queryKey:['accountingProfit']}),
-    ]);
+    await queryClient.invalidateQueries({queryKey:['accountingBilling']});
+    queryClient.invalidateQueries({queryKey:['accountingFinance'],refetchType:'none'});
+    queryClient.invalidateQueries({queryKey:['accountingProfit'],refetchType:'none'});
   };
   const saveSelectedInvoice=async()=>{
     const site=locations.find(row=>row.site_name===selectedSite);
