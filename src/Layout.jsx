@@ -152,8 +152,6 @@ const CENTER_CONFIG = {
       { label: 'Supervisor Operations', items: [
         ['Live Field Oversight', 'SupervisorFieldOversight', ShieldCheck],
         ['Action Items', 'SupervisorTasks', ClipboardList],
-        ['Officer Call-Outs', 'SupervisorCallOuts', CalendarClock],
-        ['Daily Code', 'SupervisorDailyCode', ShieldCheck],
       ]},
       { label: 'Officer Oversight', items: [
         ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],

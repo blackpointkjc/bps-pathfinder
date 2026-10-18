@@ -18,7 +18,10 @@ Deno.serve(async (req) => {
     // Never short-circuit a clear request. Even if the CAD call was already marked
     // Cleared by another unit/dispatcher, this officer's assignment and assigned_units
     // membership still must be closed so the call cannot return to their queue.
-    if (!['Acknowledged','Cleared'].includes(status) && call.status === status) return Response.json({ success: true, status, duplicate_transition: true });
+    // CAD's overall call status is independent of every unit's assignment.
+    // Never skip an officer status transition because ANOTHER officer already
+    // marked the incident Enroute/On Scene.
+
 
     const [ownedUnits, ownedSessions]=await Promise.all([
       base44.asServiceRole.entities.Unit.filter({user_id:user.id},'-last_update_at',30).catch(()=>[]),
@@ -36,7 +39,7 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const assignments = assignmentRows;
     const assignmentStatus = status === 'Acknowledged' ? 'accepted' : status === 'Enroute' ? 'enroute' : status === 'On Scene' ? 'on_scene' : 'cleared';
-    for (const assignment of assignments || []) {
+    for (const assignment of (assignments || []).filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))) {
       const patch: Record<string, unknown> = { status: assignmentStatus };
       if (status === 'Acknowledged' && !assignment.accepted_at) patch.accepted_at = now;
       if (status === 'Cleared') patch.cleared_at = now;
@@ -48,13 +51,17 @@ Deno.serve(async (req) => {
     // while clearing one officer does not close the CAD call until all assigned
     // units have cleared.
     if (status !== 'Acknowledged') {
-      const update: Record<string, unknown> = { status };
+      // Global CAD call progress must never regress from On Scene to Enroute
+      // when a responding supervisor acknowledges later than another unit.
+      const alreadyOnScene=call.status==='On Scene'||Boolean(call.time_on_scene);
+      const update: Record<string, unknown> = {status:status==='Enroute'&&alreadyOnScene?'On Scene':status};
       if (status === 'Enroute' && !call.time_enroute) update.time_enroute = now;
       if (status === 'On Scene' && !call.time_on_scene) update.time_on_scene = now;
       if (status === 'Cleared') {
         const allAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id }).catch(() => []);
         const otherActive = (allAssignments || []).some((a: any) => !aliases.includes(String(a.unit_id)) && !['cleared','cancelled','canceled'].includes(String(a.status || '').toLowerCase()));
-        if (otherActive) {
+        const otherLegacyAssigned=assignedIds.some((id:string)=>!aliases.includes(id));
+        if (otherActive || otherLegacyAssigned) {
           delete update.status;
         } else {
           update.time_cleared = now;
@@ -70,7 +77,7 @@ Deno.serve(async (req) => {
     }
 
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
-    const officer = user.unit_number ? `Unit ${user.unit_number}` : ([user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || 'Officer');
+    const officer = [user.rank,user.last_name||String(user.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ') || user.full_name || 'Officer';
 
     // Keep every operational status source synchronized. Supervisor views read the
     // live ActiveOfficer stream, while other CAD surfaces may read User/Unit.
@@ -104,7 +111,7 @@ Deno.serve(async (req) => {
         }).catch(() => null);
       }
     }
-    const eventType = status === 'Acknowledged' ? 'unit_acknowledged' : status === 'Enroute' ? 'unit_enroute' : status === 'On Scene' ? 'unit_on_scene' : 'call_cleared';
+    const eventType = status === 'Acknowledged' ? 'unit_acknowledged' : status === 'Enroute' ? 'unit_enroute' : status === 'On Scene' ? 'unit_on_scene' : 'unit_cleared';
     const wording = status === 'Acknowledged'
       ? `${officer} acknowledged the assignment. CAD number ${cadNumber}.`
       : status === 'Enroute'
@@ -132,6 +139,12 @@ Deno.serve(async (req) => {
       audio_enabled: true,
       sensitive: false,
     });
+
+    await base44.asServiceRole.entities.CallNote.create({
+      call_id,author_id:user.id,author_name:officer,
+      note:`[${status.toUpperCase()}] ${officer}${status==='Cleared'&&disposition?` — ${String(disposition).trim()}`:''}.`,
+      note_type:status==='On Scene'?'arrival':status==='Cleared'?'clear':'update',
+    }).catch((error:any)=>console.error('Unable to mirror unit action into shared notes',error?.message));
 
     if (status === 'Cleared') {
       // Move the officer directly to the next active queued assignment instead of
