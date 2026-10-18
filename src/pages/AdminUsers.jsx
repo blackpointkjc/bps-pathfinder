@@ -596,6 +596,7 @@ export default function AdminUsers({ embedded = false }) {
     const categoryConfig = {
       support: { roles: ['support_staff'], rank: 'Support Staff', page: 'AdminSupportStaffClock' },
       officer: { roles: ['officer', 'cad_access'], rank: 'Officer', page: 'ManageCompanyEmployees' },
+      student: { roles: ['student'], rank: 'Student', page: 'TrainerCenter' },
       client: { roles: ['client'], rank: 'Client', page: 'ManageClients' },
     };
     const config = categoryConfig[category];
@@ -854,6 +855,9 @@ export default function AdminUsers({ embedded = false }) {
                       >
                         Assign Officer
                       </Button>
+                      <Button variant="outline" size="sm" className="bg-violet-50 text-violet-700 border-violet-300 hover:bg-violet-100" onClick={async()=>{
+                        if(await confirmInApp(`Assign ${userData.first_name||userData.email} to the Student Portal? Administrator approval does not certify course completion.`))await assignUserCategory(userData,'student');
+                      }}>Assign Student</Button>
                       <Button
                         variant="outline"
                         size="sm"
