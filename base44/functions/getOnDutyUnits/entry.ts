@@ -593,6 +593,7 @@ Deno.serve(async (req) => {
           profile_photo_url: user.profile_photo_url || '',
           unit_number: user.unit_number || active?.unit_number || '',
           status: resolvedStatus,
+          status_source: confirmedDispatch ? 'confirmed_cad_assignment' : 'user_duty_status',
           additional_roles: user.additional_roles || [],
           current_call_id: confirmedCallId,
           current_call_info: confirmedCallInfo,

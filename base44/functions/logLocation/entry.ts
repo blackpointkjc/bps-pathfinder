@@ -203,8 +203,10 @@ Deno.serve(async (req) => {
       user_role: String(body.user_role || user.role || 'user'),
       session_active: true,
       show_lights: false,
-      current_call_id: String(body.current_call_id || user.current_call_id || ''),
-      current_call_info: String(body.current_call_info || user.current_call_info || ''),
+      // Device-published call details may be stale after dispatch clears or
+      // reassigns. Only the server-maintained User CAD pointer may be mirrored.
+      current_call_id: String(user.current_call_id || ''),
+      current_call_info: String(user.current_call_info || ''),
     };
     if (body.reset_gps === true && !acceptsGps) {
       // A newly established app/clock session must never inherit coordinates from

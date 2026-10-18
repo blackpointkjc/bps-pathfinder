@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       expires_at: expiresAt,
       retired_live_sessions: targetSessions.length,
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('forceUserSignOut failed', error);
     return Response.json({ error: error?.message || 'Unable to force sign out the selected user' }, { status: 500 });
   }

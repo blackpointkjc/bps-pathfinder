@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       overdue_count:board.filter(x=>x.overdue).length,
       generated_at:new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getSupervisorWelfareBoard failed', error);
     return Response.json({ error:error?.message || 'Unable to load supervisor operations snapshot' }, { status:500 });
   }
