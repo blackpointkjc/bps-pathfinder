@@ -1174,7 +1174,14 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   const closedIds = new Set(disappeared.map((call:any) => String(call.id)));
   const activeIds = new Set(saved.filter((call:any) => !closedIds.has(String(call.id)) && !['Cleared','Cancelled'].includes(String(call.status))).map((call:any) => String(call.id)));
   const properties = new Map<string, any>(monitored.map((property:any) => [String(property.id), property]));
-  const candidates = alerts.filter((alert:any) => activeIds.has(String(alert.callId)) && alert.is_test !== true && !['resolved','false_alarm','test'].includes(String(alert.lifecycle_status || '').toLowerCase()) && properties.get(String(alert.propertyId))?.auto_dispatch_enabled === true && properties.get(String(alert.propertyId))?.auto_dispatch_mode === 'live');
+  const candidates = alerts.filter((alert:any) => {
+    if(!activeIds.has(String(alert.callId))||alert.is_test===true||['resolved','false_alarm','test'].includes(String(alert.lifecycle_status||'').toLowerCase()))return false;
+    const property=properties.get(String(alert.propertyId));
+    if(!property)return false;
+    const call=saved.find((row:any)=>String(row.id)===String(alert.callId));
+    const priorityFour=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call?.incident||alert.callIncident||''));
+    return priorityFour || (property.auto_dispatch_enabled===true&&property.auto_dispatch_mode==='live');
+  });
   if (candidates.length) {
     try {
       const evaluations = await base44.asServiceRole.entities.AutoDispatchEvaluation.filter({ property_alert_id: { $in: candidates.map((alert:any) => String(alert.id)) } }, '-evaluated_at', 1000);
@@ -1182,7 +1189,9 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       for (const evaluation of evaluations) if (!latest.has(String(evaluation.property_alert_id))) latest.set(String(evaluation.property_alert_id), evaluation);
       const due = candidates.filter((alert:any) => {
         const evaluation = latest.get(String(alert.id));
-        if (evaluation?.mode === 'live' && evaluation?.decision === 'assigned') return false;
+        const call=saved.find((row:any)=>String(row.id)===String(alert.callId));
+        const priorityFour=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call?.incident||alert.callIncident||''));
+        if (evaluation?.mode === 'live' && evaluation?.decision === 'assigned' && (!priorityFour||(evaluation.recommended_unit_ids||[]).length>=4)) return false;
         const last = new Date(evaluation?.evaluated_at || 0).getTime();
         const interval = Math.max(60, Number(properties.get(String(alert.propertyId))?.auto_dispatch_recheck_seconds) || 60) * 1000;
         return !Number.isFinite(last) || now - last >= interval;

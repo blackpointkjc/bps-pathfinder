@@ -377,7 +377,8 @@ async function createPulsePointPropertyAlerts(base44: any, call: any) {
   const existingKeys = new Set((existingAlerts || []).map((alert: any) => String(alert?.source_key || '')));
   let created = 0;
   for (const location of locations || []) {
-    if (location.active === false || location.property_monitoring_enabled !== true) continue;
+    const specialFourUnit = /\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call.incident||''));
+    if (location.active === false || (!specialFourUnit&&location.property_monitoring_enabled !== true)) continue;
     const match = propertyMatch(call, location);
     if (!match) continue;
     const key = propertyAlertFingerprint(call, location.id);

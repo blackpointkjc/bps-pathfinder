@@ -22,7 +22,7 @@ async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       return await operation();
-    } catch (error) {
+    } catch (error:any) {
       lastError = error;
       const message = lower(error?.message || error?.response?.data?.error);
       if (Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests|429/.test(message)) throw error;
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   let renewLease = async () => {};
   try {
     const base44 = createClientFromRequest(req);
-    let user = await base44.auth.me().catch(() => null);
+    let user:any = await base44.auth.me().catch(() => null);
     // Service-to-service calls have no interactive user. Validate the caller's
     // actual Authorization token against an admin-only entity through the
     // ordinary client, never the elevated client or a caller-supplied flag.
@@ -655,7 +655,7 @@ Deno.serve(async (req) => {
         : decision === 'partially_assigned' ? `Closest eligible unit assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error('geofenceDispatchAssignment failed', error);
     const limited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests|429/i.test(String(error?.message));
     return Response.json({ error: error?.message || 'Unable to evaluate automatic dispatch' }, { status: limited ? 429 : 500, headers:limited ? {'Retry-After':'60'} : {} });
