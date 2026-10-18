@@ -57,7 +57,7 @@ Deno.serve(async(req)=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
-    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
+    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
     const manual=action!=='scheduled';
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);
@@ -136,6 +136,7 @@ Deno.serve(async(req)=>{
     const lastSaturday=dateOffset(today,-sinceLastSaturday);
     const startDefault=dateOffset(lastSaturday,-6);
     // One-button billing always targets the most recently completed service week.
+    if(action==='create_draft'&&!body.location_id)return Response.json({error:'Choose a billing site before saving an invoice'},{status:400});
     const periodStart=action==='backfill_drafts'?startDefault:(body.period_start || startDefault);
     const periodEnd=action==='backfill_drafts'?lastSaturday:(body.period_end || lastSaturday);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
@@ -237,7 +238,7 @@ Deno.serve(async(req)=>{
         if(existingInvoice) updated++; else created++;
         existingByKey.set(key,invoice);
         // Historical drafts and unverified rates must never be emailed silently.
-        if(action==='backfill_drafts' || needsReview) {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:needsReview?'review_required':'draft',recipient:target});continue;}
+        if(action==='backfill_drafts' || action==='create_draft' || needsReview) {results.push({invoice_number:number,site:name,period_start:start,period_end:end,amount:dollars(total),status:needsReview?'review_required':'draft',recipient:target});continue;}
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {

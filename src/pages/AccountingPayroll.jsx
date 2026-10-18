@@ -39,6 +39,9 @@ export default function AccountingPayroll() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [liveNow, setLiveNow] = useState(() => new Date());
   const [payrollCatchup, setPayrollCatchup] = useState({ state: 'idle', message: '' });
+  const [approvalBusyId,setApprovalBusyId]=useState('');
+  const [paymentMethod,setPaymentMethod]=useState({});
+  const [confirmCheck,setConfirmCheck]=useState(null);
 
 
   useEffect(() => {
@@ -160,6 +163,25 @@ export default function AccountingPayroll() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const setPayrollCheckState = async (entry,action) => {
+    setApprovalBusyId(entry.id);
+    setPayrollCatchup({state:'running',message:`Saving ${action} for ${entry.officer_email}…`});
+    try {
+      const response=await base44.functions.invoke('manageAccountingPayroll',{
+        action,payroll_entry_id:entry.id,payment_method:paymentMethod[entry.id]||entry.payment_method||'',
+      });
+      const result=response?.data||response||{};
+      if(result.error)throw new Error(result.error);
+      queryClient.setQueryData(['accountingFinance'],old=>old?{...old,
+        payrollEntries:(old.payrollEntries||[]).map(row=>row.id===entry.id?{...row,...result.record}:row),
+        companyExpenses:result.expense?[...(old.companyExpenses||[]).filter(row=>row.id!==result.expense.id),result.expense]:(old.companyExpenses||[]),
+      }:old);
+      await queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      setPayrollCatchup({state:'created',message:`${entry.officer_email}: paycheck ${action==='paid'?'marked paid':'approved and posted to company payroll expenses'}.`});
+    }catch(error){setPayrollCatchup({state:'error',message:error?.response?.data?.error||error?.message||'Payroll check update failed'});}
+    finally{setApprovalBusyId('');setConfirmCheck(null);}
   };
 
   const createPayrollMutation = useMutation({
@@ -1084,7 +1106,7 @@ export default function AccountingPayroll() {
               const [start,end]=key.split('|');
               const records=historicReports.filter(entry=>entry.pay_period_start===start && entry.pay_period_end===end);
               return <div key={key} className="rounded-lg border border-slate-200 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="font-semibold text-slate-900">{safeFormatDate(start)} – {safeFormatDate(end)} · {records.length} reports</div><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport(records)}><Printer className="mr-2 h-4 w-4"/>Print Archived Period</Button></div>
-                <div className="mt-2 space-y-1">{records.map(entry=>{const officer=officers.find(row=>String(row.email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase());return <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm text-slate-700"><span>{officer?`${officer.first_name} ${officer.last_name}`:entry.officer_email} · {Number(entry.hours_worked||0).toFixed(2)}h · {entry.status}</span><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport([entry])}>Itemized</Button></div>})}</div></div>;
+                <div className="mt-2 space-y-1">{records.map(entry=>{const officer=officers.find(row=>String(row.email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase());return <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm text-slate-700"><span>{officer?`${officer.first_name} ${officer.last_name}`:entry.officer_email} · {Number(entry.hours_worked||0).toFixed(2)}h · {entry.status}</span><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport([entry])}>Itemized</Button>{['ready','draft','exported'].includes(entry.status)&&<Button size="sm" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'approve'})}>Approve</Button>}{entry.status==='approved'&&<Button size="sm" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paid</Button>}</div>})}</div></div>;
             })}
           </CardContent></Card>
         </TabsContent>
@@ -1138,6 +1160,9 @@ export default function AccountingPayroll() {
                               <Button size="sm" variant="outline" onClick={() => generateGrossPayrollReport([entry])}>
                                 <Printer className="w-4 h-4 mr-2" />Itemized Sheet
                               </Button>
+                              {['ready','draft','exported'].includes(entry.status) && <Button size="sm" className="bg-emerald-700 text-white" disabled={!!approvalBusyId || generating} onClick={()=>setConfirmCheck({entry,action:'approve'})}>Approve Paycheck</Button>}
+                              {entry.status==='approved' && <Button size="sm" className="bg-blue-700 text-white" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paycheck Paid</Button>}
+                              {['approved','paid'].includes(entry.status) && <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-900">{entry.status==='paid'?'Paid':'Approved · Payroll expense posted'}</span>}
 
                             </div>
                           </div>
@@ -1152,6 +1177,15 @@ export default function AccountingPayroll() {
         ))}
       </Tabs>
 
+      <Dialog open={!!confirmCheck} onOpenChange={open=>{if(!open)setConfirmCheck(null)}}>
+        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>{confirmCheck?.action==='paid'?'Record Paid Paycheck':'Approve Paycheck for Payroll Expense'}</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-700">{confirmCheck?.entry?.officer_email} · {confirmCheck?.entry?.pay_period_start} to {confirmCheck?.entry?.pay_period_end}</p>
+          <p className="text-lg font-black">Gross wages: ${Number(confirmCheck?.entry?.gross_pay||0).toFixed(2)}</p>
+          <p className="text-xs text-slate-600">{confirmCheck?.action==='paid'?'Marks the approved payroll payable as paid; no bank transfer will be initiated.':'Books one payroll wage expense in the company ledger. This does not initiate payment.'}</p>
+          {confirmCheck?.action==='paid'&&<div><Label>Payment method (optional)</Label><Input placeholder="ACH, direct deposit, check" value={paymentMethod[confirmCheck?.entry?.id]||''} onChange={e=>setPaymentMethod(prev=>({...prev,[confirmCheck.entry.id]:e.target.value}))}/></div>}
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setConfirmCheck(null)}>Cancel</Button><Button disabled={!!approvalBusyId} onClick={()=>setPayrollCheckState(confirmCheck.entry,confirmCheck.action)}>Confirm {confirmCheck?.action==='paid'?'Paid':'Approval'}</Button></div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
