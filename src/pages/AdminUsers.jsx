@@ -626,7 +626,7 @@ export default function AdminUsers({ embedded = false }) {
     ]);
     navigate(`${createPageUrl(config.page)}?email=${encodeURIComponent(userData.email || '')}`);
   };
-  const terminatedUsers = users?.filter(u => u.termination_date && isPendingUser(u)) || [];
+  const terminatedUsers = users?.filter(u => Boolean(u.termination_date) || String(u.employment_status||'').toLowerCase()==='terminated' || String(u.account_status||'').toLowerCase()==='terminated') || [];
   
   console.log('Active users:', activeUsers.length);
   console.log('Terminated users:', terminatedUsers.length);
