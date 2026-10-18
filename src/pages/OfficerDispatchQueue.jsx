@@ -18,6 +18,7 @@ export default function OfficerDispatchQueue() {
   const [disposition, setDisposition] = useState('');
   const [working, setWorking] = useState(false);
 
+
   const { data: payload = {}, isLoading, error, refetch } = useQuery({
     queryKey: ['myDispatchQueue'],
     queryFn: async () => {
@@ -26,7 +27,7 @@ export default function OfficerDispatchQueue() {
       if (data.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 15000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -39,34 +40,31 @@ export default function OfficerDispatchQueue() {
     if (!selectedId || !queue.some(call => call.id === selectedId)) setSelectedId(queue[0].id);
   }, [queue.map(call => call.id).join('|'), selectedId]);
 
-  useEffect(() => {
-    const unsubs = [];
+  // Shared notes are a dedicated query. They refresh on note events without
+  // touching local officer status or refetching the whole dispatch queue.
+  const {data:sharedNotes=[],refetch:refetchNotes}=useQuery({
+    queryKey:['sharedCadTimeline',selectedId],
+    enabled:!!selectedId,
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('sharedCadTimeline',{action:'read',call_id:selectedId});
+      const data=response?.data||response||{};
+      if(!data.success)throw new Error(data.error||'Shared notes are unavailable');
+      return Array.isArray(data.notes)?data.notes:[];
+    },
+    staleTime:5000,refetchInterval:20000,refetchIntervalInBackground:false,
+    refetchOnWindowFocus:true,
+  });
+  useEffect(()=>{
+    if(!selectedId)return;
     let timer;
-    const scheduleRefresh = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => refetch(), 750);
+    const onNote=event=>{
+      if(String(event?.data?.call_id||'')!==String(selectedId))return;
+      clearTimeout(timer);timer=setTimeout(()=>refetchNotes(),450);
     };
-    const recoverQueue = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => refetch(), 200);
-    };
-    for (const entity of ['CallAssignment','CallNote','CallStatusLog','DispatchCall','OfficerWelfareCheck']) {
-      try {
-        const unsub = base44.entities[entity].subscribe(scheduleRefresh);
-        if (typeof unsub === 'function') unsubs.push(unsub);
-      } catch {}
-    }
-    window.addEventListener('bps-operational-resume', recoverQueue);
-    window.addEventListener('online', recoverQueue);
-    window.addEventListener('pageshow', recoverQueue);
-    return () => {
-      window.clearTimeout(timer);
-      unsubs.forEach(fn => fn());
-      window.removeEventListener('bps-operational-resume', recoverQueue);
-      window.removeEventListener('online', recoverQueue);
-      window.removeEventListener('pageshow', recoverQueue);
-    };
-  }, [refetch]);
+    let unsubscribe;
+    try{unsubscribe=base44.entities.CallNote.subscribe(onNote);}catch{}
+    return()=>{clearTimeout(timer);unsubscribe?.();};
+  },[selectedId,refetchNotes]);
 
   const selected = useMemo(() => queue.find(call => call.id === selectedId) || queue[0] || null, [queue, selectedId]);
 
@@ -79,7 +77,7 @@ export default function OfficerDispatchQueue() {
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
       if (status === 'Cleared') setDisposition('');
-      await refetch();
+      await Promise.all([refetch(),refetchNotes()]);
       if (status === 'Cleared') {
         toast.success(data.next_call_number ? `Call cleared. Next call: ${data.next_call_number}.` : 'Call cleared. Your dispatch queue is clear.');
       } else {
@@ -93,13 +91,12 @@ export default function OfficerDispatchQueue() {
     if (!selected || !note.trim() || working) return;
     setWorking(true);
     try {
-      const me = await base44.auth.me();
-      const last=me.last_name||String(me.full_name||'').trim().split(/\s+/).pop();
-      const display=[me.rank,last].filter(Boolean).join(' ')||me.email;
-      await base44.entities.CallNote.create({call_id:selected.id,author_id:me.id,author_name:display,note:`[FIELD UPDATE] ${note.trim()}`,note_type:'update'});
+      const response=await base44.functions.invoke('sharedCadTimeline',{action:'post',call_id:selected.id,note:`[FIELD UPDATE] ${note.trim()}`});
+      const saved=response?.data||response||{};
+      if(!saved.success)throw new Error(saved.error||'CAD note was not saved');
       setNote('');
-      await refetch();
-      toast.success('Note shared with dispatch.');
+      await refetchNotes();
+      toast.success('Note saved to the shared officer / dispatch CAD log.');
     } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to add note'); }
     finally { setWorking(false); }
   };
@@ -162,7 +159,7 @@ export default function OfficerDispatchQueue() {
         <aside className="space-y-2">
           {queue.map((call,index)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
             <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{index+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
-            <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)}</div>
+            <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}
         </aside>
 
@@ -182,8 +179,8 @@ export default function OfficerDispatchQueue() {
             <Button disabled={working} onClick={directions} variant="outline" className="border-cyan-500 text-cyan-300"><MapPinned className="mr-2 h-4 w-4"/>DIRECTIONS</Button>
           </section>
 
-          {!!selected.assigned_officers?.length&&<section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><h3 className="mb-2 font-black text-cyan-300">ASSIGNED UNITS · LIVE STATUS</h3><div className="flex flex-wrap gap-2">{selected.assigned_officers.map((officer,index)=><div key={`${officer.unit_id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs"><div className="font-bold">{officer.officer_name}</div><div className="mt-1 text-slate-400">{officer.role} · {statusLabel(officer.status)}</div></div>)}</div></section>}
-          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>SHARED CALL NOTES & ACTIVITY</h3><span className="text-[10px] text-slate-500">NOTES, ACKNOWLEDGMENTS, EN ROUTE, ON SCENE, WELFARE & UNIT CLEARANCES</span></div><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!selected.dispatch_notes?.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:selected.dispatch_notes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div><div className="mt-1 text-[10px] text-slate-500">{n.shown_at?new Date(n.shown_at).toLocaleString():''}{n.kind==='activity'?' · CAD ACTIVITY':''}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
+          {!!selected.assigned_officers?.length&&<section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><h3 className="mb-2 font-black text-cyan-300">ASSIGNED UNITS · LIVE STATUS</h3><div className="flex flex-wrap gap-2">{selected.assigned_officers.map((officer,index)=><div key={`${officer.unit_id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs"><div className="font-bold">{officer.officer_name}</div><div className="mt-1 text-slate-400"><span className={officer.role==='primary'?'font-black text-emerald-300':'font-bold text-cyan-300'}>{officer.role==='primary'?'PRIMARY UNIT':'ADDITIONAL UNIT'}</span> · {statusLabel(officer.status)}</div></div>)}</div></section>}
+          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>SHARED CALL NOTES & ACTIVITY</h3><span className="text-[10px] text-slate-500">NOTES, ACKNOWLEDGMENTS, EN ROUTE, ON SCENE, WELFARE & UNIT CLEARANCES</span></div><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!sharedNotes.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:sharedNotes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div><div className="mt-1 text-[10px] text-slate-500">{n.created_date?new Date(n.created_date).toLocaleString():''}{n.kind==='activity'?' · CAD ACTIVITY':''}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
 
           <section className="grid gap-2 sm:grid-cols-3"><Button onClick={()=>openReport('IncidentReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>INCIDENT REPORT</Button><Button onClick={()=>openReport('DailyActivityReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>DAR</Button><Button onClick={requestSupervisor} disabled={working} className="bg-purple-700 hover:bg-purple-600"><ShieldAlert className="mr-2 h-4 w-4"/>REQUEST SUPERVISOR</Button></section>
 

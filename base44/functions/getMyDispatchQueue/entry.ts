@@ -64,35 +64,24 @@ Deno.serve(async (req) => {
     const named=(u:any)=>[u?.rank,u?.last_name||String(u?.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')||'CAD';
     for (const call of calls) {
       const assignment = activeAssignments.find((a: any) => String(a.call_id) === String(call.id));
-      const [notes,logs,allCallAssignments] = await Promise.all([
-        base44.asServiceRole.entities.CallNote.filter({ call_id: call.id }, '-created_date', 100),
-        base44.asServiceRole.entities.CallStatusLog.filter({ call_id: call.id }, '-created_date', 120),
-        base44.asServiceRole.entities.CallAssignment.filter({ call_id:call.id },'-assigned_at',80),
+      // Unit queue data stays independent of the dispatcher call's global
+      // status. Notes are loaded separately through sharedCadTimeline, the
+      // *only* shared live stream between the two views.
+      const [logs,allCallAssignments]=await Promise.all([
+        base44.asServiceRole.entities.CallStatusLog.filter({call_id:call.id},'-created_date',45),
+        base44.asServiceRole.entities.CallAssignment.filter({call_id:call.id},'-assigned_at',80),
       ]);
-      const mirroredEvent=(row:any)=>{
-        const prefix={unit_acknowledged:'[ACKNOWLEDGED]',unit_enroute:'[ENROUTE]',unit_on_scene:'[ON SCENE]',unit_cleared:'[CLEARED]'}[String(row.event_type||'')];
-        if(!prefix)return false;
-        const eventAt=Date.parse(row.created_date||'');
-        return (notes||[]).some((note:any)=>String(note.author_id)===String(row.unit_id)
-          && String(note.note||'').startsWith(prefix)
-          && Math.abs(Date.parse(note.created_date||'')-eventAt)<15000);
-      };
-      const sharedNotes=[...(notes||[]).map((row:any)=>({...row,kind:'note',author_name:actors.has(String(row.author_id))?named(actors.get(String(row.author_id))):row.author_name||'Dispatch',shown_at:row.created_date})),
-        ...(logs||[]).filter((row:any)=>(row.event_type!=='call_updated'||row.notes||row.announcement_text)&&!mirroredEvent(row)).map((row:any)=>({
-          id:`log-${row.id}`,kind:'activity',author_name:actors.has(String(row.unit_id))?named(actors.get(String(row.unit_id))):row.unit_name||'Dispatch',
-          note:`[${String(row.event_type||'UPDATE').replaceAll('_',' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`,
-          shown_at:row.created_date,
-        }))].sort((a:any,b:any)=>new Date(a.shown_at||0).getTime()-new Date(b.shown_at||0).getTime());
+      const activeForCall=(allCallAssignments||[]).filter((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status)));
+      const namedPrimary=activeForCall.find((a:any)=>lower(a.role)==='primary')||activeForCall.slice().sort((a:any,b:any)=>Date.parse(a.assigned_at||0)-Date.parse(b.assigned_at||0))[0];
       const latestOwnEvent=(logs||[]).find((log:any)=>String(log.unit_id)===String(me.id)&&['unit_on_scene','unit_enroute','unit_acknowledged'].includes(String(log.event_type||''))&&Date.parse(log.created_date||'')>=Date.parse(assignment?.assigned_at||call.time_dispatched||call.created_date||''));
       const ownStatus=latestOwnEvent?.event_type==='unit_on_scene'?'on_scene':latestOwnEvent?.event_type==='unit_enroute'?'enroute':assignment?.status||'pending';
       queue.push({
         ...call,
         assignment:{...(assignment||{assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id}),status:ownStatus},
-        dispatch_notes: sharedNotes,
-        assigned_officers:(allCallAssignments||[]).filter((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))).map((a:any)=>({
-          unit_id:a.unit_id,officer_name:actors.has(String(a.unit_id))?named(actors.get(String(a.unit_id))):`Unit ${a.unit_id}`,
-          role:a.role||'responding',status:a.status||'pending',assigned_at:a.assigned_at,
-        })),
+        assigned_officers:activeForCall.map((a:any)=>({
+          unit_id:a.unit_id,officer_name:actors.has(String(a.unit_id))?named(actors.get(String(a.unit_id))):'Assigned Officer',
+          role:String(a.id)===String(namedPrimary?.id)?'primary':'additional',status:a.status||'pending',assigned_at:a.assigned_at,
+        })).sort((a:any,b:any)=>(a.role==='primary'?-1:1)-(b.role==='primary'?-1:1)),
         welfare_check: (welfareChecks || []).find((check:any) => String(check.call_id) === String(call.id) && lower(check.status) === 'pending') || null,
         queue_priority: priorityWeight[lower(call.priority)] ?? 2,
       });

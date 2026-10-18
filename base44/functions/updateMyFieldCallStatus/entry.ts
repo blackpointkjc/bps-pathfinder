@@ -54,33 +54,19 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.CallAssignment.update(assignment.id, patch);
     }
 
-    // Acknowledgement is assignment-level only. En route/on-scene update the call,
-    // while clearing one officer does not close the CAD call until all assigned
-    // units have cleared.
-    if (status !== 'Acknowledged') {
-      // Global CAD call progress must never regress from On Scene to Enroute
-      // when a responding supervisor acknowledges later than another unit.
-      const alreadyOnScene=call.status==='On Scene'||Boolean(call.time_on_scene);
-      const update: Record<string, unknown> = {status:status==='Enroute'&&alreadyOnScene?'On Scene':status};
-      if (status === 'Enroute' && !call.time_enroute) update.time_enroute = now;
-      if (status === 'On Scene' && !call.time_on_scene) update.time_on_scene = now;
-      if (status === 'Cleared') {
-        const allAssignments = allForCall;
-        const otherActive = (allAssignments || []).some((a: any) => !aliases.includes(String(a.unit_id)) && !['cleared','cancelled','canceled'].includes(String(a.status || '').toLowerCase()));
-        const otherLegacyAssigned=assignedIds.some((id:string)=>!aliases.includes(id));
-        if (otherActive || otherLegacyAssigned) {
-          delete update.status;
-        } else {
-          update.time_cleared = now;
-          update.manual_dismissed = true;
-          update.manual_dismissed_at = now;
-          if (disposition) update.disposition = String(disposition).trim().slice(0, 1000);
-        }
+    // Unit acknowledgement, travel and arrival belong solely to that officer's
+    // CallAssignment and officer presence. DispatchCall.status is a *dispatch*
+    // lifecycle, not a mirror of whichever officer clicked a button last.
+    // Only an actual final-unit clearance can close the shared CAD call.
+    if (status==='Cleared') {
+      const otherActive=(allForCall||[]).some((a:any)=>!aliases.includes(String(a.unit_id))&&!['cleared','cancelled','canceled'].includes(String(a.status||'').toLowerCase()));
+      const otherLegacyAssigned=assignedIds.some((id:string)=>!aliases.includes(id));
+      const patch:Record<string,unknown>={assigned_units:assignedIds.filter((id:string)=>!aliases.includes(id))};
+      if(!otherActive&&!otherLegacyAssigned){
+        patch.status='Cleared';patch.time_cleared=now;patch.manual_dismissed=true;patch.manual_dismissed_at=now;
+        if(disposition)patch.disposition=String(disposition).trim().slice(0,1000);
       }
-      if (status === 'Cleared') {
-        update.assigned_units = assignedIds.filter((id:string)=>!aliases.includes(id));
-      }
-      if (Object.keys(update).length) await base44.asServiceRole.entities.DispatchCall.update(call_id, update);
+      await base44.asServiceRole.entities.DispatchCall.update(call_id,patch);
     }
 
     const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
