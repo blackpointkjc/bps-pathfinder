@@ -36,7 +36,7 @@ Deno.serve(async req=>{
     await base44.asServiceRole.entities.TimeEntry.update(activeId,completed);
     try{
       const next=await base44.asServiceRole.entities.TimeEntry.create({
-        officer_email:lower(me.email),officer_name:[me.rank,me.last_name||String(me.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')||'Officer',
+        officer_email:lower(me.email),
         clock_in:now,location:`${site.site_name} - ${site.address||''}`.trim(),
         clock_in_latitude:lat,clock_in_longitude:lng,clock_in_accuracy:accuracy,
         location_verification_status:accuracy<=100?'verified':'low_accuracy_review',
