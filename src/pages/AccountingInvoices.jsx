@@ -571,6 +571,7 @@ export default function AccountingInvoices() {
                         <Button type="button" variant="outline" disabled={savingPaymentId===invoice.id || invoice.billing_review_required} onClick={()=>askConfirmation('Save Invoice Payment Status',`Save invoice ${invoice.invoice_number} with updated payment details and status?`,()=>updateInvoicePayment(invoice))} className="whitespace-nowrap">{savingPaymentId===invoice.id?'Saving…':'Save Status'}</Button>
                         <Button type="button" disabled={savingPaymentId===invoice.id || invoice.status==='paid' || invoice.billing_review_required} onClick={()=>askConfirmation('Mark Invoice Paid',`Confirm that the full $${Number(invoice.total_amount||0).toFixed(2)} was actually received for invoice ${invoice.invoice_number}. This does not initiate a transfer.`,()=>updateInvoicePayment(invoice,'paid'))} className="whitespace-nowrap bg-emerald-700 text-white hover:bg-emerald-600">Mark Paid</Button>
                       </div>
+                      {Number(invoice.late_fee_amount||0)>0 && <p className="mt-2 text-sm font-bold text-red-700">One-time overdue fee (10%): ${Number(invoice.late_fee_amount||0).toFixed(2)} · Included in invoice total</p>}
                       {invoice.status==='draft' && <p className="mt-2 text-xs text-amber-700">This invoice is still a draft. Recording a payment does not mean the invoice was emailed to the client.</p>}
                     </div>
                   </div>

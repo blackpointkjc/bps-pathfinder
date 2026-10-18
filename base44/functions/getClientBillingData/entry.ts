@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
     const siteOf = (value: any) => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
     const clientEmail = String(target.email || '').toLowerCase();
     const targetId = String(target.id || '');
-    const initialAssignedSites = new Set([...assigned].map(siteOf).filter(Boolean));
+    const contactSites=(locations||[]).filter((site:any)=>String(site.billing_contact_email||'').trim().toLowerCase()===clientEmail||String(site.assigned_client_email||'').trim().toLowerCase()===clientEmail).map((site:any)=>siteOf(site.site_name));
+    const initialAssignedSites = new Set([...assigned,...contactSites].map(siteOf).filter(Boolean));
     const visibleInvoicesRaw = (invoices || []).filter((invoice: any) => {
       if(['void','cancelled','draft'].includes(String(invoice.status || '').toLowerCase())) return false;
       const invoiceEmail = String(invoice.client_email || '').toLowerCase();

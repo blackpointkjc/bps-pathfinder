@@ -218,7 +218,8 @@ export default function ClientPayrollReport() {
           </table>
           <div class="totals">
             <div class="row"><span>Total hours</span><strong>${Number(invoice.total_hours || 0).toFixed(2)}</strong></div>
-            <div class="row grand"><span>Total due</span><span>$${Number(invoice.total_amount || 0).toFixed(2)}</span></div>
+            ${Number(invoice.late_fee_amount||0)>0?`<div class="row"><span>Service subtotal</span><span>$${Number(invoice.base_amount||Number(invoice.total_amount)-Number(invoice.late_fee_amount)).toFixed(2)}</span></div><div class="row"><span>One-time late fee (10%)</span><span>$${Number(invoice.late_fee_amount).toFixed(2)}</span></div>`:''}
+            <div class="row grand"><span>Remaining due</span><span>$${Math.max(0,Number(invoice.total_amount||0)-Number(invoice.amount_paid||0)).toFixed(2)}</span></div>
           </div>
           ${invoice.notes ? `<div class="notes"><strong>Notes</strong><br>${invoice.notes}</div>` : ''}
           <div class="footer">Payment is due by the date shown above. Please contact the company with invoice questions.</div>
@@ -368,7 +369,7 @@ export default function ClientPayrollReport() {
                           <p className="font-semibold text-slate-900">{invoice.site_name}</p>
                         </div>
                         <div className="text-right">
-                          <Badge className={invoice.status === 'paid' ? 'bg-green-600' : 'bg-blue-600'}>
+                          <Badge className={invoice.status === 'paid' ? 'bg-green-600' : invoice.status === 'overdue' ? 'bg-red-600' : 'bg-blue-600'}>
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
                           <p className="text-sm text-slate-600 mt-2">
@@ -412,7 +413,9 @@ export default function ClientPayrollReport() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-slate-600">Invoice Total</p>
-                          <p className="text-2xl font-bold text-green-600">${invoice.total_amount?.toFixed(2)}</p>
+                          {Number(invoice.late_fee_amount||0)>0&&<><p className="text-xs text-slate-600">Services: ${Number(invoice.base_amount||Number(invoice.total_amount)-Number(invoice.late_fee_amount)).toFixed(2)}</p><p className="text-sm font-semibold text-red-700">10% Late fee: ${Number(invoice.late_fee_amount).toFixed(2)}</p></>}
+                          <p className="text-2xl font-bold text-green-600">${Number(invoice.total_amount||0).toFixed(2)}</p>
+                          <p className="text-sm font-semibold text-slate-700">Outstanding: ${Math.max(0,Number(invoice.total_amount||0)-Number(invoice.amount_paid||0)).toFixed(2)}</p>
                         </div>
                       </div>
                       {invoice.notes && (

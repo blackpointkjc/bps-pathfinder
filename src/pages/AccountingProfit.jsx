@@ -422,6 +422,7 @@ export default function AccountingProfit() {
           { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
           { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Includes pending payroll accrual, posted expenses, and provisional bill rates' },
           { label: 'Client payments', value: Number(companyLedger.client_payments || 0), icon: WalletCards, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Selected period' },
+          { label: 'Late fees assessed', value: Number(companyLedger.late_fees || 0), icon: DollarSign, color: 'text-amber-300', border: 'border-amber-500/35', note: 'One-time 10% fees on overdue invoices' },
           { label: 'Outstanding invoices', value: Number(companyLedger.outstanding_client_invoices || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
         ].map(metric => {
           const Icon = metric.icon;
@@ -433,7 +434,7 @@ export default function AccountingProfit() {
                 </div>
                 <p className="max-w-full break-words text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-slate-400">{metric.label}</p>
                 <p className={`mt-2 w-full break-words text-[clamp(1.2rem,1.9vw,1.85rem)] font-black leading-tight tracking-tight ${metric.color}`}>
-                  {accountingLoading || companyLedger.complete !== true ? 'Loading / incomplete' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  {accountingLoading && !accountingData.as_of ? 'Loading…' : !Number.isFinite(metric.value) ? '—' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </p>
                 <p className="mt-2 text-xs leading-4 text-slate-400">{metric.note}</p>
               </CardContent>
