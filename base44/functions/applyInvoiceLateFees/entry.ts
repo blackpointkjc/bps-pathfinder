@@ -13,6 +13,25 @@ Deno.serve(async req=>{
     const today=`${value('year')}-${value('month')}-${value('day')}`;
     if(!manual&&Number(value('hour'))!==8)return Response.json({success:true,skipped:true,reason:'Invoice overdue processing runs at 8 AM Eastern'});
     const invoices=await base44.asServiceRole.entities.Invoice.list('-due_date',3000);
+    // Report the real reasons no 10% assessment occurs. An unsent draft has
+    // not been delivered, and a future due date is not legally past due.
+    const summary={total:(invoices||[]).length,drafts:0,future_due:0,not_provider_accepted:0,under_review:0,already_paid:0,eligible:0,future_dated_overdue:0};
+    for(const row of invoices||[]){
+      const state=String(row.status||'').toLowerCase();
+      if(state==='draft'){summary.drafts++;continue;}
+      if(!yes(state))continue;
+      if(row.due_date>=today){summary.future_due++;if(state==='overdue')summary.future_dated_overdue++;continue;}
+      if(row.billing_review_required===true){summary.under_review++;continue;}
+      if(String(row.delivery_status||'').toLowerCase()!=='accepted'){summary.not_provider_accepted++;continue;}
+      if(Number(row.amount_paid||0)>=Number(row.total_amount||0)){summary.already_paid++;continue;}
+      summary.eligible++;
+    }
+    if(body.action==='preview'){
+      const actor=await base44.auth.me().catch(()=>null);
+      const roles=new Set((actor?.additional_roles||[]).map((v:string)=>v.toLowerCase()));
+      if(!actor||(actor.role!=='admin'&&!roles.has('accounting')&&!roles.has('full_access')))return Response.json({error:'Accounting access required'},{status:403});
+      return Response.json({success:true,as_of:today,summary});
+    }
     const locations=await base44.asServiceRole.entities.Location.list('site_name',1000);
     let overdue=0,assessed=0,notified=0,failed=0;
     const results:any[]=[];
@@ -44,6 +63,6 @@ Deno.serve(async req=>{
         await base44.asServiceRole.entities.Invoice.update(original.id,{late_notice_status:'accepted',late_notice_sent_at:now});notified++;
       }catch(error:any){await base44.asServiceRole.entities.Invoice.update(original.id,{late_notice_status:'failed'}).catch(()=>null);failed++;results.push({invoice:original.invoice_number,error:'Late notice email failed: '+String(error?.message||error)});}
     }
-    return Response.json({success:failed===0,overdue,fees_assessed:assessed,emails_accepted:notified,failed,results,as_of:new Date().toISOString()});
+    return Response.json({success:failed===0,overdue,fees_assessed:assessed,emails_accepted:notified,failed,summary,results,as_of:new Date().toISOString()});
   }catch(error:any){return Response.json({error:error?.message||'Overdue invoice job failed'},{status:500});}
 });

@@ -29,6 +29,8 @@ export default function AccountingInvoices() {
   const [billingRunIssues, setBillingRunIssues] = useState([]);
   const [savingBillingEmail, setSavingBillingEmail] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [checkingOverdue,setCheckingOverdue]=useState(false);
+  const [overdueReport,setOverdueReport]=useState(null);
   const [paymentDrafts, setPaymentDrafts] = useState({});
   const [savingPaymentId, setSavingPaymentId] = useState(null);
   const queryClient = useQueryClient();
@@ -97,6 +99,31 @@ export default function AccountingInvoices() {
     }catch(error){setBillingStatus(`Invoice could not be saved: ${error?.response?.data?.error||error?.message||'Server error'}`);}
     finally{setGenerating(false);}
   };
+  const checkOverdueInvoices=async(action='preview')=>{
+    setCheckingOverdue(true);
+    try{
+      const response=await base44.functions.invoke('applyInvoiceLateFees',{action});
+      const result=response?.data||response||{};
+      if(result.error)throw new Error(result.error);
+      setOverdueReport(result);
+      if(action==='run_now'){
+        await syncInvoiceData();
+        setBillingStatus(`Overdue processing completed: ${result.fees_assessed||0} new 10% late fees, ${result.overdue||0} overdue balances updated, ${result.emails_accepted||0} email requests accepted, ${result.failed||0} failures.`);
+      }
+    }catch(error){setBillingStatus(`Unable to check overdue invoices: ${error?.response?.data?.error||error?.message||'Backend unavailable'}`);}
+    finally{setCheckingOverdue(false);}
+  };
+  const dueSummary=(()=>{
+    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const p=(type)=>parts.find(item=>item.type===type)?.value||'';
+    const today=`${p('year')}-${p('month')}-${p('day')}`;
+    const drafts=invoices.filter(row=>row.status==='draft').length;
+    const issued=invoices.filter(row=>['sent','pending','partial','overdue'].includes(row.status));
+    const pastDue=issued.filter(row=>row.due_date&&row.due_date<today&&Number(row.amount_paid||0)<Number(row.total_amount||0));
+    const ready=pastDue.filter(row=>row.delivery_status==='accepted'&&!row.billing_review_required);
+    const nextDue=issued.filter(row=>row.due_date>=today).map(row=>row.due_date).sort()[0]||invoices.filter(row=>row.due_date>=today).map(row=>row.due_date).sort()[0]||null;
+    return {drafts,issued:issued.length,pastDue:pastDue.length,ready:ready.length,nextDue,today,lateFees:invoices.reduce((sum,row)=>sum+Number(row.late_fee_amount||0),0)};
+  })();
   const runInvoices = async () => {
     if (generating) return;
     setGenerating(true);
@@ -213,6 +240,13 @@ export default function AccountingInvoices() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-slate-950 p-6 text-white">
         <div><h1 className="text-3xl font-black">Black Point · Client Billing</h1><p className="mt-1 text-sm text-slate-300">Company-wide invoices, service revenue, recipients and payments</p></div>
         <Button type="button" onClick={runInvoices} disabled={generating} className="bg-emerald-600 text-white hover:bg-emerald-500"><Send className="mr-2 h-4 w-4"/>{generating?'Running Billing…':'Run Invoices'}</Button>
+      </div>
+      <div className="mb-4 rounded-xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-900">
+        <div className="font-black">Automatic 10% Overdue Fees · Invoice Eligibility</div>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1"><span>Unsent drafts: <strong>{dueSummary.drafts}</strong></span><span>Issued invoices: <strong>{dueSummary.issued}</strong></span><span>Past due balances: <strong>{dueSummary.pastDue}</strong></span><span>Eligible for late fee: <strong>{dueSummary.ready}</strong></span><span>Late fees assessed: <strong>${dueSummary.lateFees.toFixed(2)}</strong></span><span>Next due: <strong>{dueSummary.nextDue||'No upcoming date'}</strong></span></div>
+        <p className="mt-2 text-xs text-slate-600">The automated service checks every morning at 8 AM Eastern. It assesses one 10% charge only after the due date on an issued, provider-accepted, unpaid invoice. Drafts and future-dated invoices are not charged.</p>
+        <div className="mt-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={checkingOverdue||generating} onClick={()=>checkOverdueInvoices('preview')}>{checkingOverdue?'Checking…':'Check Overdue Eligibility'}</Button><Button type="button" disabled={checkingOverdue||generating} onClick={()=>askConfirmation('Process Overdue Invoices','Mark truly past-due issued invoices overdue, assess each one-time 10% charge, update client balances, and request notices. Future due dates and drafts will be skipped.',()=>checkOverdueInvoices('run_now'))}>Process Overdue Now</Button></div>
+        {overdueReport?.summary && <p role="status" className="mt-2 rounded bg-white p-2 text-xs">As of {overdueReport.as_of?.slice(0,10)}: {overdueReport.summary.eligible} eligible; {overdueReport.summary.future_due} not yet due; {overdueReport.summary.drafts} drafts; {overdueReport.summary.not_provider_accepted} awaiting verified email acceptance; {overdueReport.summary.under_review} under rate review. {overdueReport.summary.future_dated_overdue>0?`${overdueReport.summary.future_dated_overdue} record(s) are incorrectly labeled overdue before their due date and need reconciliation.`:''}</p>}
       </div>
       <div className="mb-3 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={generating} onClick={()=>askConfirmation('Reconcile Historical Invoices','Recalculate only unsent invoice drafts for the past 16 weeks. Sent and paid invoices will not be changed.',reconcileHistoricalDrafts)}>Reconcile Historical Drafts (16 Weeks)</Button><Button type="button" variant="outline" disabled={generating} onClick={()=>refetchAccounting()}>Refresh Billing Records</Button></div>
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
