@@ -510,7 +510,7 @@ export default function AdminAnalytics() {
       const officer = selectedCoreUsers.find(user => emailKey(user.email) === emailKey(item.email));
       return officer && isPunctualityLeaderboardOfficer(officer);
     }).slice(0, 3);
-    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, byOfficer, leaderboard };
+    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, onTimeCount: totalOnTime, scoredCount: totalEntries, byOfficer, leaderboard };
   }, [coreAnalytics.data, selectedDivision, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
