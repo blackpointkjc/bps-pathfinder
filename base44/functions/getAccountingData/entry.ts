@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     const tableLoads: Record<string, { label:string; load:() => Promise<any[]> }> = {
       users: {label:'employee directory',load:()=>base44.asServiceRole.entities.User.list('last_name',1500)},
-      periods: {label:'payroll periods',load:()=>base44.asServiceRole.entities.PayrollPeriod.list('-start_date',500)},
-      payrollEntries: {label:'payroll entries',load:()=>base44.asServiceRole.entities.PayrollEntry.list('-created_date',3000)},
+      periods: {label:'payroll periods',load:()=>base44.asServiceRole.entities.PayrollPeriod.list('-start_date',160)},
+      payrollEntries: {label:'payroll entries',load:()=>base44.asServiceRole.entities.PayrollEntry.list('-created_date',1500)},
       configs: {label:'payroll configuration',load:()=>base44.asServiceRole.entities.PayrollConfig.list('config_name',50)},
       timeEntries: {label:'time entries',load:()=>base44.asServiceRole.entities.TimeEntry.list('-clock_in',5000)},
       invoices: {label:'client invoices',load:()=>base44.asServiceRole.entities.Invoice.list('-created_date',2000)},

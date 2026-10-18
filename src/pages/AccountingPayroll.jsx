@@ -69,9 +69,9 @@ export default function AccountingPayroll() {
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
   const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchPayroll } = useQuery({
-    queryKey: ['accountingFinance'],
+    queryKey: ['accountingPayroll'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'payroll' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
@@ -109,7 +109,7 @@ export default function AccountingPayroll() {
   const latestEndedPayrollPeriod = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
     return [...payrollPeriods]
-      .filter(period => period.end_date && period.end_date <= today)
+      .filter(period => period.end_date && period.end_date < today)
       .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0] || null;
   }, [payrollPeriods]);
 
@@ -149,7 +149,7 @@ export default function AccountingPayroll() {
         setPayrollCatchup({state:'current',message:payload.reason});
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
+      await queryClient.invalidateQueries({ queryKey: ['accountingPayroll'] });
       await refetchPayroll();
       setPayrollCatchup({
         state: payload.created > 0 || payload.updated > 0 ? 'created' : 'current',
@@ -174,7 +174,7 @@ export default function AccountingPayroll() {
       });
       const result=response?.data||response||{};
       if(result.error)throw new Error(result.error);
-      queryClient.setQueryData(['accountingFinance'],old=>old?{...old,
+      queryClient.setQueryData(['accountingPayroll'],old=>old?{...old,
         payrollEntries:(old.payrollEntries||[]).map(row=>row.id===entry.id?{...row,...result.record}:row),
         companyExpenses:result.expense?[...(old.companyExpenses||[]).filter(row=>row.id!==result.expense.id),result.expense]:(old.companyExpenses||[]),
       }:old);
@@ -191,7 +191,7 @@ export default function AccountingPayroll() {
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingPayroll'] });
       setGenerating(false);
       alert('✅ Gross payroll generated. Use “Print Master + Itemized Payroll” to print the consolidated report and every officer sheet for transfer to your payroll system.');
     },
@@ -211,7 +211,7 @@ export default function AccountingPayroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollConfig'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingFinance'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingPayroll'] });
       setShowConfigDialog(false);
       alert('✅ Configuration saved!');
     }
@@ -1109,7 +1109,7 @@ export default function AccountingPayroll() {
               const [start,end]=key.split('|');
               const records=historicReports.filter(entry=>entry.pay_period_start===start && entry.pay_period_end===end);
               return <div key={key} className="rounded-lg border border-slate-200 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="font-semibold text-slate-900">{safeFormatDate(start)} – {safeFormatDate(end)} · {records.length} reports</div><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport(records)}><Printer className="mr-2 h-4 w-4"/>Print Archived Period</Button></div>
-                <div className="mt-2 space-y-1">{records.map(entry=>{const officer=officers.find(row=>String(row.email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase());return <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm text-slate-700"><span>{officer?`${officer.first_name} ${officer.last_name}`:entry.officer_email} · {Number(entry.hours_worked||0).toFixed(2)}h · {entry.status}</span><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport([entry])}>Itemized</Button>{['ready','draft','exported'].includes(entry.status)&&<Button size="sm" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'approve'})}>Approve</Button>}{entry.status==='approved'&&<Button size="sm" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paid</Button>}</div>})}</div></div>;
+                <div className="mt-2 space-y-1">{records.map(entry=>{const officer=officers.find(row=>String(row.email||'').toLowerCase()===String(entry.officer_email||'').toLowerCase());return <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-sm text-slate-700"><span>{officer?`${officer.first_name} ${officer.last_name}`:entry.officer_email} · {Number(entry.hours_worked||0).toFixed(2)}h · {entry.status}</span><Button size="sm" variant="outline" onClick={()=>generateGrossPayrollReport([entry])}>Itemized</Button>{['ready','draft','exported'].includes(entry.status)&&<Button size="sm" disabled={!!approvalBusyId||entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')} title={entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')?'Final approval opens the day after the payroll period ends':''} onClick={()=>setConfirmCheck({entry,action:'approve'})}>Approve</Button>}{entry.status==='approved'&&<Button size="sm" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paid</Button>}</div>})}</div></div>;
             })}
           </CardContent></Card>
         </TabsContent>
@@ -1163,7 +1163,7 @@ export default function AccountingPayroll() {
                               <Button size="sm" variant="outline" onClick={() => generateGrossPayrollReport([entry])}>
                                 <Printer className="w-4 h-4 mr-2" />Itemized Sheet
                               </Button>
-                              {['ready','draft','exported'].includes(entry.status) && <Button size="sm" className="bg-emerald-700 text-white" disabled={!!approvalBusyId || generating} onClick={()=>setConfirmCheck({entry,action:'approve'})}>Approve Paycheck</Button>}
+                              {['ready','draft','exported'].includes(entry.status) && <Button size="sm" className="bg-emerald-700 text-white" disabled={!!approvalBusyId || generating || entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')} title={entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')?'Approval begins on the next calendar day after this pay period ends':''} onClick={()=>setConfirmCheck({entry,action:'approve'})}>{entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')?'Await Period End':'Approve Paycheck'}</Button>}
                               {entry.status==='approved' && <Button size="sm" className="bg-blue-700 text-white" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paycheck Paid</Button>}
                               {['approved','paid'].includes(entry.status) && <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-900">{entry.status==='paid'?'Paid':'Approved · Payroll expense posted'}</span>}
 
