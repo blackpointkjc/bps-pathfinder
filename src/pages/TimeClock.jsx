@@ -314,10 +314,10 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: (newEntry) => {
-      // Reflect the successfully transferred segment immediately so a quick
-      // second tap cannot reuse the closed former time entry.
-      queryClient.setQueryData(['activeTimeEntry', user?.email],newEntry);
+    onSuccess: () => {
+      // Clock-out must never put its already-closed TimeEntry back into the
+      // active shift cache, or a subsequent clock-in will race into HTTP 409.
+      queryClient.setQueryData(['activeTimeEntry', user?.email],null);
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
