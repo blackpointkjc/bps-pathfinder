@@ -261,22 +261,26 @@ Deno.serve(async (req) => {
 
     const announcementReceipts = datasets.CadAnnouncementReceipt || [];
     const recentReceiptCutoff = Date.now() - (24 * 60 * 60 * 1000);
-    const receiptKeys = new Set<string>();
+    const receiptKeys = new Map<string, any[]>();
     const duplicateReceiptKeys = new Set<string>();
+    const repeatedPlayedKeys = new Set<string>();
     announcementReceipts
       .filter(item => new Date(item.processed_at || item.created_date || 0).getTime() >= recentReceiptCutoff)
       .forEach(item => {
         const key = `${String(item.user_email || '').toLowerCase()}|${String(item.event_key || '')}`;
         if (!item.event_key || !item.user_email) return;
-        if (receiptKeys.has(key)) duplicateReceiptKeys.add(key);
-        receiptKeys.add(key);
+        const receiptsForKey = receiptKeys.get(key) || [];
+        receiptsForKey.push(item);
+        receiptKeys.set(key, receiptsForKey);
+        if(receiptsForKey.length > 1) duplicateReceiptKeys.add(key);
+        if(receiptsForKey.filter(receipt => String(receipt.state || '').toLowerCase() === 'played').length > 1) repeatedPlayedKeys.add(key);
       });
     if (duplicateReceiptKeys.size) add(findings, {
       key: 'audio:duplicate-receipts',
       area: 'Alerts & Announcements',
-      severity: 'outage',
-      title: 'Duplicate announcement receipts were recorded in the last 24 hours',
-      description: `${duplicateReceiptKeys.size} user/event key(s) were processed more than once and require announcement-flow review.`,
+      severity: repeatedPlayedKeys.size ? 'outage' : 'degraded',
+      title: repeatedPlayedKeys.size ? 'Duplicate CAD audio playback receipts detected' : 'Duplicate quiet CAD receipt records detected',
+      description: repeatedPlayedKeys.size ? `${repeatedPlayedKeys.size} user/event key(s) have more than one played receipt. Investigate duplicate audio delivery.` : `${duplicateReceiptKeys.size} user/event key(s) have duplicated receipts, but no repeated played receipts were found in this window. Historical quiet duplicates require cleanup, not an audio outage.`,
       count: duplicateReceiptKeys.size,
     });
 
