@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
         const internalByRole = entry.role === 'admin' || [...entryRoles].some((role: string) => internalRoles.has(role));
         const internalByRank = Boolean(rank) && !['client', 'student', 'pending'].includes(rank);
         const internalByEmployment = ['active', 'inactive', 'leave', 'terminated'].includes(employmentStatus);
-        return !portalOnly && (internalByRole || internalByRank || internalByEmployment);
+        const awaitingCategory = entry.role !== 'admin' && (entry.additional_roles || []).length === 0 && !portalOnly;
+        return !portalOnly && (internalByRole || internalByRank || internalByEmployment || (hrPrivileged && awaitingCategory));
       })
       .map((entry: any) => hrPrivileged ? {
         ...entry,
