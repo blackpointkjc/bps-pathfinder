@@ -50,7 +50,7 @@ export default function OfficerDispatchQueue() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => refetch(), 200);
     };
-    for (const entity of ['CallAssignment','CallNote','DispatchCall','OfficerWelfareCheck']) {
+    for (const entity of ['CallAssignment','CallNote','CallStatusLog','DispatchCall','OfficerWelfareCheck']) {
       try {
         const unsub = base44.entities[entity].subscribe(scheduleRefresh);
         if (typeof unsub === 'function') unsubs.push(unsub);
@@ -94,7 +94,9 @@ export default function OfficerDispatchQueue() {
     setWorking(true);
     try {
       const me = await base44.auth.me();
-      await base44.entities.CallNote.create({ call_id:selected.id, author_id:me.id, author_name:me.unit_number ? `Unit ${me.unit_number}` : (me.full_name || me.email), note:`[FIELD] ${note.trim()}`, note_type:'update' });
+      const last=me.last_name||String(me.full_name||'').trim().split(/\s+/).pop();
+      const display=[me.rank,last].filter(Boolean).join(' ')||me.email;
+      await base44.entities.CallNote.create({call_id:selected.id,author_id:me.id,author_name:display,note:`[FIELD UPDATE] ${note.trim()}`,note_type:'update'});
       setNote('');
       await refetch();
       toast.success('Note shared with dispatch.');
@@ -103,10 +105,10 @@ export default function OfficerDispatchQueue() {
   };
 
   const respondWelfare = async action => {
-    if (!selected?.welfare_check?.id || working) return;
+    if (!selected || working) return;
     setWorking(true);
     try {
-      const response = await base44.functions.invoke('manageOfficerWelfare', { action, check_id:selected.welfare_check.id });
+      const response = await base44.functions.invoke('manageOfficerWelfare', { action:action==='ok'&&!selected.welfare_check?'self_ok':action, call_id:selected.id,check_id:selected.welfare_check?.id });
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
       toast.success(action === 'ok' ? 'Welfare OK sent to dispatch.' : 'Assistance request sent to dispatch and command.');
@@ -171,6 +173,8 @@ export default function OfficerDispatchQueue() {
 
           {selected.welfare_check && <section className="rounded-2xl border border-red-500/50 bg-red-950/25 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 font-black text-red-200"><HeartPulse className="h-5 w-5"/>WELFARE CHECK REQUESTED</div><div className="mt-1 text-xs text-slate-300">Dispatch is requesting your welfare status for this call.</div></div><div className="flex gap-2"><Button onClick={()=>respondWelfare('ok')} disabled={working} className="bg-emerald-700 hover:bg-emerald-600">WELFARE OK</Button><Button onClick={()=>respondWelfare('assist')} disabled={working} className="bg-red-700 hover:bg-red-600">NEED ASSISTANCE</Button></div></div></section>}
 
+          <section className="rounded-2xl border border-cyan-500/30 bg-[#08111d] p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black text-cyan-200">OFFICER WELFARE STATUS</div><p className="mt-1 text-xs text-slate-400">Transmit a verified welfare OK to dispatch at any time while assigned.</p></div><Button disabled={working} onClick={()=>respondWelfare('ok')} className="bg-emerald-700 hover:bg-emerald-600"><HeartPulse className="mr-2 h-4 w-4"/>SEND WELFARE OK</Button></div></section>
+
           <section className="grid gap-2 sm:grid-cols-4">
             <Button disabled={working || selected.assignment?.status==='accepted'} onClick={()=>changeStatus('Acknowledged')} className="bg-indigo-700 hover:bg-indigo-600">ACKNOWLEDGE</Button>
             <Button disabled={working} onClick={()=>changeStatus('Enroute')} className="bg-blue-700 hover:bg-blue-600"><Navigation className="mr-2 h-4 w-4"/>EN ROUTE</Button>
@@ -178,7 +182,8 @@ export default function OfficerDispatchQueue() {
             <Button disabled={working} onClick={directions} variant="outline" className="border-cyan-500 text-cyan-300"><MapPinned className="mr-2 h-4 w-4"/>DIRECTIONS</Button>
           </section>
 
-          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>SHARED CALL NOTES</h3><span className="text-[10px] text-slate-500">OFFICER + DISPATCH SEE THE SAME NOTES</span></div><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!selected.dispatch_notes?.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:selected.dispatch_notes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
+          {!!selected.assigned_officers?.length&&<section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><h3 className="mb-2 font-black text-cyan-300">ASSIGNED UNITS · LIVE STATUS</h3><div className="flex flex-wrap gap-2">{selected.assigned_officers.map((officer,index)=><div key={`${officer.unit_id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs"><div className="font-bold">{officer.officer_name}</div><div className="mt-1 text-slate-400">{officer.role} · {statusLabel(officer.status)}</div></div>)}</div></section>}
+          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>SHARED CALL NOTES & ACTIVITY</h3><span className="text-[10px] text-slate-500">NOTES, ACKNOWLEDGMENTS, EN ROUTE, ON SCENE, WELFARE & UNIT CLEARANCES</span></div><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!selected.dispatch_notes?.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:selected.dispatch_notes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div><div className="mt-1 text-[10px] text-slate-500">{n.shown_at?new Date(n.shown_at).toLocaleString():''}{n.kind==='activity'?' · CAD ACTIVITY':''}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
 
           <section className="grid gap-2 sm:grid-cols-3"><Button onClick={()=>openReport('IncidentReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>INCIDENT REPORT</Button><Button onClick={()=>openReport('DailyActivityReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>DAR</Button><Button onClick={requestSupervisor} disabled={working} className="bg-purple-700 hover:bg-purple-600"><ShieldAlert className="mr-2 h-4 w-4"/>REQUEST SUPERVISOR</Button></section>
 

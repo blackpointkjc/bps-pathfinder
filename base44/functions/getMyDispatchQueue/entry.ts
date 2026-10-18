@@ -59,13 +59,30 @@ Deno.serve(async (req) => {
     }
 
     const queue: any[] = [];
+    const directory=await base44.asServiceRole.entities.User.list('-updated_date',500);
+    const actors=new Map(directory.map((u:any)=>[String(u.id),u]));
+    const named=(u:any)=>[u?.rank,u?.last_name||String(u?.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ')||'CAD';
     for (const call of calls) {
       const assignment = activeAssignments.find((a: any) => String(a.call_id) === String(call.id));
-      const notes = await base44.asServiceRole.entities.CallNote.filter({ call_id: call.id }, '-created_date', 100).catch(() => []);
+      const [notes,logs,allCallAssignments] = await Promise.all([
+        base44.asServiceRole.entities.CallNote.filter({ call_id: call.id }, '-created_date', 100),
+        base44.asServiceRole.entities.CallStatusLog.filter({ call_id: call.id }, '-created_date', 120),
+        base44.asServiceRole.entities.CallAssignment.filter({ call_id:call.id },'-assigned_at',80),
+      ]);
+      const sharedNotes=[...(notes||[]).map((row:any)=>({...row,kind:'note',author_name:actors.has(String(row.author_id))?named(actors.get(String(row.author_id))):row.author_name||'Dispatch',shown_at:row.created_date})),
+        ...(logs||[]).filter((row:any)=>row.event_type!=='call_updated'||row.notes||row.announcement_text).map((row:any)=>({
+          id:`log-${row.id}`,kind:'activity',author_name:actors.has(String(row.unit_id))?named(actors.get(String(row.unit_id))):row.unit_name||'Dispatch',
+          note:`[${String(row.event_type||'UPDATE').replaceAll('_',' ').toUpperCase()}] ${row.notes||row.announcement_text||`${row.old_status||'Call'} → ${row.new_status||'Updated'}`}`,
+          shown_at:row.created_date,
+        }))].sort((a:any,b:any)=>new Date(a.shown_at||0).getTime()-new Date(b.shown_at||0).getTime());
       queue.push({
         ...call,
         assignment:assignment || {status:'pending',assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id},
-        dispatch_notes: notes || [],
+        dispatch_notes: sharedNotes,
+        assigned_officers:(allCallAssignments||[]).filter((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))).map((a:any)=>({
+          unit_id:a.unit_id,officer_name:actors.has(String(a.unit_id))?named(actors.get(String(a.unit_id))):`Unit ${a.unit_id}`,
+          role:a.role||'responding',status:a.status||'pending',assigned_at:a.assigned_at,
+        })),
         welfare_check: (welfareChecks || []).find((check:any) => String(check.call_id) === String(call.id) && lower(check.status) === 'pending') || null,
         queue_priority: priorityWeight[lower(call.priority)] ?? 2,
       });

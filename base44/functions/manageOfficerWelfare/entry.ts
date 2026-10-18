@@ -108,6 +108,32 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, checks: created });
     }
 
+    if (action==='self_ok') {
+      const callId=String(body.call_id||'');
+      if(!callId)return Response.json({error:'Select your assigned call to send a welfare check'},{status:400});
+      const call=await base44.asServiceRole.entities.DispatchCall.get(callId).catch(()=>null);
+      if(!call||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))return Response.json({error:'The active call is no longer available'},{status:404});
+      const assignmentRows=await base44.asServiceRole.entities.CallAssignment.filter({call_id:callId,unit_id:me.id},'-assigned_at',20);
+      if(!(assignmentRows||[]).some((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status))) && !(call.assigned_units||[]).map(String).includes(String(me.id)))return Response.json({error:'Only assigned personnel may submit a welfare check for this call'},{status:403});
+      const open=await base44.asServiceRole.entities.OfficerWelfareCheck.filter({call_id:callId,unit_id:String(me.id),status:'pending'},'-requested_at',1);
+      if(open?.length){
+        const updated=await base44.asServiceRole.entities.OfficerWelfareCheck.update(open[0].id,{status:'ok',response_at:now,response_by:String(me.id),response_note:'Officer voluntarily checked in — Welfare OK'});
+        await closeWelfareNotifications(base44,open[0].id,now);
+      }
+      const name=displayName(me),cad=String(call.agency_cad_number||call.bps_reference||call.call_id||call.id);
+      const report=await base44.asServiceRole.entities.OfficerWelfareCheck.create({call_id:callId,unit_id:String(me.id),
+        officer_email:lower(me.email),officer_display_name:name,cad_number:cad,requested_at:now,
+        requested_by:String(me.id),requested_by_name:name,status:'ok',response_at:now,response_by:String(me.id),
+        response_note:'Officer voluntarily checked in — Welfare OK',event_key:`self-welfare:${callId}:${me.id}:${now}`});
+      await base44.asServiceRole.entities.CallStatusLog.create({call_id:callId,incident_type:call.incident||'',location:call.location||'',
+        old_status:call.status||'',new_status:call.status||'Active',unit_id:String(me.id),unit_name:name,
+        notes:`${name} confirmed WELFARE OK at ${now}.`,event_key:`self-welfare:${callId}:${me.id}:${now}`,
+        event_type:'unit_available',announcement_text:`${name} confirms welfare OK. CAD ${cad}.`,
+        announcement_priority:'normal',cad_number:cad,triggering_action:'manageOfficerWelfare.self_ok',audio_enabled:true,sensitive:false});
+      await base44.asServiceRole.entities.CallNote.create({call_id:callId,author_id:String(me.id),author_name:name,
+        note:`[WELFARE OK] ${name} confirmed welfare at ${new Date(now).toLocaleString('en-US',{timeZone:'America/New_York'})}.`,note_type:'update'}).catch(()=>null);
+      return Response.json({success:true,check:report,message:`Welfare OK transmitted for ${name}`});
+    }
     const checkId = String(body.check_id || '').trim();
     if (!checkId) return Response.json({ error: 'check_id is required' }, { status: 400 });
     const check = await base44.asServiceRole.entities.OfficerWelfareCheck.get(checkId).catch(() => null);
@@ -122,6 +148,7 @@ Deno.serve(async (req) => {
       if (!isOfficer && !commandAccess(me)) return Response.json({ error: 'Not authorized' }, { status: 403 });
       const updated = await base44.asServiceRole.entities.OfficerWelfareCheck.update(checkId, { status: 'ok', response_at: now, response_by: String(me.id || ''), response_note: String(body.note || 'Welfare OK').slice(0,1000) });
       await closeWelfareNotifications(base44, checkId, now);
+      await base44.asServiceRole.entities.CallNote.create({call_id:check.call_id,author_id:me.id,author_name:displayName(me),note:`[WELFARE OK] ${displayName(me)} responded to dispatch.`,note_type:'update'}).catch(()=>null);
       await base44.asServiceRole.entities.CallStatusLog.create({ call_id: check.call_id, incident_type: call?.incident || '', location: call?.location || '', old_status: call?.status || '', new_status: call?.status || 'Active', unit_id: check.unit_id, unit_name: check.officer_display_name || 'Officer', notes: `WELFARE OK received from ${check.officer_display_name || 'officer'}.`, event_key: `${check.event_key}:ok`, event_type: 'unit_available', announcement_text: `Welfare check clear for ${check.officer_display_name || 'officer'}. CAD ${cad}.`, announcement_priority: 'normal', cad_number: cad, triggering_action: 'manageOfficerWelfare.ok', audio_enabled: true, sensitive: false }).catch(() => null);
       return Response.json({ success: true, check: updated });
     }
@@ -130,12 +157,13 @@ Deno.serve(async (req) => {
       const status = action === 'unable_to_reach' ? 'unable_to_reach' : 'escalated';
       const updated = await base44.asServiceRole.entities.OfficerWelfareCheck.update(checkId, { status, response_at: isOfficer ? now : check.response_at, response_by: isOfficer ? String(me.id || '') : check.response_by, response_note: String(body.note || (isOfficer ? 'Officer requested assistance' : 'Unable to reach officer')).slice(0,1000), escalated_at: now, escalated_by: String(me.id || '') });
       await closeWelfareNotifications(base44, checkId, now);
+      await base44.asServiceRole.entities.CallNote.create({call_id:check.call_id,author_id:me.id,author_name:displayName(me),note:`[WELFARE ${action.toUpperCase()}] ${displayName(me)} — ${String(body.note||'Assistance requested').slice(0,500)}.`,note_type:'update'}).catch(()=>null);
       await base44.asServiceRole.entities.CallStatusLog.create({ call_id: check.call_id, incident_type: call?.incident || '', location: call?.location || '', old_status: call?.status || '', new_status: call?.status || 'Active', unit_id: check.unit_id, unit_name: check.officer_display_name || 'Officer', notes: `WELFARE ESCALATION: ${check.officer_display_name || 'Officer'} — ${String(body.note || (isOfficer ? 'NEED ASSISTANCE response' : 'No welfare response')).slice(0,500)}`, event_key: `${check.event_key}:escalated`, event_type: 'officer_emergency', announcement_text: `Emergency traffic. Welfare assistance required for ${check.officer_display_name || 'officer'}. CAD ${cad}.`, announcement_priority: 'emergency', cad_number: cad, triggering_action: 'manageOfficerWelfare.escalate', audio_enabled: true, sensitive: false }).catch(() => null);
       return Response.json({ success: true, check: updated });
     }
 
     return Response.json({ error: 'Unsupported welfare action' }, { status: 400 });
-  } catch (error) {
+  } catch (error:any) {
     console.error('manageOfficerWelfare failed', error);
     return Response.json({ error: error?.message || 'Unable to manage welfare check' }, { status: 500 });
   }
