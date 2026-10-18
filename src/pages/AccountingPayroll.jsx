@@ -178,7 +178,10 @@ export default function AccountingPayroll() {
         payrollEntries:(old.payrollEntries||[]).map(row=>row.id===entry.id?{...row,...result.record}:row),
         companyExpenses:result.expense?[...(old.companyExpenses||[]).filter(row=>row.id!==result.expense.id),result.expense]:(old.companyExpenses||[]),
       }:old);
-      await queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey:['accountingFinance']}),
+        queryClient.invalidateQueries({queryKey:['accountingProfit']}),
+      ]);
       setPayrollCatchup({state:'created',message:`${entry.officer_email}: paycheck ${action==='paid'?'marked paid':'approved and posted to company payroll expenses'}.`});
     }catch(error){setPayrollCatchup({state:'error',message:error?.response?.data?.error||error?.message||'Payroll check update failed'});}
     finally{setApprovalBusyId('');setConfirmCheck(null);}

@@ -63,6 +63,7 @@ export default function AccountingExpenses() {
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['accountingFinance'] }),
+      queryClient.invalidateQueries({ queryKey: ['accountingProfit'] }),
     ]);
   };
 
