@@ -147,7 +147,7 @@ export default function DispatchCenter() {
                 .map(unit => ({
                     ...unit,
                     email: unit.email || unit.officer_email,
-                    label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
+                    label: unit.unit_number ? `Unit ${unit.unit_number}` : rankLastName(unit.full_name || unit.officer_name || unit.officer_email),
                 }))
                 .sort(comparePersonnel));
         };
@@ -300,7 +300,7 @@ export default function DispatchCenter() {
                 .map(unit => ({
                     ...unit,
                     email: unit.email || unit.officer_email,
-                    label: unit.unit_number || unit.full_name || unit.officer_name || unit.officer_email,
+                    label: unit.unit_number ? `Unit ${unit.unit_number}` : rankLastName(unit.full_name || unit.officer_name || unit.officer_email),
                 }))
                 .sort(comparePersonnel);
             setUnits(eligibleUnits);
@@ -331,7 +331,7 @@ export default function DispatchCenter() {
                             full_name: user.full_name || session.officer_name || '',
                             session_active: session.session_active === true,
                             status: session.status,
-                            label: session.unit_number || user.unit_number || user.full_name || user.email,
+                            label: session.unit_number || user.unit_number ? `Unit ${session.unit_number || user.unit_number}` : [user.rank||'Officer',user.last_name||String(user.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' '),
                         };
                     }).filter(unit => unit?.id && unit.status);
                     if (recovered.length || !(live.units || []).some(session => session.session_active && session.status !== 'Out of Service')) {

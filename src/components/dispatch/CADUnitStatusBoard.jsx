@@ -23,7 +23,8 @@ const displayName = (unit) => {
   if (rank && last) return `${rank} ${last}`.toUpperCase();
   if (last) return last.toUpperCase();
   if (unit?.unit_number) return `UNIT-${unit.unit_number}`;
-  return String(unit?.full_name || unit?.email || 'UNIT').toUpperCase();
+  const lastFromName=String(unit?.full_name||'').trim().split(/\s+/).pop();
+  return lastFromName?`${rank||'Officer'} ${lastFromName}`.toUpperCase():'OFFICER';
 };
 
 function isDispatchOrAdmin(user) {

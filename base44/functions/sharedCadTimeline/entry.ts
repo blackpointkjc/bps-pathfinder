@@ -31,7 +31,12 @@ Deno.serve(async req=>{
     const userIds=new Set([...notes,...logs].map((row:any)=>String(row.author_id||row.unit_id||'')).filter(Boolean));
     const [directory]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',450).catch(()=>[])]);
     const actors=new Map((directory||[]).filter((u:any)=>userIds.has(String(u.id))).map((u:any)=>[String(u.id),u]));
-    const label=(id:string,fallback:string)=>actors.has(id)?name(actors.get(id)):fallback.includes('@')?'Dispatch':fallback;
+    const label=(id:string,fallback:string)=>{
+      if(actors.has(id))return name(actors.get(id));
+      if(fallback==='Dispatch'||fallback==='CAD')return fallback;
+      if(/^(Colonel|Lt Colonel|Lieutenant Colonel|Major|Captain|Lieutenant|Sergeant|Sgt|Corporal|Officer)\s+/i.test(fallback))return fallback;
+      return fallback.includes('@')?'Dispatch':`Officer ${fallback.split(/\s+/).pop()||'Unknown'}`;
+    };
     const mirrored=(log:any)=>{
       const prefixes:any={unit_acknowledged:'[ACKNOWLEDGED]',unit_enroute:'[ENROUTE]',unit_on_scene:'[ON SCENE]',unit_cleared:'[CLEARED]'};
       const prefix=prefixes[String(log.event_type||'')];if(!prefix)return false;
