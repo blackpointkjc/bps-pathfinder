@@ -86,8 +86,7 @@ export default function SupervisorFieldOversight() {
   const liveUnits = useMemo(() => onlineUnits.map(unit => {
     const assigned=(welfarePayload.board||[]).filter(row=>lower(row.officer_email)===lower(unit.officer_email||unit.email)).sort((a,b)=>Date.parse(b.assigned_at||0)-Date.parse(a.assigned_at||0))[0];
     const raw=lower(unit.status);
-    const callLinked=Boolean(unit.current_call_id);
-    const stale= ['dispatched','enroute','en route','on scene'].includes(raw)||(raw==='busy'&&callLinked);
+    const stale= ['dispatched','enroute','en route','on scene'].includes(raw);
     const status=assigned ? ['enroute','en_route'].includes(lower(assigned.assignment_status))?'Enroute':lower(assigned.assignment_status)==='on_scene'?'On Scene':'Dispatched'
       : stale?'Available':unit.status||'Signed In';
     return {...unit,status,current_call_id:assigned?.call_id||'',current_call_info:assigned?[assigned.incident,assigned.location].filter(Boolean).join(' · '):''};

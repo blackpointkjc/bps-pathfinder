@@ -15,16 +15,16 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const [directAssignments, ownedUnits, sessions, lastShifts] = await Promise.all([
-      base44.asServiceRole.entities.CallAssignment.filter({unit_id:me.id},'-assigned_at',250),
+    const [ownedUnits, sessions, lastShifts] = await Promise.all([
       base44.asServiceRole.entities.Unit.filter({user_id:me.id},'-last_update_at',20).catch(()=>[]),
       base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:me.email},'-last_update',10).catch(()=>[]),
       base44.asServiceRole.entities.TimeEntry.filter({officer_email:me.email},'-clock_in',5).catch(()=>[]),
     ]);
     const aliases=[String(me.id),String(me.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(sessions||[]).map((row:any)=>String(row.id))].filter(Boolean);
-    const alternate=aliases.filter(id=>id!==String(me.id));
-    const extraAssignments=(await Promise.all(alternate.map(id=>base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',60).catch(()=>[])))).flat();
-    const assignments=[...new Map([...(directAssignments||[]),...extraAssignments].map((row:any)=>[row.id,row])).values()];
+    const [assignments, linkedRecords] = await Promise.all([
+      base44.asServiceRole.entities.CallAssignment.filter({unit_id:{$in:aliases}},'-assigned_at',300),
+      base44.asServiceRole.entities.DispatchCall.filter({assigned_units:{$in:aliases}},'-created_date',80),
+    ]);
     const openShift=(lastShifts||[]).find((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true);
     const shiftStart=openShift ? Date.parse(openShift.clock_in)-5*60*1000 : Date.now()-12*60*60*1000;
     const recentCutoff=Number.isFinite(shiftStart)?shiftStart:Date.now()-12*60*60*1000;
@@ -34,8 +34,7 @@ Deno.serve(async (req) => {
       && Date.parse(a.assigned_at||a.created_date||'')>=recentCutoff);
     // CAD's assigned_units is a second explicit assignment source when a
     // legacy dispatcher wrote the call but missed its CallAssignment row.
-    const linkedCalls=(await Promise.all(aliases.map(id=>base44.asServiceRole.entities.DispatchCall.filter({assigned_units:{$in:[id]}},'-created_date',40).catch(()=>[])))).flat()
-      .filter((call:any)=>!isTerminalCall(call) && Date.parse(call.time_dispatched||call.created_date||'')>=recentCutoff);
+    const linkedCalls=(linkedRecords||[]).filter((call:any)=>!isTerminalCall(call) && Date.parse(call.time_dispatched||call.created_date||'')>=recentCutoff);
     const linkedById=new Map(linkedCalls.map((call:any)=>[String(call.id),call]));
     const callIds = [...new Set([...activeAssignments.map((a: any) => String(a.call_id || '')),...linkedById.keys()].filter(Boolean))];
     const calls: any[] = [];

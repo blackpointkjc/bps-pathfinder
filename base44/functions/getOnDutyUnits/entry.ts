@@ -526,11 +526,11 @@ Deno.serve(async (req) => {
         const assignmentStatus = pendingStatus==='enroute'||pendingStatus==='en_route'?'Enroute'
           : pendingStatus==='on_scene'?'On Scene':'Dispatched';
         const manualStatus = user.status || 'Available';
-        const staleDispatchStatus=['dispatched','enroute','en route','on scene'].includes(lower(newestLiveStatus))
-          || (lower(newestLiveStatus)==='busy' && (active?.current_call_id || user.current_call_id));
+        const staleDispatchStatus=['dispatched','enroute','en route','on scene'].includes(lower(newestLiveStatus));
         const resolvedStatus = ['out of service','distress','emergency'].includes(lower(newestLiveStatus))
           ? newestLiveStatus : confirmedDispatch ? assignmentStatus
-          : staleDispatchStatus ? (['busy','available'].includes(lower(manualStatus)) && !user.current_call_id ? manualStatus : 'Available')
+          : lower(manualStatus)==='busy' ? 'Busy'
+          : staleDispatchStatus ? 'Available'
           : newestLiveStatus;
         const confirmedCallId = confirmedDispatch?.call?.id || '';
         const confirmedCallInfo = confirmedDispatch?.call ? [confirmedDispatch.call.incident||'Call for service',confirmedDispatch.call.location].filter(Boolean).join(' · ').slice(0,500) : '';
