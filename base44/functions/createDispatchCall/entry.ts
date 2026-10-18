@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     // behind it. Older CAD screens may send a Unit id or ActiveOfficer session id;
     // storing that transient id would make the officer queue unable to see the call.
     const selectedUnits: string[] = [];
-    for (const rawUnitId of requestedUnits) {
+    for (const rawUnitId of requestedUnits as string[]) {
       let selectedOfficer = await base44.asServiceRole.entities.User.get(rawUnitId).catch(() => null);
       if (!selectedOfficer?.email) {
         const unitRecord = await base44.asServiceRole.entities.Unit.get(rawUnitId).catch(() => null);
