@@ -155,7 +155,7 @@ Deno.serve(async(req)=>{
     ]);
     // Recover older verified drafts without silently duplicating overlapping
     // service periods or sending invoices whose historical rates need review.
-    if(action==='send_ready_drafts'){
+    const issueVerifiedDrafts=async()=>{
       let sent=0,held=0,failed=0,updated=0;
       const results:any[]=[];
       const siteMap=new Map((locations||[]).map((row:any)=>[siteOf(row.site_name).toLowerCase(),row]));
@@ -191,8 +191,9 @@ Deno.serve(async(req)=>{
           for(const u of clientsForSite.slice(0,20))await base44.asServiceRole.entities.Notification.create({recipient_email:String(u.email).toLowerCase(),type:'invoice_due',title:`Invoice ${invoice.invoice_number} issued`,message:`${invoice.site_name}: $${total.toFixed(2)}, due ${fixedDue}. View in Client Center.`,related_id:String(invoice.id),is_read:false,priority:'normal',action_link:'/ClientPayrollReport'}).catch(()=>null);
         }catch(error:any){failed++;await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_status:'failed',delivery_error:String(error?.message||'Email not accepted')}).catch(()=>null);results.push({invoice:invoice.invoice_number,status:'failed',error:String(error?.message||'Mail service failed')});}
       }
-      return Response.json({success:failed===0,sent,held,failed,due_dates_updated:updated,results});
-    }
+      return {success:failed===0,sent,held,failed,due_dates_updated:updated,results};
+    };
+    if(action==='send_ready_drafts')return Response.json(await issueVerifiedDrafts());
     const clients=(users||[]).filter(eligibleClient);
     const byEmail=new Map(clients.map((client:any)=>[String(client.email||'').toLowerCase(),client]));
     const byOfficer=new Map((users||[]).map((person:any)=>[String(person.email||'').toLowerCase(),person]));
@@ -318,7 +319,10 @@ Deno.serve(async(req)=>{
         results.push({site:String(location?.site_name||'Unknown'),status:'processing_failed',error:detail});
       }
     }
-    const runSummary={period_start:periodStart,period_end:periodEnd,created,updated,sent,delivery_failed:deliveryFailed,processing_failed:processingFailed,skipped,held,results,recipient_fallback:MANAGEMENT_EMAIL};
+    const runSummary:any={period_start:periodStart,period_end:periodEnd,created,updated,sent,delivery_failed:deliveryFailed,processing_failed:processingFailed,skipped,held,results,recipient_fallback:MANAGEMENT_EMAIL};
+    // Every scheduled Monday billing run also tries to issue older *verified*
+    // unsent drafts. Overlaps and unresolved historical rates remain held.
+    if(!manual)runSummary.historical_backlog=await issueVerifiedDrafts();
     try {
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type:'Invoice',entity_id:'weekly-billing',
