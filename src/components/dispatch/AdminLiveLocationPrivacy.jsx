@@ -42,7 +42,7 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
   }, [currentUser?.id, currentUser?.email]);
   const refresh = useCallback(async (force = false) => {
     if (!eligible || saving.current || loadPending.current) return;
-    if (!force && Date.now() - lastLoad.current < 15000) return;
+    if (Date.now() - lastLoad.current < 60000) return;
     const version = ++loadVersion.current;
     lastLoad.current = Date.now();
     loadPending.current = true;
@@ -59,8 +59,8 @@ export default function AdminLiveLocationPrivacy({ currentUser }) {
         setError(serverErrorText(err));
         clearTimeout(readRetryTimer.current);
         readRetryTimer.current = setTimeout(() => {
-          if (version === loadVersion.current && !saving.current) void refresh(true);
-        }, 30_000);
+          if (version === loadVersion.current && !saving.current && !/rate limit|too many requests|429/i.test(String(err?.message||''))) void refresh(true);
+        }, 90_000);
       }
     } finally {
       if (version === loadVersion.current) loadPending.current = false;
