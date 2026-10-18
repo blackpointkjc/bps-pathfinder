@@ -57,7 +57,7 @@ Deno.serve(async(req)=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
-    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
+    if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
     const manual=action!=='scheduled';
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);
@@ -136,7 +136,7 @@ Deno.serve(async(req)=>{
     const lastSaturday=dateOffset(today,-sinceLastSaturday);
     const startDefault=dateOffset(lastSaturday,-6);
     // One-button billing always targets the most recently completed service week.
-    if(action==='create_draft'&&!body.location_id)return Response.json({error:'Choose a billing site before saving an invoice'},{status:400});
+    if(['create_draft','create_invoice'].includes(action)&&!body.location_id)return Response.json({error:'Choose a billing site before saving an invoice'},{status:400});
     const periodStart=action==='backfill_drafts'?startDefault:(body.period_start || startDefault);
     const periodEnd=action==='backfill_drafts'?lastSaturday:(body.period_end || lastSaturday);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
@@ -220,7 +220,7 @@ Deno.serve(async(req)=>{
         const number=existingInvoice?.invoice_number || `${prefix}${String(sequence).padStart(3,'0')}`;
         const needsReview=reviewReasons.size>0;
         const reviewReason=[...reviewReasons].join('; ');
-        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:totalHours>0?dollars(total/totalHours):Number(location.site_bill_rate),total_amount:dollars(total),shifts:JSON.stringify(shifts),due_date:existingInvoice?.due_date || dateOffset(today,15),status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:needsReview?'review_required':existingInvoice?.delivery_status||'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
+        const invoiceData={invoice_number:number,client_email:target,delivery_email:target,site_name:name,period_start:start,period_end:end,total_hours:dollars(totalHours),bill_rate:totalHours>0?dollars(total/totalHours):Number(location.site_bill_rate),total_amount:dollars(total),base_amount:dollars(total),late_fee_amount:0,late_fee_rate:0.10,shifts:JSON.stringify(shifts),due_date:existingInvoice?.due_date || dateOffset(today,15),status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:needsReview?'review_required':existingInvoice?.delivery_status||'pending',billing_review_required:needsReview,billing_review_reason:reviewReason,notes:[reason,reviewReason,'Generated from recorded work hours and effective-date rates.'].filter(Boolean).join(' ')};
         const oldShifts=String(existingInvoice?.shifts||'');
         const unchanged=Boolean(existingInvoice && dollars(Number(existingInvoice.total_amount||0))===dollars(total) && Number(existingInvoice.total_hours||0).toFixed(2)===totalHours.toFixed(2) && oldShifts===invoiceData.shifts);
         if (unchanged && existingInvoice?.delivery_status==='accepted') {skipped++;continue;}
@@ -248,6 +248,13 @@ Deno.serve(async(req)=>{
           await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point ${existingInvoice?'Revised ':''}Invoice ${number} — ${name} (${start}–${end})`,body:emailBody});
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_status:'accepted',delivery_email:target,sent_at:new Date().toISOString()});
           sent++;results.push({invoice_number:number,site:name,status:'sent',recipient:target});
+          const clientTargets=(users||[]).filter((row:any)=>eligibleClient(row) && (
+            String(row.email||'').toLowerCase()===target ||
+            String(location.assigned_client_email||'').toLowerCase()===String(row.email||'').toLowerCase() ||
+            [row.assigned_location,...(row.assigned_locations||[]),...(row.assigned_sites||[])].some((place:any)=>siteOf(place).toLowerCase()===name.toLowerCase())));
+          for(const clientUser of clientTargets.slice(0,20)){
+            await base44.asServiceRole.entities.Notification.create({recipient_email:String(clientUser.email).toLowerCase(),type:'invoice_due',title:`Black Point Invoice #${number}`,message:`${name} · ${start}–${end} · $${dollars(total).toFixed(2)} due ${invoiceData.due_date}. Open Client Center > Billing & Invoices.`,related_id:String(invoice.id),priority:'normal',is_read:false,action_link:'/ClientPayrollReport'}).catch((error:any)=>console.error('Client invoice alert failed',error?.message));
+          }
         } catch(error:any) {
           const message=String(error?.message||'Delivery provider error');
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:existingInvoice?.status==='sent'?'sent':'draft',delivery_status:'failed',delivery_error:message}).catch(()=>null);

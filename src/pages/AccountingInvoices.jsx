@@ -42,9 +42,9 @@ export default function AccountingInvoices() {
   const isAccountingRole = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
   const { data: accountingData = {}, error: clientsError, refetch: refetchAccounting } = useQuery({
-    queryKey: ['accountingFinance'],
+    queryKey: ['accountingBilling'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'invoices' });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
@@ -52,7 +52,7 @@ export default function AccountingInvoices() {
     enabled: isAccountingRole,
     staleTime: 30000,
     refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchInterval: 30000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -61,11 +61,12 @@ export default function AccountingInvoices() {
   const locations = accountingData.locations || [];
   const config = accountingData.config || null;
   const invoices = (accountingData.invoices || []).filter(invoice => !['void','cancelled'].includes(String(invoice.status || '').toLowerCase()));
-  const companyLedger=accountingData.financialSummary || {}; 
+ 
 
   const askConfirmation=(title,message,execute)=>setConfirmAction({title,message,execute});
   const syncInvoiceData=async()=>{
     await Promise.all([
+      queryClient.invalidateQueries({queryKey:['accountingBilling']}),
       queryClient.invalidateQueries({queryKey:['accountingFinance']}),
       queryClient.invalidateQueries({queryKey:['accountingProfit']}),
     ]);
@@ -75,17 +76,17 @@ export default function AccountingInvoices() {
     if(!site||!invoiceStart||!invoiceEnd)return setBillingStatus('Choose the billing site and service start/end dates.');
     if(invoiceEnd<invoiceStart)return setBillingStatus('The service end date must not precede the start date.');
     setGenerating(true);
-    setBillingStatus('Saving itemized invoice draft from recorded service shifts…');
+    setBillingStatus('Creating invoice and requesting email delivery…');
     try{
       const response=await base44.functions.invoke('generateWeeklyInvoices',{
-        action:'create_draft',location_id:site.id,period_start:invoiceStart,period_end:invoiceEnd,
+        action:'create_invoice',location_id:site.id,period_start:invoiceStart,period_end:invoiceEnd,
       });
       const payload=response?.data||response||{};
       if(payload.error)throw new Error(payload.error);
       if(payload.processing_failed)throw new Error((payload.results||[]).find(item=>item.error)?.error||'Invoice processing failed');
       await syncInvoiceData();
       if(payload.created||payload.updated){
-        setBillingStatus(`Invoice draft saved for ${site.site_name}, ${invoiceStart}–${invoiceEnd}. ${payload.created||0} created, ${payload.updated||0} updated. You can select another site/period and save again without reloading.`);
+        setBillingStatus(`Invoice ${payload.created||0} created or ${payload.updated||0} updated for ${site.site_name}, ${invoiceStart}–${invoiceEnd}. ${payload.sent||0} email request(s) accepted; ${payload.delivery_failed||0} failed; ${payload.held||0} held for review. Add another without refreshing.`);
         setInvoiceStart('');setInvoiceEnd('');
       } else {
         const issue=(payload.results||[]).find(item=>item.reason||item.error);
@@ -117,7 +118,7 @@ export default function AccountingInvoices() {
       const data=response?.data || response || {};
       if(data.error)throw new Error(data.error);
       setBillingStatus(`Historical draft reconciliation: ${data.created||0} new drafts, ${data.updated||0} updated, ${data.held||0} overlapping invoices held, ${data.processing_failed||0} errors. No emails sent.`);
-      await queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      await queryClient.invalidateQueries({queryKey:['accountingBilling']});
     }catch(error){setBillingStatus(`Historical draft reconciliation failed: ${error?.response?.data?.error||error?.message||'Server error'}`);}
     finally{setGenerating(false);}
   };
@@ -144,13 +145,13 @@ export default function AccountingInvoices() {
       if(payload.error)throw new Error(payload.error);
       // Update the shared UI cache immediately, then reconcile other ledgers
       // from the server once without blocking the rate editor.
-      queryClient.setQueryData(['accountingFinance'], previous => previous ? ({
+      queryClient.setQueryData(['accountingBilling'], previous => previous ? ({
         ...previous,
         invoices: (previous.invoices||[]).map(item=>item.id===invoice.id ? ({...item,...(payload.invoice||{}),
           total_amount:payload.total_amount,bill_rate:value,billing_review_required:false,
           billing_review_reason:'',delivery_status:'pending'}) : item),
       }) : previous);
-      queryClient.invalidateQueries({queryKey:['accountingFinance']});
+      queryClient.invalidateQueries({queryKey:['accountingBilling']});
       setBillingStatus(`Invoice ${invoice.invoice_number} recalculated at verified rate $${value.toFixed(2)}/hour. Review before sending.`);
     }catch(error){setBillingStatus(`Unable to verify historical rate: ${error?.message || 'Unknown error'}`);}
     finally {setGenerating(false);}
@@ -169,11 +170,11 @@ export default function AccountingInvoices() {
       });
       const result=response?.data||response||{};
       if(result.error)throw new Error(result.error);
-      queryClient.setQueryData(['accountingFinance'],previous => previous ? ({...previous,
+      queryClient.setQueryData(['accountingBilling'],previous => previous ? ({...previous,
         invoices:(previous.invoices||[]).map(row=>row.id===invoice.id?{...row,...(result.record||{})}:row),
       }):previous);
       await Promise.all([
-        queryClient.invalidateQueries({queryKey:['accountingFinance']}),
+        queryClient.invalidateQueries({queryKey:['accountingBilling']}),
         queryClient.invalidateQueries({queryKey:['accountingOverviewSnapshot']}),
       ]);
       setBillingStatus(`Invoice ${invoice.invoice_number} updated to ${target.toUpperCase()} — $${amount.toFixed(2)} received, balance $${Math.max(0,Number(invoice.total_amount)-amount).toFixed(2)}.`);
@@ -215,12 +216,12 @@ export default function AccountingInvoices() {
       {billingStatus && <div role="status" className="mb-4 rounded-xl border border-blue-300 bg-blue-50 p-3 text-sm font-medium text-slate-900">{billingStatus}</div>}
       {billingRunIssues.length>0 && <div className="mb-4 space-y-2 rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><strong>Billing items requiring action</strong>{billingRunIssues.map((item,index)=><div key={`${item.site}-${index}`} className="border-t border-amber-300 pt-2"><strong>{item.site || 'Unassigned site'}</strong> — {item.status==='overlap_requires_review' ? `Existing invoice #${item.invoice_number} covers these dates; a second invoice was not sent.` : item.status==='legacy_delivery_unconfirmed' ? `Invoice #${item.invoice_number} was held because prior email delivery cannot be confirmed.` : `Billing failed: ${item.error || 'Review this site'}`}</div>)}</div>}
       <Card className="mb-5 border-slate-200"><CardContent className="space-y-3 p-4">
-        <div><h2 className="text-lg font-bold text-slate-900">Create Invoice for Recorded Service</h2><p className="text-sm text-slate-600">Choose a site and completed service dates. Save as a draft; review rates and send separately. Saving another date range or site does not require refreshing the page.</p></div>
+        <div><h2 className="text-lg font-bold text-slate-900">Create & Send Invoice for Recorded Service</h2><p className="text-sm text-slate-600">Choose a site and completed service dates. Invoices with verified rates are automatically emailed; unverified rates remain drafts for review. Saving another date range or site does not require refreshing the page.</p></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_auto] lg:items-end">
           <div><Label>Billable Site</Label><Select value={selectedSite} onValueChange={name=>{setSelectedSite(name);const site=locations.find(row=>row.site_name===name);setBillingEmailInput(site?.billing_contact_email||'')}}><SelectTrigger className="w-full"><SelectValue placeholder="Choose site"/></SelectTrigger><SelectContent>{locations.filter(loc=>Number(loc.site_bill_rate)>0).map(site=><SelectItem key={site.id} value={site.site_name}>{site.site_name}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Service Start</Label><Input type="date" value={invoiceStart} onChange={e=>setInvoiceStart(e.target.value)}/></div>
           <div><Label>Service End</Label><Input type="date" value={invoiceEnd} onChange={e=>setInvoiceEnd(e.target.value)}/></div>
-          <Button type="button" disabled={generating||!selectedSite||!invoiceStart||!invoiceEnd} onClick={saveSelectedInvoice}>{generating?'Saving…':'Save Invoice Draft'}</Button>
+          <Button type="button" disabled={generating||!selectedSite||!invoiceStart||!invoiceEnd} onClick={saveSelectedInvoice}>{generating?'Saving…':'Create & Send Invoice'}</Button>
         </div>
       </CardContent></Card>
       <Card className="mb-5 border-slate-200"><CardContent className="p-4"><Label>Client Invoice Delivery Address</Label><div className="mt-2 flex flex-wrap items-center gap-2">
@@ -228,9 +229,6 @@ export default function AccountingInvoices() {
         <Input type="email" className="min-w-[220px] flex-1" placeholder="Blank uses management@blackpointkjc.com" value={billingEmailInput} onChange={event=>setBillingEmailInput(event.target.value)}/>
         <Button type="button" variant="outline" disabled={!selectedSite||savingBillingEmail} onClick={saveBillingContact}>{savingBillingEmail?'Saving…':'Save Address'}</Button>
       </div></CardContent></Card>
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[
-        ['Accrued Service Revenue',companyLedger.earned_service_revenue],['Total Invoiced',companyLedger.billed_total],['Client Payments',companyLedger.client_payments],['Outstanding Invoices',companyLedger.outstanding_client_invoices],['Approved Payroll Expense',companyLedger.approved_payroll_expense],['Operating Expenses',companyLedger.operating_expenses],['Unpaid Company Bills',companyLedger.unpaid_company_bills],['Estimated Profit',companyLedger.estimated_profit],
-      ].map(([title,value])=><div key={title} className="rounded-xl border bg-white p-4"><div className="text-xs font-bold uppercase text-slate-500">{title}</div><div className="mt-2 text-xl font-black text-slate-900">{value==null?'—':`$${Number(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`}</div></div>)}</div>
       {(clientsError || accountingData.partial) && <div className="mb-4 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">{clientsError ? `Billing data load failed: ${clientsError.message}` : `Some billing sources need retry: ${(accountingData.load_errors||[]).join(', ')}`} <button className="ml-2 underline" onClick={()=>refetchAccounting()}>Retry</button></div>}
       <Card className="rounded-2xl border-slate-200 shadow-sm">
         <CardHeader>
