@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       const id=String(body.id || '');
       const current=await base44.asServiceRole.entities.CompanyExpense.get(id).catch(()=>null);
       if(!current) return Response.json({error:'Bill not found'},{status:404});
-      if(String(current.reference_number || '').startsWith('OFFICER-EXP-')) return Response.json({error:'Officer reimbursement payment is controlled by payroll; update payroll status rather than marking the ledger mirror paid.'},{status:409});
+      if(['OFFICER-EXP-','PAYROLL-'].some(prefix=>String(current.reference_number||'').startsWith(prefix))) return Response.json({error:'Payroll-linked reimbursements and wages must be updated in the payroll workflow.'},{status:409});
       const status=String(body.status || '').toLowerCase();
       if(!['paid','unpaid'].includes(status)) return Response.json({error:'Select Paid or Unpaid'},{status:400});
       const paidDate=String(body.paid_date || new Date().toISOString().slice(0,10));
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     if (action === 'delete_company') {
       const existing = await base44.asServiceRole.entities.CompanyExpense.get(String(body.id || '')).catch(()=>null);
       if (!existing) return Response.json({error:'Expense not found'},{status:404});
-      if (String(existing.reference_number || '').startsWith('OFFICER-EXP-')) return Response.json({error:'Approved officer reimbursements must not be deleted from the company ledger.'},{status:409});
+      if (['OFFICER-EXP-','PAYROLL-'].some(prefix=>String(existing.reference_number||'').startsWith(prefix))) return Response.json({error:'Approved officer reimbursements and payroll expense records cannot be deleted from the company ledger.'},{status:409});
       await base44.asServiceRole.entities.CompanyExpense.delete(body.id);
       return Response.json({ success: true });
     }

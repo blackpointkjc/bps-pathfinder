@@ -101,7 +101,7 @@ export default function AccountingProfit() {
     const expenseDate = expense.expense_date || expense.created_date || expense.paid_date;
     // Officer reimbursements are already counted from approved ExpenseReports.
     // Their ledger mirror must not be counted a second time.
-    return ['paid', 'unpaid'].includes(status) && !String(expense.reference_number || '').startsWith('OFFICER-EXP-') && isDateInRange(expenseDate);
+    return ['paid', 'unpaid'].includes(status) && !['OFFICER-EXP-','PAYROLL-'].some(prefix=>String(expense.reference_number||'').startsWith(prefix)) && isDateInRange(expenseDate);
   });
 
   const filteredPTO = ptoUsage.filter(usage =>
