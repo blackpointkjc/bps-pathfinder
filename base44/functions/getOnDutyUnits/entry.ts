@@ -474,7 +474,10 @@ Deno.serve(async (req) => {
     });
     const dispatchById = new Map<string,any>();
     const candidateCallIds = [...new Set(currentAssignmentRows.map((row:any)=>String(row.call_id)).filter(Boolean))].slice(0,20);
-    const dispatchCalls = await Promise.all(candidateCallIds.map(id=>base44.asServiceRole.entities.DispatchCall.get(id).catch(()=>null)));
+    const dispatchCalls = await Promise.all(candidateCallIds.map(id=>base44.asServiceRole.entities.DispatchCall.get(id).catch((error:any)=>{
+      if(Number(error?.response?.status || error?.status)===404)return null;
+      throw error;
+    })));
     const activeCallsById = new Map(dispatchCalls.filter((call:any)=>call && call.manual_dismissed!==true && !['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call.status))).map((call:any)=>[String(call.id),call]));
     for (const assignment of currentAssignmentRows) {
       const call=activeCallsById.get(String(assignment.call_id));
@@ -488,7 +491,10 @@ Deno.serve(async (req) => {
     // a live CallAssignment. Honor such a pointer only if the CAD record itself
     // explicitly lists the officer and belongs to the current shift.
     const legacyUsers=(users||[]).filter((user:any)=>user.current_call_id&&!dispatchById.has(String(user.id)));
-    const legacyCalls=await Promise.all(legacyUsers.slice(0,12).map((user:any)=>base44.asServiceRole.entities.DispatchCall.get(String(user.current_call_id)).catch(()=>null)));
+    const legacyCalls=await Promise.all(legacyUsers.slice(0,12).map((user:any)=>base44.asServiceRole.entities.DispatchCall.get(String(user.current_call_id)).catch((error:any)=>{
+      if(Number(error?.response?.status || error?.status)===404)return null;
+      throw error;
+    })));
     for(let i=0;i<legacyCalls.length;i++){
       const call=legacyCalls[i],officer=legacyUsers[i];
       if(!call||call.manual_dismissed===true||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))continue;
@@ -510,9 +516,10 @@ Deno.serve(async (req) => {
       if(!current||String(current.current_call_id||'')!==String(officer.current_call_id||''))return;
       const oldId=String(officer.current_call_id);
       const status=['dispatched','enroute','en route','on scene'].includes(lower(current.status))?'Available':current.status;
-      await base44.asServiceRole.entities.User.update(officer.id,{
+      const saved=await base44.asServiceRole.entities.User.update(officer.id,{
         current_call_id:'',current_call_info:'',status,
-      }).catch(()=>null);
+      }).catch((error:any)=>{console.error('Cannot reconcile obsolete CAD status',officer.id,error?.message);return null;});
+      if(!saved)return;
       const session=newestActiveByEmail.get(lower(officer.email));
       if(session?.id && String(session.current_call_id||'')===oldId){
         await base44.asServiceRole.entities.ActiveOfficer.update(session.id,{

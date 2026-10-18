@@ -205,7 +205,7 @@ export default function Personnel({ embedded = false }) {
             if (payload.error) throw new Error(payload.error);
             setSignOutDialog(null);
             setSignOutReason('');
-            toast.success(`${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email} was signed out of Pathfinder`);
+            toast.success(`Force sign-out issued for ${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email}. The officer's app will terminate its session when the notice is received.`);
             await loadPersonnel();
         } catch (error) {
             toast.error(error?.response?.data?.error || error?.message || 'Unable to force sign out this user');
@@ -225,7 +225,7 @@ export default function Personnel({ embedded = false }) {
             if (payload.error) throw new Error(payload.error);
             setSignOutAllOpen(false);
             setSignOutAllReason('');
-            toast.success(`Signed out ${Number(payload.signed_out_users || 0)} active unit(s); your admin session stayed signed in.`);
+            toast.success(`Force sign-out issued to ${Number(payload.signed_out_users || 0)} active unit(s). Your administrator session was excluded.`);
             invalidateAppDirectory();
             await loadPersonnel();
         } catch (error) {
