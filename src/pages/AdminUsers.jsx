@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import AdminOperationsBriefing from '@/components/AdminOperationsBriefing';
@@ -34,6 +35,7 @@ export default function AdminUsers({ embedded = false }) {
   const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createAsClient, setCreateAsClient] = useState(false);
   const [checkingAnniversaries, setCheckingAnniversaries] = useState(false); // New state variable
   const [editFormData, setEditFormData] = useState({
     first_name: "",
@@ -550,6 +552,7 @@ export default function AdminUsers({ embedded = false }) {
   };
 
   const resetCreateForm = () => {
+    setCreateAsClient(false);
     setCreateFormData({
       first_name: "",
       last_name: "",
@@ -1385,9 +1388,14 @@ export default function AdminUsers({ embedded = false }) {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Officer</DialogTitle>
+            <DialogTitle>{createAsClient ? 'Create New Client' : 'Create New Officer'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-6">
+            <label htmlFor="create_as_client" className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 cursor-pointer">
+              <Checkbox checked={createAsClient} onCheckedChange={(checked) => setCreateAsClient(checked === true)} id="create_as_client" />
+              <span className="text-sm font-semibold text-slate-700">This user is a Client</span>
+              <span className="text-xs text-slate-500">Only first name, last name, phone and email are required; the account goes to Pending Users for approval.</span>
+            </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="create_first_name" className="text-xs text-slate-500">First Name *</Label>
@@ -1420,7 +1428,7 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_date_of_birth" className="text-xs text-slate-500">Date of Birth</Label>
                 <Input
                   id="create_date_of_birth"
@@ -1428,28 +1436,29 @@ export default function AdminUsers({ embedded = false }) {
                   value={createFormData.date_of_birth}
                   onChange={(e) => setCreateFormData({...createFormData, date_of_birth: e.target.value})}
                 />
-              </div>
+              </div>)}
 
               <div>
-                <Label htmlFor="create_mobile_phone" className="text-xs text-slate-500">Mobile Phone</Label>
+                <Label htmlFor="create_mobile_phone" className="text-xs text-slate-500">Mobile Phone{createAsClient ? ' *' : ''}</Label>
                 <Input
                   id="create_mobile_phone"
                   type="tel"
+                  required={createAsClient}
                   value={createFormData.mobile_phone}
                   onChange={(e) => setCreateFormData({...createFormData, mobile_phone: e.target.value})}
                 />
               </div>
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_badge_number" className="text-xs text-slate-500">Badge Number</Label>
                 <Input
                   id="create_badge_number"
                   value={createFormData.badge_number}
                   onChange={(e) => setCreateFormData({...createFormData, badge_number: e.target.value})}
                 />
-              </div>
+              </div>)}
 
-              <div>
+              {!createAsClient && (<div>
                 <Label className="text-xs text-slate-500">Rank *</Label>
                 <Select
                   value={createFormData.rank}
@@ -1478,18 +1487,18 @@ export default function AdminUsers({ embedded = false }) {
                     <SelectItem value="Supervisor">Supervisor</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div>)}
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_unit_number" className="text-xs text-slate-500">Unit Number</Label>
                 <Input
                   id="create_unit_number"
                   value={createFormData.unit_number}
                   onChange={(e) => setCreateFormData({...createFormData, unit_number: e.target.value})}
                 />
-              </div>
+              </div>)}
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_division" className="text-xs text-slate-500">Division</Label>
                 <select
                   id="create_division"
@@ -1502,9 +1511,9 @@ export default function AdminUsers({ embedded = false }) {
                     <option key={div.id} value={div.division_name}>{div.division_name}</option>
                   ))}
                 </select>
-              </div>
+              </div>)}
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_hire_date" className="text-xs text-slate-500">Hire Date *</Label>
                 <Input
                   id="create_hire_date"
@@ -1513,21 +1522,21 @@ export default function AdminUsers({ embedded = false }) {
                   onChange={(e) => setCreateFormData({...createFormData, hire_date: e.target.value})}
                   required
                 />
-              </div>
+              </div>)}
 
-              <div>
+              {!createAsClient && (<div>
                 <Label htmlFor="create_dcjs_number" className="text-xs text-slate-500">DCJS Number</Label>
                 <Input
                   id="create_dcjs_number"
                   value={createFormData.dcjs_number}
                   onChange={(e) => setCreateFormData({...createFormData, dcjs_number: e.target.value})}
                 />
-              </div>
+              </div>)}
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
-                <strong>Note:</strong> The officer account will be created immediately and they will receive login credentials via email.
+                <strong>Note:</strong> {createAsClient ? 'The client will be invited by email and will appear in Pending Users for approval, just like a new employee.' : 'The officer account will be created immediately and they will receive login credentials via email.'}
               </p>
             </div>
 
