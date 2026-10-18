@@ -65,7 +65,9 @@ export default function AccountingInvoices() {
 
   const askConfirmation=(title,message,execute)=>setConfirmAction({title,message,execute});
   const syncInvoiceData=async()=>{
-    await Promise.all([
+    // Accounting saves are committed on the server before cache refresh. A
+    // throttled reload must not make a successful invoice look like it failed.
+    await Promise.allSettled([
       queryClient.invalidateQueries({queryKey:['accountingBilling']}),
       queryClient.invalidateQueries({queryKey:['accountingFinance']}),
       queryClient.invalidateQueries({queryKey:['accountingProfit']}),

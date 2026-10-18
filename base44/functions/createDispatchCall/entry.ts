@@ -35,7 +35,15 @@ function callIsInsideProperty(call: any, location: any) {
   const polygon = Array.isArray(location.property_monitoring_polygon)
     ? location.property_monitoring_polygon
     : [];
-  if (polygon.length < 3) return null;
+  if (polygon.length < 3) {
+    // Special four-unit categories are authorized for any company property,
+    // including sites with no monitoring polygon. Require an exact property
+    // street address rather than an unverified block/radius approximation.
+    const special=/\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call?.incident||''));
+    const normalize=(v:any)=>String(v||'').toUpperCase().split(',')[0].replace(/[^A-Z0-9]/g,'').trim();
+    if(special&&normalize(call?.location)&&normalize(call?.location)===normalize(location?.address))return 0;
+    return null;
+  }
 
   return pointInPolygon(lat, lng, polygon) ? 0 : null;
 }

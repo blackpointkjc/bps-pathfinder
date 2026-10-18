@@ -124,6 +124,12 @@ Deno.serve(async(req)=>{
       try {
         await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject,body:bodyHtml});
         await base44.asServiceRole.entities.Invoice.update(invoice.id,{client_email:target,delivery_email:target,delivery_status:'accepted',delivery_error:'',sent_at:new Date().toISOString(),status:'sent'});
+        const portalClients=await base44.asServiceRole.entities.User.list('last_name',1000).catch(()=>[]);
+        const matched=(portalClients||[]).filter((u:any)=>eligibleClient(u)&&(
+          String(u.email||'').toLowerCase()===target ||
+          String(location?.assigned_client_email||'').toLowerCase()===String(u.email||'').toLowerCase() ||
+          [u.assigned_location,...(u.assigned_locations||[]),...(u.assigned_sites||[])].some((value:any)=>siteOf(value).toLowerCase()===siteOf(invoice.site_name).toLowerCase())));
+        for(const client of matched.slice(0,20))await base44.asServiceRole.entities.Notification.create({recipient_email:String(client.email).toLowerCase(),type:'invoice_due',title:`Invoice #${invoice.invoice_number} is due`,message:`${invoice.site_name} · $${Number(invoice.total_amount||0).toFixed(2)} · Due ${invoice.due_date}. View in Client Center.`,related_id:String(invoice.id),is_read:false,priority:'normal',action_link:'/ClientPayrollReport'}).catch(()=>null);
         return Response.json({success:true,invoice_number:invoice.invoice_number,sent:1,recipient:target});
       } catch(error:any) {
         await base44.asServiceRole.entities.Invoice.update(invoice.id,{delivery_email:target,delivery_status:'failed',delivery_error:String(error?.message||'Mail provider failed')}).catch(()=>null);
