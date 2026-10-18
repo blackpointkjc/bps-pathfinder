@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
       payroll: ['users','periods','payrollEntries','configs','timeEntries'],
       invoices: ['users','invoices','locations','timeEntries','schedules'],
       expenses: ['users','expenseReports','companyExpenses','recurringBills'],
-      profit: ['users','configs','payrollEntries','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
+      profit: ['users','configs','payrollEntries','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
       overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','recurringBills','invoices','timeEntries','locations','schedules'],
       finance: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','ptoUsage','schedules'],
       full: ['users','periods','payrollEntries','configs','timeEntries','invoices','locations','expenseReports','companyExpenses','recurringBills','timeOffRequests','ptoUsage','w2Forms','schedules'],

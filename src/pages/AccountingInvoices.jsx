@@ -278,11 +278,14 @@ export default function AccountingInvoices() {
                         size="sm" 
                         className="mt-2"
                         onClick={() => {
-                          const shifts = JSON.parse(invoice.shifts || '[]');
+                          let shifts=[];
+                          try {const parsed=JSON.parse(invoice.shifts||'[]');shifts=Array.isArray(parsed)?parsed:[];}
+                          catch {setBillingStatus(`Invoice ${invoice.invoice_number} has invalid line items. Reload the billing ledger before printing.`);return;}
                           const client = clients.find(c => c.email === invoice.client_email);
                           const clientName = client ? (`${client.first_name || ''} ${client.last_name || ''}`.trim() || client.full_name || client.email) : (invoice.delivery_email || invoice.client_email || 'Client');
                           
                           const invoiceWindow = window.open('', '_blank');
+                          if(!invoiceWindow){setBillingStatus('Your browser blocked the invoice print tab. Allow pop-ups for Pathfinder and click View / Print again.');return;}
                           invoiceWindow.document.write(`
                             <!DOCTYPE html>
                             <html>
@@ -527,11 +530,12 @@ export default function AccountingInvoices() {
                                 <div class="totals">
                                   <div class="total-row">
                                     <div class="total-label">Subtotal:</div>
-                                    <div class="total-value">$${invoice.total_amount.toFixed(2)}</div>
+                                    <div class="total-value">$${Number(invoice.base_amount||Number(invoice.total_amount||0)-Number(invoice.late_fee_amount||0)).toFixed(2)}</div>
                                   </div>
+                                  ${Number(invoice.late_fee_amount||0)>0?`<div class="total-row"><div class="total-label">One-time late fee (10%):</div><div class="total-value">$${Number(invoice.late_fee_amount).toFixed(2)}</div></div>`:''}
                                   <div class="total-row grand-total">
                                     <div class="total-label">Total Due:</div>
-                                    <div class="total-value">$${invoice.total_amount.toFixed(2)}</div>
+                                    <div class="total-value">$${Math.max(0,Number(invoice.total_amount||0)-Number(invoice.amount_paid||0)).toFixed(2)}</div>
                                   </div>
                                 </div>
 
