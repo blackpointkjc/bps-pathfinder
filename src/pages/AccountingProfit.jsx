@@ -34,9 +34,11 @@ export default function AccountingProfit() {
       const result = await base44.functions.invoke('getAccountingData', { scope: 'profit', start_date:startDate, end_date:endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      if(payload.financialSummary?.period_start!==startDate||payload.financialSummary?.period_end!==endDate)
+        throw new Error('Financial server did not return figures for the selected dates. Refresh the period; prior-period numbers will not be displayed.');
       return payload;
     },
-    enabled: isAccountingRole,
+    enabled: isAccountingRole && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate) && endDate>=startDate,
     staleTime: 30000,
     refetchOnMount: 'always',
     refetchInterval: 30000,
@@ -54,7 +56,9 @@ export default function AccountingProfit() {
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
   const accountingLoadErrors = accountingData.load_errors || [];
-  const companyLedger = accountingData.financialSummary || {}; 
+  const reportMatchesDates=accountingData.financialSummary?.period_start===startDate&&accountingData.financialSummary?.period_end===endDate;
+  const companyLedger = reportMatchesDates ? accountingData.financialSummary : {};
+  const periodPending=!reportMatchesDates && !accountingError; 
 
   if (!isAccountingRole) {
     return (
@@ -357,7 +361,7 @@ export default function AccountingProfit() {
               Financial operations
             </div>
             <h1 className="text-3xl font-black tracking-tight md:text-5xl">Company Profit Report</h1>
-            <p className="mt-3 max-w-2xl text-base text-slate-300">Company ledger totals above; selected-period operational breakdown below.</p>
+            <p className="mt-3 max-w-2xl text-base text-slate-300">Financial totals are calculated for the selected dates, not from an all-time dashboard snapshot.</p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-400">
               <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />Calculated at {format(liveNow, 'MMM d, yyyy h:mm:ss a')} · Last synced {accountingData.as_of ? format(new Date(accountingData.as_of), 'h:mm:ss a') : 'not yet'}</span>
               {accountingFetching && <span className="inline-flex items-center gap-2 text-sky-300"><RefreshCw className="h-3.5 w-3.5 animate-spin" />Refreshing</span>}
@@ -368,7 +372,7 @@ export default function AccountingProfit() {
               <RefreshCw className={`mr-2 h-4 w-4 ${accountingFetching ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={openProfitReport} disabled={accountingLoading || !!accountingError || accountingLoadErrors.length > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
+            <Button onClick={openProfitReport} disabled={periodPending || accountingLoading || !!accountingError || accountingLoadErrors.length > 0} className="bg-white text-slate-950 hover:bg-slate-100 no-print">
               <Download className="mr-2 h-4 w-4" />
               Open Professional Report
             </Button>
@@ -386,6 +390,9 @@ export default function AccountingProfit() {
         </div>
       </section>
 
+      {endDate<startDate&&<p role="alert" className="mb-3 rounded-lg border border-red-500 p-3 text-sm text-red-200">The period end cannot precede the period start.</p>}
+      {periodPending&&<div role="status" className="mb-5 rounded-xl border border-sky-800 bg-sky-950/20 p-4 text-sm text-sky-100">Recalculating company profit for {startDate} through {endDate}. Prior-period figures are hidden until the server confirms this range.</div>}
+      {reportMatchesDates&&<div className="mb-4 text-xs font-bold text-emerald-300">Verified report dates: {companyLedger.period_start} through {companyLedger.period_end} · Last computed {accountingData.as_of?new Date(accountingData.as_of).toLocaleString():'Not synced'}</div>}
       {accountingError && (
         <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-700/60 bg-red-950/40 p-4 text-red-100">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
@@ -434,7 +441,7 @@ export default function AccountingProfit() {
                 </div>
                 <p className="max-w-full break-words text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-slate-400">{metric.label}</p>
                 <p className={`mt-2 w-full break-words text-[clamp(1.2rem,1.9vw,1.85rem)] font-black leading-tight tracking-tight ${metric.color}`}>
-                  {accountingLoading && !accountingData.as_of ? 'Loading…' : !Number.isFinite(metric.value) ? '—' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  {periodPending ? 'Recalculating…' : !Number.isFinite(metric.value) ? '—' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </p>
                 <p className="mt-2 text-xs leading-4 text-slate-400">{metric.note}</p>
               </CardContent>
