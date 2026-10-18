@@ -194,8 +194,8 @@ Deno.serve(async(req)=>{
         // Reconcile against actual shifts, not solely intersecting invoice date ranges.
         // Only published/issued line items can establish that work has already been billed.
         const issued=duplicates.filter((row:any)=>['sent','paid','overdue','partial','pending'].includes(String(row.status||'').toLowerCase()));
-        const lineDay=(line:any)=>{const raw=String(line?.date||'');if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;const d=new Date(raw);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-CA',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(d):'';};
-        const lineKey=(line:any)=>[lineDay(line),Number(line?.hours||0).toFixed(2),String(line?.officer||'').trim().split(/\\s+/).at(-1)?.toLowerCase()||''].join('|');
+        const lineDay=(line:any)=>{const raw=String(line?.date||'');if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;const d=new Date(raw);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('en-CA',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(d):'';};
+        const lineKey=(line:any)=>[lineDay(line),Number(line?.hours||0).toFixed(2),String(line?.officer||'').trim().split(/\s+/).at(-1)?.toLowerCase()||''].join('|');
         const billedKeys=new Set<string>();
         for(const old of issued){try{const lines=JSON.parse(old.shifts||'[]');if(Array.isArray(lines))for(const row of lines)billedKeys.add(lineKey(row));}catch{}}
         const remaining=items.filter((row:any)=>!billedKeys.has(lineKey(row)));
