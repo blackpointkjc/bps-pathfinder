@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     // Server-calculated financial roll-up. Display only what was retrieved;
     // source failures are returned as partial and never silently treated as $0.
     let financialSummary: any = null;
-    if (scope === 'overview' || scope === 'finance' || scope === 'full') {
+    if (scope === 'overview' || scope === 'finance' || scope === 'full' || scope === 'profit') {
       const now = new Date();
       const easternDay = (date:Date) => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
       const today=easternDay(now);
