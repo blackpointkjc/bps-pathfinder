@@ -29,9 +29,9 @@ export default function AccountingProfit() {
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
   const { data: accountingData = {}, isLoading: accountingLoading, isFetching: accountingFetching, error: accountingError, refetch: refetchProfit } = useQuery({
-    queryKey: ['accountingFinance'],
+    queryKey: ['accountingProfit', startDate, endDate],
     queryFn: async () => {
-      const result = await base44.functions.invoke('getAccountingData', { scope: 'finance' });
+      const result = await base44.functions.invoke('getAccountingData', { scope: 'profit', start_date:startDate, end_date:endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload;
@@ -402,7 +402,7 @@ export default function AccountingProfit() {
       {accountingLoading && (
         <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-900/80 p-5 text-sm text-slate-300">Loading live financial operations…</div>
       )}
-      {Number(companyLedger.unverified_rate_shifts||0)>0 && <div role="alert" className="mb-5 rounded-xl border border-amber-500/50 bg-amber-950/30 p-4 text-sm text-amber-100">{companyLedger.unverified_rate_shifts} shift(s) have unverified historical billing rates. The company revenue and profit figures are withheld until contract rates are verified in Billing. Historical invoices must not be sent with unverified rates.</div>}
+      {Number(companyLedger.unverified_rate_shifts||0)>0 && <div role="status" className="mb-5 rounded-xl border border-amber-500/50 bg-amber-950/30 p-4 text-sm text-amber-100">{companyLedger.unverified_rate_shifts} shift(s) use estimated historical billing rates within this selected date range. Figures remain visible as provisional estimates; verify the relevant contract rate before sending an affected invoice.</div>}
 
       {/* Print Date Range Display */}
       <div className="hidden print:block mb-6 p-4 bg-slate-50 rounded-lg border">
@@ -412,15 +412,17 @@ export default function AccountingProfit() {
       </div>
 
       {/* Financial summary */}
+      <p className="mb-3 text-xs text-slate-400">Financial values are calculated on the server for {startDate} through {endDate}. Invoices use service-period overlap; payroll includes the full saved payroll periods overlapping the selected dates. Draft invoices do not count as billed revenue.</p>
       <div className="mx-auto mb-6 grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {[
-          { label: 'Accrued service revenue', value: Number(companyLedger.earned_service_revenue || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
-          { label: 'Total invoiced', value: Number(companyLedger.billed_total || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Company-wide' },
-          { label: 'Recorded payroll', value: Number(companyLedger.payroll_total || 0), icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Company-wide' },
-          { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Company-wide' },
-          { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Company-wide' },
-          { label: 'Client payments', value: Number(companyLedger.client_payments || 0), icon: WalletCards, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Company-wide' },
-          { label: 'Outstanding invoices', value: Number(companyLedger.outstanding_client_invoices || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Company-wide' },
+          { label: 'Accrued service revenue', value: Number(companyLedger.earned_service_revenue || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Selected period' },
+          { label: 'Total invoiced', value: Number(companyLedger.billed_total || 0), icon: DollarSign, color: 'text-emerald-300', border: 'border-emerald-500/35', note: 'Selected period' },
+          { label: 'Approved payroll expense', value: Number(companyLedger.approved_payroll_expense || 0), icon: Users, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Approved/paid payroll checks within overlapping periods' },
+          { label: 'Awaiting payroll approval', value: Number(companyLedger.pending_payroll_approval || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Generated payroll not yet booked as expense' },
+          { label: 'Operating expenses', value: Number(companyLedger.operating_expenses || 0), icon: Building2, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
+          { label: 'Estimated profit', value: Number(companyLedger.estimated_profit || 0), icon: TrendingUp, color: 'text-violet-300', border: 'border-violet-500/35', note: 'Selected period' },
+          { label: 'Client payments', value: Number(companyLedger.client_payments || 0), icon: WalletCards, color: 'text-sky-300', border: 'border-sky-500/35', note: 'Selected period' },
+          { label: 'Outstanding invoices', value: Number(companyLedger.outstanding_client_invoices || 0), icon: WalletCards, color: 'text-amber-300', border: 'border-amber-500/35', note: 'Selected period' },
         ].map(metric => {
           const Icon = metric.icon;
           return (
@@ -431,7 +433,7 @@ export default function AccountingProfit() {
                 </div>
                 <p className="max-w-full break-words text-[11px] font-bold uppercase leading-4 tracking-[0.12em] text-slate-400">{metric.label}</p>
                 <p className={`mt-2 w-full break-words text-[clamp(1.2rem,1.9vw,1.85rem)] font-black leading-tight tracking-tight ${metric.color}`}>
-                  {companyLedger.complete !== true || (Number(companyLedger.unverified_rate_shifts||0)>0 && ['Accrued service revenue','Estimated profit'].includes(metric.label)) ? 'Review required' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  {accountingLoading || companyLedger.complete !== true ? 'Loading / incomplete' : `${metric.value < 0 ? '-' : ''}$${Math.abs(metric.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </p>
                 <p className="mt-2 text-xs leading-4 text-slate-400">{metric.note}</p>
               </CardContent>
