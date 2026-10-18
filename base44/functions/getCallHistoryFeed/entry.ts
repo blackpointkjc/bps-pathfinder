@@ -47,6 +47,21 @@ Deno.serve(async (req) => {
     const assignmentRead = await readWithRetry('Call assignments', () => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1500), []);
     const userRead = await readWithRetry('Officer directory', () => base44.asServiceRole.entities.User.list('-updated_date', 750), []);
     const unitRead = await readWithRetry('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 500), []);
+    const linkedRead = await readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.list('-linked_at',1300),[]);
+    const linksByCall=new Map<string,any[]>();
+    for(const link of linkedRead.data||[]){
+      if(String(link.status||'active').toLowerCase()==='detached')continue;
+      for(const key of [String(link.call_id||''),String(link.call_number||'')]){
+        if(!key)continue;
+        if(!linksByCall.has(key))linksByCall.set(key,[]);
+        if(!linksByCall.get(key)!.some((row:any)=>row.id===link.id))linksByCall.get(key)!.push(link);
+      }
+    }
+    const linkedReports=(id:string,number:string)=>{
+      const combined=[...(linksByCall.get(String(id||''))||[]),...(linksByCall.get(String(number||''))||[])];
+      return [...new Map(combined.map((row:any)=>[String(row.id),{id:row.id,report_id:row.report_id,report_type:row.report_type,report_number:row.report_number||row.report_id,call_number:row.call_number,linked_at:row.linked_at}])).values()];
+    };
+
     const usersById = new Map((userRead.data || []).map((person: any) => [String(person.id), person]));
     const unitsById = new Map((unitRead.data || []).map((unit: any) => [String(unit.id), unit]));
     const assignmentsByCall = new Map<string, any[]>();
@@ -63,7 +78,7 @@ Deno.serve(async (req) => {
         const unit = unitsById.get(id);
         const officer = usersById.get(String(unit?.user_id || id));
         const number = officer?.unit_number || unit?.unit_number || '';
-        const name = officer?.full_name || [officer?.rank, officer?.last_name || officer?.first_name].filter(Boolean).join(' ');
+        const name = [officer?.rank||'Officer', officer?.last_name||String(officer?.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' ');
         const label = [number ? 'Unit ' + number : '', name].filter(Boolean).join(' — ') || 'Unit ID ' + id;
         const assignment = records.find((item: any) => String(item.unit_id) === id);
         return { unit_id: id, label, officer_name: name || '', unit_number: number, role: assignment?.role || '', assigned_at: assignment?.assigned_at || '', status: assignment?.status || '' };
@@ -113,6 +128,7 @@ Deno.serve(async (req) => {
         call_id: row.call_id || fingerprintAlert?.callId || row.id,
         _source: source,
         _assignedUnitDetails: assignmentDetails(originalId, Array.isArray(row.assigned_units) ? row.assigned_units : []),
+        _linkedReports:linkedReports(originalId||String(row.id||''),String(row.call_id||row.agency_cad_number||row.bps_reference||'')),
         _propertyCall: Boolean(alert),
         _propertyAlert: alert || null,
         _propertyName: alert?.propertyName || '',
@@ -170,6 +186,7 @@ Deno.serve(async (req) => {
         description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
         assigned_units: assignmentDetails(callId).map((item: any) => item.unit_id),
         _assignedUnitDetails: assignmentDetails(callId),
+        _linkedReports:linkedReports(callId,String(alert.cadNumber||'')),
         _source: 'property_alert',
         _propertyCall: true,
         _propertyAlert: alert,
@@ -189,7 +206,7 @@ Deno.serve(async (req) => {
         propertyAlerts: alertByCallId.size,
         syntheticPropertyRows: syntheticPropertyRows.length,
       },
-      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error].filter(Boolean),
+      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error].filter(Boolean),
     });
   } catch (error) {
     console.error('getCallHistoryFeed failed:', error);
