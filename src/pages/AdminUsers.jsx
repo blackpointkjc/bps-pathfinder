@@ -974,7 +974,7 @@ export default function AdminUsers({ embedded = false }) {
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       View/Edit
-                    </Button>
+                    </Button></div>
                   </div>
                 </CardHeader>
                 <CardContent>
