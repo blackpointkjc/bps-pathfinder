@@ -17,7 +17,7 @@ Deno.serve(async req=>{
     let overdue=0,assessed=0,notified=0,failed=0;
     const results:any[]=[];
     for(const original of invoices||[]){
-      if(!yes(original.status)||!original.due_date||original.due_date>=today||original.billing_review_required===true)continue;
+      if(!yes(original.status)||!original.due_date||original.due_date>=today||original.billing_review_required===true||String(original.delivery_status||'').toLowerCase()!=='accepted')continue;
       const existingFee=money(original.late_fee_amount||0);
       const base=money(original.base_amount||money(original.total_amount)-existingFee);
       if(base<=0||Number(original.amount_paid||0)>=money(base+existingFee))continue;

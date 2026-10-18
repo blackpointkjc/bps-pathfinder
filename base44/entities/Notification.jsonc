@@ -24,6 +24,7 @@
         "qr_patrol_report",
         "schedule_changed",
         "call_assignment",
+        "invoice_due",
         "call_unassignment",
         "system_issue",
         "supervisor_task"

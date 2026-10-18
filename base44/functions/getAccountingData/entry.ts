@@ -158,7 +158,13 @@ Deno.serve(async (req) => {
         if(!current||priority(invoice)>priority(current)||(priority(invoice)===priority(current)&&String(invoice.created_date||'')<String(current.created_date||''))) canonical.set(key,invoice);
       }
       const uniqueInvoices=[...canonical.values()].filter((invoice:any)=>invoice.period_start&&invoice.period_end?overlaps(invoice.period_start,invoice.period_end):inRange(invoice.created_date));
-      const billableInvoices=uniqueInvoices.filter((row:any)=>['paid','sent','pending','partial','overdue'].includes(String(row.status||'').toLowerCase()));
+      // A historical row labeled Sent does not prove email delivery. Only
+      // provider-accepted issues or payments explicitly recorded by Accounting
+      // are recognized in receivables; unknown legacy sending stays in review.
+      const billableInvoices=uniqueInvoices.filter((row:any)=>{
+        const state=String(row.status||'').toLowerCase();
+        return state==='paid'||Number(row.amount_paid||0)>0||(['sent','pending','partial','overdue'].includes(state)&&String(row.delivery_status||'').toLowerCase()==='accepted');
+      });
       const billedTotal=billableInvoices.reduce((sum:number,row:any)=>sum+Number(row.total_amount||0),0);
       const clientPayments=billableInvoices.reduce((sum:number,row:any)=>{
         const paid=Number(row.amount_paid||0);
