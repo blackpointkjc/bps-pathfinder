@@ -222,7 +222,7 @@ export default function ClientPayrollReport() {
             <div class="row grand"><span>Remaining due</span><span>$${Math.max(0,Number(invoice.total_amount||0)-Number(invoice.amount_paid||0)).toFixed(2)}</span></div>
           </div>
           ${invoice.notes ? `<div class="notes"><strong>Notes</strong><br>${invoice.notes}</div>` : ''}
-          <div class="footer">Payment is due by the date shown above. Please contact the company with invoice questions.</div>
+          <div class="footer">Payment is due by the date shown above. A one-time 10% overdue fee may apply under your service agreement. Contact the company with invoice questions.</div>
         </div>
       </body>
       </html>
