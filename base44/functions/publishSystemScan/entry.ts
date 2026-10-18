@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       // Titles and severity may change as diagnostics improve; identities must not.
       const legacyKey = issueKey + ':' + text(finding.title);
       currentIssueKeys.add(issueKey);
-      const existing = activeByKey.get(issueKey) || activeByKey.get(legacyKey);
+      const existing = activeByKey.get(issueKey) || activeByKey.get(legacyKey) || [...activeByKey.entries()].find(([key])=>key.startsWith(issueKey+':'))?.[1];
       const issueData = {
         issue_key: issueKey,
         source: 'full_app_scan',
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     }
     for (const [issueKey, issue] of activeByKey.entries()) {
       if (currentIssueKeys.has(issueKey)) continue;
-      if ([...currentIssueKeys].some(key => issueKey.startsWith(key + ':'))) continue;
+      if ([...currentIssueKeys].some(key => issueKey.startsWith(key + ':') && issue.issue_key === activeByKey.get(key)?.issue_key)) continue;
       if ((audit.incomplete_areas || []).includes(issue.component)) continue;
       if (audit.scan_incomplete || findings.some((finding:any) => String(finding.key || '').startsWith('service:') || finding.key === 'auto-dispatch:evaluation-read')) continue;
       await base44.asServiceRole.entities.SystemOutage.update(issue.id, {
