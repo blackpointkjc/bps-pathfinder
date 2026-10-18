@@ -54,6 +54,7 @@ export default function DispatchCenter() {
     const [showMap, setShowMap] = useState(false);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('all');
     const [queueSearch, setQueueSearch] = useState('');
@@ -244,6 +245,14 @@ export default function DispatchCenter() {
         try {
             const locations = await listDirectoryLocations('site_name');
             setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
+            // Property queue filters must work for ALL active contracted sites,
+            // not only sites which opted into automated property alerts.
+            const everyActiveSite=(locations||[]).filter(row=>row.active!==false).map(row=>({
+                ...row,property_monitoring_enabled:true,
+                property_monitoring_polygon:Array.isArray(row.property_monitoring_polygon)&&row.property_monitoring_polygon.length>=3?row.property_monitoring_polygon:(row.geofence_polygon||[]),
+                property_monitoring_radius_meters:Number(row.property_monitoring_radius_meters||row.geofence_radius_meters||100),
+            }));
+            setCompanyPropertyBoundaries(monitoredPropertiesFromLocations(everyActiveSite));
         } catch (error) {
             console.error('Error loading monitored properties:', error);
         }
@@ -624,7 +633,7 @@ export default function DispatchCenter() {
 
     const propertyAlertCalls=activeCalls.filter(call =>
         Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
-        ||Boolean(findPropertyMatch(call,monitoredProperties)));
+        ||Boolean(findPropertyMatch(call,companyPropertyBoundaries)));
     const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const allCalls = activeCalls.filter(call => {
         const property=propertyCallIds.has(String(call.id));
