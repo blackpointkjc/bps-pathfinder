@@ -194,6 +194,19 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
 
+  const transitionFormerEmployee = async (person, action) => {
+    if (!isSystemAdmin) return alert('Administrator authorization required.');
+    const question=action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
+    if(!await confirmInApp(question+' '+person.email))return;
+    try {
+      const response=await base44.functions.invoke('manageFormerEmployee',{user_id:person.id,action});
+      const payload=response?.data||response||{};
+      if(!payload.success)throw new Error(payload.error||'Transition failed');
+      invalidateAppDirectory();
+      await refetchUsers();
+      alert(action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
+    }catch(error){alert(error?.response?.data?.error||error.message||'Transition failed');}
+  };
   const filterBySearch = (list) => {
     if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
@@ -470,7 +483,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {isTerminated && isSystemAdmin && <><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}
             <Button variant="outline" size="sm" onClick={() => handleEditUser(userData)}>
               <Edit className="w-4 h-4 mr-2" />{canManageEmployees ? 'Edit' : 'View'}
             </Button>
