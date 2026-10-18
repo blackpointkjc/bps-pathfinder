@@ -55,6 +55,7 @@ export default function DispatchCenter() {
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
+    const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('all');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
@@ -254,6 +255,12 @@ export default function DispatchCenter() {
                 property_monitoring_radius_meters:Number(row.property_monitoring_radius_meters||row.geofence_radius_meters||100),
             }));
             setCompanyPropertyBoundaries(monitoredPropertiesFromLocations(everyActiveSite));
+            // Prior persisted property links count even when agency GPS has no coordinates.
+            try {
+              const recentAlerts=await base44.entities.PropertyAlert.list('-created_date',450);
+              setPersistedPropertyCallIds([...new Set((recentAlerts||[]).map(a=>String(a.callId||'')).filter(Boolean))]);
+            } catch(error){console.warn('Property-alert link refresh unavailable',error?.message);}
+
         } catch (error) {
             console.error('Error loading monitored properties:', error);
         }
@@ -659,6 +666,7 @@ export default function DispatchCenter() {
 
     const propertyAlertCalls=activeCalls.filter(call =>
         Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
+        ||persistedPropertyCallIds.includes(String(call.id))
         ||Boolean(findPropertyMatch(call,companyPropertyBoundaries)));
     const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const allCalls = activeCalls.filter(call => {
@@ -706,9 +714,9 @@ export default function DispatchCenter() {
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="dispatch-actions flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button onClick={() => setShowCreateDialog(true)}
-                        className="flex h-7 items-center gap-1 rounded-md border border-red-500 bg-red-700 px-2.5 text-[9px] font-bold text-white hover:bg-red-600">
+                        className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#163153] text-white hover:bg-blue-900">
                         <Plus className="w-3 h-3" /> NEW CALL
                     </button>
 
@@ -751,12 +759,7 @@ export default function DispatchCenter() {
                         </button>
                     )}
                     <OfficerDistressButton currentUser={currentUser} className="text-[10px]" />
-                    <div className="flex items-center gap-1 px-3 py-1 border border-blue-500/40 bg-blue-500/10 rounded text-[10px] text-blue-300 font-bold">
-                        <Radio className="w-2.5 h-2.5" /> GRAC LIVE SOURCE
-                    </div>
-                    <div className="flex items-center gap-1 px-3 py-1 border border-red-500/50 bg-red-500/15 rounded text-[10px] text-red-200 font-bold">
-                        <Activity className="w-2.5 h-2.5" /> PULSEPOINT {pulsePointCalls.length}
-                    </div>
+
                 </div>
             </div>
 
@@ -843,7 +846,7 @@ export default function DispatchCenter() {
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">{queueFilter==='agency'?'ALL ACTIVE CALLS · GRAC + PULSEPOINT':'PROPERTY CALLS · GRAC + PULSEPOINT'}</span>
+                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">{queueFilter==='agency'?'All active calls':'Company property calls'}</span>
                             <span className="ml-auto text-[10px] bg-red-500/20 text-red-200 px-2 rounded-full border border-red-500/40">PP {pulsePointCalls.length}</span>
                             <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
