@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     // 14-table read used to block every tab and exacerbate API 429s.
     const scopeTables: Record<string,string[]> = {
       payroll: ['users','periods','payrollEntries','configs','timeEntries'],
-      invoices: ['users','invoices','locations','timeEntries','schedules'],
+      invoices: ['users','invoices','locations','configs'],
       expenses: ['users','expenseReports','companyExpenses','recurringBills'],
       profit: ['users','configs','payrollEntries','timeEntries','invoices','locations','expenseReports','companyExpenses','ptoUsage','schedules'],
       overview: ['users','periods','payrollEntries','expenseReports','companyExpenses','recurringBills','invoices','timeEntries','locations','schedules'],
@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
             result[key] = Array.isArray(rows) ? rows : [];
             break;
           } catch (error:any) {
-            if (attempt < 3) { await delay((attempt+1)*900); continue; }
+            const throttled=Number(error?.status||error?.response?.status)===429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message||error));
+            if (!throttled && attempt < 2) { await delay((attempt+1)*650); continue; }
             console.error(`getAccountingData could not load ${source.label}`,error?.message || error);
             loadErrors.push(source.label);
             result[key] = [];
