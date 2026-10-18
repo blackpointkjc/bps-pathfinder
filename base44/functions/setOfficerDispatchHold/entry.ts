@@ -9,12 +9,25 @@ Deno.serve(async req=>{
     if(!['admin','dispatch'].includes(lower(actor.role))&&!actor.dispatch_role&&!actor.is_supervisor&&!commandRank&&!['full_access','supervisor','cad_access','dispatch'].some(x=>roles.has(x)))return Response.json({error:'Only authorized dispatch/command personnel can hold new calls'},{status:403});
     const body=await req.json().catch(()=>({})),officerId=String(body.officer_id||'');
     if(!officerId||typeof body.hold!=='boolean')return Response.json({error:'Select officer and hold/resume action'},{status:400});
-    const officer=await base44.asServiceRole.entities.User.get(officerId).catch(()=>null);
-    if(!officer)return Response.json({error:'Officer not found'},{status:404});
+    // Dispatch boards can pass a User, Unit, or ActiveOfficer ID. Resolve
+    // to the canonical User before setting the hold rather than rejecting
+    // valid officers because the board uses an operational record ID.
+    let officer=await base44.asServiceRole.entities.User.get(officerId).catch(()=>null);
+    if(!officer){
+      const unit=await base44.asServiceRole.entities.Unit.get(officerId).catch(()=>null);
+      const active=unit?null:await base44.asServiceRole.entities.ActiveOfficer.get(officerId).catch(()=>null);
+      const userId=String(unit?.user_id||active?.user_id||'');
+      if(userId)officer=await base44.asServiceRole.entities.User.get(userId).catch(()=>null);
+      if(!officer){
+        const email=lower(unit?.user_email||active?.officer_email);
+        if(email){const matches=await base44.asServiceRole.entities.User.filter({email},'-created_date',2).catch(()=>[]);if(matches.length===1)officer=matches[0];}
+      }
+    }
+    if(!officer?.id)return Response.json({error:'Officer account not found for this unit. Verify the unit-to-user link.'},{status:404});
     const who=[officer.rank,officer.last_name].filter(Boolean).join(' ')||'Officer';
     const reason=String(body.reason||'').trim().slice(0,400),now=new Date().toISOString();
-    const updated=await base44.asServiceRole.entities.User.update(officerId,{dispatch_hold_new_calls:body.hold,dispatch_hold_reason:body.hold?reason:'',dispatch_hold_at:now,dispatch_hold_by:actor.email||''});
-    await base44.asServiceRole.entities.AuditLog.create({entity_type:'User',entity_id:officerId,action:'status_change',actor_id:actor.id,actor_name:actor.email||'',timestamp:now,description:`${who}: ${body.hold?'New CAD assignments held':'New CAD assignments resumed'}${reason?' — '+reason:''}`}).catch(()=>null);
+    const updated=await base44.asServiceRole.entities.User.update(officer.id,{dispatch_hold_new_calls:body.hold,dispatch_hold_reason:body.hold?reason:'',dispatch_hold_at:now,dispatch_hold_by:actor.email||''});
+    await base44.asServiceRole.entities.AuditLog.create({entity_type:'User',entity_id:officer.id,action:'status_change',actor_id:actor.id,actor_name:actor.email||'',timestamp:now,description:`${who}: ${body.hold?'New CAD assignments held':'New CAD assignments resumed'}${reason?' — '+reason:''}`}).catch(()=>null);
     return Response.json({success:true,hold:body.hold,officer:who,message:`${who} ${body.hold?'cannot receive NEW calls until dispatch clears the hold':'can receive additional calls. Existing assignments retained.'}`});
   }catch(error:any){return Response.json({error:error?.message||'Dispatch availability update failed'},{status:500});}
 });
