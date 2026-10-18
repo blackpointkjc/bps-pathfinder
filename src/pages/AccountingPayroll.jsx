@@ -77,9 +77,9 @@ export default function AccountingPayroll() {
       return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 0,
+    staleTime: 60000,
     refetchOnMount: false,
-    refetchInterval: 90000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
@@ -183,7 +183,16 @@ export default function AccountingPayroll() {
         queryClient.invalidateQueries({queryKey:['accountingProfit']}),
       ]);
       setPayrollCatchup({state:'created',message:`${entry.officer_email}: paycheck ${action==='paid'?'marked paid':'approved and posted to company payroll expenses'}.`});
-    }catch(error){setPayrollCatchup({state:'error',message:error?.response?.data?.error||error?.message||'Payroll check update failed'});}
+    }catch(error){
+      const message=error?.response?.data?.error||error?.message||'Payroll check update failed';
+      if(action==='approve' && /time entry changed after this report/i.test(message)){
+        const period=payrollPeriods.find(p=>p.start_date===entry.pay_period_start&&p.end_date===entry.pay_period_end);
+        if(period){
+          setSelectedPeriodId(period.id);
+          setPayrollCatchup({state:'error',message:`${message} The affected period is now selected. Use “Run Selected Payroll Report Now” and review the recalculated amount before approving.`});
+        }else setPayrollCatchup({state:'error',message:`${message} The payroll period record is missing; reconcile the period in Payroll Settings.`});
+      }else setPayrollCatchup({state:'error',message});
+    }
     finally{setApprovalBusyId('');setConfirmCheck(null);}
   };
 
