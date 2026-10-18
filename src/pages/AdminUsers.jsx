@@ -626,7 +626,18 @@ export default function AdminUsers({ embedded = false }) {
     ]);
     navigate(`${createPageUrl(config.page)}?email=${encodeURIComponent(userData.email || '')}`);
   };
-  const terminatedUsers = users?.filter(u => Boolean(u.termination_date) || String(u.employment_status||'').toLowerCase()==='terminated' || String(u.account_status||'').toLowerCase()==='terminated') || [];
+  const terminatedUsers = users?.filter(u => Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated') || [];
+  const transitionFormerEmployee = async (person, action) => {
+    if(!window.confirm((action==='restore'?'Restore account to pending review with no operational roles?':'Move former employee to client with no CAD roles?')+' '+person.email))return;
+    try{
+      const response=await base44.functions.invoke('manageFormerEmployee',{user_id:person.id,action});
+      const payload=response?.data||response||{};
+      if(!payload.success)throw new Error(payload.error||'Account transition failed');
+      invalidateAppDirectory();
+      await queryClient.invalidateQueries({queryKey:['portalUsers']});
+      alert(action==='restore'?'Account restored for role review.':'Client account created from historical employee profile; verify site access.');
+    }catch(error){alert(error?.response?.data?.error||error.message||'Account transition failed');}
+  }; 
   
   console.log('Active users:', activeUsers.length);
   console.log('Terminated users:', terminatedUsers.length);
@@ -955,6 +966,7 @@ export default function AdminUsers({ embedded = false }) {
                         </div>
                       </div>
                     </div>
+                    <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button>
                     <Button
                       variant="outline"
                       size="sm"
