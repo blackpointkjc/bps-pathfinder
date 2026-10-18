@@ -45,6 +45,7 @@ Deno.serve(async req=>{
       });
       return Response.json({success:true,entry:next,previous_entry_id:activeId,transferred_at:now,message:`Site changed to ${site.site_name}; duty session continued.`});
     }catch(error:any){
+      const throttled=Number(error?.status||error?.response?.status)===429||/rate limit|429|too many requests/i.test(String(error?.message||error));
       const recovery=await base44.asServiceRole.entities.TimeEntry.update(activeId,{clock_out:null,clock_out_latitude:null,clock_out_longitude:null,notes:active.notes||''}).then(()=>true).catch(()=>false);
       return Response.json({error:recovery?`Site change was not saved; original duty shift remains active. ${error?.message||''}`:'Site change failed and original shift could not be reopened. Contact command immediately to correct the time ledger.',rollback_ok:recovery},{status:recovery?502:500});
     }
