@@ -11,7 +11,8 @@ const displayUnitName = (unit) => {
     const rank = String(unit?.rank || '').trim();
     const last = String(unit?.last_name || '').trim();
     if (rank && last) return `${rank} ${last}`;
-    return unit?.full_name || unit?.officer_name || (unit?.unit_number ? `Unit ${unit.unit_number}` : 'Field Unit');
+    const fallback=String(unit?.full_name||unit?.officer_name||'').trim().split(/\s+/).pop();
+    return fallback ? `${rank||'Officer'} ${fallback}` : (unit?.unit_number ? `Unit ${unit.unit_number}` : 'Field Unit');
 };
 const displayProperty = (unit) => String(unit?.current_location || unit?.assigned_location || unit?.location || 'No current property').split(':')[0].trim();
 
@@ -109,6 +110,7 @@ export default function UnitAssignmentPanel({ call, units = [], unitLoadStatus =
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
+                                        <span className={String(unit.id)===String(assignedUnitIds[0])?'text-emerald-300':'text-blue-300'}>{String(unit.id)===String(assignedUnitIds[0])?'PRIMARY UNIT':'ADDITIONAL UNIT'}</span>
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>

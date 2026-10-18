@@ -58,6 +58,7 @@ export default function DispatchCenter() {
     const [queueFilter, setQueueFilter] = useState('all');
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
+    const selectedNoteCallRef=React.useRef('');
     const [noteText, setNoteText] = useState('');
     const [savingNote, setSavingNote] = useState(false);
     const [systemTime, setSystemTime] = useState(() => new Date());
@@ -69,10 +70,14 @@ export default function DispatchCenter() {
         const raw = String(name || '').trim();
         if (!raw) return 'Dispatch';
         const match = units.find(u => [u.full_name, u.email, u.username].filter(Boolean).some(v => String(v).toLowerCase() === raw.toLowerCase()));
-        if (!match) return raw.includes('@') ? raw.split('@')[0] : raw;
+        if (!match) {
+            if(raw==='Dispatch'||raw==='CAD')return raw;
+            if(/^(Colonel|Lt Colonel|Lieutenant Colonel|Major|Captain|Lieutenant|Sergeant|Sgt|Corporal|Officer)\s+/i.test(raw))return raw;
+            return raw.includes('@')?'Dispatch':`Officer ${raw.split(/\s+/).pop()}`;
+        }
         const last = String(match.last_name || match.full_name || '').trim().split(/\s+/).pop();
         const rank = String(match.rank || match.title || '').trim();
-        return [rank, last].filter(Boolean).join(' ') || match.full_name || raw;
+        return [rank||'Officer', last].filter(Boolean).join(' ') || 'Officer';
     };
     const knownCallIdsRef = React.useRef(null);
     const activeCallsLoadingRef = React.useRef(false);
@@ -421,7 +426,7 @@ export default function DispatchCenter() {
             const response = await withRequestTimeout(base44.functions.invoke('sharedCadTimeline', {call_id:callId,action:'read'}),16000,'Shared CAD notes');
             const payload=response?.data||response||{};
             if(!payload.success)throw new Error(payload.error||'Shared call notes could not load');
-            setCallNotes(Array.isArray(payload.notes)?payload.notes:[]);
+            if(selectedNoteCallRef.current===String(callId))setCallNotes(Array.isArray(payload.notes)?payload.notes:[]);
         } catch(error) {
             console.warn('Unable to load shared call notes:',error);
             toast.error(error?.response?.data?.error||error?.message||'Shared CAD notes temporarily unavailable');
@@ -441,6 +446,8 @@ export default function DispatchCenter() {
 
     const handleSelectCall = (call) => {
         setSelectedCall(call);
+        selectedNoteCallRef.current=String(call?.id||'');
+        setCallNotes([]);
         if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileView('detail');
         setCallDistrict(null);
         loadCallNotes(call?.id);
@@ -565,7 +572,7 @@ export default function DispatchCenter() {
             const payload=response?.data||response||{};
             if(!payload.success)throw new Error(payload.error||'The CAD server did not save this note');
             setNoteText('');
-            setCallNotes(current=>[...current,{...payload.note,kind:'note',created_date:payload.note?.created_date||new Date().toISOString()}]);
+            if(selectedNoteCallRef.current===String(callId))setCallNotes(current=>[...current,{...payload.note,kind:'note',created_date:payload.note?.created_date||new Date().toISOString()}]);
             void loadCallNotes(callId);
             toast.success('Shared CAD note saved for dispatch and all assigned units.');
         } catch(error) {

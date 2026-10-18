@@ -272,7 +272,10 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: () => {
+    onSuccess: (newEntry) => {
+      // Reflect the successfully transferred segment immediately so a quick
+      // second tap cannot reuse the closed former time entry.
+      queryClient.setQueryData(['activeTimeEntry', user?.email],newEntry);
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
@@ -311,7 +314,10 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: () => {
+    onSuccess: (newEntry) => {
+      // Reflect the successfully transferred segment immediately so a quick
+      // second tap cannot reuse the closed former time entry.
+      queryClient.setQueryData(['activeTimeEntry', user?.email],newEntry);
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
@@ -374,13 +380,15 @@ export default function TimeClock() {
       if (!result.success || !result.entry?.id) throw new Error(result.error || 'Server did not confirm site transfer. Refresh Time Clock before trying again.');
       return result.entry;
     },
-    onSuccess: () => {
+    onSuccess: (newEntry) => {
+      // Reflect the successfully transferred segment immediately so a quick
+      // second tap cannot reuse the closed former time entry.
+      queryClient.setQueryData(['activeTimeEntry', user?.email],newEntry);
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
       setSwitchingSite(false);
       setSelectedNewSite("");
-      setGeoError(null); // Clear any geo error from previous operations
       setGeoError(null);
     },
     onError: (error) => {
