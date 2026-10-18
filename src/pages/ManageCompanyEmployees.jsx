@@ -80,7 +80,15 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const { data: users, isLoading, error: usersError, refetch: refetchUsers, isFetching: usersFetching } = useQuery({
     queryKey: ['directoryUsers', 'manageCompanyEmployees', portalContext],
-    queryFn: () => listDirectoryUsers('last_name', 1000, true),
+    queryFn: async () => {
+      if(portalContext==='hr'){
+        const response=await base44.functions.invoke('getHRUsers',{});
+        const payload=response?.data||response||{};
+        if(payload.error || !Array.isArray(payload.users))throw new Error(payload.error||'HR personnel list unavailable');
+        return payload.users;
+      }
+      return listDirectoryUsers('last_name',1000,true);
+    },
     enabled: hasAccess,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -193,6 +201,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const allEmployees = (users || []).filter(u => isCompanyEmployeeAccount(u) || isTerminated(u));
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
+  const pendingOnboarding = (users||[]).filter(u => u.email && !isTerminated(u) && u.role!=='admin'
+    && !(u.additional_roles||[]).some(role=>['officer','cad_access','support','support_staff','client','student','hr','accounting','trainer','supervisor','full_access'].includes(String(role).toLowerCase()))
+    && !['client','student','student registration pending'].includes(String(u.rank||'').toLowerCase()));
 
   const transitionFormerEmployee = async (person, action) => {
     if (!isSystemAdmin) return alert('Administrator authorization required.');
