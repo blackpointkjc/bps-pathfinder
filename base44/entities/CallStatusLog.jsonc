@@ -64,6 +64,7 @@
         "backup_requested",
         "officer_emergency",
         "welfare_overdue",
+        "welfare_requested",
         "property_alert",
         "priority_upgraded",
         "call_cancelled",

@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Unit/ActiveOfficer IDs as well as the canonical User ID, on the server.
     const routineTypes = new Set(['unit_dispatched', 'additional_unit', 'unit_reassigned',
       'unit_acknowledged', 'unit_enroute', 'unit_on_scene', 'unit_cleared',
-      'unit_available', 'priority_upgraded', 'call_cancelled', 'call_cleared', 'call_updated']);
+      'unit_available', 'welfare_requested', 'priority_upgraded', 'call_cancelled', 'call_cleared', 'call_updated']);
     let announcementText = '';
     let propertyAnnouncementText = '';
     let assignmentAnnouncementText = '';
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       // All events describing a particular officer must be delivered ONLY to
       // that officer. Other responders may read the common log, but do not
       // receive speech saying "you were unassigned" from someone else's call.
-      const privateUnitEvent=new Set(['unit_reassigned','unit_cleared','unit_acknowledged','unit_enroute','unit_on_scene','unit_available','unit_dispatched','additional_unit']);
+      const privateUnitEvent=new Set(['unit_reassigned','unit_cleared','unit_acknowledged','unit_enroute','unit_on_scene','unit_available','welfare_requested','unit_dispatched','additional_unit']);
       const ids = new Set<string>();
       if(privateUnitEvent.has(String(event.event_type))) {
         if(event.unit_id)ids.add(String(event.unit_id));
