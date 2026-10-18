@@ -57,6 +57,7 @@ export default function DispatchCenter() {
     const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('all');
+    const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
     const selectedNoteCallRef=React.useRef('');
@@ -603,6 +604,31 @@ export default function DispatchCenter() {
         loadActiveCalls().catch(() => null);
     };
 
+    // Dispatch progress filters aggregate verified responder assignments, NOT
+    // the individual officer queue status or the upstream agency's call state.
+    useEffect(()=>{
+        let live=true,timer;
+        const reconcile=async()=>{
+            try{
+                const rows=await base44.entities.CallAssignment.list('-assigned_at',500);
+                if(live)setCadAssignmentRows(Array.isArray(rows)?rows:[]);
+            }catch(error){console.warn('CAD assignment filter snapshot unavailable:',error?.message);}
+        };
+        reconcile();
+        const update=()=>{clearTimeout(timer);timer=setTimeout(reconcile,800);};
+        let unsub;
+        try{unsub=base44.entities.CallAssignment.subscribe(update);}catch{}
+        const fallback=setInterval(()=>{if(document.visibilityState==='visible')reconcile();},45000);
+        return()=>{live=false;clearTimeout(timer);clearInterval(fallback);unsub?.();};
+    },[]);
+    const propertyCallProgress=call=>{
+        const active=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+        if(active.some(row=>String(row.status||'').toLowerCase()==='on_scene'))return 'On Scene';
+        if(active.some(row=>['enroute','en_route'].includes(String(row.status||'').toLowerCase())))return 'Enroute';
+        if(active.length||(call.assigned_units||[]).length)return 'Dispatched';
+        return String(call.status||'New');
+    };
+
     // Re-sort calls when sortOrder changes
     useEffect(() => {
         const sorted = [...activeCalls].sort((a, b) => {
@@ -640,7 +666,7 @@ export default function DispatchCenter() {
         const matchesFilter = queueFilter === 'agency' || (property && (queueFilter === 'all' ||
             (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
             (queueFilter === 'priority' && ['critical', 'high'].includes(call.priority)) ||
-            String(call.status||'').toLowerCase()===String(queueFilter).toLowerCase()));
+            String(propertyCallProgress(call)||'').toLowerCase()===String(queueFilter).toLowerCase()));
         const haystack = `${call.call_id || ''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
     });
@@ -848,6 +874,7 @@ export default function DispatchCenter() {
                                         <div className={`text-[9px] font-mono font-bold truncate ${pulsePoint ? 'text-red-200' : call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{pulsePoint ? 'PP' : (call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
                                         <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
+                                        {propertyCallIds.has(String(call.id))&&<div className="mt-1 text-[9px] font-bold text-cyan-300">PROPERTY STATUS: {propertyCallProgress(call).toUpperCase()}</div>}
                                         <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${pulsePoint ? 'border border-red-500/40 bg-red-500/20 text-red-100' : 'text-slate-600'}`}>
                                             {pulsePoint ? 'PULSEPOINT' : (call.agency || 'AGENCY N/A')}
                                         </div>

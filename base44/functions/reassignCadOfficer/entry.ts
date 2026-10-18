@@ -43,6 +43,11 @@ Deno.serve(async req=>{
       for(const row of oldRows)await db.CallAssignment.update(row.id,{status:'cleared',cleared_at:now,description:[row.description,'Reassigned by CAD to '+cad(target)].filter(Boolean).join(' ').slice(0,1000)});
       const oldUnits=(source.assigned_units||[]).map(String).filter((id:string)=>id!==officerId);
       await db.DispatchCall.update(sourceId,{assigned_units:oldUnits});
+      // If the departing officer was primary, keep the original call staffed
+      // with a designated primary. Never promote the officer who left.
+      const survivors=(oldAssignments||[]).filter((a:any)=>String(a.unit_id)!==officerId&&!['cleared','cancelled','canceled'].includes(lower(a.status)))
+        .sort((a:any,b:any)=>Date.parse(a.assigned_at||'')-Date.parse(b.assigned_at||''));
+      if(survivors.length&&!survivors.some((a:any)=>lower(a.role)==='primary'))await db.CallAssignment.update(survivors[0].id,{role:'primary'});
     }catch(error:any){
       for(const row of oldRows)await db.CallAssignment.update(row.id,{status:row.status,cleared_at:row.cleared_at||null}).catch(()=>null);
       await db.DispatchCall.update(sourceId,{assigned_units:(source.assigned_units||[]).map(String)}).catch(()=>null);

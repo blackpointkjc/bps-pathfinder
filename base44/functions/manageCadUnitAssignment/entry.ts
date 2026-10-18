@@ -143,6 +143,9 @@ Deno.serve(async (req) => {
       for (const record of (records || []).filter((item: any) => removableIds.has(String(item.unit_id)))) {
         if (record.status !== 'cleared') await base44.asServiceRole.entities.CallAssignment.update(record.id, { status: 'cleared', cleared_at: new Date().toISOString() });
       }
+      const remaining=(records||[]).filter((row:any)=>!removableIds.has(String(row.unit_id))&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))
+        .sort((a:any,b:any)=>Date.parse(a.assigned_at||'')-Date.parse(b.assigned_at||''));
+      if(remaining.length&&!remaining.some((row:any)=>row.role==='primary'))await base44.asServiceRole.entities.CallAssignment.update(remaining[0].id,{role:'primary'});
 
       const now = new Date().toISOString();
       const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
