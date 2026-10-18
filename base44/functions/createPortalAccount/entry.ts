@@ -157,6 +157,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Never create login credentials for an employee/client when the personnel
+    // record itself could not be created. This caused orphan sign-in accounts.
+    if (!['pending','student_pending'].includes(accountType) && !portalUser?.id) {
+      return Response.json({success:false,error:assignmentError||'Personnel profile could not be created. No login invitation was issued.',error_stage:'profile_provisioning',provisioned:false},{status:409});
+    }
     if (!['pending','student_pending'].includes(accountType)) {
       try {
         await base44.users.inviteUser(normalizedEmail, 'user');
@@ -270,7 +275,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({
-      success: true,
+      success: provisioned || ['pending','student_pending'].includes(accountType),
       provisioned,
       enrollment_id: enrollmentId,
       status: provisioned ? 'account_ready' : 'invited_waiting_for_registration',
