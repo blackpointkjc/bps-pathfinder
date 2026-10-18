@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       // Historical or off-duty assignments remain in CAD but are not current welfare escalations.
       const assignedAtMs = new Date(a.assigned_at || 0).getTime();
       const currentShift = openDutyByEmail.get(lower(officer.email));
-      const started = currentShift?.clock_in ? Date.parse(currentShift.clock_in)-5*60*1000 : now-12*60*60*1000;
+      const started = currentShift?.clock_in ? Date.parse(currentShift.clock_in)-2*60*60*1000 : now-12*60*60*1000;
       if (!onDutyEmails.has(lower(officer.email)) || !Number.isFinite(assignedAtMs) || assignedAtMs < started || assignedAtMs > now+60000) continue;
       const anchor = lower(a.status) === 'accepted' && a.accepted_at ? a.accepted_at : a.assigned_at;
       const elapsedSeconds = Math.max(0, Math.floor((now - new Date(anchor || 0).getTime()) / 1000));

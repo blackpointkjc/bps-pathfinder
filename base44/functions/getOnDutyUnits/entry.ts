@@ -469,7 +469,7 @@ Deno.serve(async (req) => {
       if (!officer) return false;
       const assignedAt = Date.parse(row.assigned_at || row.created_date || '');
       const shift = openByEmail.get(lower(officer.email));
-      const shiftFloor = shift?.clock_in ? Date.parse(shift.clock_in) - 5*60*1000 : Date.now()-12*60*60*1000;
+      const shiftFloor = shift?.clock_in ? Date.parse(shift.clock_in) - 2*60*60*1000 : Date.now()-12*60*60*1000;
       return Number.isFinite(assignedAt) && assignedAt>=shiftFloor && assignedAt<=Date.now()+60*1000;
     });
     const dispatchById = new Map<string,any>();
@@ -483,6 +483,45 @@ Deno.serve(async (req) => {
       const prior=dispatchById.get(id);
       if(!prior || Date.parse(assignment.assigned_at||'')>Date.parse(prior.assignment.assigned_at||'')) dispatchById.set(id,{assignment,call});
     }
+
+    // A handful of legacy dispatch actions updated User.current_call_id without
+    // a live CallAssignment. Honor such a pointer only if the CAD record itself
+    // explicitly lists the officer and belongs to the current shift.
+    const legacyUsers=(users||[]).filter((user:any)=>user.current_call_id&&!dispatchById.has(String(user.id)));
+    const legacyCalls=await Promise.all(legacyUsers.slice(0,12).map((user:any)=>base44.asServiceRole.entities.DispatchCall.get(String(user.current_call_id)).catch(()=>null)));
+    for(let i=0;i<legacyCalls.length;i++){
+      const call=legacyCalls[i],officer=legacyUsers[i];
+      if(!call||call.manual_dismissed===true||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))continue;
+      if(!(call.assigned_units||[]).map(String).includes(String(officer.id)))continue;
+      const shift=openByEmail.get(lower(officer.email));
+      const minimum=shift?.clock_in?Date.parse(shift.clock_in)-2*60*60*1000:Date.now()-12*60*60*1000;
+      const dispatchedAt=Date.parse(call.time_dispatched||call.created_date||'');
+      if(!Number.isFinite(dispatchedAt)||dispatchedAt<minimum)continue;
+      dispatchById.set(String(officer.id),{assignment:{status:call.status,assigned_at:call.time_dispatched||call.created_date},call});
+    }
+
+    // Repair stale CAD pointers once, without removing historical assignment
+    // records. A new assignment added concurrently wins: reread User before
+    // clearing and only touch the unchanged obsolete reference. Keep manually
+    // selected Busy/OOS and all live GPS/presence state intact.
+    const obsoletePointers=legacyUsers.filter((user:any)=>!dispatchById.has(String(user.id)));
+    await Promise.all(obsoletePointers.slice(0,12).map(async (officer:any)=>{
+      const current=await base44.asServiceRole.entities.User.get(officer.id).catch(()=>null);
+      if(!current||String(current.current_call_id||'')!==String(officer.current_call_id||''))return;
+      const oldId=String(officer.current_call_id);
+      const status=['dispatched','enroute','en route','on scene'].includes(lower(current.status))?'Available':current.status;
+      await base44.asServiceRole.entities.User.update(officer.id,{
+        current_call_id:'',current_call_info:'',status,
+      }).catch(()=>null);
+      const session=newestActiveByEmail.get(lower(officer.email));
+      if(session?.id && String(session.current_call_id||'')===oldId){
+        await base44.asServiceRole.entities.ActiveOfficer.update(session.id,{
+          current_call_id:'',current_call_info:'',status,
+        }).catch(()=>null);
+        session.current_call_id='';session.current_call_info='';session.status=status;
+      }
+      officer.current_call_id='';officer.current_call_info='';officer.status=status;
+    }));
 
     // Canonical Unit Status Board feed: TimeEntry owns duty state while the app
     // session owns only presence/GPS. A clocked-in officer keeps their selected

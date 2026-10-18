@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.DispatchCall.filter({assigned_units:{$in:aliases}},'-created_date',80),
     ]);
     const openShift=(lastShifts||[]).find((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true);
-    const shiftStart=openShift ? Date.parse(openShift.clock_in)-5*60*1000 : Date.now()-12*60*60*1000;
+    const shiftStart=openShift ? Date.parse(openShift.clock_in)-2*60*60*1000 : Date.now()-12*60*60*1000;
     const recentCutoff=Number.isFinite(shiftStart)?shiftStart:Date.now()-12*60*60*1000;
     const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []);
     const activeAssignments=(assignments||[]).filter((a:any)=> !['cleared','cancelled','canceled'].includes(lower(a.status))
