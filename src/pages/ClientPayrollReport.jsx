@@ -1,3 +1,4 @@
+import { invoiceShiftRows, invoiceCalendarDate, invoiceTimeZone, invoiceLocalStamp } from '@/lib/invoiceLocalTime';
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -145,7 +146,7 @@ export default function ClientPayrollReport() {
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
   const printStoredInvoice = (invoice) => {
-    const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
+    const shifts = invoiceShiftRows(invoice,locations);
     const printWindow = window.open('', '_blank', 'width=900,height=1100');
     if (!printWindow) return;
 
@@ -188,7 +189,7 @@ export default function ClientPayrollReport() {
           <div class="header">
             <div>
               <div class="brand">Black Point Protection</div>
-              <div class="muted">1971 University Blvd, Lynchburg, VA 24515</div>
+              <div class="muted">701 E Franklin Street, Richmond, VA 23219</div>
               <div class="muted">${DCJS_ID}</div>
             </div>
             <div class="invoice">
@@ -204,8 +205,8 @@ export default function ClientPayrollReport() {
             </div>
             <div class="panel">
               <div class="label">Service period</div>
-              <div class="value">${format(new Date(invoice.period_start), 'MMM d, yyyy')} – ${format(new Date(invoice.period_end), 'MMM d, yyyy')}</div>
-              <div style="margin-top:8px">Due ${invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : 'upon receipt'}</div>
+              <div class="value">${invoiceCalendarDate(invoice.period_start)} – ${invoiceCalendarDate(invoice.period_end)}</div>
+              <div style="margin-top:8px">Service time zone: ${invoiceTimeZone(invoice,locations)}</div><div style="margin-top:8px">Due ${invoice.due_date ? invoiceCalendarDate(invoice.due_date) : 'upon receipt'}</div>
             </div>
           </div>
           <table>
@@ -279,7 +280,7 @@ export default function ClientPayrollReport() {
           </div>
           <div class="info-box">
             <div class="info-label">Invoice Period</div>
-            <div class="info-value">${format(new Date(startDate), 'MMMM d, yyyy')} - ${format(new Date(endDate), 'MMMM d, yyyy')}</div>
+            <div class="info-value">${invoiceCalendarDate(startDate)} - ${invoiceCalendarDate(endDate)}</div>
             <div class="info-label" style="margin-top: 10px;">Invoice Date</div>
             <div class="info-value">${format(new Date(), 'MMMM d, yyyy')}</div>
             <div class="info-label" style="margin-top: 10px;">Payment Terms</div>
@@ -308,11 +309,11 @@ export default function ClientPayrollReport() {
                 
                 return `
                   <tr>
-                    <td>${format(new Date(shift.clock_in), 'MMM d, yyyy')}</td>
+                    <td>${invoiceLocalStamp(shift.clock_in,invoiceTimeZone({site_name:shift.location},locations),{month:'short',day:'numeric',year:'numeric',hour:undefined,minute:undefined,timeZoneName:undefined})}</td>
                     ${showOfficerNames ? `<td>${officerName}</td>` : ''}
                     <td>${site}</td>
-                    <td>${format(new Date(shift.clock_in), 'HH:mm')}</td>
-                    <td>${format(new Date(shift.clock_out), 'HH:mm')}</td>
+                    <td>${invoiceLocalStamp(shift.clock_in,invoiceTimeZone({site_name:shift.location},locations))}</td>
+                    <td>${invoiceLocalStamp(shift.clock_out,invoiceTimeZone({site_name:shift.location},locations))}</td>
                     <td class="text-right">${shift.hours.toFixed(2)}</td>
                     <td class="text-right">$${Number(shift.billRate || data.billRate).toFixed(2)}</td>
                     <td class="text-right">$${shift.billedAmount.toFixed(2)}</td>
@@ -363,7 +364,7 @@ export default function ClientPayrollReport() {
               <p className="text-slate-600">No invoices at this time.</p>
             ) : (
               clientInvoices.map(invoice => {
-                const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
+                const shifts = invoiceShiftRows(invoice,locations);
                 return (
                   <Card key={invoice.id} className="min-w-0 max-w-full overflow-hidden border border-slate-200"> 
                     <CardHeader className="pb-3">
@@ -377,13 +378,13 @@ export default function ClientPayrollReport() {
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
                           <p className="text-sm text-slate-600 mt-2">
-                            {format(new Date(invoice.period_start), 'MMM d')} - {format(new Date(invoice.period_end), 'MMM d, yyyy')}
+                            {invoiceCalendarDate(invoice.period_start)} - {invoiceCalendarDate(invoice.period_end)}
                           </p>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="min-w-0 max-w-full space-y-4 px-3 sm:px-6">
-                      <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-lg bg-slate-50" tabIndex={0} aria-label="Scrollable invoice line items">
+                      <p className="text-xs text-slate-500">Service times: {invoiceTimeZone(invoice,locations)}</p><div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-lg bg-slate-50" tabIndex={0} aria-label="Scrollable invoice line items">
                         <table className="w-full min-w-[760px] text-sm"> 
                           <thead>
                             <tr className="border-b border-slate-200 bg-slate-100">
@@ -430,7 +431,7 @@ export default function ClientPayrollReport() {
                       )}
                       <div className="flex flex-col gap-3 pt-3 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs text-slate-500">
-                          Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                          Due: {invoiceCalendarDate(invoice.due_date)}
                         </div>
                         <Button variant="outline" size="sm" className="max-w-full whitespace-normal" onClick={() => printStoredInvoice(invoice)}>
                           <Download className="w-4 h-4 mr-2" />
@@ -587,7 +588,7 @@ export default function ClientPayrollReport() {
                         <div key={shift.id} className="flex flex-col justify-between gap-1 rounded border border-slate-700 bg-slate-900 p-2 text-xs sm:flex-row">
                           <span>
                             {showOfficerNames && officer && `${officer.first_name} ${officer.last_name} • `}
-                            {format(new Date(shift.clock_in), 'MMM d, HH:mm')} - {format(new Date(shift.clock_out), 'HH:mm')}
+                            {format(new Date(shift.clock_in), 'MMM d, HH:mm')} - {invoiceLocalStamp(shift.clock_out,invoiceTimeZone({site_name:shift.location},locations))}
                           </span>
                           <span className="font-medium">
                             {shift.hours.toFixed(2)}h × ${Number(shift.billRate || data.billRate).toFixed(2)}{shift.rateLabel ? ` (${shift.rateLabel})` : ''} = ${shift.billedAmount.toFixed(2)}

@@ -1,3 +1,5 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +28,10 @@ export default function ManageTimeEntries() {
   const queueKind = new URLSearchParams(location.search).get('queue_kind') || '';
   const queueTaskId = new URLSearchParams(location.search).get('queue_task') || '';
   const openedEntryRef = useRef('');
+  const [entryStart,setEntryStart]=useState('');
+  const [entryEnd,setEntryEnd]=useState('');
+  const [entryState,setEntryState]=useState('all');
+  const [entrySearch,setEntrySearch]=useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState("all");
   const [editingEntry, setEditingEntry] = useState(null);
@@ -73,7 +79,7 @@ export default function ManageTimeEntries() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
-  const hasPayrollAuthority = isAdmin || isHR;
+  const hasPayrollAuthority = canAccessAccounting(user);
 
   const returnToRoleCenter = () => {
     if (!queueTaskId) {
@@ -127,9 +133,14 @@ export default function ManageTimeEntries() {
     refetchOnWindowFocus: false,
   });
   const allTimeEntries = hrTimeSnapshot.entries || [];
-  const timeEntries = selectedOfficer === 'all'
-    ? allTimeEntries
-    : allTimeEntries.filter(entry => entry.officer_email === selectedOfficer);
+  const timeEntries = allTimeEntries.filter(entry=>{
+    const day=String(entry.clock_in||'').slice(0,10);
+    const officer=allUsers.find(person=>person.email===entry.officer_email);
+    return (selectedOfficer==='all'||entry.officer_email===selectedOfficer)
+      &&(!entryStart||day>=entryStart)&&(!entryEnd||day<=entryEnd)
+      &&(entryState==='all'||(entryState==='active'?!entry.clock_out:!!entry.clock_out))
+      &&[entry.officer_email,officer?.rank,officer?.last_name,officer?.unit_number,entry.location].join(' ').toLowerCase().includes(entrySearch.toLowerCase());
+  });
 
   useEffect(() => {
     if (!isAdmin && !isHR) return undefined;
@@ -324,7 +335,7 @@ export default function ManageTimeEntries() {
 
   const getOfficerName = (email) => {
     const officer = findDirectoryUser(allUsers, email);
-    if (officer?.first_name && officer?.last_name) return `${officer.first_name} ${officer.last_name}`;
+    if (officer?.last_name) return [officer.rank,officer.last_name].filter(Boolean).join(' ');
     return officer?.full_name || email;
   };
 
@@ -380,8 +391,8 @@ export default function ManageTimeEntries() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Required</h2>
-        <p className="text-slate-600">You need Human Resources or Admin access to view this page.</p>
+        <h2 className="text-2xl font-bold text-slate-100 mb-2">Access Required</h2>
+        <p className="text-slate-400">You need Human Resources or Admin access to view this page.</p>
       </div>
     );
   }
@@ -392,27 +403,21 @@ export default function ManageTimeEntries() {
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Briefcase className="w-8 h-8 text-indigo-600" />
-            <div>
-              <h1 className="text-3xl font-black text-white">Manage Time Entries</h1>
-              <p className="text-slate-600">Add, edit, or remove officer time entries</p>
-            </div>
-          </div>
-          <Button
-            onClick={() => setShowAddForm(true)}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Entry
-          </Button>
+        <WorkspaceHeader eyebrow="Administration / Employee time" title="Manage Time Entries" description="Review attendance, correct punches and document changes. Open an entry to edit its full record." metrics={[
+          {label:'Entries shown',value:timeEntries.length},{label:'Active shifts',value:timeEntries.filter(e=>!e.clock_out).length},{label:'Completed paid hours',value:timeEntries.filter(e=>e.clock_out).reduce((sum,e)=>sum+calculatePaidHours(e),0).toFixed(2)+' h'}
+        ]}><Button variant="outline" onClick={()=>retryTimeEntries()}>Refresh</Button><Button onClick={()=>setShowAddForm(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>Add entry</Button></WorkspaceHeader>
+        <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 sm:grid-cols-2 xl:grid-cols-5">
+          <label className="text-xs text-slate-400">Find officer or site<Input aria-label="Search time entries" value={entrySearch} onChange={e=>setEntrySearch(e.target.value)} placeholder="Rank, name, unit or property" className="mt-1 bg-slate-950"/></label>
+          <label className="text-xs text-slate-400">Officer<select value={selectedOfficer} onChange={e=>setSelectedOfficer(e.target.value)} className="mt-1 h-10 w-full rounded border border-slate-600 bg-slate-950 px-2 text-sm"><option value="all">All officers</option>{activeOfficers.map(person=><option key={person.id} value={person.email}>{[person.rank,person.last_name].filter(Boolean).join(' ')}</option>)}</select></label>
+          <label className="text-xs text-slate-400">From<Input type="date" value={entryStart} onChange={e=>setEntryStart(e.target.value)} className="mt-1 bg-slate-950"/></label>
+          <label className="text-xs text-slate-400">Through<Input type="date" min={entryStart} value={entryEnd} onChange={e=>setEntryEnd(e.target.value)} className="mt-1 bg-slate-950"/></label>
+          <label className="text-xs text-slate-400">Entry status<select aria-label="Filter time entry status" value={entryState} onChange={e=>setEntryState(e.target.value)} className="mt-1 h-10 w-full rounded border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All entries</option><option value="active">Active shifts</option><option value="completed">Completed shifts</option></select></label>
         </div>
 
         {timeEntriesError && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-red-200">Time entries could not load: {timeEntriesError.message}<Button variant="outline" size="sm" className="ml-3" onClick={() => retryTimeEntries()}>Retry</Button></div>}
         {showAddForm && (
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <Card className="border-slate-700 bg-slate-900 text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-700 bg-slate-800">
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
                 Add Time Entry Manually
@@ -516,33 +521,11 @@ export default function ManageTimeEntries() {
           </Card>
         )}
 
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Filter by Officer</CardTitle>
-              <Select value={selectedOfficer} onValueChange={setSelectedOfficer} disabled={usersLoading || !!usersError}>
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Select officer..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Officers</SelectItem>
-                  {activeOfficers.map((u) => (
-                    <SelectItem key={u.email} value={u.email}>
-                      {u.first_name && u.last_name
-                        ? `${u.first_name} ${u.last_name}`
-                        : u.full_name || u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-        </Card>
 
         <div className="space-y-6">
           {Object.entries(groupedEntries).map(([officer, entries]) => (
-            <Card key={officer} className="border-none shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+            <Card key={officer} className="border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+              <CardHeader className="border-b border-slate-700 bg-slate-800">
                 <CardTitle className="flex items-center justify-between">
                   <span>{getOfficerName(officer)}</span>
                   <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
@@ -633,11 +616,11 @@ export default function ManageTimeEntries() {
                         </div>
                       ) : (
                         <>
-                        <div className="flex flex-col gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-4 p-4 bg-slate-950 rounded-lg border border-slate-700 lg:flex-row lg:items-center lg:justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <Calendar className="w-4 h-4 text-slate-500" />
-                              <p className="font-medium text-slate-900">
+                              <p className="font-medium text-slate-100">
                                 {format(parseISO(entry.clock_in), 'MMM d, yyyy')}
                               </p>
                               {!entry.clock_out && (
@@ -651,7 +634,7 @@ export default function ManageTimeEntries() {
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 {format(parseISO(entry.clock_in), 'h:mm a')}
@@ -667,7 +650,7 @@ export default function ManageTimeEntries() {
                             )}
                             {entry.payroll_adjustment_decision && (
                               <div className="mt-3 space-y-1">
-                                <p className="text-xs text-slate-600">
+                                <p className="text-xs text-slate-400">
                                   Actual {Number(entry.actual_hours_snapshot ?? calculatePaidHours(entry)).toFixed(2)}h · Payroll {Number(entry.approved_hours_snapshot ?? calculatePaidHours(entry)).toFixed(2)}h
                                 </p>
                                 {entry.payroll_adjustment_reason && (
@@ -678,8 +661,8 @@ export default function ManageTimeEntries() {
                           </div>
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-slate-900">
-                                {calculateHours(entry.clock_in, entry.clock_out)}
+                              <p className="text-2xl font-bold text-slate-100">
+                                {entry.clock_out?calculatePaidHours(entry).toFixed(2)+' paid h':'Active shift'}
                               </p>
                             </div>
                             <div className="flex gap-2">
@@ -736,21 +719,21 @@ export default function ManageTimeEntries() {
                                       key={decision}
                                       type="button"
                                       onClick={() => setPayrollForm({ ...payrollForm, decision })}
-                                      className={`rounded-xl border-2 p-3 text-left transition ${payrollForm.decision === decision ? 'border-amber-500 bg-amber-100 shadow-sm' : 'border-slate-200 bg-white hover:border-amber-300'}`}
+                                      className={`rounded-xl border-2 p-3 text-left transition ${payrollForm.decision === decision ? 'border-amber-500 bg-amber-100 shadow-sm' : 'border-slate-700 bg-white hover:border-amber-300'}`}
                                     >
                                       <span className="block text-sm font-black text-slate-950">{label}</span>
-                                      <span className="mt-1 block text-xs leading-5 text-slate-600">{detail}</span>
+                                      <span className="mt-1 block text-xs leading-5 text-slate-400">{detail}</span>
                                     </button>
                                   ))}
                                 </div>
                               </div>
 
-                              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                              <div className="rounded-lg border border-slate-700 bg-white p-3">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">True clock record</p>
-                                <p className="mt-1 font-semibold text-slate-900">
+                                <p className="mt-1 font-semibold text-slate-100">
                                   {format(parseISO(entry.clock_in), 'MMM d, yyyy h:mm a')} – {format(parseISO(entry.clock_out), 'MMM d, yyyy h:mm a')}
                                 </p>
-                                <p className="text-sm text-slate-600">{calculatePaidHours(entry).toFixed(2)} actual paid hours</p>
+                                <p className="text-sm text-slate-400">{calculatePaidHours(entry).toFixed(2)} actual paid hours</p>
                               </div>
 
                               {payrollForm.decision === 'deny_overage_pay' && (
@@ -839,7 +822,7 @@ export default function ManageTimeEntries() {
         </div>
 
         {!timeEntries?.length && (
-          <Card className="border-none shadow-lg">
+          <Card className="border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
             <CardContent className="p-12 text-center">
               <Clock className="w-16 h-16 mx-auto mb-4 text-slate-300" />
               <p role="status" className="text-slate-400">{timeEntriesPending ? 'Loading time entries…' : timeEntriesError ? 'Time entries are unavailable until the connection recovers.' : 'No time entries yet'}</p>

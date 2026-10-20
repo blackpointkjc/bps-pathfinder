@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
       || roles.has('hr')
       || roles.has('full_access')
       || String(user.rank || '').trim().toLowerCase() === 'human resources';
-    const hasPayrollAuthority = hasHR;
+    const hasPayrollAuthority = String(user.id)==='6a72bbee2842d6338cbae513';
     if (!hasHR) return Response.json({ error: 'HR access required' }, { status: 403 });
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
