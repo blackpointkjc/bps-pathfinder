@@ -183,7 +183,7 @@ export default function AdminGeofenceAlerts({ embedded = false }) {
           <div className="flex items-center gap-3"><Target className="h-6 w-6 text-cyan-300"/><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Geofence Command</div><h1 className="mt-1 text-xl font-black">Geofence Alerts</h1><p className="mt-1 text-xs text-slate-400">Monitor officers leaving assigned patrol zones.</p></div></div>
         </section>}
 
-        {canEditGeofences && (
+        {!embedded && canEditGeofences && (
           <section className="rounded-xl border border-cyan-700/50 bg-[#0d1420] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><h2 className="font-bold text-cyan-200">Edit Property Geofences</h2><p className="mt-1 text-xs text-slate-400">Choose a site to change its radius or map boundary.</p></div>

@@ -119,12 +119,14 @@ const ADMIN_SUPERVISOR_TOOLS = {
 function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
-  const requested = params.get(queryParam);
+  const rawRequested = params.get(queryParam);
+  const requested = queryParam === 'admin_location_dispatch_tool' && rawRequested === 'geofence' ? 'locations' : rawRequested;
   const initial = requested && tools.some(item => item.id === requested) ? requested : (defaultTool || tools[0]?.id);
   const [activeId, setActiveId] = useState(initial);
 
   useEffect(() => {
-    const current = new URLSearchParams(window.location.search).get(queryParam);
+    const rawCurrent = new URLSearchParams(window.location.search).get(queryParam);
+    const current = queryParam === 'admin_location_dispatch_tool' && rawCurrent === 'geofence' ? 'locations' : rawCurrent;
     if (current && tools.some(item => item.id === current) && current !== activeId) setActiveId(current);
   }, [queryParam, tools, activeId]);
 
@@ -173,12 +175,23 @@ function AdminSchedulingCoverageHub() {
   ]} />;
 }
 
+function AdminLocationWorkspace() {
+ const [showAlerts, setShowAlerts] = useState(() => new URLSearchParams(window.location.search).get('admin_location_dispatch_tool') === 'geofence');
+ return <div className="space-y-3">
+  <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-white">
+   <button type="button" aria-expanded={showAlerts} onClick={() => setShowAlerts(value => !value)} className="min-h-10 rounded-lg border border-cyan-700 px-3 text-sm font-bold text-cyan-200">{showAlerts ? 'Hide boundary alerts' : 'Review boundary alerts'}</button>
+   <p className="mt-2 text-xs text-slate-400">Edit site boundaries in the location record. Review active and acknowledged boundary alerts here.</p>
+   {showAlerts && <AdminGeofenceAlerts embedded />}
+  </div>
+  <AdminLocations />
+ </div>;
+}
+
 function AdminLocationDispatchHub() {
   return <AdminInlineFunctions queryParam="admin_location_dispatch_tool" defaultTool="locations" tools={[
     { id: 'tracker', label: 'Live Tracker', component: AdminLocationTracker },
-    { id: 'geofence', label: 'Geofence Alerts', component: AdminGeofenceAlerts },
     { id: 'autodispatch', label: 'Auto Dispatch', component: AdminAutoDispatchControls },
-    { id: 'locations', label: 'Manage Locations', component: AdminLocations },
+    { id: 'locations', label: 'Manage Locations', component: AdminLocationWorkspace },
   ]} />;
 }
 
