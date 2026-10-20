@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './outOfOffice.js';
 import { comparePersonnel, normalizeRank, rankLevel } from './rankPolicy.js';
 export const COMMAND_TIERS = ['Colonel', 'Lt Colonel', 'Major'];
 export const commandRank = person => {
@@ -10,16 +11,16 @@ export const commandRank = person => {
 export const majorPlatoon = person => ['A','B'].includes(person?.oversight_platoon) ? person.oversight_platoon : ['A','B'].includes(person?.platoon) ? person.platoon : '';
 const activePerson = person => !person.termination_date && String(person.employment_status || '').toLowerCase() !== 'terminated';
 export function platoonCommander(letter, users = []) {
- const members = users.filter(person => activePerson(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person)) && rankLevel(person.rank) < 999).sort(comparePersonnel);
+ const members = users.filter(person => activePerson(person) && !isOutOfOffice(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person)) && rankLevel(person.rank) < 999).sort(comparePersonnel);
  return members.find(person => normalizeRank(person.rank) === 'Captain') || members[0] || null;
 }
 export function platoonCommandLabel(person, users = []) {
  const commander = ['A','B'].includes(person?.platoon) ? platoonCommander(person.platoon, users) : null;
  if (!commander || commander.id !== person?.id) return '';
- return `Platoon ${person.platoon} Commander${normalizeRank(person.rank) === 'Captain' ? '' : ' (Acting)'}`;
+ return `Platoon ${person.platoon} Commander${normalizeRank(person.rank) === 'Captain' && !users.some(user => user.platoon === person.platoon && isOutOfOffice(user) && rankLevel(user.rank) <= rankLevel(person.rank)) ? '' : ' (Acting)'}`;
 }
 export const assignmentLabel = (person, users = []) => platoonCommandLabel(person, users) || (COMMAND_TIERS.includes(commandRank(person)) ? 'Command' : ['A','B'].includes(person?.platoon) ? `Platoon ${person.platoon}` : 'Unassigned');
-export function reportingSupervisors(person, users = []) {
+function baseReportingSupervisors(person, users = []) {
   if (commandRank(person) === 'Major') return users.filter(user => user.id !== person.id && commandRank(user) === 'Lt Colonel' && !user.termination_date && user.employment_status !== 'terminated').sort(comparePersonnel);
   const active = users.filter(activePerson);
   const commander = ['A','B'].includes(person?.platoon) ? platoonCommander(person.platoon, active) : null;
@@ -34,13 +35,43 @@ export function reportingSupervisors(person, users = []) {
   }
   return active.filter(user => user.id === person?.supervisor_id);
 }
+export function reportingSupervisors(person, users = []) {
+ const seen = new Set([person?.id]);
+ const resolve = parent => {
+  if (!parent || seen.has(parent.id)) return [];
+  seen.add(parent.id);
+  if (!isOutOfOffice(parent)) return [parent];
+  return baseReportingSupervisors(parent, users).flatMap(resolve);
+ };
+ return baseReportingSupervisors(person, users).flatMap(resolve);
+}
+export function actingCoverage(person, users = []) {
+ if (!isOutOfOffice(person)) return person;
+ const available = users.filter(user => activePerson(user) && !isOutOfOffice(user) && user.id !== person.id && rankLevel(user.rank) < 999);
+ // Descendants of the absent supervisor are first in line.
+ const descendants = new Set([person.id]);
+ let changed = true;
+ while (changed) {
+  changed = false;
+  for (const user of users) if (descendants.has(user.supervisor_id) && !descendants.has(user.id)) { descendants.add(user.id); changed = true; }
+ }
+ const below = available.filter(user => descendants.has(user.id) && rankLevel(user.rank) > rankLevel(person.rank)).sort(comparePersonnel);
+ if (below.length) return below[0];
+ const peersBelow = available.filter(user => ['A','B'].includes(person.platoon) && user.platoon === person.platoon && rankLevel(user.rank) > rankLevel(person.rank)).sort(comparePersonnel);
+ if (peersBelow.length) return peersBelow[0];
+ return reportingSupervisors(person, users)[0] || null;
+}
 export const reportingLabel = (person, users, name) => reportingSupervisors(person, users).map(name).join(' & ') || (commandRank(person) === 'Colonel' ? 'Top of Command' : 'Awaiting assignment');
 export function siteReportingChains(references = [], users = []) {
  const active=users.filter(p=>!p.termination_date && p.employment_status!=='terminated');
  const clean=v=>String(v || '').trim().toLowerCase();
  return [...new Set(references.map(clean).filter(Boolean))].map(reference=>{
-  const root=active.find(p=>clean(p.id)===reference || [p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(Array.isArray(p.email_aliases) ? p.email_aliases : [])].some(v=>clean(v)===reference));
+  let root=active.find(p=>clean(p.id)===reference || [p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(Array.isArray(p.email_aliases) ? p.email_aliases : [])].some(v=>clean(v)===reference));
   if(!root) return {reference,levels:[],unresolved:true};
+  const permanent = root;
+  root = actingCoverage(permanent, active);
+  if (!root) return {reference,levels:[],unresolved:true};
+  const actingFor = root.id !== permanent.id ? permanent : null;
   const levels=[]; const seen=new Set(); let current=[root]; let incomplete=false;
   while(current.length) {
    const level=current.filter(p=>!seen.has(p.id));
@@ -54,7 +85,7 @@ export function siteReportingChains(references = [], users = []) {
    }
    current=[...next.values()];
   }
-  return {reference,levels,incomplete};
+  return {reference,levels,incomplete,actingFor};
  });
 }
 export const oversightLabel = person => commandRank(person) === 'Major' ? (majorPlatoon(person) ? `Oversees Platoon ${majorPlatoon(person)}` : 'Platoon oversight unassigned') : 'Shared Command';

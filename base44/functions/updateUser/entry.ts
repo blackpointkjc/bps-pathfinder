@@ -43,8 +43,15 @@ Deno.serve(async (req) => {
             if (forbidden.length) return Response.json({ error: 'Trainer updates are limited to student training and course identity fields' }, { status: 403 });
         }
 
+        const oooFields = ['out_of_office','out_of_office_start','out_of_office_return'];
+        if (oooFields.some(field => updates[field] !== undefined)) {
+          if (!isSystemManager) return Response.json({error:'Only administrators can set out of office'},{status:403});
+          const merged = {...target,...updates};
+          if (typeof merged.out_of_office !== 'boolean') return Response.json({error:'Out of office must be true or false'},{status:400});
+          if (merged.out_of_office && (!Number.isFinite(Date.parse(merged.out_of_office_start)) || !Number.isFinite(Date.parse(merged.out_of_office_return)) || Date.parse(merged.out_of_office_return) <= Date.parse(merged.out_of_office_start))) return Response.json({error:'Return must be after the start date and time'},{status:400});
+        }
         const updatePayload: Record<string, unknown> = {};
-        const fields = ['first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
+        const fields = ['out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }

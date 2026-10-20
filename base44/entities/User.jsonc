@@ -2,6 +2,9 @@
   "name": "User",
   "type": "object",
   "properties": {
+    "out_of_office": {"type":"boolean","default":false},
+    "out_of_office_start": {"type":"string","description":"ISO timestamp when task hold and acting coverage begin"},
+    "out_of_office_return": {"type":"string","description":"ISO timestamp when availability and tasks resume"},
     "oversight_platoon": {"type":"string","enum":["A","B",""],"description":"Major platoon oversight, separate from Command assignment"},
     "first_name": {
       "type": "string"

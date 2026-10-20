@@ -45,6 +45,9 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
   if (full) return entry;
   return {
     id: entry.id,
+    out_of_office: entry.out_of_office === true,
+    out_of_office_start: entry.out_of_office_start || '',
+    out_of_office_return: entry.out_of_office_return || '',
     email: entry.email || '',
     work_email: entry.work_email || entry.email || '',
     pathfinder_email: entry.pathfinder_email || entry.email || '',
