@@ -1,6 +1,6 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay, startOfWeek } from 'date-fns';
 import { base44 } from '@/api/base44Client';
@@ -24,6 +24,10 @@ const overlaps = (aStart,aEnd,bStart,bEnd) => {
 
 export default function DutySupervisorScheduling({ embedded=false, weekStart, editorOnly=false }) {
   const qc = useQueryClient();
+  const editorRef=useRef(null);
+  const [actionError,setActionError]=useState('');
+  const revealEditor=()=>requestAnimationFrame(()=>{editorRef.current?.scrollIntoView?.({block:'start',behavior:'smooth'});editorRef.current?.querySelector('input[type=date]')?.focus({preventScroll:true});});
+  const refreshCoverage=()=>Promise.all(['dutySupervisorAssignments','supervisorDutyTimeline','myScheduleData'].map(key=>qc.invalidateQueries({queryKey:[key]})));
   const [dayOffset,setDayOffset] = useState(0);
   const [repeatWeek,setRepeatWeek]=useState(false);
   const [editing,setEditing] = useState(null);
@@ -67,7 +71,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
   }, [visible, users]);
 
   const reset = date => { setEditing(null); setForm({ assignment_date:date||format(windowStart,'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' }); };
-  const startEdit = group => { setEditing(group); setForm({ assignment_date:group.assignment_date,start_time:group.start_time,end_time:group.end_time,locations:group.locations?.length?group.locations:['ALL'],supervisor_emails:[group.supervisor_email],notes:group.notes||'' }); };
+  const startEdit = group => { setActionError('');setRepeatWeek(false);setEditing(group); setForm({ assignment_date:group.assignment_date,start_time:group.start_time,end_time:group.end_time,locations:group.locations?.length?group.locations:['ALL'],supervisor_emails:[group.supervisor_email],notes:group.notes||'' }); revealEditor(); };
   const toggleSupervisor = email => setForm(current => {
     const selected = Array.isArray(current.supervisor_emails) ? current.supervisor_emails : [];
     const next = selected.includes(email) ? selected.filter(value => value !== email) : [...selected, email];
@@ -83,12 +87,12 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
   const save = async () => {
     if(!canManage) return;
     const requestedSupervisors = Array.isArray(form.supervisor_emails) ? form.supervisor_emails.filter(Boolean) : [];
-    if(!requestedSupervisors.length) return toast.error('Select at least one duty supervisor.');
+    if(!requestedSupervisors.length) return setActionError('Select at least one duty supervisor.');
     const requestedAreas = Array.isArray(form.locations) && form.locations.length ? form.locations : ['ALL'];
     const editingIds = new Set((editing?.rows || []).map(row => row.id));
     const duplicate=assignments.find(row=>!editingIds.has(row.id)&&row.assignment_date===form.assignment_date&&lower(row.status)!=='cancelled'&&overlaps(row.start_time,row.end_time,form.start_time,form.end_time)&&requestedAreas.some(area => lower(row.location||'ALL')===lower(area))&&requestedSupervisors.some(email => lower(row.supervisor_email)===lower(email)));
     if(duplicate&&!repeatWeek) return toast.error(`${duplicate.supervisor_name||personLabel(duplicate.supervisor_email)} is already assigned to ${duplicate.location==='ALL'?'All Sites':duplicate.location} during this time.`);
-    setSaving(true);
+    setActionError('');setSaving(true);
     try {
       const writeAssignment = async (supervisor_email, location, id = null) => {
         const supervisor = users.find(person => lower(person.email) === lower(supervisor_email));
@@ -136,10 +140,10 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
           for (const location of requestedAreas) await writeAssignment(supervisor_email, location);
         }
       }
-      await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']});
+      await refreshCoverage();
       await qc.invalidateQueries({queryKey:['myScheduleData']});
       if(editing||!repeatWeek)toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
-    } catch(e){ toast.error(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
+    } catch(e){ setActionError(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
   };
   const copyWeek=async()=>{
    if(!canManage||saving)return;setSaving(true);
@@ -147,10 +151,10 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
     const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'copy_week',source_start:format(addDays(windowStart,-7),'yyyy-MM-dd'),target_start:format(windowStart,'yyyy-MM-dd'),supervisor_emails:form.supervisor_emails});
     if(response.data?.error)throw new Error(response.data.error);
     toast.success(response.data.created+' coverage blocks copied; '+response.data.skipped+' duplicates skipped.');
-    await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']});
+    await refreshCoverage();
    }catch(error){toast.error(error.response?.data?.error||error.message);}finally{setSaving(false);}
   };
-  const remove=async group=>{ if(!canManage||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']}); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ toast.error(error?.message||'Unable to remove duty supervisor coverage.'); } };
+  const remove=async group=>{ if(!canManage||saving||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } await refreshCoverage(); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ setActionError(error?.response?.data?.error||error?.message||'Unable to remove duty supervisor coverage.'); } };
   const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
 
   if (userLoading) return <div className="min-h-screen bg-[#080d16] p-8 text-center text-slate-300">Checking administrator access…</div>;
@@ -161,9 +165,10 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
       {!editorOnly&&<section className={embedded?"rounded-xl border border-slate-700 bg-slate-900 p-3":"bps-command-hero rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7"}>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"><div><div className="text-[11px] font-black uppercase tracking-[.26em] text-cyan-300">Scheduling Command</div><h1 className="mt-2 text-3xl font-black md:text-4xl">Duty Supervisor Schedule</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Schedule command coverage by date, time, and site. Officers see the assigned duty supervisor directly on their published schedule.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>setDayOffset(v=>v-7)}><ChevronLeft className="h-4 w-4"/></Button><Button variant="outline" onClick={()=>setDayOffset(0)}>TODAY</Button><Button variant="outline" onClick={()=>setDayOffset(v=>v+7)}><ChevronRight className="h-4 w-4"/></Button><Button onClick={printSchedule} className="bg-cyan-700 hover:bg-cyan-600"><Printer className="mr-2 h-4 w-4"/>PRINT</Button></div></div>
       </section>}
+      {actionError&&<p role="alert" className="rounded-xl border border-red-600 bg-red-950 p-4 text-sm text-red-100">{actionError}</p>}
       {error&&<div className="rounded-2xl border border-red-700/60 bg-red-950/25 p-4 text-sm text-red-200">Duty supervisor schedule could not load: {error.message}</div>}
       <div className={editorOnly?"mx-auto w-full max-w-3xl":"grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]"}>
-        <section className="rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl">
+        <section ref={editorRef} className="scroll-mt-4 rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl">
           <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><ShieldCheck className="h-5 w-5 text-cyan-300"/></div><div><div className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Coverage Assignment</div><div className="text-sm text-slate-500">{editing?'Editing existing coverage':'Create duty coverage'}</div></div></div>
           <div className="mt-5 space-y-4"><label className="flex gap-2 text-sm text-cyan-200"><input type="checkbox" checked={repeatWeek} disabled={!!editing} onChange={event=>setRepeatWeek(event.target.checked)}/>Fill seven days from this date</label><Button type="button" variant="outline" disabled={saving} onClick={copyWeek}>Copy previous week</Button><p className="text-xs text-slate-400">Copy selected supervisors, or all when none are selected. Existing blocks are kept; leave and overlaps are checked.</p><div><Label>Date</Label><Input type="date" value={form.assignment_date} onChange={e=>setForm({...form,assignment_date:e.target.value})}/></div><div className="grid grid-cols-2 gap-3"><div><Label>Start</Label><Input type="time" value={form.start_time} onChange={e=>setForm({...form,start_time:e.target.value})}/></div><div><Label>End</Label><Input type="time" value={form.end_time} onChange={e=>setForm({...form,end_time:e.target.value})}/></div></div><div><Label>Duty Supervisors</Label><p className="mb-2 mt-1 text-[11px] leading-4 text-slate-500">Select one or more supervisors. Multiple duty supervisors may cover the same property and time block.</p><div className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-slate-700 bg-[#09111d] p-2">{supervisors.map(person=>{const email=person.email;const active=form.supervisor_emails.includes(email);return <button type="button" key={person.id||email} onClick={()=>toggleSupervisor(email)} className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-bold ${active?'border-emerald-500/50 bg-emerald-500/10 text-emerald-100':'border-slate-700 text-slate-300 hover:border-slate-500'}`}><span>{[person.rank,person.last_name||person.first_name].filter(Boolean).join(' ')}</span>{active&&<Check className="h-4 w-4"/>}</button>})}</div><div className="mt-2 text-[10px] font-bold text-emerald-300">SELECTED: {form.supervisor_emails.length} SUPERVISOR{form.supervisor_emails.length===1?'':'S'}</div></div><div><Label>Coverage Areas</Label><p className="mb-2 mt-1 text-[11px] leading-4 text-slate-500">Choose one or more areas. The same duty supervisor can cover multiple sites during the same time block.</p><div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-700 bg-[#09111d] p-2"><button type="button" onClick={()=>toggleCoverageArea('ALL')} className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-bold ${form.locations.includes('ALL')?'border-cyan-500/50 bg-cyan-500/10 text-cyan-100':'border-slate-700 text-slate-300'}`}><span>All Sites / Company Duty</span>{form.locations.includes('ALL')&&<Check className="h-4 w-4"/>}</button>{locations.map(location=>{const active=form.locations.includes(location.site_name);return <button type="button" key={location.id} onClick={()=>toggleCoverageArea(location.site_name)} className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-bold ${active?'border-cyan-500/50 bg-cyan-500/10 text-cyan-100':'border-slate-700 text-slate-300 hover:border-slate-500'}`}><span>{location.site_name}</span>{active&&<Check className="h-4 w-4"/>}</button>})}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">SELECTED: {form.locations.join(' • ')}</div></div><div><Label>Notes</Label><Input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Optional duty notes"/></div>{canManage&&<div className="flex gap-2"><Button className="flex-1 bg-cyan-700 hover:bg-cyan-600" onClick={save} disabled={saving}><CheckCircle2 className="mr-2 h-4 w-4"/>{saving?'SAVING…':editing?'UPDATE COVERAGE':'SCHEDULE SUPERVISOR'}</Button>{editing&&<Button variant="outline" onClick={()=>reset(form.assignment_date)}>CANCEL</Button>}</div>}</div>
         </section>

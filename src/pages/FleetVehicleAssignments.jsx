@@ -2,7 +2,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { syncOfficerVehicles } from '@/lib/fleetScheduleSync';
 import { toast } from 'sonner';
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay } from 'date-fns';
@@ -46,6 +46,10 @@ const overlaps = (aStart, aEnd, bStart, bEnd) => {
 
 export default function FleetVehicleAssignments({ embedded=false, weekStart, editorOnly=false }) {
   const qc = useQueryClient();
+  const editorRef=useRef(null);
+  const [actionError,setActionError]=useState('');
+  const [removingId,setRemovingId]=useState('');
+  const revealEditor=()=>requestAnimationFrame(()=>{editorRef.current?.scrollIntoView?.({block:'start',behavior:'smooth'});editorRef.current?.querySelector('input')?.focus({preventScroll:true});});
   const {data:syncReport}=useQuery({queryKey:['fleetDefaultSync'],enabled:false});
   const [dayOffset, setDayOffset] = useState(0);
   const [vehicleChoice, setVehicleChoice] = useState({});
@@ -206,17 +210,18 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
     if (!isAdmin || savingManual) return;
     const vehicle = vehicles.find(item => String(item.id) === String(manualForm.vehicle_id));
     const primary = users.find(item => String(item.email || '').toLowerCase() === String(manualForm.primary_officer_email || '').toLowerCase());
-    if (!vehicle) return alert('Select a vehicle.');
-    if (!primary?.email) return alert('Select a primary officer.');
-    if (!manualForm.assignment_date || !manualForm.start_time || !manualForm.end_time) return alert('Date, start time, and end time are required.');
+    if (!vehicle) return setActionError('Select a vehicle.');
+    if (!primary?.email) return setActionError('Select a primary officer.');
+    if (!manualForm.assignment_date || !manualForm.start_time || !manualForm.end_time) return setActionError('Date, start time, and end time are required.');
     const conflict = assignments.find(a =>
       a.id!==editingManual && String(a.vehicle_id) === String(vehicle.id)
       && String(a.assignment_date || '').slice(0, 10) === manualForm.assignment_date
       && String(a.status || '').toLowerCase() !== 'cancelled'
       && overlaps(a.start_time, a.end_time, manualForm.start_time, manualForm.end_time)
     );
-    if (conflict) return alert(`${vehicle.vehicle_id} is already assigned from ${conflict.start_time}-${conflict.end_time}.`);
+    if (conflict) return setActionError(`${vehicle.vehicle_id} is already assigned from ${conflict.start_time}-${conflict.end_time}.`);
     const partner = users.find(item => String(item.email || '').toLowerCase() === String(manualForm.partner_officer_email || '').toLowerCase());
+    setActionError('');
     setSavingManual(true);
     try {
       const response = await base44.functions.invoke('getFleetScheduleData', {
@@ -236,6 +241,8 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
       });
       const result = response?.data || response || {};
       if (result.error) throw new Error(result.error);
+      qc.setQueryData(['fleetScheduleData'],previous=>previous?{...previous,assignments:[...(previous.assignments||[]).filter(row=>row.id!==result.assignment?.id),result.assignment].filter(Boolean)}:previous);
+      toast.success(editingManual?'Vehicle assignment updated.':'Vehicle assigned.');
       setManualForm({ assignment_date: manualForm.assignment_date, start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' });
       setEditingManual('');
       setShowNewAssignment(editorOnly);
@@ -243,20 +250,27 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
       await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
       await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
     } catch (error) {
-      alert(error?.response?.data?.error || error?.message || 'Vehicle assignment could not be created.');
+      setActionError(error?.response?.data?.error || error?.message || 'Vehicle assignment could not be saved.');
     } finally {
       setSavingManual(false);
     }
   };
 
   const removeAssignment = async (shift, assignment) => {
-    if (!isAdmin || !assignment?.id || !await confirmInApp(`Remove ${assignment.vehicle_label} from ${getName(shift.officer_email)}?`)) return;
-    const response = await base44.functions.invoke('getFleetScheduleData', { action: 'delete', id: assignment.id });
-    const result = response?.data || response || {};
-    if (result.error) throw new Error(result.error);
-    setVehicleChoice(prev => ({ ...prev, [shift.id]: '' }));
-    await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
-    await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
+    if (!isAdmin || !assignment?.id || removingId) return;
+    if(!await confirmInApp(`Remove ${assignment.vehicle_label||'vehicle'} from ${getName(shift.officer_email)}?`,{title:'Remove vehicle assignment',confirmLabel:'Remove assignment'}))return;
+    setRemovingId(assignment.id);setActionError('');
+    try{
+      const response=await base44.functions.invoke('getFleetScheduleData',{action:'delete',id:assignment.id});
+      const result=response?.data||response||{};
+      if(result.error||!result.success)throw new Error(result.error||'Vehicle assignment was not removed.');
+      qc.setQueryData(['fleetScheduleData'],previous=>previous?{...previous,assignments:(previous.assignments||[]).filter(row=>row.id!==assignment.id)}:previous);
+      setVehicleChoice(previous=>({...previous,[shift.id]:''}));
+      if(editingManual===assignment.id){setEditingManual('');setShowNewAssignment(false);}
+      await Promise.all(['fleetScheduleData','fleetAssignments','myVehicleAssignments','myScheduleData'].map(key=>qc.invalidateQueries({queryKey:[key]})));
+      toast.success('Vehicle assignment removed.');
+    }catch(error){setActionError(error?.response?.data?.error||error.message||'Unable to remove assignment.');}
+    finally{setRemovingId('');}
   };
 
   if (isLoadingAuth) return <div className="p-6 text-slate-300">Loading fleet schedule…</div>;
@@ -280,16 +294,19 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
         </div>
       </div></section>}
 
-      {isAdmin && showNewAssignment && <Card className="border-amber-500/40 bg-slate-900 text-white"><CardHeader><CardTitle className="text-base">Create Fleet Assignment</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {actionError&&<p role="alert" className="rounded-lg border border-red-600 bg-red-950 p-3 text-sm text-red-100">{actionError}</p>}
+      <div ref={editorRef} className="scroll-mt-4">
+      {isAdmin && showNewAssignment && <Card className="border-amber-500/40 bg-slate-900 text-white"><CardHeader><CardTitle className="text-base">{editingManual?'Edit vehicle assignment':'Create vehicle assignment'}</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div><Label>Date</Label><Input type="date" value={manualForm.assignment_date} onChange={e=>setManualForm({...manualForm,assignment_date:e.target.value})} className="border-slate-700 bg-slate-950"/></div>
         <div className="grid grid-cols-2 gap-2"><div><Label>Start</Label><Input type="time" value={manualForm.start_time} onChange={e=>setManualForm({...manualForm,start_time:e.target.value})} className="border-slate-700 bg-slate-950"/></div><div><Label>End</Label><Input type="time" value={manualForm.end_time} onChange={e=>setManualForm({...manualForm,end_time:e.target.value})} className="border-slate-700 bg-slate-950"/></div></div>
         <div><Label>Vehicle</Label><Select value={manualForm.vehicle_id || 'none'} onValueChange={value=>setManualForm({...manualForm,vehicle_id:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select vehicle"/></SelectTrigger><SelectContent><SelectItem value="none">Select vehicle</SelectItem>{availableVehicles.map(v=><SelectItem key={v.id} value={v.id}>{v.vehicle_id} · {v.year} {v.make} {v.model}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label>Primary Officer</Label><Select value={manualForm.primary_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,primary_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select officer"/></SelectTrigger><SelectContent><SelectItem value="none">Select officer</SelectItem>{users.filter(isOperationalOfficer).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.first_name,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label>Partner Officer (optional)</Label><Select value={manualForm.partner_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,partner_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="No partner"/></SelectTrigger><SelectContent><SelectItem value="none">No partner</SelectItem>{users.filter(person=>isOperationalOfficer(person)&&person.email!==manualForm.primary_officer_email).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.first_name,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label>Primary Officer</Label><Select value={manualForm.primary_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,primary_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select officer"/></SelectTrigger><SelectContent><SelectItem value="none">Select officer</SelectItem>{users.filter(isOperationalOfficer).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label>Partner Officer (optional)</Label><Select value={manualForm.partner_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,partner_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="No partner"/></SelectTrigger><SelectContent><SelectItem value="none">No partner</SelectItem>{users.filter(person=>isOperationalOfficer(person)&&person.email!==manualForm.primary_officer_email).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
         <div><Label>Location</Label><Select value={manualForm.location || 'none'} onValueChange={value=>setManualForm({...manualForm,location:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select location"/></SelectTrigger><SelectContent><SelectItem value="none">No specific location</SelectItem>{locations.map(location=><SelectItem key={location.id} value={location.site_name}>{location.site_name}</SelectItem>)}</SelectContent></Select></div>
         <div className="xl:col-span-2"><Label>Notes</Label><Input value={manualForm.notes} onChange={e=>setManualForm({...manualForm,notes:e.target.value})} placeholder="Optional fleet notes" className="border-slate-700 bg-slate-950"/></div>
         <div className="flex items-end gap-2 xl:col-span-4"><Button onClick={saveManualAssignment} disabled={savingManual} className="bg-amber-600 text-slate-950 hover:bg-amber-500">{savingManual?'SAVING…':editingManual?'UPDATE ASSIGNMENT':'CREATE ASSIGNMENT'}</Button><Button variant="outline" onClick={()=>{setEditingManual('');setShowNewAssignment(false);}}>CANCEL</Button></div>
       </CardContent></Card>}
+      </div>
 
       {fleetError && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. The last verified vehicle list is retained while Pathfinder retries.</div>}
 
@@ -347,7 +364,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
           })}
         </div>
       </div>}
-      {editorOnly&&<section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Vehicle reservations this week</h3><Button type="button" size="sm" variant="outline" onClick={()=>{setEditingManual('');setManualForm({assignment_date:weekStart||format(new Date(),'yyyy-MM-dd'),start_time:'18:00',end_time:'06:00',vehicle_id:'',primary_officer_email:'',partner_officer_email:'',location:'',notes:''});setShowNewAssignment(true);}}>New reservation</Button></div><div className="mt-3 divide-y divide-slate-700">{assignments.filter(row=>row.status!=='cancelled'&&(!weekStart||row.assignment_date>=weekStart&&row.assignment_date<=format(addDays(new Date(weekStart+'T12:00:00'),6),'yyyy-MM-dd'))).map(row=><div key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><strong className="text-sm">{row.vehicle_label} · {getName(row.primary_officer_email)}</strong><p className="mt-1 text-xs text-slate-400">{row.assignment_date} · {row.start_time}–{row.end_time} · {row.location||'No site specified'}</p></div>{isAdmin&&row.status==='scheduled'&&<div className="flex gap-3 text-xs"><button type="button" className="text-cyan-200" onClick={()=>{setEditingManual(row.id);setManualForm({...row,notes:row.notes||'',partner_officer_email:row.partner_officer_email||''});setShowNewAssignment(true);}}>Edit</button><button type="button" className="text-red-300" onClick={()=>removeAssignment({officer_email:row.primary_officer_email,id:row.id},row).catch(error=>toast.error(error.message))}>Remove</button></div>}</div>)}</div></section>}
+      {editorOnly&&<section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Vehicle reservations this week</h3><Button type="button" size="sm" variant="outline" onClick={()=>{setEditingManual('');setManualForm({assignment_date:weekStart||format(new Date(),'yyyy-MM-dd'),start_time:'18:00',end_time:'06:00',vehicle_id:'',primary_officer_email:'',partner_officer_email:'',location:'',notes:''});setShowNewAssignment(true);setActionError('');revealEditor();}}>New reservation</Button></div><div className="mt-3 divide-y divide-slate-700">{assignments.filter(row=>row.status!=='cancelled'&&(!weekStart||row.assignment_date>=weekStart&&row.assignment_date<=format(addDays(new Date(weekStart+'T12:00:00'),6),'yyyy-MM-dd'))).map(row=><div key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><strong className="text-sm">{row.vehicle_label} · {getName(row.primary_officer_email)}</strong><p className="mt-1 text-xs text-slate-400">{row.assignment_date} · {row.start_time}–{row.end_time} · {row.location||'No site specified'}</p></div>{isAdmin&&row.status==='scheduled'&&<div className="flex gap-3 text-xs"><button type="button" className="text-cyan-200" onClick={()=>{setEditingManual(row.id);setManualForm({...row,notes:row.notes||'',partner_officer_email:row.partner_officer_email||''});setShowNewAssignment(true);setActionError('');revealEditor();}}>Edit</button><button type="button" disabled={removingId===row.id} className="text-red-300 disabled:opacity-50" onClick={()=>removeAssignment({officer_email:row.primary_officer_email,id:row.id},row).catch(error=>toast.error(error.message))}>Remove</button></div>}</div>)}</div></section>}
     </div>
   </div>;
 }
