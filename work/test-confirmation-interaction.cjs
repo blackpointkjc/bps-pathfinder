@@ -1,0 +1,27 @@
+const {JSDOM}=require('jsdom');
+const dom=new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>',{url:'https://example.test'});
+for(const name of ['window','document','HTMLElement','Element','Node','MutationObserver','CustomEvent','Event','KeyboardEvent','MouseEvent','HTMLInputElement'])globalThis[name]=dom.window[name];
+Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configurable:true});
+globalThis.getComputedStyle=dom.window.getComputedStyle;globalThis.requestAnimationFrame=fn=>setTimeout(fn,0);globalThis.cancelAnimationFrame=clearTimeout;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+const fs=require('fs'),vm=require('vm'),ts=require('typescript'),React=require('react'),{createRoot}=require('react-dom/client'),Dialog=require('@radix-ui/react-dialog'),{act}=React,{fireEvent,screen,waitFor,cleanup}=require('@testing-library/react'),assert=require('assert/strict');
+let api={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/inAppDialog.js','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,{exports:api,require,document,queueMicrotask});
+(async()=>{
+ const root=createRoot(document.getElementById('app'));let removeClicks=0,showing=true;
+ const parent=()=>React.createElement(Dialog.Root,{open:showing,onOpenChange:open=>{showing=open;}},React.createElement(Dialog.Portal,null,React.createElement(Dialog.Overlay,{'data-parent-overlay':'',style:{zIndex:100000}}),React.createElement(Dialog.Content,{style:{zIndex:100001},'aria-describedby':undefined},React.createElement(Dialog.Title,null,'Assign a vehicle'),React.createElement('button',{onClick:()=>{removeClicks++;}},'Remove vehicle'))));
+ await act(async()=>root.render(parent()));
+ assert.equal(document.body.style.pointerEvents,'none','parent modal activates body pointer lock');
+ let result;await act(async()=>{result=api.confirmInApp('Remove assigned vehicle?',{confirmLabel:'Remove assignment'});});
+ const alert=screen.getByRole('alertdialog');assert.equal(alert.style.zIndex,'2147483647');assert.equal(alert.style.pointerEvents,'auto');
+ assert(alert.contains(document.activeElement),'confirmation owns focus instead of parent');
+ assert.equal(document.activeElement.textContent,'Cancel','destructive confirmation defaults to safe choice');
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Remove assignment'})));
+ assert.equal(await result,true);assert.equal(screen.queryByRole('alertdialog'),null);assert.equal(showing,true,'confirmation must not close assignment dialog');
+ assert.equal(document.body.style.pointerEvents,'none','parent modal retains its pointer lock');
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Remove vehicle'})));assert.equal(removeClicks,1,'parent is usable again after confirmation');
+ await act(async()=>{result=api.confirmInApp('Remove again?');});
+ await act(async()=>fireEvent.keyDown(document.activeElement,{key:'Escape'}));assert.equal(await result,false);assert.equal(showing,true,'Escape closes confirmation only');
+ await act(async()=>{result=api.promptInApp('Duty note','Before');});
+ await act(async()=>{fireEvent.change(screen.getByRole('textbox'),{target:{value:'Updated'}});fireEvent.click(screen.getByRole('button',{name:'Save'}));});assert.equal(await result,'Updated');
+ await act(async()=>root.unmount());assert.equal(document.body.style.pointerEvents,'','all pointer locks restored after last dialog closes');
+ console.log('PASS: real React/Radix confirmation renders above scheduling modal, gets focus, accepts clicks, resolves confirm/cancel/prompt, Escape preserves parent, and restores pointer events.');
+})().catch(e=>{console.error(e);process.exit(1)});
