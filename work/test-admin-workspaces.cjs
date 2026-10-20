@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),assert=require('assert/strict');
 const fixture={id:'officer',email:'officer@test',rank:'Lieutenant',last_name:'Example',platoon:'A',unit_number:'401',additional_roles:['officer']};
+const pending={id:'pending',email:'pending@test',first_name:'Pending',last_name:'Applicant',role:'user',additional_roles:[]};
 const client={id:'client',email:'client@test',first_name:'Admin',last_name:'Account',rank:'Client',unit_number:'650',platoon:'A',role:'user',additional_roles:['client']};
 const actor={id:'admin',role:'admin',email:'admin@test',rank:'Colonel',last_name:'Command',unit_number:'100'};
 const compile=path=>ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
@@ -13,10 +14,13 @@ function load(path){
  const exports={};cache[path]=exports;
  vm.runInNewContext(compile(path),{exports,URLSearchParams,window:{location:{search},history:{},matchMedia:()=>({matches:true})},console,Date,Set,Map,localStorage:{getItem:()=>null},require:name=>{
   if(name==='react'||name==='react/jsx-runtime'||name==='date-fns')return require(name);
-  if(name==='@tanstack/react-query')return {useQueryClient:()=>qc,useMutation:()=>({mutate:()=>{},isPending:false}),useQuery:({queryKey})=>({data:queryKey[0]==='currentUser'?actor:queryKey[0]==='portalUsers'?[fixture,actor,client]:queryKey[0]==='directoryUsers'?[fixture,client]:queryKey[0]==='activeDivisions'?[]:[],isLoading:false})};
-  if(name==='react-router-dom')return {useNavigate:()=>()=>{},Link:stub('Link')};
+  if(name==='@tanstack/react-query')return {useQueryClient:()=>qc,useMutation:()=>({mutate:()=>{},isPending:false}),useQuery:({queryKey})=>({data:queryKey[0]==='currentUser'?actor:queryKey[0]==='portalUsers'?[fixture,actor,client,pending]:queryKey[0]==='appDirectoryUsers'?[fixture,actor]:queryKey[0]==='hrTimeEntriesSnapshot'?{entries:[{id:'entry',officer_email:fixture.email,clock_in:'2026-10-20T12:00:00Z',clock_out:'2026-10-20T20:00:00Z',location:'Armstrong',break_periods:[]}],call_outs:[]}:queryKey[0]==='directoryUsers'?[fixture,client]:queryKey[0]==='activeDivisions'?[]:[],isLoading:false})};
+  if(name==='react-router-dom')return {useNavigate:()=>()=>{},useLocation:()=>({search:'',pathname:'/ManageTimeEntries'}),Link:stub('Link')};
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
+  if(name==='@/utils/previewIdentity')return {previewDisplayName:p=>[p.rank,p.last_name].filter(Boolean).join(' ')};
+  if(name==='@/lib/payrollCalculations')return {calculatePaidHours:entry=>(Date.parse(entry.clock_out)-Date.parse(entry.clock_in))/3600000};
+  if(name==='@/lib/appDirectory')return {findDirectoryUser:(rows,email)=>rows.find(p=>p.email===email)};
   if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
   if(name==='@/lib/boloConfig')return load('src/lib/boloConfig.jsx');
   if(name==='@/lib/accountingAccess')return load('src/lib/accountingAccess.js');
@@ -80,3 +84,9 @@ html=renderProps('src/components/dispatch/UnitDutyBoard.jsx',{units:[fixture,{..
 assert(html.includes('Officer / Unit'));assert(html.includes('Lieutenant Ready'));assert(html.includes('Available'));assert(html.includes('Filter status by platoon'));
 assert(!html.includes('}</section>'),'no stray JSX brace');
 console.log('PASS: redesigned communications, queue, BOLO, post-order reader and full officer roster render with original controls and rank/name identity.');
+
+html=render('src/pages/SupervisorCallOuts.jsx');assert(html.includes('Record attendance change'));assert(html.includes('Search call-outs'));assert(html.includes('Call-out event type'));
+html=render('src/pages/ManageTimeEntries.jsx');assert(html.includes('Search time entries'));assert(html.includes('Filter time entry status'));assert(html.includes('8.00 paid h'));assert(html.includes('Open record / edit'));assert(!html.includes('Review Pay'),'non-owner administrator cannot approve pay');
+html=render('src/components/SupervisorScheduleWorkspace.jsx');assert(html.includes('Duty Supervisor Coverage'));assert(!html.includes('data-panel="Schedule"'));assert(!html.includes('My shifts'));assert(!html.includes('Rolling'));
+html=render('src/pages/AdminUsers.jsx');assert(html.includes('Pending Onboarding (1)'));assert(html.includes('pending@test'));assert(html.includes('Assign access…'));
+console.log('PASS: pending onboarding has its own review tab; duty coverage contains no personal schedule; searchable attendance and compact time-entry records retain forms and owner-only pay review.');
