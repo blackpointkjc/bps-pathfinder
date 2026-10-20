@@ -16,9 +16,9 @@ Deno.serve(async (req) => {
 
     // Admin/full-access preview can request a specific client account.
     if (isAdminPreview && body.client_id) {
-      const users = await base44.asServiceRole.entities.User.list();
-      const preview = (users || []).find((entry: any) => String(entry.id) === String(body.client_id));
-      if (preview) target = preview;
+      const preview = await base44.asServiceRole.entities.User.get(String(body.client_id));
+      if (!preview) return Response.json({ error: 'Client not found' }, { status: 404 });
+      target = preview;
     }
 
     const assigned = new Set([

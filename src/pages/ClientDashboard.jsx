@@ -12,7 +12,7 @@ export default function ClientDashboard() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const clientLocations = [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
@@ -26,7 +26,7 @@ export default function ClientDashboard() {
   });
 
   const { data: liveBilling = {} } = useQuery({
-    queryKey: ['clientDashboardLiveCoverage', user?.id || user?.email, getClientPreviewId()],
+    queryKey: ['clientBillingData', user?.id || user?.email, getClientPreviewId()],
     queryFn: async () => {
       const result = await base44.functions.invoke('getClientBillingData', getClientPreviewId() ? { client_id: getClientPreviewId() } : {});
       const payload = result?.data || result || {};
@@ -34,10 +34,9 @@ export default function ClientDashboard() {
       return payload;
     },
     enabled: !!user && clientLocations.length > 0,
-    initialData: {},
-    staleTime: 0,
+    staleTime: 30000,
     refetchInterval: 60000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const { data: clientRequests = [] } = useQuery({
@@ -81,7 +80,7 @@ export default function ClientDashboard() {
     enabled: clientLocations.length > 0,
     staleTime: 0,
     refetchInterval: 60000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   if (clientLocations.length === 0) {

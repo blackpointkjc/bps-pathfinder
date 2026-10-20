@@ -216,9 +216,9 @@ function pumpReads() {
   }
 
   while (activeReads < MAX_CONCURRENT_READS && readQueue.length) {
-    // Reserve one of the two slots for auth/live CAD/status; a 60-second
-    // briefing must not occupy both slots before the call feed mounts.
-    if (readQueue[0].priority < 90 && activeBackgroundReads >= MAX_CONCURRENT_READS - 1) return;
+    // Do not leave an idle slot while foreground pages wait for data.
+    // Use both bounded slots when no critical read is waiting. Priority ordering
+    // still starts auth and live operations first; rate-limit backoff is unchanged.
     const nextWait = waitFor(readQueue[0]);
     if (nextWait > 0) {
       schedulePump(nextWait + 25);

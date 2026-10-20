@@ -1,3 +1,4 @@
+import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -307,7 +308,7 @@ export default function AdminCenter() {
     const roles = new Set([profile.role, ...(Array.isArray(profile.additional_roles) ? profile.additional_roles : profile.additional_roles ? [profile.additional_roles] : [])].filter(Boolean).map(value=>String(value).toLowerCase()));
     const supervisorRanks = new Set(['corporal','sergeant','first sergeant','lieutenant','lt','captain','major','lt colonel','lieutenant colonel','lt col','colonel']);
     const rank = String(profile.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
-    const mode = roles.has('admin') || roles.has('full_access') ? 'admin' : isClientAccount(profile) ? 'client'
+    const mode = isClientAccount(profile) ? 'client' : roles.has('admin') || roles.has('full_access') ? 'admin'
       : roles.has('student') || String(profile.user_type || '').toLowerCase() === 'student' ? 'student'
       : profile.is_supervisor || roles.has('supervisor') || supervisorRanks.has(rank) ? 'supervisor'
       : roles.has('dispatch') || roles.has('dispatcher') ? 'cad'
@@ -370,14 +371,17 @@ export default function AdminCenter() {
     setSelectedClient(mode === 'client' ? currentPreview.id : '');
     setSelectedOfficer(mode === 'officer' ? currentPreview.id : '');
     setSelectedRoleUser(!['client','officer'].includes(mode) ? currentPreview.id : '');
-    setOfficerPreviewId(currentPreview.id, { ...currentPreview, __officer_preview: true, __role_preview: mode, __auth_admin_id: signedInUser?.id });
+    setClientPreviewId('');
+    setOfficerPreviewId('');
+    if (mode === 'client') setClientPreviewId(currentPreview.id, { ...currentPreview, __client_preview: true, __auth_admin_id: signedInUser?.id });
+    else setOfficerPreviewId(currentPreview.id, { ...currentPreview, __officer_preview: true, __role_preview: mode, __auth_admin_id: signedInUser?.id });
     queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
   };
   const previewPicker = <AdminUserPreviewPicker users={previewPeople} selectedId={selectedPreviewId} loading={previewLoading} error={previewError} onSelect={choosePreviewUser} onRetry={()=>setPreviewRetry(value=>value+1)} />;
   if (shadowMode) return <div className="min-h-full bg-[#070d17]">
     <div className="sticky top-0 z-[70] flex flex-wrap items-center gap-3 border-b border-cyan-800 bg-[#081522] p-3 text-white">
       <Eye className="h-4 w-4 text-cyan-300"/>
-      <div className="min-w-0 flex-1"><div className="text-xs text-cyan-300">ACCOUNT PREVIEW</div><div className="break-words text-sm font-bold">{currentPreview?.__label || 'Selected user'}</div></div>
+      <div className="min-w-0 flex-1"><div className="text-xs text-cyan-300">ACCOUNT PREVIEW</div><div className="break-words text-sm font-bold">{previewAccountType(currentPreview)} Account — {previewDisplayName(currentPreview)}</div></div>
       {availablePreviewModes.length > 1 && <label className="flex items-center gap-2 text-xs text-slate-300">Assigned workspace <select aria-label="Preview assigned workspace" value={shadowMode} onChange={event => switchPreviewMode(event.target.value)} className="rounded border border-cyan-700 bg-[#07111f] px-2 py-2 text-white">{availablePreviewModes.map(mode => <option key={mode} value={mode}>{mode.toUpperCase()}</option>)}</select></label>}
       {previewPicker}
       <button type="button" onClick={exitShadow} className="min-h-10 rounded-lg border border-red-700 px-3 text-sm text-red-200">Exit preview</button>

@@ -30,7 +30,7 @@ export default function ClientFeedback() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);

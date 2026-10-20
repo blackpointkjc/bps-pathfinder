@@ -28,7 +28,7 @@ export default function ClientLocation() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const clientLocations = [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];

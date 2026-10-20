@@ -15,7 +15,7 @@ export default function ClientSchedule() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
 

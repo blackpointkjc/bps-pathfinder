@@ -18,7 +18,7 @@ export function hasOfficerAdditionalRole(user) {
 }
 
 export function isClientAccount(user) {
-  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const roles = new Set([user?.role, ...[].concat(user?.additional_roles || [])].filter(Boolean).map(role => String(role).trim().toLowerCase()));
   const rank = String(user?.rank || '').trim().toLowerCase();
   const type = String(user?.user_type || user?.account_type || user?.portal_type || '').trim().toLowerCase();
   return roles.has('client') || rank === 'client' || type === 'client';

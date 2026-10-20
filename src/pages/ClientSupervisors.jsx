@@ -11,7 +11,7 @@ export default function ClientSupervisors() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const clientLocations = [...new Set([

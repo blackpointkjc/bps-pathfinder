@@ -32,7 +32,7 @@ export default function ClientPayrollReport() {
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const previewId = getClientPreviewId();
@@ -45,15 +45,19 @@ export default function ClientPayrollReport() {
       return payload;
     },
     enabled: !!user,
-    initialData: {},
+    staleTime: 30000,
     refetchInterval: 60000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
     if (!user) return undefined;
-    const refresh = () => refetchBilling();
+    let refreshTimer;
+    const refresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => refetchBilling(), 500);
+    };
     const unsubscribers = [];
     for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
       try {
@@ -63,7 +67,7 @@ export default function ClientPayrollReport() {
         // Fifteen-second polling remains as a fallback if realtime is unavailable.
       }
     }
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+    return () => { window.clearTimeout(refreshTimer); unsubscribers.forEach(unsubscribe => unsubscribe()); };
   }, [user?.id, user?.email, refetchBilling]);
 
   const clientLocations = billingData.assigned_locations?.length ? billingData.assigned_locations : [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
@@ -544,7 +548,7 @@ export default function ClientPayrollReport() {
             <p className="text-3xl font-bold text-slate-900">
               ${totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Live as of {format(liveNow, 'h:mm:ss a')} • data sync every 15 seconds</p>
+            <p className="mt-1 text-xs text-slate-500">Live as of {format(liveNow, 'h:mm:ss a')} • safety refresh every 60 seconds</p>
           </CardContent>
         </Card>
       </div>
