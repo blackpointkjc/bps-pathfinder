@@ -234,6 +234,7 @@ export default function AdminScheduling() {
   });
 
   const [scheduleLeaveWarning, setScheduleLeaveWarning] = useState('');
+  const [scheduleSaveError, setScheduleSaveError] = useState('');
   const checkApprovedLeave = async rows => {
     if (!rows.some(row => row.officer_email && row.officer_email !== 'OPEN' && !row.is_open)) return;
     // Check at assignment time, including bulk operations, before any write occurs.
@@ -255,12 +256,12 @@ export default function AdminScheduling() {
   };
 
   const createShiftMutation = useMutation({
-    onError: error => toast.error(error?.message || 'Unable to assign shift'),
+    onError: error => { const message=error?.response?.data?.error || error?.message || 'Unable to assign shift';setScheduleSaveError(message);toast.error(message); },
     mutationFn: async (data) => {
       await checkApprovedLeave([data]);
       const created = await base44.entities.Schedule.create(data);
       if (created?.officer_email && created.officer_email !== 'OPEN') {
-        await base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
+        void base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
       }
       return created;
     },
@@ -274,7 +275,9 @@ export default function AdminScheduling() {
           return [created, ...current];
         });
       }
-      await queryClient.refetchQueries({ queryKey: ['allSchedules'] });
+      void queryClient.refetchQueries({ queryKey: ['allSchedules'] });
+      toast.success('Shift saved to the schedule.');
+      setScheduleSaveError('');
       setShowAddDialog(false); // Updated here
       setNewShift({
         officer_email: "",
@@ -291,12 +294,12 @@ export default function AdminScheduling() {
   });
 
   const bulkCreateShiftsMutation = useMutation({
-    onError: error => toast.error(error?.message || 'Unable to assign shifts'),
+    onError: error => { const message=error?.response?.data?.error || error?.message || 'Unable to assign shifts';setScheduleSaveError(message);toast.error(message); },
     mutationFn: async (shiftsArray) => {
       await checkApprovedLeave(shiftsArray);
       const created = await base44.entities.Schedule.bulkCreate(shiftsArray);
       const createdRows = Array.isArray(created) ? created : [];
-      await Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
+      void Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
         base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: row, officer_email: row.officer_email }).catch(error => console.warn('Bulk schedule notification failed:', error?.message))
       ));
       return created;
@@ -2113,7 +2116,10 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     }
   };
 
-  const handleAddShift = () => {
+  const handleAddShift = async () => {
+    if (createShiftMutation.isPending || bulkCreateShiftsMutation.isPending) return;
+    setScheduleSaveError('');
+    try {
     const officerEmailToStore = newShift.is_open ? "OPEN" : newShift.officer_email;
     if (!officerEmailToStore) { 
       alert('Please select an officer or mark as open shift');
@@ -2147,7 +2153,8 @@ Make sure all dates are in YYYY-MM-DD format.` ,
         return;
       }
 
-      bulkCreateShiftsMutation.mutate(shiftsToCreate);
+      await bulkCreateShiftsMutation.mutateAsync(shiftsToCreate);
+      toast.success(shiftsToCreate.length + ' shifts saved to the schedule.');
       setShowAddDialog(false);
       setApplyToWholeWeek(false);
       setWeekShifts([
@@ -2215,14 +2222,18 @@ Make sure all dates are in YYYY-MM-DD format.` ,
      };
 
     if (!newShift.is_open && newShift.partner_officer_email && newShift.partner_officer_email !== officerEmailToStore) {
-      bulkCreateShiftsMutation.mutate([
+      await bulkCreateShiftsMutation.mutateAsync([
         primaryShift,
         { ...primaryShift, officer_email: newShift.partner_officer_email, partner_officer_email: officerEmailToStore }
       ]);
+      toast.success('Both officer shifts saved to the schedule.');
       setShowAddDialog(false);
       setNewShift({ officer_email:'', partner_officer_email:'', shift_date:'', start_time:'', end_time:'', location:'', shift_type:'normal', is_open:false, is_split_shift:false, linked_shift_id:'' });
     } else {
-      createShiftMutation.mutate(primaryShift);
+      await createShiftMutation.mutateAsync(primaryShift);
+    }
+    } catch (error) {
+      setScheduleSaveError(error?.response?.data?.error || error?.message || 'Shift was not saved. Your entries have been kept.');
     }
   };
 
@@ -3950,10 +3961,11 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </DialogContent>
       </Dialog>
 
-      <MobileResponsiveDialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <MobileResponsiveDialog open={showAddDialog} onOpenChange={open => { if (!createShiftMutation.isPending && !bulkCreateShiftsMutation.isPending) setShowAddDialog(open); }}>
         <MobileResponsiveDialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <MobileResponsiveDialogHeader>
             <MobileResponsiveDialogTitle>Add New Shift</MobileResponsiveDialogTitle>
+            {scheduleSaveError && <div role="alert" className="mt-3 rounded-lg border border-red-500 bg-red-50 p-3 text-sm text-red-900"><strong>Shift not saved.</strong> {scheduleSaveError} Your entries are still here.</div>}
           </MobileResponsiveDialogHeader>
           <div className="space-y-4 py-4 overflow-y-auto flex-1">
             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -4254,15 +4266,15 @@ Return ONLY a JSON array of suggestion objects with this structure:
             )}
 
             <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 bg-white sticky bottom-0 -mb-4 pb-4">
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              <Button variant="outline" disabled={createShiftMutation.isPending || bulkCreateShiftsMutation.isPending} onClick={() => setShowAddDialog(false)}>
                 Cancel
               </Button>
               <Button
                 onClick={handleAddShift}
-                disabled={createShiftMutation.isPending}
+                disabled={createShiftMutation.isPending || bulkCreateShiftsMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {createShiftMutation.isPending ? 'Adding...' : newShift.is_open ? 'Create Open Shift' : 'Add Shift'}
+                {createShiftMutation.isPending || bulkCreateShiftsMutation.isPending ? 'Saving...' : newShift.is_open ? 'Create Open Shift' : 'Add Shift'}
               </Button>
             </div>
           </div>
