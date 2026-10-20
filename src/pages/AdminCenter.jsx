@@ -1,3 +1,4 @@
+import AdminOperationsWorkbench from '@/components/AdminOperationsWorkbench';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,7 +25,6 @@ import AdminUsers from './AdminUsers';
 import AdminPlatoonAssignments from './AdminPlatoonAssignments';
 import AdminLocations from './AdminLocations';
 import AdminEquipment from './AdminEquipment';
-import AdminPostOrders from './AdminPostOrders';
 import AdminReports from './AdminReports';
 import AdminClientReports from './AdminClientReports';
 import AdminSupervisorReports from './AdminSupervisorReports';
@@ -34,12 +34,10 @@ import AdminCommendations from './AdminCommendations';
 import AdminClientFeedback from './AdminClientFeedback';
 import AdminAnnouncements from './AdminAnnouncements';
 import AdminSpecialRequests from './AdminSpecialRequests';
-import AdminQRCenter from './AdminQRCenter';
 import AdminPortalSettings from './AdminPortalSettings';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
 import Personnel from './Personnel';
 import PathfinderReports from './Reports';
-import AdminPortal from './AdminPortal';
 import CADCenter from './CADCenter';
 import OfficerCenter from './OfficerCenter';
 import SupervisorCenter from './SupervisorCenter';
@@ -120,13 +118,13 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
   const rawRequested = params.get(queryParam);
-  const requested = queryParam === 'admin_location_dispatch_tool' && rawRequested === 'geofence' ? 'locations' : rawRequested;
+  const requested = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawRequested) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawRequested === 'geofence' ? 'locations' : rawRequested;
   const initial = requested && tools.some(item => item.id === requested) ? requested : (defaultTool || tools[0]?.id);
   const [activeId, setActiveId] = useState(initial);
 
   useEffect(() => {
     const rawCurrent = new URLSearchParams(window.location.search).get(queryParam);
-    const current = queryParam === 'admin_location_dispatch_tool' && rawCurrent === 'geofence' ? 'locations' : rawCurrent;
+    const current = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawCurrent) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawCurrent === 'geofence' ? 'locations' : rawCurrent;
     if (current && tools.some(item => item.id === current) && current !== activeId) setActiveId(current);
   }, [queryParam, tools, activeId]);
 
@@ -198,10 +196,8 @@ function AdminLocationDispatchHub() {
 function AdminSiteOperationsHub() {
   return <AdminInlineFunctions queryParam="admin_site_ops_tool" tools={[
     { id: 'location', label: 'Location & Dispatch', component: AdminLocationDispatchHub },
-    { id: 'qr', label: 'Patrol & Duty Rules', component: AdminQRCenter },
+    { id: 'operations', label: 'Site Operations', component: AdminOperationsWorkbench },
     { id: 'equipment', label: 'Equipment', component: AdminEquipment },
-    { id: 'postorders', label: 'Post Orders', component: AdminPostOrders },
-    { id: 'control', label: 'Admin Control', component: AdminPortal },
     { id: 'visibility', label: 'Portal Visibility', component: AdminPortalSettings },
   ]} />;
 }

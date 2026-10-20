@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { confirmInApp } from '@/lib/inAppDialog';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations } from '@/lib/appDirectory';
@@ -22,12 +23,14 @@ const contactFields = [
  ['police_precinct_address','Police precinct'], ['additional_contacts','Other contacts'],
 ];
 function Field({ label, children }) { return <label className="block text-xs font-semibold text-slate-300">{label}{children}</label>; }
-function Editor({ entity, record, seed, queryKey, children }) {
+function Editor({ entity, record, seed, queryKey, children, onSaved }) {
  const [draft,setDraft] = useState(() => ({...seed,...record}));
  const [busy,setBusy] = useState(false);
+ const savedId = useRef(record?.id);
+ const draftKey = entity + ':' + (record?.id || seed.site_name || seed.property_site || 'new');
  const [dirty,setDirty] = useState(false);
  const qc = useQueryClient();
- const change = (field,value) => { setDirty(true); setDraft(previous=>({...previous,[field]:value})); };
+ const change = (field,value) => { window.dispatchEvent(new CustomEvent('operations-draft',{detail:{key:draftKey,dirty:true}})); setDirty(true); setDraft(previous=>({...previous,[field]:value})); };
  const save = async event => {
   event.preventDefault(); setBusy(true);
   try {
@@ -35,11 +38,13 @@ function Editor({ entity, record, seed, queryKey, children }) {
    if (entity === 'QRCheckpoint' && (!data.checkpoint_name?.trim() || !data.location_label?.trim())) throw new Error('Checkpoint name and location are required.');
    if (entity === 'GeneralPostOrder' && (!data.section_title?.trim() || !data.content?.trim())) throw new Error('Section title and instructions are required.');
    if (entity === 'JobDutyRule' && (Number(data.qr_frequency_minutes)<1 || Number(data.qr_window_minutes)<1 || Number(data.qr_scans_per_shift)<0)) throw new Error('Use positive scan intervals and a non-negative scan count.');
-   if (record?.id) await base44.entities[entity].update(record.id,data);
-   else await base44.entities[entity].create(data);
+   if (savedId.current) await base44.entities[entity].update(savedId.current,data);
+   else { const created = await base44.entities[entity].create(data); savedId.current = created.id; }
    setDirty(false);
+   window.dispatchEvent(new CustomEvent('operations-draft',{detail:{key:draftKey,dirty:false}}));
    await qc.invalidateQueries({queryKey});
    toast.success('Saved');
+   onSaved?.();
   } catch(error) { toast.error(error?.message || 'Unable to save'); }
   finally { setBusy(false); }
  };
@@ -51,8 +56,8 @@ function Editor({ entity, record, seed, queryKey, children }) {
 function Section({id,title,description,children}) {
  return <section id={id} className="scroll-mt-24 rounded-2xl border border-slate-700 bg-slate-900/80 p-4 md:p-5"><div className="mb-4"><h2 className="text-lg font-bold text-white">{title}</h2><p className="mt-1 text-xs text-slate-400">{description}</p></div>{children}</section>;
 }
-function CheckpointEditor({checkpoint,site,email}) {
- return <Editor entity="QRCheckpoint" record={checkpoint} seed={{property_site:site,checkpoint_name:'',location_label:'',zone_or_building:'',description:'',is_active:true,is_required:true,qr_unique_id:'QR-'+crypto.randomUUID(),created_by_admin:email,print_count:0}} queryKey={['qrCheckpoints']}>
+function CheckpointEditor({checkpoint,site,email,onSaved}) {
+ return <Editor onSaved={onSaved} entity="QRCheckpoint" record={checkpoint} seed={{property_site:site,checkpoint_name:'',location_label:'',zone_or_building:'',description:'',is_active:true,is_required:true,qr_unique_id:'QR-'+crypto.randomUUID(),created_by_admin:email,print_count:0}} queryKey={['qrCheckpoints']}>
   {(draft,change)=><>
    <div className="grid gap-3 sm:grid-cols-2">{[['checkpoint_name','Checkpoint name'],['location_label','Physical location'],['zone_or_building','Zone / building'],['description','Notes']].map(([field,label])=><Field key={field} label={label}><input className={inputClass} value={draft[field]||''} onChange={event=>change(field,event.target.value)}/></Field>)}</div>
    <div className="flex gap-5 text-sm">{[['is_active','Active'],['is_required','Required']].map(([field,label])=><label key={field} className="flex items-center gap-2"><input type="checkbox" checked={draft[field]!==false} onChange={event=>change(field,event.target.checked)}/>{label}</label>)}</div>
@@ -70,6 +75,18 @@ export default function AdminOperationsWorkbench() {
  const [selected,setSelected] = useState('');
  const [newCheckpoint,setNewCheckpoint] = useState(false);
  const [newGeneral,setNewGeneral] = useState(false);
+ const dirtyDrafts = useRef(new Set());
+ useEffect(() => {
+  const track = event => { const {key,dirty} = event.detail; if(dirty)dirtyDrafts.current.add(key);else dirtyDrafts.current.delete(key); };
+  const unload = event => {if(dirtyDrafts.current.size){event.preventDefault();event.returnValue='';}};
+  window.addEventListener('operations-draft',track);window.addEventListener('beforeunload',unload);
+  return ()=>{window.removeEventListener('operations-draft',track);window.removeEventListener('beforeunload',unload);};
+ },[]);
+ const selectSite = async id => {
+  if (id === selected) return;
+  if (dirtyDrafts.current.size && !await confirmInApp('Switch properties and discard unsaved site changes?')) return;
+  dirtyDrafts.current.clear();setSelected(id);setNewCheckpoint(false);
+ };
  const canManage = user?.role === 'admin';
  const queryOptions = {enabled:canManage,staleTime:60000,refetchOnWindowFocus:false};
  const locationsQuery = useQuery({queryKey:['operationsLocations'],queryFn:()=>listDirectoryLocations('site_name',1000),...queryOptions});
@@ -95,7 +112,7 @@ export default function AdminOperationsWorkbench() {
    <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
     <aside className="rounded-2xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-3">
      <label className="flex items-center gap-2 rounded-lg border border-slate-600 px-2"><Search className="h-4 w-4 text-slate-400"/><input aria-label="Find a property" placeholder="Find a property" value={search} onChange={event=>setSearch(event.target.value)} className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none"/></label>
-     <div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[65vh]">{filtered.map(location=><button type="button" key={location.id} aria-pressed={site?.id===location.id} onClick={()=>{setSelected(location.id);setNewCheckpoint(false);}} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-700 aria-pressed:bg-cyan-950"><span className="block font-bold">{location.site_name}</span><span className="mt-1 block text-xs text-slate-400">{location.division || location.address}{location.active===false?' · Inactive':''}</span></button>)}{!filtered.length&&<p className="p-3 text-xs text-slate-400">No matching properties.</p>}</div>
+     <div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[65vh]">{filtered.map(location=><button type="button" key={location.id} aria-pressed={site?.id===location.id} onClick={()=>selectSite(location.id)} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-700 aria-pressed:bg-cyan-950"><span className="block font-bold">{location.site_name}</span><span className="mt-1 block text-xs text-slate-400">{location.division || location.address}{location.active===false?' · Inactive':''}</span></button>)}{!filtered.length&&<p className="p-3 text-xs text-slate-400">No matching properties.</p>}</div>
     </aside>
     <main className="min-w-0 space-y-4">
      {!site?<p className="p-6 text-slate-300">Create a location in Manage Locations to configure its operations.</p>:<>
@@ -122,13 +139,13 @@ export default function AdminOperationsWorkbench() {
       </Section>
       <Section id="operations-checkpoints" title="Patrol checkpoints" description="Create and edit this property's scan points here, then print their labels below.">
        <div className="space-y-3">{checkpoints.map(cp=><details key={cp.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{cp.checkpoint_name}<span className="ml-2 font-normal text-slate-400">{cp.location_label} · {cp.is_active===false?'Inactive':'Active'}</span></summary><div className="mt-4"><CheckpointEditor checkpoint={cp} site={site.site_name} email={user.email}/></div></details>)}
-       {newCheckpoint?<div className="rounded-lg border border-cyan-700 p-4"><CheckpointEditor key={'new-'+site.id} site={site.site_name} email={user.email}/><button type="button" onClick={()=>setNewCheckpoint(false)} className="mt-3 text-xs text-slate-400">Close new checkpoint</button></div>:<button type="button" onClick={()=>setNewCheckpoint(true)} className={buttonClass}><Plus className="h-4 w-4"/>Add checkpoint</button>}
+       {newCheckpoint?<div className="rounded-lg border border-cyan-700 p-4"><CheckpointEditor key={'new-'+site.id} site={site.site_name} email={user.email} onSaved={()=>setNewCheckpoint(false)}/><button type="button" onClick={()=>setNewCheckpoint(false)} className="mt-3 text-xs text-slate-400">Close new checkpoint</button></div>:<button type="button" onClick={()=>setNewCheckpoint(true)} className={buttonClass}><Plus className="h-4 w-4"/>Add checkpoint</button>}
        <Expand title="Print QR patrol labels"><AdminQRPrintManager key={site.id} siteName={site.site_name}/></Expand></div>
       </Section>
      </>}
      <Section id="operations-company" title="Company-wide orders" description="Shared instructions appear at every property. Edit them once here.">
       <div className="space-y-3">{general.map(section=><details key={section.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{section.section_title}</summary><div className="mt-4"><Editor entity="GeneralPostOrder" record={section} seed={{}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title||''} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={5} className={inputClass} value={draft.content||''} onChange={event=>change('content',event.target.value)}/></Field><label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.active!==false} onChange={event=>change('active',event.target.checked)}/>Active</label></>}</Editor></div></details>)}
-      {newGeneral?<Editor key="new-general" entity="GeneralPostOrder" seed={{section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
+      {newGeneral?<Editor onSaved={()=>setNewGeneral(false)} key="new-general" entity="GeneralPostOrder" seed={{section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
      </Section>
      <Expand title="Company fleet"><VehicleManagement/></Expand>
      <Expand title="Maintenance tracking"><MaintenanceTracking/></Expand>

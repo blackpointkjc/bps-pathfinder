@@ -11,9 +11,10 @@ import { toast } from "sonner";
 import { Printer, Search, CheckSquare, Square } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-export default function AdminQRPrintManager() {
+export default function AdminQRPrintManager({ siteName }) {
   const [search, setSearch] = useState("");
-  const [filterSite, setFilterSite] = useState("all");
+  const [localFilterSite, setFilterSite] = useState("all");
+  const filterSite = siteName || localFilterSite;
   const [selected, setSelected] = useState(new Set());
   const queryClient = useQueryClient();
   const printRef = useRef(null);
@@ -164,7 +165,7 @@ export default function AdminQRPrintManager() {
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
           <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filterSite} onValueChange={setFilterSite}>
+        <Select value={filterSite} onValueChange={setFilterSite} disabled={!!siteName}>
           <SelectTrigger className="w-full md:w-48">
             <SelectValue placeholder="All sites" />
           </SelectTrigger>

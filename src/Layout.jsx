@@ -63,7 +63,6 @@ const CENTER_CONFIG = {
       { label: 'CAD Administration', fullAccessOnly: true, items: [
         ['Personnel', 'Personnel', Users],
         ['CAD Reports', 'PathfinderReports', BarChart3],
-        ['Admin Control', 'AdminPortal', Activity],
       ]},
     ],
   },
@@ -194,7 +193,7 @@ const CENTER_CONFIG = {
         ['Platoon & Chain', 'AdminPlatoonAssignments', GitBranch],
         ['Locations', 'AdminLocations', Building2],
         ['Equipment', 'AdminEquipment', Package],
-        ['Post Orders', 'AdminPostOrders', BookOpen],
+        ['Site Operations', 'AdminPostOrders', BookOpen],
       ]},
       { label: 'Reports & Quality', items: [
         ['All Reports', 'AdminReports', ClipboardList],
@@ -210,7 +209,6 @@ const CENTER_CONFIG = {
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
       ]},
       { label: 'QR Patrol', items: [
-        ['QR Patrol Management', 'AdminQRCenter', MapPin],
       ]},
       { label: 'System', items: [
         ['Portal Settings', 'AdminPortalSettings', Settings],
@@ -334,16 +332,16 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 });
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
-  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
+  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
   Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','reports','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','messages','law'], VATrespassNotices: ['officer','messages','trespass'], VACriminalComplaints: ['officer','messages','complaint'], Summons: ['officer','messages','summons'], WitnessSubpoenaRequest: ['officer','messages','subpoena'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','today','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankStructure: ['officer','profile','rank'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'],
   AdminLocationTracker: ['admin','sites','locationdispatch','admin_location_dispatch_tool','tracker'], AdminGeofenceAlerts: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'], AdminAutoDispatchControls: ['admin','sites','locationdispatch','admin_location_dispatch_tool','autodispatch'], AdminLocations: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'],
   AdminScheduling: ['admin','schedule','schedulehub','admin_schedule_tool','scheduling'], FleetVehicleAssignments: ['admin','schedule','schedulehub','admin_schedule_tool','fleet'], DutySupervisorScheduling: ['admin','schedule','schedulehub','admin_schedule_tool','duty'], AdminPlannedShifts: ['admin','schedule','schedulehub','admin_schedule_tool','planned'], AdminShiftBids: ['admin','schedule','schedulehub','admin_schedule_tool','bids'], AdminSupportStaffClock: ['admin','schedule','schedulehub','admin_schedule_tool','supportclock'],
   AdminOfficerManagement: ['admin','people','personnelhub','admin_people_tool','availability'], AdminUsers: ['admin','people','personnelhub','admin_people_tool','users'], AdminPlatoonAssignments: ['admin','people','personnelhub','admin_people_tool','chain'],
-  AdminEquipment: ['admin','sites','siteassets','admin_site_assets_tool','equipment'], AdminPostOrders: ['admin','sites','siteassets','admin_site_assets_tool','postorders'],
+  AdminEquipment: ['admin','sites','siteassets','admin_site_assets_tool','equipment'], AdminPostOrders: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
   AdminReports: ['admin','reports','reportshub','admin_reports_quality_tool','allreports'], AdminClientReports: ['admin','reports','reportshub','admin_reports_quality_tool','clientreports'], AdminSupervisorReports: ['admin','reports','reportshub','admin_reports_quality_tool','supervisorreports'], AdminConfidentialReports: ['admin','reports','reportshub','admin_reports_quality_tool','confidential'], AdminComplaints: ['admin','reports','reportshub','admin_reports_quality_tool','complaints'], AdminCommendations: ['admin','reports','reportshub','admin_reports_quality_tool','commendations'], AdminClientFeedback: ['admin','reports','reportshub','admin_reports_quality_tool','feedback'],
   AdminAnnouncements: ['admin','communications','communicationshub','admin_communications_tool','announcements'], AdminSpecialRequests: ['admin','communications','communicationshub','admin_communications_tool','requests'],
-  AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','sites','systemportal','admin_system_portal_tool','settings'], AdminDocuments: ['training','documents','documents'],
+  AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','sites','systemportal','admin_system_portal_tool','settings'], AdminDocuments: ['training','documents','documents'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['hr','employees','clients'],
   SupervisorTasks: ['supervisor','command','tasks'], SupervisorFieldOversight: ['supervisor','command','field'], SupervisorShiftHandover: ['supervisor','command','handover'], SupervisorChat: ['supervisor','command','chat'], SupervisorDailyCode: ['supervisor','command','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
   ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],
