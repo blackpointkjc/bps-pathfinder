@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
@@ -553,7 +554,7 @@ export default function AdminUsers({ embedded = false }) {
    if(pendingOnly&&(!isPendingUser(u)||approvedUserIds.has(u.id)))return false;
    if(accountRole!=='all'&&u.role!==accountRole&&!(u.additional_roles||[]).includes(accountRole))return false;
    return [u.rank,u.first_name,u.last_name,u.email,u.unit_number,...(u.additional_roles||[])].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim());
-  });
+  }).sort((a,b) => (Number.parseInt(a.unit_number,10) || Infinity) - (Number.parseInt(b.unit_number,10) || Infinity) || String(a.last_name || a.email).localeCompare(String(b.last_name || b.email)));
 
   const assignUserCategory = async (userData, category) => {
     const categoryConfig = {

@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ export default function AccountingTaxLiability() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
+  const isAccountingRole = canAccessAccounting(user);
 
   const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
     queryKey: ['accountingData', 'tax'],

@@ -27,6 +27,9 @@ Deno.serve(async (req) => {
         const targetUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
         const target = (targetUsers || []).find((entry: any) => entry.id === userId);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
+        if (Array.isArray(updates.additional_roles) && userId !== '6a72bbee2842d6338cbae513') {
+            updates.additional_roles = updates.additional_roles.filter((role:any) => String(role).toLowerCase() !== 'accounting');
+        }
         const targetRoles = new Set((target.additional_roles || []).map((role: string) => String(role).toLowerCase()));
         const isSystemManager = user.role === 'admin' || roles.has('full_access');
         const internalEmployeeRoles = ['cad_access','officer','supervisor','hr','accounting','trainer','support_staff'];

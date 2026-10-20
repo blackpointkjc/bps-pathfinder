@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +30,7 @@ export default function AccountingExpenses() {
   const [reviewNotes, setReviewNotes] = useState({});
   const [selectedExpense, setSelectedExpense] = useState(null);
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const allowed = user?.role === 'admin' || user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access');
+  const allowed = canAccessAccounting(user);
 
   const { data: accountingData = {}, isLoading, error } = useQuery({
     queryKey: ['accountingFinance'],

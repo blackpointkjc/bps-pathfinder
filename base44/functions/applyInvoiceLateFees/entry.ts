@@ -7,7 +7,7 @@ Deno.serve(async req=>{
     const base44=createClientFromRequest(req);
     const body=req.method==='POST'?await req.json().catch(()=>({})):{};
     const manual=['run_now','preview'].includes(String(body.action||''));
-    if(manual){const user=await base44.auth.me().catch(()=>null);const roles=new Set((user?.additional_roles||[]).map((v:string)=>v.toLowerCase()));if(!user||(user.role!=='admin'&&!roles.has('accounting')&&!roles.has('full_access')))return Response.json({error:'Accounting access required'},{status:403});}
+    if(manual){const user=await base44.auth.me().catch(()=>null);const roles=new Set((user?.additional_roles||[]).map((v:string)=>v.toLowerCase()));if(!user||String(user.id)!=='6a72bbee2842d6338cbae513')return Response.json({error:'Accounting access required'},{status:403});}
     const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
     const value=(key:string)=>parts.find(x=>x.type===key)?.value||'';
     const today=`${value('year')}-${value('month')}-${value('day')}`;
@@ -29,7 +29,7 @@ Deno.serve(async req=>{
     if(body.action==='preview'){
       const actor=await base44.auth.me().catch(()=>null);
       const roles=new Set((actor?.additional_roles||[]).map((v:string)=>v.toLowerCase()));
-      if(!actor||(actor.role!=='admin'&&!roles.has('accounting')&&!roles.has('full_access')))return Response.json({error:'Accounting access required'},{status:403});
+      if(!actor||String(actor.id)!=='6a72bbee2842d6338cbae513')return Response.json({error:'Accounting access required'},{status:403});
       return Response.json({success:true,as_of:today,summary});
     }
     const locations=await base44.asServiceRole.entities.Location.list('site_name',1000);

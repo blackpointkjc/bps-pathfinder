@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
@@ -851,8 +852,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   { id: 'hr', label: 'HR Access', desc: 'PTO, time entries and employee management', color: 'text-emerald-800' },
                   { id: 'accounting', label: 'Accounting Access', desc: 'Payroll, invoices and financial reports', color: 'text-amber-800' },
                   { id: 'trainer', label: 'Trainer', desc: 'Training creation, compliance and student records', color: 'text-indigo-800' },
-                  { id: 'full_access', label: 'Full Access', desc: 'Access to every internal operations center', color: 'text-purple-800' },
-                ].map(({ id, label, desc, color }) => (
+                  { id: 'full_access', label: 'Full Access', desc: 'Internal operations access; accounting is restricted to Colonel Hiers', color: 'text-purple-800' },
+                ].filter(item => item.id !== 'accounting' || canAccessAccounting(selectedUser)).map(({ id, label, desc, color }) => (
                   <div key={id} className="flex items-center space-x-2">
                     <Checkbox
                       id={`emp_${id}`}

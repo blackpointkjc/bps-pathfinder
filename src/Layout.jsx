@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useFleetScheduling } from '@/hooks/useFleetScheduling';
 import { useAbsenceReconciliation } from '@/hooks/useAbsenceReconciliation';
 import React, { useEffect, useRef, useState } from 'react';
@@ -466,7 +467,7 @@ function allowedCenters(user) {
   // Student and client accounts are separate identities, never employee overlays.
   if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
-  if (hasFullAccess(user)) return ['admin', ...(roles.has('accounting') ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
+  if (hasFullAccess(user)) return ['admin', ...(canAccessAccounting(user) ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
@@ -476,7 +477,7 @@ function allowedCenters(user) {
   if (roles.has('officer')) centers.push('officer', 'cad');
   if (roles.has('hr') || rank === 'human resources') centers.push('hr');
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
-  if (roles.has('accounting')) centers.push('accounting');
+  if (canAccessAccounting(user)) centers.push('accounting');
   if (roles.has('trainer')) centers.push('training');
   return [...new Set(centers.length ? centers : ['officer'])];
 }
@@ -505,6 +506,7 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
+  if (pageName.startsWith('Accounting') || pageName === 'PayrollDates') return canAccessAccounting(user);
   // A client identity is exclusive: deny every non-client route, including
   // shared/unmapped pages and communication tools, regardless of stale roles.
   const clientIdentity = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');

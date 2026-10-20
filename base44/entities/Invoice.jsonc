@@ -6,17 +6,46 @@
       "type": "string",
       "description": "Invoice number in format YY + sequential number (e.g., 26001, 26002)"
     },
-    "billing_rate_verified_by": {"type":"string"},
-    "billing_rate_verified_at": {"type":"string","format":"date-time"},
-    "billing_rate_verified_value": {"type":"number"},
-    "billing_review_required": {"type":"boolean","default":false},
-    "billing_review_reason": {"type":"string"},
-    "revision": {"type":"number","description":"Invoice document version"},
-    "revision_history": {"type":"string","description":"JSON audit log of prior in-place invoice revisions"},
-    "delivery_email": {"type":"string","description":"Actual outgoing invoice email recipient"},
-    "delivery_status": {"type":"string","description":"pending, accepted, or failed. Accepted does not prove final delivery"},
-    "delivery_error": {"type":"string"},
-    "sent_at": {"type":"string","format":"date-time"},
+    "billing_rate_verified_by": {
+      "type": "string"
+    },
+    "billing_rate_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "billing_rate_verified_value": {
+      "type": "number"
+    },
+    "billing_review_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "billing_review_reason": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "number",
+      "description": "Invoice document version"
+    },
+    "revision_history": {
+      "type": "string",
+      "description": "JSON audit log of prior in-place invoice revisions"
+    },
+    "delivery_email": {
+      "type": "string",
+      "description": "Actual outgoing invoice email recipient"
+    },
+    "delivery_status": {
+      "type": "string",
+      "description": "pending, accepted, or failed. Accepted does not prove final delivery"
+    },
+    "delivery_error": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "client_email": {
       "type": "string",
       "description": "Email of the client"
@@ -47,18 +76,51 @@
       "type": "number",
       "description": "Total invoice amount"
     },
-    "base_amount": {"type":"number","description":"Original service charge before late fees"},
-    "late_fee_amount": {"type":"number","default":0,"description":"One-time 10 percent late fee assessed after due date"},
-    "late_fee_rate": {"type":"number","default":0.1},
-    "late_fee_applied_at": {"type":"string","format":"date-time"},
-    "late_notice_status": {"type":"string"},
-    "late_notice_sent_at": {"type":"string","format":"date-time"},
-    "amount_paid": {"type":"number","default":0,"description":"Cumulative client payment received and confirmed by accounting"},
-    "payment_method": {"type":"string"},
-    "payment_reference": {"type":"string"},
-    "payment_notes": {"type":"string"},
-    "payment_updated_by": {"type":"string"},
-    "payment_updated_at": {"type":"string","format":"date-time"},
+    "base_amount": {
+      "type": "number",
+      "description": "Original service charge before late fees"
+    },
+    "late_fee_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "One-time 10 percent late fee assessed after due date"
+    },
+    "late_fee_rate": {
+      "type": "number",
+      "default": 0.1
+    },
+    "late_fee_applied_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "late_notice_status": {
+      "type": "string"
+    },
+    "late_notice_sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0,
+      "description": "Cumulative client payment received and confirmed by accounting"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "payment_reference": {
+      "type": "string"
+    },
+    "payment_notes": {
+      "type": "string"
+    },
+    "payment_updated_by": {
+      "type": "string"
+    },
+    "payment_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -103,19 +165,30 @@
   "rls": {
     "create": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     },
-    "read": null,
     "update": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     },
     "delete": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     }
   }
 }

@@ -1,25 +1,84 @@
 {
-  "name":"RecurringCompanyBill",
-  "type":"object",
-  "properties":{
-    "vendor":{"type":"string"},
-    "category":{"type":"string"},
-    "description":{"type":"string"},
-    "amount":{"type":"number"},
-    "site_name":{"type":"string"},
-    "start_date":{"type":"string","format":"date"},
-    "next_due_date":{"type":"string","format":"date"},
-    "day_of_month":{"type":"number"},
-    "status_on_post":{"type":"string","enum":["unpaid","paid"],"default":"unpaid"},
-    "active":{"type":"boolean","default":true},
-    "notes":{"type":"string"},
-    "last_posted_date":{"type":"string","format":"date"}
+  "name": "RecurringCompanyBill",
+  "type": "object",
+  "properties": {
+    "vendor": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "site_name": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "next_due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "day_of_month": {
+      "type": "number"
+    },
+    "status_on_post": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "paid"
+      ],
+      "default": "unpaid"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "last_posted_date": {
+      "type": "string",
+      "format": "date"
+    }
   },
-  "required":["vendor","description","amount","category","start_date","next_due_date","day_of_month","active","status_on_post"],
-  "rls":{
-    "read":{"user_condition":{"role":"admin"}},
-    "create":{"user_condition":{"role":"admin"}},
-    "update":{"user_condition":{"role":"admin"}},
-    "delete":{"user_condition":{"role":"admin"}}
+  "required": [
+    "vendor",
+    "description",
+    "amount",
+    "category",
+    "start_date",
+    "next_due_date",
+    "day_of_month",
+    "active",
+    "status_on_post"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "id": "6a72bbee2842d6338cbae513"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "id": "6a72bbee2842d6338cbae513"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "id": "6a72bbee2842d6338cbae513"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "id": "6a72bbee2842d6338cbae513"
+      }
+    }
   }
 }

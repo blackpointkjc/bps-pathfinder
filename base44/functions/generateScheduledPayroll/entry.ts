@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       const caller = await base44.auth.me().catch(() => null);
       if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
       const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-      if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('accounting')) {
+      if (String(caller.id) !== '6a72bbee2842d6338cbae513') {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
@@ -354,7 +354,7 @@ Deno.serve(async (req) => {
 
     const accountingUsers = (users || []).filter((user: any) => {
       const roles = (user.additional_roles || []).map((role: unknown) => String(role).toLowerCase());
-      return user.role === 'admin' || roles.includes('accounting') || roles.includes('full_access');
+      return String(user.id) === '6a72bbee2842d6338cbae513';
     });
     if (created > 0 || updated > 0 || skippedNoRate.length > 0) for (const user of accountingUsers) {
       if (!user.email) continue;
