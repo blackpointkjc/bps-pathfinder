@@ -36,6 +36,7 @@ function load(path){
   if(name==='@/lib/appDirectory')return {listDirectoryUsers:async()=>[officer],listDirectoryLocations:async()=>[{id:'site',site_name:'Armstrong',active:true}]};
   if(name==='@/lib/fleetScheduleSync')return {syncOfficerVehicles:async()=>({created:0})};
   if(name==='@/lib/reportPrint')return {openBlackPointReport:()=>{}};
+  if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='sonner')return {toast:{success:m=>notices.push(m),error:m=>{throw Error(m);}}};
   if(name.startsWith('@/')){const file='src/'+name.slice(2);for(const ext of ['', '.js','.jsx'])if(fs.existsSync(file+ext)&&fs.statSync(file+ext).isFile())return load(file+ext);throw Error(name);}
   return require(name);
