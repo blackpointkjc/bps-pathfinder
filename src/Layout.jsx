@@ -568,9 +568,9 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, onTa
   return (
     <nav aria-label="Primary navigation" className="pathfinder-field-nav fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur xl:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
       {tabs.map(([label, page, Icon]) => {
-        const active = currentPageName === page;
+        const active = page === 'AdminAbsenceCoverage' ? currentPageName === 'AdminCenter' && new URLSearchParams(window.location.search).get('admin_ops_section') === 'coverage' : currentPageName === page;
         const count = Number(unreadCounts[page]) || 0;
-        return <Link key={`${label}-${page}`} to={createPageUrl(page)} aria-current={active ? "page" : undefined} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
+        return <Link key={`${label}-${page}`} to={page === 'AdminAbsenceCoverage' ? '/AdminCenter?admin_center=admin&admin_ops_section=coverage' : createPageUrl(page)} aria-current={active ? "page" : undefined} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
           <Icon className="h-5 w-5" /><span className="text-[9px] font-black">{label}</span>
           {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
         </Link>;
@@ -793,8 +793,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
               {groupOpen && (
                 <div className="space-y-1 pb-1">
                   {group.items.map(([label, page, Icon]) => {
-                    const active = currentPageName === page;
-                    return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => { setNavGroup(group.label, true); onCloseMobile?.(); }} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+                    const active = page === 'AdminAbsenceCoverage' ? currentPageName === 'AdminCenter' && new URLSearchParams(window.location.search).get('admin_ops_section') === 'coverage' : currentPageName === page;
+                    return <Link key={page} to={page === 'AdminAbsenceCoverage' ? '/AdminCenter?admin_center=admin&admin_ops_section=coverage' : createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => { setNavGroup(group.label, true); onCloseMobile?.(); }} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
                       {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
                       <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
                       {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}

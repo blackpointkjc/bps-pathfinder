@@ -218,7 +218,7 @@ export default function AdminOfficerManagement() {
           <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300">Scheduling Command</div>
-              <h1 className="mt-1 text-2xl font-black md:text-3xl">Officer Availability & Assignments</h1><a href="/AdminAbsenceCoverage" className="mt-2 inline-block rounded-lg border border-cyan-600 px-3 py-2 text-sm font-bold text-cyan-200">Out of Office & Coverage →</a>
+              <h1 className="mt-1 text-2xl font-black md:text-3xl">Officer Availability & Assignments</h1><a href="/AdminCenter?admin_center=admin&amp;admin_ops_section=coverage" className="mt-2 inline-block rounded-lg border border-cyan-600 px-3 py-2 text-sm font-bold text-cyan-200">Out of Office & Coverage →</a>
               <p className="mt-1 text-sm text-slate-400">Approve availability, identify coverage gaps, review upcoming assignments, and manage officer scheduling preferences.</p>
             </div>
             <div className="flex flex-wrap gap-2">
