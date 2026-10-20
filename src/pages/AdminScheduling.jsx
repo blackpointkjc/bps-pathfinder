@@ -238,11 +238,16 @@ export default function AdminScheduling() {
   const checkApprovedLeave = async rows => {
     if (!rows.some(row => row.officer_email && row.officer_email !== 'OPEN' && !row.is_open)) return;
     // Check at assignment time, including bulk operations, before any write occurs.
-    clearBase44ReadCacheMatching('function:getPTORequests:');
-    const response = await base44.functions.invoke('getPTORequests', {});
-    const payload = response?.data || response || {};
-    if (payload.error || !Array.isArray(payload.requests)) throw new Error(payload.error || 'Unable to verify approved leave. Try again before assigning this shift.');
-    const conflicts = approvedLeaveConflicts(rows, payload.requests, allUsers);
+    const normalizeIdentity = value => String(value || '').trim().toLowerCase();
+    const emails = new Set(rows.filter(row => !row.is_open && row.officer_email !== 'OPEN').map(row => normalizeIdentity(row.officer_email)).filter(Boolean));
+    const people = allUsers.filter(person => [person.email,...(person.email_aliases || [])].some(email => emails.has(normalizeIdentity(email))));
+    for (const person of people) for (const email of [person.email,...(person.email_aliases || [])]) if (email) emails.add(normalizeIdentity(email));
+    const identities = [{requested_by_email:{$in:[...emails]}},{created_by:{$in:[...emails]}}];
+    if (people.length) identities.push({created_by_id:{$in:people.map(person=>person.id)}});
+    clearBase44ReadCacheMatching('entity:TimeOffRequest:');
+    const approved = await base44.entities.TimeOffRequest.filter({status:'approved',$or:identities},'-start_date',1000);
+    if (!Array.isArray(approved)) throw new Error('Unable to verify approved leave. Your shift entries have been kept.');
+    const conflicts = approvedLeaveConflicts(rows, approved, allUsers);
     if (conflicts.length) {
       const details = [...new Set(conflicts.map(({shift,leave,officer}) => {
         const name = [officer?.rank,officer?.last_name].filter(Boolean).join(' ') || 'This officer';
@@ -2122,7 +2127,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     try {
     const officerEmailToStore = newShift.is_open ? "OPEN" : newShift.officer_email;
     if (!officerEmailToStore) { 
-      alert('Please select an officer or mark as open shift');
+      setScheduleSaveError('Select an officer or mark this as an open shift.');
       return;
     }
 
@@ -2142,14 +2147,14 @@ Make sure all dates are in YYYY-MM-DD format.` ,
               location: `${locationObj.site_name}: ${locationObj.address}`,
               is_open: newShift.is_open,
               is_split_shift: false,
-              linked_shift_id: null,
+              linked_shift_id: '',
             });
           }
         }
       });
 
       if (shiftsToCreate.length === 0) {
-        alert('Please fill in at least one day with time and location');
+        setScheduleSaveError('Complete a date, start time, end time and location for at least one day.');
         return;
       }
 
@@ -2183,13 +2188,13 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
     // Single shift creation
     if (!newShift.shift_date || !newShift.start_time || !newShift.end_time || !newShift.location) {
-      alert('Please fill in all required fields');
+      setScheduleSaveError('Complete the date, start time, end time and location before saving.');
       return;
     }
 
     const locationObj = locations?.find(loc => loc.site_name === newShift.location);
     if (!locationObj) {
-      alert('Selected location not found.');
+      setScheduleSaveError('The selected location is unavailable. Select the location again.');
       return;
     }
 
@@ -2218,7 +2223,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
        shift_type: newShift.shift_type || "normal",
        is_open: newShift.is_open,
        is_split_shift: newShift.is_split_shift,
-       linked_shift_id: newShift.linked_shift_id || null,
+       linked_shift_id: newShift.linked_shift_id || '',
      };
 
     if (!newShift.is_open && newShift.partner_officer_email && newShift.partner_officer_email !== officerEmailToStore) {
