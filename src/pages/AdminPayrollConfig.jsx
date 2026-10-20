@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,10 +20,11 @@ export default function AdminPayrollConfig() {
   });
 
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const hasAccountingAccess = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
+  const hasAccountingAccess = canAccessAccounting(user);
 
   const { data: config } = useQuery({
     queryKey: ['payrollConfig'],
+    enabled: canAccessAccounting(user),
     queryFn: async () => {
       const configs = await base44.entities.PayrollConfig.list();
       return configs[0] || null;

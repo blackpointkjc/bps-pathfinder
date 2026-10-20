@@ -1,3 +1,4 @@
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -37,13 +38,13 @@ export default function AdminPayroll() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
+    enabled: canAccessAccounting(user),
   });
 
   const { data: locations } = useQuery({
     queryKey: ['allLocations'],
     queryFn: () => listDirectoryLocations('site_name'),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
+    enabled: canAccessAccounting(user),
   });
 
   const { data: payrollPeriods } = useQuery({
@@ -71,7 +72,7 @@ export default function AdminPayroll() {
         return isApproved && dateMatch && officerMatch;
       });
     },
-    enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
+    enabled: (canAccessAccounting(user)) && !!startDate && !!endDate,
   });
 
   // Handle payroll period selection
@@ -106,7 +107,7 @@ export default function AdminPayroll() {
       if (payload.error) throw new Error(payload.error);
       return payload.usage || [];
     },
-    enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
+    enabled: (canAccessAccounting(user)) && !!startDate && !!endDate,
     refetchInterval: 60000,
   });
 
@@ -140,7 +141,7 @@ export default function AdminPayroll() {
         }
       });
     },
-    enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
+    enabled: (canAccessAccounting(user)) && !!startDate && !!endDate,
   });
 
   const getOfficerName = (email) => {

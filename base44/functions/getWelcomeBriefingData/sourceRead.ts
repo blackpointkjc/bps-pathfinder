@@ -8,7 +8,7 @@ let pausedUntil = 0;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 export const briefingRetryAt = () => pausedUntil;
 const rateLimited = error => Number(error?.response?.status || error?.status) === 429 || /rate limit|too many requests|\b429\b/i.test(String(error?.message || ''));
-export async function readBriefingSource(key, loader) {
+export async function readBriefingSource(key, loader, deadline = Date.now() + 25000) {
   const hit = cache.get(key);
   if (hit?.freshUntil > Date.now()) return hit.value;
   if (inflight.has(key)) return inflight.get(key);
@@ -18,7 +18,9 @@ export async function readBriefingSource(key, loader) {
     if (pausedUntil > Date.now() && hit?.staleUntil > Date.now()) return hit.value;
     // A throttle on one entity must not manufacture failures for every other
     // entity. Wait once at the shared queue boundary, then actually read it.
-    await sleep(Math.max(0, nextStart - Date.now(), pausedUntil - Date.now()));
+    const wait = Math.max(0, nextStart - Date.now(), pausedUntil - Date.now());
+    if (Date.now()+wait>deadline) throw new Error('Briefing recovery is waiting for the server retry window');
+    await sleep(wait);
     nextStart = Date.now() + 180;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -40,6 +42,7 @@ export async function readBriefingSource(key, loader) {
         pausedUntil = Math.max(pausedUntil, Date.now() + waitMs);
         if (hit?.staleUntil > Date.now()) return hit.value;
         if (attempt === 0) {
+          if(pausedUntil>deadline) throw error;
           await sleep(Math.max(0, pausedUntil - Date.now()));
           continue;
         }

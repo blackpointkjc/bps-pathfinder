@@ -23,6 +23,7 @@ Deno.serve(async (req) => {
     const supervisorLike = me.role === 'admin' || roles.has('supervisor') || roles.has('full_access') || (me.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(me.rank || '').toLowerCase().replace(/[.]/g, '').trim()));
     const sourceErrors: string[] = [];
 
+    const readDeadline=Date.now()+24000;
     async function loadSource(label: string, loader: () => Promise<any>, options: { required?: boolean; fallback?: any; reportError?: boolean; attempts?: number } = {}) {
       const fallback = options.fallback ?? [];
       let lastError: any = null;

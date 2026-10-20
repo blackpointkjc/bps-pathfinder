@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     const fullAccess = me.role === 'admin' || roles.has('full_access');
     const hrAccess = fullAccess || roles.has('hr') || rank === 'human resources';
     const trainerAccess = fullAccess || roles.has('trainer');
-    const accountingAccess = fullAccess || roles.has('accounting');
+    const accountingAccess = String(me.id) === '6a72bbee2842d6338cbae513';
     const supervisorAccess = fullAccess || roles.has('supervisor');
     // Trainers do not receive full employee records from the general app directory.
     // Training-specific pages must use getTrainingUsers, which returns only the

@@ -178,7 +178,7 @@ export default function AdminAnnouncements() {
   const getUserName = (email) => {
     const userData = activeOfficers.find(u => u.email === email);
     if (userData?.first_name && userData?.last_name) {
-      return `${userData.first_name} ${userData.last_name}`;
+      return [userData.rank,userData.last_name].filter(Boolean).join(' ');
     }
     return email;
   };
@@ -221,7 +221,7 @@ export default function AdminAnnouncements() {
     const total = activeOfficers.length;
     const receiptEmails = new Set(announcementReceipts.filter(r => r.announcement_id === announcement.id).map(r => r.user_email));
     (announcement.read_by || []).forEach(email => receiptEmails.add(email));
-    const read = receiptEmails.size;
+    const read = activeOfficers.filter(officer=>receiptEmails.has(officer.email)).length;
     return { total, read, percentage: total > 0 ? Math.round((read / total) * 100) : 0, receiptEmails };
   };
 
@@ -428,7 +428,7 @@ export default function AdminAnnouncements() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {filteredAnnouncements.filter(a=>[a.title,a.message,a.category].join(' ').toLowerCase().includes(announcementSearch.toLowerCase())&&(announcementView==='all'||(announcementView==='urgent'?['urgent','critical','high'].includes(a.priority):a.audience==='supervisors'))).map((announcement) => (
+              {filteredAnnouncements.filter(a=>[a.title,a.message,a.category].join(' ').toLowerCase().includes(announcementSearch.toLowerCase())&&(announcementView==='all'||(announcementView==='urgent'?['urgent','important','critical','high'].includes(a.priority):a.audience==='supervisors'))).map((announcement) => (
                 <div key={announcement.id} className="p-5 bg-slate-950 rounded-xl border border-slate-700">
                   <div className="flex justify-between items-start mb-3">
                     <div>

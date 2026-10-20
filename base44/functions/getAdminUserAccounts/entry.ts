@@ -15,7 +15,8 @@ Deno.serve(async req => {
     // Authorized migration: old client-only accounts retained officer defaults.
     // Clear those fields once; retain property permissions and account history.
     for(const person of users||[]){
-      const patch=clientOperationalPatch(person);
+      const patch:any=clientOperationalPatch(person);
+      if(String(person.id)!=='6a72bbee2842d6338cbae513'&&(person.additional_roles||[]).some((role:any)=>String(role).toLowerCase()==='accounting'))patch.additional_roles=(person.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='accounting');
       if(Object.keys(patch).length){await api.asServiceRole.entities.User.update(person.id,patch);Object.assign(person,patch);}
     }
     const staff=(users||[]).filter(person=>!isClientIdentity(person));

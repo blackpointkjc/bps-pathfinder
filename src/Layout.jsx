@@ -453,7 +453,7 @@ function roleName(user) {
   if (hasRole(user, 'supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' '))) return 'SUPERVISOR';
   if (hasRole(user, 'hr') || String(user?.rank || '').toLowerCase() === 'human resources') return 'HUMAN RESOURCES';
   if (hasRole(user, 'support_staff') || String(user?.rank || '').toLowerCase() === 'support staff') return 'SUPPORT STAFF';
-  if (hasRole(user, 'accounting')) return 'ACCOUNTING';
+  if (canAccessAccounting(user)) return 'ACCOUNTING';
   if (hasRole(user, 'trainer')) return 'TRAINER';
   if (hasRole(user, 'student')) return 'STUDENT';
   if (hasRole(user, 'officer')) return 'OFFICER';
@@ -506,7 +506,7 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
-  if (pageName.startsWith('Accounting') || pageName === 'PayrollDates') return canAccessAccounting(user);
+  if (pageName.startsWith('Accounting') || ['PayrollDates','AdminPayroll','AdminPayrollConfig','AdminExpenseApproval'].includes(pageName)) return canAccessAccounting(user);
   // A client identity is exclusive: deny every non-client route, including
   // shared/unmapped pages and communication tools, regardless of stale roles.
   const clientIdentity = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
