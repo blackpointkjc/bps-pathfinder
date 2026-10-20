@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -10,6 +11,8 @@ Deno.serve(async (req) => {
     if (blocked) return Response.json({ error: 'Officer access required' }, { status: 403 });
 
     const { call_id, status, disposition = '' } = await req.json().catch(() => ({}));
+    const officer=await base44.asServiceRole.entities.User.get(user.id);
+    if(status!=='Cleared'&&isOutOfOffice(officer))return Response.json({error:'Out of office: contact dispatch for coverage.'},{status:409});
     const allowedStatuses = new Set(['Acknowledged', 'Enroute', 'On Scene', 'Cleared']);
     if (!call_id || !allowedStatuses.has(status)) return Response.json({ error: 'Valid call and status are required' }, { status: 400 });
     const call = await base44.asServiceRole.entities.DispatchCall.get(call_id);

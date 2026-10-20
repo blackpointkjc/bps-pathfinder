@@ -1,4 +1,4 @@
-import { reconcileAbsences, shiftOverlapsLeave } from './absenceLifecycle.ts';
+import { reconcileAbsences, shiftOverlapsLeave, leaveWindow } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalizeRoles = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
@@ -70,9 +70,13 @@ Deno.serve(async (req) => {
         return Response.json({error:'Start and return dates/times (Eastern), leave type, reason and valid requested work hours are required.'},{status:400});
       const businessDate=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/New_York'}).format(new Date(value));
       if(start_date!==businessDate(start_at)||end_date!==businessDate(end_at))return Response.json({error:'Dates must match the requested Eastern start and return times.'},{status:400});
-      if (!start_date || !end_date || !reason) {
+      if (!start_date || !end_date || !String(reason||'').trim()) {
         return Response.json({ error: 'Start date, end date, and reason are required' }, { status: 400 });
       }
+      const employee=await base44.asServiceRole.entities.User.get(user.id);
+      if(request_type==='paid'&&Number(hours_requested)>Number(employee.pto_balance_hours||0))return Response.json({error:'Requested paid hours exceed your current PTO balance.'},{status:409});
+      const existing=await base44.asServiceRole.entities.TimeOffRequest.filter({requested_by_email:user.email,status:{$in:['pending','approved']}},'-start_date',1000);
+      if(existing.some(r=>{const w=leaveWindow(r);return Date.parse(start_at)<Date.parse(w.end)&&Date.parse(end_at)>Date.parse(w.start);} ))return Response.json({error:'A pending or approved leave request already overlaps these times.'},{status:409});
       const created = await base44.asServiceRole.entities.TimeOffRequest.create({
         start_date,
         end_date,
@@ -80,7 +84,7 @@ Deno.serve(async (req) => {
         reason,
         request_type,
         hours_requested: Number(hours_requested || 0),
-        pto_balance_at_request: Number(pto_balance_at_request || 0),
+        pto_balance_at_request: Number(employee.pto_balance_hours || 0),
         status: 'pending',
         requested_by_email: user.email,
         requested_by_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email,

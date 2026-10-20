@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (x: unknown) => String(x || '').trim().toLowerCase();
 Deno.serve(async req => {
@@ -10,6 +11,8 @@ Deno.serve(async req => {
   if (!email || !data.clock_in || !data.location) return Response.json({error:'Officer, clock-in time and location required'}, {status:400});
   const privileged = me.role === 'admin' || (me.additional_roles || []).includes('full_access');
   if (!privileged && email !== lower(me.email)) return Response.json({error:'Cannot clock in another officer'}, {status:403});
+  const matches=await api.asServiceRole.entities.User.filter({email},undefined,1);
+  if(matches[0]&&isOutOfOffice(matches[0]))return Response.json({error:'Approved leave or out-of-office coverage is active; clock-in is blocked until return.'},{status:409});
   const recent = await api.asServiceRole.entities.CallOut.filter({officer_email:email}, '-created_date', 100);
   const restriction = (recent || []).filter((row:any) => row.call_out_type === 'sent_home' && row.voided !== true)
     .map((row:any) => new Date(row.created_date || 0).getTime()).filter((n:number)=>Number.isFinite(n)).sort((a:number,b:number)=>b-a)[0];

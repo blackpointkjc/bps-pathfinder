@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
 
@@ -587,7 +588,7 @@ Deno.serve(async (req) => {
           :'Dispatched';
         const manualStatus = user.status || 'Available';
         const staleDispatchStatus=['dispatched','enroute','en route','on scene'].includes(lower(newestLiveStatus));
-        const resolvedStatus = ['out of service','distress','emergency'].includes(lower(newestLiveStatus))
+        const resolvedStatus = isOutOfOffice(user) ? 'Out of Service' : ['out of service','distress','emergency'].includes(lower(newestLiveStatus))
           ? newestLiveStatus : confirmedDispatch ? assignmentStatus
           : lower(manualStatus)==='busy' ? 'Busy'
           : staleDispatchStatus ? 'Available'
