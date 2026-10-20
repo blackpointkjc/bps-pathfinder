@@ -2,7 +2,7 @@ import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryLocations } from '@/lib/appDirectory';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { Shield, Search, MapPin, CheckCircle2, Circle, Save, Plus } from 'lucide-react';
@@ -34,7 +34,7 @@ function Editor({ entity, record, seed, queryKey, children, onSaved }) {
  const save = async event => {
   event.preventDefault(); setBusy(true);
   try {
-   const {id,created_date,updated_date,created_by,created_by_id,...data} = draft;
+   const data = Object.fromEntries(Object.entries(draft).filter(([key])=>!['id','created_date','updated_date','created_by','created_by_id'].includes(key)));
    if (entity === 'QRCheckpoint' && (!data.checkpoint_name?.trim() || !data.location_label?.trim())) throw new Error('Checkpoint name and location are required.');
    if (entity === 'GeneralPostOrder' && (!data.section_title?.trim() || !data.content?.trim())) throw new Error('Section title and instructions are required.');
    if (entity === 'JobDutyRule' && (Number(data.qr_frequency_minutes)<1 || Number(data.qr_window_minutes)<1 || Number(data.qr_scans_per_shift)<0)) throw new Error('Use positive scan intervals and a non-negative scan count.');
@@ -64,6 +64,10 @@ function CheckpointEditor({checkpoint,site,email,onSaved}) {
   </>}
  </Editor>;
 }
+function MaintenancePanel() {
+ const {data:users=[]} = useQuery({queryKey:['operationsMaintenanceUsers'],queryFn:()=>listDirectoryUsers(),staleTime:60000});
+ return <MaintenanceTracking units={users}/>;
+}
 function Expand({title,children}) {
  const [open,setOpen] = useState(false);
  return <section className="rounded-2xl border border-slate-700 bg-slate-900/80"><button type="button" aria-expanded={open} onClick={()=>setOpen(value=>!value)} className="flex min-h-14 w-full items-center justify-between px-5 text-left font-bold text-white">{title}<span className="text-cyan-300">{open?'−':'+'}</span></button>{open&&<div className="border-t border-slate-700 p-4">{children}</div>}</section>;
@@ -85,7 +89,7 @@ export default function AdminOperationsWorkbench() {
  const selectSite = async id => {
   if (id === selected) return;
   if (dirtyDrafts.current.size && !await confirmInApp('Switch properties and discard unsaved site changes?')) return;
-  dirtyDrafts.current.clear();setSelected(id);setNewCheckpoint(false);
+  for(const key of dirtyDrafts.current) if(!key.startsWith('GeneralPostOrder:'))dirtyDrafts.current.delete(key);setSelected(id);setNewCheckpoint(false);
  };
  const canManage = user?.role === 'admin';
  const queryOptions = {enabled:canManage,staleTime:60000,refetchOnWindowFocus:false};
@@ -148,7 +152,7 @@ export default function AdminOperationsWorkbench() {
       {newGeneral?<Editor onSaved={()=>setNewGeneral(false)} key="new-general" entity="GeneralPostOrder" seed={{section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
      </Section>
      <Expand title="Company fleet"><VehicleManagement/></Expand>
-     <Expand title="Maintenance tracking"><MaintenanceTracking/></Expand>
+     <Expand title="Maintenance tracking"><MaintenancePanel/></Expand>
     </main>
    </div>
   </div>

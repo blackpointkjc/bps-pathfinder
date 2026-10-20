@@ -359,6 +359,7 @@ function _desktopToolRoute(pageName) {
     params.set('admin_center', 'admin');
     params.set('admin_ops_section', section);
     params.set('admin_ops_tool', tool);
+    if (nestedTool === 'operations') params.set('admin_site_ops_tool', 'operations');
     if (nestedParam && nestedTool) params.set(nestedParam, nestedTool);
   } else {
     params.set('section', section);
