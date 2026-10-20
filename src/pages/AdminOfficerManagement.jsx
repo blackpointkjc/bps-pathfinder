@@ -1,3 +1,7 @@
+import AdminOutOfOffice from '@/components/AdminOutOfOffice';
+import { actingCoverage } from '@/utils/commandReporting';
+import { isOutOfOffice } from '@/utils/outOfOffice';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -50,11 +54,12 @@ export default function AdminOfficerManagement() {
   const roles = new Set((user?.additional_roles || []).map(normalize));
   const isAdmin = user?.role === 'admin' || roles.has('full_access');
 
-  const { data: allUsers = [] } = useQuery({
+  const { data: allUsers = [], isPending:officersLoading, isError:officersError, refetch:retryOfficers } = useQuery({
     queryKey: ['officerDirectory', 'adminOfficerManagement'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: isAdmin,
   });
+  const {data:commandUsers=[]} = useQuery({queryKey:['officerCoverageDirectory'],queryFn:()=>listDirectoryUsers(),enabled:isAdmin,staleTime:30000});
   const { data: allAvailability = [] } = useQuery({
     queryKey: ['allAvailability'], queryFn: () => base44.entities.OfficerAvailability.list(), enabled: isAdmin,
   });
@@ -70,6 +75,9 @@ export default function AdminOfficerManagement() {
   });
 
   const activeOfficers = useMemo(() => (allUsers || []).filter(isOperationalOfficer), [allUsers]);
+  useEffect(() => {
+    if (!selectedOfficer && activeOfficers.length) setSelectedOfficer(activeOfficers[0].email);
+  },[selectedOfficer,activeOfficers]);
   const officerByEmail = useMemo(() => new Map(activeOfficers.map(o => [normalize(o.email), o])), [activeOfficers]);
   const pendingRequests = useMemo(() => availabilityRequests.filter(r => normalize(r.status) === 'pending'), [availabilityRequests]);
 
@@ -214,66 +222,23 @@ export default function AdminOfficerManagement() {
   return (
     <div className="min-h-screen bg-[#07101b] p-4 text-white md:p-6">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <section className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-r from-[#0d1b2b] via-[#0c1725] to-[#09121d] shadow-2xl">
-          <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300">Scheduling Command</div>
-              <h1 className="mt-1 text-2xl font-black md:text-3xl">Officer Availability & Assignments</h1><a href="/AdminCenter?admin_center=admin&amp;admin_ops_section=coverage" className="mt-2 inline-block rounded-lg border border-cyan-600 px-3 py-2 text-sm font-bold text-cyan-200">Out of Office & Coverage →</a>
-              <p className="mt-1 text-sm text-slate-400">Approve availability, identify coverage gaps, review upcoming assignments, and manage officer scheduling preferences.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => window.location.href = createPageUrl('AdminScheduling')} className="border-slate-700 bg-slate-900 text-slate-200">OPEN SCHEDULING</Button>
-              <Button variant="outline" onClick={() => window.location.href = createPageUrl('AdminPlannedShifts')} className="border-slate-700 bg-slate-900 text-slate-200">PLANNED SHIFTS</Button>
-              {selectedOfficer && <Button onClick={() => saveAvailabilityMutation.mutate()} disabled={saving} className="bg-emerald-600 hover:bg-emerald-500"><Save className="mr-2 h-4 w-4"/>{saving ? 'SAVING…' : 'SAVE OFFICER'}</Button>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 border-t border-slate-800 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ['PENDING APPROVALS', pendingRequests.length, pendingRequests.length ? 'text-amber-300' : 'text-emerald-300'],
-              ['ACTIVE OFFICERS', activeOfficers.length, 'text-cyan-300'],
-              ['OPEN SHIFTS · 14D', openShifts.length, openShifts.length ? 'text-red-300' : 'text-emerald-300'],
-              ['ASSIGNED SHIFTS · 14D', assignedUpcoming.length, 'text-blue-300'],
-              ['NO AVAILABILITY', officersWithoutAvailability.length, officersWithoutAvailability.length ? 'text-amber-300' : 'text-emerald-300'],
-              ['ACTIVE SITES', locations.length, 'text-violet-300'],
-            ].map(([label, value, tone]) => <div key={label} className="border-b border-r border-slate-800 p-4 lg:border-b-0"><div className={`text-2xl font-black ${tone}`}>{value}</div><div className="mt-1 text-[9px] font-black tracking-[.12em] text-slate-500">{label}</div></div>)}
-          </div>
-        </section>
-
-        <div className="grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
-          <section className="rounded-2xl border border-amber-500/20 bg-[#0b1624] p-5 shadow-xl">
-            <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black">Availability Approval Queue</h2></div><Badge className="bg-amber-500/15 text-amber-200">{pendingRequests.length}</Badge></div>
-            <div className="mt-4 space-y-2">
-              {pendingRequests.slice(0,8).map(req => {
-                let snapshot = []; try { snapshot = JSON.parse(req.availability_snapshot || '[]'); } catch {}
-                const officer = officerByEmail.get(normalize(req.officer_email));
-                return <div key={req.id} className="rounded-xl border border-slate-800 bg-[#0d1b2b] p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="font-black text-white">{rankLast(officer)}</div><div className="mt-1 text-xs text-slate-500">Submitted {req.requested_at ? new Date(req.requested_at).toLocaleString() : 'recently'}</div></div><div className="flex gap-2"><Button size="sm" onClick={() => reviewAvailabilityRequest(req, true)} className="bg-emerald-600 hover:bg-emerald-500"><CheckCircle2 className="mr-1 h-4 w-4"/>APPROVE</Button><Button size="sm" variant="destructive" onClick={() => reviewAvailabilityRequest(req, false)}><XCircle className="mr-1 h-4 w-4"/>DENY</Button></div></div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">{snapshot.map(day => <span key={day.day_of_week} className={`rounded-md border px-2 py-1 text-[10px] font-bold ${day.available ? 'border-emerald-700/50 bg-emerald-950/30 text-emerald-200' : 'border-red-800/50 bg-red-950/30 text-red-200'}`}>{DAY_LABELS[day.day_of_week]} · {day.available ? `${day.preferred_start_time || '—'}–${day.preferred_end_time || '—'}` : 'Unavailable'}</span>)}</div>
-                </div>;
-              })}
-              {!pendingRequests.length && <div className="rounded-xl border border-dashed border-emerald-800/50 p-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400"/><div className="mt-2 font-black text-emerald-200">Approval queue clear</div><div className="mt-1 text-xs text-slate-500">No officer availability requests are waiting.</div></div>}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-xl">
-            <div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Coverage Watch</div><h2 className="mt-1 text-xl font-black">Scheduling attention</h2>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0d1b2b] p-3"><AlertTriangle className={`h-5 w-5 ${openShifts.length ? 'text-red-300' : 'text-emerald-300'}`}/><div className="flex-1"><div className="text-sm font-black">Open shifts next 14 days</div><div className="text-xs text-slate-500">{openShifts.length ? `${openShifts.length} shift(s) still need coverage.` : 'No open coverage gaps found.'}</div></div><Button size="sm" variant="outline" onClick={() => window.location.href = createPageUrl('AdminScheduling')} className="border-slate-700">VIEW</Button></div>
-              <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0d1b2b] p-3"><UserCheck className={`h-5 w-5 ${officersWithoutAvailability.length ? 'text-amber-300' : 'text-emerald-300'}`}/><div className="flex-1"><div className="text-sm font-black">Missing approved availability</div><div className="text-xs text-slate-500">{officersWithoutAvailability.length ? `${officersWithoutAvailability.length} active officer(s) have no approved availability on file.` : 'Every active officer has availability on file.'}</div></div></div>
-              {openShifts.slice(0,4).map(shift => <div key={shift.id} className="rounded-xl border border-red-900/30 bg-red-950/10 px-4 py-3"><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-white">{shift.location || 'Unassigned site'}</div><div className="text-xs text-red-200">{dateKey(shift.shift_date)} · {shift.start_time || '—'}–{shift.end_time || '—'}</div></div><span className="text-[9px] font-black text-red-300">OPEN</span></div></div>)}
-            </div>
-          </section>
-        </div>
-
-        <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-xl">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-            <div className="flex-1"><div className="text-[10px] font-black uppercase tracking-[.18em] text-blue-300">Officer Workspace</div><h2 className="mt-1 text-xl font-black">Select an officer to manage</h2><p className="mt-1 text-xs text-slate-500">Directory uses rank + last name. Search by rank, last name, or unit number.</p></div>
-            <div className="relative w-full lg:w-80"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"/><Input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search rank, last name, unit…" className="border-slate-700 bg-[#07101b] pl-10 text-white"/></div>
-            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}><SelectTrigger className="w-full border-slate-700 bg-[#07101b] text-white lg:w-80"><SelectValue placeholder="Select officer…"/></SelectTrigger><SelectContent>{filteredOfficers.map(officer => <SelectItem key={officer.email} value={officer.email}>{rankLast(officer)}{officer.unit_number ? ` · Unit ${officer.unit_number}` : ''}</SelectItem>)}</SelectContent></Select>
-          </div>
-        </section>
-
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3"><div><h1 className="text-xl font-black">Officer Availability & Assignments</h1><p className="mt-1 text-xs text-slate-400">Select an officer once. Manage absence, command coverage and working availability here.</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={()=>window.location.href=createPageUrl('AdminScheduling')}>Scheduling</Button>{selectedOfficer && <Button size="sm" onClick={()=>saveAvailabilityMutation.mutate()} disabled={saving} className="bg-emerald-700">{saving?'Saving…':'Save working availability'}</Button>}</div></header>
+        <div className="grid items-start gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
+          <aside className="rounded-xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-3"><label className="text-xs text-slate-400">Find officer<Input value={searchTerm} onChange={event=>setSearchTerm(event.target.value)} placeholder="Rank, name, unit…" className="mt-2 border-slate-600 bg-slate-950 text-white"/></label><div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[70vh]">{officersLoading?<p className="p-3 text-sm">Loading officers…</p>:officersError?<button type="button" onClick={()=>retryOfficers()} className="p-3 text-sm text-cyan-300">Could not load officers. Retry</button>:filteredOfficers.map(officer=><button type="button" key={officer.id} aria-pressed={selectedOfficer===officer.email} onClick={()=>setSelectedOfficer(officer.email)} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-600 aria-pressed:bg-cyan-950"><strong className="block">{rankLast(officer)}</strong><span className="mt-1 block text-xs text-slate-400">{officer.platoon?'Platoon '+officer.platoon:'Command'}{isOutOfOffice(officer)?' · Out of office':''}</span></button>)}</div></aside>
+          <main className="min-w-0 space-y-4">
         {selectedOfficer && <>
+          <section className="rounded-xl border border-cyan-800 bg-cyan-950/20 p-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-bold">{rankLast(selectedOfficerRecord)}</h2><p className="mt-1 text-xs text-slate-400">{selectedOfficerRecord?.platoon ? 'Platoon '+selectedOfficerRecord.platoon : 'Command'} · {selectedOfficerRecord?.unit_number ? 'Unit '+selectedOfficerRecord.unit_number : selectedOfficerRecord?.email}</p></div><span className="rounded-full border border-slate-600 px-3 py-1 text-xs">{isOutOfOffice(selectedOfficerPrivate || selectedOfficerRecord)?'Out of office':'Available'}</span></div>
+            <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(220px,.65fr)]">
+              <AdminOutOfOffice key={[selectedOfficer,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_start,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_return].join(':')} user={selectedOfficerPrivate || selectedOfficerRecord}/>
+              <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-950 p-4"><h3 className="text-sm font-bold text-cyan-200">Automatic acting coverage</h3><p className="text-lg font-bold">{(() => {const profile={...(selectedOfficerPrivate || selectedOfficerRecord),out_of_office:true,out_of_office_start:new Date(Date.now()-1000).toISOString(),out_of_office_return:new Date(Date.now()+60000).toISOString()};const acting=actingCoverage(profile,commandUsers);return acting?rankLast(acting):'No available replacement';})()}</p><p className="text-xs leading-5 text-slate-400">Chosen by platoon and rank. Covers platoon command and assigned site supervision during the absence.</p><div className="border-t border-slate-700 pt-3 text-xs text-slate-300"><strong>Assigned tasks:</strong> held until the return time. Permanent assignments resume automatically.</div></div>
+            </div>
+          </section>
+          <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5">
+            <div className="flex items-center gap-2"><Clock3 className="h-5 w-5 text-emerald-300"/><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-300">Weekly Availability</div><h3 className="text-xl font-black">Approved working windows</h3></div></div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">{DAYS.map(day => { const row = availability[day] || {}; const on = row.available !== false; return <div key={day} className={`rounded-xl border p-3 ${on ? 'border-emerald-800/50 bg-emerald-950/15' : 'border-slate-800 bg-slate-950/30'}`}><div className="flex items-center justify-between"><span className={`text-sm font-black ${on ? 'text-emerald-200' : 'text-slate-500'}`}>{DAY_FULL[day]}</span><Switch checked={on} onCheckedChange={checked => updateDay(day, 'available', checked)}/></div>{on ? <div className="mt-3 space-y-2"><Input type="time" value={row.preferred_start_time || '07:00'} onChange={e => updateDay(day, 'preferred_start_time', e.target.value)} className="h-9 border-slate-700 bg-[#07101b] text-xs text-white"/><Input type="time" value={row.preferred_end_time || '23:00'} onChange={e => updateDay(day, 'preferred_end_time', e.target.value)} className="h-9 border-slate-700 bg-[#07101b] text-xs text-white"/></div> : <div className="mt-4 text-xs text-slate-600">Unavailable</div>}</div>; })}</div>
+          </section>
+          <details className="rounded-xl border border-slate-700 bg-slate-900 p-3"><summary className="cursor-pointer text-sm font-bold text-slate-200">Shift preferences, home address & upcoming assignments</summary><div className="mt-3">
           <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
             <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5">
               <div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Officer Profile</div><h3 className="mt-1 text-xl font-black">{rankLast(selectedOfficerRecord)}</h3></div>{selectedOfficerRecord?.unit_number && <Badge className="bg-blue-500/15 text-blue-200">UNIT {selectedOfficerRecord.unit_number}</Badge>}</div>
@@ -301,16 +266,33 @@ export default function AdminOfficerManagement() {
             </section>
           </div>
 
-          <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5">
-            <div className="flex items-center gap-2"><Clock3 className="h-5 w-5 text-emerald-300"/><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-300">Weekly Availability</div><h3 className="text-xl font-black">Approved working windows</h3></div></div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">{DAYS.map(day => { const row = availability[day] || {}; const on = row.available !== false; return <div key={day} className={`rounded-xl border p-3 ${on ? 'border-emerald-800/50 bg-emerald-950/15' : 'border-slate-800 bg-slate-950/30'}`}><div className="flex items-center justify-between"><span className={`text-sm font-black ${on ? 'text-emerald-200' : 'text-slate-500'}`}>{DAY_FULL[day]}</span><Switch checked={on} onCheckedChange={checked => updateDay(day, 'available', checked)}/></div>{on ? <div className="mt-3 space-y-2"><Input type="time" value={row.preferred_start_time || '07:00'} onChange={e => updateDay(day, 'preferred_start_time', e.target.value)} className="h-9 border-slate-700 bg-[#07101b] text-xs text-white"/><Input type="time" value={row.preferred_end_time || '23:00'} onChange={e => updateDay(day, 'preferred_end_time', e.target.value)} className="h-9 border-slate-700 bg-[#07101b] text-xs text-white"/></div> : <div className="mt-4 text-xs text-slate-600">Unavailable</div>}</div>; })}</div>
-          </section>
+
+
+          </div></details>
 
           <div className="grid gap-5 xl:grid-cols-2">
             <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5"><div className="flex items-center gap-2"><MapPin className="h-5 w-5 text-violet-300"/><h3 className="text-lg font-black">Preferred Locations</h3></div><div className="mt-4 flex flex-wrap gap-2">{locations.map(loc => <button type="button" key={loc.id} onClick={() => toggleLocation(loc.site_name)} className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${preferredLocations.includes(loc.site_name) ? 'border-violet-500 bg-violet-500/15 text-violet-200' : 'border-slate-700 bg-[#07101b] text-slate-400 hover:text-white'}`}>{preferredLocations.includes(loc.site_name) && <Check className="mr-1 inline h-3 w-3"/>}{loc.site_name}</button>)}</div></section>
             <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5"><h3 className="text-lg font-black">Blocked Dates & Notes</h3><div className="mt-4 flex gap-2"><Input type="date" value={newDayOff} onChange={e => setNewDayOff(e.target.value)} className="border-slate-700 bg-[#07101b] text-white"/><Button type="button" onClick={addDayOff}>ADD DATE</Button></div><div className="mt-3 flex flex-wrap gap-2">{daysOff.map(date => <button type="button" key={date} onClick={() => setDaysOff(prev => prev.filter(d => d !== date))} className="rounded-md border border-red-800/50 bg-red-950/20 px-2 py-1 text-xs text-red-200">{date} ×</button>)}</div><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Scheduling notes…" className="mt-4 border-slate-700 bg-[#07101b] text-white"/></section>
           </div>
         </>}
+          </main>
+        </div>
+        <details className="rounded-xl border border-slate-700 bg-slate-900 p-3"><summary className="cursor-pointer text-sm font-bold">Availability approval queue · {pendingRequests.length} pending</summary><div className="mt-3">
+          <section className="rounded-2xl border border-amber-500/20 bg-[#0b1624] p-5 shadow-xl">
+            <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black">Availability Approval Queue</h2></div><Badge className="bg-amber-500/15 text-amber-200">{pendingRequests.length}</Badge></div>
+            <div className="mt-4 space-y-2">
+              {pendingRequests.slice(0,8).map(req => {
+                let snapshot = []; try { snapshot = JSON.parse(req.availability_snapshot || '[]'); } catch {}
+                const officer = officerByEmail.get(normalize(req.officer_email));
+                return <div key={req.id} className="rounded-xl border border-slate-800 bg-[#0d1b2b] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="font-black text-white">{rankLast(officer)}</div><div className="mt-1 text-xs text-slate-500">Submitted {req.requested_at ? new Date(req.requested_at).toLocaleString() : 'recently'}</div></div><div className="flex gap-2"><Button size="sm" onClick={() => reviewAvailabilityRequest(req, true)} className="bg-emerald-600 hover:bg-emerald-500"><CheckCircle2 className="mr-1 h-4 w-4"/>APPROVE</Button><Button size="sm" variant="destructive" onClick={() => reviewAvailabilityRequest(req, false)}><XCircle className="mr-1 h-4 w-4"/>DENY</Button></div></div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">{snapshot.map(day => <span key={day.day_of_week} className={`rounded-md border px-2 py-1 text-[10px] font-bold ${day.available ? 'border-emerald-700/50 bg-emerald-950/30 text-emerald-200' : 'border-red-800/50 bg-red-950/30 text-red-200'}`}>{DAY_LABELS[day.day_of_week]} · {day.available ? `${day.preferred_start_time || '—'}–${day.preferred_end_time || '—'}` : 'Unavailable'}</span>)}</div>
+                </div>;
+              })}
+              {!pendingRequests.length && <div className="rounded-xl border border-dashed border-emerald-800/50 p-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400"/><div className="mt-2 font-black text-emerald-200">Approval queue clear</div><div className="mt-1 text-xs text-slate-500">No officer availability requests are waiting.</div></div>}
+            </div>
+          </section>
+        </div></details>
       </div>
     </div>
   );
