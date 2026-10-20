@@ -38,7 +38,7 @@ export function shiftOverlapsLeave(shift,request){
 export function coveragePool(owner,users,now=Date.now(),qualifies=()=>true){
  const eligible=users.filter(p=>p.id!==owner.id&&employed(p)&&!isOutOfOffice(p,now)&&rank(p)<999&&qualifies(p));
  const platoon=['A','B'].includes(owner.platoon)?owner.platoon:owner.oversight_platoon;
- const same=eligible.filter(p=>platoon&&p.platoon===platoon);
+ const same=eligible.filter(p=>platoon?p.platoon===platoon:rank(owner)<=2&&rank(p)<=2);
  // Prefer peers / next lower rank in their platoon; fall back upward only if necessary.
  let pool=same.filter(p=>rank(p)>=rank(owner));
  if(!pool.length)pool=same.filter(p=>rank(p)<rank(owner));

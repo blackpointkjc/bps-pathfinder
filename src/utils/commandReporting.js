@@ -114,3 +114,8 @@ export function primarySiteReportingChain(references = [], users = []) {
  const chain = siteReportingChains(selected, users)[0];
  return chain?.unresolved ? { ...chain, assignmentRequired: true } : chain;
 }
+
+export function actingCommandLabel(person,users=[]){
+ const covers=users.filter(owner=>owner.id!==person?.id&&isOutOfOffice(owner)&&actingCoverage(owner,users)?.id===person?.id);
+ return covers.map(owner=>'Acting for '+[owner.rank,owner.last_name].filter(Boolean).join(' ')).join(' · ');
+}

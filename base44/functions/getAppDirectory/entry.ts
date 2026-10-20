@@ -150,7 +150,8 @@ Deno.serve(async (req) => {
       return entry.role === 'admin' || [...rs].some((x: unknown) => internalRoles.has(String(x))) || Boolean(r && !['client','student'].includes(r)) || String(entry.employment_status || '').toLowerCase() === 'active';
     };
 
-    directoryUsers.sort((a:any,b:any)=>(Date.parse(a.hire_date)||Infinity)-(Date.parse(b.hire_date)||Infinity)||String(a.id).localeCompare(String(b.id))).forEach((entry:any,index:number)=>entry.command_seniority_order=index);
+    const hireDates=[...new Set(directoryUsers.map((entry:any)=>Date.parse(entry.hire_date)).filter(Number.isFinite))].sort((a:any,b:any)=>a-b);
+    directoryUsers.forEach((entry:any)=>entry.command_seniority_order=Number.isFinite(Date.parse(entry.hire_date))?hireDates.indexOf(Date.parse(entry.hire_date)):Number.MAX_SAFE_INTEGER);
     let users: any[] = [];
     if (fullAccess) {
       users = directoryUsers.map((u: any) => safeUser(u, true));
