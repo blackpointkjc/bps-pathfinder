@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
     if (accountType === 'student_pending' && portalUser && (portalUser.role === 'admin' || (portalUser.additional_roles || []).length > 0)) {
       return Response.json({ error: 'This email already has active portal access. Student invitations cannot replace an assigned account.' }, { status: 409 });
     }
+    if(accountType==='client'&&portalUser&&(portalUser.role==='admin'||(portalUser.additional_roles||[]).includes('full_access')))return Response.json({error:'Administrator employee accounts cannot be converted from client management.'},{status:409});
     let invitationSent = false;
     let invitationError = '';
     let assignmentError = '';

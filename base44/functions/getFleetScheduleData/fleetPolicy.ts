@@ -24,6 +24,7 @@ export async function syncFleet(entities,now=Date.now()){
  for(const shift of validShifts.sort((a,b)=>interval(a)[0]-interval(b)[0]||String(a.id).localeCompare(String(b.id)))){
   const officer=users.find(p=>clean(p.email)===clean(shift.officer_email));
   if(!officer||officer.termination_date)continue;
+  if(assignments.some(row=>row.assignment_source==='manual'&&row.status==='cancelled'&&row.source_schedule_id===shift.id&&row.assignment_date===shift.shift_date&&row.start_time===shift.start_time&&row.end_time===shift.end_time))continue;
   const defaults=vehicles.filter(v=>v.assigned_to===officer.id);
   if(defaults.length!==1){if(defaults.length>1)result.conflicts.push({shift_id:shift.id,officer_name:name(officer),shift_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,reason:'Multiple default vehicles are assigned to this officer.'});continue;}
   const vehicle=defaults[0];

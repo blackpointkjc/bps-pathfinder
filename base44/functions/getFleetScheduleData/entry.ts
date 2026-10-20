@@ -51,7 +51,10 @@ Deno.serve(async (req) => {
       if (!manager) return Response.json({ error: 'Fleet manager access required.' }, { status: 403 });
       const id = String(body.id || '').trim();
       if (!id) return Response.json({ error: 'Assignment id is required.' }, { status: 400 });
-      await base44.asServiceRole.entities.VehicleAssignment.delete(id);
+      const existing=await base44.asServiceRole.entities.VehicleAssignment.get(id);
+      if(existing?.assignment_source==='officer_default'){
+       await base44.asServiceRole.entities.VehicleAssignment.update(id,{assignment_source:'manual',status:'cancelled',notes:'Default vehicle explicitly removed for this shift.'});
+      }else await base44.asServiceRole.entities.VehicleAssignment.delete(id);
       return Response.json({ success: true, deleted: id });
     }
 

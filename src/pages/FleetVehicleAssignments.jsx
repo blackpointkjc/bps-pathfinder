@@ -50,6 +50,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
   const [showNewAssignment, setShowNewAssignment] = useState(editorOnly);
+  const [editingManual,setEditingManual]=useState('');
   const [savingManual, setSavingManual] = useState(false);
   const [manualForm, setManualForm] = useState(() => ({ assignment_date: weekStart||format(new Date(), 'yyyy-MM-dd'), start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' }));
 
@@ -208,7 +209,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
     if (!primary?.email) return alert('Select a primary officer.');
     if (!manualForm.assignment_date || !manualForm.start_time || !manualForm.end_time) return alert('Date, start time, and end time are required.');
     const conflict = assignments.find(a =>
-      String(a.vehicle_id) === String(vehicle.id)
+      a.id!==editingManual && String(a.vehicle_id) === String(vehicle.id)
       && String(a.assignment_date || '').slice(0, 10) === manualForm.assignment_date
       && String(a.status || '').toLowerCase() !== 'cancelled'
       && overlaps(a.start_time, a.end_time, manualForm.start_time, manualForm.end_time)
@@ -220,6 +221,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
       const response = await base44.functions.invoke('getFleetScheduleData', {
         action: 'save',
         assignment: {
+          id:editingManual||undefined,
           assignment_date: manualForm.assignment_date,
           start_time: manualForm.start_time,
           end_time: manualForm.end_time,
@@ -234,7 +236,8 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
       const result = response?.data || response || {};
       if (result.error) throw new Error(result.error);
       setManualForm({ assignment_date: manualForm.assignment_date, start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' });
-      setShowNewAssignment(false);
+      setEditingManual('');
+      setShowNewAssignment(editorOnly);
       await qc.invalidateQueries({ queryKey: ['fleetScheduleData'] });
       await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
       await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
@@ -284,7 +287,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
         <div><Label>Partner Officer (optional)</Label><Select value={manualForm.partner_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,partner_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="No partner"/></SelectTrigger><SelectContent><SelectItem value="none">No partner</SelectItem>{users.filter(person=>person?.email&&person.email!==manualForm.primary_officer_email&&!person?.termination_date).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.first_name,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
         <div><Label>Location</Label><Select value={manualForm.location || 'none'} onValueChange={value=>setManualForm({...manualForm,location:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select location"/></SelectTrigger><SelectContent><SelectItem value="none">No specific location</SelectItem>{locations.map(location=><SelectItem key={location.id} value={location.site_name}>{location.site_name}</SelectItem>)}</SelectContent></Select></div>
         <div className="xl:col-span-2"><Label>Notes</Label><Input value={manualForm.notes} onChange={e=>setManualForm({...manualForm,notes:e.target.value})} placeholder="Optional fleet notes" className="border-slate-700 bg-slate-950"/></div>
-        <div className="flex items-end gap-2 xl:col-span-4"><Button onClick={saveManualAssignment} disabled={savingManual} className="bg-amber-600 text-slate-950 hover:bg-amber-500">{savingManual?'SAVING…':'CREATE ASSIGNMENT'}</Button><Button variant="outline" onClick={()=>setShowNewAssignment(false)}>CANCEL</Button></div>
+        <div className="flex items-end gap-2 xl:col-span-4"><Button onClick={saveManualAssignment} disabled={savingManual} className="bg-amber-600 text-slate-950 hover:bg-amber-500">{savingManual?'SAVING…':editingManual?'UPDATE ASSIGNMENT':'CREATE ASSIGNMENT'}</Button><Button variant="outline" onClick={()=>{setEditingManual('');setShowNewAssignment(false);}}>CANCEL</Button></div>
       </CardContent></Card>}
 
       {fleetError && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. The last verified vehicle list is retained while Pathfinder retries.</div>}
@@ -343,6 +346,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
           })}
         </div>
       </div>}
+      {editorOnly&&<section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Vehicle reservations this week</h3><Button type="button" size="sm" variant="outline" onClick={()=>{setEditingManual('');setManualForm({assignment_date:weekStart||format(new Date(),'yyyy-MM-dd'),start_time:'18:00',end_time:'06:00',vehicle_id:'',primary_officer_email:'',partner_officer_email:'',location:'',notes:''});setShowNewAssignment(true);}}>New reservation</Button></div><div className="mt-3 divide-y divide-slate-700">{assignments.filter(row=>row.status!=='cancelled'&&(!weekStart||row.assignment_date>=weekStart&&row.assignment_date<=format(addDays(new Date(weekStart+'T12:00:00'),6),'yyyy-MM-dd'))).map(row=><div key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><strong className="text-sm">{row.vehicle_label} · {getName(row.primary_officer_email)}</strong><p className="mt-1 text-xs text-slate-400">{row.assignment_date} · {row.start_time}–{row.end_time} · {row.location||'No site specified'}</p></div>{isAdmin&&row.status==='scheduled'&&<div className="flex gap-3 text-xs"><button type="button" className="text-cyan-200" onClick={()=>{setEditingManual(row.id);setManualForm({...row,notes:row.notes||'',partner_officer_email:row.partner_officer_email||''});setShowNewAssignment(true);}}>Edit</button><button type="button" className="text-red-300" onClick={()=>removeAssignment({officer_email:row.primary_officer_email,id:row.id},row).catch(error=>toast.error(error.message))}>Remove</button></div>}</div>)}</div></section>}
     </div>
   </div>;
 }
