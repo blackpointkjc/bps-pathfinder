@@ -139,9 +139,13 @@ Deno.serve(async (req) => {
       const request = (all || []).find((entry: any) => entry.id === request_id);
       if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
 
-      if (request.status !== 'pending') return Response.json({error:'This request has already been reviewed; refresh before making another decision'},{status:409});
+      const retryingApproval=status==='approved'&&request.status==='approved'&&request.approval_sync_complete===false;
+      if (request.status !== 'pending'&&!retryingApproval) return Response.json({error:'This request has already been reviewed; refresh before making another decision'},{status:409});
+      const approvalOfficer=await base44.asServiceRole.entities.User.filter({email:request.requested_by_email||request.created_by},undefined,1);
+      if(status==='approved'&&request.request_type==='paid'&&!retryingApproval&&Number(request.hours_requested||0)>Number(approvalOfficer[0]?.pto_balance_hours||0))return Response.json({error:'Current PTO balance is insufficient. Review requested hours before approval.'},{status:409});
       await base44.asServiceRole.entities.TimeOffRequest.update(request_id, {
         status,
+        ...(status==='approved'?{approval_sync_complete:false}:{}),
         admin_notes,
         reviewed_by: user.email,
         reviewed_date: new Date().toISOString(),
@@ -189,8 +193,9 @@ Deno.serve(async (req) => {
           openedShifts += 1;
         }
       }
-      if (officerEmail) {
+      if (officerEmail && !(await base44.asServiceRole.entities.Notification.filter({event_key:'pto-decision:'+request.id+':'+status},'-created_date',1)).length) {
         await base44.asServiceRole.entities.Notification.create({
+          event_key:'pto-decision:'+request.id+':'+status,
           recipient_email: String(officerEmail).toLowerCase(),
           type: 'schedule_changed',
           title: `Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}`,
@@ -204,7 +209,8 @@ Deno.serve(async (req) => {
       }
       if (status === 'approved') {
         const admins = (users || []).filter(entry => entry.role === 'admin' || normalizeRoles(entry).has('full_access'));
-        for (const admin of admins) if (admin.email) await base44.asServiceRole.entities.Notification.create({
+        for (const admin of admins) if (admin.email && !(await base44.asServiceRole.entities.Notification.filter({event_key:'pto-admin:'+request.id+':'+admin.id},'-created_date',1)).length) await base44.asServiceRole.entities.Notification.create({
+          event_key:'pto-admin:'+request.id+':'+admin.id,
           recipient_email:String(admin.email).toLowerCase(),type:'schedule_changed',
           title:'Approved leave — scheduling coverage',
           message:`${[(users || []).find(entry => String(entry.email || '').toLowerCase() === String(officerEmail || '').toLowerCase())?.rank,(users || []).find(entry => String(entry.email || '').toLowerCase() === String(officerEmail || '').toLowerCase())?.last_name].filter(Boolean).join(' ') || 'Officer ' + String(request.requested_by_name || 'unavailable').split(/\s+/).pop()} is approved off ${request.start_date} through ${request.end_date}. ${openedShifts} shift(s) moved to Open Shifts. Review open shifts in Scheduling.`,
@@ -212,6 +218,7 @@ Deno.serve(async (req) => {
         }).catch(error => console.warn('Leave scheduling notification failed',error?.message));
       }
       const coverage = status==='approved' ? await reconcileAbsences(base44.asServiceRole.entities) : null;
+      if(status==='approved')await base44.asServiceRole.entities.TimeOffRequest.update(request.id,{approval_sync_complete:true});
       return Response.json({ success: true, coverage, opened_shifts: openedShifts, start_date:request.start_date, end_date:request.end_date });
     }
 

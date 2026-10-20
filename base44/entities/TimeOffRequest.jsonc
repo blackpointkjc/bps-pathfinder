@@ -88,6 +88,10 @@
     },
     "time_zone": {
       "type": "string"
+    },
+    "approval_sync_complete": {
+      "type": "boolean",
+      "description": "Approval side effects completed; false permits a safe approval retry"
     }
   },
   "required": [
