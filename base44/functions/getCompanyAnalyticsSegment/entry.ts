@@ -203,10 +203,17 @@ Deno.serve(async (req) => {
     const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date || '')) ? String(body.start_date) : defaultStart;
     const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : defaultEnd;
     if (startDate > endDate) return Response.json({ error:'Start date must be on or before end date.' }, { status:400 });
-    const activityCutoff = `${startDate}T00:00:00.000Z`;
+    const easternMidnight = (day:string) => {
+      const offset = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(day+'T12:00:00Z')).find(p=>p.type==='timeZoneName')!.value.replace('GMT','');
+      return new Date(day+'T00:00:00'+(offset ? (offset.startsWith('-')?'-':'+')+offset.slice(1).padStart(2,'0')+':00' : 'Z')).toISOString();
+    };
+    const hoursStartDate = new Date(startDate+'T12:00:00Z');
+    hoursStartDate.setUTCDate(hoursStartDate.getUTCDate()-(hoursStartDate.getUTCDay()+2)%7);
+    const hoursStart = easternMidnight(hoursStartDate.toISOString().slice(0,10));
+    const activityCutoff = easternMidnight(startDate);
     const endExclusive = new Date(`${endDate}T00:00:00.000Z`);
     endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
-    const activityEndExclusive = endExclusive.toISOString();
+    const activityEndExclusive = easternMidnight(endExclusive.toISOString().slice(0,10));
 
     const getUsers = () => cachedRows('users', 30 * 1000, () => entity('User').list('-updated_date', 1000));
 
@@ -214,7 +221,14 @@ Deno.serve(async (req) => {
       const [users, divisions, timeEntries, schedules, incidentReports] = await Promise.all([
         safe('User', getUsers),
         safe('Division', () => cachedRows('divisions', 60 * 1000, () => entity('Division').list('division_name', 500))),
-        filter('TimeEntry', { clock_in: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-clock_in', 2000),
+        safe('TimeEntry', async () => {
+          const rows:any[]=[];
+          for(let skip=0;skip<20000;skip+=1000){
+            const page=await entity('TimeEntry').filter({clock_in:{$lt:activityEndExclusive},$or:[{clock_out:{$gte:hoursStart}},{clock_out:null}]},'clock_in',1000,skip);
+            rows.push(...page);if(page.length<1000)return rows;
+          }
+          throw new Error('Time-entry report exceeds 20,000 rows. Select a shorter period.');
+        }),
         filter('Schedule', { shift_date: { $gte: startDate, $lte: endDate } }, '-shift_date', 2000),
         filter('IncidentReport', { incident_date: { $gte: startDate, $lte: endDate } }, '-incident_date', 1500),
       ]);

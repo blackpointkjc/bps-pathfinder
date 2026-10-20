@@ -1,3 +1,4 @@
+import { calculateCompanyHours } from '@/lib/companyHours';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useState, useMemo } from "react";
@@ -513,72 +514,9 @@ export default function AdminAnalytics() {
     return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, onTimeCount: totalOnTime, scoredCount: totalEntries, byOfficer, leaderboard };
   }, [coreAnalytics.data, selectedDivision, currentMonthStart, currentMonthEnd]);
 
-  const hoursBreakdown = useMemo(() => {
-    if (!timeEntries || !filteredUsers) return [];
-
-    const monthStart = currentMonthStart;
-    const monthEnd = currentMonthEnd;
-
-    const officerHours = {};
-
-    filteredUsers.forEach(officer => {
-      officerHours[emailKey(officer.email)] = { 
-        name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
-        regular: 0,
-        overtime: 0,
-        weeks: {}
-      };
-    });
-
-    // Calculate hours from actual completed time entries, deducting recorded breaks.
-    timeEntries.forEach(entry => {
-      const key = emailKey(entry.officer_email);
-      if (!entry.clock_in || !entry.clock_out || !officerHours[key] || !Number.isFinite(new Date(entry.clock_in).getTime()) || !Number.isFinite(new Date(entry.clock_out).getTime())) return;
-      
-      const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      if (clockInDate < monthStart || clockInDate > monthEnd) return;
-
-      const clockIn = parseISO(entry.clock_in);
-      const clockOut = parseISO(entry.clock_out);
-      const hours = Math.max(0, (differenceInMinutes(clockOut, clockIn) - breakMinutes(entry)) / 60);
-
-      // Calculate week key (Friday start)
-      const date = parseISO(clockInDate);
-      const dayOfWeek = date.getDay();
-      const daysSinceFriday = (dayOfWeek + 2) % 7;
-      const weekStart = new Date(date);
-      weekStart.setDate(weekStart.getDate() - daysSinceFriday);
-      const weekKey = format(weekStart, 'yyyy-MM-dd');
-
-      if (!officerHours[key].weeks[weekKey]) {
-        officerHours[key].weeks[weekKey] = 0;
-      }
-      officerHours[key].weeks[weekKey] += hours;
-    });
-
-    // Calculate regular and overtime per week
-    Object.keys(officerHours).forEach(email => {
-      Object.values(officerHours[email].weeks).forEach(weekHours => {
-        if (weekHours > 40) {
-          officerHours[email].regular += 40;
-          officerHours[email].overtime += weekHours - 40;
-        } else {
-          officerHours[email].regular += weekHours;
-        }
-      });
-    });
-
-    return Object.entries(officerHours)
-      .map(([email, data]) => ({
-        name: data.name,
-        email,
-        regular: Math.round(data.regular * 10) / 10,
-        overtime: Math.round(data.overtime * 10) / 10,
-        total: Math.round((data.regular + data.overtime) * 10) / 10
-      }))
-      .filter(o => o.total > 0)
-      .sort((a, b) => b.total - a.total);
-  }, [timeEntries, filteredUsers, currentMonthStart, currentMonthEnd]);
+  const hoursBreakdown = useMemo(() => calculateCompanyHours(
+    timeEntries, filteredUsers, currentMonthStart, currentMonthEnd
+  ), [timeEntries, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const trainingByOfficer = useMemo(() => {
     if (!trainingCompletions || !allTraining || !filteredUsers) return [];
