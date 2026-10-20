@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, CalendarDays, Check, CheckCircle2, Clock3, MapPin, Save, Search, Shield, UserCheck, XCircle } from 'lucide-react';
+import { CalendarDays, Check, CheckCircle2, Clock3, MapPin, Shield, XCircle } from 'lucide-react';
 import { invalidateAppDirectory, listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { createPageUrl } from '@/utils';
@@ -90,8 +90,6 @@ export default function AdminOfficerManagement() {
     return day && day >= today && day <= endWindow && s.archived !== true;
   }), [schedules, today, endWindow]);
   const openShifts = useMemo(() => upcomingSchedules.filter(s => s.is_open === true || ['open', 'unassigned'].includes(normalize(s.officer_email))), [upcomingSchedules]);
-  const assignedUpcoming = useMemo(() => upcomingSchedules.filter(s => !openShifts.includes(s)), [upcomingSchedules, openShifts]);
-  const officersWithoutAvailability = useMemo(() => activeOfficers.filter(o => !(allAvailability || []).some(a => normalize(a.officer_email) === normalize(o.email))), [activeOfficers, allAvailability]);
 
   const filteredOfficers = useMemo(() => activeOfficers.filter(o => {
     const hay = `${rankLast(o)} ${o.unit_number || ''}`.toLowerCase();
