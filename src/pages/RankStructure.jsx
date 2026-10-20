@@ -92,14 +92,14 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
 }
 
 export default function RankStructure(){
- useAvailabilityClock();
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();
   const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers('last_name',1000),staleTime:10*60*1000,refetchOnWindowFocus:false,placeholderData:previous=>previous});
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
-  const active=useMemo(()=>users.filter(isOperational).sort(comparePersonnel),[users]);
+  const availabilityTick=useAvailabilityClock();
+  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person)).sort(comparePersonnel),[users,availabilityTick]);
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">

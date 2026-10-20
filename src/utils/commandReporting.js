@@ -1,5 +1,11 @@
 import { isOutOfOffice } from './outOfOffice.js';
-import { comparePersonnel, normalizeRank, rankLevel } from './rankPolicy.js';
+import { comparePersonnel as stablePersonnelOrder, normalizeRank, rankLevel } from './rankPolicy.js';
+export const compareCommandPersonnel = (a,b) => {
+ const hired = p => Number.isFinite(Date.parse(p?.hire_date)) ? Date.parse(p.hire_date) : Infinity;
+ const order = (hired(a)-hired(b)) || (Number.isFinite(a?.command_seniority_order)&&Number.isFinite(b?.command_seniority_order) ? a.command_seniority_order-b.command_seniority_order : 0);
+ return rankLevel(a?.rank)-rankLevel(b?.rank) || order || stablePersonnelOrder(a,b);
+};
+const comparePersonnel=compareCommandPersonnel;
 export const COMMAND_TIERS = ['Colonel', 'Lt Colonel', 'Major'];
 export const commandRank = person => {
   const rank = String(person?.rank || '').trim();

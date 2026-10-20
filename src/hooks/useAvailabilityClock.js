@@ -5,7 +5,7 @@ import { invalidateAppDirectory } from '@/lib/appDirectory';
 
 // Re-evaluate scheduled departures/returns without requiring a page reload.
 export function useAvailabilityClock() {
- const [, tick] = useState(0);
+ const [availabilityTick, tick] = useState(0);
  const queryClient = useQueryClient();
  useEffect(() => {
   const timer = window.setInterval(() => tick(value => value + 1), 30000);
@@ -19,4 +19,5 @@ export function useAvailabilityClock() {
   } catch {}
   return () => { window.clearInterval(timer); if (typeof unsubscribe === 'function') unsubscribe(); };
  }, [queryClient]);
+ return availabilityTick;
 }

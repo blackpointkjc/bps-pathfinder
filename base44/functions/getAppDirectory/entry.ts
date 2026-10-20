@@ -45,6 +45,9 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
   if (full) return entry;
   return {
     id: entry.id,
+    approved_leave_windows: entry.approved_leave_windows || [],
+    out_of_office_source: entry.out_of_office_source || '',
+    command_seniority_order: entry.command_seniority_order,
     out_of_office: entry.out_of_office === true,
     out_of_office_start: entry.out_of_office_start || '',
     out_of_office_return: entry.out_of_office_return || '',
@@ -147,6 +150,7 @@ Deno.serve(async (req) => {
       return entry.role === 'admin' || [...rs].some((x: unknown) => internalRoles.has(String(x))) || Boolean(r && !['client','student'].includes(r)) || String(entry.employment_status || '').toLowerCase() === 'active';
     };
 
+    directoryUsers.sort((a:any,b:any)=>(Date.parse(a.hire_date)||Infinity)-(Date.parse(b.hire_date)||Infinity)||String(a.id).localeCompare(String(b.id))).forEach((entry:any,index:number)=>entry.command_seniority_order=index);
     let users: any[] = [];
     if (fullAccess) {
       users = directoryUsers.map((u: any) => safeUser(u, true));

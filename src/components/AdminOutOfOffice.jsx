@@ -24,7 +24,7 @@ export default function AdminOutOfOffice({ user }) {
    if (clear) setEnabled(false);
    invalidateAppDirectory();
    await queryClient.invalidateQueries();
-   setMessage(clear ? 'Returned to office. Tasks and permanent command assignments resume.' : 'Availability saved. Assigned tasks are held during the absence; acting coverage ends at the return time.');
+   setMessage(clear ? 'Returned to office. Unfinished duties and permanent command assignments resume. Active approved leave remains in effect.' : 'Availability saved. Temporary coverage is synchronized automatically and ends at the return time.');
   } catch(error) { setMessage(error?.message || 'Could not save availability.'); }
   finally { setBusy(false); }
  };
@@ -35,7 +35,7 @@ export default function AdminOutOfOffice({ user }) {
    <label className="text-sm">Starts<input type="datetime-local" value={start} onChange={event=>setStart(event.target.value)} className="mt-1 block w-full rounded border border-slate-600 bg-slate-950 p-2 text-white" /></label>
    <label className="text-sm">Returns<input type="datetime-local" value={end} onChange={event=>setEnd(event.target.value)} className="mt-1 block w-full rounded border border-slate-600 bg-slate-950 p-2 text-white" /></label>
   </div>
-  <p className="text-xs">Times use your device’s timezone. Assigned tasks stay with this user and are held until return. Acting coverage is selected automatically from their platoon by rank. The next available lower rank covers first; if none is available, coverage moves to the nearest higher rank in the platoon, then its supervising command. No replacement needs to be selected.</p>
+  <p className="text-xs">Times use your device’s timezone. Eligible unfinished duties are temporarily reassigned; unfinished work returns when the absence ends. Acting coverage is selected automatically from their platoon by rank. The highest available eligible rank in the platoon covers first, with earliest hire date breaking ties. Duties are shared among that rank; supervising command covers when no platoon member is eligible. No replacement needs to be selected.</p>
   <div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={()=>save()} className="rounded bg-blue-700 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">Save availability</button><button type="button" disabled={busy} onClick={()=>save(true)} className="rounded border border-slate-500 px-3 py-2 text-sm">Return now</button></div>
   {message && <p role="status" className="text-sm">{message}</p>}
  </section>;
