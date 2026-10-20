@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getRankLastName } from "@/utils/officerDisplay";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
-export default function AdminSpecialRequests({ embedded=false }) {
+export default function AdminSpecialRequests() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState("");
@@ -173,23 +173,23 @@ export default function AdminSpecialRequests({ embedded=false }) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
-        <p className="text-slate-600">You don't have permission to view this page.</p>
+        <h2 className="text-2xl font-bold text-slate-100 mb-2">Admin Access Required</h2>
+        <p className="text-slate-400">You don't have permission to view this page.</p>
       </div>
     );
   }
 
   const RequestCard = ({ req }) => (
-    <div className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow">
+    <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-white">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold text-slate-900">{req.location}</h3>
+            <h3 className="font-bold text-slate-100">{req.location}</h3>
             <Badge className={getStatusColor(req.status)}>
               {req.status.toUpperCase()}
             </Badge>
           </div>
-          <p className="text-sm text-slate-600 mb-2">{req.reason}</p>
+          <p className="text-sm text-slate-400 mb-2">{req.reason}</p>
           <p className="text-xs text-slate-500">
             Requested by: {getClientName(req.created_by)} on {format(new Date(req.created_date), 'MMM d, yyyy h:mm a')}
           </p>
@@ -197,20 +197,20 @@ export default function AdminSpecialRequests({ embedded=false }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-400">
           <Calendar className="w-4 h-4" />
           <span>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d')}</span>
         </div>
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-400">
           <Clock className="w-4 h-4" />
           <span>{req.shift_times}</span>
         </div>
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-400">
           <Users className="w-4 h-4" />
           <span>{req.officers_needed} officer{req.officers_needed > 1 ? 's' : ''}</span>
         </div>
         {req.special_requirements && (
-          <div className="flex items-center gap-2 text-slate-600">
+          <div className="flex items-center gap-2 text-slate-400">
             <AlertTriangle className="w-4 h-4" />
             <span className="text-xs">{req.special_requirements}</span>
           </div>
@@ -318,7 +318,7 @@ export default function AdminSpecialRequests({ embedded=false }) {
           <Shield className="w-8 h-8 text-amber-600" />
           <div>
             <h1 className="text-3xl font-black text-white">Special Coverage Requests</h1>
-            <p className="text-slate-600">Review and schedule client special coverage requests</p>
+            <p className="text-slate-400">Review and schedule client special coverage requests</p>
           </div>
         </div>
 
