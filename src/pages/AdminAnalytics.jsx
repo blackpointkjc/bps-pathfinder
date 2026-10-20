@@ -99,7 +99,7 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
     refetchInterval: Math.max(config?.interval || 5 * 60 * 1000, 5 * 60 * 1000),
     refetchIntervalInBackground: false,
     retry: false,
-    placeholderData: previousData => previousData,
+    placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === startDate && previousQuery?.queryKey?.[3] === endDate ? previousData : undefined,
   });
 }
 

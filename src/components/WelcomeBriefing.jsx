@@ -164,7 +164,7 @@ export default function WelcomeBriefing({ user }) {
       if (!active || recoveryAttempts >= 3) return;
       window.clearTimeout(recoveryTimer);
       recoveryAttempts += 1;
-      recoveryTimer = window.setTimeout(load, Math.max(60000, retryAt - Date.now()) + Math.random() * 15000);
+      recoveryTimer = window.setTimeout(load, Math.max(10000, retryAt - Date.now()) + Math.random() * 3000);
     };
     const load = async () => {
       const failedSources = [];
@@ -250,7 +250,29 @@ export default function WelcomeBriefing({ user }) {
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
-        setBrief(previous => ({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, tasks: pendingTasks, propertyAlerts: propertySourceFailed ? previous.propertyAlerts : offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], allLiveOfficers: allLiveOfficers || [], todaySchedules: relevantCompanySchedules, activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] }));
+        setBrief(previous => {
+          const failed = (...labels) => labels.some(label => sourceErrors.includes(label));
+          return {
+            messages: failed('Teams messages') ? previous.messages : messages || [],
+            mentions: failed('Teams mentions') ? previous.mentions : mentions || [],
+            announcements: failed('announcements','announcement receipts') ? previous.announcements : unseenAnnouncements,
+            updates: failed('notifications') ? previous.updates : otherUpdates,
+            appUpdates: failed('notifications') ? previous.appUpdates : appUpdates,
+            tasks: failed('assigned tasks') ? previous.tasks : pendingTasks,
+            propertyAlerts: propertySourceFailed ? previous.propertyAlerts : offlineAlerts,
+            liveUser: failed('company users') ? previous.liveUser : liveUser,
+            unit: failed('your live duty session','CAD units') ? previous.unit : unit,
+            shift: failed("today's schedule") ? previous.shift : shift,
+            vehicle: failed('vehicle assignments') ? previous.vehicle : vehicle,
+            override: failed('status overrides') ? previous.override : override,
+            allUsers: failed('company users') ? previous.allUsers : allUsers || [],
+            allUnits: failed('CAD units') ? previous.allUnits : allUnits || [],
+            allLiveOfficers: failed('live officer sessions') ? previous.allLiveOfficers : allLiveOfficers || [],
+            todaySchedules: failed("today's schedule") ? previous.todaySchedules : relevantCompanySchedules,
+            activeTimeEntries: failed('active staffing/time entries') ? previous.activeTimeEntries : activeTimeEntries,
+            todayVehicleAssignments: failed('vehicle assignments') ? previous.todayVehicleAssignments : vehicleAssignments || []
+          };
+        });
         setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
         if (sourceErrors.length) scheduleRecovery(Number(snapshot.retry_after || 0));
         else window.clearTimeout(recoveryTimer);

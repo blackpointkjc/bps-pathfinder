@@ -16,12 +16,11 @@ export async function readBriefingSource(key, loader) {
     // If recovery is active, use a recently confirmed value rather than claiming
     // an empty source. For a source without a valid snapshot, retry normally.
     if (pausedUntil > Date.now() && hit?.staleUntil > Date.now()) return hit.value;
-    // Do not serialize unrelated briefing sources behind a 15-second cooldown.
-    // Surface the failed source and let the next scheduled snapshot recover.
-    if (pausedUntil > Date.now() && !hit) throw new Error('Briefing source rate limited; retry later');
-    await sleep(Math.max(0, nextStart - Date.now()));
+    // A throttle on one entity must not manufacture failures for every other
+    // entity. Wait once at the shared queue boundary, then actually read it.
+    await sleep(Math.max(0, nextStart - Date.now(), pausedUntil - Date.now()));
     nextStart = Date.now() + 180;
-    for (let attempt = 0; attempt < 1; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const value = await loader();
         cache.set(key, { value, freshUntil: Date.now() + 90000, staleUntil: Date.now() + 10 * 60000 });
@@ -40,6 +39,10 @@ export async function readBriefingSource(key, loader) {
         const waitMs = Number.isFinite(serverRetryAt) && serverRetryAt > Date.now() ? Math.min(serverRetryAt - Date.now(), 30000) : 3000;
         pausedUntil = Math.max(pausedUntil, Date.now() + waitMs);
         if (hit?.staleUntil > Date.now()) return hit.value;
+        if (attempt === 0) {
+          await sleep(Math.max(0, pausedUntil - Date.now()));
+          continue;
+        }
         throw error;
       }
     }
