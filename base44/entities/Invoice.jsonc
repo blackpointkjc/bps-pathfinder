@@ -152,6 +152,10 @@
       "type": "string",
       "format": "date",
       "description": "Date invoice was paid"
+    },
+    "time_zone": {
+      "type": "string",
+      "description": "IANA property service timezone captured when the invoice is generated."
     }
   },
   "required": [

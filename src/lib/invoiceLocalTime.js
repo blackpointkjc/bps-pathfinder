@@ -7,7 +7,7 @@ export function invoiceTimeZone(invoice,locations=[]){
 }
 export function invoiceCalendarDate(value){
  // Contract/billing dates are calendar days, not UTC-midnight instants.
- const raw=String(value||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return '—';
+ const raw=String(value||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return value?String(value):'—';
  const date=new Date(raw+'T12:00:00Z');
  return Number.isFinite(date.getTime())?date.toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}):'—';
 }

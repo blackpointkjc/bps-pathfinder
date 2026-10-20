@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
 
     if (action === 'payroll_decision') {
       if (!hasPayrollAuthority) {
-        return Response.json({ error: 'HR or administrator access is required for payroll decisions' }, { status: 403 });
+        return Response.json({ error: 'Colonel Hiers accounting access is required for payroll decisions' }, { status: 403 });
       }
       if (!body.id) return Response.json({ error: 'Time entry ID is required' }, { status: 400 });
 
