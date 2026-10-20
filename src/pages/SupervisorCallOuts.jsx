@@ -1,3 +1,4 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
@@ -18,6 +19,10 @@ import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirector
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorCallOuts() {
+  const [callSearch,setCallSearch]=useState('');
+  const [callType,setCallType]=useState('all');
+  const [callStart,setCallStart]=useState('');
+  const [callEnd,setCallEnd]=useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [formData, setFormData] = useState({
     officer_email: "",
@@ -73,14 +78,14 @@ export default function SupervisorCallOuts() {
 
   const { data: scheduledShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery({
     queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
-    queryFn: async () => { const rows = await base44.entities.Schedule.list('-shift_date', 5000); return (rows || []).filter(shift => String(shift.officer_email || '').trim().toLowerCase() === String(formData.officer_email || '').trim().toLowerCase() && String(shift.shift_date || '').slice(0,10) === formData.call_out_date); },
+    queryFn: async () => { const rows = await base44.entities.Schedule.filter({officer_email:formData.officer_email,shift_date:formData.call_out_date},'start_time',250); return (rows || []).filter(shift => String(shift.officer_email || '').trim().toLowerCase() === String(formData.officer_email || '').trim().toLowerCase() && String(shift.shift_date || '').slice(0,10) === formData.call_out_date); },
     enabled: Boolean(formData.officer_email && formData.call_out_date),
     initialData: [],
   });
   const availableShifts = scheduledShifts.filter(shift => shift.archived !== true && !shift.is_open);
   const selectedShift = availableShifts.find(shift => shift.id === formData.shift_id);
 
-  const { data: callOuts } = useQuery({
+  const { data: callOuts=[],error:callOutError,isPending:callOutLoading,refetch:refreshCallOuts } = useQuery({
     queryKey: ['callOuts'],
     queryFn: () => base44.entities.CallOut.list('-call_out_date'),
     initialData: [],
@@ -148,109 +153,34 @@ export default function SupervisorCallOuts() {
 
   const officers = allUsers.filter(isOperationalOfficer);
 
-  const recentCallOuts = callOuts.slice(0, 50);
+  const recentCallOuts = callOuts.filter(row=>(callType==='all'||row.call_out_type===callType)&&(!callStart||row.call_out_date>=callStart)&&(!callEnd||row.call_out_date<=callEnd)&&[calloutName(row.officer_email,row.officer_name),row.location,row.original_location,row.destination_location,row.reason].join(' ').toLowerCase().includes(callSearch.toLowerCase()));
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="p-4 md:p-6 min-h-full bg-[#080f1b] text-white">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Call-Out Management</h1>
-            <p className="text-slate-600">Document officer call-outs and early dismissals</p>
-          </div>
-          <Button onClick={() => setShowDialog(true)} className="w-full bg-red-600 hover:bg-red-700 sm:w-auto">
-            <Plus className="w-4 h-4 mr-2" />
-            Document Call-Out
-          </Button>
+        <WorkspaceHeader eyebrow="Command / Attendance" title="Call-Out Management" description="Record missed shifts, early dismissals and reassignments against the officer’s scheduled post." metrics={[
+          {label:'Records shown',value:recentCallOuts.length},{label:'Called out',value:recentCallOuts.filter(c=>c.call_out_type==='called_out').length},{label:'Reassignments',value:recentCallOuts.filter(c=>c.call_out_type==='reassigned').length}
+        ]}><Button variant="outline" onClick={()=>refreshCallOuts()}>Refresh</Button><Button onClick={()=>setShowDialog(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>Record attendance change</Button></WorkspaceHeader>
+        <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="text-xs text-slate-400">Search records<Input aria-label="Search call-outs" value={callSearch} onChange={e=>setCallSearch(e.target.value)} placeholder="Officer, unit, property or reason" className="mt-1 bg-slate-950"/></label>
+          <label className="text-xs text-slate-400">Attendance event<select aria-label="Call-out event type" value={callType} onChange={e=>setCallType(e.target.value)} className="mt-1 h-10 w-full rounded border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All events</option><option value="called_out">Called out</option><option value="sent_home">Sent home / early dismissal</option><option value="reassigned">Reassignment</option></select></label>
+          <label className="text-xs text-slate-400">From<Input type="date" value={callStart} onChange={e=>setCallStart(e.target.value)} className="mt-1 bg-slate-950"/></label>
+          <label className="text-xs text-slate-400">Through<Input type="date" min={callStart} value={callEnd} onChange={e=>setCallEnd(e.target.value)} className="mt-1 bg-slate-950"/></label>
+        </div>
+        {callOutError&&<p role="alert" className="rounded-xl border border-red-700 bg-red-950 p-4 text-red-200">Attendance records could not load: {callOutError.message}</p>}
+        <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900">
+          <table className="w-full text-left text-sm"><thead className="bg-slate-950 text-xs uppercase text-slate-400"><tr><th className="p-4">Officer / Date</th><th className="p-4">Event</th><th className="p-4">Shift / Property</th><th className="p-4">Reason / Recorded by</th></tr></thead><tbody className="divide-y divide-slate-700">{recentCallOuts.map(row=><tr key={row.id} className="align-top hover:bg-slate-800/60">
+            <td className="p-4"><strong className="block text-white">{calloutName(row.officer_email,row.officer_name)}</strong><span className="mt-1 block text-xs text-slate-400">{String(row.call_out_date||'').slice(0,10)} · {row.call_out_time}</span></td>
+            <td className="p-4"><span className={'inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs '+(row.call_out_type==='called_out'?'bg-red-950 text-red-200':row.call_out_type==='reassigned'?'bg-cyan-950 text-cyan-200':'bg-amber-950 text-amber-200')}>{row.call_out_type==='called_out'?'Called out':row.call_out_type==='reassigned'?'Reassigned':'Early dismissal'}</span>{row.affects_pto&&<p className="mt-2 text-xs text-slate-400">No PTO accrual</p>}</td>
+            <td className="p-4 text-slate-300">{row.original_location||row.location||'Not recorded'}{row.destination_location&&<p className="mt-1 text-cyan-200">→ {row.destination_location}</p>}</td>
+            <td className="max-w-lg p-4"><p className="text-slate-200">{row.reason||'Not recorded'}</p><p className="mt-2 text-xs text-slate-400">{calloutName(row.supervisor_email,row.supervisor_name)}</p>{row.call_out_type==='reassigned'&&<p className="mt-2 text-xs text-cyan-300">Original-site incident scoring excludes calls after reassignment.</p>}</td>
+          </tr>)}</tbody></table>{!recentCallOuts.length&&<p role="status" className="p-10 text-center text-sm text-slate-400">{callOutLoading?'Loading attendance records…':callOutError?'Records unavailable. Retry refresh.':'No attendance changes match these filters.'}</p>}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card className="border-none shadow-lg bg-gradient-to-br from-red-50 to-rose-100">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <UserX className="w-8 h-8 text-red-600" />
-                <div>
-                  <p className="text-3xl font-bold text-red-900">
-                    {callOuts.filter(c => c.call_out_type === 'called_out').length}
-                  </p>
-                  <p className="text-sm text-red-700">Called Out</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <Clock className="w-8 h-8 text-amber-600" />
-                <div>
-                  <p className="text-3xl font-bold text-amber-900">
-                    {callOuts.filter(c => c.call_out_type === 'sent_home').length}
-                  </p>
-                  <p className="text-sm text-amber-700">Sent Home</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              Recent Call-Outs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentCallOuts.length === 0 ? (
-              <div className="text-center py-12">
-                <UserX className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500">No call-outs documented yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentCallOuts.map((callOut) => (
-                  <div key={callOut.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <p className="font-bold text-slate-900">{calloutName(callOut.officer_email,callOut.officer_name)}</p>
-                          <Badge className={callOut.call_out_type === 'called_out' ? 'bg-red-600' : callOut.call_out_type === 'reassigned' ? 'bg-blue-600' : 'bg-amber-600'}>
-                            {callOut.call_out_type === 'called_out' ? 'Called Out' : callOut.call_out_type === 'reassigned' ? 'Reassigned' : 'Sent Home'}
-                          </Badge>
-                          {callOut.affects_pto && (
-                            <Badge variant="outline" className="border-purple-600 text-purple-600">
-                              No PTO Accrual
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="space-y-1 text-sm text-slate-600">
-                          <p><strong>Date:</strong> {format(new Date(callOut.call_out_date), 'MMM d, yyyy')}</p>
-                          <p><strong>Time:</strong> {callOut.call_out_time}</p>
-                          {callOut.call_out_type === 'reassigned' ? (
-                            <>
-                              <p><strong>Original Property:</strong> {callOut.original_location || callOut.location || 'Not recorded'}</p>
-                              <p><strong>Destination:</strong> {callOut.destination_location || 'Not recorded'}</p>
-                              <p className="text-blue-700"><strong>Incident Metric:</strong> Original-property calls after reassignment are excluded.</p>
-                            </>
-                          ) : callOut.location ? <p><strong>Location:</strong> {callOut.location}</p> : null}
-                          <p><strong>Reason:</strong> {callOut.reason}</p>
-                          <p className="text-xs text-slate-500 mt-2">
-                            Documented by: {calloutName(callOut.supervisor_email,callOut.supervisor_name)} • {format(new Date(callOut.created_date), 'MMM d, yyyy h:mm a')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl border-slate-700 bg-slate-900 text-white">
           <DialogHeader>
             <DialogTitle>Document Call-Out</DialogTitle>
           </DialogHeader>

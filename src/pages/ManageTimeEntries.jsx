@@ -536,7 +536,7 @@ export default function ManageTimeEntries() {
               <CardContent className="p-6">
                 <div className="space-y-3">
                   {entries.map((entry) => (
-                    <div key={entry.id} id={`time-entry-${entry.id}`} className={String(entry.id) === String(requestedEntryId) ? "scroll-mt-24 rounded-xl ring-2 ring-amber-400 ring-offset-2" : ""}>
+                    <details key={entry.id} id={`time-entry-${entry.id}`}  open={editingEntry===entry.id||payrollEntryId===entry.id||String(entry.id)===String(requestedEntryId)} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950"><summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-800"><div><strong className="text-sm text-white">{entry.location||"Location unavailable"}</strong><p className="mt-1 text-xs text-slate-400">{format(parseISO(entry.clock_in),"MMM d, yyyy h:mm a")} · {entry.clock_out?format(parseISO(entry.clock_out),"h:mm a"):"Still clocked in"}</p></div><div className="text-right"><strong className="text-sm text-cyan-200">{entry.clock_out?calculatePaidHours(entry).toFixed(2)+" paid h":"Active shift"}</strong><p className="mt-1 text-xs text-slate-400">Open record / edit</p></div></summary><div className="border-t border-slate-700 p-3">
                       {editingEntry === entry.id ? (
                         <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-400">
                           <div className="space-y-3">
@@ -813,7 +813,7 @@ export default function ManageTimeEntries() {
                         )}
                         </>
                       )}
-                    </div>
+                    </div></details>
                   ))}
                 </div>
               </CardContent>
