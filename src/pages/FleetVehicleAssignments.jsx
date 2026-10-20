@@ -50,7 +50,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
   const [actionError,setActionError]=useState('');
   const [removingId,setRemovingId]=useState('');
   const revealEditor=()=>requestAnimationFrame(()=>{editorRef.current?.scrollIntoView?.({block:'start',behavior:'smooth'});editorRef.current?.querySelector('input')?.focus({preventScroll:true});});
-  const {data:syncReport}=useQuery({queryKey:['fleetDefaultSync'],enabled:false});
+  const {data:syncReport}=useQuery({queryKey:['fleetDefaultSync'],queryFn:async()=>qc.getQueryData(['fleetDefaultSync'])??null,enabled:false});
   const [dayOffset, setDayOffset] = useState(0);
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
