@@ -1,6 +1,6 @@
 const {JSDOM}=require('jsdom');
 const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://example.test'});
-for(const name of ['window','document','NodeFilter','DocumentFragment','SVGElement','HTMLElement','Element','Node','MutationObserver','CustomEvent','Event','KeyboardEvent','MouseEvent','HTMLInputElement'])globalThis[name]=dom.window[name];
+for(const name of ['window','document','HTMLFormElement','HTMLSelectElement','HTMLOptionElement','Document','NodeFilter','DocumentFragment','SVGElement','HTMLElement','Element','Node','MutationObserver','CustomEvent','Event','KeyboardEvent','MouseEvent','HTMLInputElement'])globalThis[name]=dom.window[name];
 Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configurable:true});globalThis.getComputedStyle=dom.window.getComputedStyle;
 globalThis.requestAnimationFrame=fn=>setTimeout(fn,0);globalThis.cancelAnimationFrame=clearTimeout;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 globalThis.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
