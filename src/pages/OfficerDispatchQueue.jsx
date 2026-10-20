@@ -1,3 +1,4 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +14,7 @@ const statusLabel = status => String(status || 'pending').replaceAll('_', ' ').t
 const priorityClass = priority => ({ critical:'bg-red-700', high:'bg-orange-600', medium:'bg-amber-600', low:'bg-slate-600' }[String(priority||'').toLowerCase()] || 'bg-slate-600');
 
 export default function OfficerDispatchQueue() {
+  const [queueSearch,setQueueSearch]=useState('');
   const [selectedId, setSelectedId] = useState('');
   const [note, setNote] = useState('');
   const [disposition, setDisposition] = useState('');
@@ -35,6 +37,7 @@ export default function OfficerDispatchQueue() {
   });
 
   const queue = payload.queue || [];
+  const visibleQueue=queue.filter(call=>[call.agency_cad_number,call.bps_reference,call.call_id,call.incident,call.location].join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
   useEffect(() => {
     if (!queue.length) { setSelectedId(''); return; }
     if (!selectedId || !queue.some(call => call.id === selectedId)) setSelectedId(queue[0].id);
@@ -151,19 +154,19 @@ export default function OfficerDispatchQueue() {
 
   return <div className="min-h-screen bg-[#050a12] p-3 text-white md:p-5">
     <div className="mx-auto max-w-7xl space-y-4">
-      <header className="rounded-2xl border border-cyan-500/30 bg-[#081522] p-4 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Radio className="h-5 w-5 text-cyan-300"/><h1 className="text-xl font-black tracking-tight md:text-2xl">Officer Dispatch Queue</h1></div><p className="mt-1 text-xs text-slate-400">Priority-ordered assigned calls. Clear one call and the next call automatically becomes your current call.</p></div><Badge className="bg-cyan-800 text-cyan-100">{queue.length} ACTIVE</Badge></div>
-      </header>
+      <WorkspaceHeader eyebrow="CAD / Field operations" title="Officer Dispatch Queue" description="Your assigned calls, with response controls, welfare checks and the shared CAD timeline." metrics={[
+        {label:'Assigned calls',value:queue.length},{label:'Critical / high',value:queue.filter(c=>['critical','high'].includes(String(c.priority).toLowerCase())).length},{label:'Current call',value:queue[0]?.agency_cad_number||queue[0]?.bps_reference||queue[0]?.call_id||'None'}
+      ]}><Button variant="outline" onClick={()=>refetch()}>Refresh queue</Button></WorkspaceHeader>
 
-      {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">QUEUE CLEAR</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-2">
-          {queue.map((call,index)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
-            <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{index+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
+      {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">QUEUE CLEAR</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
+        <aside className="space-y-3"><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
+          {visibleQueue.map((call,index)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
+            <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{queue.indexOf(call)+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
             <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}
         </aside>
 
-        {selected && <main className="space-y-4">
+        {selected && <main className="min-w-0 space-y-4">
           <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-xs font-bold text-cyan-300">CAD {selected.agency_cad_number || selected.bps_reference || selected.call_id || selected.id}</div><h2 className="mt-1 text-2xl font-black">{selected.incident || 'Call for Service'}</h2><div className="mt-2 flex items-start gap-2 text-sm text-slate-300"><MapPinned className="mt-0.5 h-4 w-4 text-cyan-400"/>{selected.location || 'Location unavailable'}{selected.cross_street ? ` · Cross: ${selected.cross_street}` : ''}</div>{selected.description && <p className="mt-3 rounded-lg bg-slate-950 p-3 text-sm text-slate-300">{selected.description}</p>}</div><Badge className={priorityClass(selected.priority)}>{String(selected.priority||'medium').toUpperCase()}</Badge></div>
           </section>

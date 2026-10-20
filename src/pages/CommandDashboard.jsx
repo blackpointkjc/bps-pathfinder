@@ -93,6 +93,7 @@ function CommandDashboardInner({ embedded = false }) {
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [statusSaving,setStatusSaving] = useState(false);
+    const [incidentSearch,setIncidentSearch]=useState('');
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
     const [canonicalLoaded, setCanonicalLoaded] = useState(false);
@@ -287,7 +288,7 @@ function CommandDashboardInner({ embedded = false }) {
         : agencyFilter === 'PULSEPOINT'
             ? pulsePointCalls
             : calls.filter(call => call.agency === agencyFilter);
-    const sortedCalls = [...visibleCalls].sort((a, b) => {
+    const sortedCalls = visibleCalls.filter(call=>[call.incident,call.location,call.agency_cad_number,call.bps_reference,call.call_id].join(' ').toLowerCase().includes(incidentSearch.toLowerCase())).sort((a, b) => {
         const getRef = (c) => {
             const created = c.created_date ? parseServerTimestamp(c.created_date)?.getTime() || 0 : 0;
             const received = c.time_received ? parseServerTimestamp(c.time_received)?.getTime() || 0 : 0;
@@ -332,8 +333,8 @@ function CommandDashboardInner({ embedded = false }) {
             {/* The live critical banner is intentionally the first visible element in
                 this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
             {/* ── SYSTEM HEADER BAR ── */}
-            <div className="command-dashboard-system-bar flex-none bg-slate-900/90 border-b border-slate-700/80 px-2.5 py-1.5 flex items-center gap-2">
-                <div className="command-dashboard-spacer flex-1" />
+            <div className="command-dashboard-system-bar flex-none bg-slate-900/90 border-b border-slate-700/80 px-4 py-3 flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1 py-1"><h1 className="text-lg font-bold tracking-tight text-white">Live Command</h1><p className="text-xs text-slate-400">Incidents · response · field status</p></div>
                 <div className="command-dashboard-actions flex items-center gap-1.5">
                     {/* Sync status */}
                     <div className={`command-dashboard-sync h-8 flex items-center justify-center gap-1.5 px-2 rounded-lg border font-mono text-[9px] font-bold flex-shrink-0 ${
@@ -378,7 +379,7 @@ function CommandDashboardInner({ embedded = false }) {
             )}
 
             {/* ── MASTER STATUS TILES ── */}
-            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-9">
+            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-9">
                 {[
                     { label: 'ACTIVE CALLS', val: loading && calls.length === 0 ? '—' : calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
                     ...(showPulsePointControls ? [{ label: 'PULSEPOINT', val: pulsePointCalls.length, color: 'text-red-300', bg: 'bg-red-950/45', border: 'border-r border-red-900/50' }] : []),
@@ -404,9 +405,10 @@ function CommandDashboardInner({ embedded = false }) {
             {/* ── MAIN WORKSPACE ── */}
             <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">
                 <div className="command-queue-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
-                    <div className="command-queue-header flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
+                    <div className="command-queue-header flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
                         <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span>{pulsePointCalls.length > 0 && <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-red-950/70 border border-red-500/60 text-red-200 rounded">{pulsePointCalls.length} PULSEPOINT</span>}</div>
-                        <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
+                        <input aria-label="Search live incidents" value={incidentSearch} onChange={e=>setIncidentSearch(e.target.value)} placeholder="Find incident or location" className="min-w-32 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"/>
+                        <select aria-label="Filter live command by agency" value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
                             <option value="ALL">ALL AGENCIES</option>{showPulsePointControls && <option value="PULSEPOINT">PULSEPOINT</option>}<option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
                         </select>
                     </div>
