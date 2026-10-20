@@ -1,3 +1,4 @@
+import { validateBatch } from './batchPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -20,6 +21,23 @@ Deno.serve(async (req) => {
       const assignments = await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1500);
       return Response.json({ success: true, assignments: assignments || [] });
     }
+    if(['batch','copy_week'].includes(action)){
+      const users=await base44.asServiceRole.entities.User.list('id',2000);
+      const existing=await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date',5000);
+      let rows=Array.isArray(body.assignments)?body.assignments:[];
+      if(action==='copy_week'){
+       if(!/^\d{4}-\d{2}-\d{2}$/.test(body.source_start||'')||!/^\d{4}-\d{2}-\d{2}$/.test(body.target_start||''))return Response.json({error:'Source and target week dates are required.'},{status:400});
+       const from=Date.parse(body.source_start+'T12:00:00Z'),to=Date.parse(body.target_start+'T12:00:00Z');
+       rows=existing.filter(row=>row.status!=='cancelled'&&Date.parse(row.assignment_date+'T12:00:00Z')>=from&&Date.parse(row.assignment_date+'T12:00:00Z')<from+7*86400000&&(!body.supervisor_emails?.length||body.supervisor_emails.some(email=>lower(email)===lower(row.supervisor_email))))
+        .map(row=>({assignment_date:new Date(Date.parse(row.assignment_date+'T12:00:00Z')+(to-from)).toISOString().slice(0,10),start_time:row.start_time,end_time:row.end_time,supervisor_email:row.supervisor_email,location:row.location,notes:row.notes}));
+      }
+      if(!rows.length||rows.length>200)return Response.json({error:'Select between 1 and 200 duty coverage blocks.'},{status:400});
+      const checked=validateBatch(rows,users,existing);
+      if(checked.errors.length)return Response.json({error:checked.errors.join(' · '),validation_errors:checked.errors},{status:409});
+      let created=0;
+      for(const row of checked.planned){await base44.asServiceRole.entities.DutySupervisorAssignment.create({...row,created_by_email:me.email,updated_by_email:me.email});created++;}
+      return Response.json({success:true,created,skipped:checked.skipped});
+    }
     if (action === 'delete') {
       const id = String(body.id || '');
       if (!id) return Response.json({ error: 'Assignment id is required.' }, { status: 400 });
@@ -41,6 +59,11 @@ Deno.serve(async (req) => {
     const supervisorEligible = supervisor.role === 'admin' || supervisor.is_supervisor === true || supervisorRoles.has('supervisor') || supervisorRoles.has('full_access') || supervisorRanks.includes(lower(supervisor.rank).replace(/[.]/g, '').replace(/\s+/g, ' '));
     if (!supervisorEligible) return Response.json({ error: 'Selected employee is not eligible to serve as duty supervisor.' }, { status: 400 });
 
+    if(!['save',''].includes(action))return Response.json({error:'Invalid action'},{status:400});
+    const existing=await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date',5000);
+    const checked=validateBatch([row],users,existing);
+    if(checked.errors.length)return Response.json({error:checked.errors.join(' · ')},{status:409});
+    if(!checked.planned.length)return Response.json({success:true,skipped:1});
     const payload = {
       assignment_date: String(row.assignment_date).slice(0,10),
       start_time: String(row.start_time).slice(0,5),
