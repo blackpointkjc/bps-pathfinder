@@ -1,3 +1,4 @@
+import OfficerAbsenceManager from '@/components/OfficerAbsenceManager';
 import ManageClients from './ManageClients';
 import AdminPTOApproval from './AdminPTOApproval';
 import AdminOperationsWorkbench from '@/components/AdminOperationsWorkbench';
@@ -77,6 +78,7 @@ const MASTER_SECTIONS = [
 ];
 
 const ADMIN_SECTIONS = [
+  { id: 'coverage', label: 'Out of Office & Coverage', description: 'Officer absences, task handling and automatic acting command', icon: Users },
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
   { id: 'people', label: 'People & Access', description: 'Users, access, platoons and availability decisions', icon: Users },
   { id: 'schedule', label: 'Scheduling & Time', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
@@ -249,6 +251,7 @@ function AdministrationToolsOnly() {
       embedded
     >
       {section => {
+        if (section === 'coverage') return <OfficerAbsenceManager />;
         if (section === 'command') return <AdminInlineFunctions queryParam="admin_command_tool" tools={[
           { id: 'dashboard', label: 'Dashboard', component: AdminDashboard },
           { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
