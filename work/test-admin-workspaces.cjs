@@ -4,17 +4,17 @@ const client={id:'client',email:'client@test',first_name:'Admin',last_name:'Acco
 const actor={id:'admin',role:'admin',email:'admin@test',rank:'Colonel',last_name:'Command',unit_number:'100'};
 const compile=path=>ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 const stub=label=>({children})=>React.createElement('div',{'data-panel':label},children||label);
-const ui=new Proxy({},{get:(_,name)=>name==='Dialog'?({open,children})=>open?React.createElement('div',null,children):null:stub(name)});
+const ui=new Proxy({},{get:(_,name)=>name==='Input'?props=>React.createElement('input',props):name==='Dialog'?({open,children})=>open?React.createElement('div',null,children):null:stub(name)});
 const qc={invalidateQueries:async()=>{},setQueryData:()=>{}};
 let search='';
 const cache={};
 function load(path){
  if(cache[path])return cache[path];
  const exports={};cache[path]=exports;
- vm.runInNewContext(compile(path),{exports,URLSearchParams,window:{location:{search},history:{},matchMedia:()=>({matches:true})},console,Date,Set,Map,require:name=>{
+ vm.runInNewContext(compile(path),{exports,URLSearchParams,window:{location:{search},history:{},matchMedia:()=>({matches:true})},console,Date,Set,Map,localStorage:{getItem:()=>null},require:name=>{
   if(name==='react'||name==='react/jsx-runtime'||name==='date-fns')return require(name);
   if(name==='@tanstack/react-query')return {useQueryClient:()=>qc,useMutation:()=>({mutate:()=>{},isPending:false}),useQuery:({queryKey})=>({data:queryKey[0]==='currentUser'?actor:queryKey[0]==='portalUsers'?[fixture,actor,client]:queryKey[0]==='directoryUsers'?[fixture,client]:queryKey[0]==='activeDivisions'?[]:[],isLoading:false})};
-  if(name==='react-router-dom')return {useNavigate:()=>()=>{}};
+  if(name==='react-router-dom')return {useNavigate:()=>()=>{},Link:stub('Link')};
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
   if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
@@ -70,3 +70,12 @@ html=render('src/pages/ManageClients.jsx');assert(html.includes('Search client a
 html=render('src/pages/AdminPortalSettings.jsx');assert(html.includes('Navigation workspaces'));assert(html.includes('Save preferences'));
 html=render('src/pages/AdminSupportStaffClock.jsx');assert(html.includes('My timesheet'));assert(html.includes('Clock In'));assert(html.includes('Timesheet start date'));
 console.log('PASS: real fleet/duty action forms render without nested calendars; client search, visibility save and dedicated support clock controls preserved.');
+
+html=render('src/pages/AdminAnnouncements.jsx');assert(html.includes('New announcement'));assert(html.includes('Search announcements'));assert(html.includes('Filter announcements'));
+html=render('src/pages/OfficerDispatchQueue.jsx');assert(html.includes('Officer Dispatch Queue'));assert(html.includes('QUEUE CLEAR'));
+html=render('src/pages/BOLOAlerts.jsx');assert(html.includes('BOLO / INTELLIGENCE BOARD'));assert(html.includes('NEW BOLO'));
+html=render('src/pages/PostOrders.jsx');assert(html.includes('Post Orders'));assert(html.includes('Property reference'));
+html=renderProps('src/components/dispatch/UnitDutyBoard.jsx',{units:[fixture,{...fixture,id:'o2',unit_number:'402',status:'Available',last_name:'Ready',profile_photo_url:'https://example.test/photo'}],calls:[],fullPage:true});
+assert(html.includes('Officer / Unit'));assert(html.includes('Lieutenant Ready'));assert(html.includes('Available'));assert(html.includes('Filter status by platoon'));
+assert(!html.includes('}</section>'),'no stray JSX brace');
+console.log('PASS: redesigned communications, queue, BOLO, post-order reader and full officer roster render with original controls and rank/name identity.');
