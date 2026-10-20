@@ -1,3 +1,4 @@
+import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -30,6 +31,7 @@ export default function AdminOutOfOffice({ user }) {
  };
  return <section className="space-y-3 rounded-xl border border-slate-700 bg-slate-900 p-4 text-white">
   <h3 className="font-bold">Out of Office & Acting Coverage</h3>
+  {(user?.approved_leave_windows||[]).map(window=><p key={window.request_id} className="rounded border border-amber-700 bg-amber-950/20 p-2 text-xs text-amber-200">Approved leave: {leaveTimeLabel({start_at:window.start,end_at:window.end})}. Change approved leave in Admin PTO Approval.</p>)}
   <label className="flex items-center gap-2"><input type="checkbox" checked={enabled} onChange={event=>setEnabled(event.target.checked)}/>Out of office</label>
   <div className="grid gap-3 sm:grid-cols-2">
    <label className="text-sm">Starts<input type="datetime-local" value={start} onChange={event=>setStart(event.target.value)} className="mt-1 block w-full rounded border border-slate-600 bg-slate-950 p-2 text-white" /></label>

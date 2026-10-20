@@ -1,3 +1,4 @@
+import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { useEffect, useState } from "react";
@@ -233,7 +234,7 @@ export default function AdminPTOApproval() {
                         </div>;
                       })()}
                       <p className="text-sm text-slate-600 mb-2">
-                        {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
+                        {leaveTimeLabel(request)}
                       </p>
                       <p className="text-sm text-slate-700 mb-2">{request.reason}</p>
                       <div className="flex gap-4 text-xs mb-2">
@@ -308,7 +309,7 @@ export default function AdminPTOApproval() {
                       <p className="font-semibold text-slate-100">{resolveOfficer(request).displayName}</p>
                       <p className="text-xs text-slate-400">{resolveOfficer(request).email}</p>
                       <p className="text-sm text-slate-600">
-                        {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
+                        {leaveTimeLabel(request)}
                       </p>
                       <div className="flex gap-3 text-xs text-slate-500 mt-1">
                         <span className={request.request_type === 'paid' ? 'text-green-600 font-medium' : 'text-orange-600 font-medium'}>
@@ -374,7 +375,7 @@ export default function AdminPTOApproval() {
                 <p className="font-semibold text-slate-100">{resolveOfficer(selectedRequest).displayName}</p>
                 <p className="text-xs text-slate-400">{resolveOfficer(selectedRequest).email}</p>
                 <p className="text-sm text-slate-600">
-                  {format(new Date(selectedRequest.start_date), 'MMM d, yyyy')} - {format(new Date(selectedRequest.end_date), 'MMM d, yyyy')}
+                  {leaveTimeLabel(selectedRequest)}
                 </p>
                 <p className="text-sm text-slate-700 mt-2">{selectedRequest.reason}</p>
               </div>

@@ -1,4 +1,4 @@
-import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
+import { reconcileAbsences } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const STALE_SESSION_LIMIT_MS = 8 * 60 * 60 * 1000;

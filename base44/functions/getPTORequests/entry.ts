@@ -1,4 +1,4 @@
-import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
+import { reconcileAbsences, shiftOverlapsLeave } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalizeRoles = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));

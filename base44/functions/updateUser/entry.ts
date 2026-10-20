@@ -1,6 +1,6 @@
 import { synchronizeOfficerIdentity } from './synchronizeOfficerIdentity.ts';
 import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
-import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
+import { reconcileAbsences } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {

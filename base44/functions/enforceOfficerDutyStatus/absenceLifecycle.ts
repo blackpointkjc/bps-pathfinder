@@ -1,3 +1,4 @@
+// @ts-nocheck
 const RANKS=['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const clean=value=>String(value||'').trim().toLowerCase();
 const rank=p=>{let r=clean(p?.rank).replace(/\./g,'');if(['lt col','lieutenant colonel'].includes(r))r='lt colonel';const i=RANKS.findIndex(v=>clean(v)===r);return i<0?999:i;};
@@ -34,8 +35,8 @@ export function shiftOverlapsLeave(shift,request){
  const window=leaveWindow(request);
  return from<Date.parse(window.end)&&until>Date.parse(window.start);
 }
-export function coveragePool(owner,users,now=Date.now()){
- const eligible=users.filter(p=>p.id!==owner.id&&employed(p)&&!isOutOfOffice(p,now)&&rank(p)<999);
+export function coveragePool(owner,users,now=Date.now(),qualifies=()=>true){
+ const eligible=users.filter(p=>p.id!==owner.id&&employed(p)&&!isOutOfOffice(p,now)&&rank(p)<999&&qualifies(p));
  const platoon=['A','B'].includes(owner.platoon)?owner.platoon:owner.oversight_platoon;
  const same=eligible.filter(p=>platoon&&p.platoon===platoon);
  // Prefer peers / next lower rank in their platoon; fall back upward only if necessary.
@@ -46,17 +47,18 @@ export function coveragePool(owner,users,now=Date.now()){
  return pool;
 }
 const LIMIT=2000;
-async function all(entity,sort='id'){
+async function all(entity,sort='id',query=null){
  const rows=[];for(let skip=0;;skip+=LIMIT){
-  const page=await entity.list(sort,LIMIT,skip);rows.push(...page);if(page.length<LIMIT)break;
+  const page=await (query?entity.filter(query,sort,LIMIT,skip):entity.list(sort,LIMIT,skip));rows.push(...page);if(page.length<LIMIT)break;
  }return rows;
 }
 export async function reconcileAbsences(entities,now=Date.now()){
  const users=await all(entities.User);
- const requests=await all(entities.TimeOffRequest);
+ const requests=await all(entities.TimeOffRequest,'id',{status:'approved'});
  const stamp=new Date(now).toISOString();
  const summary={absent:0,returned:0,reassigned:0,restored:0,uncovered:0};
  for(const user of users){
+  const previous={...user};
   const approved=requests.filter(r=>r.status==='approved'&&(clean(r.requested_by_email||r.created_by)===clean(user.email)||r.created_by_id===user.id))
    .map(leaveWindow).filter(w=>Date.parse(w.end)>now).sort((a,b)=>Date.parse(a.start)-Date.parse(b.start));
   const patch={};
@@ -87,7 +89,8 @@ export async function reconcileAbsences(entities,now=Date.now()){
    });
    patch.absence_active=false;patch.absence_return_announced_key=key;summary.returned++;
   }
-  if(Object.keys(patch).some(k=>JSON.stringify(user[k])!==JSON.stringify(patch[k]))||Object.keys(patch).length){
+  for(const key of Object.keys(patch))if(JSON.stringify(previous[key])===JSON.stringify(patch[key]))delete patch[key];
+  if(Object.keys(patch).length){
    await entities.User.update(user.id,patch);Object.assign(user,patch);
   }
  }
@@ -109,7 +112,7 @@ export async function reconcileAbsences(entities,now=Date.now()){
  ];
  const load=new Map();
  for(const spec of specs){
-  const entity=entities[spec.entity],records=(await all(entity)).filter(spec.open).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+  const entity=entities[spec.entity],records=(await all(entity,'id',{$or:[{[spec.id]:{$in:absent.map(p=>p.id)}},{absence_owner_id:{$exists:true,$ne:''}}]})).filter(spec.open).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
   for(const row of records)load.set(row[spec.id],(load.get(row[spec.id])||0)+1);
   for(const row of records){
    const original=users.find(p=>p.id===(row.absence_owner_id||row[spec.id]));
@@ -128,7 +131,7 @@ export async function reconcileAbsences(entities,now=Date.now()){
     continue;
    }
    const ownerRoles=roles(original);
-   let candidates=coveragePool(original,users,now).filter(p=>{
+   let candidates=coveragePool(original,users,now,p=>{
     const r=roles(p),admin=p.role==='admin'||r.has('full_access');
     if(spec.entity==='Task'){
      // Never transfer privileged employee/client/trainer work to an officer without that access.

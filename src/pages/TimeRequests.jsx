@@ -1,3 +1,5 @@
+import { easternInstant } from '@/utils/leaveWindow';
+import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
@@ -8,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarClock, Plus, Clock3, CheckCircle2, History } from "lucide-react";
-import { format } from "date-fns";
 import StatusBadge from "../components/dashboard/StatusBadge";
 import { toast } from 'sonner';
 
@@ -16,6 +17,9 @@ export default function TimeRequests() {
   const [showForm, setShowForm] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [startTime,setStartTime]=useState("");
+  const [returnTime,setReturnTime]=useState("");
+  const [requestedHours,setRequestedHours]=useState("");
   const [reason, setReason] = useState("");
   const [requestType, setRequestType] = useState("paid");
   const queryClient = useQueryClient();
@@ -76,26 +80,7 @@ export default function TimeRequests() {
     };
   }, [user?.email, queryClient]);
 
-  const calculateBusinessDays = (start, end) => {
-    if (!start || !end) return 0;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    let count = 0;
-    const current = new Date(startDate);
-    
-    while (current <= endDate) {
-      const dayOfWeek = current.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        count++;
-      }
-      current.setDate(current.getDate() + 1);
-    }
-    return count;
-  };
-
-  const calculateRequestedHours = () => {
-    return calculateBusinessDays(startDate, endDate) * 8;
-  };
+  const calculateRequestedHours=()=>Number(requestedHours||0);
 
   const createRequestMutation = useMutation({
     mutationFn: async (data) => {
@@ -112,12 +97,16 @@ export default function TimeRequests() {
       setEndDate("");
       setReason("");
       setRequestType("paid");
+      setStartTime("");setReturnTime("");setRequestedHours("");
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const hoursRequested = calculateRequestedHours();
+    if(!startTime||!returnTime||!startDate||!endDate||!reason.trim()||hoursRequested<=0){toast.error('Complete the start, return, work hours and reason.');return;}
+    const startAt=easternInstant(startDate,startTime),endAt=easternInstant(endDate,returnTime);
+    if(Date.parse(endAt)<=Date.parse(startAt)||hoursRequested>(Date.parse(endAt)-Date.parse(startAt))/3600000){toast.error('Return must be after departure; work hours cannot exceed the absence.');return;}
     
     if (requestType === 'paid' && hoursRequested > (user?.pto_balance_hours || 0)) {
       toast.error(`Insufficient PTO balance: ${(user?.pto_balance_hours || 0).toFixed(1)} hours available, ${hoursRequested} requested.`);
@@ -127,6 +116,7 @@ export default function TimeRequests() {
     createRequestMutation.mutate({
       start_date: startDate,
       end_date: endDate,
+      start_at:startAt,end_at:endAt,time_zone:"America/New_York",
       reason,
       request_type: requestType,
       hours_requested: hoursRequested,
@@ -186,7 +176,7 @@ export default function TimeRequests() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="end_date">End Date *</Label>
+                    <Label htmlFor="end_date">Return Date *</Label>
                     <Input
                       id="end_date"
                       type="date"
@@ -197,9 +187,16 @@ export default function TimeRequests() {
                   </div>
                 </div>
                 
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2"><Label htmlFor="departure_time">Leave starts at (Eastern) *</Label><Input id="departure_time" type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} required/></div>
+                  <div className="space-y-2"><Label htmlFor="return_time">Available again at (Eastern) *</Label><Input id="return_time" type="time" value={returnTime} onChange={e=>setReturnTime(e.target.value)} required/></div>
+                  <div className="space-y-2"><Label htmlFor="requested_hours">Scheduled work hours off *</Label><Input id="requested_hours" type="number" min="0.25" step="0.25" value={requestedHours} onChange={e=>setRequestedHours(e.target.value)} required/></div>
+                </div>
+                <p className="text-xs text-slate-400">Use the exact departure and return times, including overnight leave. Work hours are the scheduled hours you need off. Approval updates schedule coverage, Out of Office, duty status and temporary command assignments.</p>
+                {createRequestMutation.error&&<p role="alert" className="text-red-300">{createRequestMutation.error.response?.data?.error||createRequestMutation.error.message}</p>}
                 {startDate && endDate && (
                   <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-3 text-sm text-blue-100">
-                    {calculateBusinessDays(startDate, endDate)} business days · {calculateRequestedHours()} hours
+                    {calculateRequestedHours()} requested work hours · Eastern time
                     {requestType === 'paid' && <span className="ml-2 text-blue-300">· {(ptoBalance - calculateRequestedHours()).toFixed(1)}h remaining</span>}
                   </div>
                 )}
@@ -266,7 +263,7 @@ export default function TimeRequests() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <p className="font-semibold text-white">
-                          {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
+                          {leaveTimeLabel(request)}
                         </p>
                         <StatusBadge status={request.status} />
                       </div>
@@ -285,7 +282,7 @@ export default function TimeRequests() {
                   </div>
                   {String(request.status || '').toLowerCase() === 'cancelled' && (
                     <div className="mt-3 rounded border border-emerald-700/40 bg-emerald-950/20 p-3">
-                      <p className="text-sm font-semibold text-emerald-300">This request was cancelled by HR.</p>
+                      <p className="text-sm font-semibold text-emerald-300">This request was cancelled by Admin.</p>
                       <p className="mt-1 text-sm text-emerald-200">{Number(request.hours_restored || 0).toFixed(1)} hours were returned to your PTO balance.</p>
                     </div>
                   )}
