@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users, Car, UserCheck, FileUp, Loader2 } from "lucide-react";
-import { format, addDays, subDays, startOfWeek, addWeeks, parseISO } from "date-fns";
+import { format, addDays, subDays, startOfWeek, addWeeks, parseISO, differenceInCalendarWeeks } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -36,7 +36,10 @@ import { useAuth } from '@/lib/AuthContext';
 const LOGO_URL = "/black-point-shield.webp";
 
 export default function AdminScheduling() {
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(() => {
+    const requested = new URLSearchParams(window.location.search).get('leave_date');
+    return requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && Number.isFinite(Date.parse(requested)) ? differenceInCalendarWeeks(parseISO(requested),new Date(),{weekStartsOn:0}) : 0;
+  });
   const [selectedDivision, setSelectedDivision] = useState("all");
   const [selectedOfficerForPrint, setSelectedOfficerForPrint] = useState("");
   const [printStartDate, setPrintStartDate] = useState("");

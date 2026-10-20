@@ -333,7 +333,8 @@ export default function AdminPTOApproval() {
                       <p className="text-xs text-slate-500">
                         by {getAdminName(request.reviewed_by)}
                       </p>
-                      {request.status === 'approved' && request.request_type === 'paid' && !String(request.admin_notes || '').startsWith('Manual ') && (
+                      {request.status === 'approved' && <a href={`/AdminScheduling?leave_date=${encodeURIComponent(request.start_date)}#approved-time-off`} className="inline-block rounded border border-cyan-700 px-3 py-2 text-sm font-bold text-cyan-300">View approved dates in Scheduling</a>}
+                      {request.status === 'approved' && !String(request.admin_notes || '').startsWith('Manual ') && (
                         <Button
                           type="button"
                           variant="outline"
