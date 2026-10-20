@@ -1,3 +1,4 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -19,6 +20,8 @@ import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
 import { toast } from 'sonner';
 
 export default function AdminAnnouncements() {
+  const [announcementSearch,setAnnouncementSearch]=useState("");
+  const [announcementView,setAnnouncementView]=useState("all");
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -202,8 +205,8 @@ export default function AdminAnnouncements() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
-        <p className="text-slate-600">You don't have permission to access this page.</p>
+        <h2 className="text-2xl font-bold text-slate-100 mb-2">Admin Access Required</h2>
+        <p className="text-slate-300">You don't have permission to access this page.</p>
       </div>
     );
   }
@@ -237,27 +240,21 @@ export default function AdminAnnouncements() {
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-600" />
-            <div>
-              <h1 className="text-3xl font-black text-white">Manage Announcements</h1>
-              <p className="text-slate-600">Post company-wide announcements</p>
-            </div>
-          </div>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Announcement
-          </Button>
+      <div className="max-w-6xl mx-auto space-y-5">
+        <WorkspaceHeader eyebrow="Administration / Communications" title="Manage Announcements" description="Publish company updates, target the right audience and track read receipts." metrics={[
+          {label:'Announcements',value:filteredAnnouncements.length},
+          {label:'Officer recipients',value:activeOfficers.length}
+        ]}>
+          <Button onClick={()=>setShowForm(!showForm)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>{showForm?'Close composer':'New announcement'}</Button>
+        </WorkspaceHeader>
+        <div className="flex flex-wrap gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
+          <Input aria-label="Search announcements" placeholder="Search title or message" value={announcementSearch} onChange={e=>setAnnouncementSearch(e.target.value)} className="min-w-48 flex-1 border-slate-600 bg-slate-950 text-white"/>
+          <select aria-label="Filter announcements" value={announcementView} onChange={e=>setAnnouncementView(e.target.value)} className="rounded border border-slate-600 bg-slate-950 px-3 py-2 text-sm"><option value="all">All updates</option><option value="urgent">Urgent / high priority</option><option value="supervisors">Supervisors</option></select>
         </div>
 
         {showForm && (
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+          <Card className="border-slate-700 bg-slate-900 text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-700 bg-slate-800">
               <CardTitle className="flex items-center gap-2">
                 <Megaphone className="w-5 h-5 text-blue-600" />
                 New Announcement
@@ -341,7 +338,7 @@ export default function AdminAnnouncements() {
                     <img
                       src={formData.photo_url}
                       alt="Preview"
-                      className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-200 mt-2"
+                      className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-700 mt-2"
                     />
                   )}
                 </div>
@@ -361,10 +358,10 @@ export default function AdminAnnouncements() {
                     {uploadingAttachment && <span className="text-sm text-slate-500">Uploading...</span>}
                   </div>
                   {formData.attachment_url && (
-                    <div className="p-3 bg-slate-50 rounded border border-slate-200 flex items-center justify-between">
+                    <div className="p-3 bg-slate-50 rounded border border-slate-700 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{getFileIcon(formData.attachment_name)}</span>
-                        <span className="text-sm text-slate-700">{formData.attachment_name}</span>
+                        <span className="text-sm text-slate-300">{formData.attachment_name}</span>
                       </div>
                       <Button
                         type="button"
@@ -382,7 +379,7 @@ export default function AdminAnnouncements() {
                     <AtSign className="w-4 h-4" />
                     Ping Specific Officers (Optional)
                   </Label>
-                  <div className="border border-slate-200 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
+                  <div className="border border-slate-700 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
                     {activeOfficers.map((officer) => (
                       <div key={officer.email} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded">
                         <div className="flex items-center gap-2">
@@ -425,18 +422,18 @@ export default function AdminAnnouncements() {
           </Card>
         )}
 
-        <Card className="border-none shadow-lg">
+        <Card className="border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
           <CardHeader>
             <CardTitle>All Announcements</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {filteredAnnouncements.map((announcement) => (
-                <div key={announcement.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200">
+              {filteredAnnouncements.filter(a=>[a.title,a.message,a.category].join(' ').toLowerCase().includes(announcementSearch.toLowerCase())&&(announcementView==='all'||(announcementView==='urgent'?['urgent','critical','high'].includes(a.priority):a.audience==='supervisors'))).map((announcement) => (
+                <div key={announcement.id} className="p-5 bg-slate-950 rounded-xl border border-slate-700">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <p className="font-semibold text-slate-900 text-lg">{announcement.title}</p>
+                        <p className="font-semibold text-slate-100 text-lg">{announcement.title}</p>
                         <Badge variant="outline" className={priorityConfig[announcement.priority]}>
                           {announcement.priority}
                         </Badge>
@@ -454,12 +451,12 @@ export default function AdminAnnouncements() {
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{announcement.message}</p>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{announcement.message}</p>
                   {announcement.photo_url && (
                     <img
                       src={announcement.photo_url}
                       alt="Announcement"
-                      className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-200 mt-3"
+                      className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-700 mt-3"
                     />
                   )}
                   {announcement.attachment_url && (
@@ -484,7 +481,7 @@ export default function AdminAnnouncements() {
                     </div>
                   )}
                   {/* Read Receipts */}
-                  <div className="mt-4 pt-3 border-t border-slate-200">
+                  <div className="mt-4 pt-3 border-t border-slate-700">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -519,13 +516,13 @@ export default function AdminAnnouncements() {
           </DialogHeader>
           {selectedAnnouncement && (
             <div className="space-y-4 py-4">
-              <p className="text-sm text-slate-600 font-medium">{selectedAnnouncement.title}</p>
+              <p className="text-sm text-slate-300 font-medium">{selectedAnnouncement.title}</p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {activeOfficers.map(officer => {
                   const hasRead = getReadStats(selectedAnnouncement).receiptEmails.has(officer.email);
-                  const name = officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.email;
+                  const name = [officer.rank,officer.last_name].filter(Boolean).join(' ') || officer.email;
                   return (
-                    <div key={officer.email} className={`p-3 rounded-lg flex items-center justify-between ${hasRead ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200'}`}>
+                    <div key={officer.email} className={`p-3 rounded-lg flex items-center justify-between ${hasRead ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-700'}`}>
                       <span className="text-sm font-medium">{name}</span>
                       {hasRead ? (
                         <Badge className="bg-green-600 text-white text-xs">Read</Badge>

@@ -1,5 +1,7 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { canAccessAccounting } from '@/lib/accountingAccess';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +23,8 @@ export default function AdminPortalSettings() {
 
   const [hiddenPortals, setHiddenPortals] = useState(user?.hidden_portals || []);
 
+  useEffect(()=>{setHiddenPortals(user?.hidden_portals || []);},[user?.id,JSON.stringify(user?.hidden_portals || [])]);
+
   const updateSettingsMutation = useMutation({
     mutationFn: (data) => base44.auth.updateMe(data),
     onSuccess: () => {
@@ -41,7 +45,7 @@ export default function AdminPortalSettings() {
     updateSettingsMutation.mutate({ hidden_portals: hiddenPortals });
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.additional_roles?.includes('full_access');
   const isSupervisor = hasSupervisorAccess(user);
   const isHR = user?.additional_roles?.includes('hr');
   const isClient = user?.additional_roles?.includes('client');
@@ -68,6 +72,9 @@ export default function AdminPortalSettings() {
     portals.push({ id: 'client', name: 'Client Portal', available: true });
   }
 
+  if(canAccessAccounting(user)) portals.push({id:'accounting',name:'Accounting',available:true});
+  if(user?.additional_roles?.includes('trainer')) portals.push({id:'training',name:'Training',available:true});
+
   if (!isAdmin) {
     return (
       <div className="p-8 text-center">
@@ -79,71 +86,27 @@ export default function AdminPortalSettings() {
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div>
-          <h1 className="mb-2 flex items-center gap-3 text-3xl font-black text-white">
-            <Settings className="w-8 h-8 text-blue-600" />
-            Portal Visibility Settings
-          </h1>
-          <p className="text-slate-600">Customize which portal sections appear in your navigation</p>
+      <div className="mx-auto max-w-6xl">
+        <WorkspaceHeader eyebrow="Administration / Preferences" title="Portal Visibility Settings" description="Choose the workspaces shown in your navigation. These preferences apply to your account." metrics={[
+          {label:'Available workspaces',value:portals.length},
+          {label:'Visible',value:portals.filter(p=>!hiddenPortals.includes(p.id)).length}
+        ]}>
+          <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="bg-cyan-700 hover:bg-cyan-600">{updateSettingsMutation.isPending?'Saving…':'Save preferences'}</Button>
+        </WorkspaceHeader>
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
+          <section className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
+            <div className="border-b border-slate-700 p-5"><h2 className="font-bold text-white">Navigation workspaces</h2><p className="mt-1 text-sm text-slate-400">Select a workspace to keep it visible.</p></div>
+            <div className="divide-y divide-slate-700">{portals.map(portal=>{
+              const visible=!hiddenPortals.includes(portal.id);
+              return <label key={portal.id} className="flex cursor-pointer items-center justify-between gap-4 p-5 hover:bg-slate-800">
+                <div className="flex items-center gap-3"><Checkbox id={portal.id} checked={visible} onCheckedChange={()=>handleTogglePortal(portal.id)}/><span className="font-medium text-white">{portal.name}</span></div>
+                <span className={'flex items-center gap-2 text-xs '+(visible?'text-emerald-300':'text-slate-400')}>{visible?<Eye className="h-4 w-4"/>:<EyeOff className="h-4 w-4"/>}{visible?'Visible':'Hidden'}</span>
+              </label>;
+            })}</div>
+            <p className="border-t border-slate-700 p-5 text-xs leading-relaxed text-slate-400">Visibility changes your navigation. Account permissions continue to control which tools you can open.</p>
+          </section>
+          <section className="min-w-0"><div className="mb-3"><h2 className="font-bold text-white">CAD audio</h2><p className="mt-1 text-sm text-slate-400">Configure alert playback for this device.</p></div><CadAudioSettingsCard user={user}/></section>
         </div>
-
-        <CadAudioSettingsCard user={user} />
-
-        <Card className="border-none shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-            <CardTitle>Your Available Portals</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            {portals.length === 0 && (
-              <p className="text-slate-500 italic">No additional portals available</p>
-            )}
-            
-            {portals.map(portal => (
-              <div key={portal.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id={portal.id}
-                    checked={!hiddenPortals.includes(portal.id)}
-                    onCheckedChange={() => handleTogglePortal(portal.id)}
-                  />
-                  <Label htmlFor={portal.id} className="cursor-pointer font-medium text-slate-900">
-                    {portal.name}
-                  </Label>
-                </div>
-                <Badge className={hiddenPortals.includes(portal.id) ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
-                  {hiddenPortals.includes(portal.id) ? (
-                    <>
-                      <EyeOff className="w-3 h-3 mr-1" />
-                      Hidden
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3 h-3 mr-1" />
-                      Visible
-                    </>
-                  )}
-                </Badge>
-              </div>
-            ))}
-
-            <div className="mt-6 pt-6 border-t">
-              <Button
-                onClick={handleSave}
-                disabled={updateSettingsMutation.isPending}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                {updateSettingsMutation.isPending ? 'Saving...' : 'Save Visibility Settings'}
-              </Button>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
-              <p className="text-sm text-amber-900">
-                <strong>Note:</strong> After saving, refresh the page to see your changes. Hidden portals will not appear in your sidebar navigation.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
