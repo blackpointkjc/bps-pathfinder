@@ -1,3 +1,5 @@
+import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
+import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
@@ -11,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Mail, Phone, Calendar, Edit, Briefcase, Save, X, AlertTriangle, Unlink, Camera, Loader2, UserMinus, CheckCircle2 } from "lucide-react";
+import { Shield, Mail, Phone, Calendar, Edit, Save, X, AlertTriangle, Unlink, Camera, Loader2, UserMinus, CheckCircle2 } from "lucide-react";
 import OfficerCertificationsTab from "../components/OfficerCertificationsTab";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +56,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [fullPhoto, setFullPhoto] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeTab, setActiveTab] = useState("active");
+  const [employeeView,setEmployeeView]=useState("directory");
+  const [platoonFilter,setPlatoonFilter]=useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [imapMailboxId, setImapMailboxId] = useState('');
   const [imapSaving, setImapSaving] = useState(false);
@@ -198,10 +202,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   // HR/member directory contains only internal employees. Client and student
   // accounts stay in their dedicated menus and never appear in this list.
   const isTerminated = u => Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated';
-  const allEmployees = (users || []).filter(u => isCompanyEmployeeAccount(u) || isTerminated(u));
+  const allEmployees = (users || []).filter(u => !isClientAccount(u)&&(isCompanyEmployeeAccount(u) || isTerminated(u)));
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
-  const pendingOnboarding = (users||[]).filter(u => u.email && !isTerminated(u) && u.role!=='admin'
+  const pendingOnboarding = (users||[]).filter(u => !isClientAccount(u)&&u.email && !isTerminated(u) && u.role!=='admin'
     && !(u.additional_roles||[]).some(role=>['officer','cad_access','support','support_staff','client','student','hr','accounting','trainer','supervisor','full_access'].includes(String(role).toLowerCase()))
     && !['client','student','student registration pending'].includes(String(u.rank||'').toLowerCase()));
 
@@ -218,15 +222,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       alert(action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
     }catch(error){alert(error?.response?.data?.error||error.message||'Transition failed');}
   };
-  const filterBySearch = (list) => {
-    if (!searchQuery) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter(u =>
-      `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q) ||
-      u.rank?.toLowerCase().includes(q)
-    );
-  };
+  const filterBySearch=list=>list.filter(person=>{
+   if(platoonFilter!=='all'&&(person.platoon||'unassigned')!==platoonFilter)return false;
+   const hay=[person.first_name,person.last_name,person.rank,person.email,person.unit_number,person.division,person.subdivision].filter(Boolean).join(' ').toLowerCase();
+   return hay.includes(searchQuery.trim().toLowerCase());
+  });
 
   const handleRankChange = rank => {
     try { setEditFormData(prev => ({...prev,...previewRankChange(selectedUser, rank, users || [])})); }
@@ -582,21 +582,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedEmployeePhoto}
       />
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Briefcase className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-black text-white">Manage Company Employees</h1>
-            <p className="text-slate-600">{portalContext === 'hr' ? 'HR employee directory and account access management' : portalContext === 'training' ? 'Training-managed employee certifications and records' : 'Active company users and assigned operational roles'}</p>
-          </div>
-        </div>
-        <Input
-          placeholder="Search by name, email, or rank..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
+      <header className="mb-4 rounded-2xl border border-slate-700 bg-gradient-to-r from-slate-900 to-[#0b1a2a] p-5">
+       <div className="flex flex-wrap items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Company personnel</span><h1 className="mt-1 text-2xl font-bold">Manage Company Employees</h1><p className="mt-2 text-sm text-slate-400">Employee records, certifications and employment history. Client accounts stay in Client Accounts.</p></div><div className="flex gap-4 text-center text-sm">{[['Active',activeEmployees.length],['Onboarding',pendingOnboarding.length],['Former',terminatedEmployees.length]].map(([label,count])=><div key={label}><strong className="block text-2xl text-white">{count}</strong><span className="text-xs text-slate-400">{label}</span></div>)}</div></div>
+       <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]"><label className="text-xs text-slate-400">Find an employee<Input placeholder="Name, rank, unit, division or email" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Platoon<select value={platoonFilter} onChange={event=>setPlatoonFilter(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="all">All platoons</option><option>A</option><option>B</option><option>Command</option><option value="unassigned">Unassigned</option></select></label><label className="text-xs text-slate-400">View<select value={employeeView} onChange={event=>setEmployeeView(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="directory">Employee directory</option><option value="structure">Permanent reporting structure</option></select></label></div>
+      </header>
 
       {isLoading ? (
         <div className="text-center py-12">
@@ -628,7 +617,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <TabsContent value="active" className="space-y-4 mt-4">
             {filterBySearch(activeEmployees).length === 0 ? (
               <Card className="p-8 text-center"><p className="text-slate-600">No active company employees found</p></Card>
-            ) : renderActiveHierarchy(filterBySearch(activeEmployees))}
+            ) : employeeView==='structure'?renderActiveHierarchy(filterBySearch(activeEmployees)):<EmployeeDirectory employees={filterBySearch(activeEmployees)} onEdit={handleEditUser} onPhoto={setFullPhoto}/>}
           </TabsContent>
           <TabsContent value="terminated" className="space-y-4 mt-4">
             {filterBySearch(terminatedEmployees).map(u => renderUserCard(u, true))}

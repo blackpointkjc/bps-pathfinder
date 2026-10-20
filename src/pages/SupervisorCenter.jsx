@@ -1,9 +1,11 @@
+import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
+import { useEffect } from 'react';
+import { useLocation,useNavigate } from 'react-router-dom';
 import { ClipboardCheck, Shield, ShieldCheck, LayoutDashboard } from 'lucide-react';
 import React from 'react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import OfficerCenter from './OfficerCenter';
-import Schedule from './Schedule';
 import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorCallOuts from './SupervisorCallOuts';
@@ -17,22 +19,20 @@ import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorOverview from './SupervisorOverview';
-import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import CADCenter from './CADCenter';
 import { Radio } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
-  { id: 'myschedule', label: 'My Duty Schedule', description: 'Your published officer shifts', icon: Shield },
+  { id: 'calendar', label: 'Schedule & Duty Coverage', description: 'Personal shifts and company duty coverage', icon: Shield },
   { id: 'cad', label: 'CAD Center', description: 'Dispatch dashboard, active calls, and field response tools', icon: Radio },
-  { id: 'callouts', label: 'Officer Call-Outs', description: 'Mark absences and update schedule and performance', icon: ClipboardCheck },
-  { id: 'dutytimeline', label: 'Daily Duty Timeline', description: 'See every duty supervisor across a complete 24-hour day', icon: ShieldCheck },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
 ];
 
 const COMMAND_TOOLS = [
+  {id:'callouts',label:'Officer Call-Outs',component:SupervisorCallOuts},
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
@@ -69,14 +69,22 @@ function SupervisorSectionContent({ section, embedded }) {
   if (section === 'overview') return <SupervisorOverview />;
   if (section === 'officer') return <OfficerCenter embedded />;
   if (section === 'cad') return <CADCenter embedded />;
-  if (section === 'myschedule') return <Schedule />;
-  if (section === 'dutytimeline') return <SupervisorDutyTimeline />;
-  if (section === 'callouts') return <SupervisorCallOuts />;
+  if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
   if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
   return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
 }
 
 export default function SupervisorCenter({ embedded = false }) {
+  const location=useLocation(),navigate=useNavigate();
+  useEffect(()=>{
+   const params=new URLSearchParams(location.search),key=embedded?'supervisor_section':'section';
+   const previous=params.get(key);
+   if(['myschedule','dutytimeline','dutyschedule'].includes(previous)){params.set(key,'calendar');params.set('duty_view',previous==='myschedule'?'personal':'coverage');}
+   else if(previous==='callouts'){params.set(key,'command');params.set(embedded?'supervisor_tool':'tool','callouts');}
+   else return;
+   navigate({pathname:location.pathname,search:'?'+params.toString()},{replace:true});
+  },[embedded,location.pathname,location.search,navigate]);
+
   return <UnifiedCenter
     eyebrow="Field Leadership"
     title="Supervisor Center"

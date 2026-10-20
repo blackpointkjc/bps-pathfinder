@@ -1,3 +1,5 @@
+import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
+import AdminSupportStaffClock from './AdminSupportStaffClock';
 import SchedulingWorkspace from '@/components/admin/workspaces/SchedulingWorkspace';
 import AssetsWorkspace from '@/components/admin/workspaces/AssetsWorkspace';
 import ManageClients from './ManageClients';
@@ -16,9 +18,6 @@ import AdminAnalytics from './AdminAnalytics';
 import AdminLocationTracker from './AdminLocationTracker';
 import AdminGeofenceAlerts from './AdminGeofenceAlerts';
 import AdminAutoDispatchControls from './AdminAutoDispatchControls';
-import DutySupervisorScheduling from './DutySupervisorScheduling';
-import Schedule from './Schedule';
-import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminUsers from './AdminUsers';
 import AdminLocations from './AdminLocations';
@@ -71,7 +70,8 @@ const MASTER_SECTIONS = [
 const ADMIN_SECTIONS = [
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
   { id: 'people', label: 'Personnel & Accounts', description: 'Officer command, availability, CAD controls and account access', icon: Users },
-  { id: 'schedule', label: 'Scheduling & Coverage', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
+  { id: 'schedule', label: 'Scheduling & Coverage', description: 'Officer shifts, fleet assignments, duty supervisors, staffing plans and bids', icon: Calendar },
+  { id: 'supporttime', label: 'Support Clock In', description: 'Support and administrative staff time', icon: Calendar },
   { id: 'assets', label: 'Company Assets', description: 'Vehicles, equipment and maintenance', icon: Briefcase },
   { id: 'sites', label: 'Sites & Patrol', description: 'Locations, boundaries, dispatch rules, post orders and patrol requirements', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
@@ -83,7 +83,7 @@ const ADMIN_SECTIONS = [
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
-  { id: 'myschedule', label: 'My Duty Schedule', description: 'Published personal officer shifts', icon: Calendar },
+  { id: 'calendar', label: 'Schedule & Duty Coverage', description: 'Personal shifts and company duty coverage', icon: Calendar },
   { id: 'callouts', label: 'Officer Call-Outs', description: 'Record an officer absence and update the schedule', icon: ClipboardCheck },
   { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },
@@ -94,9 +94,6 @@ const ADMIN_SUPERVISOR_TOOLS = {
     { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
     { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
     { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
-    { id: 'myschedule', label: 'My Duty Schedule', component: Schedule },
-    { id: 'dutytimeline', label: 'Daily Duty Timeline', component: SupervisorDutyTimeline },
-    { id: 'dutyschedule', label: 'Duty Supervisor Schedule', component: DutySupervisorScheduling },
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
     { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
@@ -207,7 +204,7 @@ function AdminSupervisorToolsOnly() {
     {section => {
       if (section === 'overview') return <SupervisorOverview />;
       if (section === 'callouts') return <SupervisorCallOuts />;
-      if (section === 'myschedule') return <Schedule />;
+      if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
       return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />;
     }}
   </UnifiedCenter>;
@@ -230,6 +227,7 @@ function AdministrationToolsOnly() {
           { id: 'analytics', label: 'Company Analytics', component: AdminAnalytics },
         ]} />;
         if (section === 'people') return <AdminPersonnelAccessHub />;
+        if (section === 'supporttime') return <AdminSupportStaffClock/>;
         if (section === 'schedule') return <AdminSchedulingCoverageHub />;
         if (section === 'assets') return <AssetsWorkspace/>;
         if (section === 'system') return <AdminPortalSettings/>;
@@ -246,6 +244,10 @@ export default function AdminCenter() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const oldTool=params.get('admin_site_ops_tool')||params.get('admin_site_assets_tool');
+    if(params.get('admin_schedule_tool')==='supportclock'){params.set('admin_ops_section','supporttime');params.delete('admin_schedule_tool');}
+    const oldCalendar=params.get('admin_supervisor_tool');
+    if(params.get('admin_supervisor_section')==='myschedule'||['myschedule','dutytimeline','dutyschedule'].includes(oldCalendar)){params.set('admin_supervisor_section','calendar');params.set('duty_view',oldCalendar==='myschedule'?'personal':'coverage');params.delete('admin_supervisor_tool');}
+
     if(oldTool==='equipment'){params.set('admin_ops_section','assets');params.set('admin_asset_tool','equipment');}
     if(params.get('admin_ops_section')==='communications'&&params.get('admin_communications_tool')==='requests'){params.set('admin_ops_section','schedule');params.set('admin_schedule_tool','requests');}
     if(params.get('admin_ops_section')!=='coverage'){
