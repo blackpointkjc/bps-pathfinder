@@ -81,6 +81,19 @@
         "type": "string"
       },
       "description": "List of supervisor emails assigned to this site"
+    },
+    "reference_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Source handbook reference not linked to an existing company location; does not create an operational post."
+    },
+    "source_import_key": {
+      "type": "string",
+      "description": "Stable source key to avoid duplicate handbook imports."
+    },
+    "site_map_url": {
+      "type": "string",
+      "description": "Site map image extracted from the supplied handbook."
     }
   },
   "required": [

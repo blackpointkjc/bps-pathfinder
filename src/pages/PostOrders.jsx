@@ -254,6 +254,8 @@ export default function PostOrders() {
               </CardContent>
             </Card>
 
+            {selectedPostOrder.site_map_url&&<Card className="border-slate-700 bg-slate-900"><CardHeader><CardTitle>Site map</CardTitle></CardHeader><CardContent><img src={selectedPostOrder.site_map_url} alt={selectedPostOrder.site_name+' site map'} className="mx-auto max-h-[700px] max-w-full rounded-xl object-contain"/></CardContent></Card>}
+
             {/* Site Overview */}
             {selectedPostOrder.site_overview && (
               <Card id="post-overview" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
