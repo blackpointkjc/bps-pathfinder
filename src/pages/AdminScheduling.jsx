@@ -1,4 +1,5 @@
-import ApprovedLeavePanel from '@/components/scheduling/ApprovedLeavePanel';
+import { approvedLeaveConflicts } from '@/utils/scheduleLeave';
+import { clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from 'react-router-dom';
@@ -232,8 +233,31 @@ export default function AdminScheduling() {
     },
   });
 
+  const [scheduleLeaveWarning, setScheduleLeaveWarning] = useState('');
+  const checkApprovedLeave = async rows => {
+    if (!rows.some(row => row.officer_email && row.officer_email !== 'OPEN' && !row.is_open)) return;
+    // Check at assignment time, including bulk operations, before any write occurs.
+    clearBase44ReadCacheMatching('function:getPTORequests:');
+    const response = await base44.functions.invoke('getPTORequests', {});
+    const payload = response?.data || response || {};
+    if (payload.error || !Array.isArray(payload.requests)) throw new Error(payload.error || 'Unable to verify approved leave. Try again before assigning this shift.');
+    const conflicts = approvedLeaveConflicts(rows, payload.requests, allUsers);
+    if (conflicts.length) {
+      const details = [...new Set(conflicts.map(({shift,leave,officer}) => {
+        const name = [officer?.rank,officer?.last_name].filter(Boolean).join(' ') || 'This officer';
+        return `${name} has approved ${leave.request_type === 'paid' ? 'PTO' : 'time off'} ${leave.start_date} through ${leave.end_date}, conflicting with the shift on ${shift.shift_date}.`;
+      }))].slice(0,5).join(' ');
+      const message = details + ' Choose another officer or change the shift dates.';
+      setScheduleLeaveWarning(message);
+      throw new Error(message);
+    }
+    setScheduleLeaveWarning('');
+  };
+
   const createShiftMutation = useMutation({
+    onError: error => toast.error(error?.message || 'Unable to assign shift'),
     mutationFn: async (data) => {
+      await checkApprovedLeave([data]);
       const created = await base44.entities.Schedule.create(data);
       if (created?.officer_email && created.officer_email !== 'OPEN') {
         await base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
@@ -267,7 +291,9 @@ export default function AdminScheduling() {
   });
 
   const bulkCreateShiftsMutation = useMutation({
+    onError: error => toast.error(error?.message || 'Unable to assign shifts'),
     mutationFn: async (shiftsArray) => {
+      await checkApprovedLeave(shiftsArray);
       const created = await base44.entities.Schedule.bulkCreate(shiftsArray);
       const createdRows = Array.isArray(created) ? created : [];
       await Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
@@ -291,6 +317,7 @@ export default function AdminScheduling() {
   const updateScheduleMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const before = (schedules || []).find(shift => shift.id === id) || null;
+      await checkApprovedLeave([{...before,...data}]);
       const updated = await base44.entities.Schedule.update(id, data);
       const affectedEmails = new Set([before?.officer_email, updated?.officer_email].filter(email => email && email !== 'OPEN'));
       await Promise.all(Array.from(affectedEmails).map(officerEmail => {
@@ -919,6 +946,7 @@ export default function AdminScheduling() {
     if (!pdfImportRows.length) return;
     setIsImportingPdf(true);
     try {
+      await checkApprovedLeave(pdfImportRows);
       const updates = pdfImportRows.filter(row => row._action === 'update' && row._existingId);
       const creates = pdfImportRows.filter(row => row._action !== 'update');
       const staleContinuationIds = new Set();
@@ -2543,7 +2571,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
   return (
     <div className="scheduling-page min-h-screen p-3 pb-24 sm:p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-        <ApprovedLeavePanel weekOffset={currentWeekOffset} users={allUsers} schedules={schedules}/>
+        {scheduleLeaveWarning && <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-red-600 bg-red-950/60 p-4 text-red-100"><div><strong>Approved time-off conflict</strong><p className="mt-1 text-sm">{scheduleLeaveWarning}</p></div><button type="button" onClick={()=>setScheduleLeaveWarning('')} className="shrink-0 rounded border border-red-400 px-2 py-1 text-xs">Dismiss</button></div>}
         <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl print:hidden md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-center gap-3"><Shield className="h-7 w-7 text-amber-400"/><div><div className="text-[11px] font-black uppercase tracking-[.24em] text-amber-300">Scheduling Command</div><h1 className="mt-1 text-3xl font-black text-white">Weekly Schedule</h1><p className="mt-1 text-sm text-slate-400">Drag and drop shifts to reschedule. Fleet and duty-supervisor assignments are part of this scheduling workspace.</p></div></div>
