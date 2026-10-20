@@ -62,20 +62,16 @@ export function reportingSupervisors(person, users = []) {
  return baseReportingSupervisors(person, users).flatMap(resolve);
 }
 export function actingCoverage(person, users = []) {
- if (!isOutOfOffice(person)) return person;
- const available = users.filter(user => activePerson(user) && !isOutOfOffice(user) && user.id !== person.id && rankLevel(user.rank) < 999);
- const platoon = ['A','B'].includes(person.platoon) ? person.platoon : majorPlatoon(person);
- if (!platoon) return reportingSupervisors(person, users)[0] || null;
- const samePlatoon = available.filter(user => user.platoon === platoon);
- const below = samePlatoon.filter(user => rankLevel(user.rank) > rankLevel(person.rank)).sort(comparePersonnel);
- if (below.length) return below[0];
- // No junior replacement: the nearest higher rank in the same platoon covers.
- const above = samePlatoon.filter(user => rankLevel(user.rank) < rankLevel(person.rank))
-   .sort((a,b) => rankLevel(b.rank) - rankLevel(a.rank) || comparePersonnel(a,b));
- if (above.length) return above[0];
- const supervisingMajor = available.filter(user => commandRank(user) === 'Major' && majorPlatoon(user) === platoon).sort(comparePersonnel)[0];
- if (supervisingMajor) return supervisingMajor;
- return reportingSupervisors(person, users).find(user => COMMAND_TIERS.includes(commandRank(user))) || null;
+ if(!isOutOfOffice(person))return person;
+ const available=users.filter(user=>activePerson(user)&&!isOutOfOffice(user)&&user.id!==person.id&&rankLevel(user.rank)<999);
+ const platoon=['A','B'].includes(person.platoon)?person.platoon:majorPlatoon(person);
+ const same=available.filter(user=>platoon?user.platoon===platoon:COMMAND_TIERS.includes(commandRank(person))&&COMMAND_TIERS.includes(commandRank(user)));
+ const peersOrBelow=same.filter(user=>rankLevel(user.rank)>=rankLevel(person.rank)).sort(comparePersonnel);
+ if(peersOrBelow.length)return peersOrBelow[0];
+ const above=same.filter(user=>rankLevel(user.rank)<rankLevel(person.rank)).sort(comparePersonnel);
+ if(above.length)return above[0];
+ const major=available.filter(user=>commandRank(user)==='Major'&&majorPlatoon(user)===platoon).sort(comparePersonnel)[0];
+ return major||available.filter(user=>['Lt Colonel','Colonel'].includes(commandRank(user))&&rankLevel(user.rank)<rankLevel(person.rank)).sort(comparePersonnel)[0]||null;
 }
 export const reportingLabel = (person, users, name) => reportingSupervisors(person, users).map(name).join(' & ') || (commandRank(person) === 'Colonel' ? 'Top of Command' : 'Awaiting assignment');
 export function siteReportingChains(references = [], users = []) {
