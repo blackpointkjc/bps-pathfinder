@@ -18,6 +18,7 @@ function load(path){
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
   if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
+  if(name==='@/lib/boloConfig')return load('src/lib/boloConfig.js');
   if(name==='@/lib/accountingAccess')return load('src/lib/accountingAccess.js');
   if(name==='@/utils/accountLabels')return load('src/utils/accountLabels.js');
   if(name==='@/components/workspace/WorkspaceHeader')return load('src/components/workspace/WorkspaceHeader.jsx');
