@@ -1,3 +1,4 @@
+import { useAvailabilityClock } from '@/hooks/useAvailabilityClock';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import PersonnelPrintRoster from '@/components/PersonnelPrintRoster';
@@ -91,6 +92,7 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
 }
 
 export default function RankStructure(){
+ useAvailabilityClock();
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();

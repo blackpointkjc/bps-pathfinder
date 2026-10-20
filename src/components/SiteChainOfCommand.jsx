@@ -1,7 +1,9 @@
+import { useAvailabilityClock } from '@/hooks/useAvailabilityClock';
 import { primarySiteReportingChain, platoonCommandLabel } from '@/utils/commandReporting';
 import { displayCommandName } from '@/utils/platoonChain';
 
 export default function SiteChainOfCommand({ assignedSupervisors = [], users = [] }) {
+ useAvailabilityClock();
  const chain = primarySiteReportingChain(assignedSupervisors, users);
  return <section className="min-w-0 space-y-3 rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-white" aria-label="Site chain of command">
   <h3 className="text-sm font-bold text-cyan-200">Site Chain of Command</h3>

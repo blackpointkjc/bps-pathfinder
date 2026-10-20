@@ -998,6 +998,7 @@ export default function AdminUsers({ embedded = false }) {
                       <Mail className="w-4 h-4" />
                       {userData.email}
                     </div>
+                    {userData.out_of_office && Date.parse(userData.out_of_office_return) > Date.now() && <Badge className="bg-amber-100 text-amber-900">Out of office · returns {new Date(userData.out_of_office_return).toLocaleString()}</Badge>}
                     {userData.termination_date && (
                       <div className="flex items-center gap-2 text-red-600">
                         <Calendar className="w-4 h-4" />
