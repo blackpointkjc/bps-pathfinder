@@ -1,3 +1,4 @@
+import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { approvedLeaveConflicts } from '@/utils/scheduleLeave';
 import { clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { comparePersonnel } from '@/utils/rankPolicy';
@@ -251,7 +252,7 @@ export default function AdminScheduling() {
     if (conflicts.length) {
       const details = [...new Set(conflicts.map(({shift,leave,officer}) => {
         const name = [officer?.rank,officer?.last_name].filter(Boolean).join(' ') || 'This officer';
-        return `${name} has approved ${leave.request_type === 'paid' ? 'PTO' : 'time off'} ${leave.start_date} through ${leave.end_date}, conflicting with the shift on ${shift.shift_date}.`;
+        return `${name} has approved ${leave.request_type === 'paid' ? 'PTO' : 'time off'}  ${leaveTimeLabel(leave)}, conflicting with the shift on ${shift.shift_date}.`;
       }))].slice(0,5).join(' ');
       const message = details + ' Choose another officer or change the shift dates.';
       setScheduleLeaveWarning(message);

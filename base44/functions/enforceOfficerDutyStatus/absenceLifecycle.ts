@@ -139,7 +139,7 @@ export async function reconcileAbsences(entities,now=Date.now()){
      if(privileged.length&&!privileged.every(role=>r.has(role)||admin))return false;
      if(original.role==='admin'&&!admin)return false;
     }
-    if(spec.entity==='WorkQueueState'&&!(admin||r.has('supervisor')||p.is_supervisor||rank(p)<=6))return false;
+    if(spec.entity==='WorkQueueState'&&!(admin||r.has('supervisor')||p.is_supervisor||rank(p)<=7))return false;
     if(spec.entity==='PerformanceReview'){
      const subject=users.find(u=>u.id===row.officer_id||clean(u.email)===clean(row.officer_email));
      if(!subject||rank(p)>=rank(subject))return false;
