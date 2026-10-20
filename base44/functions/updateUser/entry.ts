@@ -155,13 +155,14 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (oooFields.some(field => updates[field] !== undefined)) await reconcileAbsences(base44.asServiceRole.entities);
+        const coverage = oooFields.some(field => updates[field] !== undefined) ? await reconcileAbsences(base44.asServiceRole.entities) : null;
         console.log('✅ User updated successfully');
         
         return Response.json({
             success: true,
             message: 'User updated successfully',
             warnings,
+            coverage,
             user: {id:userId, rank:updatePayload.rank || target.rank, unit_number:updatePayload.unit_number ?? target.unit_number, hourly_rate:updatePayload.hourly_rate ?? target.hourly_rate}
         });
         

@@ -22,10 +22,11 @@ export default function AdminOutOfOffice({ user }) {
   try {
    const response = await base44.functions.invoke('updateUser',{userId:user.id,updates:{out_of_office:clear ? false : enabled,out_of_office_start:start ? new Date(start).toISOString() : '',out_of_office_return:end ? new Date(end).toISOString() : ''}});
    if (response?.data?.error) throw new Error(response.data.error);
+   const coverage=response?.data?.coverage;
    if (clear) setEnabled(false);
    invalidateAppDirectory();
    await queryClient.invalidateQueries();
-   setMessage(clear ? 'Returned to office. Unfinished duties and permanent command assignments resume. Active approved leave remains in effect.' : 'Availability saved. Temporary coverage is synchronized automatically and ends at the return time.');
+   setMessage((clear ? 'Returned to office. Unfinished duties and permanent command assignments resume. Active approved leave remains in effect.' : 'Availability saved. Temporary coverage is synchronized automatically and ends at the return time.')+(coverage?.uncovered?' '+coverage.uncovered+' duties are waiting for qualified coverage; administrators have been notified.':''));
   } catch(error) { setMessage(error?.message || 'Could not save availability.'); }
   finally { setBusy(false); }
  };

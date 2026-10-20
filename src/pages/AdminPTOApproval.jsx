@@ -118,10 +118,11 @@ export default function AdminPTOApproval() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    onError: error => toast.error(error?.response?.data?.error || error?.message || 'Unable to save time off decision'),
+    onError: error => {queryClient.invalidateQueries({queryKey:['allPTORequestsForHR']});toast.error(error?.response?.data?.error || error?.message || 'Unable to save time off decision');},
     onSuccess: payload => {
       queryClient.invalidateQueries({ predicate: query => /schedule|pto|leave|workqueue/i.test(String(query.queryKey[0])) });
       toast.success(payload?.opened_shifts ? `Time off saved; ${payload.opened_shifts} shifts need coverage in Scheduling.` : 'Time off decision saved in Scheduling.');
+      if(payload?.coverage?.uncovered)toast.warning(payload.coverage.uncovered+' duties need qualified coverage. See administrator notifications.');
       setShowDialog(false);
       setSelectedRequest(null);
       setAdminNotes("");

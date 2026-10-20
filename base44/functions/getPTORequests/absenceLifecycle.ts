@@ -147,7 +147,15 @@ export async function reconcileAbsences(entities,now=Date.now()){
     if(spec.entity==='Task'&&row.related_id===p.id)return false;
     return true;
    });
-   if(!candidates.length){summary.uncovered++;continue;}
+   if(!candidates.length){
+    summary.uncovered++;
+    for(const admin of users.filter(p=>p.email&&(p.role==='admin'||roles(p).has('full_access')))){
+     const event_key='absence-uncovered:'+spec.entity+':'+row.id+':'+original.absence_cycle_key+':'+admin.id;
+     if(!(await entities.Notification.filter({event_key},'-created_date',1)).length)
+      await entities.Notification.create({event_key,recipient_email:admin.email,type:'supervisor_task',title:'Absence duty needs qualified coverage',message:(row.title||'Pending performance review')+' assigned to '+name(original)+' has no eligible available replacement. The duty is held for qualified coverage.',related_id:row.id,priority:'high',source_name:'Officer Availability'});
+    }
+    continue;
+   }
    const highest=rank(candidates[0]);candidates=candidates.filter(p=>rank(p)===highest);
    // Balance across the highest eligible rank. Seniority and unit number decide equal loads.
    candidates.sort((a,b)=>(load.get(a.id)||0)-(load.get(b.id)||0)||commandOrder(a,b));
