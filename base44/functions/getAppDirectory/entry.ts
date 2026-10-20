@@ -59,6 +59,7 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
     oversight_platoon: entry.oversight_platoon || '',
     supervisor_id: entry.supervisor_id || '',
     supervisor_name: entry.supervisor_name || '',
+    mobile_phone: entry.mobile_phone || '',
     unit_number: entry.unit_number || '',
     badge_number: entry.badge_number || '',
     division: entry.division || '',

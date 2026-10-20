@@ -83,7 +83,7 @@ export default function ClientSupervisors() {
               <p><strong>For immediate site issues:</strong> Contact your Site Supervisor</p>
               <p><strong>For escalated concerns:</strong> Contact Division Command</p>
               <p className="mt-3 text-xs text-slate-400">
-                Note: Contact information is not displayed for security and privacy reasons. For urgent matters, please contact Black Point Protection dispatch.
+                Use the phone and email links on each card to contact your site supervisor or their chain of command. For urgent matters, contact Black Point Protection dispatch.
               </p>
             </div>
           </CardContent>
