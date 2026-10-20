@@ -173,6 +173,10 @@ Deno.serve(async (req) => {
       const completedAt = new Date().toISOString();
       const existingMatches = statesForTaskKey(taskKey);
       const existing = preferredStateForTaskKey(taskKey);
+      if (existing?.assigned_to_id) {
+        const owner = await base44.asServiceRole.entities.User.get(String(existing.assigned_to_id));
+        if (isOutOfOffice(owner)) return Response.json({error:'This assigned task is on hold',held_until:owner.out_of_office_return},{status:409});
+      }
       const patch = {
         status: 'completed',
         completed_at: completedAt,

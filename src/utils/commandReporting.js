@@ -12,12 +12,22 @@ export const majorPlatoon = person => ['A','B'].includes(person?.oversight_plato
 const activePerson = person => !person.termination_date && String(person.employment_status || '').toLowerCase() !== 'terminated';
 export function platoonCommander(letter, users = []) {
  const members = users.filter(person => activePerson(person) && !isOutOfOffice(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person)) && rankLevel(person.rank) < 999).sort(comparePersonnel);
- return members.find(person => normalizeRank(person.rank) === 'Captain') || members[0] || null;
+ const chosen = members.find(person => normalizeRank(person.rank) === 'Captain') || members[0];
+ if (chosen) return chosen;
+ const permanent = users.filter(person => activePerson(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person))).sort(comparePersonnel)[0];
+ const seen = new Set();
+ let parent = users.find(user => user.id === permanent?.supervisor_id);
+ while (parent && !seen.has(parent.id)) {
+  seen.add(parent.id);
+  if (activePerson(parent) && !isOutOfOffice(parent)) return parent;
+  parent = users.find(user => user.id === parent.supervisor_id);
+ }
+ return users.filter(user => activePerson(user) && !isOutOfOffice(user) && commandRank(user) === 'Major' && majorPlatoon(user) === letter).sort(comparePersonnel)[0] || null;
 }
 export function platoonCommandLabel(person, users = []) {
- const commander = ['A','B'].includes(person?.platoon) ? platoonCommander(person.platoon, users) : null;
- if (!commander || commander.id !== person?.id) return '';
- return `Platoon ${person.platoon} Commander${normalizeRank(person.rank) === 'Captain' && !users.some(user => user.platoon === person.platoon && isOutOfOffice(user) && rankLevel(user.rank) <= rankLevel(person.rank)) ? '' : ' (Acting)'}`;
+ return ['A','B'].filter(letter => platoonCommander(letter, users)?.id === person?.id).map(letter =>
+  `Platoon ${letter} Commander${person.platoon === letter && normalizeRank(person.rank) === 'Captain' && !isOutOfOffice(person) ? '' : ' (Acting)'}`
+ ).join(' · ');
 }
 export const assignmentLabel = (person, users = []) => platoonCommandLabel(person, users) || (COMMAND_TIERS.includes(commandRank(person)) ? 'Command' : ['A','B'].includes(person?.platoon) ? `Platoon ${person.platoon}` : 'Unassigned');
 function baseReportingSupervisors(person, users = []) {
@@ -25,7 +35,7 @@ function baseReportingSupervisors(person, users = []) {
   const active = users.filter(activePerson);
   const commander = ['A','B'].includes(person?.platoon) ? platoonCommander(person.platoon, active) : null;
   if (commander?.id === person?.id) {
-    const majors = active.filter(user => commandRank(user) === 'Major' && majorPlatoon(user) === person.platoon).sort(comparePersonnel);
+    const majors = active.filter(user => user.id !== person.id && commandRank(user) === 'Major' && majorPlatoon(user) === person.platoon).sort(comparePersonnel);
     if (majors.length) return majors;
     return active.filter(user => user.id === person.supervisor_id && COMMAND_TIERS.includes(commandRank(user)));
   }

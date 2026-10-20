@@ -28,6 +28,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const me = await base44.auth.me();
+    if (isOutOfOffice(me)) return Response.json({error:'Assigned tasks are on hold until your return',held_until:me.out_of_office_return},{status:409});
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = rolesOf(me);
     if (me.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access') && !(me.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(me.rank || '').toLowerCase().replace(/[.]/g, '').trim()))) {

@@ -1,3 +1,4 @@
+import { isOutOfOffice } from '@/utils/outOfOffice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { GraduationCap, BookOpen, ShieldCheck, Users, ClipboardCheck, ArrowRight, AlertTriangle, Activity, CheckCircle2, Award } from 'lucide-react';
@@ -37,7 +38,7 @@ export default function TrainerOverview() {
       const completions = await base44.entities.TrainingCompletion.list('-completed_date', 150).catch(() => []);
       const certificationTodos = await base44.entities.CertificationTodo.list('days_until_expiration', 150).catch(() => []);
       const currentUser = await base44.auth.me();
-      const trainerTasks = currentUser?.id ? await base44.entities.Task.filter({ assigned_to: currentUser.id, status: 'open' }, '-created_date', 50).catch(() => []) : [];
+      const trainerTasks = currentUser?.id && !isOutOfOffice(currentUser) ? await base44.entities.Task.filter({ assigned_to: currentUser.id, status: 'open' }, '-created_date', 50).catch(() => []) : [];
       return { users, modules, assignments, submissions, completions, certificationTodos, trainerTasks };
     },
     staleTime: 60000,

@@ -26,7 +26,7 @@ import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import AdminOperationsBriefing from '@/components/AdminOperationsBriefing';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
+import { listDirectoryDivisions, listDirectoryLocations, invalidateAppDirectory } from '@/lib/appDirectory';
 
 export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();

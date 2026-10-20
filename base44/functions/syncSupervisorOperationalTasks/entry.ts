@@ -299,6 +299,7 @@ Deno.serve(async (req) => {
     };
     const seenReportReviewKeys = new Set<string>();
     for (const state of states || []) {
+      if (isOutOfOffice((users || []).find(user => String(user.id) === String(state.assigned_to_id || '')))) continue;
       if (lower(state.status) !== 'open' || lower(state.source_kind) !== 'report_review') continue;
       const taskKey = clean(state.task_key);
       if (!taskKey || seenReportReviewKeys.has(taskKey)) continue;
@@ -352,6 +353,7 @@ Deno.serve(async (req) => {
     // open row on the next synchronization pass.
     const groupedStates = new Map<string,any[]>();
     for (const state of states || []) {
+      if (isOutOfOffice((users || []).find(user => String(user.id) === String(state.assigned_to_id || '')))) continue;
       const key = clean(state.task_key);
       if (!key) continue;
       if (!groupedStates.has(key)) groupedStates.set(key, []);
@@ -397,6 +399,7 @@ Deno.serve(async (req) => {
 
     // Automatically close generated tasks that no longer exist in the source data.
     for (const state of states || []) {
+      if (isOutOfOffice((users || []).find(user => String(user.id) === String(state.assigned_to_id || '')))) continue;
       if (state.status !== 'open' || !managedKinds.has(clean(state.source_kind)) || activeTaskKeys.has(clean(state.task_key))) continue;
       await base44.asServiceRole.entities.WorkQueueState.update(state.id, {
         status:'auto_completed', completed_at:nowIso, completed_by:'Pathfinder Supervisor Operations',

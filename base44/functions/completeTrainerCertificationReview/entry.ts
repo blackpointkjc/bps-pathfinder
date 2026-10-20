@@ -10,6 +10,7 @@ Deno.serve(async req => {
  try {
   const api = createClientFromRequest(req);
   const me = await api.auth.me();
+    if (isOutOfOffice(me)) return Response.json({error:'Assigned tasks are on hold until your return',held_until:me.out_of_office_return},{status:409});
   const roles = (me?.additional_roles || []).map((role:unknown) => String(role).toLowerCase());
   if (!me || (me.role !== 'admin' && !roles.includes('trainer') && !roles.includes('full_access')))
    return Response.json({error:'Trainer access required'},{status:403});
