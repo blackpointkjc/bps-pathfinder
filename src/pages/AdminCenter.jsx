@@ -265,6 +265,16 @@ function AdministrationToolsOnly() {
 }
 
 export default function AdminCenter() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin_ops_section') !== 'coverage') return;
+    params.set('admin_center','admin');
+    params.set('admin_ops_section','people');
+    params.set('admin_people_tool','availability');
+    window.history.replaceState({},'',window.location.pathname+'?'+params.toString());
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, []);
+
   const queryClient = useQueryClient();
   const { data: signedInUser } = useQuery({ queryKey: ['adminCenterSignedInUser'], queryFn: () => base44.auth.me(), staleTime: 60000 });
   const navigate = useNavigate();

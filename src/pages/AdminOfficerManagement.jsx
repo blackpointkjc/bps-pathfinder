@@ -89,7 +89,6 @@ export default function AdminOfficerManagement() {
     const day = dateKey(s.shift_date || s.start_time || s.date);
     return day && day >= today && day <= endWindow && s.archived !== true;
   }), [schedules, today, endWindow]);
-  const openShifts = useMemo(() => upcomingSchedules.filter(s => s.is_open === true || ['open', 'unassigned'].includes(normalize(s.officer_email))), [upcomingSchedules]);
 
   const filteredOfficers = useMemo(() => activeOfficers.filter(o => {
     const hay = `${rankLast(o)} ${o.unit_number || ''}`.toLowerCase();
