@@ -43,15 +43,15 @@ const overlaps = (aStart, aEnd, bStart, bEnd) => {
   return as < be && bs < ae;
 };
 
-export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
+export default function FleetVehicleAssignments({ embedded=false, weekStart, editorOnly=false }) {
   const qc = useQueryClient();
   const {data:syncReport}=useQuery({queryKey:['fleetDefaultSync'],enabled:false});
   const [dayOffset, setDayOffset] = useState(0);
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
-  const [showNewAssignment, setShowNewAssignment] = useState(false);
+  const [showNewAssignment, setShowNewAssignment] = useState(editorOnly);
   const [savingManual, setSavingManual] = useState(false);
-  const [manualForm, setManualForm] = useState(() => ({ assignment_date: format(new Date(), 'yyyy-MM-dd'), start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' }));
+  const [manualForm, setManualForm] = useState(() => ({ assignment_date: weekStart||format(new Date(), 'yyyy-MM-dd'), start_time: '18:00', end_time: '06:00', vehicle_id: '', primary_officer_email: '', partner_officer_email: '', location: '', notes: '' }));
 
   const { user, isLoadingAuth } = useAuth();
   const normalizedRoles = (user?.additional_roles || []).map(role => String(role).toLowerCase());
@@ -261,7 +261,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
     <div className="mx-auto max-w-[1500px] space-y-4">
       {isAdmin&&<div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={async()=>{try{const result=await syncOfficerVehicles(qc);qc.setQueryData(['fleetDefaultSync'],result);toast.success(result.created+' reservations created.');}catch(error){toast.error(error.message);}}}>Sync officer vehicle defaults</Button><span className="text-xs text-slate-400">Set default vehicles under Company Assets. Manual shift assignments take priority.</span></div>}
       {syncReport?.conflicts?.length>0&&<div role="alert" className="rounded-lg border border-amber-700 p-3 text-xs text-amber-200">{syncReport.conflicts.map((item,index)=><p key={index}>{item.officer_name} · {item.shift_date} {item.start_time}–{item.end_time}: {item.reason}</p>)}</div>}
-      <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
+      {!editorOnly&&<section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
         <Car className="h-7 w-7 text-amber-400" />
         <div>
           <h2 className="text-lg font-bold">Shift vehicle reservations</h2>
@@ -274,7 +274,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
           <Button variant="outline" size="sm" onClick={() => setDayOffset(v => v + 3)}><ChevronRight className="h-4 w-4" /></Button>
           {isAdmin && <Button size="sm" onClick={() => setShowNewAssignment(value => !value)} className="bg-amber-600 text-slate-950 hover:bg-amber-500"><Plus className="mr-1 h-4 w-4" />NEW ASSIGNMENT</Button>}
         </div>
-      </div></section>
+      </div></section>}
 
       {isAdmin && showNewAssignment && <Card className="border-amber-500/40 bg-slate-900 text-white"><CardHeader><CardTitle className="text-base">Create Fleet Assignment</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div><Label>Date</Label><Input type="date" value={manualForm.assignment_date} onChange={e=>setManualForm({...manualForm,assignment_date:e.target.value})} className="border-slate-700 bg-slate-950"/></div>
@@ -289,7 +289,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
 
       {fleetError && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. The last verified vehicle list is retained while Pathfinder retries.</div>}
 
-      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      {!editorOnly&&<div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card className="border-slate-800 bg-slate-900 text-white">
           <CardHeader><CardTitle className="text-sm">FLEET STATUS</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -342,7 +342,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
             </Card>;
           })}
         </div>
-      </div>
+      </div>}
     </div>
   </div>;
 }

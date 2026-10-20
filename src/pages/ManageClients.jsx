@@ -27,7 +27,6 @@ export default function ManageClients() {
     property_names: [],
     email: "",
     mobile_phone: "",
-    role: "user",
   });
   const queryClient = useQueryClient();
 
@@ -146,7 +145,6 @@ export default function ManageClients() {
       property_names: [],
       email: "",
       mobile_phone: "",
-      role: "user",
     });
   };
 
@@ -162,7 +160,6 @@ export default function ManageClients() {
       ].filter(Boolean))],
       email: client.email || "",
       mobile_phone: client.mobile_phone || "",
-      role: client.role || "user",
     });
     setShowDialog(true);
   };
@@ -332,21 +329,6 @@ export default function ManageClients() {
               </div>
               <p className="text-xs text-slate-400">{formData.property_names.length} propert{formData.property_names.length === 1 ? 'y' : 'ies'} selected</p>
             </div>
-            {editingClient && isSystemAdmin && (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="client_system_admin"
-                    checked={formData.role === 'admin'}
-                    onCheckedChange={(checked) => setFormData({ ...formData, role: checked ? 'admin' : 'user' })}
-                  />
-                  <Label htmlFor="client_system_admin" className="cursor-pointer">
-                    <div className="font-bold text-amber-300">System Administrator</div>
-                    <div className="text-xs text-slate-400">Adds full administrative authority while retaining this client account assignment.</div>
-                  </Label>
-                </div>
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email Address *</Label>
               <Input

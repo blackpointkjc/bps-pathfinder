@@ -36,7 +36,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 const LOGO_URL = "/black-point-shield.webp";
 
-export default function ScheduleBoard({ embedded=false, onWeekChange }) {
+export default function ScheduleBoard({ embedded=false, onWeekChange, onSchedulingAction }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('leave_date');
     return requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && Number.isFinite(Date.parse(requested)) ? differenceInCalendarWeeks(parseISO(requested),new Date(),{weekStartsOn:0}) : 0;
@@ -2601,7 +2601,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 {markWeekReadyMutation.isPending?'Updating…':weekStatus?.is_ready?'Published':'Unpublished'}
               </label>
               {weekStatus?.is_ready && weekStatus.delivery_status !== 'complete' && <button type="button" disabled={markWeekReadyMutation.isPending} onClick={()=>markWeekReadyMutation.mutate(true)} className="min-h-9 text-xs font-bold text-amber-300 hover:underline">Retry alerts</button>}
-              <Button size="sm" onClick={()=>setShowAddDialog(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-1 h-4 w-4"/>Add shift</Button>
+              {onSchedulingAction&&<><Button type="button" size="sm" variant="outline" onClick={()=>onSchedulingAction('fleet')}>Assign vehicle</Button><Button type="button" size="sm" variant="outline" onClick={()=>onSchedulingAction('duty')}>Duty supervisor</Button><select aria-label="More scheduling actions" value="" onChange={event=>{if(event.target.value)onSchedulingAction(event.target.value);}} className="h-9 max-w-full rounded-lg border border-slate-600 bg-slate-950 px-2 text-xs text-white"><option value="">More actions…</option><option value="planned">Staffing plans</option><option value="bids">Open shifts &amp; bids</option><option value="pto">Time-off approvals</option><option value="requests">Staffing requests</option></select></>}<Button size="sm" onClick={()=>setShowAddDialog(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-1 h-4 w-4"/>Add shift</Button>
             </div>
           </div>
           <div className="mt-2 border-t border-slate-800 pt-2">

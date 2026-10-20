@@ -94,7 +94,7 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
         key={`${providerGroup}-${provider.id}`}
         url={provider.url}
         attribution={provider.attribution}
-        subdomains={provider.subdomains}
+        subdomains={Array.isArray(provider.subdomains)&&provider.subdomains.length?provider.subdomains:typeof provider.subdomains==='string'&&provider.subdomains.length?provider.subdomains:'abcd'}
         maxZoom={20}
         maxNativeZoom={19}
         keepBuffer={3}
