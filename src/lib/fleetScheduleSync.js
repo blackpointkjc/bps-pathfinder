@@ -1,7 +1,7 @@
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 let pending=null;
-export async function syncOfficerVehicles(queryClient){
- if(pending)return pending;
+export async function syncOfficerVehicles(queryClient, afterWrite=false){
+ if(pending)return afterWrite?pending.then(()=>syncOfficerVehicles(queryClient)):pending;
  pending=base44.functions.invoke('getFleetScheduleData',{action:'sync'}).then(async response=>{
   const data=response?.data||{};if(data.error)throw new Error(data.error);
   clearBase44ReadCacheMatching('function:getFleetScheduleData:');

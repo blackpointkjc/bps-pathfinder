@@ -64,7 +64,7 @@ export default function VehicleManagement() {
                 await base44.entities.Vehicle.create(formData);
                 toast.success('Vehicle added');
             }
-            await syncOfficerVehicles(qc).catch(()=>toast.warning('Vehicle saved; automatic reservations need retry.'));
+            await syncOfficerVehicles(qc,true).catch(()=>toast.warning('Vehicle saved; automatic reservations need retry.'));
             setShowDialog(false);
             setEditingVehicle(null);
             resetForm();

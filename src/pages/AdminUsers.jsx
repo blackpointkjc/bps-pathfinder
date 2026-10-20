@@ -259,7 +259,7 @@ export default function AdminUsers({ embedded = false }) {
         // Check birthday
         if (officer.date_of_birth) {
           // Parse date string directly to avoid timezone issues
-          const [year, month, day] = officer.date_of_birth.split('-').map(Number);
+          const [, month, day] = officer.date_of_birth.split('-').map(Number);
           
           console.log(`${officer.first_name} birthday: ${month}/${day}`);
           
@@ -536,14 +536,6 @@ export default function AdminUsers({ embedded = false }) {
   };
 
   // Debug logging
-  console.log('=== AdminUsers Debug ===');
-  console.log('Has access:', hasAccess);
-  console.log('Current user:', user);
-  console.log('Total users loaded:', users?.length);
-  console.log('Is loading:', isLoading);
-  console.log('Error:', error);
-  // Avoid logging full personnel profiles or private identity fields.
-
   // Pending users have no assigned portal category. Support is an independent
   // employee login and must never require an Officer/reporting-officer role.
   const isPendingUser = (u) => {

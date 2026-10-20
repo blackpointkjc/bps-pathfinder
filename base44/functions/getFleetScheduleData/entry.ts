@@ -17,6 +17,7 @@ const overlaps = (aStart: unknown, aEnd: unknown, bStart: unknown, bEnd: unknown
   const [bs, be] = normalize(bStart, bEnd);
   return as < be && bs < ae;
 };
+const operational = (person:any) => person && !person.termination_date && !(person.additional_roles||[]).some((role:any)=>['client','pending','student'].includes(lower(role))) && ((person.additional_roles||[]).some((role:any)=>['officer','cad_access','supervisor'].includes(lower(role))) || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(lower(person.rank)));
 const officerName = (user: any) =>
   [user?.rank, user?.last_name || user?.first_name].filter(Boolean).join(' ').trim()
   || user?.full_name || user?.email || 'Officer';
@@ -37,7 +38,7 @@ Deno.serve(async (req) => {
       if(action==='set_default'){
        const officer=await base44.asServiceRole.entities.User.get(String(body.officer_id||''));
        const vehicles=await base44.asServiceRole.entities.Vehicle.list('vehicle_id',1000);
-       if(!officer||officer.termination_date||(officer.additional_roles||[]).includes('client'))return Response.json({error:'Active officer required'},{status:400});
+       if(!operational(officer))return Response.json({error:'Active officer required'},{status:400});
        const selected=vehicles.find(v=>v.id===body.vehicle_id);
        if(body.vehicle_id&&!selected)return Response.json({error:'Vehicle not found'},{status:404});
        if(selected?.assigned_to&&selected.assigned_to!==officer.id)return Response.json({error:'Vehicle belongs to another officer. Clear its default first.'},{status:409});
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
           { assignment_date: { $gte: new Date(Date.parse(String(row.assignment_date).slice(0,10)+'T12:00:00Z')-86400000).toISOString().slice(0,10), $lte:new Date(Date.parse(String(row.assignment_date).slice(0,10)+'T12:00:00Z')+86400000).toISOString().slice(0,10) } },
           '-created_date',
           500,
-        ).catch(() => []),
+        ),
       ]);
       if (!vehicle) return Response.json({ error: 'Selected vehicle was not found.' }, { status: 404 });
       if (['maintenance', 'out of service', 'retired'].includes(lower(vehicle.status))) {
@@ -77,8 +78,9 @@ Deno.serve(async (req) => {
       }
       const primary = (users || []).find((person: any) => lower(person.email) === lower(row.primary_officer_email));
       const partner = (users || []).find((person: any) => lower(person.email) === lower(row.partner_officer_email));
-      if (!primary) return Response.json({ error: 'Selected primary officer was not found.' }, { status: 400 });
+      if (!operational(primary)) return Response.json({ error: 'Selected primary officer was not found.' }, { status: 400 });
 
+      if(row.partner_officer_email&&!operational(partner))return Response.json({error:'Partner must be an active officer.'},{status:400});
       const conflict = (assignments || []).find((item: any) =>
         String(item.id || '') !== String(row.id || '')
         && String(item.vehicle_id || '') === String(vehicle.id)

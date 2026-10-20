@@ -25,9 +25,9 @@ export async function syncFleet(entities,now=Date.now()){
   const officer=users.find(p=>clean(p.email)===clean(shift.officer_email));
   if(!officer||officer.termination_date)continue;
   const defaults=vehicles.filter(v=>v.assigned_to===officer.id);
-  if(defaults.length!==1){if(defaults.length>1)result.conflicts.push({shift_id:shift.id,reason:'Multiple default vehicles are assigned to this officer.'});continue;}
+  if(defaults.length!==1){if(defaults.length>1)result.conflicts.push({shift_id:shift.id,officer_name:name(officer),shift_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,reason:'Multiple default vehicles are assigned to this officer.'});continue;}
   const vehicle=defaults[0];
-  if(clean(vehicle.status||'Active')!=='active'){result.conflicts.push({shift_id:shift.id,reason:(vehicle.vehicle_id||'Vehicle')+' is unavailable for service.'});continue;}
+  if(clean(vehicle.status||'Active')!=='active'){result.conflicts.push({shift_id:shift.id,officer_name:name(officer),shift_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,reason:(vehicle.vehicle_id||'Vehicle')+' is unavailable for service.'});continue;}
   desired.set(shift.id,{shift,officer,vehicle});
  }
  // Cancel obsolete automatic reservations first, including reassigned/open/removed shifts.
@@ -44,7 +44,7 @@ export async function syncFleet(entities,now=Date.now()){
   const conflict=assignments.find(a=>a.id!==existing?.id&&a.vehicle_id===vehicle.id&&a.status!=='cancelled'&&intersects(a,shift));
   if(conflict){
    if(existing){await entities.VehicleAssignment.update(existing.id,{status:'cancelled'});existing.status='cancelled';result.cancelled++;}
-   result.conflicts.push({shift_id:shift.id,reason:vehicle.vehicle_id+' is already reserved for an overlapping shift.'});continue;
+   result.conflicts.push({shift_id:shift.id,officer_name:name(officer),shift_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,reason:vehicle.vehicle_id+' is already reserved for an overlapping shift.'});continue;
   }
   const payload={assignment_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,vehicle_id:vehicle.id,vehicle_label:vehicle.vehicle_id,
    primary_officer_email:clean(officer.email),primary_officer_name:name(officer),partner_officer_email:shift.partner_officer_email||'',location:shift.location||'',

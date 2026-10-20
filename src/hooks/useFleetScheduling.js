@@ -8,7 +8,7 @@ export function useFleetScheduling(user){
   const roles=user?.additional_roles||[];
   if(!user||!(user.role==='admin'||roles.includes('full_access')||roles.includes('fleet_manager')))return;
   let stopped=false,timer;
-  const run=()=>{if(!stopped)syncOfficerVehicles(qc).catch(error=>console.warn('Fleet scheduling needs retry',error?.message));};
+  const run=()=>{if(!stopped)syncOfficerVehicles(qc,true).catch(error=>console.warn('Fleet scheduling needs retry',error?.message));};
   const queue=()=>{clearTimeout(timer);timer=setTimeout(run,1500);};
   const subscriptions=[];
   for(const entity of [base44.entities.Schedule,base44.entities.Vehicle]){
