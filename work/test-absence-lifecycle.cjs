@@ -17,7 +17,7 @@ const users=[
  {id:'low',email:'low@test',rank:'Sergeant',platoon:'A',hire_date:'2000-01-01',unit_number:'500'},
  {id:'wrong',email:'wrong@test',rank:'Captain',platoon:'B',hire_date:'1990-01-01'},
  {id:'major',email:'major@test',rank:'Major',oversight_platoon:'A'},
- {id:'subject',email:'subject@test',rank:'Lieutenant',platoon:'A'}
+ {id:'subject',email:'subject@test',rank:'Lieutenant',platoon:'B'}
 ];
 assert.equal([...users.slice(1,4)].sort(commandOrder)[0].id,'r1','hire date wins over lower unit at same rank');
 assert.equal([{rank:'Sergeant',unit_number:'502',hire_date:'2020-01-01'},{rank:'Sergeant',unit_number:'501',hire_date:'2020-01-01'}].sort(commandOrder)[0].unit_number,'501');
