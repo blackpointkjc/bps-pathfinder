@@ -7,7 +7,7 @@ const db=[structuredClone(client),structuredClone(officer)];
 let handler,actor={id:'employee',role:'user',additional_roles:['officer']},writes=0;
 vm.runInNewContext(compile(fs.readFileSync('base44/functions/getAdminUserAccounts/entry.ts','utf8').replace(/^import .*;\n/gm,'')),{
  Deno:{serve:fn=>handler=fn},Response,console,...policy,
- createClientFromRequest:()=>({auth:{me:async()=>actor},asServiceRole:{entities:{User:{list:async()=>structuredClone(db),update:async(id,patch)=>{writes++;Object.assign(db.find(p=>p.id===id),patch);}}}}),
+ createClientFromRequest:()=>({auth:{me:async()=>actor},asServiceRole:{entities:{User:{list:async()=>structuredClone(db),update:async(id,patch)=>{writes++;Object.assign(db.find(p=>p.id===id),patch);}}}}}),
 });
 (async()=>{
  let response=await handler(new Request('https://test'));assert.equal(response.status,403);assert.equal(writes,0);
