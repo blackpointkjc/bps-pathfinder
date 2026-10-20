@@ -340,6 +340,7 @@ Deno.serve(async (req) => {
       if (!officer_email || !hours || Number(hours) <= 0) {
         return Response.json({ error: 'Officer and positive PTO hours are required' }, { status: 400 });
       }
+      if (remove_shifts && user.role !== 'admin' && !roles.has('full_access')) return Response.json({error:'Only scheduling administrators can remove shifts for days off'},{status:403});
       if (remove_shifts && (!start_date || !end_date)) {
         return Response.json({ error: 'Start and end dates are required when removing scheduled shifts' }, { status: 400 });
       }
