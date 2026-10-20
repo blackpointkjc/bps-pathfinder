@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
         for (const admin of admins) if (admin.email) await base44.asServiceRole.entities.Notification.create({
           recipient_email:String(admin.email).toLowerCase(),type:'schedule_changed',
           title:'Approved leave — scheduling coverage',
-          message:`${[creatorOfficer?.rank,creatorOfficer?.last_name].filter(Boolean).join(' ') || request.requested_by_name || officerEmail} is approved off ${request.start_date} through ${request.end_date}. ${openedShifts} shift(s) moved to Open Shifts. Review Scheduling → Approved time off.`,
+          message:`${[(users || []).find(entry => String(entry.email || '').toLowerCase() === String(officerEmail || '').toLowerCase())?.rank,(users || []).find(entry => String(entry.email || '').toLowerCase() === String(officerEmail || '').toLowerCase())?.last_name].filter(Boolean).join(' ') || 'Officer ' + String(request.requested_by_name || 'unavailable').split(/\s+/).pop()} is approved off ${request.start_date} through ${request.end_date}. ${openedShifts} shift(s) moved to Open Shifts. Review Scheduling → Approved time off.`,
           related_id:request.id,priority:openedShifts ? 'high' : 'normal',source_name:'Admin Scheduling',
         }).catch(error => console.warn('Leave scheduling notification failed',error?.message));
       }

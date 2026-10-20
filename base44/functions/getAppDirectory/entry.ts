@@ -148,8 +148,10 @@ Deno.serve(async (req) => {
     };
 
     let users: any[] = [];
-    if (fullAccess || hrAccess) {
+    if (fullAccess) {
       users = directoryUsers.map((u: any) => safeUser(u, true));
+    } else if (hrAccess) {
+      users = directoryUsers.filter(isInternal).map((u: any) => safeUser(u, true));
     } else if (clientOnly) {
       users = directoryUsers.filter(isInternal).map((u: any) => safeUser(u, false));
     } else if (studentOnly) {

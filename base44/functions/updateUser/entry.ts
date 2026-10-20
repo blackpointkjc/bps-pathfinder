@@ -29,6 +29,8 @@ Deno.serve(async (req) => {
         const isSystemManager = user.role === 'admin' || roles.has('full_access');
         const internalEmployeeRoles = ['cad_access','officer','supervisor','hr','accounting','trainer','support_staff'];
         const isInternalEmployee = target.role === 'admin' || internalEmployeeRoles.some(role => targetRoles.has(role)) || ['support staff', 'human resources'].includes(String(target.rank || '').toLowerCase());
+        const targetIsClient = targetRoles.has('client') || [target.rank,target.user_type,target.account_type,target.portal_type].some(value => String(value || '').trim().toLowerCase() === 'client');
+        if (!isSystemManager && roles.has('hr') && targetIsClient) return Response.json({error:'Client accounts are managed by administrators'},{status:403});
         if (!isSystemManager && roles.has('hr') && !isInternalEmployee) return Response.json({ error: 'HR can manage company employee accounts only' }, { status: 403 });
         if (!isSystemManager && roles.has('trainer') && !targetRoles.has('student')) return Response.json({ error: 'Trainer can manage student accounts only' }, { status: 403 });
         if (!isSystemManager && updates.role !== undefined) return Response.json({ error: 'Only Admin or Full Access can change system administrator status' }, { status: 403 });
