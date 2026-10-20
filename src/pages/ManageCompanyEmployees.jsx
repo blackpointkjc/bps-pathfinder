@@ -99,12 +99,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     refetchOnWindowFocus: false,
   });
 
-  const { data: locations } = useQuery({
-    queryKey: ['directoryLocations', 'manageCompanyEmployees'],
-    queryFn: () => listDirectoryLocations('site_name', 1000),
-    enabled: hasAccess,
-    initialData: [],
-  });
+
 
   const { data: divisions } = useQuery({
     queryKey: ['directoryDivisions', 'manageCompanyEmployees'],

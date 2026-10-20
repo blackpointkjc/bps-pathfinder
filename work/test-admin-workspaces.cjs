@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),assert=require('assert/strict');
 const fixture={id:'officer',email:'officer@test',rank:'Lieutenant',last_name:'Example',platoon:'A',unit_number:'401',additional_roles:['officer']};
+const client={id:'client',email:'client@test',first_name:'Admin',last_name:'Account',rank:'Client',unit_number:'650',platoon:'A',role:'user',additional_roles:['client']};
 const actor={id:'admin',role:'admin',email:'admin@test'};
 const compile=path=>ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 const stub=label=>({children})=>React.createElement('div',{'data-panel':label},children||label);
@@ -12,10 +13,14 @@ function load(path){
  const exports={};cache[path]=exports;
  vm.runInNewContext(compile(path),{exports,URLSearchParams,window:{location:{search},history:{},matchMedia:()=>({matches:true})},console,Date,Set,Map,require:name=>{
   if(name==='react'||name==='react/jsx-runtime'||name==='date-fns')return require(name);
-  if(name==='@tanstack/react-query')return {useQueryClient:()=>qc,useMutation:()=>({mutate:()=>{},isPending:false}),useQuery:({queryKey})=>({data:queryKey[0]==='currentUser'?actor:queryKey[0]==='portalUsers'?[fixture,actor]:queryKey[0]==='activeDivisions'?[]:[],isLoading:false})};
+  if(name==='@tanstack/react-query')return {useQueryClient:()=>qc,useMutation:()=>({mutate:()=>{},isPending:false}),useQuery:({queryKey})=>({data:queryKey[0]==='currentUser'?actor:queryKey[0]==='portalUsers'?[fixture,actor,client]:queryKey[0]==='directoryUsers'?[fixture,client]:queryKey[0]==='activeDivisions'?[]:[],isLoading:false})};
   if(name==='react-router-dom')return {useNavigate:()=>()=>{}};
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
+  if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
+  if(name==='@/utils/accountLabels')return load('src/utils/accountLabels.js');
+  if(name==='@/lib/supervisorAccess')return {hasSupervisorAccess:()=>true};
+  if(name==='@/components/admin/EmployeeDirectory')return load('src/components/admin/EmployeeDirectory.jsx');
   if(name==='@/utils/rankPolicy')return {rankLevel:rank=>['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Officer'].indexOf(rank),getPayRangeForRank:()=>({min:18,max:20}),nextUnitNumber:()=>'',previewRankChange:()=>({})};
   if(name==='@/api/base44Client')return {base44:{entities:{},functions:{}}};
   if(name.startsWith('@/components/ui/'))return ui;
@@ -33,10 +38,11 @@ function load(path){
 }
 const render=path=>renderToStaticMarkup(React.createElement(load(path).default));
 let html=render('src/components/admin/workspaces/SchedulingWorkspace.jsx');
-for(const label of ['Scheduling &amp; Coverage','Primary schedule board','Duty supervisor coverage','Vehicles for scheduled shifts','Staffing plans','Open shifts &amp; officer bids','Time off','Additional coverage requests'])assert(html.includes(label),label);
-assert(!html.includes('data-panel="DutySupervisorScheduling"'),'closed panels do not mount their network-heavy pages');
+for(const label of ['Scheduling &amp; Coverage','Primary schedule board'])assert(html.includes(label),label);
+assert(!html.includes('data-panel="DutySupervisorScheduling"'),'default schedule does not mount a second duty calendar');
+assert(!html.includes('scheduling-fleet'),'old squeezed fleet panel is removed');
 cache['src/components/admin/workspaces/SchedulingWorkspace.jsx']=null;search='?admin_schedule_tool=duty';
-html=render('src/components/admin/workspaces/SchedulingWorkspace.jsx');assert(html.includes('data-panel="DutySupervisorScheduling"'),'legacy duty deep link expands inline content');
+html=render('src/components/admin/workspaces/SchedulingWorkspace.jsx');assert(html.includes('data-panel="DutySupervisorScheduling"'),'legacy duty link opens the duty action dialog');
 html=render('src/components/admin/workspaces/AssetsWorkspace.jsx');assert(html.includes('Company vehicle inventory'));assert(html.includes('Asset maintenance'));
 html=render('src/components/admin/OfficerCommandControls.jsx'); // no officer safely renders nothing
 assert.equal(html,'');
@@ -44,5 +50,9 @@ html=renderToStaticMarkup(React.createElement(load('src/components/admin/Officer
 for(const label of ['Platoon &amp; chain of command','CAD duty controls','Force sign out','Lock account','Save command assignment','Save vehicle default'])assert(html.includes(label),label);
 html=render('src/pages/AdminUsers.jsx');
 for(const label of ['Accounts &amp; Access','Search accounts','Access role','Manage account','Lieutenant Example','officer@test'])assert(html.includes(label),label);
+assert(!html.includes('client@test'),'client-only account is excluded even if legacy API data contains it');
+assert(html.includes('CAD Access')||html.includes('Officer'));
 assert(!html.includes('Pending Role Assignment'),'active account directory no longer labels every account pending');
-console.log('PASS: real workspace/account/personnel components render; inline tools are lazy, deep links expand in place, assets include fleet/maintenance, account directory includes active officers, and CAD actions share the selected officer.');
+html=render('src/pages/ManageCompanyEmployees.jsx');
+assert(html.includes('Manage Company Employees'));assert(html.includes('Employee directory'));assert(html.includes('Manage employee'));assert(!html.includes('client@test'));
+console.log('PASS: scheduling opens actions in dialogs without nested calendars; staff and employee views exclude clients; modern employee directory and preserved CAD controls render.');

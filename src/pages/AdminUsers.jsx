@@ -597,7 +597,7 @@ export default function AdminUsers({ embedded = false }) {
     ]);
     navigate(`${createPageUrl(config.page)}?email=${encodeURIComponent(userData.email || '')}`);
   };
-  const terminatedUsers = users?.filter(u => Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated') || [];
+  const terminatedUsers = users?.filter(u => !isClientAccount(u)&&(Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated')) || [];
   const transitionFormerEmployee = async (person, action) => {
     if(!window.confirm((action==='restore'?'Restore account to pending review with no operational roles?':'Move former employee to client with no CAD roles?')+' '+person.email))return;
     try{
