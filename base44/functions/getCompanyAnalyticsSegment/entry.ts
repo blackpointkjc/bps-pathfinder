@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
     const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : defaultEnd;
     if (startDate > endDate) return Response.json({ error:'Start date must be on or before end date.' }, { status:400 });
     const easternMidnight = (day:string) => {
-      const offset = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(day+'T12:00:00Z')).find(p=>p.type==='timeZoneName')!.value.replace('GMT','');
+      const offset = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(day+'T00:00:00Z')).find(p=>p.type==='timeZoneName')!.value.replace('GMT','');
       return new Date(day+'T00:00:00'+(offset ? (offset.startsWith('-')?'-':'+')+offset.slice(1).padStart(2,'0')+':00' : 'Z')).toISOString();
     };
     const hoursStartDate = new Date(startDate+'T12:00:00Z');

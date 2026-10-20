@@ -4,8 +4,8 @@
 const zone = 'America/New_York';
 export const companyDay = value => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date(value));
 function midnight(day) {
-  const noon = new Date(day+'T12:00:00Z');
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'shortOffset'}).formatToParts(noon);
+  const offsetProbe = new Date(day+'T00:00:00Z');
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'shortOffset'}).formatToParts(offsetProbe);
   const offset = parts.find(p=>p.type==='timeZoneName').value.replace('GMT','');
   return Date.parse(day+'T00:00:00'+(offset ? (offset.startsWith('-')?'-':'+')+offset.slice(1).padStart(2,'0')+':00' : 'Z'));
 }
