@@ -30,7 +30,6 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart }) 
   const [saving,setSaving] = useState(false);
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
   const { user, isLoadingAuth:userLoading } = useAuth();
-  const roles = new Set((user?.additional_roles || []).map(lower));
   const canManage = hasSupervisorAccess(user);
   const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
   const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
@@ -47,10 +46,10 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart }) 
   }, [qc]);
 
   const supervisors = useMemo(()=>users.filter(person=>{
-    const r=new Set((person.additional_roles||[]).map(lower));
     return !person.termination_date && (hasSupervisorAccess(person));
   }).sort(comparePersonnel),[users]);
 
+  useEffect(()=>{if(weekStart&&!editing)setForm(current=>({...current,assignment_date:weekStart}));},[weekStart]);
   const windowStart=weekStart?new Date(weekStart+'T12:00:00'):addDays(startOfWeek(startOfDay(new Date()),{weekStartsOn:0}),dayOffset);
   const dates=Array.from({length:7},(_,i)=>format(addDays(windowStart,i),'yyyy-MM-dd'));
   const visible=assignments.filter(row=>dates.includes(String(row.assignment_date||'').slice(0,10))&&lower(row.status)!=='cancelled');

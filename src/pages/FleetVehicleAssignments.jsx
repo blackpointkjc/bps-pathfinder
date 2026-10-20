@@ -45,7 +45,7 @@ const overlaps = (aStart, aEnd, bStart, bEnd) => {
 
 export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
   const qc = useQueryClient();
-  const [syncReport,setSyncReport]=useState(null);
+  const {data:syncReport}=useQuery({queryKey:['fleetDefaultSync'],enabled:false});
   const [dayOffset, setDayOffset] = useState(0);
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
@@ -259,7 +259,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
 
   return <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6"}>
     <div className="mx-auto max-w-[1500px] space-y-4">
-      {isAdmin&&<div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={async()=>{try{const result=await syncOfficerVehicles(qc);setSyncReport(result);toast.success(result.created+' reservations created.');}catch(error){toast.error(error.message);}}}>Sync officer vehicle defaults</Button><span className="text-xs text-slate-400">Set default vehicles under Company Assets. Manual shift assignments take priority.</span></div>}
+      {isAdmin&&<div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={async()=>{try{const result=await syncOfficerVehicles(qc);qc.setQueryData(['fleetDefaultSync'],result);toast.success(result.created+' reservations created.');}catch(error){toast.error(error.message);}}}>Sync officer vehicle defaults</Button><span className="text-xs text-slate-400">Set default vehicles under Company Assets. Manual shift assignments take priority.</span></div>}
       {syncReport?.conflicts?.length>0&&<div role="alert" className="rounded-lg border border-amber-700 p-3 text-xs text-amber-200">{syncReport.conflicts.map((item,index)=><p key={index}>{item.reason} Shift {item.shift_id}</p>)}</div>}
       <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
         <Car className="h-7 w-7 text-amber-400" />

@@ -245,7 +245,14 @@ function AdministrationToolsOnly() {
 export default function AdminCenter() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('admin_ops_section') !== 'coverage') return;
+    const oldTool=params.get('admin_site_ops_tool')||params.get('admin_site_assets_tool');
+    if(oldTool==='equipment'){params.set('admin_ops_section','assets');params.set('admin_asset_tool','equipment');}
+    if(params.get('admin_ops_section')==='communications'&&params.get('admin_communications_tool')==='requests'){params.set('admin_ops_section','schedule');params.set('admin_schedule_tool','requests');}
+    if(params.get('admin_ops_section')!=='coverage'){
+      const next=window.location.pathname+'?'+params.toString();
+      if(next!==window.location.pathname+window.location.search){window.history.replaceState({},'',next);window.dispatchEvent(new PopStateEvent('popstate'));}
+      return;
+    }
     params.set('admin_center','admin');
     params.set('admin_ops_section','people');
     params.set('admin_people_tool','availability');

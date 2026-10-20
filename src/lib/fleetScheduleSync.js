@@ -5,6 +5,7 @@ export async function syncOfficerVehicles(queryClient){
  pending=base44.functions.invoke('getFleetScheduleData',{action:'sync'}).then(async response=>{
   const data=response?.data||{};if(data.error)throw new Error(data.error);
   clearBase44ReadCacheMatching('function:getFleetScheduleData:');
+  if(queryClient){queryClient.setQueryData(['fleetDefaultSync'],data.sync);}
   if(queryClient)await Promise.all(['fleetScheduleData','fleetAssignments','myVehicleAssignments'].map(key=>queryClient.invalidateQueries({queryKey:[key]})));
   return data.sync;
  }).finally(()=>{pending=null;});

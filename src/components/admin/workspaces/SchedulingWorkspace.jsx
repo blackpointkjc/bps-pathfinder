@@ -23,7 +23,7 @@ export default function SchedulingWorkspace(){
   <InlineSection id="scheduling-planned" title="Staffing plans & recurring requirements" description="Define required posts and recurring shifts, then generate the roster." initialOpen={requested==='planned'}><AdminPlannedShifts embedded/></InlineSection>
   <InlineSection id="scheduling-bids" title="Open shifts & officer bids" description="Review applications and award uncovered shifts here." initialOpen={requested==='bids'}><AdminShiftBids embedded/></InlineSection>
   <InlineSection id="scheduling-leave" title="Time off & absence approvals" description="Review exact leave windows and update coverage." initialOpen={requested==='pto'}><AdminPTOApproval embedded/></InlineSection>
-  <InlineSection id="scheduling-requests" title="Additional coverage requests" description="Client requests for temporary or extra staffing."><AdminSpecialRequests embedded/></InlineSection>
+  <InlineSection id="scheduling-requests" title="Additional coverage requests" description="Client requests for temporary or extra staffing." initialOpen={requested==='requests'}><AdminSpecialRequests embedded/></InlineSection>
   <InlineSection id="scheduling-support" title="Support staff time" description="Record administrative and support duty time." initialOpen={requested==='supportclock'}><AdminSupportStaffClock embedded/></InlineSection>
  </div>;
 }

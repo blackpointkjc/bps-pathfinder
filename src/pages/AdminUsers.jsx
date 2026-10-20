@@ -26,7 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { listDirectoryDivisions, listDirectoryLocations, invalidateAppDirectory } from '@/lib/appDirectory';
+import { listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 
 export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();
@@ -159,13 +159,6 @@ export default function AdminUsers({ embedded = false }) {
     onError: error => alert(`Unable to process access request: ${error.message}`),
   });
 
-  const { data: locations } = useQuery({
-    queryKey: ['directoryLocations', 'adminUsers'],
-    queryFn: () => listDirectoryLocations(),
-    enabled: hasAccess,
-    initialData: [],
-  });
-
   const { data: divisions } = useQuery({
     queryKey: ['activeDivisions'],
     queryFn: async () => {
@@ -173,13 +166,6 @@ export default function AdminUsers({ embedded = false }) {
       return allDivisions.filter(div => div.active);
     },
     enabled: hasAccess,
-  });
-
-  const { data: equipment } = useQuery({
-    queryKey: ['equipment'],
-    queryFn: () => base44.entities.Equipment.list(),
-    enabled: hasAccess,
-    initialData: [],
   });
 
   const createUserMutation = useMutation({
@@ -231,36 +217,6 @@ export default function AdminUsers({ embedded = false }) {
     },
     onError: (error) => {
       alert('Failed to update user: ' + error.message);
-    }
-  });
-
-  const assignEquipmentMutation = useMutation({
-    mutationFn: ({ equipmentId, officerEmail }) => 
-      base44.entities.Equipment.update(equipmentId, { 
-        assigned_to: officerEmail,
-        status: 'assigned'
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      alert('✅ Equipment assigned successfully');
-    },
-    onError: (error) => {
-      alert('Failed to assign equipment: ' + error.message);
-    }
-  });
-
-  const unassignEquipmentMutation = useMutation({
-    mutationFn: ({ equipmentId }) => 
-      base44.entities.Equipment.update(equipmentId, { 
-        assigned_to: null,
-        status: 'available'
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      alert('✅ Equipment unassigned successfully');
-    },
-    onError: (error) => {
-      alert('Failed to unassign equipment: ' + error.message);
     }
   });
 
@@ -700,7 +656,7 @@ export default function AdminUsers({ embedded = false }) {
       />
 
       <div className="space-y-4">
-       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Find an account, assign access, or update its employee record.</p></div><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></header>
+       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Find an account, assign access, or update its employee record.</p></div><div className="flex gap-2"><Button variant="outline" disabled={checkingAnniversaries} onClick={checkAnniversariesAndBirthdays}>Anniversary announcements</Button><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></div></header>
        <div className="grid items-end gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-[minmax(0,1fr)_200px_auto]"><label className="text-xs text-slate-400">Search accounts<Input value={accountSearch} onChange={event=>setAccountSearch(event.target.value)} placeholder="Name, rank, unit or email" className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Access role<select value={accountRole} onChange={event=>setAccountRole(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white">{['all','admin','officer','supervisor','client','hr','trainer','student','support_staff','fleet_manager'].map(role=><option key={role} value={role}>{role==='all'?'All roles':role.replaceAll('_',' ')}</option>)}</select></label><label className="flex min-h-10 items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={pendingOnly} onChange={event=>setPendingOnly(event.target.checked)}/>Needs role assignment</label></div>
 
         {error && (

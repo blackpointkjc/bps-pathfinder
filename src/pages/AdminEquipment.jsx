@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
-export default function AdminEquipment() {
+export default function AdminEquipment({ embedded=false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -315,7 +315,7 @@ export default function AdminEquipment() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className={embedded?"text-white":"container mx-auto p-6 max-w-7xl"}>
       <div className="mb-6 rounded-2xl border border-slate-800 bg-[#09131f] p-5 text-white shadow-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function AdminEquipment() {
             </div>
             <div>
               <div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-400">Asset Control</div>
-              <h1 className="text-3xl font-black">Equipment Management</h1>
+              <h1 className="text-xl font-bold">Equipment Management</h1>
               <p className="text-sm text-slate-400">Inventory, bulk import, assignments, condition and lifecycle tracking</p>
             </div>
           </div>

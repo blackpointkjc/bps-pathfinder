@@ -21,7 +21,7 @@ import {
 
 const LOGO_URL = "/black-point-shield.webp";
 
-export default function AdminPTOApproval() {
+export default function AdminPTOApproval({ embedded=false }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [showDialog, setShowDialog] = useState(false);
@@ -194,12 +194,12 @@ export default function AdminPTOApproval() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
-          <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
+          {!embedded&&<img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />}
           <div>
-            <h1 className="text-3xl font-black text-white">Time Off Approval</h1><a href="/AdminScheduling" className="mt-2 inline-block text-sm font-bold text-cyan-300">Open Scheduling</a>
+            <h1 className="text-xl font-bold text-white">Time Off Approval</h1>{!embedded&&<a href="/AdminScheduling" className="mt-2 inline-block text-sm font-bold text-cyan-300">Open Scheduling</a>}
             <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
           </div>
         </div>

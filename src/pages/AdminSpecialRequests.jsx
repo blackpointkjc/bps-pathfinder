@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getRankLastName } from "@/utils/officerDisplay";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
-export default function AdminSpecialRequests() {
+export default function AdminSpecialRequests({ embedded=false }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState("");

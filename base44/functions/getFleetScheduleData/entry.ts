@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       if(action==='set_default'){
        const officer=await base44.asServiceRole.entities.User.get(String(body.officer_id||''));
        const vehicles=await base44.asServiceRole.entities.Vehicle.list('vehicle_id',1000);
-       if(!officer||officer.termination_date)return Response.json({error:'Active officer required'},{status:400});
+       if(!officer||officer.termination_date||(officer.additional_roles||[]).includes('client'))return Response.json({error:'Active officer required'},{status:400});
        const selected=vehicles.find(v=>v.id===body.vehicle_id);
        if(body.vehicle_id&&!selected)return Response.json({error:'Vehicle not found'},{status:404});
        if(selected?.assigned_to&&selected.assigned_to!==officer.id)return Response.json({error:'Vehicle belongs to another officer. Clear its default first.'},{status:409});

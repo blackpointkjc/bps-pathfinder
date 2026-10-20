@@ -30,7 +30,7 @@ const DAYS = [
   { value: "saturday", label: "Saturday" }
 ];
 
-export default function AdminPlannedShifts() {
+export default function AdminPlannedShifts({ embedded=false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [formData, setFormData] = useState({
@@ -246,15 +246,15 @@ export default function AdminPlannedShifts() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className={embedded?"space-y-4 text-white":"p-4 md:p-8 min-h-screen text-white"}>
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="text-xl font-bold text-white flex items-center gap-2">
               <Calendar className="w-8 h-8 text-indigo-600" />
               Planned Shifts Template
             </h1>
-            <p className="text-slate-600">Define shift templates and post them to the schedule</p>
+            <p className="text-slate-400">Define shift templates and post them to the schedule</p>
           </div>
           <Button
             onClick={() => {
@@ -269,19 +269,10 @@ export default function AdminPlannedShifts() {
           </Button>
         </div>
 
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border-2 border-indigo-200">
-          <h3 className="font-semibold text-indigo-900 mb-2">💡 How Planned Shifts Work:</h3>
-          <ul className="text-sm text-indigo-800 space-y-1">
-            <li>• <strong>Recurring Shifts:</strong> Define weekly shift templates that repeat every week</li>
-            <li>• <strong>One-Time Events:</strong> Define specific date shifts for special events</li>
-            <li>• Click <strong>"Post to Schedule"</strong> to add shifts to the actual schedule</li>
-            <li>• After posting, the template moves to Inactive</li>
-            <li>• Specify officers to assign or leave as OPEN for bidding</li>
-          </ul>
-        </div>
+        <p className="text-sm text-slate-400">Create recurring post requirements or one-time staffing plans, then generate shifts for the schedule.</p>
 
         <Tabs defaultValue="recurring" className="space-y-6">
-          <TabsList className="bg-white border border-slate-200 p-1">
+          <TabsList className="bg-slate-900 border border-slate-200 p-1">
             <TabsTrigger value="recurring" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-900">
               <Calendar className="w-4 h-4 mr-2" />
               Recurring Weekly ({recurringShifts.length})
@@ -290,7 +281,7 @@ export default function AdminPlannedShifts() {
               <CalendarDays className="w-4 h-4 mr-2" />
               One-Time Events ({eventShifts.length})
             </TabsTrigger>
-            <TabsTrigger value="inactive" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
+            <TabsTrigger value="inactive" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-100">
               Inactive ({inactiveShifts.length})
             </TabsTrigger>
           </TabsList>
@@ -325,12 +316,12 @@ export default function AdminPlannedShifts() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="font-bold text-slate-900 text-lg mb-1">{shift.location}</p>
+                              <p className="font-bold text-slate-100 text-lg mb-1">{shift.location}</p>
                               <p className="text-sm text-slate-700 mb-2">
                                 <Clock className="w-4 h-4 inline mr-1" />
                                 {DAYS.find(d => d.value === shift.day_of_week)?.label}: {shift.start_time} - {shift.end_time}
                               </p>
-                              <p className="text-xs text-slate-600 flex items-center gap-1 bg-slate-50 p-2 rounded">
+                              <p className="text-xs text-slate-400 flex items-center gap-1 bg-slate-50 p-2 rounded">
                                 <UserPlus className="w-3 h-3" />
                                 {getPreferredOfficersDisplay(shift.preferred_officers)}
                               </p>
@@ -391,7 +382,7 @@ export default function AdminPlannedShifts() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="font-bold text-slate-900 text-lg mb-1">{shift.location}</p>
+                              <p className="font-bold text-slate-100 text-lg mb-1">{shift.location}</p>
                               <p className="text-sm text-slate-700 mb-2">
                                 <CalendarDays className="w-4 h-4 inline mr-1" />
                                 {shift.specific_date ? format(parseISO(shift.specific_date), 'EEEE, MMMM d, yyyy') : 'No date set'}
@@ -400,7 +391,7 @@ export default function AdminPlannedShifts() {
                                 <Clock className="w-4 h-4 inline mr-1" />
                                 {shift.start_time} - {shift.end_time}
                               </p>
-                              <p className="text-xs text-slate-600 flex items-center gap-1 bg-slate-50 p-2 rounded">
+                              <p className="text-xs text-slate-400 flex items-center gap-1 bg-slate-50 p-2 rounded">
                                 <UserPlus className="w-3 h-3" />
                                 {getPreferredOfficersDisplay(shift.preferred_officers)}
                               </p>
@@ -438,7 +429,7 @@ export default function AdminPlannedShifts() {
             {inactiveShifts.length > 0 && (
               <Card className="border-none shadow-lg">
                 <CardHeader className="bg-slate-100">
-                  <CardTitle className="text-slate-600">Inactive Planned Shifts ({inactiveShifts.length})</CardTitle>
+                  <CardTitle className="text-slate-400">Inactive Planned Shifts ({inactiveShifts.length})</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="grid gap-3">
