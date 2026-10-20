@@ -1,3 +1,4 @@
+import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const STALE_SESSION_LIMIT_MS = 8 * 60 * 60 * 1000;
@@ -72,6 +73,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || 'sweep');
 
+    if (action === 'reconcile_absences') {
+      const roles=new Set((caller.additional_roles||[]).map(lower));
+      if(caller.role!=='admin'&&!roles.has('full_access')&&!roles.has('supervisor')&&!roles.has('cad_access')&&!roles.has('officer')) return Response.json({error:'Operational access required'},{status:403});
+      return Response.json({success:true,absence:await reconcileAbsences(base44.asServiceRole.entities)});
+    }
     if (action === 'session_start') {
       // Refreshing/reopening Pathfinder is never a duty-status transition.
       return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service' });
@@ -105,6 +111,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service', clocked_in: await hasOpenTimeEntry(base44, caller.email) });
     }
 
+    const absence = await reconcileAbsences(base44.asServiceRole.entities);
     // Server health sweep retires only stale browser presence. It never changes
     // CAD duty status. Open TimeEntry remains authoritative until Clock Out.
     const activeSessions = await base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 2000).catch(() => []);
@@ -129,6 +136,7 @@ Deno.serve(async (req) => {
       checked: (activeSessions || []).length,
       forced_out_of_service: [],
       stale_sessions_retired: retired,
+      absence,
     });
   } catch (error: any) {
     console.error('enforceOfficerDutyStatus failed:', error);

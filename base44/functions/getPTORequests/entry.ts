@@ -1,3 +1,4 @@
+import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalizeRoles = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
@@ -63,13 +64,19 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'submit') {
-      const { start_date, end_date, reason, request_type = 'paid', hours_requested = 0, pto_balance_at_request = 0 } = body;
+      const { start_date, end_date, start_at, end_at, time_zone, reason, request_type = 'paid', hours_requested = 0, pto_balance_at_request = 0 } = body;
+      const duration=Date.parse(end_at)-Date.parse(start_at);
+      if(!Number.isFinite(duration)||duration<=0||time_zone!=='America/New_York'||!['paid','unpaid'].includes(request_type)||!Number.isFinite(Number(hours_requested))||Number(hours_requested)<=0||Number(hours_requested)>duration/3600000)
+        return Response.json({error:'Start and return dates/times (Eastern), leave type, reason and valid requested work hours are required.'},{status:400});
+      const businessDate=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/New_York'}).format(new Date(value));
+      if(start_date!==businessDate(start_at)||end_date!==businessDate(end_at))return Response.json({error:'Dates must match the requested Eastern start and return times.'},{status:400});
       if (!start_date || !end_date || !reason) {
         return Response.json({ error: 'Start date, end date, and reason are required' }, { status: 400 });
       }
       const created = await base44.asServiceRole.entities.TimeOffRequest.create({
         start_date,
         end_date,
+        start_at, end_at, time_zone,
         reason,
         request_type,
         hours_requested: Number(hours_requested || 0),
@@ -170,7 +177,7 @@ Deno.serve(async (req) => {
         const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
         const affected = (schedules || []).filter((shift: any) =>
           String(shift.officer_email || '').toLowerCase() === String(officerEmail).toLowerCase() &&
-          shift.shift_date >= request.start_date && shift.shift_date <= request.end_date &&
+          shiftOverlapsLeave(shift,request) &&
           !shift.archived && !shift.is_open
         );
         for (const shift of affected) {
@@ -200,7 +207,8 @@ Deno.serve(async (req) => {
           related_id:request.id,priority:openedShifts ? 'high' : 'normal',source_name:'Admin Scheduling',
         }).catch(error => console.warn('Leave scheduling notification failed',error?.message));
       }
-      return Response.json({ success: true, opened_shifts: openedShifts, start_date:request.start_date, end_date:request.end_date });
+      const coverage = status==='approved' ? await reconcileAbsences(base44.asServiceRole.entities) : null;
+      return Response.json({ success: true, coverage, opened_shifts: openedShifts, start_date:request.start_date, end_date:request.end_date });
     }
 
     if (action === 'cancel_approved') {
@@ -242,6 +250,7 @@ Deno.serve(async (req) => {
         hours_restored: request.request_type === 'paid' ? hours : 0,
         admin_notes: admin_notes || `Approved PTO was cancelled by Admin. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
       });
+      await reconcileAbsences(base44.asServiceRole.entities);
       return Response.json({ success: true, removed_from_hr: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
     }
 

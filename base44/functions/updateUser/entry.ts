@@ -1,5 +1,6 @@
 import { synchronizeOfficerIdentity } from './synchronizeOfficerIdentity.ts';
 import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
+import { reconcileAbsences, isOutOfOffice, leaveWindow, shiftOverlapsLeave } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -53,6 +54,7 @@ Deno.serve(async (req) => {
           if (merged.out_of_office && (!Number.isFinite(Date.parse(merged.out_of_office_start)) || !Number.isFinite(Date.parse(merged.out_of_office_return)) || Date.parse(merged.out_of_office_return) <= Date.parse(merged.out_of_office_start))) return Response.json({error:'Return must be after the start date and time'},{status:400});
         }
         const updatePayload: Record<string, unknown> = {};
+        if (oooFields.some(field => updates[field] !== undefined)) updatePayload.out_of_office_source='manual';
         const fields = ['out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
@@ -153,6 +155,7 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (oooFields.some(field => updates[field] !== undefined)) await reconcileAbsences(base44.asServiceRole.entities);
         console.log('✅ User updated successfully');
         
         return Response.json({

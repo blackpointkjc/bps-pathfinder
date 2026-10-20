@@ -1,3 +1,4 @@
+import { useAbsenceReconciliation } from '@/hooks/useAbsenceReconciliation';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -860,6 +861,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  useAbsenceReconciliation(user);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches);

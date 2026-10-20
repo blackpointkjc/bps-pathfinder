@@ -2,10 +2,27 @@
   "name": "User",
   "type": "object",
   "properties": {
-    "out_of_office": {"type":"boolean","default":false},
-    "out_of_office_start": {"type":"string","description":"ISO timestamp when task hold and acting coverage begin"},
-    "out_of_office_return": {"type":"string","description":"ISO timestamp when availability and tasks resume"},
-    "oversight_platoon": {"type":"string","enum":["A","B",""],"description":"Major platoon oversight, separate from Command assignment"},
+    "out_of_office": {
+      "type": "boolean",
+      "default": false
+    },
+    "out_of_office_start": {
+      "type": "string",
+      "description": "ISO timestamp when task hold and acting coverage begin"
+    },
+    "out_of_office_return": {
+      "type": "string",
+      "description": "ISO timestamp when availability and tasks resume"
+    },
+    "oversight_platoon": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        ""
+      ],
+      "description": "Major platoon oversight, separate from Command assignment"
+    },
     "first_name": {
       "type": "string"
     },
@@ -34,10 +51,21 @@
     "rank": {
       "type": "string"
     },
-    "dispatch_hold_new_calls": {"type":"boolean","default":false,"description":"Dispatch command has temporarily blocked new call assignments for this officer; existing calls remain assigned."},
-    "dispatch_hold_reason": {"type":"string"},
-    "dispatch_hold_at": {"type":"string","format":"date-time"},
-    "dispatch_hold_by": {"type":"string"},
+    "dispatch_hold_new_calls": {
+      "type": "boolean",
+      "default": false,
+      "description": "Dispatch command has temporarily blocked new call assignments for this officer; existing calls remain assigned."
+    },
+    "dispatch_hold_reason": {
+      "type": "string"
+    },
+    "dispatch_hold_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dispatch_hold_by": {
+      "type": "string"
+    },
     "unit_number": {
       "type": "string"
     },
@@ -174,7 +202,10 @@
     "profile_photo_url": {
       "type": "string"
     },
-    "profile_photo_original_url": { "type": "string", "description": "Full original uploaded photo without cropping" },
+    "profile_photo_original_url": {
+      "type": "string",
+      "description": "Full original uploaded photo without cropping"
+    },
     "hidden_portals": {
       "type": "array",
       "items": {
@@ -237,7 +268,15 @@
       "items": {
         "type": "object",
         "properties": {
-    "oversight_platoon": {"type":"string","enum":["A","B",""],"description":"Major platoon oversight, separate from Command assignment"},
+          "oversight_platoon": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              ""
+            ],
+            "description": "Major platoon oversight, separate from Command assignment"
+          },
           "course_id": {
             "type": "string",
             "description": "e.g. 01E, 07R, CPR"
@@ -280,6 +319,35 @@
           }
         }
       }
+    },
+    "out_of_office_source": {
+      "type": "string"
+    },
+    "approved_leave_windows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "absence_active": {
+      "type": "boolean"
+    },
+    "absence_cycle_key": {
+      "type": "string"
+    },
+    "absence_return_announced_key": {
+      "type": "string"
     }
   },
   "required": [

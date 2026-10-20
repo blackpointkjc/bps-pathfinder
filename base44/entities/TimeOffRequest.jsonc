@@ -77,6 +77,17 @@
     "hours_restored": {
       "type": "number",
       "description": "Paid leave hours restored when an approved request is cancelled"
+    },
+    "start_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "time_zone": {
+      "type": "string"
     }
   },
   "required": [

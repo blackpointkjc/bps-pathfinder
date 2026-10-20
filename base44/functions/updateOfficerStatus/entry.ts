@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async (req) => {
@@ -11,6 +12,8 @@ Deno.serve(async (req) => {
 
         const { status, estimated_return } = await req.json();
 
+        const authoritative=await base44.asServiceRole.entities.User.get(user.id);
+        if(isOutOfOffice(authoritative)&&status!=='Out of Service')return Response.json({error:'Approved leave or out-of-office coverage is active. Duty status is Out of Service until return.'},{status:409});
         if (!status) {
             return Response.json({ error: 'Status is required' }, { status: 400 });
         }

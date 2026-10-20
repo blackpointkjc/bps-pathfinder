@@ -1,10 +1,6 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
-function isOutOfOffice(person, now = Date.now()) {
- if (!person?.out_of_office) return false;
- const start = Date.parse(person.out_of_office_start || '');
- const end = Date.parse(person.out_of_office_return || '');
- return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
-}
+
 
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -456,7 +452,7 @@ Deno.serve(async (req) => {
       const eligible = candidates.filter((candidate:any) => String(candidate.user.id) !== String(task.officer_id || ''));
       if (!eligible.length) continue;
 
-      let chosen:any = null;
+      let chosen:any = existing?.absence_owner_id && owner && !isOutOfOffice(owner) ? {user:owner,positionSource:'absence',workload:workload.get(String(owner.id))||0} : null;
       let distance:number | null = null;
       let basis = 'least_loaded';
       if (owner?.out_of_office && !isOutOfOffice(owner)) chosen = {user:owner,positionSource:'return',workload:workload.get(String(owner.id)) || 0};

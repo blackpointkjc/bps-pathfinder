@@ -1,3 +1,4 @@
+import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { isLiveLocationHidden, clearedLivePosition } from './privacy.ts';
 
@@ -64,6 +65,7 @@ Deno.serve(async (req) => {
     const user = await base44.asServiceRole.entities.User.get(authenticatedUser.id);
     if (!user) return Response.json({ error: 'Officer account unavailable' }, { status: 401 });
 
+    if(isOutOfOffice(user))return Response.json({success:true,status:'Out of Service',out_of_office:true});
     const liveLocationHidden = await isLiveLocationHidden(base44, user);
     const body = await req.json().catch(() => ({}));
     const heartbeatOnly = body.heartbeat_only === true;

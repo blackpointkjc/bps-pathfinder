@@ -65,6 +65,14 @@
     },
     "notes": {
       "type": "string"
+    },
+    "absence_owner_id": {
+      "type": "string",
+      "description": "Permanent owner while temporarily covered"
+    },
+    "absence_assignee_id": {
+      "type": "string",
+      "description": "Automatically assigned temporary owner"
     }
   },
   "required": [
