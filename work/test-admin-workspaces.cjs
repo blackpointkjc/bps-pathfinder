@@ -16,7 +16,7 @@ function load(path){
   if(name==='react-router-dom')return {useNavigate:()=>()=>{}};
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
-  if(name==='@/utils/rankPolicy')return {rankLevel:rank=>['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Officer'].indexOf(rank),getPayRangeForRank:()=>({}),nextUnitNumber:()=>'',previewRankChange:()=>({})};
+  if(name==='@/utils/rankPolicy')return {rankLevel:rank=>['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Officer'].indexOf(rank),getPayRangeForRank:()=>({min:18,max:20}),nextUnitNumber:()=>'',previewRankChange:()=>({})};
   if(name==='@/api/base44Client')return {base44:{entities:{},functions:{}}};
   if(name.startsWith('@/components/ui/'))return ui;
   if(name==='./InlineSection')return load('src/components/admin/workspaces/InlineSection.jsx');
