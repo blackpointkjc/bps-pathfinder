@@ -1,4 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+function isOutOfOffice(person, now = Date.now()) {
+ if (!person?.out_of_office) return false;
+ const start = Date.parse(person.out_of_office_start || '');
+ const end = Date.parse(person.out_of_office_return || '');
+ return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
 
 const TIME_ZONE = 'America/New_York';
 const normalized = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -681,6 +688,13 @@ Deno.serve(async (req) => {
       .sort((a: any, b: any) => String(b.completed_at || '').localeCompare(String(a.completed_at || '')))
       .slice(0, 12);
 
+    const heldTasks = tasks.filter(task => {
+      const state = stateByKey.get(String(task.id));
+      const owner = (users || []).find(user => String(user.id) === String(state?.assigned_to_id || ''));
+      return isOutOfOffice(owner);
+    });
+    const heldIds = new Set(heldTasks.map(task => task.id));
+    tasks = tasks.filter(task => !heldIds.has(task.id));
     const countKind = (kind: string) => tasks.filter(task => task.kind === kind).length;
     return Response.json({
       success: true,
@@ -690,6 +704,7 @@ Deno.serve(async (req) => {
       load_errors: loadErrors,
       optional_load_errors: optionalLoadErrors,
       tasks,
+      held_tasks: heldTasks,
       recently_completed: recentCompleted,
       counts: {
         total: tasks.length,

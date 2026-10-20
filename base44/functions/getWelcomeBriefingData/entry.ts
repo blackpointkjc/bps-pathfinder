@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { readBriefingSource, briefingRetryAt } from './sourceRead.ts';
+function isOutOfOffice(person, now = Date.now()) {
+ if (!person?.out_of_office) return false;
+ const start = Date.parse(person.out_of_office_start || '');
+ const end = Date.parse(person.out_of_office_return || '');
+ return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 
@@ -98,7 +105,7 @@ Deno.serve(async (req) => {
     const receipts = await loadSource('announcement receipts', () => base44.asServiceRole.entities.AnnouncementReceipt.filter({ user_email: me.email }, '-read_at', 300));
     const notifications = await loadSource('notifications', () => base44.asServiceRole.entities.Notification.filter({ recipient_email: me.email, is_read: false }, '-created_date', 50), { attempts: 1 });
 
-    const assignedTasks = supervisorLike
+    const assignedTasks = supervisorLike && !isOutOfOffice(me)
       ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id, status: { $in: ['open', 'in_progress'] } }, '-created_date', 50), { attempts: 1 })
       : [];
 

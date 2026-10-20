@@ -1,4 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+function isOutOfOffice(person, now = Date.now()) {
+ if (!person?.out_of_office) return false;
+ const start = Date.parse(person.out_of_office_start || '');
+ const end = Date.parse(person.out_of_office_return || '');
+ return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
 
 const normalized = (value:any) => String(value || '').trim().toLowerCase();
 const delay = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -75,6 +82,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const me = await base44.auth.me();
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
+    if (isOutOfOffice(me)) return Response.json({assignedPeople:[],missedClockIns:[],missingReports:[],complaints:[],writeups:[],reviews:[],reviewFollowUps:[],inspections:[],held_until:me.out_of_office_return});
     const request = await req.json().catch(() => ({}));
     const roles = rolesOf(me);
     if (me.role !== 'admin' && normalized(me.role) !== 'supervisor' && me.is_supervisor !== true && !roles.has('supervisor') && !roles.has('full_access') && !SUPERVISOR_RANKS.has(normalizeRank(me.rank))) {

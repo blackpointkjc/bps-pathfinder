@@ -1,4 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+function isOutOfOffice(person, now = Date.now()) {
+ if (!person?.out_of_office) return false;
+ const start = Date.parse(person.out_of_office_start || '');
+ const end = Date.parse(person.out_of_office_return || '');
+ return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const clean = (value: unknown) => String(value || '').trim();
@@ -418,7 +425,7 @@ Deno.serve(async (req) => {
     }
     const sessionHealthyCutoff = now - 15*60*1000;
     const gpsFreshCutoff = now - 5*60*1000;
-    const candidates = (users || []).filter(isSupervisor).map((user:any) => {
+    const candidates = (users || []).filter(user => isSupervisor(user) && !isOutOfOffice(user)).map((user:any) => {
       const session = newestActive.get(lower(user.email));
       const sessionAt = new Date(session?.last_update || 0).getTime();
       const status = lower(session?.status || user.status);
@@ -439,6 +446,8 @@ Deno.serve(async (req) => {
     const assigned:any[] = [];
     for (const task of tasks) {
       const existing = stateByKey.get(task.key);
+      const owner = (users || []).find(user => String(user.id) === String(existing?.assigned_to_id || '') || (existing?.assigned_to_email && lower(user.email) === lower(existing.assigned_to_email)));
+      if (isOutOfOffice(owner)) continue; // Keep the assignment untouched until return.
       if (existing?.status === 'completed' || existing?.status === 'auto_completed') continue;
       const origin = originFor(task);
       const eligible = candidates.filter((candidate:any) => String(candidate.user.id) !== String(task.officer_id || ''));

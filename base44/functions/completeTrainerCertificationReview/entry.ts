@@ -1,4 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+function isOutOfOffice(person, now = Date.now()) {
+ if (!person?.out_of_office) return false;
+ const start = Date.parse(person.out_of_office_start || '');
+ const end = Date.parse(person.out_of_office_return || '');
+ return Number.isFinite(start) && Number.isFinite(end) && now >= start && now < end;
+}
+
 Deno.serve(async req => {
  try {
   const api = createClientFromRequest(req);

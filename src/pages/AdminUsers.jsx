@@ -1,3 +1,4 @@
+import AdminOutOfOffice from '@/components/AdminOutOfOffice';
 import { getPayRangeForRank, nextUnitNumber, previewRankChange } from '@/utils/rankPolicy';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
@@ -1017,6 +1018,7 @@ export default function AdminUsers({ embedded = false }) {
           <DialogHeader>
             <DialogTitle>Edit Officer Information</DialogTitle>
           </DialogHeader>
+          {selectedUser && <AdminOutOfOffice key={selectedUser.id} user={selectedUser} />}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Photo Upload */}
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
