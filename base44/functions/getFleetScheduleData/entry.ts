@@ -1,3 +1,4 @@
+import { syncFleet, intersects } from './fleetPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -31,6 +32,20 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = lower(body.action || 'list');
 
+    if(action==='sync'||action==='set_default'){
+      if(!manager)return Response.json({error:'Fleet manager access required'},{status:403});
+      if(action==='set_default'){
+       const officer=await base44.asServiceRole.entities.User.get(String(body.officer_id||''));
+       const vehicles=await base44.asServiceRole.entities.Vehicle.list('vehicle_id',1000);
+       if(!officer||officer.termination_date)return Response.json({error:'Active officer required'},{status:400});
+       const selected=vehicles.find(v=>v.id===body.vehicle_id);
+       if(body.vehicle_id&&!selected)return Response.json({error:'Vehicle not found'},{status:404});
+       if(selected?.assigned_to&&selected.assigned_to!==officer.id)return Response.json({error:'Vehicle belongs to another officer. Clear its default first.'},{status:409});
+       for(const v of vehicles.filter(v=>v.assigned_to===officer.id&&v.id!==body.vehicle_id))await base44.asServiceRole.entities.Vehicle.update(v.id,{assigned_to:''});
+       if(selected)await base44.asServiceRole.entities.Vehicle.update(selected.id,{assigned_to:officer.id});
+      }
+      return Response.json({success:true,sync:await syncFleet(base44.asServiceRole.entities)});
+    }
     if (action === 'delete') {
       if (!manager) return Response.json({ error: 'Fleet manager access required.' }, { status: 403 });
       const id = String(body.id || '').trim();
@@ -51,7 +66,7 @@ Deno.serve(async (req) => {
         base44.asServiceRole.entities.Vehicle.get(String(row.vehicle_id)).catch(() => null),
         base44.asServiceRole.entities.User.list('-updated_date', 1000),
         base44.asServiceRole.entities.VehicleAssignment.filter(
-          { assignment_date: String(row.assignment_date).slice(0, 10) },
+          { assignment_date: { $gte: new Date(Date.parse(String(row.assignment_date).slice(0,10)+'T12:00:00Z')-86400000).toISOString().slice(0,10), $lte:new Date(Date.parse(String(row.assignment_date).slice(0,10)+'T12:00:00Z')+86400000).toISOString().slice(0,10) } },
           '-created_date',
           500,
         ).catch(() => []),
@@ -68,7 +83,7 @@ Deno.serve(async (req) => {
         String(item.id || '') !== String(row.id || '')
         && String(item.vehicle_id || '') === String(vehicle.id)
         && lower(item.status) !== 'cancelled'
-        && overlaps(item.start_time, item.end_time, row.start_time, row.end_time)
+        && intersects(item,row)
       );
       if (conflict) {
         return Response.json({
@@ -90,6 +105,7 @@ Deno.serve(async (req) => {
         status: String(row.status || 'scheduled'),
         notes: String(row.notes || '').slice(0, 1000),
         created_by_email: lower(user.email),
+        assignment_source:'manual',
       };
       const saved = row.id
         ? await base44.asServiceRole.entities.VehicleAssignment.update(String(row.id), payload)

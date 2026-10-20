@@ -50,6 +50,16 @@
     },
     "created_by_email": {
       "type": "string"
+    },
+    "source_schedule_id": {
+      "type": "string"
+    },
+    "assignment_source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "officer_default"
+      ]
     }
   },
   "required": [

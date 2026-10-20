@@ -1,3 +1,4 @@
+import { syncOfficerVehicles } from '@/lib/fleetScheduleSync';
 import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { approvedLeaveConflicts } from '@/utils/scheduleLeave';
 import { clearBase44ReadCacheMatching } from '@/api/base44Client';
@@ -37,11 +38,12 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 const LOGO_URL = "/black-point-shield.webp";
 
-export default function AdminScheduling() {
+export default function AdminScheduling({ embedded=false, onWeekChange }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('leave_date');
     return requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && Number.isFinite(Date.parse(requested)) ? differenceInCalendarWeeks(parseISO(requested),new Date(),{weekStartsOn:0}) : 0;
   });
+  useEffect(()=>{onWeekChange?.(currentWeekOffset);},[currentWeekOffset,onWeekChange]);
   const [selectedDivision, setSelectedDivision] = useState("all");
   const [selectedOfficerForPrint, setSelectedOfficerForPrint] = useState("");
   const [printStartDate, setPrintStartDate] = useState("");
@@ -266,6 +268,7 @@ export default function AdminScheduling() {
     mutationFn: async (data) => {
       await checkApprovedLeave([data]);
       const created = await base44.entities.Schedule.create(data);
+      await syncOfficerVehicles(queryClient).catch(()=>toast.warning('Shift saved; automatic vehicle scheduling needs retry.'));
       if (created?.officer_email && created.officer_email !== 'OPEN') {
         void base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
       }
@@ -304,6 +307,7 @@ export default function AdminScheduling() {
     mutationFn: async (shiftsArray) => {
       await checkApprovedLeave(shiftsArray);
       const created = await base44.entities.Schedule.bulkCreate(shiftsArray);
+      await syncOfficerVehicles(queryClient).catch(()=>toast.warning('Shift saved; automatic vehicle scheduling needs retry.'));
       const createdRows = Array.isArray(created) ? created : [];
       void Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
         base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: row, officer_email: row.officer_email }).catch(error => console.warn('Bulk schedule notification failed:', error?.message))
@@ -328,6 +332,7 @@ export default function AdminScheduling() {
       const before = (schedules || []).find(shift => shift.id === id) || null;
       await checkApprovedLeave([{...before,...data}]);
       const updated = await base44.entities.Schedule.update(id, data);
+      await syncOfficerVehicles(queryClient).catch(()=>toast.warning('Shift saved; automatic vehicle scheduling needs retry.'));
       const affectedEmails = new Set([before?.officer_email, updated?.officer_email].filter(email => email && email !== 'OPEN'));
       await Promise.all(Array.from(affectedEmails).map(officerEmail => {
         const movedAway = before?.officer_email === officerEmail && updated?.officer_email !== officerEmail;
@@ -2732,7 +2737,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </Button>
 
             </div>
-                <div className="flex flex-wrap gap-3 text-xs font-bold text-cyan-200"><Link to={createPageUrl('FleetVehicleAssignments')} className="py-2 hover:underline">Fleet assignments</Link><Link to={createPageUrl('DutySupervisorScheduling')} className="py-2 hover:underline">Duty supervisor</Link></div>
+                {!embedded&&<p className="text-xs text-slate-400">Vehicle defaults and duty coverage are managed inline in Admin Scheduling.</p>}
                 {isFutureWeek && (selectedPayrollPeriod === 'all' || !selectedPayrollPeriod) && <div className="flex flex-wrap gap-2"><Button size="sm" disabled={bulkCreateShiftsMutation.isPending} onClick={handleCopyPreviousWeek}>Copy previous week</Button><Button size="sm" variant="outline" onClick={()=>setShowSelectiveCopyDialog(true)}>Copy selected officers</Button></div>}
               </div>
             </details>
