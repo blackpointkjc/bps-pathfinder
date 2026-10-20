@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Briefcase, Plus, Trash2, Calendar, MapPin, Shield, Edit, X, Save, BadgeDollarSign } from "lucide-react";
+import { Clock, Plus, Trash2, Calendar, MapPin, Shield, Edit, X, Save, BadgeDollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { findDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
