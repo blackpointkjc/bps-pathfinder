@@ -2585,131 +2585,26 @@ Return ONLY a JSON array of suggestion objects with this structure:
   }
 
   return (
-    <div className="scheduling-page min-h-screen p-3 pb-24 sm:p-4 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+    <div className="scheduling-page min-h-screen p-2 pb-24 sm:p-3 md:p-4">
+      <div className="mx-auto max-w-7xl space-y-2 sm:space-y-3">
         {scheduleLeaveWarning && <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-red-600 bg-red-950/60 p-4 text-red-100"><div><strong>Approved time-off conflict</strong><p className="mt-1 text-sm">{scheduleLeaveWarning}</p></div><button type="button" onClick={()=>setScheduleLeaveWarning('')} className="shrink-0 rounded border border-red-400 px-2 py-1 text-xs">Dismiss</button></div>}
-        <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl print:hidden md:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex items-center gap-3"><Shield className="h-7 w-7 text-amber-400"/><div><div className="text-[11px] font-black uppercase tracking-[.24em] text-amber-300">Scheduling Command</div><h1 className="mt-1 text-3xl font-black text-white">Weekly Schedule</h1><p className="mt-1 text-sm text-slate-400">Drag and drop shifts to reschedule. Fleet and duty-supervisor assignments are part of this scheduling workspace.</p></div></div>
-            <div className="flex flex-wrap gap-2"><Link to={createPageUrl('FleetVehicleAssignments')} className="inline-flex min-h-11 items-center rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-black text-amber-200 hover:bg-amber-500/20"><Car className="mr-2 h-4 w-4"/>FLEET ASSIGNMENTS</Link><Link to={createPageUrl('DutySupervisorScheduling')} className="inline-flex min-h-11 items-center rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20"><UserCheck className="mr-2 h-4 w-4"/>DUTY SUPERVISOR</Link></div>
-          </div>
-        </section>
-
-        {currentPeriod && (
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-300 print:hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CalendarDays className="w-5 h-5 text-green-700" />
-                <div>
-                  <p className="font-bold text-green-900">Current Payroll Period: {currentPeriod.period_name}</p>
-                  <p className="text-sm text-green-700">
-                    {format(parseISO(currentPeriod.start_date), 'MMM d, yyyy')} - {format(parseISO(currentPeriod.end_date), 'MMM d, yyyy')} (14 days)
-                  </p>
-                  {currentPeriod.deposit_date && (
-                    <p className="text-xs text-green-600 mt-1">
-                      💰 Direct Deposit: {format(parseISO(currentPeriod.deposit_date), 'MMM d, yyyy')}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Badge className="bg-green-600 text-white">Active Period</Badge>
+        <section className="rounded-xl border border-slate-700 bg-[#0d1420] p-3 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="flex items-center gap-2 text-lg font-bold text-white"><Calendar className="h-5 w-5 text-cyan-300"/>Schedule</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex min-h-9 cursor-pointer items-center gap-2 text-xs font-bold text-slate-200">
+                <Checkbox id="week-ready" checked={weekStatus?.is_ready || false} disabled={markWeekReadyMutation.isPending} onCheckedChange={checked=>{if(typeof checked==='boolean')markWeekReadyMutation.mutate(checked);}}/>
+                {markWeekReadyMutation.isPending?'Updating…':weekStatus?.is_ready?'Published':'Unpublished'}
+              </label>
+              {weekStatus?.is_ready && weekStatus.delivery_status !== 'complete' && <button type="button" disabled={markWeekReadyMutation.isPending} onClick={()=>markWeekReadyMutation.mutate(true)} className="min-h-9 text-xs font-bold text-amber-300 hover:underline">Retry alerts</button>}
+              <Button size="sm" onClick={()=>setShowAddDialog(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-1 h-4 w-4"/>Add shift</Button>
             </div>
           </div>
-        )}
+          <div className="mt-2 border-t border-slate-800 pt-2">
 
-        {isFutureWeek && (selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border-2 border-amber-300 print:hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-amber-700" />
-                <div>
-                  <p className="font-bold text-amber-900">Future Week Detected</p>
-                  <p className="text-sm text-amber-700">
-                    You can copy the schedule from the previous week to save time
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={handleCopyPreviousWeek}
-                disabled={bulkCreateShiftsMutation.isPending}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${bulkCreateShiftsMutation.isPending ? 'animate-spin' : ''}`} />
-                {bulkCreateShiftsMutation.isPending ? 'Copying...' : 'Copy All'}
-              </Button>
-              <Button
-                onClick={() => setShowSelectiveCopyDialog(true)}
-                variant="outline"
-                className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Copy Select Officers
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <Card className="border-none shadow-lg print:hidden">
-          <CardHeader>
-            <CardTitle>Schedule Management</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${weekStatus?.is_ready ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'}`}>
-              <Checkbox
-                id="week-ready"
-                checked={weekStatus?.is_ready || false}
-                disabled={markWeekReadyMutation.isPending}
-                aria-busy={markWeekReadyMutation.isPending}
-                onCheckedChange={(checked) => {
-                  if (checked === true || checked === false) markWeekReadyMutation.mutate(checked);
-                }}
-              />
-              <div className="min-w-0 flex-1">
-                <Label htmlFor="week-ready" className={`cursor-pointer font-black ${weekStatus?.is_ready ? 'text-emerald-200' : 'text-amber-200'}`}>
-                  {markWeekReadyMutation.isPending
-                    ? (weekStatus?.is_ready ? 'Publishing Schedule…' : 'Hiding Schedule…')
-                    : (weekStatus?.is_ready ? '✓ Week Schedule Published' : '⚠️ Schedule Not Yet Published')}
-                </Label>
-                <p className={`mt-1 text-xs ${weekStatus?.is_ready ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {weekStatus?.is_ready 
-                    ? 'The week is published except for any officers specifically held below.'
-                    : 'Publish the week when it is ready. You can still keep individual officers unpublished.'}
-                </p>
-              </div>
-              <Badge className={markWeekReadyMutation.isPending ? 'w-fit bg-blue-700 text-white' : weekStatus?.is_ready ? 'w-fit bg-emerald-700 text-white' : 'w-fit bg-amber-700 text-white'}>
-                {markWeekReadyMutation.isPending ? 'Sending…' : weekStatus?.is_ready ? 'Published' : 'Not Published'}
-              </Badge>
-            </div>
-
-            {weekStatus?.is_ready && (
-              <div className="flex items-center gap-3 text-sm text-slate-300">
-                <span>{weekStatus.delivery_status === 'complete'
-                  ? 'Company announcement posted; officer alerts delivered.'
-                  : 'Officer announcement delivery needs verification or retry.'}</span>
-                <Button variant="outline" disabled={markWeekReadyMutation.isPending} onClick={() => markWeekReadyMutation.mutate(true)}>
-                  Retry delivery
-                </Button>
-              </div>
-            )}
-
-            {weekOfficersForPublication.length > 0 && (
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-                <div className="mb-3"><div className="text-sm font-black text-white">OFFICER PUBLICATION CONTROL</div><div className="text-xs text-slate-400">Turn an officer off to keep only that officer's schedule unpublished while the rest of the week remains visible.</div></div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {weekOfficersForPublication.map(email => {
-                    const individuallyPublished = !officerPublicationOverrides.includes(email);
-                    return <label key={email} className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
-                      <Checkbox checked={individuallyPublished} onCheckedChange={checked => setOfficerPublishedForWeek(email, checked === true)} />
-                      <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">{getOfficerName(email)}</div><div className={`text-[10px] font-bold ${individuallyPublished ? 'text-emerald-400' : 'text-amber-400'}`}>{individuallyPublished ? 'PUBLISH WITH WEEK' : 'KEEP UNPUBLISHED'}</div></div>
-                    </label>;
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="grid md:grid-cols-3 gap-3">
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <Label className="text-xs text-slate-600 mb-2 block">Schedule View</Label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="min-w-0">
+                <Label className="mb-1 block text-[10px] text-slate-400">View</Label>
                 <Select value={scheduleViewType} onValueChange={setScheduleViewType}>
                   <SelectTrigger>
                     <SelectValue />
@@ -2722,8 +2617,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </Select>
               </div>
 
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <Label className="text-xs text-slate-600 mb-2 block">Filter by Division/Subdivision</Label>
+              <div className="min-w-0">
+                <Label className="mb-1 block text-[10px] text-slate-400">Division</Label>
                 <select
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
@@ -2743,15 +2638,15 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </select>
               </div>
 
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <Label className="text-xs text-slate-600 mb-2 block">View by Payroll Period</Label>
+              <div className="min-w-0">
+                <Label className="mb-1 block text-[10px] text-slate-400">Period</Label>
                 <Select value={selectedPayrollPeriod} onValueChange={setSelectedPayrollPeriod}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select period..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Weekly View (7 days - Manual Navigation)</SelectItem>
-                    <SelectItem value="current">Current Payroll Period (14 days)</SelectItem>
+                    <SelectItem value="all">Manual dates</SelectItem>
+                    <SelectItem value="current">Current payroll period</SelectItem>
                     {payrollPeriods?.map((period) => (
                       <SelectItem key={period.id} value={period.id}>
                         {period.period_name} ({format(parseISO(period.start_date), 'MMM d')} - {format(parseISO(period.end_date), 'MMM d, yyyy')})
@@ -2762,9 +2657,38 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 border-t border-slate-800 pt-2 text-xs text-slate-300">
+            <details className="min-w-0 flex-1 basis-44">
+              <summary className="cursor-pointer py-1 font-semibold text-cyan-200">Publishing & officer visibility{officerPublicationOverrides.length ? ` · ${officerPublicationOverrides.length} held` : ''}</summary>
+              <div className="py-2 text-xs text-slate-400">Publish the week above. Individual holds below keep only those officers hidden.</div>
+            {weekOfficersForPublication.length > 0 && (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-2">
+                <div className="mb-3"><div className="text-sm font-black text-white">Individual officer visibility</div><div className="text-xs text-slate-400">Turn an officer off to keep only that officer's schedule unpublished while the rest of the week remains visible.</div></div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {weekOfficersForPublication.map(email => {
+                    const individuallyPublished = !officerPublicationOverrides.includes(email);
+                    return <label key={email} className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-2">
+                      <Checkbox checked={individuallyPublished} onCheckedChange={checked => setOfficerPublishedForWeek(email, checked === true)} />
+                      <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">{getOfficerName(email)}</div><div className={`text-[10px] font-bold ${individuallyPublished ? 'text-emerald-400' : 'text-amber-400'}`}>{individuallyPublished ? 'PUBLISH WITH WEEK' : 'KEEP UNPUBLISHED'}</div></div>
+                    </label>;
+                  })}
+                </div>
+              </div>
+            )}
+
+            </details>
+            <details className="min-w-0 flex-1 basis-40">
+              <summary className="cursor-pointer py-1 font-semibold">Payroll{currentPeriod ? ` · ${currentPeriod.period_name}` : ''}</summary>
+              {currentPeriod ? <div className="py-2 text-xs text-slate-300"><div>{format(parseISO(currentPeriod.start_date),'MMM d')} – {format(parseISO(currentPeriod.end_date),'MMM d, yyyy')}</div>{currentPeriod.deposit_date && <div className="mt-1">Deposit {format(parseISO(currentPeriod.deposit_date),'MMM d, yyyy')}</div>}</div> : <p className="py-2 text-slate-400">No active payroll period.</p>}
+            </details>
+            <details className="min-w-0 flex-1 basis-36">
+              <summary className="cursor-pointer py-1 font-semibold text-cyan-200">Tools & printing</summary>
+              <div className="space-y-2 py-2">
+
+            <div className="flex flex-wrap gap-2">
               <Button
-                className="w-full sm:w-auto"
+                className="w-auto"
                 onClick={handleClearAllShifts}
                 disabled={clearAllShiftsMutation.isPending}
                 variant="destructive"
@@ -2775,7 +2699,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={handlePrintCompanySchedule}
                 variant="outline"
-                className="w-full bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 sm:w-auto"
+                className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Company
@@ -2783,7 +2707,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={() => setShowPrintDialog(true)}
                 variant="outline"
-                className="w-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 sm:w-auto"
+                className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Officer
@@ -2791,7 +2715,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={autoCheckSchedule}
                 variant="outline"
-                className="w-full bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100 sm:w-auto"
+                className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
               >
                 <AlertTriangle className="w-4 h-4 mr-2" />
                 Auto Check
@@ -2800,24 +2724,22 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={() => setShowPdfImportDialog(true)}
                 variant="outline"
-                className="w-full border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 sm:w-auto"
+                className="w-full border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100"
               >
                 <FileUp className="mr-2 h-4 w-4" />
                 Import PDF
               </Button>
-              <Button
-                onClick={() => setShowAddDialog(true)}
-                className="w-full bg-green-600 hover:bg-green-700 sm:w-auto"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Shift
-              </Button>
+
             </div>
-          </CardContent>
-        </Card>
+                <div className="flex flex-wrap gap-3 text-xs font-bold text-cyan-200"><Link to={createPageUrl('FleetVehicleAssignments')} className="py-2 hover:underline">Fleet assignments</Link><Link to={createPageUrl('DutySupervisorScheduling')} className="py-2 hover:underline">Duty supervisor</Link></div>
+                {isFutureWeek && (selectedPayrollPeriod === 'all' || !selectedPayrollPeriod) && <div className="flex flex-wrap gap-2"><Button size="sm" disabled={bulkCreateShiftsMutation.isPending} onClick={handleCopyPreviousWeek}>Copy previous week</Button><Button size="sm" variant="outline" onClick={()=>setShowSelectiveCopyDialog(true)}>Copy selected officers</Button></div>}
+              </div>
+            </details>
+          </div>
+        </section>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border-2 border-green-600 bg-gradient-to-r from-green-100 to-blue-100 p-2 print:hidden sm:p-3">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border border-slate-600 bg-slate-900 p-2 print:hidden">
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
@@ -2828,7 +2750,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               Previous
             </Button>
             <div className="text-center">
-              <p className="font-bold text-slate-900 text-base">
+              <p className="font-bold text-slate-100 text-sm">
                 {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
               </p>
               <p className="text-xs text-slate-600">
