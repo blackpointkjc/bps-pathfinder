@@ -69,6 +69,7 @@ function Expand({title,children}) {
 
 export default function AdminOperationsWorkbench() {
  const {user,isLoadingAuth} = useAuth();
+ const [scope,setScope]=useState('site');
  const [search,setSearch] = useState('');
  const [selected,setSelected] = useState('');
  const [newCheckpoint,setNewCheckpoint] = useState(false);
@@ -107,6 +108,14 @@ export default function AdminOperationsWorkbench() {
  return <div className="min-h-full bg-[#07101c] p-3 text-slate-100 md:p-5">
   <div className="mx-auto max-w-[1700px] space-y-4">
    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700 pb-4"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300"><Shield className="h-4 w-4"/>Administration</div><h1 className="mt-2 text-2xl font-black">Site Operations</h1><p className="mt-1 text-sm text-slate-400">One property. Its instructions, patrol standards and checkpoints.</p></div><div className="text-sm text-slate-400">{locations.length} properties · {general.length} company instruction sections</div></header>
+   <div className="flex flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-900 p-2" role="tablist" aria-label="Operations scope">{[['site','Property operations'],['company','Universal company orders']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={scope===id} onClick={()=>setScope(id)} className="rounded-lg px-4 py-3 text-sm font-bold aria-selected:bg-cyan-800 aria-selected:text-white hover:bg-slate-800">{label}</button>)}</div>
+   {scope==='company'&&<div className="space-y-4"><header className="rounded-xl border border-cyan-900 bg-cyan-950/40 p-5"><h2 className="text-xl font-bold">Black Point company orders</h2><p className="mt-2 text-sm text-slate-300">Applies across the company. Property selection is not required.</p></header>
+     <Section id="operations-company" title="Company-wide orders" description="Shared instructions appear at every property. Edit them once here.">
+      <div className="space-y-3">{general.map(section=><details key={section.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{section.section_title}</summary><div className="mt-4"><Editor entity="GeneralPostOrder" record={section} seed={{}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title||''} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={5} className={inputClass} value={draft.content||''} onChange={event=>change('content',event.target.value)}/></Field><label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.active!==false} onChange={event=>change('active',event.target.checked)}/>Active</label></>}</Editor></div></details>)}
+      {newGeneral?<Editor onSaved={()=>setNewGeneral(false)} key="new-general" entity="GeneralPostOrder" seed={{section_key:'company_'+crypto.randomUUID(),section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
+     </Section>
+   </div>}
+   {scope==='site'&&
    <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
     <aside className="rounded-2xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-3">
      <label className="flex items-center gap-2 rounded-lg border border-slate-600 px-2"><Search className="h-4 w-4 text-slate-400"/><input aria-label="Find a property" placeholder="Find a property" value={search} onChange={event=>setSearch(event.target.value)} className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none"/></label>
@@ -114,7 +123,7 @@ export default function AdminOperationsWorkbench() {
     </aside>
     <main className="min-w-0 space-y-4">
      {!site?<p className="p-6 text-slate-300">Create a location in Manage Locations to configure its operations.</p>:<>
-      <div className="rounded-2xl border border-cyan-900 bg-gradient-to-r from-cyan-950/70 to-slate-900 p-5"><div className="flex items-center gap-2 text-xs text-cyan-300"><MapPin className="h-4 w-4"/>{site.address}</div><h2 className="mt-2 text-2xl font-black">{site.site_name}</h2><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs">{[[!!order,'Instructions'],[!!rule,'Duty rules'],[checkpoints.length>0,checkpoints.length+' checkpoints']].map(([ready,label])=><span key={label} className="flex items-center gap-1.5 text-slate-300">{ready?<CheckCircle2 className="h-4 w-4 text-emerald-400"/>:<Circle className="h-4 w-4 text-amber-400"/>}{label}</span>)}</div><nav aria-label="Jump to section" className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-cyan-200">{[['instructions','Instructions'],['duties','Patrol standards'],['checkpoints','Checkpoints'],['company','Company orders']].map(([id,label])=><a key={id} href={'#operations-'+id} className="hover:underline">{label}</a>)}</nav></div>
+      <div className="rounded-2xl border border-cyan-900 bg-gradient-to-r from-cyan-950/70 to-slate-900 p-5"><div className="flex items-center gap-2 text-xs text-cyan-300"><MapPin className="h-4 w-4"/>{site.address}</div><h2 className="mt-2 text-2xl font-black">{site.site_name}</h2><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs">{[[!!order,'Instructions'],[!!rule,'Duty rules'],[checkpoints.length>0,checkpoints.length+' checkpoints']].map(([ready,label])=><span key={label} className="flex items-center gap-1.5 text-slate-300">{ready?<CheckCircle2 className="h-4 w-4 text-emerald-400"/>:<Circle className="h-4 w-4 text-amber-400"/>}{label}</span>)}</div><nav aria-label="Jump to section" className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-cyan-200">{[['instructions','Instructions'],['duties','Patrol standards'],['checkpoints','Checkpoints']].map(([id,label])=><a key={id} href={'#operations-'+id} className="hover:underline">{label}</a>)}</nav></div>
       <Section id="operations-instructions" title="Site instructions & post orders" description="What officers need to know at this property. Site identity and supervisor assignments come from Manage Locations.">
        <Editor key={'post-'+site.id+'-'+(order?.id||'new')} entity="PostOrder" record={order} seed={{site_name:site.site_name,site_address:site.address||'',post_type:'armed',emergency_police:'911',assigned_supervisors:site.assigned_supervisors||[]}} queryKey={['postOrders']}>
         {(draft,change)=><>
@@ -141,12 +150,9 @@ export default function AdminOperationsWorkbench() {
        <Expand title="Print QR patrol labels"><AdminQRPrintManager key={site.id} siteName={site.site_name}/></Expand></div>
       </Section>
      </>}
-     <Section id="operations-company" title="Company-wide orders" description="Shared instructions appear at every property. Edit them once here.">
-      <div className="space-y-3">{general.map(section=><details key={section.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{section.section_title}</summary><div className="mt-4"><Editor entity="GeneralPostOrder" record={section} seed={{}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title||''} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={5} className={inputClass} value={draft.content||''} onChange={event=>change('content',event.target.value)}/></Field><label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.active!==false} onChange={event=>change('active',event.target.checked)}/>Active</label></>}</Editor></div></details>)}
-      {newGeneral?<Editor onSaved={()=>setNewGeneral(false)} key="new-general" entity="GeneralPostOrder" seed={{section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
-     </Section>
+
     </main>
-   </div>
+   </div>}
   </div>
  </div>;
 }
