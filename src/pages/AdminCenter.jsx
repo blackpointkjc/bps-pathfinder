@@ -83,7 +83,7 @@ const ADMIN_SECTIONS = [
 
 const ADMIN_SUPERVISOR_SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
-  { id: 'calendar', label: 'Schedule & Duty Coverage', description: 'Personal shifts and company duty coverage', icon: Calendar },
+  { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Calendar },
   { id: 'callouts', label: 'Officer Call-Outs', description: 'Record an officer absence and update the schedule', icon: ClipboardCheck },
   { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: Users },

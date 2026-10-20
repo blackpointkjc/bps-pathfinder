@@ -81,6 +81,11 @@ export default function AdminOperationsWorkbench() {
   window.addEventListener('operations-draft',track);window.addEventListener('beforeunload',unload);
   return ()=>{window.removeEventListener('operations-draft',track);window.removeEventListener('beforeunload',unload);};
  },[]);
+ const changeScope = async next => {
+  if(next===scope)return;
+  if(dirtyDrafts.current.size&&!await confirmInApp('Switch operations workspace and discard unsaved changes?'))return;
+  dirtyDrafts.current.clear();setScope(next);setNewGeneral(false);setNewCheckpoint(false);
+ };
  const selectSite = async id => {
   if (id === selected) return;
   if (dirtyDrafts.current.size && !await confirmInApp('Switch properties and discard unsaved site changes?')) return;
@@ -108,7 +113,7 @@ export default function AdminOperationsWorkbench() {
  return <div className="min-h-full bg-[#07101c] p-3 text-slate-100 md:p-5">
   <div className="mx-auto max-w-[1700px] space-y-4">
    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700 pb-4"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300"><Shield className="h-4 w-4"/>Administration</div><h1 className="mt-2 text-2xl font-black">Site Operations</h1><p className="mt-1 text-sm text-slate-400">One property. Its instructions, patrol standards and checkpoints.</p></div><div className="text-sm text-slate-400">{locations.length} properties · {general.length} company instruction sections</div></header>
-   <div className="flex flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-900 p-2" role="tablist" aria-label="Operations scope">{[['site','Property operations'],['company','Universal company orders']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={scope===id} onClick={()=>setScope(id)} className="rounded-lg px-4 py-3 text-sm font-bold aria-selected:bg-cyan-800 aria-selected:text-white hover:bg-slate-800">{label}</button>)}</div>
+   <div className="flex flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-900 p-2" role="tablist" aria-label="Operations scope">{[['site','Property operations'],['company','Universal company orders']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={scope===id} onClick={()=>changeScope(id)} className="rounded-lg px-4 py-3 text-sm font-bold aria-selected:bg-cyan-800 aria-selected:text-white hover:bg-slate-800">{label}</button>)}</div>
    {scope==='company'&&<div className="space-y-4"><header className="rounded-xl border border-cyan-900 bg-cyan-950/40 p-5"><h2 className="text-xl font-bold">Black Point company orders</h2><p className="mt-2 text-sm text-slate-300">Applies across the company. Property selection is not required.</p></header>
      <Section id="operations-company" title="Company-wide orders" description="Shared instructions appear at every property. Edit them once here.">
       <div className="space-y-3">{general.map(section=><details key={section.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{section.section_title}</summary><div className="mt-4"><Editor entity="GeneralPostOrder" record={section} seed={{}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title||''} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={5} className={inputClass} value={draft.content||''} onChange={event=>change('content',event.target.value)}/></Field><label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.active!==false} onChange={event=>change('active',event.target.checked)}/>Active</label></>}</Editor></div></details>)}

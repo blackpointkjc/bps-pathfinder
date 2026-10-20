@@ -25,7 +25,7 @@ import { Radio } from 'lucide-react';
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
-  { id: 'calendar', label: 'Schedule & Duty Coverage', description: 'Personal shifts and company duty coverage', icon: Shield },
+  { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Shield },
   { id: 'cad', label: 'CAD Center', description: 'Dispatch dashboard, active calls, and field response tools', icon: Radio },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },

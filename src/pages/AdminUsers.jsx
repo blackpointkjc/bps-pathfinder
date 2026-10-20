@@ -553,7 +553,7 @@ export default function AdminUsers({ embedded = false }) {
    return [u.rank,u.first_name,u.last_name,u.email,u.unit_number,...(u.additional_roles||[])].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim());
   }).sort((a,b) => (Number.parseInt(a.unit_number,10) || Infinity) - (Number.parseInt(b.unit_number,10) || Infinity) || String(a.last_name || a.email).localeCompare(String(b.last_name || b.email)));
 
-  const pendingUsers=activeUsers.filter(person=>isPendingUser(person)&&!approvedUserIds.has(person.id));
+  const pendingUsers=(users||[]).filter(person=>isPendingUser(person)&&!isClientAccount(person)&&!person.termination_date&&!['terminated','former'].includes(String(person.employment_status||'').toLowerCase())&&!approvedUserIds.has(person.id)&&[person.rank,person.first_name,person.last_name,person.email,person.unit_number].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim()));
   const approvedStaff=activeUsers.filter(person=>!isPendingUser(person));
 
   const assignUserCategory = async (userData, category) => {
