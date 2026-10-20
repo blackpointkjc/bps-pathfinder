@@ -1,3 +1,4 @@
+import { isClientIdentity, clientOperationalPatch } from './clientAccountPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 Deno.serve(async req => {
@@ -11,7 +12,14 @@ Deno.serve(async req => {
     // Account approvals must use the real identity records rather than the
     // 10-minute cached operational directory, which misses new registrants.
     const users = await api.asServiceRole.entities.User.list('-created_date', 1000);
-    return Response.json({success:true,users:users || [],count:(users || []).length});
+    // Authorized migration: old client-only accounts retained officer defaults.
+    // Clear those fields once; retain property permissions and account history.
+    for(const person of users||[]){
+      const patch=clientOperationalPatch(person);
+      if(Object.keys(patch).length){await api.asServiceRole.entities.User.update(person.id,patch);Object.assign(person,patch);}
+    }
+    const staff=(users||[]).filter(person=>!isClientIdentity(person));
+    return Response.json({success:true,users:staff,count:staff.length});
   } catch(error:any) {
     const message = String(error?.message || 'Account list unavailable');
     const rateLimited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests/i.test(message);

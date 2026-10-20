@@ -106,7 +106,8 @@
       "enum": [
         "active",
         "terminated",
-        "on_leave"
+        "on_leave",
+        "not_employee"
       ],
       "default": "active"
     },

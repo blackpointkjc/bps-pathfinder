@@ -1,3 +1,4 @@
+import { clientOperationalPatch } from './clientAccountPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
       ].filter(Boolean));
 
       await base44.asServiceRole.entities.User.update(client.id, {
+        ...clientOperationalPatch(client),
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,

@@ -1,3 +1,4 @@
+import { clientOperationalPatch } from './clientAccountPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
@@ -114,6 +115,8 @@ Deno.serve(async (req) => {
             ? 'Client'
             : rank || 'Officer',
     };
+
+    if(accountType==='client')Object.assign(updates,clientOperationalPatch({...portalUser,...updates,role:'user'}));
 
     // Pending Users must be created through Base44's supported invitation endpoint.
     // Direct User.create calls are rejected with HTTP 400 because User is a protected

@@ -17,7 +17,7 @@ let supervisorOfficerPending = null;
 // five large directory entities and competing with CAD/time-clock requests.
 const TTL_MS = 10 * 60_000;
 const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
-const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v8';
+const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v9';
 
 function readPersistedDirectory() {
   try {

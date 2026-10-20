@@ -1,3 +1,4 @@
+import { isClientIdentity, clientOperationalPatch } from './clientAccountPolicy.ts';
 import { synchronizeOfficerIdentity } from './synchronizeOfficerIdentity.ts';
 import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
 import { reconcileAbsences } from './absenceLifecycle.ts';
@@ -126,6 +127,9 @@ Deno.serve(async (req) => {
             updatePayload.unit_number = target.unit_number;
           }
         }
+        const mergedAccount={...target,...updatePayload};
+        if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
+        Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
         const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId });
 

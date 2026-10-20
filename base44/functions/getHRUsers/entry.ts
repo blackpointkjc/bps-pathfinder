@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
     const users = (allUsers || [])
       .filter((entry: any) => {
         if (!privileged && entry.email !== user.email) return false;
+        const clientRoles=new Set((entry.additional_roles||[]).map((role:string)=>String(role).toLowerCase()));
+        if(clientRoles.has('client')||[entry.rank,entry.user_type,entry.account_type,entry.portal_type].some(value=>String(value||'').toLowerCase()==='client'))return false;
         // HR must retain terminated personnel for historic review and restoration.
         // Non-privileged viewers continue to receive only their own limited data.
         if (entry.termination_date || String(entry.employment_status || '').toLowerCase() === 'terminated') return hrPrivileged;
