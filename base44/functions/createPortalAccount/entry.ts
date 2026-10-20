@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const roles = new Set((currentUser.additional_roles || []).map((r: string) => String(r).toLowerCase()));
     const fullAccess = currentUser.role === 'admin' || roles.has('full_access');
-    const canCreateClient = fullAccess || roles.has('hr');
+    const canCreateClient = fullAccess;
     const canCreateStudent = fullAccess || roles.has('trainer');
     const canCreateEmployee = fullAccess || roles.has('hr');
     const canCreatePending = fullAccess;

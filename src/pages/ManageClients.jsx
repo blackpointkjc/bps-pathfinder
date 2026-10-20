@@ -37,7 +37,7 @@ export default function ManageClients() {
   });
 
   const isSystemAdmin = user?.role === 'admin';
-  const hasAccess = isSystemAdmin || user?.additional_roles?.includes('full_access') || user?.additional_roles?.includes('hr');
+  const hasAccess = isSystemAdmin || user?.additional_roles?.includes('full_access');
 
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'manageClients'],

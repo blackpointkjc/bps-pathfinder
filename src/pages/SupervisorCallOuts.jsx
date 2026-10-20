@@ -1,3 +1,4 @@
+import { previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
@@ -33,6 +34,10 @@ export default function SupervisorCallOuts() {
     exclude_original_incident_metric: false,
   });
 
+  const calloutName = (email, saved) => {
+    const person = allUsers.find(row => [row.email,...(row.email_aliases || [])].some(value => String(value || '').toLowerCase() === String(email || '').toLowerCase()));
+    return person ? previewDisplayName(person) : 'Officer ' + (String(saved || '').trim().split(/\s+/).pop() || 'unavailable');
+  };
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -209,7 +214,7 @@ export default function SupervisorCallOuts() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <p className="font-bold text-slate-900">{callOut.officer_name}</p>
+                          <p className="font-bold text-slate-900">{calloutName(callOut.officer_email,callOut.officer_name)}</p>
                           <Badge className={callOut.call_out_type === 'called_out' ? 'bg-red-600' : callOut.call_out_type === 'reassigned' ? 'bg-blue-600' : 'bg-amber-600'}>
                             {callOut.call_out_type === 'called_out' ? 'Called Out' : callOut.call_out_type === 'reassigned' ? 'Reassigned' : 'Sent Home'}
                           </Badge>
@@ -231,7 +236,7 @@ export default function SupervisorCallOuts() {
                           ) : callOut.location ? <p><strong>Location:</strong> {callOut.location}</p> : null}
                           <p><strong>Reason:</strong> {callOut.reason}</p>
                           <p className="text-xs text-slate-500 mt-2">
-                            Documented by: {callOut.supervisor_name} • {format(new Date(callOut.created_date), 'MMM d, yyyy h:mm a')}
+                            Documented by: {calloutName(callOut.supervisor_email,callOut.supervisor_name)} • {format(new Date(callOut.created_date), 'MMM d, yyyy h:mm a')}
                           </p>
                         </div>
                       </div>

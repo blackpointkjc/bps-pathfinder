@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, request: created });
     }
 
+    if (['review','cancel_pending','cancel_approved'].includes(action) && user.role !== 'admin' && !roles.has('full_access')) return Response.json({error:'Administrator scheduling access required to approve or cancel time off'},{status:403});
     if (!hasHR) return Response.json({ error: 'HR access required' }, { status: 403 });
 
     if (action === 'cancel_pending') {
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
         cancelled_by: user.email,
         cancelled_date: new Date().toISOString(),
         hours_restored: 0,
-        admin_notes: admin_notes || 'Pending PTO request cancelled by HR.',
+        admin_notes: admin_notes || 'Pending PTO request cancelled by Admin.',
       });
       const officerEmail = request.requested_by_email || request.created_by;
       if (officerEmail) {
@@ -106,10 +107,10 @@ Deno.serve(async (req) => {
           recipient_email: String(officerEmail).toLowerCase(),
           type: 'schedule_changed',
           title: 'Time Off Request Cancelled',
-          message: `Your pending time off request for ${request.start_date} through ${request.end_date} was cancelled by HR. No PTO hours were deducted.`,
+          message: `Your pending time off request for ${request.start_date} through ${request.end_date} was cancelled by Admin. No PTO hours were deducted.`,
           related_id: request.id,
           priority: 'normal',
-          source_name: 'Human Resources',
+          source_name: 'Admin Scheduling',
         });
       }
       return Response.json({ success: true, cancelled: true, restored_hours: 0 });
@@ -127,6 +128,7 @@ Deno.serve(async (req) => {
       const request = (all || []).find((entry: any) => entry.id === request_id);
       if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
 
+      if (request.status !== 'pending') return Response.json({error:'This request has already been reviewed; refresh before making another decision'},{status:409});
       await base44.asServiceRole.entities.TimeOffRequest.update(request_id, {
         status,
         admin_notes,
@@ -183,13 +185,22 @@ Deno.serve(async (req) => {
           title: `Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}`,
           message: status === 'approved'
             ? `Your time off request for ${request.start_date} through ${request.end_date} was approved.${openedShifts ? ` ${openedShifts} scheduled shift${openedShifts === 1 ? '' : 's'} moved to Open Shifts.` : ''}`
-            : `Your time off request for ${request.start_date} through ${request.end_date} was denied.${admin_notes ? ` HR note: ${admin_notes}` : ''}`,
+            : `Your time off request for ${request.start_date} through ${request.end_date} was denied.${admin_notes ? ` Admin note: ${admin_notes}` : ''}`,
           related_id: request.id,
           priority: 'normal',
-          source_name: 'Human Resources',
+          source_name: 'Admin Scheduling',
         });
       }
-      return Response.json({ success: true, opened_shifts: openedShifts });
+      if (status === 'approved') {
+        const admins = (users || []).filter(entry => entry.role === 'admin' || normalizeRoles(entry).has('full_access'));
+        for (const admin of admins) if (admin.email) await base44.asServiceRole.entities.Notification.create({
+          recipient_email:String(admin.email).toLowerCase(),type:'schedule_changed',
+          title:'Approved leave — scheduling coverage',
+          message:`${[creatorOfficer?.rank,creatorOfficer?.last_name].filter(Boolean).join(' ') || request.requested_by_name || officerEmail} is approved off ${request.start_date} through ${request.end_date}. ${openedShifts} shift(s) moved to Open Shifts. Review Scheduling → Approved time off.`,
+          related_id:request.id,priority:openedShifts ? 'high' : 'normal',source_name:'Admin Scheduling',
+        }).catch(error => console.warn('Leave scheduling notification failed',error?.message));
+      }
+      return Response.json({ success: true, opened_shifts: openedShifts, start_date:request.start_date, end_date:request.end_date });
     }
 
     if (action === 'cancel_approved') {
@@ -229,7 +240,7 @@ Deno.serve(async (req) => {
         cancelled_by: user.email,
         cancelled_date: new Date().toISOString(),
         hours_restored: request.request_type === 'paid' ? hours : 0,
-        admin_notes: admin_notes || `Approved PTO was cancelled by HR. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
+        admin_notes: admin_notes || `Approved PTO was cancelled by Admin. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
       });
       return Response.json({ success: true, removed_from_hr: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
     }
@@ -281,7 +292,7 @@ Deno.serve(async (req) => {
         title: use_pto ? 'Call-Out Recorded with PTO' : 'Call-Out Recorded',
         message: use_pto ? `${amount.toFixed(1)} PTO hours were applied to your ${call_out_date} call-out.` : `Your ${call_out_date} call-out was recorded as unpaid; no PTO hours were used.`,
         priority: 'normal',
-        source_name: 'Human Resources',
+        source_name: 'Admin Scheduling',
       });
       return Response.json({ success: true, callout_id: callout.id, pto_used: use_pto ? amount : 0 });
     }

@@ -1,3 +1,6 @@
+import AdminOutOfOffice from '@/components/AdminOutOfOffice';
+import { actingCoverage } from '@/utils/commandReporting';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -55,6 +58,7 @@ export default function AdminOfficerManagement() {
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: isAdmin,
   });
+  const {data: commandUsers = []} = useQuery({queryKey:['officerCoverageDirectory'],queryFn:()=>listDirectoryUsers(),enabled:isAdmin,staleTime:30000});
   const { data: allAvailability = [] } = useQuery({
     queryKey: ['allAvailability'], queryFn: () => base44.entities.OfficerAvailability.list(), enabled: isAdmin,
   });
@@ -274,6 +278,11 @@ export default function AdminOfficerManagement() {
         </section>
 
         {selectedOfficer && <>
+          {(selectedOfficerPrivate || selectedOfficerRecord) && <div className="rounded-2xl border border-cyan-700 bg-slate-900 p-4">
+            <h2 className="mb-3 text-lg font-bold text-white">Out of Office & Automatic Duty Coverage</h2>
+            <AdminOutOfOffice key={selectedOfficer} user={selectedOfficerPrivate || selectedOfficerRecord}/>
+            <p className="mt-3 text-sm text-cyan-200">Acting coverage during absence: {(() => {const profile={...(selectedOfficerPrivate || selectedOfficerRecord),out_of_office:true,out_of_office_start:new Date(Date.now()-1000).toISOString(),out_of_office_return:new Date(Date.now()+60000).toISOString()};const acting=actingCoverage(profile,commandUsers);return acting?rankLast(acting):'No available replacement in this platoon or its command';})()}. Selected automatically by platoon and rank.</p>
+          </div>}
           <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
             <section className="rounded-2xl border border-slate-800 bg-[#0b1624] p-5">
               <div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Officer Profile</div><h3 className="mt-1 text-xl font-black">{rankLast(selectedOfficerRecord)}</h3></div>{selectedOfficerRecord?.unit_number && <Badge className="bg-blue-500/15 text-blue-200">UNIT {selectedOfficerRecord.unit_number}</Badge>}</div>

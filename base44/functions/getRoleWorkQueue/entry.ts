@@ -482,6 +482,7 @@ Deno.serve(async (req) => {
         page: 'ManageTimeEntries',
       });
     }
+    if (queueRole === 'admin') timeOff = await safeList('time-off requests', () => base44.asServiceRole.entities.TimeOffRequest.list('-created_date',1000));
     for (const row of (timeOff || []).filter(isPending)) {
       const person = personFor(row);
       candidates.push({ id: `pto-${row.id}`, source_id: String(row.id), kind: 'pto', priority: 'normal', title: 'PTO / Leave Request', person: person.name, detail: row.reason || 'Request awaiting decision', page: 'AdminPTOApproval' });
@@ -544,10 +545,10 @@ Deno.serve(async (req) => {
     }
 
     const allowedKinds = queueRole === 'hr'
-      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'pto', 'performance_review', 'annual_review_due'])
+      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
         ? new Set(['report_review'])
-        : new Set(['missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
+        : new Set(['pto', 'missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
       if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
     }

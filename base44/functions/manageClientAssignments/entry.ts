@@ -8,8 +8,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = rolesOf(user);
-    const authorized = user.role === 'admin' || roles.has('hr') || roles.has('full_access');
-    if (!authorized) return Response.json({ error: 'HR or Admin access required' }, { status: 403 });
+    const authorized = user.role === 'admin' || roles.has('full_access');
+    if (!authorized) return Response.json({ error: 'Administrator access required' }, { status: 403 });
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const { action, client_id } = body;

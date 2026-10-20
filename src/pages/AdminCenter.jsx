@@ -1,3 +1,5 @@
+import ManageClients from './ManageClients';
+import AdminPTOApproval from './AdminPTOApproval';
 import AdminOperationsWorkbench from '@/components/AdminOperationsWorkbench';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
@@ -156,8 +158,9 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
 function AdminPersonnelAccessHub() {
   return <AdminInlineFunctions queryParam="admin_people_tool" tools={[
     { id: 'users', label: 'Users & Accounts', component: AdminUsers },
+    { id: 'clients', label: 'Manage Clients', component: ManageClients },
     { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
-    { id: 'availability', label: 'Availability Approvals', component: AdminOfficerManagement },
+    { id: 'availability', label: 'Manage Officers & Coverage', component: AdminOfficerManagement },
     { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
   ]} />;
 }
@@ -165,6 +168,7 @@ function AdminPersonnelAccessHub() {
 function AdminSchedulingCoverageHub() {
   return <AdminInlineFunctions queryParam="admin_schedule_tool" tools={[
     { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
+    { id: 'pto', label: 'Time Off Approval', component: AdminPTOApproval },
     { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
     { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
     { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },

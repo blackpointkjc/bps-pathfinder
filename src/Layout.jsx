@@ -182,14 +182,16 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Scheduling & Fleet', items: [
         ['Scheduling', 'AdminScheduling', Calendar],
+        ['Time Off Approval', 'AdminPTOApproval', ClipboardCheck],
         ['Fleet Assignments', 'FleetVehicleAssignments', Car],
         ['Duty Supervisor Schedule', 'DutySupervisorScheduling', ShieldCheck],
-        ['Availability Approvals', 'AdminOfficerManagement', UserCheck],
+        ['Manage Officers & Coverage', 'AdminOfficerManagement', UserCheck],
         ['Planned Shifts', 'AdminPlannedShifts', Calendar],
         ['Shift Bids', 'AdminShiftBids', Briefcase],
       ]},
       { label: 'Personnel & Sites', items: [
         ['Users & Accounts', 'AdminUsers', Users],
+        ['Manage Clients', 'ManageClients', Building2],
         ['Platoon & Chain', 'AdminPlatoonAssignments', GitBranch],
         ['Locations', 'AdminLocations', Building2],
         ['Equipment', 'AdminEquipment', Package],
@@ -235,13 +237,9 @@ const CENTER_CONFIG = {
         ['Divisions', 'AdminDivisions', Layers],
       ]},
       { label: 'Leave & Performance', items: [
-        ['PTO Approval & History', 'AdminPTOApproval', ClipboardCheck],
         ['Manual PTO', 'AdminManualPTO', CalendarClock],
         ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
         ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
-      ]},
-      { label: 'Client Assignments', items: [
-        ['Client Accounts & Assignments', 'ManageClients', Building2],
       ]},
     ],
   },
@@ -342,7 +340,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminReports: ['admin','reports','reportshub','admin_reports_quality_tool','allreports'], AdminClientReports: ['admin','reports','reportshub','admin_reports_quality_tool','clientreports'], AdminSupervisorReports: ['admin','reports','reportshub','admin_reports_quality_tool','supervisorreports'], AdminConfidentialReports: ['admin','reports','reportshub','admin_reports_quality_tool','confidential'], AdminComplaints: ['admin','reports','reportshub','admin_reports_quality_tool','complaints'], AdminCommendations: ['admin','reports','reportshub','admin_reports_quality_tool','commendations'], AdminClientFeedback: ['admin','reports','reportshub','admin_reports_quality_tool','feedback'],
   AdminAnnouncements: ['admin','communications','communicationshub','admin_communications_tool','announcements'], AdminSpecialRequests: ['admin','communications','communicationshub','admin_communications_tool','requests'],
   AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','sites','systemportal','admin_system_portal_tool','settings'], AdminDocuments: ['training','documents','documents'],
-  HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['hr','employees','clients'],
+  HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['admin','schedule','scheduling','admin_schedule_tool','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['admin','people','personnelhub','admin_people_tool','clients'],
   SupervisorTasks: ['supervisor','command','tasks'], SupervisorFieldOversight: ['supervisor','command','field'], SupervisorShiftHandover: ['supervisor','command','handover'], SupervisorChat: ['supervisor','command','chat'], SupervisorDailyCode: ['supervisor','command','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
   ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],
   AccountingPayroll: ['accounting','payroll','payroll'], PayrollDates: ['accounting','payroll','dates'], AccountingInvoices: ['accounting','billing','invoices'], AccountingExpenses: ['accounting','billing','expenses'], AccountingProfit: ['accounting','overview','profit'], AccountingTaxLiability: ['accounting','overview','tax'],
@@ -513,6 +511,7 @@ function canAccessPage(user, pageName) {
   const studentAccess = normalizedRoles(user).has('student');
   if (studentAccess) return pageName === 'StudentPortal';
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
+  if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || roles.has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;

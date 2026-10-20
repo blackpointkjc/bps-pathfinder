@@ -32,7 +32,7 @@ export default function AdminPTOApproval() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('full_access');
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['appDirectoryUsers', 'ptoApproval'],
@@ -115,10 +115,12 @@ export default function AdminPTOApproval() {
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-
+      return payload;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
+    onError: error => toast.error(error?.response?.data?.error || error?.message || 'Unable to save time off decision'),
+    onSuccess: payload => {
+      queryClient.invalidateQueries({ predicate: query => /schedule|pto|leave|workqueue/i.test(String(query.queryKey[0])) });
+      toast.success(payload?.opened_shifts ? `Time off saved; ${payload.opened_shifts} shifts need coverage in Scheduling.` : 'Time off decision saved in Scheduling.');
       setShowDialog(false);
       setSelectedRequest(null);
       setAdminNotes("");
@@ -130,7 +132,7 @@ export default function AdminPTOApproval() {
       const response = await base44.functions.invoke('getPTORequests', {
         action: 'cancel_pending',
         request_id: request.id,
-        admin_notes: 'Pending PTO request cancelled by HR.',
+        admin_notes: 'Pending PTO request cancelled by Admin.',
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
@@ -148,7 +150,7 @@ export default function AdminPTOApproval() {
       const response = await base44.functions.invoke('getPTORequests', {
         action: 'cancel_approved',
         request_id: request.id,
-        admin_notes: 'Approved PTO removed by HR and hours restored.',
+        admin_notes: 'Approved PTO removed by Admin and hours restored.',
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
@@ -183,7 +185,7 @@ export default function AdminPTOApproval() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">HR Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Scheduling Access Required</h2>
         <p className="text-slate-600">You don't have permission to access this page.</p>
       </div>
     );
@@ -195,7 +197,7 @@ export default function AdminPTOApproval() {
         <div className="flex items-center gap-4">
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div>
-            <h1 className="text-3xl font-black text-white">PTO Approval</h1>
+            <h1 className="text-3xl font-black text-white">Time Off Approval</h1><a href="/AdminScheduling" className="mt-2 inline-block text-sm font-bold text-cyan-300">Open Scheduling → Approved time off</a>
             <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
           </div>
         </div>

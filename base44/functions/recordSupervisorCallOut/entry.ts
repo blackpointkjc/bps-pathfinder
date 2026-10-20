@@ -29,11 +29,11 @@ Deno.serve(async req => {
     const users = await base44.asServiceRole.entities.User.filter({ email }, '-updated_date', 1);
     const officer = users?.[0];
     const callout = await base44.asServiceRole.entities.CallOut.create({
-      officer_email: email, officer_name: officer?.full_name || [officer?.first_name,officer?.last_name].filter(Boolean).join(' ') || email,
+      officer_email: email, officer_name: [officer?.rank,officer?.last_name].filter(Boolean).join(' ') || 'Officer',
       call_out_type: type, call_out_date: date, call_out_time: String(input.call_out_time || ''),
       reason: String(input.reason).trim(), location: shift.location, original_location: input.original_location || '',
       destination_location: input.destination_location || '', original_shift_id: shift.id,
-      supervisor_email: actor.email, supervisor_name: actor.full_name || [actor.first_name,actor.last_name].filter(Boolean).join(' ') || actor.email,
+      supervisor_email: actor.email, supervisor_name: [actor.rank,actor.last_name].filter(Boolean).join(' ') || 'Supervisor',
       affects_pto: type !== 'reassigned', exclude_original_incident_metric: type === 'reassigned' || !!input.exclude_original_incident_metric,
       admin_notified: false,
       destination_start_time: input.destination_start_time || '', destination_end_time: input.destination_end_time || '',
