@@ -15,7 +15,7 @@ export function validateBatch(rows,users,existing){
   const from=Date.parse(easternInstant(row.assignment_date,row.start_time)),to=Date.parse(easternInstant(row.end_time<=row.start_time?nextDay(row.assignment_date):row.assignment_date,row.end_time));
   if(absenceWindows(person).some(w=>from<Date.parse(w.end)&&to>Date.parse(w.start))){errors.push([person.rank,person.last_name].filter(Boolean).join(' ')+' is out of office during '+row.assignment_date);continue;}
   const payload={assignment_date:row.assignment_date,start_time:row.start_time,end_time:row.end_time,supervisor_email:clean(person.email),supervisor_name:[person.rank,person.last_name].filter(Boolean).join(' '),supervisor_rank:person.rank,location:row.location||'ALL',notes:String(row.notes||'').slice(0,1000),status:'scheduled'};
-  const others=[...existing,...planned].filter(r=>r.id!==row.id&&r.status!=='cancelled'&&clean(r.supervisor_email)===clean(person.email)&&clean(r.location||'ALL')===clean(payload.location));
+  const others=[...existing,...planned].filter(r=>(!row.id||r.id!==row.id)&&r.status!=='cancelled'&&clean(r.supervisor_email)===clean(person.email)&&clean(r.location||'ALL')===clean(payload.location));
   if(others.some(r=>r.assignment_date===payload.assignment_date&&r.start_time===payload.start_time&&r.end_time===payload.end_time)){skipped++;continue;}
   if(others.some(r=>intersects(r,payload))){errors.push('Overlapping duty coverage on '+payload.assignment_date+' for '+payload.supervisor_name);continue;}
   planned.push({...payload,...(row.id?{id:row.id}:{})});

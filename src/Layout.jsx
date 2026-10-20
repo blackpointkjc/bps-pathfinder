@@ -6,11 +6,11 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
-  Building2, Calendar, CalendarClock, Car, ChevronDown, ChevronLeft, ChevronRight,
+  Building2, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
   Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
-  Siren, Trash2, UserCheck, UserX, Users, Wrench, X, GitBranch, RotateCw
+  Siren, Trash2, UserCheck, UserX, Users, Wrench, X, RotateCw
 } from 'lucide-react';
 import { base44, clearBase44ReadCache } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
