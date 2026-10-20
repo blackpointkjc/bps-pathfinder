@@ -162,12 +162,12 @@ export default function BOLOAlerts() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <AlertOctagon className="h-5 w-5 text-red-400" />
-            <div><div className="text-sm font-black tracking-[0.16em]">BOLO / INTELLIGENCE BOARD</div><div className="text-[10px] tracking-[0.18em] text-slate-500">BE ON THE LOOKOUT · OFFICER SAFETY · WANTED / MISSING · VEHICLE INTELLIGENCE</div></div>
+            <div><div className="text-xl font-bold tracking-tight">BOLO / INTELLIGENCE BOARD</div><div className="mt-1 text-xs text-slate-400">BE ON THE LOOKOUT · OFFICER SAFETY · WANTED / MISSING · VEHICLE INTELLIGENCE</div></div>
           </div>
           <div className="flex-1" />
           <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[240px]">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-8 w-full rounded border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-[10px] text-white outline-none focus:border-blue-500" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-10 w-full rounded-lg border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-400 bg-red-700 px-4 text-[10px] font-black shadow-[0_0_18px_rgba(220,38,38,.25)] hover:bg-red-600 sm:h-9 sm:w-auto"><Plus className="h-4 w-4" />NEW BOLO</button>}
         </div>
@@ -193,29 +193,26 @@ export default function BOLOAlerts() {
 
       <div className="flex flex-none items-center justify-between border-b border-[#24354c] bg-[#0a1220] px-3 py-2 text-xs text-slate-400"><span>Showing {filtered.length} of {bolos.length} BOLO records</span>{typeFilter !== 'all' && <button type="button" onClick={() => setTypeFilter('all')} className="rounded border border-slate-600 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">Clear type filter</button>}</div>
 
-      <div className="hidden flex-none grid-cols-12 border-b border-[#24354c] bg-[#111a29] px-3 py-1.5 text-[10px] font-bold tracking-wide text-slate-400 md:grid">
-        <div className="col-span-2">BOLO / PRIORITY</div><div className="col-span-3">SUBJECT / VEHICLE</div><div className="col-span-3">ALERT / LAST KNOWN</div><div className="col-span-2">ISSUED / STATUS</div><div className="col-span-2 text-right">ACTIONS</div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {loading ? <div className="flex h-32 items-center justify-center text-xs text-slate-500">LOADING BOLO DATABASE...</div> : filtered.length === 0 ? <div className="flex h-32 flex-col items-center justify-center text-slate-600"><AlertOctagon className="mb-2 h-7 w-7" /><span className="text-xs">NO BOLOS MATCH CURRENT VIEW</span></div> : filtered.map(bolo => {
-          const cfg = TYPE_CONFIG[bolo.alert_type] || TYPE_CONFIG.watch_notice;
-          const Icon = cfg.icon;
-          const party = primaryParty(bolo);
-          const vehicle = primaryVehicle(bolo);
-          const subject = party?.name ? titleCase(party.name) : vehicle ? [vehicle.year,titleCase(vehicle.color),titleCase(vehicle.make),titleCase(vehicle.model)].filter(Boolean).join(' ') : 'GENERAL INFORMATION';
-          return <div key={bolo.id} onClick={() => setModal({ mode: bolo.status === 'draft' ? 'edit' : 'view', bolo })} className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-[#18283a] px-3 py-3 hover:bg-[#0d1826] md:grid-cols-12 md:gap-0 ${bolo.priority === 'critical' && bolo.status === 'active' ? 'border-l-2 border-l-red-500 bg-red-950/10' : bolo.status === 'draft' ? 'border-l-2 border-l-amber-500 bg-amber-950/10' : ''}`}>
-            <div className="md:col-span-2"><div className="text-[10px] font-black text-[#f5c451]">{bolo.bolo_number || 'BOLO-PENDING'}</div><div className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[10px] font-black ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{(bolo.priority || 'medium').toUpperCase()}</div></div>
-            <div className="md:col-span-3"><div className="flex items-center gap-1 text-[11px] font-bold text-slate-500"><Icon className="h-3 w-3" />{cfg.label}</div><div className="mt-1 text-[11px] font-black text-white">{subject}</div>{vehicle?.plate && <div className="mt-1 inline-block rounded border border-yellow-500/50 bg-yellow-950/50 px-1.5 py-0.5 text-[11px] font-black text-yellow-300">PLATE {String(vehicle.plate).toUpperCase()}</div>}{(bolo.parties?.length || 0) > 1 && <div className="mt-1 text-[10px] text-blue-400">+{bolo.parties.length - 1} additional party</div>}{(bolo.vehicles?.length || 0) > 1 && <div className="mt-1 text-[10px] text-yellow-500">+{bolo.vehicles.length - 1} additional vehicle</div>}</div>
-            <div className="md:col-span-3"><div className="text-[11px] font-black text-white">{titleCase(bolo.title)}</div><div className="mt-1 line-clamp-1 text-[11px] text-slate-400">{bolo.description || 'No narrative entered'}</div><div className="mt-1 text-[11px] text-blue-300">LAST: {titleCase(bolo.last_known_location || 'UNKNOWN')}</div>{bolo.linked_call_number && <div className="mt-1 text-[10px] text-cyan-400">CAD: {bolo.linked_call_number}</div>}</div>
-            <div className="md:col-span-2"><div className="text-[11px] text-slate-300">{bolo.issued_by || 'Unknown issuer'}</div><div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500"><Clock3 className="h-2.5 w-2.5" />{fmt(bolo.created_date)}</div><div className={`mt-1 text-[11px] font-black ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</div></div>
-            <div className="flex items-center justify-end gap-1 md:col-span-2">
-              {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => { e.stopPropagation(); setModal({ mode: 'edit', bolo: { ...bolo } }); }} className="rounded border border-slate-700 p-1.5 text-slate-400 hover:border-gold hover:text-gold" title="Edit BOLO"><Edit2 className="h-3.5 w-3.5" /></button>}
-              {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => openResolveDialog(bolo,e)} disabled={resolving === bolo.id} className="flex items-center gap-1 rounded border border-green-700 bg-green-950/30 px-2 py-1.5 text-[10px] font-black text-green-300 hover:bg-green-900/40 disabled:opacity-50"><CheckCircle2 className="h-3.5 w-3.5" />{resolving === bolo.id ? 'RESOLVING' : 'RESOLVE'}</button>}
-              {bolo.status !== 'active' && <span className="max-w-40 text-right text-[10px] text-slate-500">{bolo.resolution_notes || bolo.status}</span>}
-            </div>
-          </div>;
-        })}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {loading ? <div role="status" className="p-10 text-center text-sm text-slate-400">Loading intelligence records…</div> : filtered.length===0 ? <div className="rounded-xl border border-dashed border-slate-600 p-12 text-center text-slate-400"><AlertOctagon className="mx-auto mb-3 h-8 w-8"/><p>No records match this view.</p></div> :
+        <div className="grid items-stretch gap-4 lg:grid-cols-2 2xl:grid-cols-3">{filtered.map(bolo=>{
+          const cfg=TYPE_CONFIG[bolo.alert_type]||TYPE_CONFIG.watch_notice,Icon=cfg.icon;
+          const party=primaryParty(bolo),vehicle=primaryVehicle(bolo);
+          const subject=party?.name?titleCase(party.name):vehicle?[vehicle.year,titleCase(vehicle.color),titleCase(vehicle.make),titleCase(vehicle.model)].filter(Boolean).join(' '):'General information';
+          return <article key={bolo.id} className={'flex min-w-0 flex-col overflow-hidden rounded-xl border bg-slate-900 shadow-lg '+(bolo.priority==='critical'&&bolo.status==='active'?'border-red-500':'border-slate-700')}>
+            <button type="button" onClick={()=>setModal({mode:bolo.status==='draft'?'edit':'view',bolo})} className="flex-1 p-5 text-left hover:bg-slate-800/60">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-bold text-amber-300">{bolo.bolo_number||'BOLO pending'}</span><span className={'rounded border px-2 py-1 text-xs font-bold '+(PRIORITY_STYLE[bolo.priority]||PRIORITY_STYLE.medium)}>{String(bolo.priority||'medium').toUpperCase()}</span></div>
+              <div className="mt-4 flex gap-4">{bolo.photo_urls?.[0]&&<img src={bolo.photo_urls[0]} alt="BOLO subject" className="h-24 w-24 shrink-0 rounded-lg border border-slate-600 object-cover"/>}<div className="min-w-0"><div className="flex items-center gap-2 text-xs text-cyan-300"><Icon className="h-4 w-4"/>{cfg.label}</div><h2 className="mt-2 break-words text-lg font-semibold text-white">{titleCase(bolo.title)}</h2><p className="mt-1 break-words text-sm text-slate-300">{subject}</p></div></div>
+              {vehicle?.plate&&<span className="mt-3 inline-block rounded border border-amber-500/50 bg-amber-950 px-3 py-1 font-mono text-sm font-bold text-amber-200">{String(vehicle.plate).toUpperCase()}</span>}
+              <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-300">{bolo.description||'Open record for full intelligence details.'}</p>
+              <dl className="mt-4 grid gap-2 border-t border-slate-700 pt-3 text-xs"><div><dt className="text-slate-500">Last known location</dt><dd className="mt-1 text-slate-200">{titleCase(bolo.last_known_location||'Unknown')}</dd></div>{bolo.linked_call_number&&<div><dt className="text-slate-500">Linked CAD call</dt><dd className="mt-1 text-cyan-200">{bolo.linked_call_number}</dd></div>}</dl>
+            </button>
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700 bg-slate-950/60 px-5 py-3"><div className="text-xs"><span className={bolo.status==='active'?'text-emerald-300':'text-slate-300'}>{String(bolo.status||'').toUpperCase()}</span><p className="mt-1 text-slate-500">{fmt(bolo.created_date)}</p></div><div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={()=>setModal({mode:bolo.status==='draft'?'edit':'view',bolo})}>{bolo.status==='draft'?'Continue draft':'Open record'}</Button>
+              {canEditRecord(bolo)&&bolo.status==='active'&&<><button type="button" aria-label={'Edit '+bolo.bolo_number} onClick={()=>setModal({mode:'edit',bolo:{...bolo}})} className="rounded border border-slate-600 px-2 text-slate-300"><Edit2 className="h-4 w-4"/></button><Button size="sm" disabled={resolving===bolo.id} onClick={e=>openResolveDialog(bolo,e)} className="bg-emerald-800 hover:bg-emerald-700">{resolving===bolo.id?'Resolving…':'Resolve'}</Button></>}
+            </div></footer>
+          </article>;
+        })}</div>}
       </div>
 
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onEdit={modal.mode === 'view' && canEditRecord(modal.bolo) ? () => setModal({ mode: 'edit', bolo: { ...modal.bolo } }) : null} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}

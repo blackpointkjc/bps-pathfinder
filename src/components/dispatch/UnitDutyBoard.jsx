@@ -50,7 +50,7 @@ export default function UnitDutyBoard({ units = [], calls = [], fullPage = false
                 <p className="mt-1 break-words text-xs text-slate-300">{u.assignment}</p>
             </article>)}
             {!rows.length && <p className="p-2 text-xs text-slate-400">No officers match this view.</p>}
-        </div>}}
+        </div>}
 
     </section>;
 }

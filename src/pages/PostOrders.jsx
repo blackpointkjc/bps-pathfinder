@@ -1,3 +1,4 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import SiteChainOfCommand from '@/components/SiteChainOfCommand';
 import { useEffect, useState } from "react";
@@ -133,20 +134,15 @@ export default function PostOrders() {
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <h1 className="flex items-center gap-2 text-3xl font-black text-white">
-              <FileText className="w-8 h-8 text-blue-600" />
-              Post Orders
-            </h1>
-            <p className="text-slate-600">Site-specific security protocols and procedures</p>
-          </div>
-        </div>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <WorkspaceHeader eyebrow="Field operations / Site reference" title="Post Orders" description="Site instructions, patrol requirements, contacts and the chain of command." metrics={[
+          {label:'Active properties',value:locations?.length||0},
+          {label:'Selected property',value:selectedSite||'Select a site'}
+        ]}/>
 
-        <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-            <CardTitle>Select Your Site</CardTitle>
+        <Card className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-700 bg-slate-800">
+            <CardTitle className="text-sm">Property reference</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <Select value={selectedSite} onValueChange={setSelectedSite}>
@@ -165,28 +161,29 @@ export default function PostOrders() {
         </Card>
 
         {!selectedSite && (
-          <Card className="border-none shadow-lg">
+          <Card className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
             <CardContent className="p-12 text-center">
               <MapPin className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Select a Site</h3>
-              <p className="text-slate-600">Choose a site from the dropdown above to view its post orders and protocols.</p>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">Select a Site</h3>
+              <p className="text-slate-400">Choose a site from the dropdown above to view its post orders and protocols.</p>
             </CardContent>
           </Card>
         )}
 
         {selectedSite && !selectedPostOrder && (
-          <Alert className="border-amber-300 bg-amber-50">
+          <Alert className="border-amber-800 bg-amber-950/40">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-900">
+            <AlertDescription className="text-amber-200">
               Post orders have not been configured for this site yet. Contact your supervisor or administrator.
             </AlertDescription>
           </Alert>
         )}
 
         {selectedSite && selectedPostOrder && (
-          <div className="space-y-6">
+          <div className="space-y-5">
+            <nav aria-label="Post order contents" className="sticky top-0 z-10 flex flex-wrap gap-2 rounded-xl border border-slate-600 bg-slate-950/95 p-3 shadow-lg backdrop-blur">{[['contacts','Contacts & command'],['overview','Site overview'],['general','Company orders'],['patrol','Patrol schedule'],['duties','Special duties'],['emergency','Emergency contacts']].map(([id,title])=><a key={id} href={'#post-'+id} className="rounded-lg px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-slate-800">{title}</a>)}</nav>
             {/* Site Header */}
-            <Card className="border-none shadow-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+            <Card className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-xl bg-gradient-to-r from-cyan-950 to-slate-900 text-white">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Shield className="w-8 h-8" />
@@ -211,8 +208,8 @@ export default function PostOrders() {
             </Card>
 
             {/* Contacts */}
-            <Card className="border-none shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
+            <Card id="post-contacts" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+              <CardHeader className="border-b border-slate-700 bg-slate-800">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-green-600" />
                   Contacts & Supervisors
@@ -221,14 +218,14 @@ export default function PostOrders() {
               <CardContent className="p-6 space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-green-700">Assigned Supervisors:</p>
-                    <p className="break-words text-slate-900 font-medium">{getSupervisorNames(selectedPostOrder.assigned_supervisors)}</p>
+                    <p className="text-sm font-semibold text-cyan-300">Site supervisor & chain of command</p>
+                    
                     <SiteChainOfCommand assignedSupervisors={siteLocation?.assigned_supervisors?.length ? siteLocation.assigned_supervisors : selectedPostOrder.assigned_supervisors || []} users={allUsers || []}/>
                   </div>
                   {selectedPostOrder.property_manager_name && (
                     <div className="space-y-2">
-                      <p className="text-sm font-semibold text-slate-700">Property Manager:</p>
-                      <p className="text-slate-900">{selectedPostOrder.property_manager_name}</p>
+                      <p className="text-sm font-semibold text-slate-300">Property Manager:</p>
+                      <p className="text-slate-100">{selectedPostOrder.property_manager_name}</p>
                       {selectedPostOrder.property_manager_phone && (
                         <a href={`tel:${selectedPostOrder.property_manager_phone}`} className="text-green-600 hover:text-green-700 flex items-center gap-1">
                           <Phone className="w-4 h-4" />
@@ -241,7 +238,7 @@ export default function PostOrders() {
                 <Separator />
                 {selectedPostOrder.maintenance_contact && (
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-slate-700">Maintenance Contact:</p>
+                    <p className="text-sm font-semibold text-slate-300">Maintenance Contact:</p>
                     <a href={`tel:${selectedPostOrder.maintenance_contact}`} className="text-green-600 hover:text-green-700 flex items-center gap-1">
                       <Phone className="w-4 h-4" />
                       {selectedPostOrder.maintenance_contact}
@@ -249,9 +246,9 @@ export default function PostOrders() {
                   </div>
                 )}
                 {selectedPostOrder.access_codes && (
-                  <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
-                    <p className="text-sm font-semibold text-amber-900 mb-2">Access Codes:</p>
-                    <p className="text-slate-900 font-mono">{selectedPostOrder.access_codes}</p>
+                  <div className="p-4 bg-amber-950/40 border-2 border-amber-800 rounded-lg">
+                    <p className="text-sm font-semibold text-amber-200 mb-2">Access Codes:</p>
+                    <p className="text-slate-100 font-mono">{selectedPostOrder.access_codes}</p>
                   </div>
                 )}
               </CardContent>
@@ -259,21 +256,21 @@ export default function PostOrders() {
 
             {/* Site Overview */}
             {selectedPostOrder.site_overview && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100">
+              <Card id="post-overview" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+                <CardHeader className="border-b border-slate-700 bg-slate-800">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-blue-600" />
                     Site Overview
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <p className="text-slate-700 whitespace-pre-wrap">{selectedPostOrder.site_overview}</p>
+                  <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.site_overview}</p>
                 </CardContent>
               </Card>
             )}
 
             {/* General Post Orders - ALWAYS SHOWN - pulled from DB */}
-            <Card className="border-none shadow-xl border-4 border-slate-700">
+            <Card id="post-general" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-xl border-4 border-slate-700">
               <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
                 <CardTitle className="text-xl flex items-center gap-2 text-white">
                   <Shield className="w-6 h-6" />
@@ -292,8 +289,8 @@ export default function PostOrders() {
                   <div key={section.id}>
                     {idx > 0 && <Separator className="mb-4" />}
                     <div>
-                      <h3 className="font-bold text-lg text-slate-900 mb-3">{section.section_title}</h3>
-                      <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{section.content}</p>
+                      <h3 className="font-bold text-lg text-slate-100 mb-3">{section.section_title}</h3>
+                      <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{section.content}</p>
                     </div>
                   </div>
                 ))}
@@ -302,21 +299,21 @@ export default function PostOrders() {
 
             {/* Patrol Schedule */}
             {selectedPostOrder.patrol_schedule && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+              <Card id="post-patrol" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+                <CardHeader className="border-b border-slate-700 bg-slate-800">
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-purple-600" />
                     Patrol Schedule
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <p className="text-slate-700 whitespace-pre-wrap">{selectedPostOrder.patrol_schedule}</p>
+                  <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.patrol_schedule}</p>
                   {selectedPostOrder.patrol_areas && (
                     <>
                       <Separator className="my-4" />
                       <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-2">Patrol Areas:</p>
-                        <p className="text-slate-700 whitespace-pre-wrap">{selectedPostOrder.patrol_areas}</p>
+                        <p className="text-sm font-semibold text-slate-300 mb-2">Patrol Areas:</p>
+                        <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.patrol_areas}</p>
                       </div>
                     </>
                   )}
@@ -326,8 +323,8 @@ export default function PostOrders() {
 
             {/* Special Duties & Instructions */}
             {(selectedPostOrder.special_duties || selectedPostOrder.special_instructions) && (
-              <Card className="border-none shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
+              <Card id="post-duties" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+                <CardHeader className="border-b border-slate-700 bg-slate-800">
                   <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-orange-600" />
                     Duties & Special Instructions
@@ -336,19 +333,19 @@ export default function PostOrders() {
                 <CardContent className="p-6 space-y-4">
                   {selectedPostOrder.special_duties && (
                     <div>
-                      <p className="text-sm font-semibold text-slate-700 mb-2">Special Duties:</p>
-                      <p className="text-slate-700 whitespace-pre-wrap">{selectedPostOrder.special_duties}</p>
+                      <p className="text-sm font-semibold text-slate-300 mb-2">Special Duties:</p>
+                      <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.special_duties}</p>
                     </div>
                   )}
                   {selectedPostOrder.special_instructions && (
                     <>
                       {selectedPostOrder.special_duties && <Separator />}
-                      <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
-                        <p className="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                      <div className="p-4 bg-amber-950/40 border-2 border-amber-800 rounded-lg">
+                        <p className="text-sm font-semibold text-amber-200 mb-2 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
                           Important Instructions:
                         </p>
-                        <p className="text-slate-900 whitespace-pre-wrap">{selectedPostOrder.special_instructions}</p>
+                        <p className="text-slate-100 whitespace-pre-wrap">{selectedPostOrder.special_instructions}</p>
                       </div>
                     </>
                   )}
@@ -357,8 +354,8 @@ export default function PostOrders() {
             )}
 
             {/* Emergency Contacts */}
-            <Card className="border-none shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
+            <Card id="post-emergency" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
+              <CardHeader className="border-b border-slate-700 bg-slate-800">
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-red-600" />
                   Emergency Contacts
@@ -366,15 +363,15 @@ export default function PostOrders() {
               </CardHeader>
               <CardContent className="p-6 space-y-3">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-3 bg-red-50 rounded-lg border-2 border-red-300">
-                    <p className="text-sm font-semibold text-red-900 mb-1">Emergency Police:</p>
+                  <div className="p-3 bg-red-950/50 rounded-lg border-2 border-red-700">
+                    <p className="text-sm font-semibold text-red-200 mb-1">Emergency Police:</p>
                     <a href={`tel:${selectedPostOrder.emergency_police || '911'}`} className="text-2xl font-bold text-red-600">
                       {selectedPostOrder.emergency_police || '911'}
                     </a>
                   </div>
                   {selectedPostOrder.non_emergency_police && (
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm font-semibold text-blue-900 mb-1">Non-Emergency:</p>
+                    <div className="p-3 bg-blue-950/40 rounded-lg border border-blue-700">
+                      <p className="text-sm font-semibold text-blue-200 mb-1">Non-Emergency:</p>
                       <a href={`tel:${selectedPostOrder.non_emergency_police}`} className="text-xl font-bold text-blue-600">
                         {selectedPostOrder.non_emergency_police}
                       </a>
@@ -383,14 +380,14 @@ export default function PostOrders() {
                 </div>
                 {selectedPostOrder.police_precinct_address && (
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-sm font-semibold text-slate-700 mb-1">Police Precinct:</p>
-                    <p className="text-slate-900">{selectedPostOrder.police_precinct_address}</p>
+                    <p className="text-sm font-semibold text-slate-300 mb-1">Police Precinct:</p>
+                    <p className="text-slate-100">{selectedPostOrder.police_precinct_address}</p>
                   </div>
                 )}
                 {selectedPostOrder.additional_contacts && (
                   <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                     <p className="text-sm font-semibold text-purple-900 mb-1">Additional Contacts:</p>
-                    <p className="text-slate-900 whitespace-pre-wrap">{selectedPostOrder.additional_contacts}</p>
+                    <p className="text-slate-100 whitespace-pre-wrap">{selectedPostOrder.additional_contacts}</p>
                   </div>
                 )}
               </CardContent>
