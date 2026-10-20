@@ -110,6 +110,8 @@ function withholding(gross: number, officer: any, payPeriods: number) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const requestingUser = await base44.auth.me().catch(() => null);
+    if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const manualRun = body.force === true || Boolean(body.period_id) || ['run_now', 'preview'].includes(String(body.action || '').toLowerCase());
     if (manualRun) {

@@ -66,6 +66,8 @@ const resolveBillingRecipient=(location:any,users:any[])=>{
 Deno.serve(async(req)=>{
   try {
     const base44=createClientFromRequest(req);
+    const requestingUser = await base44.auth.me().catch(() => null);
+    if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
     if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice','send_ready_drafts'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});

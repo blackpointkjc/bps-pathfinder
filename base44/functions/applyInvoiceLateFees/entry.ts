@@ -5,6 +5,8 @@ const emailOk=(v:any)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||''));
 Deno.serve(async req=>{
   try{
     const base44=createClientFromRequest(req);
+    const requestingUser = await base44.auth.me().catch(() => null);
+    if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
     const body=req.method==='POST'?await req.json().catch(()=>({})):{};
     const manual=['run_now','preview'].includes(String(body.action||''));
     if(manual){const user=await base44.auth.me().catch(()=>null);const roles=new Set((user?.additional_roles||[]).map((v:string)=>v.toLowerCase()));if(!user||String(user.id)!=='6a72bbee2842d6338cbae513')return Response.json({error:'Accounting access required'},{status:403});}

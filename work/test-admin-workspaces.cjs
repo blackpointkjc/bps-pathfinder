@@ -18,13 +18,13 @@ function load(path){
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
   if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
-  if(name==='@/lib/boloConfig')return load('src/lib/boloConfig.js');
+  if(name==='@/lib/boloConfig')return load('src/lib/boloConfig.jsx');
   if(name==='@/lib/accountingAccess')return load('src/lib/accountingAccess.js');
   if(name==='@/utils/accountLabels')return load('src/utils/accountLabels.js');
   if(name==='@/components/workspace/WorkspaceHeader')return load('src/components/workspace/WorkspaceHeader.jsx');
   if(name==='@/lib/supervisorAccess')return {hasSupervisorAccess:()=>true};
   if(name==='@/components/admin/EmployeeDirectory')return load('src/components/admin/EmployeeDirectory.jsx');
-  if(name==='@/utils/rankPolicy')return {comparePersonnel:(a,b)=>Number(a.unit_number)-Number(b.unit_number),rankLevel:rank=>['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Officer'].indexOf(rank),getPayRangeForRank:()=>({min:18,max:20}),nextUnitNumber:()=>'',previewRankChange:()=>({})};
+  if(name==='@/utils/rankPolicy')return {normalizeRank:value=>value,comparePersonnel:(a,b)=>Number(a.unit_number)-Number(b.unit_number),rankLevel:rank=>['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Officer'].indexOf(rank),getPayRangeForRank:()=>({min:18,max:20}),nextUnitNumber:()=>'',previewRankChange:()=>({})};
   if(name==='@/api/base44Client')return {base44:{entities:{},functions:{}}};
   if(name.startsWith('@/components/ui/'))return ui;
   if(name==='./InlineSection')return load('src/components/admin/workspaces/InlineSection.jsx');
