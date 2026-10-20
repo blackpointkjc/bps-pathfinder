@@ -490,6 +490,11 @@ export default function AdminLocations({ embedded = false }) {
   };
 
   const handleSubmit = async (e) => {
+    if ((formData.assigned_supervisors || []).length > 1) {
+      e.preventDefault();
+      alert('Choose one site supervisor before saving this site.');
+      return;
+    }
     e.preventDefault();
     
     if (!formData.is_special_event && (!Number.isFinite(Number(formData.geofence_radius_meters)) || Number(formData.geofence_radius_meters) < 50 || Number(formData.geofence_radius_meters) > 5000)) {
@@ -1012,7 +1017,7 @@ export default function AdminLocations({ embedded = false }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="assigned_supervisors">Assign Site Supervisors (Optional)</Label>
+              <Label htmlFor="assigned_supervisors">Site Supervisor (Optional)</Label>
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <Label className="text-sm font-medium mb-3 block">Available Supervisors</Label>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1024,9 +1029,7 @@ export default function AdminLocations({ embedded = false }) {
                           checked={formData.assigned_supervisors?.includes(supervisor.email) || false}
                           onCheckedChange={(checked) => {
                             const currentSupervisors = formData.assigned_supervisors || [];
-                            const newSupervisors = checked
-                              ? [...currentSupervisors, supervisor.email]
-                              : currentSupervisors.filter(s => s !== supervisor.email);
+                            const newSupervisors = checked ? [supervisor.email] : currentSupervisors.filter(s => s !== supervisor.email);
                             setFormData({...formData, assigned_supervisors: newSupervisors});
                           }}
                         />
@@ -1034,7 +1037,7 @@ export default function AdminLocations({ embedded = false }) {
                           <UserCheck className="w-4 h-4 text-green-600" />
                           <div>
                             <p className="font-medium">
-                              {supervisor.first_name} {supervisor.last_name}
+                              {supervisor.rank || 'Supervisor'} {supervisor.last_name}
                             </p>
                             <p className="text-xs text-slate-500">
                               {supervisor.rank || 'Supervisor'} {supervisor.unit_number && `• Unit #${supervisor.unit_number}`} • {supervisor.email}
@@ -1048,7 +1051,7 @@ export default function AdminLocations({ embedded = false }) {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-3">
-                  Supervisors can be assigned to multiple sites. They will be visible to clients in the Client Portal. Make sure users have the "supervisor" additional role in Manage Officers.
+                  Choose one site supervisor and save. The client sees this person with their reporting chain above them. Selecting a different supervisor replaces the current selection.
                 </p>
               </div>
             </div>

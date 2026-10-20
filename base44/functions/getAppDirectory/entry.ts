@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     // Training-specific pages must use getTrainingUsers, which returns only the
     // identity/certification fields necessary for training work.
     const internalPrivileged = hrAccess || accountingAccess || supervisorAccess;
-    const clientOnly = !fullAccess && (roles.has('client') || me.user_type === 'client' || rank === 'client');
+    const clientOnly = !fullAccess && (roles.has('client') || [me.role, me.user_type, me.account_type, me.portal_type, rank].some(value => String(value || '').trim().toLowerCase() === 'client'));
     const studentOnly = !fullAccess && roles.has('student');
 
     // Keep the operational directory responsive even when an optional identity

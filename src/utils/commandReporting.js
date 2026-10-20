@@ -38,16 +38,11 @@ export function siteReportingChains(references = [], users = []) {
 }
 export const oversightLabel = person => commandRank(person) === 'Major' ? (majorPlatoon(person) ? `Oversees Platoon ${majorPlatoon(person)}` : 'Platoon oversight unassigned') : 'Shared Command';
 
-// Legacy sites may list both a direct supervisor and their reporting manager.
-// Keep the most direct assigned person; their managers appear in the levels above.
+// The site's saved assignment is authoritative; never infer a primary owner.
 export function primarySiteReportingChain(references = [], users = []) {
- const chains = siteReportingChains(references, users);
- const resolved = chains.filter(chain => !chain.unresolved);
- const direct = resolved.filter(candidate => !resolved.some(other =>
-   other !== candidate && other.levels.slice(1).some(level =>
-     level.some(person => person.id === candidate.levels[0]?.[0]?.id))));
- if (direct.length === 1) return direct[0];
- if (!references.length) return null;
- // Unrelated assignments require an administrator to select the single owner.
- return { levels: [], assignmentRequired: true, unresolved: !resolved.length };
+ const selected = [...new Set(references.map(value => String(value || '').trim().toLowerCase()).filter(Boolean))];
+ if (!selected.length) return null;
+ if (selected.length !== 1) return { levels: [], assignmentRequired: true };
+ const chain = siteReportingChains(selected, users)[0];
+ return chain?.unresolved ? { ...chain, assignmentRequired: true } : chain;
 }

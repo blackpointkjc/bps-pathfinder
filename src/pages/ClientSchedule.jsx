@@ -46,7 +46,7 @@ export default function ClientSchedule() {
     queryKey: ['clientOfficerDirectory', officerEmails.join('|')],
     queryFn: async () => {
       if (!officerEmails.length) return [];
-      const result = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails });
+      const result = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails, client_id: getClientPreviewId() || undefined });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload.officers || [];
@@ -86,20 +86,20 @@ export default function ClientSchedule() {
   const getOfficerFullDisplay = (email) => {
     if (email === 'OPEN') return 'OPEN SHIFT';
     if (!email || !officerDirectory?.length) return 'Officer';
-    const officer = officerDirectory.find(u => u.email === email);
+    const officer = officerDirectory.find(u => [u.email, ...(u.email_aliases || [])].some(value => String(value || '').trim().toLowerCase() === String(email || '').trim().toLowerCase()));
     if (!officer) return 'Officer';
     return [officer.rank, officer.last_name].filter(Boolean).join(' ') || 'Officer';
   };
 
   const getOfficerRank = (email) => {
     if (!email || !officerDirectory?.length) return '';
-    const officer = officerDirectory.find(u => u.email === email);
+    const officer = officerDirectory.find(u => [u.email, ...(u.email_aliases || [])].some(value => String(value || '').trim().toLowerCase() === String(email || '').trim().toLowerCase()));
     return officer?.rank || '';
   };
 
   const getOfficerUnitNumber = (email) => {
     if (!email || !officerDirectory?.length) return '';
-    const officer = officerDirectory.find(u => u.email === email);
+    const officer = officerDirectory.find(u => [u.email, ...(u.email_aliases || [])].some(value => String(value || '').trim().toLowerCase() === String(email || '').trim().toLowerCase()));
     return officer?.unit_number || '';
   };
 
