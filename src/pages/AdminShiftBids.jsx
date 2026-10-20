@@ -1,3 +1,5 @@
+import { approvedLeaveConflicts } from '@/utils/scheduleLeave';
+import { syncOfficerVehicles } from '@/lib/fleetScheduleSync';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -61,12 +63,15 @@ export default function AdminShiftBids({ embedded = false }) {
 
   const acceptBidMutation = useMutation({
     mutationFn: async ({ bid, shift }) => {
+      const approved=await base44.entities.TimeOffRequest.filter({status:'approved',$or:[{requested_by_email:bid.officer_email},{created_by:bid.officer_email}]},'-start_date',1000);
+      if(approvedLeaveConflicts([{...shift,officer_email:bid.officer_email,is_open:false}],approved,allUsers||[]).length)throw new Error('This officer has approved leave during the shift. Choose another bid.');
       // Update the schedule and assign to officer
       await base44.entities.Schedule.update(shift.id, {
         officer_email: bid.officer_email,
         is_open: false,
       });
 
+      await syncOfficerVehicles(queryClient,true).catch(error=>console.warn('Award saved; vehicle synchronization needs retry',error?.message));
       // Update the accepted bid
       await base44.entities.ShiftBid.update(bid.id, {
         status: 'accepted',

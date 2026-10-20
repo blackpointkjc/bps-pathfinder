@@ -607,8 +607,6 @@ export default function AdminUsers({ embedded = false }) {
     }catch(error){alert(error?.response?.data?.error||error.message||'Account transition failed');}
   }; 
   
-  console.log('Active users:', activeUsers.length);
-  console.log('Terminated users:', terminatedUsers.length);
 
   const getRankColor = (rank) => {
     switch (rank) {

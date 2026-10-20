@@ -87,7 +87,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart }) 
     const requestedAreas = Array.isArray(form.locations) && form.locations.length ? form.locations : ['ALL'];
     const editingIds = new Set((editing?.rows || []).map(row => row.id));
     const duplicate=assignments.find(row=>!editingIds.has(row.id)&&row.assignment_date===form.assignment_date&&lower(row.status)!=='cancelled'&&overlaps(row.start_time,row.end_time,form.start_time,form.end_time)&&requestedAreas.some(area => lower(row.location||'ALL')===lower(area))&&requestedSupervisors.some(email => lower(row.supervisor_email)===lower(email)));
-    if(duplicate) return toast.error(`${duplicate.supervisor_name||personLabel(duplicate.supervisor_email)} is already assigned to ${duplicate.location==='ALL'?'All Sites':duplicate.location} during this time.`);
+    if(duplicate&&!repeatWeek) return toast.error(`${duplicate.supervisor_name||personLabel(duplicate.supervisor_email)} is already assigned to ${duplicate.location==='ALL'?'All Sites':duplicate.location} during this time.`);
     setSaving(true);
     try {
       const writeAssignment = async (supervisor_email, location, id = null) => {
@@ -138,7 +138,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart }) 
       }
       await qc.invalidateQueries({queryKey:['dutySupervisorAssignments']});
       await qc.invalidateQueries({queryKey:['myScheduleData']});
-      toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
+      if(editing||!repeatWeek)toast.success(editing?'Duty supervisor assignment updated.':`${requestedSupervisors.length} duty supervisor${requestedSupervisors.length===1?'':'s'} scheduled across ${requestedAreas.length} coverage area${requestedAreas.length===1?'':'s'}.`); reset(form.assignment_date);
     } catch(e){ toast.error(e?.response?.data?.error||e?.message||'Unable to save duty supervisor.'); } finally { setSaving(false); }
   };
   const copyWeek=async()=>{

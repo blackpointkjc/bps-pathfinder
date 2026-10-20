@@ -21,6 +21,7 @@ function load(path){
   if(name.startsWith('@/components/ui/'))return ui;
   if(name==='./InlineSection')return load('src/components/admin/workspaces/InlineSection.jsx');
   if(name==='./InlineSection.jsx')return load('src/components/admin/workspaces/InlineSection.jsx');
+  if(name==='@/components/admin/OfficerVehicleDefault')return load('src/components/admin/OfficerVehicleDefault.jsx');
   if(name==='@/components/admin/VehicleManagement')return {default:stub('Company vehicle inventory')};
   if(name==='@/components/dispatch/MaintenanceTracking')return {default:stub('Asset maintenance')};
   if(name==='@/components/admin/ScheduleBoard')return {default:stub('Primary schedule board')};
@@ -40,7 +41,7 @@ html=render('src/components/admin/workspaces/AssetsWorkspace.jsx');assert(html.i
 html=render('src/components/admin/OfficerCommandControls.jsx'); // no officer safely renders nothing
 assert.equal(html,'');
 html=renderToStaticMarkup(React.createElement(load('src/components/admin/OfficerCommandControls.jsx').default,{officer:fixture,users:[fixture,{id:'major',rank:'Major',last_name:'Command'}]}));
-for(const label of ['Platoon &amp; chain of command','CAD duty controls','Force sign out','Lock account','Save command assignment'])assert(html.includes(label),label);
+for(const label of ['Platoon &amp; chain of command','CAD duty controls','Force sign out','Lock account','Save command assignment','Save vehicle default'])assert(html.includes(label),label);
 html=render('src/pages/AdminUsers.jsx');
 for(const label of ['Accounts &amp; Access','Search accounts','Access role','Manage account','Lieutenant Example','officer@test'])assert(html.includes(label),label);
 assert(!html.includes('Pending Role Assignment'),'active account directory no longer labels every account pending');

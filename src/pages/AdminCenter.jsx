@@ -73,7 +73,7 @@ const ADMIN_SECTIONS = [
   { id: 'people', label: 'Personnel & Accounts', description: 'Officer command, availability, CAD controls and account access', icon: Users },
   { id: 'schedule', label: 'Scheduling & Coverage', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
   { id: 'assets', label: 'Company Assets', description: 'Vehicles, equipment and maintenance', icon: Briefcase },
-  { id: 'sites', label: 'Sites & Patrol', description: 'Locations, geofences, automatic dispatch, CAD controls, portal visibility, equipment, post orders and patrol rules', icon: Building2 },
+  { id: 'sites', label: 'Sites & Patrol', description: 'Locations, boundaries, dispatch rules, post orders and patrol requirements', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
   { id: 'communications', label: 'Announcements', description: 'Company announcements and staff communications', icon: MessageCircle },
   { id: 'system', label: 'System Settings', description: 'Portal access and application settings', icon: Settings },
