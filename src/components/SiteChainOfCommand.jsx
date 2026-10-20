@@ -7,6 +7,7 @@ export default function SiteChainOfCommand({ assignedSupervisors = [], users = [
  const chain = primarySiteReportingChain(assignedSupervisors, users);
  return <section className="min-w-0 space-y-3 rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-white" aria-label="Site chain of command">
   <h3 className="text-sm font-bold text-cyan-200">Site Chain of Command</h3>
+  {chain?.actingFor && <p className="text-xs text-amber-200">{displayCommandName(chain.actingFor)} is out of office until {new Date(chain.actingFor.out_of_office_return).toLocaleString()}.</p>}
   {!chain && <p className="text-sm text-slate-400">No site supervisor assigned.</p>}
   {chain?.assignmentRequired && <p className="text-sm text-amber-200">{chain.unresolved ? 'Site supervisor information is unavailable. Please contact dispatch to verify the assignment.' : 'A single site supervisor needs to be designated for this property. Please contact dispatch.'}</p>}
   {chain && [...chain.levels].reverse().map((level,index) => <div key={index} className="min-w-0">

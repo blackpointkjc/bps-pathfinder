@@ -459,7 +459,8 @@ Deno.serve(async (req) => {
       let chosen:any = null;
       let distance:number | null = null;
       let basis = 'least_loaded';
-      if (origin) {
+      if (owner?.out_of_office && !isOutOfOffice(owner)) chosen = {user:owner,positionSource:'return',workload:workload.get(String(owner.id)) || 0};
+      if (origin && !chosen) {
         const withPosition = eligible.filter((candidate:any) => validPosition(candidate.lat, candidate.lon))
           .map((candidate:any) => ({ ...candidate, distance:distanceMiles(origin.lat, origin.lon, candidate.lat, candidate.lon) }))
           .sort((a:any,b:any) => a.distance-b.distance || a.workload-b.workload);
