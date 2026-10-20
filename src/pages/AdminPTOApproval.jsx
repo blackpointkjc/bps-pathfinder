@@ -197,7 +197,7 @@ export default function AdminPTOApproval() {
         <div className="flex items-center gap-4">
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div>
-            <h1 className="text-3xl font-black text-white">Time Off Approval</h1><a href="/AdminScheduling" className="mt-2 inline-block text-sm font-bold text-cyan-300">Open Scheduling → Approved time off</a>
+            <h1 className="text-3xl font-black text-white">Time Off Approval</h1><a href="/AdminScheduling" className="mt-2 inline-block text-sm font-bold text-cyan-300">Open Scheduling</a>
             <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function AdminPTOApproval() {
                       <p className="text-xs text-slate-500">
                         by {getAdminName(request.reviewed_by)}
                       </p>
-                      {request.status === 'approved' && <a href={`/AdminScheduling?leave_date=${encodeURIComponent(request.start_date)}#approved-time-off`} className="inline-block rounded border border-cyan-700 px-3 py-2 text-sm font-bold text-cyan-300">View approved dates in Scheduling</a>}
+                      {request.status === 'approved' && <a href={`/AdminScheduling?leave_date=${encodeURIComponent(request.start_date)}`} className="inline-block rounded border border-cyan-700 px-3 py-2 text-sm font-bold text-cyan-300">View approved dates in Scheduling</a>}
                       {request.status === 'approved' && !String(request.admin_notes || '').startsWith('Manual ') && (
                         <Button
                           type="button"
