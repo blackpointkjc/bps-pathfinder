@@ -1,3 +1,4 @@
+import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -100,10 +101,9 @@ export default function Navigation() {
     useEffect(() => {
         const element = toolbarRef.current;
         if (!element) return;
-        const measure = () => setToolbarHeight(Math.ceil(element.getBoundingClientRect().height));
-        measure();
-        const observer = new ResizeObserver(measure);
-        observer.observe(element);
+        const observer = observeElementSize(element, ({height}) => {
+            setToolbarHeight(previous => previous === height ? previous : height);
+        });
         return () => observer.disconnect();
     }, []);
     const [unitName] = useState(localStorage.getItem('unitName') || '');

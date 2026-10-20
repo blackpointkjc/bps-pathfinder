@@ -1,3 +1,4 @@
+import { observeElementSize } from '@/lib/observeElementSize';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -114,13 +115,10 @@ function MapReadyHandler() {
     // the card appears after officer data loads), it measures 0×0 and renders a
     // blank/gray map with no tile requests. Force a re-measure on the next frame
     // and watch the container for later size changes.
-    const raf = requestAnimationFrame(() => map.invalidateSize());
-    const ro = new ResizeObserver(() => map.invalidateSize());
-    if (map.getContainer()) ro.observe(map.getContainer());
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
+    const observer = observeElementSize(map.getContainer(), () => {
+      map.invalidateSize({animate:false,pan:false});
+    });
+    return () => observer.disconnect();
   }, [map]);
   return null;
 }

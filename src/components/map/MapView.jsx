@@ -1,3 +1,4 @@
+import { observeElementSize } from '@/lib/observeElementSize';
 import { useEffect, useRef } from 'react';
 import { MapContainer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -103,14 +104,11 @@ function MapViewportSync() {
 
     useEffect(() => {
         const container = map.getContainer();
-        let frame = null;
         let settleTimer = null;
-        const refresh = () => {
-            if (frame) cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(() => {
-                if (container?.isConnected) map.invalidateSize({ animate: false, pan: false });
-            });
-        };
+        const sizeObserver = observeElementSize(container, () => {
+            map.invalidateSize({ animate: false, pan: false });
+        });
+        const refresh = sizeObserver.refresh;
         const recoverTiles = () => {
             refresh();
             try {
@@ -119,8 +117,6 @@ function MapViewportSync() {
                 });
             } catch (_) {}
         };
-        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
-        observer?.observe(container);
         window.addEventListener('resize', refresh);
         window.addEventListener('pageshow', refresh);
         window.addEventListener('bps-operational-resume', refresh);
@@ -129,12 +125,11 @@ function MapViewportSync() {
         settleTimer = window.setTimeout(refresh, 250);
 
         return () => {
-            observer?.disconnect();
+            sizeObserver.disconnect();
             window.removeEventListener('resize', refresh);
             window.removeEventListener('pageshow', refresh);
             window.removeEventListener('bps-operational-resume', refresh);
             window.removeEventListener('bps-map-tiles-failed', recoverTiles);
-            if (frame) cancelAnimationFrame(frame);
             if (settleTimer) window.clearTimeout(settleTimer);
         };
     }, [map]);
@@ -189,26 +184,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         };
     }, [map]);
 
-    useEffect(() => {
-        // Leaflet does not automatically know when its embedded Center panel
-        // changes size. Keep its internal viewport synchronized with the actual
-        // Live Map canvas and cancel the observer cleanly on unmount.
-        const resizeContainer = map.getContainer();
-        let frame = null;
-        const refresh = () => {
-            if (frame) cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(() => {
-                if (resizeContainer?.isConnected) map.invalidateSize({ animate: false, pan: false });
-            });
-        };
-        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
-        observer?.observe(resizeContainer);
-        refresh();
-        return () => {
-            observer?.disconnect();
-            if (frame) cancelAnimationFrame(frame);
-        };
-    }, [map]);
+    // MapViewportSync owns the single container-size observer for this map.
 
     // Handle external map centering (from call detail sidebar)
     useEffect(() => {
