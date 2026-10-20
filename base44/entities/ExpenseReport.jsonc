@@ -126,7 +126,7 @@
         },
         {
           "user_condition": {
-            "role": "admin"
+            "id": "6a72bbee2842d6338cbae513"
           }
         }
       ]
@@ -141,7 +141,7 @@
         },
         {
           "user_condition": {
-            "role": "admin"
+            "id": "6a72bbee2842d6338cbae513"
           }
         }
       ]
@@ -156,7 +156,7 @@
         },
         {
           "user_condition": {
-            "role": "admin"
+            "id": "6a72bbee2842d6338cbae513"
           }
         }
       ]
@@ -168,7 +168,7 @@
         },
         {
           "user_condition": {
-            "role": "admin"
+            "id": "6a72bbee2842d6338cbae513"
           }
         }
       ]
