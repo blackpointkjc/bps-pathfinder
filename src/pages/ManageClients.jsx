@@ -1,3 +1,4 @@
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -19,6 +20,8 @@ import { invalidateAppDirectory, listDirectoryUsers, listDirectoryLocations } fr
 import { isClientAccount } from '@/lib/directoryUtils';
 
 export default function ManageClients() {
+  const [clientSearch,setClientSearch]=useState("");
+  const [propertyFilter,setPropertyFilter]=useState("all");
   const [showDialog, setShowDialog] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [formData, setFormData] = useState({
@@ -196,90 +199,29 @@ export default function ManageClients() {
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <Briefcase className="w-8 h-8 text-purple-600" />
-            <div>
-              <h1 className="text-3xl font-black text-white">Manage Clients</h1>
-              <p className="text-slate-600">Manage clients assigned from Admin → Pending Users</p>
-            </div>
-          </div>
-          <Badge className="border border-purple-500/40 bg-purple-950/40 text-purple-200">Assigned through Admin → Pending Users</Badge>
+        <WorkspaceHeader eyebrow="Administration / Client services" title="Manage Clients" description="Client contacts, portfolio access and property assignments." metrics={[
+          {label:'Client accounts',value:clientUsers?.length||0},
+          {label:'Properties assigned',value:new Set((clientUsers||[]).flatMap(c=>[...(c.assigned_locations||[]),...(c.assigned_sites||[]),c.assigned_location].filter(Boolean))).size}
+        ]}/>
+        <div className="flex flex-wrap gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
+          <Input aria-label="Search client accounts" placeholder="Search client name, email or phone" value={clientSearch} onChange={e=>setClientSearch(e.target.value)} className="min-w-48 flex-1 border-slate-600 bg-slate-950 text-white"/>
+          <select aria-label="Filter clients by property" value={propertyFilter} onChange={e=>setPropertyFilter(e.target.value)} className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white">
+            <option value="all">All properties</option>{[...new Set((clientUsers||[]).flatMap(c=>[...(c.assigned_locations||[]),...(c.assigned_sites||[]),c.assigned_location].filter(Boolean)))].sort().map(site=><option key={site}>{site}</option>)}
+          </select>
         </div>
-
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Client Accounts ({clientUsers?.length || 0})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {clientUsers?.map((client) => (
-                <div key={client.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-slate-900 text-lg">{client.first_name} {client.last_name}</h3>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200">
-                          <Briefcase className="w-3 h-3 mr-1" />
-                          Client
-                        </Badge>
-                      </div>
-                      <div className="space-y-1">
-                        {[...new Set([
-                          ...(client.assigned_locations || []),
-                          ...(client.assigned_sites || []),
-                          client.assigned_location,
-                        ].filter(Boolean))].length > 0 && (
-                          <p className="text-sm text-slate-600 flex items-start gap-2">
-                            <MapPin className="w-4 h-4 mt-0.5 text-purple-600 shrink-0" />
-                            <span className="font-medium">{[...new Set([
-                              ...(client.assigned_locations || []),
-                              ...(client.assigned_sites || []),
-                              client.assigned_location,
-                            ].filter(Boolean))].join(', ')}</span>
-                          </p>
-                        )}
-                        <p className="text-sm text-slate-600 flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          {client.email}
-                        </p>
-                        {client.mobile_phone && (
-                          <p className="text-sm text-slate-600 flex items-center gap-2">
-                            <Phone className="w-4 h-4" />
-                            {client.mobile_phone}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(client)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(client.id)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {!clientUsers?.length && (
-                <div className="text-center py-12 text-slate-500">
-                  <Briefcase className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p>No clients are assigned. Assign a pending user as Client from Admin → Pending Users.</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900">
+          <table className="w-full text-left text-sm"><thead className="border-b border-slate-700 bg-slate-950 text-xs uppercase text-slate-400"><tr><th className="p-4">Client contact</th><th className="p-4">Portfolio access</th><th className="p-4">Contact details</th><th className="p-4 text-right">Manage</th></tr></thead>
+          <tbody className="divide-y divide-slate-800">{(clientUsers||[]).filter(c=>{
+            const sites=[...(c.assigned_locations||[]),...(c.assigned_sites||[]),c.assigned_location].filter(Boolean);
+            return (propertyFilter==='all'||sites.includes(propertyFilter))&&[c.first_name,c.last_name,c.email,c.mobile_phone].join(' ').toLowerCase().includes(clientSearch.toLowerCase());
+          }).map(client=><tr key={client.id} className="align-top hover:bg-slate-800/60">
+            <td className="p-4"><div className="font-semibold text-white">{[client.first_name,client.last_name].filter(Boolean).join(' ')||client.email}</div><div className="mt-1 text-xs text-cyan-300">Client</div></td>
+            <td className="p-4"><div className="flex max-w-md flex-wrap gap-1">{[...new Set([...(client.assigned_locations||[]),...(client.assigned_sites||[]),client.assigned_location].filter(Boolean))].map(site=><span key={site} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-200">{site}</span>)}</div></td>
+            <td className="p-4 text-slate-300"><a className="block break-all text-cyan-200 hover:underline" href={'mailto:'+client.email}>{client.email}</a>{client.mobile_phone&&<a className="mt-1 block hover:underline" href={'tel:'+client.mobile_phone}>{client.mobile_phone}</a>}</td>
+            <td className="p-4"><div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={()=>handleEdit(client)}>Edit access</Button><Button aria-label={'Remove '+client.email} variant="ghost" size="sm" onClick={()=>handleDelete(client.id)} className="text-red-300"><Trash2 className="h-4 w-4"/></Button></div></td>
+          </tr>)}</tbody></table>
+          {!(clientUsers||[]).length&&<p className="p-10 text-center text-slate-400">No client accounts yet. Assign a pending account to the Client role in Accounts & Access.</p>}
+        </div>
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

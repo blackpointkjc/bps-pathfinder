@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { Input } from '@/components/ui/input';
+import { useMemo, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -8,31 +10,36 @@ import { Coffee, LogIn, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
-const elapsedHours = (entry) => {
+const elapsedHours = (entry,now=Date.now()) => {
   const start = new Date(entry.clock_in).getTime();
-  const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
+  const end = entry.clock_out ? new Date(entry.clock_out).getTime() : now;
   const completedBreakMs = (entry.break_periods || []).reduce((total, period) => {
     if (!period?.start || !period?.end) return total;
     return total + Math.max(0, new Date(period.end).getTime() - new Date(period.start).getTime());
   }, 0);
   const activeBreakMs = entry.on_break && entry.break_started_at
-    ? Math.max(0, Date.now() - new Date(entry.break_started_at).getTime())
+    ? Math.max(0, now - new Date(entry.break_started_at).getTime())
     : 0;
   return Math.max(0, (end - start - completedBreakMs - activeBreakMs) / 3600000);
 };
 
 export default function AdminSupportStaffClock() {
   const queryClient = useQueryClient();
+  const [now,setNow]=useState(()=>Date.now());
+  const [historyStart,setHistoryStart]=useState('');
+  const [historyEnd,setHistoryEnd]=useState('');
+  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[]);
+
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const rank = String(user?.rank || '').toLowerCase();
   const hasAccess = user?.role === 'admin' || roles.has('hr') || roles.has('full_access') || roles.has('support_staff') || roles.has('support') || ['support staff', 'human resources'].includes(rank);
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading, error: entriesError } = useQuery({
     queryKey: ['mySupportTimeEntries', user?.email],
     queryFn: async () => {
       const records = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 100);
-      return records || [];
+      return (records || []).filter(entry=>entry.archived!==true);
     },
     enabled: hasAccess && !!user?.email,
     refetchInterval: 60000,
@@ -40,7 +47,7 @@ export default function AdminSupportStaffClock() {
   });
 
   const activeEntry = useMemo(() => entries.find(entry => !entry.clock_out), [entries]);
-  const pastEntries = useMemo(() => entries.filter(entry => entry.clock_out).slice(0, 25), [entries]);
+  const pastEntries = useMemo(() => entries.filter(entry => entry.clock_out && (!historyStart || String(entry.clock_in).slice(0,10)>=historyStart) && (!historyEnd || String(entry.clock_in).slice(0,10)<=historyEnd)), [entries,historyStart,historyEnd]);
   const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email || 'Current User';
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['mySupportTimeEntries', user?.email] });
@@ -56,6 +63,7 @@ export default function AdminSupportStaffClock() {
       break_periods: [],
     }); const payload = response?.data || response || {}; if (!payload.success) throw new Error(payload.error || 'Clock-in denied'); return payload.entry; },
     onSuccess: refresh,
+    onError: error => toast.error(error?.message || 'Unable to update time clock'),
   });
 
   const clockOut = useMutation({
@@ -75,6 +83,7 @@ export default function AdminSupportStaffClock() {
       });
     },
     onSuccess: refresh,
+    onError: error => toast.error(error?.message || 'Unable to update time clock'),
   });
 
   const startBreak = useMutation({
@@ -118,10 +127,12 @@ export default function AdminSupportStaffClock() {
   return (
     <div className="min-h-full bg-[#0b1420] p-4 text-slate-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Support Staff Time Clock</h1>
-          <p className="mt-1 text-slate-400">Personal time clock for {displayName}</p>
-        </div>
+        <WorkspaceHeader eyebrow="Administration / Support time" title="Support Staff Time Clock" description={'Personal time clock for '+displayName} metrics={[
+          {label:'Duty state',value:activeEntry?(activeEntry.on_break?'On break':'Clocked in'):'Clocked out'},
+          {label:'Current paid time',value:activeEntry?elapsedHours(activeEntry,now).toFixed(2)+' h':'—'},
+          {label:'Completed hours shown',value:pastEntries.reduce((sum,entry)=>sum+elapsedHours(entry),0).toFixed(2)+' h'}
+        ]}/>
+        {entriesError&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950 p-3 text-red-200">Time entries could not refresh. {entriesError.message}</p>}
 
         <Card className="border-slate-700 bg-slate-900/80 text-slate-100">
           <CardHeader><CardTitle>Current Status</CardTitle></CardHeader>
@@ -135,7 +146,7 @@ export default function AdminSupportStaffClock() {
                   </Badge>
                 </div>
                 <p className="text-sm text-slate-400">{user?.rank || 'Support Personnel'} · {user?.email}</p>
-                {activeEntry && <p className="mt-2 text-sm text-slate-300">Clocked in {format(new Date(activeEntry.clock_in), 'MMM d, yyyy h:mm a')} · Paid time {elapsedHours(activeEntry).toFixed(2)} hrs</p>}
+                {activeEntry && <p className="mt-2 text-sm text-slate-300">Clocked in {format(new Date(activeEntry.clock_in), 'MMM d, yyyy h:mm a')} · Paid time {elapsedHours(activeEntry,now).toFixed(2)} hrs</p>}
               </div>
               <div className="flex flex-wrap gap-2">
                 {!activeEntry && <Button onClick={() => clockIn.mutate()} disabled={clockIn.isPending} className="bg-emerald-600 hover:bg-emerald-700"><LogIn className="mr-2 h-4 w-4" />Clock In</Button>}
@@ -149,7 +160,7 @@ export default function AdminSupportStaffClock() {
         </Card>
 
         <Card className="border-slate-700 bg-slate-900/80 text-slate-100">
-          <CardHeader><CardTitle>Past Clock Entries</CardTitle></CardHeader>
+          <CardHeader><div className="flex flex-wrap items-end justify-between gap-3"><div><CardTitle>My timesheet</CardTitle><p className="mt-1 text-xs text-slate-400">Latest 100 entries · breaks deducted</p></div><div className="flex flex-wrap gap-2"><label className="text-xs text-slate-400">From<Input aria-label="Timesheet start date" type="date" value={historyStart} onChange={e=>setHistoryStart(e.target.value)} className="mt-1 border-slate-600 bg-slate-950"/></label><label className="text-xs text-slate-400">Through<Input aria-label="Timesheet end date" type="date" min={historyStart} value={historyEnd} onChange={e=>setHistoryEnd(e.target.value)} className="mt-1 border-slate-600 bg-slate-950"/></label></div></div></CardHeader>
           <CardContent>
             {isLoading ? <p className="text-slate-400">Loading entries…</p> : pastEntries.length === 0 ? <p className="py-8 text-center text-slate-500">No completed clock entries yet.</p> : (
               <div className="space-y-3">
