@@ -1,3 +1,4 @@
+import AdminAssets from './pages/AdminAssets';
 /**
  * pages.config.js - Page routing configuration
  * 
@@ -230,6 +231,7 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "AdminDivisions": AdminDivisions,
     "AdminDocuments": AdminDocuments,
+    "AdminAssets": AdminAssets,
     "AdminEquipment": AdminEquipment,
     "AdminExpenseApproval": AdminExpenseApproval,
     "AdminGeofenceAlerts": AdminGeofenceAlerts,

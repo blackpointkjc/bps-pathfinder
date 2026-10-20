@@ -2,7 +2,7 @@ import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { Shield, Search, MapPin, CheckCircle2, Circle, Save, Plus } from 'lucide-react';

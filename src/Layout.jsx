@@ -182,22 +182,19 @@ const CENTER_CONFIG = {
         ['Company Analytics', 'AdminAnalytics', BarChart3],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
       ]},
-      { label: 'Scheduling & Fleet', items: [
-        ['Scheduling', 'AdminScheduling', Calendar],
-        ['Time Off Approval', 'AdminPTOApproval', ClipboardCheck],
-        ['Fleet Assignments', 'FleetVehicleAssignments', Car],
-        ['Duty Supervisor Schedule', 'DutySupervisorScheduling', ShieldCheck],
-        ['Officer Availability & Assignments', 'AdminOfficerManagement', UserCheck],
-        ['Planned Shifts', 'AdminPlannedShifts', Calendar],
-        ['Shift Bids', 'AdminShiftBids', Briefcase],
+      { label: 'People & Accounts', items: [
+        ['Personnel & Command','AdminOfficerManagement',Users],
+        ['Accounts & Access','AdminUsers',UserCheck],
+        ['Client Accounts','ManageClients',Building2],
       ]},
-      { label: 'Personnel & Sites', items: [
-        ['Users & Accounts', 'AdminUsers', Users],
-        ['Manage Clients', 'ManageClients', Building2],
-        ['Platoon & Chain', 'AdminPlatoonAssignments', GitBranch],
-        ['Locations', 'AdminLocations', Building2],
-        ['Equipment', 'AdminEquipment', Package],
-        ['Site Operations', 'AdminPostOrders', BookOpen],
+      { label: 'Scheduling', items: [
+        ['Scheduling & Coverage','AdminScheduling',Calendar],
+        ['Time Off Approval','AdminPTOApproval',ClipboardCheck],
+      ]},
+      { label: 'Sites & Assets', items: [
+        ['Sites & Patrol','AdminLocations',Building2],
+        ['Site Operations','AdminPostOrders',BookOpen],
+        ['Company Assets','AdminAssets',Package],
       ]},
       { label: 'Reports & Quality', items: [
         ['All Reports', 'AdminReports', ClipboardList],
@@ -208,9 +205,8 @@ const CENTER_CONFIG = {
         ['Commendations', 'AdminCommendations', Award],
         ['Client Feedback', 'AdminClientFeedback', Award],
       ]},
-      { label: 'Communications & Requests', items: [
+      { label: 'Company Communications', items: [
         ['Announcements', 'AdminAnnouncements', Bell],
-        ['Special Requests', 'AdminSpecialRequests', CalendarClock],
       ]},
       { label: 'QR Patrol', items: [
       ]},
@@ -337,11 +333,11 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'],
   AdminLocationTracker: ['admin','sites','locationdispatch','admin_location_dispatch_tool','tracker'], AdminGeofenceAlerts: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'], AdminAutoDispatchControls: ['admin','sites','locationdispatch','admin_location_dispatch_tool','autodispatch'], AdminLocations: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'],
   AdminScheduling: ['admin','schedule','schedulehub','admin_schedule_tool','scheduling'], FleetVehicleAssignments: ['admin','schedule','schedulehub','admin_schedule_tool','fleet'], DutySupervisorScheduling: ['admin','schedule','schedulehub','admin_schedule_tool','duty'], AdminPlannedShifts: ['admin','schedule','schedulehub','admin_schedule_tool','planned'], AdminShiftBids: ['admin','schedule','schedulehub','admin_schedule_tool','bids'], AdminSupportStaffClock: ['admin','schedule','schedulehub','admin_schedule_tool','supportclock'],
-  AdminAbsenceCoverage: ['admin','coverage','coverage'], AdminOfficerManagement: ['admin','people','personnelhub','admin_people_tool','availability'], AdminUsers: ['admin','people','personnelhub','admin_people_tool','users'], AdminPlatoonAssignments: ['admin','people','personnelhub','admin_people_tool','chain'],
-  AdminEquipment: ['admin','sites','siteassets','admin_site_assets_tool','equipment'], AdminPostOrders: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
+  AdminAbsenceCoverage: ['admin','coverage','coverage'], AdminOfficerManagement: ['admin','people','personnelhub','admin_people_tool','availability'], AdminUsers: ['admin','people','personnelhub','admin_people_tool','users'], AdminPlatoonAssignments: ['admin','people','personnelhub','admin_people_tool','availability'],
+  AdminAssets: ['admin','assets','assets'], AdminEquipment: ['admin','assets','assets','admin_asset_tool','equipment'], AdminPostOrders: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
   AdminReports: ['admin','reports','reportshub','admin_reports_quality_tool','allreports'], AdminClientReports: ['admin','reports','reportshub','admin_reports_quality_tool','clientreports'], AdminSupervisorReports: ['admin','reports','reportshub','admin_reports_quality_tool','supervisorreports'], AdminConfidentialReports: ['admin','reports','reportshub','admin_reports_quality_tool','confidential'], AdminComplaints: ['admin','reports','reportshub','admin_reports_quality_tool','complaints'], AdminCommendations: ['admin','reports','reportshub','admin_reports_quality_tool','commendations'], AdminClientFeedback: ['admin','reports','reportshub','admin_reports_quality_tool','feedback'],
-  AdminAnnouncements: ['admin','communications','communicationshub','admin_communications_tool','announcements'], AdminSpecialRequests: ['admin','communications','communicationshub','admin_communications_tool','requests'],
-  AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','sites','systemportal','admin_system_portal_tool','settings'], AdminDocuments: ['training','documents','documents'],
+  AdminAnnouncements: ['admin','communications','communicationshub','admin_communications_tool','announcements'], AdminSpecialRequests: ['admin','schedule','schedulehub','admin_schedule_tool','requests'],
+  AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','system','settings'], AdminDocuments: ['training','documents','documents'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['admin','schedule','scheduling','admin_schedule_tool','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['admin','people','personnelhub','admin_people_tool','clients'],
   SupervisorTasks: ['supervisor','command','tasks'], SupervisorFieldOversight: ['supervisor','command','field'], SupervisorShiftHandover: ['supervisor','command','handover'], SupervisorChat: ['supervisor','command','chat'], SupervisorDailyCode: ['supervisor','command','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
   ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],

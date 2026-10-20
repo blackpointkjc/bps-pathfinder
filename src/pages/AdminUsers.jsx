@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Users, Plus, Mail, Phone, MapPin, Calendar, Edit, Save, X, AlertTriangle, Camera, Loader2 } from "lucide-react";
+import { Shield, Plus, Mail, Calendar, Edit, Save, X, AlertTriangle, Camera, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,13 +24,15 @@ import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
-import AdminOperationsBriefing from '@/components/AdminOperationsBriefing';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, listDirectoryLocations, invalidateAppDirectory } from '@/lib/appDirectory';
 
 export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();
+  const [accountSearch,setAccountSearch]=useState("");
+  const [accountRole,setAccountRole]=useState("all");
+  const [pendingOnly,setPendingOnly]=useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -595,7 +597,12 @@ export default function AdminUsers({ embedded = false }) {
       !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
   };
 
-  const activeUsers = users?.filter(u => !u.termination_date && !approvedUserIds.has(u.id) && isPendingUser(u)) || [];
+  const activeUsers=(users||[]).filter(u=>{
+   if(u.termination_date||['terminated','former'].includes(String(u.employment_status||'').toLowerCase()))return false;
+   if(pendingOnly&&(!isPendingUser(u)||approvedUserIds.has(u.id)))return false;
+   if(accountRole!=='all'&&u.role!==accountRole&&!(u.additional_roles||[]).includes(accountRole))return false;
+   return [u.rank,u.first_name,u.last_name,u.email,u.unit_number,...(u.additional_roles||[])].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim());
+  });
 
   const assignUserCategory = async (userData, category) => {
     const categoryConfig = {
@@ -691,47 +698,10 @@ export default function AdminUsers({ embedded = false }) {
         onClose={() => setPhotoToCrop(null)}
         onSave={saveCroppedAdminPhoto}
       />
-      <AdminOperationsBriefing />
-      <div className="mb-8 mt-5">
-        {!embedded && <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Users className="w-8 h-8 text-blue-600" />
-            <div>
-              <h1 className="text-3xl font-black text-white">Pending Users</h1>
-              <p className="text-slate-400">Create one user account, then assign Support Staff, Officer, Student, or Client access</p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={checkAnniversariesAndBirthdays}
-              disabled={checkingAnniversaries}
-              variant="outline"
-              className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
-            >
-              {checkingAnniversaries ? (
-                <>
-                  <Calendar className="w-4 h-4 mr-2 animate-spin" />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Check Anniversaries & Birthdays
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => {
-                resetCreateForm();
-                setShowCreateDialog(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 shadow-md transition-all duration-200 rounded-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create User
-            </Button>
-          </div>
-        </div>}
+
+      <div className="space-y-4">
+       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Find an account, assign access, or update its employee record.</p></div><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></header>
+       <div className="grid items-end gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-[minmax(0,1fr)_200px_auto]"><label className="text-xs text-slate-400">Search accounts<Input value={accountSearch} onChange={event=>setAccountSearch(event.target.value)} placeholder="Name, rank, unit or email" className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Access role<select value={accountRole} onChange={event=>setAccountRole(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white">{['all','admin','officer','supervisor','client','hr','trainer','student','support_staff','fleet_manager'].map(role=><option key={role} value={role}>{role==='all'?'All roles':role.replaceAll('_',' ')}</option>)}</select></label><label className="flex min-h-10 items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={pendingOnly} onChange={event=>setPendingOnly(event.target.checked)}/>Needs role assignment</label></div>
 
         {error && (
           <Card className="p-8 text-center border-red-200 bg-red-50">
@@ -776,183 +746,13 @@ export default function AdminUsers({ embedded = false }) {
         {!isLoading && !error && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-            <TabsTrigger value="active">Pending ({activeUsers.length})</TabsTrigger>
+            <TabsTrigger value="active">Active accounts ({activeUsers.length})</TabsTrigger>
             <TabsTrigger value="terminated">Terminated ({terminatedUsers.length})</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="active" className="space-y-4 mt-4">
-            {activeUsers.length === 0 && (
-              <Card className="p-8 text-center">
-                <Users className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                <p className="text-slate-600">No pending users found. All users have been assigned a role.</p>
-                </Card>
-              )}
-              {activeUsers.map((userData) => (
-              <Card key={userData.id} className="border border-slate-200 hover:shadow-lg transition-all duration-300 bg-white rounded-lg">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {userData.profile_photo_url ? (
-                        <img
-                          src={userData.profile_photo_url}
-                          alt={`${userData.first_name} ${userData.last_name}`}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                          {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <CardTitle className="text-xl">
-                          {userData.first_name && userData.last_name 
-                            ? `${userData.first_name} ${userData.last_name}` 
-                            : userData.email}
-                          <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700">Pending Role Assignment</Badge>
-                        </CardTitle>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {userData.rank ? (
-                            <Badge className={getRankColor(userData.rank)}>
-                              {userData.rank}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-slate-100 text-slate-600">No Rank Assigned</Badge>
-                          )}
-                          {userData.hourly_rate && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                              ${userData.hourly_rate.toFixed(2)}/hr
-                            </Badge>
-                          )}
-                          {userData.unit_number && (
-                            <Badge variant="outline">Unit #{userData.unit_number}</Badge>
-                          )}
-                          {userData.subdivision && (
-                            <Badge variant="outline">{userData.division} - {userData.subdivision}</Badge>
-                          )}
-                          {!userData.subdivision && userData.division && (
-                            <Badge variant="outline">{userData.division}</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
-                        onClick={async () => {
-                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as Support Staff? This creates a Support login without an Officer/reporting role.`)) {
-                            await assignUserCategory(userData, 'support');
-                          }
-                        }}
-                      >
-                        Assign Support
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
-                        onClick={async () => {
-                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
-                            await assignUserCategory(userData, 'officer');
-                          }
-                        }}
-                      >
-                        Assign Officer
-                      </Button>
-                      <Button variant="outline" size="sm" className="bg-violet-50 text-violet-700 border-violet-300 hover:bg-violet-100" onClick={async()=>{
-                        if(await confirmInApp(`Assign ${userData.first_name||userData.email} to the Student Portal? Administrator approval does not certify course completion.`))await assignUserCategory(userData,'student');
-                      }}>Assign Student</Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
-                        onClick={async () => {
-                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as a Client? The property can be selected from Manage Clients.`)) {
-                            await assignUserCategory(userData, 'client');
-                          }
-                        }}
-                      >
-                        Assign Client
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditUser(userData)}
-                        className="rounded-lg"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Select
-                        value={userData.role || 'user'}
-                        onValueChange={async (newRole) => {
-                          try {
-                            const action = newRole === 'admin' ? 'grant full admin access to' : 'remove admin access from';
-                            if (await confirmInApp(`Are you sure you want to ${action} ${userData.first_name} ${userData.last_name}?`)) {
-                              const response = await base44.functions.invoke('updateUser', { userId: userData.id, updates: { role: newRole } });
-                              const payload = response?.data || response || {};
-                              if (payload.error) throw new Error(payload.error);
-                              invalidateAppDirectory();
-                              queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-                              alert(`✅ User role updated to ${newRole}`);
-                            }
-                          } catch (error) {
-                            console.error('Error updating role:', error);
-                            alert('❌ Failed to update role: ' + error.message);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Mail className="w-4 h-4" />
-                      {userData.email}
-                    </div>
-                    {userData.mobile_phone && (
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <Phone className="w-4 h-4" />
-                        {userData.mobile_phone}
-                      </div>
-                    )}
-                    {userData.hire_date && (
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <Calendar className="w-4 h-4" />
-                        Hired: {userData.hire_date ? format(new Date(userData.hire_date), 'MMM d, yyyy') : 'N/A'}
-                      </div>
-                    )}
-                  </div>
-                  {userData.assigned_sites && userData.assigned_sites.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                      <p className="text-sm font-semibold text-slate-700 mb-2">Assigned Sites:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {userData.assigned_sites.map((site, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {site}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              ))}
+            <TabsContent value="active" className="mt-4">
+             <div className="overflow-x-auto rounded-xl border border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-900 text-xs text-slate-400"><tr><th className="p-3">Account</th><th className="p-3">Access</th><th className="p-3">Platoon / Unit</th><th className="p-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-800 bg-slate-950">{activeUsers.map(person=><tr key={person.id} className="hover:bg-slate-900"><td className="p-3"><div className="flex items-center gap-3">{person.profile_photo_url&&<img src={person.profile_photo_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}<div><strong className="block text-white">{(person.additional_roles||[]).includes('client')?[person.first_name,person.last_name].filter(Boolean).join(' '):[person.rank,person.last_name].filter(Boolean).join(' ')||person.full_name||person.email}</strong><span className="text-xs text-slate-400">{person.email}</span></div></div></td><td className="p-3"><div className="flex max-w-sm flex-wrap gap-1">{[...(person.role==='admin'?['admin']:[]),...(person.additional_roles||[])].map(role=><span key={role} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-200">{role.replaceAll('_',' ')}</span>)}{isPendingUser(person)&&<span className="text-xs text-amber-300">Pending access</span>}</div></td><td className="p-3 text-slate-300">{person.platoon||'—'} / {person.unit_number||'—'}</td><td className="p-3"><Button type="button" size="sm" variant="outline" onClick={()=>handleEditUser(person)}>Manage account</Button>{isPendingUser(person)&&<select aria-label={'Assign access to '+person.email} defaultValue="" onChange={async event=>{const category=event.target.value;if(category&&await confirmInApp('Assign '+category+' access to '+person.email+'?'))await assignUserCategory(person,category);event.target.value='';}} className="ml-2 rounded border border-slate-600 bg-slate-900 p-2 text-xs text-white"><option value="">Assign access…</option>{['officer','support','student','client'].map(role=><option key={role}>{role}</option>)}</select>}</td></tr>)}</tbody></table>{!activeUsers.length&&<p className="p-6 text-sm text-slate-400">No accounts match these filters.</p>}</div>
             </TabsContent>
-
             <TabsContent value="terminated" className="space-y-4 mt-4">
             {terminatedUsers.map((userData) => (
               <Card key={userData.id} className="border-slate-200 opacity-75">

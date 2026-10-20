@@ -1,5 +1,6 @@
+import SchedulingWorkspace from '@/components/admin/workspaces/SchedulingWorkspace';
+import AssetsWorkspace from '@/components/admin/workspaces/AssetsWorkspace';
 import ManageClients from './ManageClients';
-import AdminPTOApproval from './AdminPTOApproval';
 import AdminOperationsWorkbench from '@/components/AdminOperationsWorkbench';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
@@ -15,18 +16,12 @@ import AdminAnalytics from './AdminAnalytics';
 import AdminLocationTracker from './AdminLocationTracker';
 import AdminGeofenceAlerts from './AdminGeofenceAlerts';
 import AdminAutoDispatchControls from './AdminAutoDispatchControls';
-import AdminScheduling from './AdminScheduling';
-import FleetVehicleAssignments from './FleetVehicleAssignments';
 import DutySupervisorScheduling from './DutySupervisorScheduling';
 import Schedule from './Schedule';
 import SupervisorDutyTimeline from './SupervisorDutyTimeline';
 import AdminOfficerManagement from './AdminOfficerManagement';
-import AdminPlannedShifts from './AdminPlannedShifts';
-import AdminShiftBids from './AdminShiftBids';
 import AdminUsers from './AdminUsers';
-import AdminPlatoonAssignments from './AdminPlatoonAssignments';
 import AdminLocations from './AdminLocations';
-import AdminEquipment from './AdminEquipment';
 import AdminReports from './AdminReports';
 import AdminClientReports from './AdminClientReports';
 import AdminSupervisorReports from './AdminSupervisorReports';
@@ -35,10 +30,7 @@ import AdminComplaints from './AdminComplaints';
 import AdminCommendations from './AdminCommendations';
 import AdminClientFeedback from './AdminClientFeedback';
 import AdminAnnouncements from './AdminAnnouncements';
-import AdminSpecialRequests from './AdminSpecialRequests';
 import AdminPortalSettings from './AdminPortalSettings';
-import AdminSupportStaffClock from './AdminSupportStaffClock';
-import Personnel from './Personnel';
 import PathfinderReports from './Reports';
 import CADCenter from './CADCenter';
 import OfficerCenter from './OfficerCenter';
@@ -78,11 +70,13 @@ const MASTER_SECTIONS = [
 
 const ADMIN_SECTIONS = [
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
-  { id: 'people', label: 'People & Access', description: 'Users, access, platoons and availability decisions', icon: Users },
-  { id: 'schedule', label: 'Scheduling & Time', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
-  { id: 'sites', label: 'Sites & Assets', description: 'Locations, geofences, automatic dispatch, CAD controls, portal visibility, equipment, post orders and patrol rules', icon: Building2 },
+  { id: 'people', label: 'Personnel & Accounts', description: 'Officer command, availability, CAD controls and account access', icon: Users },
+  { id: 'schedule', label: 'Scheduling & Coverage', description: 'Officer schedules, fleet assignments, duty supervisors, planned shifts, bids and support time', icon: Calendar },
+  { id: 'assets', label: 'Company Assets', description: 'Vehicles, equipment and maintenance', icon: Briefcase },
+  { id: 'sites', label: 'Sites & Patrol', description: 'Locations, geofences, automatic dispatch, CAD controls, portal visibility, equipment, post orders and patrol rules', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
-  { id: 'communications', label: 'Requests & Documents', description: 'Announcements and special requests', icon: MessageCircle },
+  { id: 'communications', label: 'Announcements', description: 'Company announcements and staff communications', icon: MessageCircle },
+  { id: 'system', label: 'System Settings', description: 'Portal access and application settings', icon: Settings },
 ];
 
 
@@ -119,13 +113,15 @@ const ADMIN_SUPERVISOR_TOOLS = {
 function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
-  const rawRequested = params.get(queryParam);
+  const raw = params.get(queryParam);
+  const rawRequested=queryParam==='admin_people_tool'&&['chain','cadpersonnel'].includes(raw)?'availability':raw;
   const requested = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawRequested) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawRequested === 'geofence' ? 'locations' : rawRequested;
   const initial = requested && tools.some(item => item.id === requested) ? requested : (defaultTool || tools[0]?.id);
   const [activeId, setActiveId] = useState(initial);
 
   useEffect(() => {
-    const rawCurrent = new URLSearchParams(window.location.search).get(queryParam);
+    const rawValue = new URLSearchParams(window.location.search).get(queryParam);
+    const rawCurrent=queryParam==='admin_people_tool'&&['chain','cadpersonnel'].includes(rawValue)?'availability':rawValue;
     const current = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawCurrent) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawCurrent === 'geofence' ? 'locations' : rawCurrent;
     if (current && tools.some(item => item.id === current) && current !== activeId) setActiveId(current);
   }, [queryParam, tools, activeId]);
@@ -156,26 +152,13 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
 }
 
 function AdminPersonnelAccessHub() {
-  return <AdminInlineFunctions queryParam="admin_people_tool" tools={[
-    { id: 'users', label: 'Users & Accounts', component: AdminUsers },
-    { id: 'clients', label: 'Manage Clients', component: ManageClients },
-    { id: 'chain', label: 'Platoon & Chain', component: AdminPlatoonAssignments },
-    { id: 'availability', label: 'Officer Availability & Assignments', component: AdminOfficerManagement },
-    { id: 'cadpersonnel', label: 'CAD Personnel', component: Personnel },
-  ]} />;
+ return <AdminInlineFunctions queryParam="admin_people_tool" defaultTool="availability" tools={[
+  {id:'availability',label:'Personnel & Command',component:AdminOfficerManagement},
+  {id:'users',label:'Accounts & Access',component:AdminUsers},
+  {id:'clients',label:'Client Accounts',component:ManageClients},
+ ]}/>;
 }
-
-function AdminSchedulingCoverageHub() {
-  return <AdminInlineFunctions queryParam="admin_schedule_tool" tools={[
-    { id: 'scheduling', label: 'Scheduling', component: AdminScheduling },
-    { id: 'pto', label: 'Time Off Approval', component: AdminPTOApproval },
-    { id: 'fleet', label: 'Fleet Assignments', component: FleetVehicleAssignments },
-    { id: 'duty', label: 'Duty Supervisor', component: DutySupervisorScheduling },
-    { id: 'planned', label: 'Planned Shifts', component: AdminPlannedShifts },
-    { id: 'bids', label: 'Shift Bids', component: AdminShiftBids },
-    { id: 'supportclock', label: 'Support Clock In', component: AdminSupportStaffClock },
-  ]} />;
-}
+function AdminSchedulingCoverageHub(){return <SchedulingWorkspace/>;}
 
 function AdminLocationWorkspace() {
  const [showAlerts, setShowAlerts] = useState(() => new URLSearchParams(window.location.search).get('admin_location_dispatch_tool') === 'geofence');
@@ -201,8 +184,6 @@ function AdminSiteOperationsHub() {
   return <AdminInlineFunctions queryParam="admin_site_ops_tool" tools={[
     { id: 'location', label: 'Location & Dispatch', component: AdminLocationDispatchHub },
     { id: 'operations', label: 'Site Operations', component: AdminOperationsWorkbench },
-    { id: 'equipment', label: 'Equipment', component: AdminEquipment },
-    { id: 'visibility', label: 'Portal Visibility', component: AdminPortalSettings },
   ]} />;
 }
 
@@ -219,12 +200,7 @@ function AdminReportsQualityHub() {
   ]} />;
 }
 
-function AdminCommunicationsHub() {
-  return <AdminInlineFunctions queryParam="admin_communications_tool" tools={[
-    { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
-    { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
-  ]} />;
-}
+function AdminCommunicationsHub(){return <AdminAnnouncements embedded/>;}
 
 function AdminSupervisorToolsOnly() {
   return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Complete supervisor tools for administrators, without the personal Officer Workspace." sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="overview" queryParam="admin_supervisor_section" embedded>
@@ -255,6 +231,8 @@ function AdministrationToolsOnly() {
         ]} />;
         if (section === 'people') return <AdminPersonnelAccessHub />;
         if (section === 'schedule') return <AdminSchedulingCoverageHub />;
+        if (section === 'assets') return <AssetsWorkspace/>;
+        if (section === 'system') return <AdminPortalSettings/>;
         if (section === 'sites') return <AdminSiteOperationsHub />;
         if (section === 'reports') return <AdminReportsQualityHub />;
         if (section === 'communications') return <AdminCommunicationsHub />;
