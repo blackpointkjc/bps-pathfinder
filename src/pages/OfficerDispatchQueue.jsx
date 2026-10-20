@@ -2,7 +2,7 @@ import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, Radio, ShieldAlert, Siren, HeartPulse } from 'lucide-react';
+import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, Siren, HeartPulse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -160,7 +160,7 @@ export default function OfficerDispatchQueue() {
 
       {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">QUEUE CLEAR</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         <aside className="space-y-3"><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
-          {visibleQueue.map((call,index)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
+          {visibleQueue.map((call)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
             <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{queue.indexOf(call)+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
             <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}

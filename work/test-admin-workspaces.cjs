@@ -18,6 +18,7 @@ function load(path){
   if(name==='lucide-react')return new Proxy({},{get:()=>()=>null});
   if(name==='@/lib/AuthContext')return {useAuth:()=>({user:actor})};
   if(name==='@/lib/directoryUtils')return load('src/lib/directoryUtils.js');
+  if(name==='@/lib/accountingAccess')return load('src/lib/accountingAccess.js');
   if(name==='@/utils/accountLabels')return load('src/utils/accountLabels.js');
   if(name==='@/lib/supervisorAccess')return {hasSupervisorAccess:()=>true};
   if(name==='@/components/admin/EmployeeDirectory')return load('src/components/admin/EmployeeDirectory.jsx');
@@ -32,6 +33,7 @@ function load(path){
   if(name==='@/components/admin/ScheduleBoard')return {default:stub('Primary schedule board')};
   if(name.startsWith('@/pages/'))return {default:stub(name.split('/').pop())};
   if(name==='../components/ProfilePhotoCropper')return {default:()=>null};
+  if(name.includes('components/'))return {default:stub(name)};
   return {};
  }});
  return exports;

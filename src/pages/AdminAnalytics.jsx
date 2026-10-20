@@ -14,7 +14,7 @@ import {
   BarChart3, Users, Clock, AlertTriangle, 
   CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X, RefreshCw
 } from "lucide-react";
-import { format as dateFnsFormat, parseISO as dateFnsParseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
+import { format as dateFnsFormat, parseISO as dateFnsParseISO, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
@@ -201,14 +201,6 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
     serviceErrors: snapshot.service_errors || {},
     generatedAt: snapshot.generated_at || null,
   };
-}
-
-function breakMinutes(entry) {
-  return (entry?.break_periods || []).reduce((total, period) => {
-    const start = period?.start ? new Date(period.start).getTime() : NaN;
-    const end = period?.end ? new Date(period.end).getTime() : NaN;
-    return total + (Number.isFinite(start) && Number.isFinite(end) && end > start ? (end - start) / 60000 : 0);
-  }, 0);
 }
 
 export default function AdminAnalytics() {

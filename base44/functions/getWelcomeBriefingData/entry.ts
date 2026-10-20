@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       const fallback = options.fallback ?? [];
       let lastError: any = null;
       try {
-        return await readBriefingSource(JSON.stringify([me.id, [...roles].sort(), today, label]), loader) ?? fallback;
+        return await readBriefingSource(JSON.stringify([me.id, [...roles].sort(), today, label]), loader, readDeadline) ?? fallback;
       } catch (error) { lastError = error; }
       console.error(`getWelcomeBriefingData could not load ${label}`, lastError);
       if (options.reportError !== false) sourceErrors.push(label);

@@ -1,4 +1,3 @@
-import { canAccessAccounting } from '@/lib/accountingAccess';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';

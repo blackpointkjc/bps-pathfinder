@@ -1,7 +1,7 @@
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertOctagon, Plus, Search, Edit2, CheckCircle2, History, Radio, Clock3 } from 'lucide-react';
+import { AlertOctagon, Plus, Search, Edit2, History, Radio } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import BOLOModal from '@/components/bolo/BOLOModal';

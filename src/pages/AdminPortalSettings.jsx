@@ -4,12 +4,9 @@ import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Settings, Eye, EyeOff } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Shield, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import CadAudioSettingsCard from "@/components/admin/CadAudioSettingsCard";
 

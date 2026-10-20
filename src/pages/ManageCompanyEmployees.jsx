@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
-import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
+import { listDirectoryUsers, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isCompanyEmployeeAccount } from '@/lib/directoryUtils';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
