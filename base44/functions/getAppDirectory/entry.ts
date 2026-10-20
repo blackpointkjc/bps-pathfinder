@@ -26,17 +26,17 @@ async function readSource(label: string, loader: () => Promise<any[]>, errors: R
 function addEmailAliases(entry: any, teamsByUser: Map<string, any>, outlookByUser: Map<string, any>) {
   const teams = teamsByUser.get(String(entry?.id || ''));
   const outlook = outlookByUser.get(String(entry?.id || ''));
-  const workEmail = cleanEmail(entry?.email);
-  const pathfinderEmail = cleanEmail(teams?.pathfinder_email || outlook?.pathfinder_email || workEmail);
-  const microsoftEmail = cleanEmail(teams?.microsoft_email || outlook?.outlook_email);
-  const aliases = [...new Set([workEmail, pathfinderEmail, microsoftEmail].filter(Boolean))];
+  const workEmail = cleanEmail(entry?.work_email || entry?.email);
+  const pathfinderEmail = cleanEmail(teams?.pathfinder_email || outlook?.pathfinder_email || entry?.pathfinder_email || workEmail);
+  const microsoftEmail = cleanEmail(teams?.microsoft_email || outlook?.outlook_email || entry?.microsoft_email || entry?.outlook_email);
+  const aliases = [...new Set([entry?.email, workEmail, pathfinderEmail, microsoftEmail, entry?.outlook_email, ...(Array.isArray(entry?.email_aliases) ? entry.email_aliases : [])].map(cleanEmail).filter(Boolean))];
   return {
     ...entry,
     email: workEmail || pathfinderEmail,
     work_email: workEmail || pathfinderEmail,
     pathfinder_email: pathfinderEmail || workEmail,
     microsoft_email: microsoftEmail,
-    outlook_email: cleanEmail(outlook?.outlook_email || teams?.microsoft_email),
+    outlook_email: cleanEmail(outlook?.outlook_email || teams?.microsoft_email || entry?.outlook_email || entry?.microsoft_email),
     email_aliases: aliases,
   };
 }

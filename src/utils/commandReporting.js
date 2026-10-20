@@ -1,4 +1,4 @@
-import { comparePersonnel } from '@/utils/rankPolicy';
+import { comparePersonnel } from './rankPolicy.js';
 export const COMMAND_TIERS = ['Colonel', 'Lt Colonel', 'Major'];
 export const commandRank = person => {
   const rank = String(person?.rank || '').trim();
@@ -18,7 +18,7 @@ export function siteReportingChains(references = [], users = []) {
  const active=users.filter(p=>!p.termination_date && p.employment_status!=='terminated');
  const clean=v=>String(v || '').trim().toLowerCase();
  return [...new Set(references.map(clean).filter(Boolean))].map(reference=>{
-  const root=active.find(p=>p.id===reference || [p.email,p.work_email,p.pathfinder_email,p.microsoft_email,...(p.email_aliases || [])].some(v=>clean(v)===reference));
+  const root=active.find(p=>clean(p.id)===reference || [p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(Array.isArray(p.email_aliases) ? p.email_aliases : [])].some(v=>clean(v)===reference));
   if(!root) return {reference,levels:[],unresolved:true};
   const levels=[]; const seen=new Set(); let current=[root]; let incomplete=false;
   while(current.length) {
@@ -37,3 +37,17 @@ export function siteReportingChains(references = [], users = []) {
  });
 }
 export const oversightLabel = person => commandRank(person) === 'Major' ? (majorPlatoon(person) ? `Oversees Platoon ${majorPlatoon(person)}` : 'Platoon oversight unassigned') : 'Shared Command';
+
+// Legacy sites may list both a direct supervisor and their reporting manager.
+// Keep the most direct assigned person; their managers appear in the levels above.
+export function primarySiteReportingChain(references = [], users = []) {
+ const chains = siteReportingChains(references, users);
+ const resolved = chains.filter(chain => !chain.unresolved);
+ const direct = resolved.filter(candidate => !resolved.some(other =>
+   other !== candidate && other.levels.slice(1).some(level =>
+     level.some(person => person.id === candidate.levels[0]?.[0]?.id))));
+ if (direct.length === 1) return direct[0];
+ if (!references.length) return null;
+ // Unrelated assignments require an administrator to select the single owner.
+ return { levels: [], assignmentRequired: true, unresolved: !resolved.length };
+}

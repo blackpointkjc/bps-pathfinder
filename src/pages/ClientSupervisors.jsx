@@ -3,7 +3,6 @@ import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, UserCheck, MapPin } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function ClientSupervisors() {
@@ -28,28 +27,13 @@ export default function ClientSupervisors() {
     enabled: clientLocations.length > 0,
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+  const { data: allUsers = [], isPending: usersLoading, isError: usersError, refetch: retryUsers } = useQuery({
+    queryKey: ['clientSupervisorDirectory', user?.id, getClientPreviewId()],
     queryFn: () => listDirectoryUsers(),
-    initialData: [],
+    enabled: !!user,
+    staleTime: 60000,
   });
 
-
-  const commandRanks = new Set(['senior corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
-  const assignedDivisions = new Set(siteLocations.map(loc => String(loc.division || '').trim().toLowerCase()).filter(Boolean));
-  const divisionCommand = allUsers?.filter(u =>
-    !u.termination_date && assignedDivisions.has(String(u.division || '').trim().toLowerCase()) && commandRanks.has(String(u.rank || '').trim().toLowerCase())
-  ) || [];
-
-  const getRankColor = (rank) => {
-    switch (rank) {
-      case "Lieutenant": return "bg-orange-100 text-orange-800 border-orange-300";
-      case "Sergeant": return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      case "Senior Corporal": return "bg-lime-100 text-lime-800 border-lime-300";
-      case "Corporal": return "bg-green-100 text-green-800 border-green-300";
-      default: return "bg-slate-100 text-slate-800 border-slate-300";
-    }
-  };
 
   if (clientLocations.length === 0) {
     return (
@@ -79,64 +63,16 @@ export default function ClientSupervisors() {
               <UserCheck className="w-6 h-6" />
               Site Supervisors
             </CardTitle>
-            <p className="text-sm text-slate-400">Direct site supervisors organized by each property in your portfolio</p>
+            <p className="text-sm text-slate-400">One site supervisor per property, with their reporting chain shown above them</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {siteLocations.map(location => (
               <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-bold text-white">{location.site_name}</p><p className="text-xs text-slate-500">{location.address || location.division || ''}</p></div><Badge className="bg-slate-800 text-slate-300">{location.assigned_supervisors?.length || 0} assigned</Badge></div>
-                <SiteChainOfCommand assignedSupervisors={location.assigned_supervisors || []} users={allUsers || []}/>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-bold text-white">{location.site_name}</p><p className="text-xs text-slate-500">{location.address || location.division || ''}</p></div></div>
+                {usersLoading ? <p role="status" className="text-slate-400">Loading site chain of command…</p> : usersError ? <button type="button" onClick={() => retryUsers()} className="text-cyan-300">Could not load supervisors. Retry</button> : <SiteChainOfCommand assignedSupervisors={location.assigned_supervisors || []} users={allUsers}/>}
 
               </div>
             ))}
-          </CardContent>
-        </Card>
-
-        <Card className="w-full min-w-0 overflow-hidden border border-slate-700 bg-slate-900 shadow-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-300">
-              <Shield className="w-6 h-6" />
-              Division Command
-            </CardTitle>
-            <p className="text-sm text-slate-400">Command personnel supporting the divisions assigned to your properties</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {divisionCommand.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-4">
-                {divisionCommand.map((supervisor) => (
-                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      {supervisor.profile_photo_url ? (
-                        <img
-                          src={supervisor.profile_photo_url}
-                          alt={`${supervisor.first_name} ${supervisor.last_name}`}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold">
-                          {supervisor.first_name?.charAt(0)}{supervisor.last_name?.charAt(0)}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="break-words font-bold text-white">
-                          {supervisor.first_name} {supervisor.last_name}
-                        </p>
-                        <Badge className={`${getRankColor(supervisor.rank)} text-xs`}>
-                          {supervisor.rank}
-                        </Badge>
-                      </div>
-                    </div>
-                    {supervisor.unit_number && (
-                      <p className="text-sm text-slate-300">
-                        <span className="font-semibold">Unit:</span> #{supervisor.unit_number}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400 italic">No division command officers are available for this location.</p>
-            )}
           </CardContent>
         </Card>
 
