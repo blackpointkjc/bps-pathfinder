@@ -1,3 +1,5 @@
+import { syncOfficerVehicles } from '@/lib/fleetScheduleSync';
+import { toast } from 'sonner';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -41,8 +43,9 @@ const overlaps = (aStart, aEnd, bStart, bEnd) => {
   return as < be && bs < ae;
 };
 
-export default function FleetVehicleAssignments() {
+export default function FleetVehicleAssignments({ embedded=false, weekStart }) {
   const qc = useQueryClient();
+  const [syncReport,setSyncReport]=useState(null);
   const [dayOffset, setDayOffset] = useState(0);
   const [vehicleChoice, setVehicleChoice] = useState({});
   const [savingShiftId, setSavingShiftId] = useState('');
@@ -91,8 +94,8 @@ export default function FleetVehicleAssignments() {
     return () => subscriptions.forEach(unsubscribe => unsubscribe());
   }, [qc]);
 
-  const windowStart = addDays(startOfDay(new Date()), dayOffset);
-  const dates = Array.from({ length: 3 }, (_, i) => format(addDays(windowStart, i), 'yyyy-MM-dd'));
+  const windowStart = weekStart?new Date(weekStart+'T12:00:00'):addDays(startOfDay(new Date()), dayOffset);
+  const dates = Array.from({ length: embedded?7:3 }, (_, i) => format(addDays(windowStart, i), 'yyyy-MM-dd'));
   const availableVehicles = vehicles.filter(v => String(v.status || 'Active').toLowerCase() === 'active');
   const maintenanceVehicles = vehicles.filter(v => ['maintenance', 'out of service'].includes(String(v.status || '').toLowerCase()));
 
@@ -254,12 +257,14 @@ export default function FleetVehicleAssignments() {
 
   if (isLoadingAuth) return <div className="p-6 text-slate-300">Loading fleet schedule…</div>;
 
-  return <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6">
+  return <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6"}>
     <div className="mx-auto max-w-[1500px] space-y-4">
+      {isAdmin&&<div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={async()=>{try{const result=await syncOfficerVehicles(qc);setSyncReport(result);toast.success(result.created+' reservations created.');}catch(error){toast.error(error.message);}}}>Sync officer vehicle defaults</Button><span className="text-xs text-slate-400">Set default vehicles under Company Assets. Manual shift assignments take priority.</span></div>}
+      {syncReport?.conflicts?.length>0&&<div role="alert" className="rounded-lg border border-amber-700 p-3 text-xs text-amber-200">{syncReport.conflicts.map((item,index)=><p key={index}>{item.reason} Shift {item.shift_id}</p>)}</div>}
       <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
         <Car className="h-7 w-7 text-amber-400" />
         <div>
-          <h1 className="text-xl font-black tracking-wide">FLEET VEHICLE SCHEDULE</h1>
+          <h2 className="text-lg font-bold">Shift vehicle reservations</h2>
           <p className="text-xs text-slate-500">Assign a vehicle directly to the officer's scheduled shift.</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">

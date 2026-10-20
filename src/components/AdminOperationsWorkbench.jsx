@@ -7,8 +7,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { Shield, Search, MapPin, CheckCircle2, Circle, Save, Plus } from 'lucide-react';
 import AdminQRPrintManager from '@/pages/AdminQRPrintManager';
-import VehicleManagement from '@/components/admin/VehicleManagement';
-import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 
 const inputClass = 'mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none';
 const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-600 disabled:opacity-50';
@@ -63,10 +61,6 @@ function CheckpointEditor({checkpoint,site,email,onSaved}) {
    <div className="flex gap-5 text-sm">{[['is_active','Active'],['is_required','Required']].map(([field,label])=><label key={field} className="flex items-center gap-2"><input type="checkbox" checked={draft[field]!==false} onChange={event=>change(field,event.target.checked)}/>{label}</label>)}</div>
   </>}
  </Editor>;
-}
-function MaintenancePanel() {
- const {data:users=[]} = useQuery({queryKey:['operationsMaintenanceUsers'],queryFn:()=>listDirectoryUsers(),staleTime:60000});
- return <MaintenanceTracking units={users}/>;
 }
 function Expand({title,children}) {
  const [open,setOpen] = useState(false);
@@ -151,8 +145,6 @@ export default function AdminOperationsWorkbench() {
       <div className="space-y-3">{general.map(section=><details key={section.id} className="rounded-lg border border-slate-700 p-3"><summary className="cursor-pointer text-sm font-bold">{section.section_title}</summary><div className="mt-4"><Editor entity="GeneralPostOrder" record={section} seed={{}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title||''} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={5} className={inputClass} value={draft.content||''} onChange={event=>change('content',event.target.value)}/></Field><label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.active!==false} onChange={event=>change('active',event.target.checked)}/>Active</label></>}</Editor></div></details>)}
       {newGeneral?<Editor onSaved={()=>setNewGeneral(false)} key="new-general" entity="GeneralPostOrder" seed={{section_title:'',content:'',active:true,sort_order:general.length+1}} queryKey={['generalPostOrders']}>{(draft,change)=><><Field label="Section title"><input className={inputClass} value={draft.section_title} onChange={event=>change('section_title',event.target.value)}/></Field><Field label="Instructions"><textarea rows={4} className={inputClass} value={draft.content} onChange={event=>change('content',event.target.value)}/></Field><button type="button" onClick={()=>setNewGeneral(false)} className="text-xs text-slate-400">Close new section</button></>}</Editor>:<button type="button" className={buttonClass} onClick={()=>setNewGeneral(true)}><Plus className="h-4 w-4"/>Add company instruction</button>}</div>
      </Section>
-     <Expand title="Company fleet"><VehicleManagement/></Expand>
-     <Expand title="Maintenance tracking"><MaintenancePanel/></Expand>
     </main>
    </div>
   </div>

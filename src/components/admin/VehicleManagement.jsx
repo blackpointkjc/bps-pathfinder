@@ -1,3 +1,7 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { syncOfficerVehicles } from '@/lib/fleetScheduleSync';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -10,6 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Car, Plus, Edit, Trash2 } from 'lucide-react';
 
 export default function VehicleManagement() {
+    const qc=useQueryClient();
+    const {data:users=[]}=useQuery({queryKey:['assetOfficerDefaults'],queryFn:()=>listDirectoryUsers('last_name',1000),staleTime:300000});
+    const officers=users.filter(isOperationalOfficer);
+    const officerLabel=id=>{const p=users.find(p=>p.id===id);return p?[p.rank,p.last_name].filter(Boolean).join(' ')+(p.unit_number?' · Unit '+p.unit_number:''):'No default officer';};
+    const [busy,setBusy]=useState(false);
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showDialog, setShowDialog] = useState(false);
@@ -45,7 +54,9 @@ export default function VehicleManagement() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if(busy)return;setBusy(true);
         try {
+            if(formData.assigned_to&&vehicles.some(v=>v.id!==editingVehicle?.id&&v.assigned_to===formData.assigned_to))throw new Error('This officer already has a default vehicle. Clear the other vehicle first.');
             if (editingVehicle) {
                 await base44.entities.Vehicle.update(editingVehicle.id, formData);
                 toast.success('Vehicle updated');
@@ -53,14 +64,15 @@ export default function VehicleManagement() {
                 await base44.entities.Vehicle.create(formData);
                 toast.success('Vehicle added');
             }
+            await syncOfficerVehicles(qc).catch(()=>toast.warning('Vehicle saved; automatic reservations need retry.'));
             setShowDialog(false);
             setEditingVehicle(null);
             resetForm();
             await loadVehicles();
         } catch (error) {
             console.error('Error saving vehicle:', error);
-            toast.error('Failed to save vehicle');
-        }
+            toast.error(error?.message||'Failed to save vehicle');
+        }finally{setBusy(false);}
     };
 
     const handleEdit = (vehicle) => {
@@ -126,7 +138,7 @@ export default function VehicleManagement() {
     }
 
     return (
-        <div className="font-mono">
+        <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
@@ -144,6 +156,7 @@ export default function VehicleManagement() {
                 </button>
             </div>
 
+            <p className="text-sm text-slate-400">Assign a default officer in the vehicle record. Their scheduled shifts automatically reserve this vehicle; unavailable cars and overlapping bookings are flagged.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {vehicles.map((vehicle) => (
                     <div key={vehicle.id} className="bg-slate-900 border border-slate-800 rounded hover:border-slate-700 transition-all">
@@ -174,6 +187,7 @@ export default function VehicleManagement() {
                                 </div>
                             )}
                         </div>
+                        <p className="px-3 pb-3 text-xs text-cyan-200">{officerLabel(vehicle.assigned_to)}</p>
                         <div className="flex gap-1 px-3 pb-3">
                             <button onClick={() => handleEdit(vehicle)}
                                 className="flex-1 py-1 text-[9px] font-bold bg-slate-800 border border-slate-700 text-slate-400 hover:text-gold hover:border-gold/40 rounded transition-all flex items-center justify-center gap-1">
@@ -247,6 +261,7 @@ export default function VehicleManagement() {
                                 <Input type="number" value={formData.mileage} onChange={e => setFormData({...formData, mileage: parseInt(e.target.value)})} className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                         </div>
+                        <label className="block text-xs text-slate-300">Default officer<select value={formData.assigned_to} onChange={event=>setFormData({...formData,assigned_to:event.target.value})} className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 p-2 text-white"><option value="">Unassigned pool vehicle</option>{officers.map(person=><option key={person.id} value={person.id}>{officerLabel(person.id)}</option>)}</select></label>
                         <div>
                             <Label className="text-slate-500 font-mono text-[10px] tracking-widest">VIN</Label>
                             <Input value={formData.vin} onChange={e => setFormData({...formData, vin: e.target.value})} placeholder="1HGBH41JXMN109186" className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
@@ -260,7 +275,7 @@ export default function VehicleManagement() {
                                 className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">
                                 CANCEL
                             </button>
-                            <button type="submit"
+                            <button type="submit" disabled={busy}
                                 className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">
                                 {editingVehicle ? 'UPDATE RECORD' : 'ADD VEHICLE'}
                             </button>
