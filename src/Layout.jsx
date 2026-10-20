@@ -511,7 +511,7 @@ function canAccessPage(user, pageName) {
   const studentAccess = normalizedRoles(user).has('student');
   if (studentAccess) return pageName === 'StudentPortal';
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
-  if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || roles.has('full_access');
+  if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;

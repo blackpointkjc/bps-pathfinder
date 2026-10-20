@@ -26,6 +26,9 @@ Deno.serve(async (req) => {
         const microsoftEmail = email(entry.microsoft_email || entry.outlook_email);
         return ({
         id: entry.id,
+        out_of_office:entry.out_of_office === true,
+        out_of_office_start:entry.out_of_office_start || '',
+        out_of_office_return:entry.out_of_office_return || '',
         email: workEmail || pathfinderEmail,
         work_email: workEmail || pathfinderEmail,
         pathfinder_email: pathfinderEmail || workEmail,

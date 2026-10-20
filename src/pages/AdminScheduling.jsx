@@ -1,3 +1,4 @@
+import ApprovedLeavePanel from '@/components/scheduling/ApprovedLeavePanel';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from 'react-router-dom';
@@ -2539,6 +2540,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
   return (
     <div className="scheduling-page min-h-screen p-3 pb-24 sm:p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <ApprovedLeavePanel weekOffset={currentWeekOffset} users={allUsers} schedules={schedules}/>
         <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl print:hidden md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-center gap-3"><Shield className="h-7 w-7 text-amber-400"/><div><div className="text-[11px] font-black uppercase tracking-[.24em] text-amber-300">Scheduling Command</div><h1 className="mt-1 text-3xl font-black text-white">Weekly Schedule</h1><p className="mt-1 text-sm text-slate-400">Drag and drop shifts to reschedule. Fleet and duty-supervisor assignments are part of this scheduling workspace.</p></div></div>
