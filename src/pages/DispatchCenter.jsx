@@ -311,8 +311,18 @@ export default function DispatchCenter() {
             // is an ActiveOfficer session ID; CallAssignment and the officer queue
             // require the immutable User id. The full snapshot returns live status,
             // GPS, profile fields, and user IDs together.
-            const payload = await getOfficerLocationSnapshot({ force });
-            const eligibleUnits = (payload.units || payload.users || [])
+            const [payload, directorySnapshot] = await Promise.all([
+                getOfficerLocationSnapshot({ force }),
+                getAppDirectory().catch(() => null),
+            ]);
+            const roster = [...(payload.units || payload.users || [])];
+            const ids = new Set(roster.map(row => String(row.user_id || row.id)));
+            for (const person of directorySnapshot?.users || []) {
+                const operational = Array.isArray(person.additional_roles) && person.additional_roles.includes('officer');
+                if (!operational || !person.id || !person.email || ids.has(String(person.id)) || roster.some(row => String(row.email || row.officer_email || '').toLowerCase() === String(person.email).toLowerCase())) continue;
+                roster.push({ ...person, session_active: false, presence_online: false, connection_stale: true, roster_source: 'directory_fallback', status: person.status || 'Status unconfirmed' });
+            }
+            const eligibleUnits = roster
                 .filter(unit => unit?.id && unit.status)
                 .map(unit => ({
                     ...unit,
