@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { Plus, X, Search } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 
 const isOperationalUnit = isOperationalOfficer;
 const displayUnitName = (unit) => {
@@ -19,17 +19,15 @@ const displayProperty = (unit) => String(unit?.current_location || unit?.assigne
 
 export default function UnitAssignmentPanel({ call, calls = [], units = [], allAssignments=[], unitLoadStatus = 'ready', onRetryUnits, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [working,setWorking]=useState('');
+    const [feedback,setFeedback]=useState('');
     const [destinationByOfficer,setDestinationByOfficer]=useState({});
     const [reassigning,setReassigning]=useState('');
     const [holding,setHolding]=useState('');
     const [localHold,setLocalHold]=useState({});
     const queryClient=useQueryClient();
     const {data:heldRoster=[],refetch:refetchHeldRoster}=useQuery({queryKey:['dispatchHeldOfficerRoster'],queryFn:async()=>{const response=await base44.functions.invoke('getHeldDispatchOfficers',{});return response?.data?.officers||[];},staleTime:30000,refetchInterval:60000,refetchIntervalInBackground:false});
-    const {data:assignments=[]}=useQuery({
-        queryKey:['cadUnitRoles',call?.id],enabled:!!call?.id,
-        queryFn:()=>base44.entities.CallAssignment.filter({call_id:call.id},'-assigned_at',90),
-        staleTime:15000,refetchInterval:30000,refetchIntervalInBackground:false,
-    });
+    const assignments=allAssignments.filter(row=>String(row.call_id)===String(call?.id));
     const activeRoles=(assignments||[]).filter(row=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
     const roleOf=(unit)=>activeRoles.find(row=>String(row.unit_id)===String(unit.id))?.role||'unverified';
     
@@ -59,8 +57,8 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     };
 
     const handleAssignUnit = async (unit) => {
-        if (!call) return;
-        
+        if (!call || working) return;
+        setWorking(unit.id); setFeedback('Saving Assignment…');
         try {
             const result = await base44.functions.invoke('manageCadUnitAssignment', {
                 action: 'assign',
@@ -71,6 +69,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             if (payload.error) throw new Error(payload.error);
 
             const unitName = displayUnitName(unit);
+            setFeedback(`${unitName} Assigned To CAD ${call.agency_cad_number||call.bps_reference||call.call_id}`);
             toast.success(`${unitName} assigned to call`);
             // manageCadUnitAssignment creates the single durable CallStatusLog
             // announcement event. Do not speak from this rendering component.
@@ -78,8 +77,9 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             onUpdate();
         } catch (error) {
             console.error('Error assigning unit:', error);
+            setFeedback(error?.response?.data?.error||error?.message||'Assignment Failed');
             toast.error(error?.response?.data?.error||error?.message||'Failed to assign unit');
-        }
+        } finally { setWorking(''); }
     };
 
     const handleAddAnotherCall=async unit=>{
@@ -90,7 +90,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             const response=await base44.functions.invoke('manageCadUnitAssignment',{action:'assign',call_id:targetId,unit_id:unit.id});
             const result=response?.data||response||{};
             if(result.error)throw new Error(result.error);
-            toast.success('Additional call assigned to '+displayUnitName(unit)+' without removing existing calls.');
+            setFeedback('Additional Call Assigned To '+displayUnitName(unit)); toast.success('Additional call assigned to '+displayUnitName(unit)+' without removing existing calls.');
             setDestinationByOfficer(old=>({...old,[unit.id]:''}));
             await queryClient.invalidateQueries({queryKey:['cadUnitRoles',targetId]});
             await onUpdate?.();
@@ -105,17 +105,18 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             const response=await base44.functions.invoke('reassignCadOfficer',{source_call_id:call.id,destination_call_id:targetId,officer_id:unit.id});
             const result=response?.data||response||{};
             if(!result.success)throw new Error(result.error||'CAD did not confirm the reassignment');
+            setFeedback(`${displayUnitName(unit)} Transferred To CAD ${result.to}`);
             toast.success(`${displayUnitName(unit)} reassigned to CAD ${result.to}. Officer-specific instructions sent.`);
             setDestinationByOfficer(old=>({...old,[unit.id]:''}));
             await queryClient.invalidateQueries({queryKey:['cadUnitRoles',call.id]});
             await onUpdate?.();
-        }catch(error){toast.error(error?.response?.data?.error||error?.message||'Reassignment failed');}
+        }catch(error){setFeedback(error?.response?.data?.error||error?.message||'Transfer Failed');toast.error(error?.response?.data?.error||error?.message||'Reassignment failed');}
         finally{setReassigning('');}
     };
 
     const handleUnassignUnit = async (unit) => {
-        if (!call) return;
-        
+        if (!call || working) return;
+        setWorking(unit.id); setFeedback('Saving Assignment…');
         try {
             const result = await base44.functions.invoke('manageCadUnitAssignment', {
                 action: 'unassign',
@@ -126,13 +127,13 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             if (payload.error) throw new Error(payload.error);
 
             const unitName = displayUnitName(unit);
-            toast.success(`${unitName} unassigned from call`);
+            setFeedback(`${unitName} Removed From Call`); toast.success(`${unitName} unassigned from call`);
             await queryClient.invalidateQueries({queryKey:['cadUnitRoles',call.id]});
             onUpdate();
         } catch (error) {
             console.error('Error unassigning unit:', error);
-            toast.error('Failed to unassign unit');
-        }
+            setFeedback(error?.response?.data?.error||error?.message||'Failed To Remove Unit'); toast.error('Failed to unassign unit');
+        } finally { setWorking(''); }
     };
 
     if (!call) {
@@ -147,12 +148,13 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'REFERENCE PENDING';
 
     return (
-        <div className="flex h-full min-h-0 flex-col gap-3">
+        <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto pr-1">
             <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#0b1522] p-3">
                 <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
                 <div className="mt-2 text-sm font-black text-white">{call.incident || 'Call for Service'}</div>
                 <div className="mt-1 text-[10px] leading-relaxed text-slate-400">{call.location || 'Location unavailable'}</div>
             </div>
+            {feedback && <p role="status" className="shrink-0 rounded border border-cyan-800 bg-cyan-950/30 p-2 text-xs text-cyan-100">{feedback}</p>}
             {/* Assigned Units */}
             <div>
                 <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Units ({assignedUnitIds.length})</p>
@@ -161,7 +163,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         {assignedUnits.map(unit => {
                             const unitName = displayUnitName(unit);
                             return (
-                                <div key={unit.id} className="flex items-center justify-between rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
+                                <div key={unit.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
                                         <span className={roleOf(unit)==='primary'?'text-emerald-300':'text-blue-300'}>{roleOf(unit)==='primary'?'PRIMARY UNIT':roleOf(unit)==='backup'?'ADDITIONAL UNIT':'ROLE NOT YET VERIFIED'}</span>
@@ -169,9 +171,9 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                         <p className="text-[10px] text-emerald-300">{currentCallCount(unit)} active call(s)</p>
                                         {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-1">
+                                    <div className="flex w-full flex-wrap items-center gap-1">
                                         <Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,!holdOf(unit))} className={`h-8 ${holdOf(unit)?'border-emerald-700 text-emerald-300':'border-amber-700 text-amber-300'}`}>{holding===unit.id?'Saving…':holdOf(unit)?'Remove Hold':'Hold New Calls'}</Button>
-                                        <select aria-label={`Reassign ${unitName} to a different call`} value={destinationByOfficer[unit.id]||''} onChange={e=>setDestinationByOfficer(prev=>({...prev,[unit.id]:e.target.value}))} className="max-w-[160px] rounded border border-cyan-900 bg-slate-950 px-1 py-2 text-[10px] text-cyan-100">
+                                        <select aria-label={`Reassign ${unitName} to a different call`} value={destinationByOfficer[unit.id]||''} onChange={e=>setDestinationByOfficer(prev=>({...prev,[unit.id]:e.target.value}))} className="w-full min-w-0 rounded border border-cyan-900 bg-slate-950 px-1 py-2 text-[10px] text-cyan-100">
                                             <option value="">Select another CAD call…</option>
                                             {calls.filter(c=>String(c.id)!==String(call.id)&&!['cleared','cancelled','closed','resolved','completed'].includes(String(c.status||'').toLowerCase())&&c.manual_dismissed!==true).map(c=><option key={c.id} value={c.id}>{c.agency_cad_number||c.bps_reference||c.call_id||c.id} · {String(c.incident||'').slice(0,34)}</option>)}
                                         </select>
@@ -197,9 +199,9 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
             </div>
 
             {/* Available Units */}
-            <div className="flex min-h-0 flex-1 flex-col">
-                <p className="mb-1 text-[10px] font-black tracking-wider text-slate-300">Eligible for New Calls ({availableUnits.length}) · Available, En Route, On Scene & Busy</p>
-                <p className="mb-2 text-[10px] text-cyan-300">Officers can have several assigned calls. Only Dispatch Hold prevents new assignments.</p>
+            <div className="flex shrink-0 flex-col">
+                <p className="mb-1 text-[10px] font-black tracking-wider text-slate-300">Eligible Officers ({availableUnits.length})</p>
+                <p className="mb-2 text-[10px] text-cyan-300">Select Assign To Call. Out Of Service And Held Officers Are Unavailable.</p>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <Input
@@ -210,7 +212,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                     />
                 </div>
                 
-                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+                <div className="space-y-1">
                     {units.length === 0 && unitLoadStatus === 'loading' ? (
                         <div role="status" className="text-xs text-amber-400 text-center p-2">Loading on-duty units…</div>
                     ) : units.length === 0 && unitLoadStatus === 'error' ? (
@@ -244,9 +246,9 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                     <Button
                                         size="sm"
                                         onClick={() => handleAssignUnit(unit)}
-                                        className="h-9 w-9 rounded-lg bg-blue-600 p-0 hover:bg-blue-500"
+                                        disabled={!!working} className="h-9 rounded-lg bg-blue-600 px-2 text-[10px] hover:bg-blue-500"
                                     >
-                                        <Plus className="w-3 h-3" />
+                                        {working===unit.id?'Saving…':'Assign To Call'}
                                     </Button>
                                 </div>
                             );
@@ -255,15 +257,15 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                 </div>
                 {!!heldUnits.length&&<div className="mt-3 rounded-lg border border-amber-700/50 bg-amber-950/15 p-2"><p className="mb-2 text-[10px] font-black text-amber-300">DISPATCH HOLD · NEW CALLS BLOCKED ({heldUnits.length})</p>{heldUnits.map(unit=><div key={unit.id} className="flex items-center justify-between gap-2 border-t border-slate-800 py-1.5 text-xs"><span>{displayUnitName(unit)} · {currentCallCount(unit)} active call(s)</span><Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,false)} className="h-8 border-emerald-700 text-emerald-300">Resume Calls</Button></div>)}</div>}
                 {otherActiveUnits.length > 0 && !searchTerm && (
-                    <div className="mt-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-2">
-                        <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">On duty but unavailable ({otherActiveUnits.length})</p>
+                    <details className="mt-2 rounded-lg border border-slate-700/70 bg-slate-900/40 p-2">
+                        <summary className="cursor-pointer text-[10px] font-black text-slate-400">Unavailable Officers ({otherActiveUnits.length})</summary>
                         {otherActiveUnits.map(unit => (
                             <div key={unit.id} className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-300">
                                 <span className="truncate">{unit.unit_number ? 'Unit ' + unit.unit_number + ' · ' : ''}{displayUnitName(unit)}</span>
                                 <span className="shrink-0 text-amber-400">{unit.status || 'Busy'}</span>
                             </div>
                         ))}
-                    </div>
+                    </details>
                 )}
                 {unitLoadStatus === 'error' && units.length > 0 && (
                     <Button size="sm" variant="outline" className="mt-2" onClick={onRetryUnits}>Roster may be outdated · Retry</Button>

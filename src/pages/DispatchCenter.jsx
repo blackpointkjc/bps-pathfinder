@@ -63,6 +63,8 @@ export default function DispatchCenter() {
     const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('agency');
+    const [supervisorWorking,setSupervisorWorking]=useState(false);
+    const [dispatchFeedback,setDispatchFeedback]=useState('');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
@@ -577,11 +579,13 @@ export default function DispatchCenter() {
     };
 
     const requestSupervisorForSelectedCall = async () => {
-        if (!selectedCall?.id) return;
+        if (!selectedCall?.id || supervisorWorking) return;
+        setSupervisorWorking(true);setDispatchFeedback('Requesting Supervisor…');
         try {
             const response = await base44.functions.invoke('requestSupervisorAssist', { call_id: selectedCall.id });
             const payload = response?.data || response || {};
             if (payload.error) throw new Error(payload.error);
+            setDispatchFeedback(payload.assigned ? `${payload.supervisor?.name||'Supervisor'} Assigned To Call` : payload.reason || 'Supervisor Request Recorded');
             if (payload.pending || payload.request_recorded) {
                 toast.success(payload.reason || 'Supervisor request recorded and awaiting an eligible supervisor.');
                 await loadCallNotes(selectedCall.id);
@@ -592,8 +596,9 @@ export default function DispatchCenter() {
                 await loadActiveCalls();
             }
         } catch (error) {
+            setDispatchFeedback(error?.response?.data?.error || error?.message || 'Unable To Request Supervisor');
             toast.error(error?.response?.data?.error || error?.message || 'Unable to request supervisor');
-        }
+        } finally {setSupervisorWorking(false);}
     };
 
     const addCallNote = async () => {
@@ -690,8 +695,8 @@ export default function DispatchCenter() {
         const matchesFilter = queueFilter === 'agency' || (property && (queueFilter === 'all' ||
             (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
             (queueFilter === 'priority' && ['critical', 'high'].includes(incidentPriority(call))) ||
-            String(propertyCallProgress(call)||'').toLowerCase()===String(queueFilter).toLowerCase()));
-        const haystack = `${call.call_id || ''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
+            String(propertyCallProgress(call)||'').toLowerCase().replace(/[ _-]/g,'')===String(queueFilter).toLowerCase().replace(/[ _-]/g,'')));
+        const haystack = `${call.call_id || ''} ${call.bps_reference||''} ${call.agency_cad_number||''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
     });
 
@@ -826,7 +831,7 @@ export default function DispatchCenter() {
             </div>
 
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 xl:flex xl:flex-nowrap xl:px-3`}>
+            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 xl:flex xl:flex-wrap xl:px-3`}>
                 <div className="relative w-full min-w-0 sm:w-auto sm:min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input id="cad-queue-search" value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address...  [/]"
@@ -835,7 +840,7 @@ export default function DispatchCenter() {
                 {[
                     ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED PROPERTY'], ['priority','HIGH PRIORITY PROPERTY'], ['New','NEW PROPERTY'], ['Dispatched','DISPATCHED PROPERTY'], ['Enroute','EN ROUTE PROPERTY'], ['On Scene','ON SCENE PROPERTY'], ['agency','ALL ACTIVE CALLS']
                 ].map(([value,label]) => (
-                    <button key={value} onClick={() => setQueueFilter(value)} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label}</button>
+                    <button key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label}</button>
                 ))}
                 <div className="flex-1" />
                 <span className="text-[10px] text-slate-500">SORT:</span>
@@ -967,7 +972,7 @@ export default function DispatchCenter() {
                                             </button>
                                         ))}
                                         <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
-                                        <button onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">REQUEST SUPERVISOR</button>
+                                        <button disabled={supervisorWorking} onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">{supervisorWorking?'REQUESTING…':'REQUEST SUPERVISOR'}</button>{dispatchFeedback&&<p role="status" className="w-full rounded border border-cyan-700 p-2 text-xs text-cyan-200">{dispatchFeedback}</p>}
                                         <button onClick={requestWelfareForSelectedCall} disabled={welfareWorking} className="px-2 py-1 rounded border border-red-600 bg-red-950/40 text-[9px] font-bold text-red-200 hover:bg-red-900/50 disabled:opacity-50">{welfareWorking ? 'SENDING…' : 'WELFARE CHECK'}</button>
                                     </div>
                                     {welfareChecks.length > 0 && (
