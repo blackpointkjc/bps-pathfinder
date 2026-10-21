@@ -546,9 +546,9 @@ Deno.serve(async (req) => {
     const operational = (user:any) => {
       const roles = roleSet(user);
       const rank = lower(user?.rank);
-      if (!user?.email || user?.termination_date || ['terminated', 'on_leave'].includes(lower(user?.employment_status))) return false;
+      if (!user?.email || user?.termination_date || lower(user?.employment_status) === 'terminated') return false;
       if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
-      return roles.has('officer') || roles.has('cad_access') || ['officer','corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(rank);
+      return roles.has('officer') || roles.has('cad_access') || ['officer','unarmed officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel','supervisor'].includes(rank);
     };
     const onDutyUsers = (users || [])
       .filter(operational)
