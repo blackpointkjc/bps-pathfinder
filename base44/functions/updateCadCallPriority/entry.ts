@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     }).catch(() => null);
 
     return Response.json({ success: true, priority, upgraded });
-  } catch (error) {
+  } catch (error: any) {
     console.error('updateCadCallPriority failed', error);
     return Response.json({ error: error?.message || 'Unable to update call priority' }, { status: 500 });
   }

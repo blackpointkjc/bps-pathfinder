@@ -21,14 +21,14 @@ Deno.serve(async req=>{
   try {
    const before=await entities.User.get(change.id);
    const original=users.find(p=>p.id===change.id);
-   if(before.updated_date!==original.updated_date)throw new Error('Officer changed during apply. Preview again.');
+   if(!original || before.updated_date!==original.updated_date)throw new Error('Officer changed during apply. Preview again.');
    await entities.User.update(change.id,change.updates);saved=true;
    const after=await entities.User.get(change.id);
    if(Object.entries(change.updates).some(([k,v])=>String(after[k]||'')!==String(v)))throw new Error('Assignment persistence could not be verified');
    await notifyPlatoonChange(entities,before,after);
    applied.push(change.id);
-  }catch(error){failed.push({id:change.id,assignment_saved:saved,error:error.message});break;}
+  }catch(error:any){failed.push({id:change.id,assignment_saved:saved,error:error.message});break;}
  }
  return Response.json({success:!failed.length,applied,failed,remaining:plan.changes.length-applied.length-failed.length,...(failed.length?{error:'Balance stopped after a failure. Review saved assignments and notification status before generating another preview.'}:{})});
- }catch(error){return Response.json({error:error.message||'Balance failed'},{status:500});}
+ }catch(error:any){return Response.json({error:error.message||'Balance failed'},{status:500});}
 });
