@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useLocation,useNavigate } from 'react-router-dom';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
@@ -25,14 +26,25 @@ const TOOLS = {
 
 export default function CADCenter({ embedded = false }) {
  const location=useLocation(),navigate=useNavigate();
+ const hostRef=useRef(null);
  const params=new URLSearchParams(location.search);
  const section=params.get(embedded?'cad_section':'section')||'live';
  const toolKey=embedded?'cad_tool':'tool';
  const tools=TOOLS[section]||TOOLS.live;
  const active=tools.find(t=>t.id===params.get(toolKey))||tools[0];
  const Component=active.component;
+ useEffect(()=>{
+  if(active.id!=='dispatch'||!hostRef.current)return;
+  const host=hostRef.current;
+  const measure=()=>host.style.setProperty('--cad-workspace-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)}px`);
+  measure();
+  const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
+  if(host.parentElement)observer?.observe(host.parentElement);
+  window.addEventListener('resize',measure);
+  return()=>{observer?.disconnect();window.removeEventListener('resize',measure);};
+ },[active.id]);
  const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);['new','open','call_id','call_number','callId','lat','lng'].forEach(key=>next.delete(key));navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
- return <main className="cad-console-shell">
+ return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':'')}>
   <header className="cad-system-header"><div><span className="cad-insignia">BPS</span><strong>PATHFINDER <small>COMPUTER AIDED DISPATCH</small></strong></div><span className="cad-system-label">OPERATIONS / COMMAND & CONTROL</span></header>
   <nav className="cad-mode-nav" aria-label="CAD workstations">{Object.entries(TOOLS).flatMap(([group,items])=>items.map(item=><button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)}>{item.label}</button>))}</nav>
   <div className={'cad-active-screen '+(active.id==='dispatch'?'cad-screen-dispatch':active.id==='map'?'flex h-[calc(100dvh-250px)] min-h-[520px] flex-col [&>div]:flex-1':'')}><Component embedded /></div>
