@@ -103,7 +103,17 @@ Deno.serve(async (req) => {
       first_name,
       last_name,
       ...(accountType === 'student_pending' ? { date_of_birth: date_of_birth || '' } : {}),
-      mobile_phone: mobile_phone || '',
+      ...(mobile_phone ? { mobile_phone } : {}),
+      // Save the information entered by Admin at invitation time, including
+      // pending accounts. Never send empty values that wipe an existing profile.
+      ...(date_of_birth ? { date_of_birth } : {}),
+      ...(badge_number ? { badge_number } : {}),
+      ...(unit_number ? { unit_number } : {}),
+      ...(hire_date ? { hire_date } : {}),
+      ...(division ? { division } : {}),
+      ...(dcjs_number ? { dcjs_number } : {}),
+      ...(dcjs_expiration ? { dcjs_expiration } : {}),
+      ...(firearm_expiration ? { firearm_expiration } : {}),
       additional_roles: employeeRoles,
       assigned_location: clientAssignedLocations[0] || '',
       assigned_locations: clientAssignedLocations,
@@ -196,6 +206,12 @@ Deno.serve(async (req) => {
 
       try {
         await base44.asServiceRole.entities.User.update(portalUser.id, updates);
+        const confirmed = await base44.asServiceRole.entities.User.get(portalUser.id);
+        const unmatched = Object.keys(updates).filter(field =>
+          ['first_name','last_name','mobile_phone','date_of_birth','badge_number','unit_number','hire_date','division','dcjs_number','dcjs_expiration','firearm_expiration'].includes(field)
+          && String(confirmed?.[field] ?? '') !== String(updates[field] ?? '')
+        );
+        if (unmatched.length) throw new Error('Profile fields were not confirmed saved: ' + unmatched.join(', '));
       } catch (error) {
         assignmentPending = true;
         assignmentError = error?.message || 'The invited user is not editable yet';
