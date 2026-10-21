@@ -45,6 +45,18 @@
     "last_source_poll_duration_ms": {
       "type": "number",
       "description": "Duration of the most recent source poll and fast ingest"
+    },
+    "migration_stage": {
+      "type": "number"
+    },
+    "migration_cursor": {
+      "type": "string"
+    },
+    "migration_complete": {
+      "type": "boolean"
+    },
+    "migration_updated": {
+      "type": "number"
     }
   },
   "required": [

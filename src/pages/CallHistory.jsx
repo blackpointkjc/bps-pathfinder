@@ -192,32 +192,30 @@ export default function CallHistory() {
         let cancelled=false;
         const repair=async()=>{
             while(!cancelled){
-                const missing=referenceRowsRef.current.filter(row=>!cadReference(row)&&row._referenceEntity&&row._referenceId).slice(0,40);
-                if(!missing.length)return;
+                const missing=referenceRowsRef.current.filter(row=>!cadReference(row)&&row._referenceEntity&&row._referenceId).slice(0,500);
                 try{
-                    const response=await base44.functions.invoke('ensure-cad-references',{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))});
+                    const response=await base44.functions.invoke('ensure-cad-references',missing.length?{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))}:{action:'backfill'});
                     const data=response?.data||response||{};
                     if(cancelled)return;
                     if(data.error)throw new Error(data.error);
-                    if(!data.mappings?.length)return;
-                    setRows(previous=>previous.map(row=>{
-                        const mapping=data.mappings.find(item=>item.entity===row._referenceEntity&&String(item.id)===String(row._referenceId));
-                        return mapping?{...row,bps_reference:mapping.reference,call_id:mapping.reference}:row;
-                    }));
-                    clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+                    if(data.mappings?.length){
+                        const references=new Map(data.mappings.map(item=>[item.entity+':'+item.id,item.reference]));
+                        setRows(previous=>previous.map(row=>{const reference=references.get(row._referenceEntity+':'+row._referenceId);return reference?{...row,bps_reference:reference,call_id:reference}:row;}));
+                        clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+                    }
+                    if(!missing.length&&data.done)return;
+                    if(missing.length&&!data.mappings?.length)return;
                 }catch(error){
                     const status=Number(error?.response?.status||error?.status),message=error?.response?.data?.error||error?.message||'';
                     if([409,429,502,503,504].includes(status)||/rate.limit|429/i.test(message)){
-                        await new Promise(resolve=>setTimeout(resolve,status===409?10000:60000));
-                        continue;
+                        await new Promise(resolve=>setTimeout(resolve,status===409?10000:60000));continue;
                     }
                     console.warn('CAD reference repair will resume on the next history refresh',message);return;
                 }
-                await new Promise(resolve=>setTimeout(resolve,20000));
+                await new Promise(resolve=>setTimeout(resolve,missing.length?250:3000));
             }
         };
-        void repair();
-        return()=>{cancelled=true;};
+        void repair();return()=>{cancelled=true;};
     },[loading,lastRefresh]);
 
     const init = async () => {
