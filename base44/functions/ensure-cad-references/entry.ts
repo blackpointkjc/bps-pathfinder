@@ -39,7 +39,6 @@ Deno.serve(async req=>{
   if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}
   if(!trustedService&&(!actor||!['admin','dispatch','dispatcher','cad_access','full_access','supervisor'].some(role=>roles.has(role))&&!actor.dispatch_role))return Response.json({error:'CAD access required'},{status:403});
   const body=await req.json().catch(()=>({}));
-  if(body.action==='status'){const counts:any={};for(const entity of collections)counts[entity]=await api.asServiceRole.entities[entity].count();return Response.json({counts});}
   if(body.action==='allocate')return Response.json({success:true,references:await reserve(api,Math.max(1,Math.min(100,Number(body.count)||1)))});
   const selected=Array.isArray(body.records)?body.records.slice(0,500):[];
   const rows:any[]=[];
@@ -51,12 +50,11 @@ Deno.serve(async req=>{
    if(state.migration_complete)return Response.json({success:true,done:true,scanned:state.last_number,updated:state.migration_updated,mappings:[]});
    if(new Date(state.ingestion_locked_until||0).getTime()>Date.now())return Response.json({error:'Historical CAD reference batch is in progress',retryable:true},{status:409});
    const token=crypto.randomUUID();
-   await counters.update(state.id,{ingestion_lock_token:token,ingestion_locked_until:new Date(Date.now()+60000).toISOString()});
+   await counters.update(state.id,{ingestion_lock_token:token,ingestion_locked_until:new Date(Date.now()+180000).toISOString()});
    await pause(250);
    const verified=(await counters.filter({counter_key:'cad_reference_backfill_v2'},undefined,1))[0];
    if(verified?.ingestion_lock_token!==token)return Response.json({error:'Historical reference batch will retry',retryable:true},{status:409});
    migration=verified;migrationApi=api;
-   if(!verified.last_source_poll_status){const counts:any={};for(const name of collections)counts[name]=await api.asServiceRole.entities[name].count();await counters.update(state.id,{last_source_poll_status:JSON.stringify(counts)});}
    scanStage=Number(verified.migration_stage||0);
    scanEntity=['CallHistory','PropertyAlert','DispatchCall','PropertyCallLink'][scanStage];
    if(!scanEntity){await counters.update(state.id,{migration_complete:true});return Response.json({success:true,done:true,mappings:[]});}
@@ -70,7 +68,7 @@ Deno.serve(async req=>{
   }
   // Read original counterparts once, so a surviving archive/property alert reuses
   // its already assigned CAD number instead of receiving a second number.
-  const identities=[...new Set(rows.filter(item=>!ref(item.row)).flatMap(({entity,row})=>keys(entity,row).filter((key:any)=>String(key).startsWith('id:')).map((key:any)=>String(key).slice(3))))];
+  const identities=[...new Set(rows.filter(item=>!ref(item.row)&&(item.entity!=='CallHistory'||item.row.original_call_id)).flatMap(({entity,row})=>keys(entity,row).filter((key:any)=>String(key).startsWith('id:')).map((key:any)=>String(key).slice(3))))];
   const related:any[]=[];
   if(identities.length){
    for(const [entity,field] of [['DispatchCall','id'],['CallHistory','original_call_id'],['PropertyAlert','callId'],['PropertyCallLink','call_id']]){
