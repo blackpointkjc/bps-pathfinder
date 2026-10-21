@@ -39,11 +39,9 @@ Deno.serve(async req => {
     const users = await read('User directory',()=>api.asServiceRole.entities.User.list('-updated_date',1000));
     // These tables are independently optional; loading in parallel reduces the
     // chance that three sequential scans exceed the backend read budget.
-    const [enrollments,access,tasks]=await Promise.all([
-      read('Student enrollment',()=>api.asServiceRole.entities.StudentEnrollment.list('-created_date',100)),
-      read('Access requests',()=>api.asServiceRole.entities.AccessRequest.list('-created_date',150)),
-      read('Assigned work',()=>api.asServiceRole.entities.Task.list('-created_date',250)),
-    ]);
+    const enrollments=await read('Student enrollment',()=>api.asServiceRole.entities.StudentEnrollment.list('-created_date',100));
+    const access=await read('Access requests',()=>api.asServiceRole.entities.AccessRequest.list('-created_date',150));
+    const tasks=await read('Assigned work',()=>api.asServiceRole.entities.Task.list('-created_date',250));
     const pendingAccess=(access||[]).filter((row:any)=>String(row.status||'pending').toLowerCase()==='pending');
     const openTasks=(tasks||[]).filter((row:any)=>String(row.status||'open').toLowerCase()==='open');
     // Trainer assignments remain actionable, but the admin queue counts officers.

@@ -41,7 +41,7 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
         for (let attempt = 0; attempt < attempts; attempt += 1) {
           try {
             return await reader() || [];
-          } catch (error) {
+          } catch (error: any) {
             lastError = error;
             const isRateLimit = error?.status === 429 || error?.response?.status === 429 || /rate.limit|429|too many requests/i.test(String(error?.message || ''));
             if (!isRateLimit || attempt === attempts - 1) break;
@@ -49,7 +49,7 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
           }
         }
         throw lastError || new Error('Unable to read data');
-      } catch (error) {
+      } catch (error: any) {
         serviceErrors[entity] = error?.message || 'Unable to read data';
         console.warn(`getMyPerformanceData ${entity} unavailable`, error?.message || error);
         return [];

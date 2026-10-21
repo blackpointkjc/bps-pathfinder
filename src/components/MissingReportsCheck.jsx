@@ -14,11 +14,12 @@ const officerLabel = officer => {
   return [rank, last].filter(Boolean).join(' ') || officer?.email || 'Unknown officer';
 };
 
-export default function MissingReportsCheck({ schedules: _schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd }) {
+export default function MissingReportsCheck({ schedules: _schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd, sourceReports, sourceTimeEntries, sourceLoading = false }) {
   const periodStart = weekStart || startOfMonth(new Date());
   const periodEnd = weekEnd || endOfMonth(new Date());
 
-  const { data: reports = [], isLoading: reportsLoading } = useQuery({
+  const { data: fetchedReports = [], isLoading: reportsLoading } = useQuery({
+    enabled: sourceReports === undefined,
     queryKey: ['allDutyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: async () => {
       const [daily, shift] = await Promise.all([
@@ -39,7 +40,8 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
   });
-  const { data: timeEntries = [], isLoading: timeLoading } = useQuery({
+  const { data: fetchedTimeEntries = [], isLoading: timeLoading } = useQuery({
+    enabled: sourceTimeEntries === undefined,
     queryKey: ['missingReportTimeEntries', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
     refetchInterval: 60000,
@@ -47,6 +49,8 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
     refetchIntervalInBackground: false,
   });
 
+  const reports = sourceReports ?? fetchedReports;
+  const timeEntries = sourceTimeEntries ?? fetchedTimeEntries;
   const checks = useMemo(() => {
     const start = format(periodStart, 'yyyy-MM-dd');
     const end = format(periodEnd, 'yyyy-MM-dd');
@@ -138,7 +142,7 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
     return acc;
   }, {});
 
-  if (reportsLoading || timeLoading) return <div className="py-8 text-center text-sm text-slate-500">Checking worked shifts and reports…</div>;
+  if (sourceLoading || (sourceReports === undefined && reportsLoading) || (sourceTimeEntries === undefined && timeLoading)) return <div className="py-8 text-center text-sm text-slate-500">Checking worked shifts and reports…</div>;
 
   return (
     <div className="space-y-4">

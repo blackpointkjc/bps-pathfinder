@@ -85,7 +85,7 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
       const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name, start_date: startDate, end_date: endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      if (Object.keys(payload.service_errors||{}).length) console.warn('Analytics Source Diagnostics', payload.service_errors);
+      if (Object.keys(payload.service_errors||{}).length) { console.warn('Analytics Source Diagnostics', JSON.stringify(payload.service_errors)); clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:'); }
       const previous = queryClient.getQueryData(['companyAnalyticsSegment', name, startDate, endDate]);
       const retained = { ...payload };
       for (const [field, sources] of Object.entries(config.fields)) {
@@ -98,7 +98,7 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchInterval: Math.max(config?.interval || 5 * 60 * 1000, 5 * 60 * 1000),
+    refetchInterval: query => Object.keys(query.state.data?.service_errors||{}).length ? 60000 : Math.max(config?.interval || 5 * 60 * 1000, 5 * 60 * 1000),
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === startDate && previousQuery?.queryKey?.[3] === endDate ? previousData : undefined,
@@ -1081,7 +1081,7 @@ export default function AdminAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <MissingReportsCheck 
+            <MissingReportsCheck sourceReports={analyticsData.dailyActivityReports || []} sourceTimeEntries={analyticsData.timeEntries || []} sourceLoading={!coreAnalytics.data || !dutyAnalytics.data} 
               schedules={schedules}
               allUsers={allUsers}
               filteredUsers={filteredUsers}
