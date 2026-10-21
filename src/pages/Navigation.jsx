@@ -1048,8 +1048,8 @@ export default function Navigation() {
                 toast.error('Location not found. Try a more specific search.');
             } else {
                 const points = results.map(result => result.coords).filter(coords => Array.isArray(coords));
-                if (currentLocation) points.unshift(currentLocation);
                 setFitBounds(points);
+                window.setTimeout(() => setFitBounds(null), 1100);
                 toast.success(`${results.length} mapped location${results.length === 1 ? '' : 's'} found`);
             }
         } catch (error) {
