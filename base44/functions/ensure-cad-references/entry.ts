@@ -56,6 +56,7 @@ Deno.serve(async req=>{
    const verified=(await counters.filter({counter_key:'cad_reference_backfill_v2'},undefined,1))[0];
    if(verified?.ingestion_lock_token!==token)return Response.json({error:'Historical reference batch will retry',retryable:true},{status:409});
    migration=verified;migrationApi=api;
+   if(!verified.last_source_poll_status){const counts:any={};for(const name of collections)counts[name]=await api.asServiceRole.entities[name].count();await counters.update(state.id,{last_source_poll_status:JSON.stringify(counts)});}
    scanStage=Number(verified.migration_stage||0);
    scanEntity=['CallHistory','PropertyAlert','DispatchCall','PropertyCallLink'][scanStage];
    if(!scanEntity){await counters.update(state.id,{migration_complete:true});return Response.json({success:true,done:true,mappings:[]});}
