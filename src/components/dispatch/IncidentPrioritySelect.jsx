@@ -1,0 +1,5 @@
+import { useState } from 'react';
+export default function IncidentPrioritySelect({call,priority,onSave,disabled=false}) {
+ const [saving,setSaving]=useState(false),[error,setError]=useState('');
+ return <div className="inline-flex flex-col gap-1"><label className="flex items-center gap-2 text-xs text-slate-300">Priority<select aria-label={'Change priority for '+(call.bps_reference||call.call_id||call.id)} value={priority||'medium'} disabled={disabled||saving} onClick={e=>e.stopPropagation()} onChange={async e=>{e.stopPropagation();const next=e.target.value;setSaving(true);setError('');try{await onSave(call,next);}catch(err){setError(err?.response?.data?.error||err.message||'Priority could not be saved');}finally{setSaving(false);}}} className="min-h-9 rounded border border-slate-500 bg-[#081422] px-2 text-xs text-white disabled:opacity-50"><option value="critical">P1 · Critical</option><option value="high">P2 · High</option><option value="medium">P3 · Standard</option><option value="low">P4 · Low</option></select>{saving&&<span role="status">Saving…</span>}</label>{error&&<span role="alert" className="max-w-64 text-xs text-red-300">{error}</span>}</div>;
+}
