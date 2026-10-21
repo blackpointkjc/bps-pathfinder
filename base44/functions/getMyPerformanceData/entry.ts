@@ -1,3 +1,4 @@
+// Includes portal-email migration aliases when reading historical officer activity.
 import { loadPerformanceData } from './performanceData.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 

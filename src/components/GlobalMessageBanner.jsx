@@ -516,7 +516,6 @@ export default function GlobalMessageBanner({ user }) {
     const showPropertyCall = async (record, options = {}) => {
       const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
-      if (source.sourceName && record.source_name !== source.sourceName) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
