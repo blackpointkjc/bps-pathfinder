@@ -683,3 +683,4 @@ export default function CallHistory() {
         </div>
     );
 }
+base44.functions.invoke('ensure-cad-references',{action:'status'}).then(r=>console.info('CAD archive counts',JSON.stringify(r.data||r))).catch(e=>console.warn('CAD counts',e.message));
