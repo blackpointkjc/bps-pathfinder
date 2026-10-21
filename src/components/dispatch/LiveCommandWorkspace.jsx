@@ -1,8 +1,9 @@
+import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { MapPin, ArrowUpRight, Radio, RefreshCw, Search, Shield, CheckCheck, Users } from 'lucide-react';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,onMap,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,isExternal,actions,settings}){
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,isExternal,actions,settings}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const needsDispatch=call=>!(call.assigned_units||[]).length&&!call.source;
  const critical=allCalls.filter(c=>['critical','high'].includes(priorityOf(c)));
@@ -11,6 +12,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const visible=calls.filter(c=>(agency==='all'||agency==='external'&&isExternal(c)||c.agency===agency)&&(focus==='all'||focus==='unassigned'&&needsDispatch(c)||focus==='urgent'&&['critical','high'].includes(priorityOf(c)))&&[incidentOf(c),c.location,c.cross_street,identifierOf(c).value].join(' ').toLowerCase().includes(query.toLowerCase()));
  visible.sort((a,b)=>['critical','high','medium','low'].indexOf(priorityOf(a))-['critical','high','medium','low'].indexOf(priorityOf(b))||Date.parse(b.time_received||b.created_date||0)-Date.parse(a.time_received||a.created_date||0));
  const officers=units.filter(u=>[u.rank,u.last_name,u.unit_number,u.platoon,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase())).sort(comparePersonnel);
+ const detail=selectedCall?(allCalls.find(call=>call.id===selectedCall.id)||selectedCall):null;
  const run=async(key,task)=>{if(working)return;setWorking(key);setError('');try{await task();}catch(e){setError(e?.response?.data?.error||e.message||'Action could not be saved.');}finally{setWorking('');}};
  return <div className="live-command-workspace min-h-full min-w-0 bg-[#080e18] p-3 text-slate-100 md:p-5">
   {critical.length>0&&<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-700/60 bg-red-950/40 px-4 py-3"><div className="flex items-center gap-3"><span className="h-2.5 w-2.5 rounded-full bg-red-400"/><strong className="text-sm text-red-100">{critical.length} priority response{critical.length===1?'':'s'} active</strong></div><button type="button" onClick={()=>setFocus('urgent')} className="text-sm font-semibold text-red-200 underline underline-offset-4">Review priority incidents</button></div>}
@@ -41,5 +43,12 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
     <details className="rounded-2xl border border-slate-700 bg-slate-900"><summary className="cursor-pointer p-4 text-sm font-semibold">My duty & location settings</summary><div className="space-y-3 border-t border-slate-700 p-3">{settings}</div></details>
    </aside>
   </div>
+  <Dialog open={!!detail} onOpenChange={open=>{if(!open)onClose?.();}}><DialogContent className="max-w-3xl border-slate-700 bg-slate-900 text-white"><DialogHeader><DialogTitle className="pr-10 text-xl">{detail?incidentOf(detail):'Incident details'}</DialogTitle><DialogDescription className="text-slate-400">{detail?identifierOf(detail).value:''}</DialogDescription></DialogHeader>{detail&&<div className="space-y-5">
+   <dl className="grid gap-4 rounded-xl border border-slate-700 bg-slate-950 p-4 sm:grid-cols-2">{[['Location',detail.location||'Pending'],['Status',detail.status||'Active'],['Priority',(priorities[priorityOf(detail)]||priorities.medium).label],['Received',timeOf(detail.time_received)+' ET'],['Agency',detail.agency||'Pending'],['Cross street',detail.cross_street||'None recorded']].map(([label,value])=><div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-sm text-white">{value}</dd></div>)}</dl>
+   {detail.description&&<section><h3 className="mb-2 text-sm font-semibold text-slate-300">Incident narrative</h3><p className="whitespace-pre-wrap rounded-xl border border-slate-700 p-4 text-sm leading-7 text-slate-200">{detail.description}</p></section>}
+   <section><h3 className="mb-2 text-sm font-semibold text-slate-300">Assigned units</h3><div className="flex flex-wrap gap-2">{(detail.assigned_units||[]).map(id=>{const person=units.find(unit=>[unit.id,unit.user_id,unit.officer_id,unit.email].some(value=>String(value)===String(id)));return <span key={id} className="rounded-lg border border-slate-600 px-3 py-2 text-sm">{person?[person.rank,person.last_name,'· Unit',person.unit_number||'—'].filter(Boolean).join(' '):'Unit '+id}</span>;})}{!(detail.assigned_units||[]).length&&<p className="text-sm text-amber-300">No unit has been assigned.</p>}</div></section>
+   <div className="flex flex-wrap justify-end gap-2 border-t border-slate-700 pt-4"><button type="button" onClick={()=>onMap(detail)} className="rounded-lg border border-cyan-600 bg-cyan-950 px-4 py-2 text-sm text-cyan-100">Open map & dispatch</button>{canChangePriority&&<button type="button" disabled={!!working} onClick={event=>run(detail.id,()=>onPriority(detail,event))} className="rounded-lg border border-slate-600 px-4 py-2 text-sm">Change priority</button>}{canClear&&<button type="button" disabled={!!working} onClick={event=>run(detail.id,async()=>{await onClear(detail,event);onClose?.();})} className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold">{working===detail.id?'Saving…':'Clear call'}</button>}</div>
+  </div>}</DialogContent></Dialog>
+
  </div>;
 }

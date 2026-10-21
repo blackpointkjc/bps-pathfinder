@@ -8,7 +8,6 @@ import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils'
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -16,13 +15,6 @@ import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficer
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
 import { useAuth } from '@/lib/AuthContext';
 import AdminLiveLocationPrivacy from '@/components/dispatch/AdminLiveLocationPrivacy';
-
-const PRIORITY_CONFIG = {
-    critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
-    high:     { label: 'P2', color: '#f97316', bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', row: 'bg-orange-950/20 hover:bg-orange-950/40', badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
-    medium:   { label: 'P3', color: '#eab308', bg: 'bg-yellow-500', text: 'text-yellow-400', border: 'border-yellow-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
-    low:      { label: 'P4', color: '#3b82f6', bg: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
-};
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
@@ -67,21 +59,6 @@ function elapsed(call) {
     return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 
-function PanelHeader({ children, count, accent = 'gold' }) {
-    const accents = { gold: 'border-t-gold', red: 'border-t-red-500', blue: 'border-t-blue-500', green: 'border-t-green-500' };
-    return (
-        <div className={`bg-slate-800/80 border-b border-slate-700 border-t-2 ${accents[accent]} px-3 py-2.5 flex items-center justify-between`}>
-            <div className="flex items-center gap-2">
-                <div className="w-1.5 h-5 bg-gold rounded-sm flex-shrink-0 shadow-[0_0_8px_hsl(var(--gold))]" />
-                <span className="text-white font-mono font-bold text-xs tracking-widest">{children}</span>
-            </div>
-            {count !== undefined && (
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{count}</span>
-            )}
-        </div>
-    );
-}
-
 // Inner dashboard — consumes context
 function CommandDashboardInner({ embedded = false }) {
     const navigate = useNavigate();
@@ -93,8 +70,6 @@ function CommandDashboardInner({ embedded = false }) {
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [statusSaving,setStatusSaving] = useState(false);
-    const [incidentSearch,setIncidentSearch]=useState('');
-    const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
     const [canonicalLoaded, setCanonicalLoaded] = useState(false);
     const [, setTick]                           = useState(0);
@@ -276,45 +251,10 @@ function CommandDashboardInner({ embedded = false }) {
         return { value: 'REFERENCE PENDING', type: 'pending' };
     };
 
-    const pulsePointCalls = calls.filter(isPulsePointCall);
-    const showPulsePointControls = pulsePointCalls.length > 0;
-
-    useEffect(() => {
-        if (agencyFilter === 'PULSEPOINT' && !showPulsePointControls) setAgencyFilter('ALL');
-    }, [agencyFilter, showPulsePointControls]);
-
-    const visibleCalls = agencyFilter === 'ALL'
-        ? calls
-        : agencyFilter === 'PULSEPOINT'
-            ? pulsePointCalls
-            : calls.filter(call => call.agency === agencyFilter);
-    const sortedCalls = visibleCalls.filter(call=>[call.incident,call.location,call.agency_cad_number,call.bps_reference,call.call_id].join(' ').toLowerCase().includes(incidentSearch.toLowerCase())).sort((a, b) => {
-        const getRef = (c) => {
-            const created = c.created_date ? parseServerTimestamp(c.created_date)?.getTime() || 0 : 0;
-            const received = c.time_received ? parseServerTimestamp(c.time_received)?.getTime() || 0 : 0;
-            if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) return received;
-            return created;
-        };
-        return getRef(b) - getRef(a);
-    });
-
     const cadOfficerUnits = (canonicalLoaded ? canonicalStatusUsers : users).filter(isOperationalOfficer);
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
-    const onlineUnits    = statusUnits.filter(u => u.presence_online === true || u.session_active === true);
-    const offlineUnits   = statusUnits.filter(u => !(u.presence_online === true || u.session_active === true));
-    const outOfServiceUnits = statusUnits.filter(u => u.status === 'Out of Service');
-    const staleUnits     = onlineUnits.filter(u => u.connection_stale === true);
-    const inServiceUnits = onlineUnits.filter(u => u.status !== 'Out of Service');
-    const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
-    const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
-    const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
-    const dispatchReadyUnits = inServiceUnits.filter(u => u.connection_stale !== true);
-    const availUnits     = dispatchReadyUnits.filter(u => u.status === 'Available');
-    const enrouteUnits   = dispatchReadyUnits.filter(u => u.status === 'Enroute');
-    const onSceneUnits   = dispatchReadyUnits.filter(u => u.status === 'On Scene');
-    const busyUnits      = dispatchReadyUnits.filter(u => u.status === 'Busy');
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const currentRoles = new Set((currentUser?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
@@ -330,13 +270,12 @@ function CommandDashboardInner({ embedded = false }) {
 
     return <>
       <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={manualRefresh}
-        onOpen={setSelectedCall} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
+        onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={isAdmin} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} isExternal={isPulsePointCall}
-        actions={<><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><OfficerDistressButton currentUser={currentUser}/></>}
+        actions={<><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
-      <FieldCallModal call={selectedCall} onClose={()=>setSelectedCall(null)}/>
     </>;
 
 }

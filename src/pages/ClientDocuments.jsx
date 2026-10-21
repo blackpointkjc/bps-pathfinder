@@ -16,15 +16,15 @@ export default function ClientDocuments(){
  const [selectedSite,setSelectedSite]=useState(''),[view,setView]=useState('instructions');
  const preview=getClientPreviewId();
  const {data:user}=useQuery({queryKey:['clientPortalUser',preview],queryFn:getClientPortalUser,staleTime:60000});
- const assigned=[...new Set([...(user?.assigned_locations||[]),...(user?.assigned_sites||[]),user?.assigned_location].filter(Boolean))];
+ const {data:users=[]}=useQuery({queryKey:['clientPostOrderChainUsers'],queryFn:()=>listDirectoryUsers(),enabled:!!user,staleTime:60000});
+ const {data:locations=[]}=useQuery({queryKey:['clientPostOrderChainLocations'],queryFn:()=>listDirectoryLocations(),enabled:!!user,staleTime:60000});
+ const assigned=[...new Set([...(user?.assigned_locations||[]),...(user?.assigned_sites||[]),user?.assigned_location,...locations.filter(site=>[site.assigned_client_email,site.billing_contact_email].some(email=>email&&siteKey(email)===siteKey(user?.email))).map(site=>site.site_name)].filter(Boolean))];
  const orderQuery=useQuery({queryKey:['clientPostOrderLibrary',user?.id,preview,assigned.join('|')],enabled:!!user,queryFn:async()=>{
   const rows=await base44.entities.PostOrder.list('-updated_date',1000);
   const allowed=new Set(assigned.map(siteKey)),seen=new Set();
   return rows.filter(row=>allowed.has(siteKey(row.site_name))).filter(row=>{const k=siteKey(row.site_name);if(seen.has(k))return false;seen.add(k);return true;});
  },staleTime:60000});
  const companyQuery=useQuery({queryKey:['generalPostOrders'],queryFn:()=>base44.entities.GeneralPostOrder.list('sort_order'),enabled:!!user,staleTime:60000});
- const {data:users=[]}=useQuery({queryKey:['clientPostOrderChainUsers'],queryFn:()=>listDirectoryUsers(),enabled:!!user,staleTime:60000});
- const {data:locations=[]}=useQuery({queryKey:['clientPostOrderChainLocations'],queryFn:()=>listDirectoryLocations(),enabled:!!user,staleTime:60000});
  const orders=orderQuery.data||[],order=orders.find(row=>row.site_name===selectedSite)||orders[0];
  const general=uniqueCompanySections(companyQuery.data||[]),location=locations.find(row=>siteKey(row.site_name)===siteKey(order?.site_name));
  const failed=view==='company'?companyQuery.error:orderQuery.error;

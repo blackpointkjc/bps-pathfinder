@@ -32,11 +32,19 @@ export function postOrderSections(order={}){
  const sections=imported?importedSections(order):[];
  for(const [title,field]of fields){
   const content=String(order[field]||'').trim();if(!content)continue;
+  if(imported&&field==='patrol_schedule'&&content==='Follow the patrol frequency and authorized areas in the full property instructions.')continue;
   if(sections.some(section=>key(section.content).includes(key(content))))continue;
   const existing=sections.find(section=>key(section.title)===key(title));
   if(existing)existing.content=content;else sections.push({title,content});
  }
  if(!imported&&full.trim())sections.push({title:'Additional instructions',content:full.trim()});
+ const paragraphs=new Set();
+ for(const section of sections){
+  const groups=section.content.split(/
+(?=[●○•])/);
+  section.content=groups.filter(group=>{const normalized=key(group);if(normalized.length<30)return true;if(paragraphs.has(normalized))return false;paragraphs.add(normalized);return true;}).join('
+').trim();
+ }
  const seen=new Set();
  return sections.filter(section=>{
   const content=key(section.content);if(!content||seen.has(content))return false;seen.add(content);return true;
