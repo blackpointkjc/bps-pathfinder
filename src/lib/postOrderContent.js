@@ -39,6 +39,14 @@ export function postOrderSections(order={}){
   if(existing)existing.content=content;else sections.push({title,content});
  }
  if(!imported&&full.trim())sections.push({title:'Additional instructions',content:full.trim()});
+ // One policy section per topic; retain every distinct instruction when the
+ // source repeats the same armed-post requirements under different headings.
+ const policy=sections.filter(section=>/^armed officer protocol|^firearm and use of force policy/i.test(section.title));
+ if(policy.length>1){
+  const first=policy[0];first.title='Armed post & use-of-force requirements';
+  first.content=policy.map(section=>section.content).join('\n');
+  for(const duplicate of policy.slice(1))sections.splice(sections.indexOf(duplicate),1);
+ }
  const paragraphs=new Set();
  for(const section of sections){
   const groups=section.content.split(/\n(?=[●○•])/);

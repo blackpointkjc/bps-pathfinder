@@ -38,7 +38,7 @@ const TOOLS = {
   records: [
     { id: 'reports', label: 'All Reports', component: ClientReports },
     { id: 'qr', label: 'QR Patrol Reports', component: ClientQRReports },
-    { id: 'documents', label: 'Training Documents', component: ClientDocuments },
+    { id: 'documents', label: 'Post Orders & Company Standards', component: ClientDocuments },
   ],
   requests: [
     { id: 'special', label: 'Special Requests', component: ClientSpecialRequests },

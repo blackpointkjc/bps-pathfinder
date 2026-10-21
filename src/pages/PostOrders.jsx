@@ -1,6 +1,5 @@
 import PostOrderInstructions from '@/components/PostOrderInstructions';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
-import { comparePersonnel } from '@/utils/rankPolicy';
 import SiteChainOfCommand from '@/components/SiteChainOfCommand';
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -72,66 +71,11 @@ export default function PostOrders() {
     enabled: !!selectedSite,
   });
 
-  const { data: rosterEntries } = useQuery({
-    queryKey: ['officerRoster'],
-    queryFn: () => base44.entities.OfficerRoster.list(),
-    initialData: [],
-  });
-
   const { data: generalSections = [] } = useQuery({
     queryKey: ['generalPostOrders'],
     queryFn: () => base44.entities.GeneralPostOrder.list('sort_order'),
   });
 
-  const getSupervisorNames = (postOrderSupervisors) => {
-    // First try to get from location assignment
-    const locationSupervisors = siteLocation?.assigned_supervisors;
-    const supervisorsToUse = locationSupervisors && locationSupervisors.length > 0 
-      ? locationSupervisors 
-      : postOrderSupervisors;
-
-    if (!supervisorsToUse || !Array.isArray(supervisorsToUse) || supervisorsToUse.length === 0) {
-      return 'Not assigned';
-    }
-    
-    const supervisorData = supervisorsToUse.map(email => {
-      // First check officer roster
-      const current = allUsers?.find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
-      const rosterEntry = current || rosterEntries?.find(r => r.email === email && r.status === 'active');
-      if (rosterEntry) {
-        return {
-          email,
-          rank: rosterEntry.rank || '',
-          lastName: rosterEntry.last_name || '',
-          firstName: rosterEntry.first_name || '',
-          unitNumber: rosterEntry.unit_number || '',
-        };
-      }
-      
-      // Fall back to user entity
-      const user = allUsers?.find(u => u.email === email);
-      return {
-        email,
-        rank: user?.rank || '',
-        lastName: user?.last_name || '',
-        firstName: user?.first_name || '',
-        unitNumber: user?.unit_number || '',
-      };
-    }).sort(comparePersonnel);
-
-    return supervisorData.map(sup => {
-      if (sup.rank && sup.lastName && sup.unitNumber) {
-        return `${sup.rank} ${sup.lastName} Unit ${sup.unitNumber}`;
-      }
-      if (sup.rank && sup.lastName) {
-        return `${sup.rank} ${sup.lastName}`;
-      }
-      if (sup.firstName && sup.lastName) {
-        return `${sup.firstName} ${sup.lastName}`;
-      }
-      return sup.email;
-    }).join(', ');
-  };
 
   return (
     <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
