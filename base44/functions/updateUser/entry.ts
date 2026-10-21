@@ -1,3 +1,4 @@
+import { notifyPlatoonChange } from './notifyPlatoonChange.ts';
 import { isClientIdentity, clientOperationalPatch } from './clientAccountPolicy.ts';
 import { synchronizeOfficerIdentity } from './synchronizeOfficerIdentity.ts';
 import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
@@ -140,6 +141,8 @@ Deno.serve(async (req) => {
         const verifiedFields = ['first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
         const missingWrites = verifiedFields.filter(field => updatePayload[field] !== undefined && String(verifiedUser?.[field] ?? '') !== String(updatePayload[field] ?? ''));
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
+        try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }
+        catch (error) { return Response.json({error:'Assignment saved, but reassignment notification failed. Contact command to confirm delivery.',assignment_saved:true},{status:503}); }
         const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId });
 
         // On the first admin approval of an officer, create an actionable
