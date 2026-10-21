@@ -14,5 +14,5 @@ export async function listTrainingUsers(force = false) {
 }
 export function invalidateTrainingUsers() {
   cache = null; cacheAt = 0;
-  clearBase44ReadCacheMatching(key => key.includes('getTrainingUsers'));
+  clearBase44ReadCacheMatching('function:getTrainingUsers:');
 }

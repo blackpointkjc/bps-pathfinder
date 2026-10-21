@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const inflight = new Map<string,Promise<any[]>>();
 const cache = new Map<string, { at:number; rows:any[] }>();
 
 function rolesOf(user:any) {
@@ -10,10 +11,11 @@ function rolesOf(user:any) {
 async function cachedRows(key:string, ttlMs:number, loader:() => Promise<any[]>) {
   const found = cache.get(key);
   if (found && Date.now() - found.at < ttlMs) return found.rows;
-  const rows = await loader();
-  const normalized = Array.isArray(rows) ? rows : [];
-  cache.set(key, { at: Date.now(), rows: normalized });
-  return normalized;
+  if (!inflight.has(key)) inflight.set(key,loader().then(rows=>{
+    if (!Array.isArray(rows)) throw new Error('Invalid source response');
+    cache.set(key,{at:Date.now(),rows}); return rows;
+  }).finally(()=>inflight.delete(key)));
+  return await inflight.get(key)!;
 }
 
 function canonicalizer(users:any[]) {
@@ -172,13 +174,14 @@ Deno.serve(async (req) => {
         let lastError: any = null;
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
-            const rows = await loader();
+            const sourceKey = entityName + ':' + String(body.start_date||'month') + ':' + String(body.end_date||'month');
+            const rows = await cachedRows(sourceKey, 120000, loader);
             return Array.isArray(rows) ? rows : [];
           } catch (error: any) {
             lastError = error;
             const limited = error?.status === 429 || /rate.limit|429/i.test(String(error?.message || ''));
-            if (!limited || attempt > 0) break;
-            await new Promise(resolve => setTimeout(resolve, 1200));
+            if (limited || attempt > 0) break;
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         errors[entityName] = lastError?.message || 'Unable to read data';

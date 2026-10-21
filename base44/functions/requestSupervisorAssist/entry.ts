@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const requesterSession = activeByEmail.get(lower(me.email));
     const originLat = Number(call.latitude ?? requesterSession?.latitude);
     const originLon = Number(call.longitude ?? requesterSession?.longitude);
-    if (!Number.isFinite(originLat) || !Number.isFinite(originLon)) return Response.json({ error: 'No reliable call/requester coordinates available for closest-supervisor assignment' }, { status: 409 });
+    const hasOrigin = Number.isFinite(originLat) && Number.isFinite(originLon);
 
     const liveCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 300).catch(()=>[]);
     const liveCallIds = new Set((liveCalls || []).filter((c:any)=>!['cleared','cancelled','closed','resolved','completed'].includes(lower(c.status))).map((c:any)=>String(c.id)));
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     const candidates:any[] = [];
     for (const u of users || []) {
-      if (!isSupervisor(u) || String(u.id) === String(me.id) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
+      if (!hasOrigin || !isSupervisor(u) || String(u.id) === String(me.id) || !u.email || u.termination_date || already.has(String(u.id)) || busyIds.has(String(u.id))) continue;
       const session = activeByEmail.get(lower(u.email));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const lat = Number(session?.latitude), lon = Number(session?.longitude);

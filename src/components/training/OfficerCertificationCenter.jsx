@@ -40,7 +40,7 @@ export default function OfficerCertificationCenter() {
   const [pushTrainingId, setPushTrainingId] = useState('');
   const [pushDueDate, setPushDueDate] = useState('');
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, error: directoryError, refetch: reloadDirectory } = useQuery({
     queryKey: ['trainingUsers'],
     queryFn: () => listTrainingUsers(true),
     staleTime: 15000,
@@ -80,7 +80,7 @@ export default function OfficerCertificationCenter() {
 
   const openOfficer = (officer) => {
     setSelectedId(officer.id);
-    setEditFormData({ officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(c => ({ ...c })) : [] });
+    setEditFormData({ dcjs_number: officer.dcjs_number || '', dcjs_expiration: officer.dcjs_expiration || '', firearm_expiration: officer.firearm_expiration || '', officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(c => ({ ...c })) : [] });
   };
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function OfficerCertificationCenter() {
     openedRequest.current = requestedOfficerId;
     if (officer) {
       setSelectedId(officer.id);
-      setEditFormData({ officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(cert => ({ ...cert })) : [] });
+      setEditFormData({ dcjs_number: officer.dcjs_number || '', dcjs_expiration: officer.dcjs_expiration || '', firearm_expiration: officer.firearm_expiration || '', officer_certifications: Array.isArray(officer.officer_certifications) ? officer.officer_certifications.map(cert => ({ ...cert })) : [] });
     } else {
       toast.error('This officer’s certification file is unavailable. Check the account in the personnel directory.');
     }
@@ -201,6 +201,7 @@ export default function OfficerCertificationCenter() {
     onError: (error) => toast.error(error.message),
   });
 
+  if (directoryError) return <div role="alert" className="p-8 text-red-300">Officer Certification Records Could Not Be Loaded. <button className="underline" onClick={()=>reloadDirectory()}>Retry Records</button></div>;
   if (isLoading) return <div className="p-8 text-center text-slate-400">Loading certification records…</div>;
 
   return (
