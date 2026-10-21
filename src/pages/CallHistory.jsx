@@ -2,7 +2,7 @@ import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkContr
 import { useState, useEffect, useRef } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History, Printer } from 'lucide-react';
+import { RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -93,6 +93,7 @@ export default function CallHistory() {
     const intervalRef = useRef(null);
     const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
+    const lastServerReadRef=useRef(0);
     const monitoredPropertiesRef = useRef([]);
 
     const decorateRealtimePropertyMatch = (row) => {
@@ -152,10 +153,11 @@ export default function CallHistory() {
             clearBase44ReadCacheMatching(`entity:${entity}:`);
             clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
             if (entity === 'PropertyAlert') clearBase44ReadCacheMatching('entity:PropertyAlert:');
-            window.clearTimeout(realtimeTimerRef.current);
+            if(realtimeTimerRef.current)return;
             realtimeTimerRef.current = window.setTimeout(() => {
+                realtimeTimerRef.current=null;
                 if (document.visibilityState === 'visible') loadAll();
-            }, delay);
+            },Math.max(delay,45000-(Date.now()-lastServerReadRef.current)));
         };
         try {
             const unsubscribe = base44.entities.DispatchCall.subscribe(event => {
@@ -166,7 +168,7 @@ export default function CallHistory() {
             });
             if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
         } catch {}
-        for (const entity of ['CallHistory', 'PropertyAlert', 'Location']) {
+        for (const entity of ['CallHistory', 'PropertyAlert', 'PropertyCallLink', 'Location']) {
             try {
                 const unsubscribe = base44.entities[entity].subscribe(() => scheduleRealtimeRefresh(entity, 900));
                 if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
@@ -195,8 +197,9 @@ export default function CallHistory() {
         await loadAll();
     };
 
-    const loadAll = async () => {
-        if (loadInFlightRef.current) return;
+    const loadAll = async (force=false) => {
+        if (loadInFlightRef.current || (!force&&Date.now()-lastServerReadRef.current<45000)) return;
+        lastServerReadRef.current=Date.now();
         loadInFlightRef.current = true;
         try {
             // Keep a current in-memory copy of monitored property boundaries so
@@ -221,74 +224,6 @@ export default function CallHistory() {
             feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
             setRows(feedRows);setLoading(false);setRefreshing(false);
             setWarnings(Array.isArray(payload.warnings)?payload.warnings:[]);
-
-            // PropertyAlert is authoritative property-call history. Always merge it,
-            // not only when the backend returned zero property rows. This preserves
-            // every monitored-property event even when a linked CAD record was
-            // archived, deduped, or omitted by a bounded history read.
-            try {
-                const alerts = await withRequestTimeout(base44.entities.PropertyAlert.list('-created_date', 1000), 12000, 'Property call history');
-                const alertsByCall = new Map();
-                for (const alert of alerts || []) {
-                    const callId = String(alert?.callId || '').trim();
-                    if (!callId) continue;
-                    const prior = alertsByCall.get(callId);
-                    const priorStamp = parseServerDate(prior?.created_date)?.getTime() || 0;
-                    const nextStamp = parseServerDate(alert?.created_date)?.getTime() || 0;
-                    if (!prior || nextStamp >= priorStamp) alertsByCall.set(callId, alert);
-                }
-
-                const represented = new Set();
-                feedRows = feedRows.map(row => {
-                    const identities = [
-                        row.original_call_id,
-                        row._source === 'active' ? row.id : '',
-                        row.id,
-                    ].filter(Boolean).map(String);
-                    const alert = row._propertyAlert || identities.map(id => alertsByCall.get(id)).find(Boolean) || null;
-                    const originalCallId = String(alert?.callId || row.original_call_id || (row._source === 'active' ? row.id : '') || '');
-                    if (originalCallId) represented.add(originalCallId);
-                    if (!alert) return row;
-                    return {
-                        ...row,
-                        original_call_id: row.original_call_id || originalCallId,
-                        _propertyCall: true,
-                        _propertyAlert: alert,
-                        _propertyName: alert.propertyName || row._propertyName || '',
-                        _propertyId: alert.propertyId || row._propertyId || '',
-                        _propertyLifecycle: alert.lifecycle_status || row._propertyLifecycle || '',
-                        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : row._propertyDistanceMeters,
-                    };
-                });
-
-                const synthetic = [];
-                for (const [callId, alert] of alertsByCall.entries()) {
-                    if (represented.has(callId)) continue;
-                    synthetic.push({
-                        id: `property-alert-${alert.id}`,
-                        original_call_id: callId,
-                        call_id: String(alert.cadNumber || callId),
-                        time_received: alert.callTime || alert.time_received || alert.created_date,
-                        created_date: alert.created_date,
-                        incident: alert.callIncident || 'Monitored Property Call',
-                        location: alert.callLocation || alert.propertyName || 'Monitored property',
-                        agency: 'MONITORING',
-                        status: alert.callStatus || (['resolved', 'false_alarm', 'test'].includes(String(alert.lifecycle_status || '').toLowerCase()) ? 'Closed' : (alert.acknowledged ? 'Closed' : 'Pending')),
-                        description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
-                        assigned_units: [],
-                        _source: 'property_alert',
-                        _propertyCall: true,
-                        _propertyAlert: alert,
-                        _propertyName: alert.propertyName || '',
-                        _propertyId: alert.propertyId || '',
-                        _propertyLifecycle: alert.lifecycle_status || '',
-                        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : null,
-                    });
-                }
-                feedRows = [...feedRows, ...synthetic];
-            } catch (propertyError) {
-                console.warn('[HISTORY] Property history merge unavailable:', propertyError?.message || propertyError);
-            }
 
             // Collapse active/archive copies by the original CAD entity id while
             // preserving property metadata from either copy. Prefer the active row
@@ -338,7 +273,7 @@ export default function CallHistory() {
         clearBase44ReadCacheMatching('entity:PropertyAlert:');
         clearBase44ReadCacheMatching('entity:DispatchCall:');
         clearBase44ReadCacheMatching('entity:CallHistory:');
-        await loadAll();
+        await loadAll(true);
     };
 
     const linkExistingIncidentReport=async row=>{
@@ -564,16 +499,6 @@ export default function CallHistory() {
 
             {/* Filter Bar */}
             <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#293f55] bg-[#091522] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">
-                {/* Search */}
-                <div className="relative w-full md:w-auto">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
-                    <input value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="SEARCH INCIDENT / LOCATION / AGENCY..."
-                        className="w-full rounded border border-slate-700 bg-slate-800 py-2 pl-8 pr-3 text-[10px] text-white placeholder-slate-600 focus:border-gold focus:outline-none md:w-64 md:py-1.5" />
-                </div>
-
-                <div className="w-px h-5 bg-slate-700" />
-
                 {/* Agency filter */}
                 <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
                 <div className="flex max-w-full gap-1 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
