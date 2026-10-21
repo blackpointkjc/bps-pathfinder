@@ -1,254 +1,43 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { getClientPortalUser,getClientPreviewId } from '@/utils/clientPreview';
+import { listDirectoryLocations,listDirectoryUsers } from '@/lib/appDirectory';
 import SiteChainOfCommand from '@/components/SiteChainOfCommand';
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
-import { useState } from "react";
-import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { BookOpen, Shield, AlertTriangle, Phone, MapPin, Users, Clock, FileText, ChevronDown, ChevronUp } from "lucide-react";
-
-export default function ClientDocuments() {
-  const [expandedOrders, setExpandedOrders] = useState({});
-
-  const { data: user } = useQuery({
-    queryKey: ['clientPortalUser', getClientPreviewId()],
-    queryFn: getClientPortalUser,
-    staleTime: 60000,
-  });
-
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
-
-  const { data: documents = [] } = useQuery({
-    queryKey: ['postOrders', clientLocations],
-    queryFn: async () => {
-      const allPostOrders = await base44.entities.PostOrder.list('-created_date');
-      return allPostOrders.filter(order => clientLocations.includes(order.site_name));
-    },
-    enabled: clientLocations.length > 0,
-  });
-
-  const { data: generalSections = [] } = useQuery({
-    queryKey: ['generalPostOrders'],
-    queryFn: () => base44.entities.GeneralPostOrder.list('sort_order'),
-  });
-
-  const {data: directoryUsers = []} = useQuery({queryKey:['clientPostOrderChainUsers'],queryFn:()=>listDirectoryUsers(),enabled:!!user});
-  const {data: directoryLocations = []} = useQuery({queryKey:['clientPostOrderChainLocations'],queryFn:()=>listDirectoryLocations(),enabled:!!user});
-
-  const toggleExpand = (id) => setExpandedOrders(prev => ({ ...prev, [id]: !prev[id] }));
-
-  return (
-    <div className="p-4 md:p-8 min-h-screen bg-slate-50">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-8 h-8 text-purple-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Post Orders</h1>
-            <p className="text-slate-600">Site-specific post orders and operational guidelines</p>
-          </div>
-        </div>
-
-        {documents.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center text-slate-500">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p>No post orders available for your location</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {documents.map((order) => {
-          const isExpanded = expandedOrders[order.id];
-          return (
-            <div key={order.id} className="space-y-4">
-              {/* Site Header Card */}
-              <Card className="border-none shadow-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Shield className="w-7 h-7" />
-                    {order.site_name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {order.site_address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>{order.site_address}</span>
-                    </div>
-                  )}
-                  <Badge className={`${
-                    order.post_type === 'armed' ? 'bg-red-600' :
-                    order.post_type === 'concealed_carry' ? 'bg-orange-600' :
-                    'bg-green-600'
-                  } text-white text-base px-4 py-1 mt-1`}>
-                    {order.post_type === 'armed' ? 'ARMED POST' :
-                     order.post_type === 'concealed_carry' ? 'CONCEALED CARRY' :
-                     'UNARMED POST'}
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              {/* Contacts */}
-              <Card className="border-none shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Users className="w-5 h-5 text-green-600" />
-                    Contacts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <SiteChainOfCommand assignedSupervisors={directoryLocations.find(location=>location.site_name===order.site_name)?.assigned_supervisors?.length ? directoryLocations.find(location=>location.site_name===order.site_name).assigned_supervisors : order.assigned_supervisors || []} users={directoryUsers}/>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {order.property_manager_name && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-600">Property Manager</p>
-                        <p className="text-slate-900 font-medium">{order.property_manager_name}</p>
-                        {order.property_manager_phone && (
-                          <a href={`tel:${order.property_manager_phone}`} className="text-green-600 flex items-center gap-1 text-sm mt-0.5">
-                            <Phone className="w-3 h-3" />{order.property_manager_phone}
-                          </a>
-                        )}
-                      </div>
-                    )}
-                    {order.maintenance_contact && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-600">Maintenance Contact</p>
-                        <a href={`tel:${order.maintenance_contact}`} className="text-green-600 flex items-center gap-1 text-sm">
-                          <Phone className="w-3 h-3" />{order.maintenance_contact}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-3 bg-red-50 rounded-lg border-2 border-red-300">
-                      <p className="text-sm font-semibold text-red-900 mb-1">Emergency Police</p>
-                      <a href={`tel:${order.emergency_police || '911'}`} className="text-2xl font-bold text-red-600">
-                        {order.emergency_police || '911'}
-                      </a>
-                    </div>
-                    {order.non_emergency_police && (
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm font-semibold text-blue-900 mb-1">Non-Emergency Police</p>
-                        <a href={`tel:${order.non_emergency_police}`} className="text-xl font-bold text-blue-600">
-                          {order.non_emergency_police}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  {order.police_precinct_address && (
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-sm font-semibold text-slate-700 mb-1">Police Precinct</p>
-                      <p className="text-slate-900">{order.police_precinct_address}</p>
-                    </div>
-                  )}
-                  {order.additional_contacts && (
-                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <p className="text-sm font-semibold text-purple-900 mb-1">Additional Contacts</p>
-                      <p className="text-slate-900 whitespace-pre-wrap">{order.additional_contacts}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Site-Specific Details */}
-              {(order.site_overview || order.patrol_schedule || order.patrol_areas || order.special_duties || order.special_instructions || order.access_codes) && (
-                <Card className="border-none shadow-lg">
-                  <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <MapPin className="w-5 h-5 text-blue-600" />
-                      Site-Specific Instructions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
-                  <SiteChainOfCommand assignedSupervisors={directoryLocations.find(location=>location.site_name===order.site_name)?.assigned_supervisors?.length ? directoryLocations.find(location=>location.site_name===order.site_name).assigned_supervisors : order.assigned_supervisors || []} users={directoryUsers}/>
-                    {order.access_codes && (
-                      <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
-                        <p className="text-sm font-semibold text-amber-900 mb-1">Access Codes</p>
-                        <p className="text-slate-900 font-mono">{order.access_codes}</p>
-                      </div>
-                    )}
-                    {order.site_overview && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-2">Site Overview</p>
-                        <p className="text-slate-900 whitespace-pre-wrap text-sm leading-relaxed">{order.site_overview}</p>
-                      </div>
-                    )}
-                    {order.patrol_schedule && (
-                      <>
-                        <Separator />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
-                            <Clock className="w-4 h-4" />Patrol Schedule
-                          </p>
-                          <p className="text-slate-900 whitespace-pre-wrap text-sm leading-relaxed">{order.patrol_schedule}</p>
-                        </div>
-                      </>
-                    )}
-                    {order.patrol_areas && (
-                      <>
-                        <Separator />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700 mb-2">Patrol Areas</p>
-                          <p className="text-slate-900 whitespace-pre-wrap text-sm leading-relaxed">{order.patrol_areas}</p>
-                        </div>
-                      </>
-                    )}
-                    {order.special_duties && (
-                      <>
-                        <Separator />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700 mb-2">Special Duties</p>
-                          <p className="text-slate-900 whitespace-pre-wrap text-sm leading-relaxed">{order.special_duties}</p>
-                        </div>
-                      </>
-                    )}
-                    {order.special_instructions && (
-                      <>
-                        <Separator />
-                        <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
-                          <p className="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4" />Important Instructions
-                          </p>
-                          <p className="text-slate-900 whitespace-pre-wrap text-sm leading-relaxed">{order.special_instructions}</p>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* General Post Orders (collapsible) */}
-              {generalSections.length > 0 && (
-                <Card className="border-none shadow-lg border-4 border-slate-700">
-                  <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white cursor-pointer" onClick={() => toggleExpand(order.id)}>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2 text-white">
-                        <Shield className="w-5 h-5" />
-                        General Post Orders & Emergency Action Plan
-                      </CardTitle>
-                      {isExpanded ? <ChevronUp className="w-5 h-5 text-white" /> : <ChevronDown className="w-5 h-5 text-white" />}
-                    </div>
-                    <p className="text-sm text-slate-300 mt-1">Click to {isExpanded ? 'collapse' : 'expand'} general post orders</p>
-                  </CardHeader>
-                  {isExpanded && (
-                    <CardContent className="p-6 space-y-6">
-                      {generalSections.filter(s => s.active).map((section, idx) => (
-                        <div key={section.id}>
-                          {idx > 0 && <Separator className="mb-4" />}
-                          <h3 className="font-bold text-base text-slate-900 mb-2">{section.section_title}</h3>
-                          <p className="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed">{section.content}</p>
-                        </div>
-                      ))}
-                    </CardContent>
-                  )}
-                </Card>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+import PostOrderInstructions from '@/components/PostOrderInstructions';
+import { uniqueCompanySections } from '@/lib/postOrderContent';
+import { BookOpen,MapPin,Phone,Shield,FileText } from 'lucide-react';
+const siteKey=value=>String(value||'').trim().toLowerCase();
+function Contact({title,value,phone=false}){
+ if(!value)return null;
+ return <div className="rounded-xl border border-slate-700 bg-slate-950 p-4"><p className="text-xs text-slate-400">{title}</p>{phone?<a href={'tel:'+value} className="mt-2 flex items-center gap-2 text-sm font-semibold text-cyan-200"><Phone className="h-4 w-4"/>{value}</a>:<p className="mt-2 whitespace-pre-wrap text-sm text-white">{value}</p>}</div>;
+}
+export default function ClientDocuments(){
+ const [selectedSite,setSelectedSite]=useState(''),[view,setView]=useState('instructions');
+ const preview=getClientPreviewId();
+ const {data:user}=useQuery({queryKey:['clientPortalUser',preview],queryFn:getClientPortalUser,staleTime:60000});
+ const assigned=[...new Set([...(user?.assigned_locations||[]),...(user?.assigned_sites||[]),user?.assigned_location].filter(Boolean))];
+ const orderQuery=useQuery({queryKey:['clientPostOrderLibrary',user?.id,preview,assigned.join('|')],enabled:!!user,queryFn:async()=>{
+  const rows=await base44.entities.PostOrder.list('-updated_date',1000);
+  const allowed=new Set(assigned.map(siteKey)),seen=new Set();
+  return rows.filter(row=>allowed.has(siteKey(row.site_name))).filter(row=>{const k=siteKey(row.site_name);if(seen.has(k))return false;seen.add(k);return true;});
+ },staleTime:60000});
+ const companyQuery=useQuery({queryKey:['generalPostOrders'],queryFn:()=>base44.entities.GeneralPostOrder.list('sort_order'),enabled:!!user,staleTime:60000});
+ const {data:users=[]}=useQuery({queryKey:['clientPostOrderChainUsers'],queryFn:()=>listDirectoryUsers(),enabled:!!user,staleTime:60000});
+ const {data:locations=[]}=useQuery({queryKey:['clientPostOrderChainLocations'],queryFn:()=>listDirectoryLocations(),enabled:!!user,staleTime:60000});
+ const orders=orderQuery.data||[],order=orders.find(row=>row.site_name===selectedSite)||orders[0];
+ const general=uniqueCompanySections(companyQuery.data||[]),location=locations.find(row=>siteKey(row.site_name)===siteKey(order?.site_name));
+ const failed=view==='company'?companyQuery.error:orderQuery.error;
+ const pending=view==='company'?companyQuery.isPending:orderQuery.isPending;
+ return <div className="min-h-full bg-[#080f1b] p-4 text-slate-100 md:p-6"><div className="mx-auto max-w-[1440px]">
+  <header className="mb-5 flex flex-wrap items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[.2em] text-cyan-300">Client services / Reference library</p><h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold tracking-tight"><BookOpen className="h-7 w-7 text-cyan-300"/>Post Orders</h1><p className="mt-2 text-sm text-slate-400">Property instructions, supervisor contacts and shared company standards.</p></div><button type="button" onClick={()=>{orderQuery.refetch();companyQuery.refetch();}} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm">Refresh library</button></header>
+  <nav aria-label="Document library" className="mb-5 flex flex-wrap gap-1 rounded-xl border border-slate-700 bg-slate-900 p-2">{[['instructions','Property instructions'],['contacts','Contacts & command'],['company','Company orders & emergency plan']].map(([id,label])=><button type="button" key={id} aria-pressed={view===id} onClick={()=>setView(id)} className="rounded-lg px-4 py-3 text-sm font-medium text-slate-300 aria-pressed:bg-cyan-900 aria-pressed:text-white hover:bg-slate-800">{label}</button>)}</nav>
+  {failed&&<div role="alert" className="mb-4 rounded-xl border border-red-700 bg-red-950/40 p-4 text-sm text-red-100">The document library could not refresh: {failed.message}. Use Refresh library to retry.</div>}
+  {pending?<p role="status" className="p-10 text-center text-slate-400">Loading documents…</p>:view==='company'?<section className="space-y-4"><header className="rounded-xl border border-slate-700 bg-slate-900 p-5"><h2 className="text-xl font-semibold">Black Point company orders</h2><p className="mt-2 text-sm text-slate-400">Shared standards for all properties · {general.length} sections</p></header>{general.map(section=><details key={section.id||section.section_key} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900"><summary className="cursor-pointer px-5 py-4 text-sm font-semibold">{section.section_title}</summary><p className="whitespace-pre-wrap border-t border-slate-700 px-5 py-5 text-sm leading-7 text-slate-300">{section.content}</p></details>)}{!general.length&&!failed&&<p className="p-8 text-center text-slate-400">No company instructions have been published.</p>}</section>:
+  <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]"><aside className="rounded-xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-4"><h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Your properties</h2><div className="space-y-1">{orders.map(row=><button type="button" key={row.id} aria-pressed={order?.id===row.id} onClick={()=>setSelectedSite(row.site_name)} className="w-full rounded-lg border border-transparent p-3 text-left aria-pressed:border-cyan-700 aria-pressed:bg-cyan-950/40 hover:bg-slate-800"><span className="block text-sm font-semibold text-white">{row.site_name}</span><span className="mt-1 block text-xs leading-relaxed text-slate-400">{row.site_address}</span></button>)}</div>{!orders.length&&<p className="p-3 text-sm text-slate-400">No property orders are available in your portfolio.</p>}</aside>
+  <main className="min-w-0 space-y-4">{order?<><header className="rounded-xl border border-slate-700 bg-gradient-to-br from-slate-800 to-slate-900 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-semibold">{order.site_name}</h2><span className="rounded-full border border-slate-600 px-3 py-1 text-xs text-cyan-200">{order.post_type==='concealed_carry'?'Concealed carry':order.post_type==='unarmed'?'Unarmed post':'Armed post'}</span></div><p className="mt-2 flex items-center gap-2 text-sm text-slate-400"><MapPin className="h-4 w-4"/>{order.site_address}</p></header>
+   {view==='instructions'?<><PostOrderInstructions order={order}/>{order.access_codes&&<Contact title="Property access" value={order.access_codes}/>} {order.site_map_url&&<details className="rounded-xl border border-slate-700 bg-slate-900 p-4"><summary className="cursor-pointer text-sm font-semibold">Property map</summary><img src={order.site_map_url} alt={order.site_name+' map'} className="mx-auto mt-4 max-h-[650px] max-w-full rounded-lg object-contain"/></details>}</>:
+   <><section className="rounded-xl border border-slate-700 bg-slate-900 p-5"><h3 className="mb-4 flex items-center gap-2 font-semibold"><Shield className="h-5 w-5 text-cyan-300"/>Site chain of command</h3><SiteChainOfCommand assignedSupervisors={location?location.assigned_supervisors||[]:order.assigned_supervisors||[]} users={users}/></section><div className="grid gap-3 sm:grid-cols-2"><Contact title="Property manager" value={order.property_manager_name}/><Contact title="Property manager phone" value={order.property_manager_phone} phone/><Contact title="Maintenance" value={order.maintenance_contact} phone/><Contact title="Emergency services" value={order.emergency_police||'911'} phone/><Contact title="Non-emergency police" value={order.non_emergency_police} phone/><Contact title="Police precinct" value={order.police_precinct_address}/><Contact title="Additional contacts" value={order.additional_contacts}/></div></>}
+  </>:<div className="rounded-xl border border-dashed border-slate-700 p-12 text-center text-slate-400"><FileText className="mx-auto mb-3 h-8 w-8"/>{failed?'Property orders are temporarily unavailable.':'Select Company orders to read the shared operating standards.'}</div>}</main></div>}
+ </div></div>;
 }

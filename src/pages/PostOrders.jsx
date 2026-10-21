@@ -1,3 +1,4 @@
+import PostOrderInstructions from '@/components/PostOrderInstructions';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import SiteChainOfCommand from '@/components/SiteChainOfCommand';
@@ -6,7 +7,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, MapPin, Phone, Users, AlertTriangle, Clock, CheckCircle } from "lucide-react";
+import { Shield, MapPin, Phone, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -256,20 +257,7 @@ export default function PostOrders() {
 
             {selectedPostOrder.site_map_url&&<Card className="border-slate-700 bg-slate-900"><CardHeader><CardTitle>Site map</CardTitle></CardHeader><CardContent><img src={selectedPostOrder.site_map_url} alt={selectedPostOrder.site_name+' site map'} className="mx-auto max-h-[700px] max-w-full rounded-xl object-contain"/></CardContent></Card>}
 
-            {/* Site Overview */}
-            {selectedPostOrder.site_overview && (
-              <Card id="post-overview" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
-                <CardHeader className="border-b border-slate-700 bg-slate-800">
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-blue-600" />
-                    Site Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.site_overview}</p>
-                </CardContent>
-              </Card>
-            )}
+            <PostOrderInstructions order={selectedPostOrder}/>
 
             {/* General Post Orders - ALWAYS SHOWN - pulled from DB */}
             <Card id="post-general" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-xl border-4 border-slate-700">
@@ -298,62 +286,6 @@ export default function PostOrders() {
                 ))}
               </CardContent>
             </Card>
-
-            {/* Patrol Schedule */}
-            {selectedPostOrder.patrol_schedule && (
-              <Card id="post-patrol" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
-                <CardHeader className="border-b border-slate-700 bg-slate-800">
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-purple-600" />
-                    Patrol Schedule
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.patrol_schedule}</p>
-                  {selectedPostOrder.patrol_areas && (
-                    <>
-                      <Separator className="my-4" />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-300 mb-2">Patrol Areas:</p>
-                        <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.patrol_areas}</p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Special Duties & Instructions */}
-            {(selectedPostOrder.special_duties || selectedPostOrder.special_instructions) && (
-              <Card id="post-duties" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">
-                <CardHeader className="border-b border-slate-700 bg-slate-800">
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-orange-600" />
-                    Duties & Special Instructions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  {selectedPostOrder.special_duties && (
-                    <div>
-                      <p className="text-sm font-semibold text-slate-300 mb-2">Special Duties:</p>
-                      <p className="text-slate-300 whitespace-pre-wrap">{selectedPostOrder.special_duties}</p>
-                    </div>
-                  )}
-                  {selectedPostOrder.special_instructions && (
-                    <>
-                      {selectedPostOrder.special_duties && <Separator />}
-                      <div className="p-4 bg-amber-950/40 border-2 border-amber-800 rounded-lg">
-                        <p className="text-sm font-semibold text-amber-200 mb-2 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          Important Instructions:
-                        </p>
-                        <p className="text-slate-100 whitespace-pre-wrap">{selectedPostOrder.special_instructions}</p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
 
             {/* Emergency Contacts */}
             <Card id="post-emergency" className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-lg">

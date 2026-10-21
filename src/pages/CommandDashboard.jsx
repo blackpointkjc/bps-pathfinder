@@ -11,7 +11,6 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { MapPin, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
