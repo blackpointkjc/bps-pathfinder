@@ -12,6 +12,8 @@ function computeDcjsExpiration(certs: any[]) {
 }
 
 function computeFirearmExpiration(certs: any[]) {
+  const explicit = certs.map((c:any)=>c?.firearm_expiration_date).filter(Boolean).sort();
+  if (explicit.length) return explicit[explicit.length - 1];
   const dated = certs
     .filter((c: any) => FIREARM_PREFIXES.some(prefix => String(c?.course_id || '').startsWith(prefix)) && c?.expiration_date)
     .sort((a: any, b: any) => new Date(b.expiration_date).getTime() - new Date(a.expiration_date).getTime());
