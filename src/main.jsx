@@ -7,6 +7,21 @@ import '@/field-readability.css'
 import { installRequiredPrintFooter } from '@/utils/requiredPrintFooter'
 import { installGlobalRuntimeIssueCapture } from '@/utils/appDiagnostics'
 
+// "ResizeObserver loop completed with undelivered notifications." is a benign
+// browser notification from libraries (recharts, Leaflet, Radix) whose resize
+// callback lands a frame late. It carries no actionable content and every real
+// error still reports normally, so keep it out of the error overlay.
+const RESIZE_OBSERVER_LOOP_ERRORS = new Set([
+  'ResizeObserver loop completed with undelivered notifications.',
+  'ResizeObserver loop limit exceeded',
+]);
+window.addEventListener('error', event => {
+  if (RESIZE_OBSERVER_LOOP_ERRORS.has(event?.message)) {
+    event.stopImmediatePropagation();
+    event.preventDefault?.();
+  }
+});
+
 installRequiredPrintFooter()
 installGlobalRuntimeIssueCapture()
 
@@ -24,6 +39,3 @@ if (import.meta.hot) {
     window.parent?.postMessage({ type: 'sandbox:afterUpdate' }, '*');
   });
 }
-
-
-
