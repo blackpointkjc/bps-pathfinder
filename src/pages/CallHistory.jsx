@@ -1,3 +1,4 @@
+import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { useState, useEffect, useRef } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -70,7 +71,8 @@ export default function CallHistory() {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(()=>new URLSearchParams(window.location.search).get('q')||'');
+    const searchRef=useRef(search);searchRef.current=search;
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [propertyFilter, setPropertyFilter] = useState(() => {
@@ -184,7 +186,7 @@ export default function CallHistory() {
         try {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Call history authentication');
             const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-            if (user.role !== 'admin' && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access')) {
+            if (user.role !== 'admin' && user.role !== 'dispatch' && !roles.has('dispatch') && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access')) {
                 toast.error('Access required');
                 navigate(createPageUrl('CommandDashboard'));
                 return;
@@ -208,7 +210,7 @@ export default function CallHistory() {
             }
 
             const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {}),
+                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current}),
                 15000,
                 'Call history request'
             );
@@ -529,6 +531,7 @@ export default function CallHistory() {
 
     return (
         <div className="min-h-full bg-[#07111d] p-2 font-mono text-white md:p-3">
+            <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="mb-3 flex flex-wrap gap-2"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
             {/* Header */}
             <div className="flex flex-col gap-3 rounded-2xl border border-[#2b4258] bg-[#0a1623] p-3 shadow-xl lg:flex-row lg:items-center">
                 <div className="flex min-w-0 items-center gap-3">
@@ -683,6 +686,7 @@ export default function CallHistory() {
                                         </div>
                                     )}
                                     <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#0a1320] p-3">
+                                      <PropertyCallLinkControl call={row} onLinked={link=>setRows(current=>current.map(item=>item.id===row.id?{...item,_propertyCall:true,_propertyId:link.property_id,_propertyName:link.property_name,_propertyLinks:[...(item._propertyLinks||[]),link]}:item))}/>
                                       <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({row._linkedReports?.length||0})</p>
                                       {!row._linkedReports?.length&&<p className="mt-1 text-xs text-slate-400">No report links recorded yet.</p>}
                                       <div className="mt-2 flex flex-wrap gap-2">{(row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>

@@ -28,12 +28,16 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('full_access') || roles.has('dispatch') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim()));
     if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
+    const input=await req.json().catch(()=>({}));
+    const search=String(input.search||'').trim().slice(0,160);
+    const escaped=search.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&');
+    const searchQuery=search?{$or:['call_id','bps_reference','agency_cad_number','incident','location','original_call_id'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
     // Call history is core data; property-alert enrichment is optional. Never
     // let a slow PropertyAlert read turn hundreds of valid calls into a "0 records"
     // screen. Keep the reads bounded and perform the optional enrichment last.
     const [activeRead, archivedRead, alertRead] = await Promise.all([
-      readWithRetry('Active calls', () => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500), []),
-      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000), []),
+      readWithRetry('Active calls', () => searchQuery?base44.asServiceRole.entities.DispatchCall.filter(searchQuery,'-created_date',500):base44.asServiceRole.entities.DispatchCall.list('-created_date', 500), []),
+      readWithRetry('Archived calls', () => searchQuery?base44.asServiceRole.entities.CallHistory.filter(searchQuery,'-archived_date',1000):base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000), []),
       readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000), []),
     ]);
     const active:any[] = activeRead.data || [];
@@ -202,16 +206,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    const propertyLinksRead=await readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',2000),[]);
+    const manualLinks:any[]=propertyLinksRead.data||[];
+    const allRows=[...activeRows,...archivedRows,...syntheticPropertyRows];
+    const decorated=allRows.map(row=>{
+      const ids=[String(row.id||''),String(row.original_call_id||'')];
+      const links=manualLinks.filter(link=>ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||'')));
+      return links.length?{...row,_propertyLinks:links,_propertyCall:true,_propertyName:[row._propertyName,...links.map(l=>l.property_name)].filter(Boolean).join(' / '),_propertyId:row._propertyId||links[0].property_id}:row;
+    });
+    const represented=new Set(decorated.flatMap(row=>[String(row.id||''),String(row.original_call_id||'')]));
+    for(const link of manualLinks){
+      if(represented.has(String(link.call_id))||represented.has(String(link.archive_id||'')))continue;
+      if(search && ![link.call_number,link.property_name,link.incident,link.location].some(v=>lower(v).includes(lower(search))))continue;
+      decorated.push({id:link.archive_id||link.call_id,original_call_id:link.call_id,call_id:link.call_number,incident:link.incident,location:link.location,time_received:link.time_received,status:link.status,_source:link.archive_id?'archived':'active',_propertyCall:true,_propertyName:link.property_name,_propertyId:link.property_id,_propertyLinks:[link],assigned_units:[],_assignedUnitDetails:[],_linkedReports:[]});
+      represented.add(String(link.call_id));
+    }
     return Response.json({
       success: true,
-      rows: [...activeRows, ...archivedRows, ...syntheticPropertyRows],
+      rows: decorated,
       counts: {
         active: activeRows.length,
         archived: archivedRows.length,
         propertyAlerts: alertByCallId.size,
         syntheticPropertyRows: syntheticPropertyRows.length,
       },
-      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error].filter(Boolean),
+      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });
   } catch (error:any) {
     console.error('getCallHistoryFeed failed:', error);

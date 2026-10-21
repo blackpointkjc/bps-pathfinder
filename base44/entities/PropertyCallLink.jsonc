@@ -1,0 +1,53 @@
+{
+  "name": "PropertyCallLink",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string"
+    },
+    "archive_id": {
+      "type": "string"
+    },
+    "call_number": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "property_name": {
+      "type": "string"
+    },
+    "incident": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "time_received": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "linked_by": {
+      "type": "string"
+    },
+    "linked_at": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "call_id",
+    "property_id",
+    "property_name"
+  ],
+  "rls": {
+    "read": true,
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
