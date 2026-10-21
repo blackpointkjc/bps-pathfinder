@@ -85,6 +85,7 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
       const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name, start_date: startDate, end_date: endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
+      if (Object.keys(payload.service_errors||{}).length) console.warn('Analytics Source Diagnostics', payload.service_errors);
       const previous = queryClient.getQueryData(['companyAnalyticsSegment', name, startDate, endDate]);
       const retained = { ...payload };
       for (const [field, sources] of Object.entries(config.fields)) {
