@@ -1066,6 +1066,8 @@ export default function Navigation() {
         const [lat, lng] = coords.map(Number);
         if (!validPosition(lat, lng)) return;
         setMapPickMode(false);
+        setFitBounds(null);
+        setMapCenter(null);
         setShowAddressSearch(true);
         setAddressSearching(true);
         setAddressSearchError('');
