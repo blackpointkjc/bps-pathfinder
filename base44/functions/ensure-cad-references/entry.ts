@@ -39,12 +39,15 @@ Deno.serve(async req=>{
   if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}
   if(!trustedService&&(!actor||!['admin','dispatch','dispatcher','cad_access','full_access','supervisor'].some(role=>roles.has(role))&&!actor.dispatch_role))return Response.json({error:'CAD access required'},{status:403});
   const body=await req.json().catch(()=>({}));
+  // An authenticated admin already has RLS access to these records. Keep its
+  // maintenance reads separate from the service caller used by live ingestion.
+  const recordsApi=body.action==='backfill'&&actor?.role==='admin'?api:api.asServiceRole;
   if(body.action==='allocate')return Response.json({success:true,references:await reserve(api,Math.max(1,Math.min(100,Number(body.count)||1)))});
   const selected=Array.isArray(body.records)?body.records.slice(0,500):[];
   const rows:any[]=[];
   let scanPage:any[]=[],scanStage=0,scanEntity='';
   if(body.action==='backfill'){
-   const counters=api.asServiceRole.entities.CadCounter;
+   const counters=recordsApi.entities.CadCounter;
    let state=(await counters.filter({counter_key:'cad_reference_backfill_v2'},undefined,1))[0];
    if(!state)state=await counters.create({counter_key:'cad_reference_backfill_v2',last_number:0,migration_stage:0,migration_cursor:'',migration_complete:false,migration_updated:0});
    if(state.migration_complete)return Response.json({success:true,done:true,scanned:state.last_number,updated:state.migration_updated,mappings:[]});
@@ -54,17 +57,17 @@ Deno.serve(async req=>{
    await pause(250);
    const verified=(await counters.filter({counter_key:'cad_reference_backfill_v2'},undefined,1))[0];
    if(verified?.ingestion_lock_token!==token)return Response.json({error:'Historical reference batch will retry',retryable:true},{status:409});
-   migration=verified;migrationApi=api;
+   migration=verified;migrationApi={asServiceRole:recordsApi};
    scanStage=Number(verified.migration_stage||0);
    scanEntity=['CallHistory','PropertyAlert','DispatchCall','PropertyCallLink'][scanStage];
    if(!scanEntity){await counters.update(state.id,{migration_complete:true});return Response.json({success:true,done:true,mappings:[]});}
-   scanPage=verified.migration_cursor?await api.asServiceRole.entities[scanEntity].filter({id:{$gt:verified.migration_cursor}},'id',2000):await api.asServiceRole.entities[scanEntity].list('id',2000);
+   scanPage=verified.migration_cursor?await recordsApi.entities[scanEntity].filter({id:{$gt:verified.migration_cursor}},'id',2000):await recordsApi.entities[scanEntity].list('id',2000);
    for(const row of scanPage)rows.push({entity:scanEntity,row});
   }
 
   for(const entity of collections){
    const ids=selected.filter((r:any)=>r.entity===entity).map((r:any)=>String(r.id||'')).filter((id:string)=>/^[a-f0-9]{24}$/i.test(id));
-   if(ids.length)for(const row of await api.asServiceRole.entities[entity].filter({id:{$in:ids}},'-created_date',500))rows.push({entity,row});
+   if(ids.length)for(const row of await recordsApi.entities[entity].filter({id:{$in:ids}},'-created_date',500))rows.push({entity,row});
   }
   // Read original counterparts once, so a surviving archive/property alert reuses
   // its already assigned CAD number instead of receiving a second number.
@@ -74,7 +77,7 @@ Deno.serve(async req=>{
    for(const [entity,field] of [['DispatchCall','id'],['CallHistory','original_call_id'],['PropertyAlert','callId'],['PropertyCallLink','call_id']]){
     const values=field==='id'?identities.filter(id=>/^[a-f0-9]{24}$/i.test(id)):identities;
     if(!values.length)continue;
-    const found=await api.asServiceRole.entities[entity].filter({[field]:{$in:values}},'-created_date',1000);
+    const found=await recordsApi.entities[entity].filter({[field]:{$in:values}},'-created_date',1000);
     for(const row of found)related.push({entity,row});
    }
   }
@@ -89,7 +92,7 @@ Deno.serve(async req=>{
    if(!group){group={reference:aliases.map((key:any)=>known.get(key)).find(Boolean)||'',items:[]};groups.set(key,group);}
    group.items.push(item);for(const alias of aliases)groupByAlias.set(String(alias),group);
   }
-  const missing=[...groups.values()].filter(g=>!g.reference),allocated=await reserve(api,missing.length);
+  const missing=[...groups.values()].filter(g=>!g.reference),allocated=await reserve({asServiceRole:recordsApi},missing.length);
   missing.forEach((g,i)=>g.reference=allocated[i]);
   const mappings:any[]=migration?[]:rows.filter(item=>ref(item.row)).map(item=>({entity:item.entity,id:item.row.id,reference:ref(item.row)})),failures:any[]=[];
   const updatesByEntity=new Map<string,any[]>();
@@ -99,7 +102,7 @@ Deno.serve(async req=>{
    updatesByEntity.get(entity)!.push({id:row.id,...updates});
   }
   for(const [entity,updates] of updatesByEntity){
-   const service=api.asServiceRole.entities[entity];
+   const service=recordsApi.entities[entity];
    const saved:any[]=[];
    for(let offset=0;offset<updates.length;offset+=500){const chunk=updates.slice(offset,offset+500);const result=typeof service.bulkUpdate==='function'?await service.bulkUpdate(chunk):await Promise.all(chunk.map(update=>service.update(update.id,Object.fromEntries(Object.entries(update).filter(([key])=>key!=='id')))));const records=Array.isArray(result)?result:result?.data;if(!Array.isArray(records))throw Error('CAD reference batch did not return verified records');saved.push(...records);}
    const persisted=Array.isArray(saved)?saved:saved?.data;
@@ -115,7 +118,7 @@ Deno.serve(async req=>{
    const nextStage=scanPage.length<2000?scanStage+1:scanStage;
    const cursor=scanPage.length<2000?'':String(scanPage[scanPage.length-1].id);
    const scanned=Number(migration.last_number||0)+scanPage.length,updated=Number(migration.migration_updated||0)+mappings.length,done=nextStage>=4;
-   await api.asServiceRole.entities.CadCounter.update(migration.id,{migration_stage:nextStage,migration_cursor:cursor,last_number:scanned,migration_updated:updated,migration_complete:done});
+   await recordsApi.entities.CadCounter.update(migration.id,{migration_stage:nextStage,migration_cursor:cursor,last_number:scanned,migration_updated:updated,migration_complete:done});
    return Response.json({success:true,done,scanned,updated,entity:scanEntity,mappings,failures});
   }
   return Response.json({success:true,mappings,failures});
