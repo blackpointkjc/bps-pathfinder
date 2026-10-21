@@ -300,6 +300,7 @@ export default function GlobalMessageBanner({ user }) {
 
   useEffect(() => {
     if (!user?.id && !user?.email) return undefined;
+    let active = true;
 
     const roles = lowerRoles(user);
     const myIds = [user.id, user.email].filter(Boolean).map(normalized);
@@ -864,7 +865,7 @@ export default function GlobalMessageBanner({ user }) {
         return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
-      if (source.sourceName && record.source_name !== source.sourceName) return;
+
             const created = new Date(record.created_date || 0).getTime();
             if (Number.isFinite(created) && created >= propertyCutoff) {
               void showPropertyCall(record, { allowAudio: false });
@@ -894,7 +895,7 @@ export default function GlobalMessageBanner({ user }) {
       base44.entities.BOLOAlert.list('-updated_date', 100).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.id) return;
-      if (source.sourceName && record.source_name !== source.sourceName) return;
+
           const version = record.updated_date || record.created_date || 'active';
           const changedAt = new Date(version).getTime();
           if (record.status === 'active' && Number.isFinite(changedAt) && changedAt >= boloCutoff) {
@@ -1043,6 +1044,7 @@ export default function GlobalMessageBanner({ user }) {
     }).catch(() => null);
 
     return () => {
+      active = false;
       window.removeEventListener('bps-announcements-opened', clearAnnouncementBanners);
       unsubscribers.forEach(unsubscribe => unsubscribe());
       timers.current.forEach(timer => window.clearTimeout(timer));
