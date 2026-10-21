@@ -23,6 +23,11 @@ Deno.serve(async req => {
     const missing = requiredForAccount.filter(field => !String(combined[field] || '').trim());
     if (missing.length) return Response.json({error:'Complete all required fields before submitting.',missing}, {status:400});
     await base44.asServiceRole.entities.User.update(me.id, updates);
+    // Do not acknowledge onboarding until the database returns every submitted
+    // field. This prevents an officer from losing their form after a partial write.
+    const verified = await base44.asServiceRole.entities.User.get(me.id);
+    const unsaved = Object.keys(updates).filter(field => String(verified?.[field] ?? '').trim() !== String(updates[field] ?? '').trim());
+    if (unsaved.length) return Response.json({ error: 'Profile could not be verified saved. Please retry before leaving this page.', unsaved }, { status: 503 });
     if (studentIntake) {
       const enrollmentRows = await base44.asServiceRole.entities.StudentEnrollment.filter({ email: String(me.email || '').toLowerCase() }, '-created_date', 3);
       const enrollment = (enrollmentRows || []).find((entry:any) => ['invited','profile_submitted'].includes(entry.status));
