@@ -332,7 +332,8 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
     : {};
   const request = base44.functions.invoke('getOnDutyUnits', requestPayload)
     .then(response => {
-      const rawPayload = response?.data || response || {};
+      let rawPayload = response?.data || response || {};
+      for(let depth=0;depth<2&&!Array.isArray(rawPayload.units)&&!Array.isArray(rawPayload.users)&&rawPayload.data&&typeof rawPayload.data==='object';depth++)rawPayload=rawPayload.data;
       if (rawPayload.error) throw new Error(rawPayload.error);
       // Defense in depth: never let a legacy backend/client return an IP/network
       // estimate (for example ±50,000m) to any Pathfinder map as a live officer fix.

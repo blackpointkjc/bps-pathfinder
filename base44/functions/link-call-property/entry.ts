@@ -9,7 +9,7 @@ Deno.serve(async req=>{
  if((!call_id&&!archive_id)||!property_id)return Response.json({error:'Select a call and property'},{status:400});
  const db=client.asServiceRole.entities;
  const call=call_id?await db.DispatchCall.get(call_id).catch(()=>null):null;
- const archived=!call&&archive_id?await db.CallHistory.get(archive_id).catch(()=>null):null;
+ const archived=!call?(archive_id?await db.CallHistory.get(archive_id).catch(()=>null):(await db.CallHistory.filter({original_call_id:call_id},'-archived_date',1))[0]):null;
  const row=call||archived;
  if(!row)return Response.json({error:'Call record not found'},{status:404});
  const property=await db.Location.get(property_id).catch(()=>null);
