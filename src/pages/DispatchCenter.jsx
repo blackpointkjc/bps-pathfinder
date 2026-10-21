@@ -854,7 +854,7 @@ export default function DispatchCenter({embedded=false}) {
                         className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
                 </div>
                 {[
-                    ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED PROPERTY'], ['priority','HIGH PRIORITY PROPERTY'], ['New','NEW PROPERTY'], ['Dispatched','DISPATCHED PROPERTY'], ['Enroute','EN ROUTE PROPERTY'], ['On Scene','ON SCENE PROPERTY'], ['agency','ALL ACTIVE CALLS']
+                    ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
                 ].map(([value,label]) => (
                     <button key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
                 ))}

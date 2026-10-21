@@ -151,8 +151,8 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
         <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto pr-1">
             <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#0b1522] p-3">
                 <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
-                <div className="mt-2 text-sm font-black text-white">{call.incident || 'Call for Service'}</div>
-                <div className="mt-1 text-[10px] leading-relaxed text-slate-400">{call.location || 'Location unavailable'}</div>
+                <div title={call.incident || 'Call For Service'} className="mt-1 truncate text-xs font-black text-white">{call.incident || 'Call for Service'}</div>
+                <div title={call.location || ''} className="mt-1 truncate text-[10px] text-slate-400">{call.location || 'Location unavailable'}</div>
             </div>
             {feedback && <p role="status" className="shrink-0 rounded border border-cyan-800 bg-cyan-950/30 p-2 text-xs text-cyan-100">{feedback}</p>}
             {/* Assigned Units */}
@@ -194,14 +194,14 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                 ) : assignedUnitIds.length > 0 ? (
                     <div className="text-xs text-amber-300 text-center p-2">{assignedUnitIds.length} unit(s) assigned in CAD. Waiting for live roster details.</div>
                 ) : (
-                    <div className="text-xs text-slate-500 text-center p-2">No units assigned</div>
+                    <div className="text-xs text-slate-500 text-center py-1">No Units Assigned</div>
                 )}
             </div>
 
             {/* Available Units */}
             <div className="flex shrink-0 flex-col">
                 <p className="mb-1 text-[10px] font-black tracking-wider text-slate-300">Eligible Officers ({availableUnits.length})</p>
-                <p className="mb-2 text-[10px] text-cyan-300">Select Assign To Call. Out Of Service And Held Officers Are Unavailable.</p>
+                <p className="mb-2 text-[10px] text-cyan-300">Officers May Hold Multiple Calls.</p>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <Input
@@ -222,7 +222,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         </div>
                     ) : availableUnits.length === 0 ? (
                         <div className="text-xs text-slate-400 text-center p-2">
-                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No officers currently qualify for new calls. Check Out of Service status and Dispatch Holds below.'}
+                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'All Officers Are Out Of Service Or On Hold.'}
                         </div>
                     ) : (
                         availableUnits.map(unit => {
