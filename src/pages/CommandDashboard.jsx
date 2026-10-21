@@ -1,3 +1,4 @@
+import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -328,201 +329,17 @@ function CommandDashboardInner({ embedded = false }) {
         ? [...MY_STATUSES, ...(hasDispatchAccess ? ['Dispatch'] : [])]
         : DISPATCH_STATUSES;
 
-    return (
-        <div className="bps-command-page command-dashboard h-full min-h-0 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.28),_transparent_38%),#050b13] flex flex-col">
-            {/* The live critical banner is intentionally the first visible element in
-                this workspace. Do not place BOLO, sync, KPI, or utility strips above it. */}
-            {/* ── SYSTEM HEADER BAR ── */}
-            <div className="command-dashboard-system-bar flex-none bg-slate-900/90 border-b border-slate-700/80 px-4 py-3 flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1 py-1"><h1 className="text-lg font-bold tracking-tight text-white">Live Command</h1><p className="text-xs text-slate-400">Incidents · response · field status</p></div>
-                <div className="command-dashboard-actions flex items-center gap-1.5">
-                    {/* Sync status */}
-                    <div className={`command-dashboard-sync h-8 flex items-center justify-center gap-1.5 px-2 rounded-lg border font-mono text-[9px] font-bold flex-shrink-0 ${
-                        syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
-                        syncStatus.state === 'error'   ? 'bg-red-900/30 border-red-600/40 text-red-300' :
-                        syncStatus.state === 'ok'      ? 'bg-green-900/30 border-green-600/40 text-green-300' :
-                        'bg-slate-800 border-slate-600 text-slate-500'
-                    }`}>
-                        {syncStatus.state === 'syncing' ? (
-                            <><RotateCcw className="w-3 h-3 animate-spin" />SYNCING...</>
-                        ) : syncStatus.state === 'error' ? (
-                            <><WifiOff className="w-3 h-3" />SYNC ERR</>
-                        ) : syncStatus.state === 'ok' ? (
-                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />LIVE · {syncStatus.total} CALL{syncStatus.total === 1 ? '' : 'S'}</>
-                        ) : (
-                            <><span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />CONNECTING</>
-                        )}
-                    </div>
-                    <button onClick={() => {
-                        const params = new URLSearchParams({ new: '1' });
-                        if (selectedCall?.id) {
-                            params.set('call_id', selectedCall.id);
-                            params.set('call_number', isPulsePointCall(selectedCall) ? 'PP' : (selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id));
-                        }
-                        navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
-                    }} className="command-dashboard-action h-8 flex min-w-0 items-center justify-center gap-1 px-2.5 bg-red-800/90 border border-red-600/80 text-white font-mono font-bold text-[9px] rounded-lg hover:bg-red-700 transition-colors">
-                        <FileWarning className="w-3 h-3" />NEW BOLO
-                    </button>
-                    <OfficerDistressButton currentUser={currentUser} className="command-dashboard-distress" />
-                </div>
+    return <>
+      <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={manualRefresh}
+        onOpen={setSelectedCall} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
+        canChangePriority={isAdmin} canClear={isDispatchOrAdmin}
+        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} isExternal={isPulsePointCall}
+        actions={<><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><OfficerDistressButton currentUser={currentUser}/></>}
+        settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
+      />
+      <FieldCallModal call={selectedCall} onClose={()=>setSelectedCall(null)}/>
+    </>;
 
-            </div>
-
-            {/* ── SYNC ERROR BANNER ── */}
-            {syncStatus.state === 'error' && syncStatus.error && !rateLimited && (
-                <div className="flex-none flex items-center gap-3 bg-red-950/80 border-b border-red-800/60 px-4 py-1.5">
-                    <WifiOff className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                    <span className="text-red-300 font-mono text-[10px] font-bold tracking-wide flex-1 truncate">
-                        SYNC FAILED: {syncStatus.error}
-                    </span>
-                </div>
-            )}
-
-            {/* ── MASTER STATUS TILES ── */}
-            <div className="command-dashboard-kpis flex-none grid grid-cols-2 gap-1.5 border-b border-slate-800 bg-[#080d16] p-1.5 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-9">
-                {[
-                    { label: 'ACTIVE CALLS', val: loading && calls.length === 0 ? '—' : calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
-                    ...(showPulsePointControls ? [{ label: 'PULSEPOINT', val: pulsePointCalls.length, color: 'text-red-300', bg: 'bg-red-950/45', border: 'border-r border-red-900/50' }] : []),
-                    { label: 'P1 CRITICAL', val: loading && calls.length === 0 ? '—' : criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
-                    { label: 'P2 HIGH', val: loading && calls.length === 0 ? '—' : highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
-                    { label: 'UNASSIGNED', val: loading && calls.length === 0 ? '—' : unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
-                    { label: 'AVAILABLE', val: availUnits.length, color: 'text-green-400', bg: '', border: 'border-r border-slate-800' },
-                    { label: 'EN ROUTE', val: enrouteUnits.length, color: 'text-yellow-400', bg: '', border: 'border-r border-slate-800' },
-                    { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
-                    { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
-                ].map(({ label, val, color, bg, border, flash }) => (
-                    <div key={label} className={`command-dashboard-kpi ${bg} rounded-lg border border-slate-700/80 px-2 py-2 flex min-w-0 flex-col items-center justify-center text-center shadow-md ${flash ? 'animate-pulse' : ''}`}>
-                        <span className={`text-xl md:text-2xl font-mono font-black leading-none ${color} drop-shadow-[0_0_8px_currentColor]`}>{val}</span>
-                        <span className="text-[8px] text-slate-500 font-mono font-bold tracking-[0.12em] mt-1 text-center">{label}</span>
-                    </div>
-                ))}
-            </div>
-
-            <OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving} />
-
-            <AdminLiveLocationPrivacy currentUser={currentUser} />
-
-            {/* ── MAIN WORKSPACE ── */}
-            <div className="command-queue-workspace flex-1 min-h-0 p-1.5 md:p-2">
-                <div className="command-queue-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-[#08111d]/95 shadow-[0_14px_38px_rgba(0,0,0,.24)]">
-                    <div className="command-queue-header flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
-                        <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span>{pulsePointCalls.length > 0 && <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-red-950/70 border border-red-500/60 text-red-200 rounded">{pulsePointCalls.length} PULSEPOINT</span>}</div>
-                        <input aria-label="Search live incidents" value={incidentSearch} onChange={e=>setIncidentSearch(e.target.value)} placeholder="Find incident or location" className="min-w-32 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"/>
-                        <select aria-label="Filter live command by agency" value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
-                            <option value="ALL">ALL AGENCIES</option>{showPulsePointControls && <option value="PULSEPOINT">PULSEPOINT</option>}<option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
-                        </select>
-                    </div>
-
-                    <div className="command-column-headings hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
-                        <div className="w-8 flex-shrink-0">PRI</div>
-                        <div className="w-36 flex-shrink-0">CAD / REF · TIME (ET)</div>
-                        <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
-                        <div className="flex-1">INCIDENT / LOCATION</div>
-                        <div className="w-24 flex-shrink-0 hidden lg:block">AGENCY</div>
-                        <div className="w-20 flex-shrink-0 text-center">STATUS</div>
-                        <div className="w-16 flex-shrink-0 text-center">UNITS</div>
-                        {isDispatchOrAdmin && <div className="w-14 flex-shrink-0 text-center">MARK</div>}
-                    </div>
-
-                    <div className="command-queue-list flex-1 overflow-y-auto">
-                        {sortedCalls.length === 0 ? (
-                            <div className="flex items-center justify-center h-32 text-slate-500 font-mono text-xs tracking-widest">
-                                {loading ? '— LOADING CURRENT INCIDENTS —' : '— NO ACTIVE INCIDENTS —'}
-                            </div>
-                        ) : sortedCalls.map((call) => {
-                            const priority = getCallPriority(call);
-                            const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
-                            const isPulsePoint = isPulsePointCall(call);
-                            const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
-                            const identifier = getCallIdentifier(call);
-                            return (
-                                <div key={call.id}
-                                    onClick={() => openCallOnMap(call)}
-                                    className={`cad-call-row flex items-start px-3 py-1.5 border-b border-slate-800/60 cursor-pointer transition-colors ${isPulsePoint ? 'bg-red-950/35 hover:bg-red-950/55 ring-1 ring-inset ring-red-900/35' : cfg.row} ${isPulsePoint ? 'border-l-2 border-l-red-500' : priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
-
-                                    <div className="cad-call-priority w-8 flex-shrink-0 pt-0.5">
-                                        {isAdmin ? (
-                                            <button onClick={(e) => handlePriorityOverride(call, e)}
-                                                className={`text-[10px] font-mono font-bold ${cfg.text} hover:ring-1 ring-current rounded px-0.5 transition-all`}>
-                                                {cfg.label}
-                                            </button>
-                                        ) : (
-                                            <span className={`text-[10px] font-mono font-bold ${cfg.text}`}>{cfg.label}</span>
-                                        )}
-                                    </div>
-
-                                    <div className="cad-call-time w-36 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
-                                        <div
-                                            className={`font-bold whitespace-nowrap overflow-hidden text-ellipsis ${isPulsePoint ? 'text-red-200' : identifier.type === 'bps' ? 'text-[#f5c451]' : identifier.type === 'official' ? 'text-[#7ec1ff]' : 'text-slate-500'}`}
-                                            title={isPulsePoint ? 'PulsePoint Respond incident' : identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
-                                        >
-                                            {identifier.value}
-                                        </div>
-                                        <div>{fmtTime(call.time_received)}</div>
-                                    </div>
-
-                                    <div className="cad-call-elapsed w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block pt-0.5">
-                                        {elapsed(call)}
-                                    </div>
-
-                                    <div className="cad-call-incident flex-1 min-w-0 pr-2">
-                                        <div className="text-white font-mono font-bold text-xs leading-snug flex items-start gap-1">
-                                            {(!call.latitude || !call.longitude) && (
-                                                <CircleX className="w-3 h-3 flex-shrink-0 text-red-500 mt-0.5" title="Not geocoded" />
-                                            )}
-                                            {isPulsePoint && <span className="mt-0.5 rounded border border-red-500/60 bg-red-950/80 px-1 py-0.5 text-[8px] font-black leading-none tracking-wider text-red-200">PULSEPOINT</span>}
-                                            <span className="break-words">{cleanIncident(call)}</span>
-                                        </div>
-                                        <div className={`${isPulsePoint ? 'text-red-200/80' : 'text-slate-400'} font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5`}>
-                                            <MapPin className={`w-2.5 h-2.5 flex-shrink-0 ${isPulsePoint ? 'text-red-400' : 'text-slate-600'} mt-0.5`} />
-                                            <span className="break-words">{call.location}{call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="cad-call-agency w-24 flex-shrink-0 hidden lg:block pt-0.5">
-                                        <span className={`${isPulsePoint ? 'text-red-200' : 'text-slate-500'} font-mono text-[10px] break-words`}>{isPulsePoint ? `PP · ${call.agency || '—'}` : (call.agency || '—')}</span>
-                                    </div>
-
-                                    <div className="cad-call-status w-20 flex-shrink-0 text-center pt-0.5">
-                                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                                            call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
-                                            call.status === 'Dispatched' || call.status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
-                                            call.status === 'On Scene' || call.status === 'On Scene' ? 'bg-blue-900/40 text-blue-300 border-blue-700/40' :
-                                            'bg-slate-800 text-slate-400 border-slate-700'
-                                        }`}>{(call.status || 'NEW').toUpperCase()}</span>
-                                    </div>
-
-                                    <div className="cad-call-units w-16 flex-shrink-0 text-center">
-                                        {call.assigned_units?.length > 0 ? (
-                                            <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
-                                                {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
-                                            </span>
-                                        ) : isUnassigned ? (
-                                            <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
-                                                UNSGN
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-mono text-slate-600">EXT</span>
-                                        )}
-                                    </div>
-
-                                    {isDispatchOrAdmin && (
-                                        <div className="cad-call-clear w-14 flex-shrink-0 flex items-center justify-center">
-                                            <button onClick={(e) => handleMarkCleared(call, e)}
-                                                className="flex items-center gap-1 px-1.5 py-1 rounded bg-slate-700 hover:bg-green-700/60 text-slate-400 hover:text-green-300 font-mono text-[9px] font-bold transition-all border border-slate-600 hover:border-green-600/50">
-                                                <CheckCheck className="w-3 h-3" />CLR
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-            <FieldCallModal call={selectedCall} onClose={() => setSelectedCall(null)} />
-        </div>
-    );
 }
 
 export default function CommandDashboard({ embedded = false }) {
