@@ -81,12 +81,13 @@ Deno.serve(async req=>{
   const known=new Map<string,string>();
   for(const {entity,row} of [...related,...rows])if(ref(row))for(const key of keys(entity,row))known.set(key,ref(row));
   const groups=new Map<string,{reference:string;items:any[]}>();
+  const groupByAlias=new Map<string,any>();
   for(const item of rows){
    if(ref(item.row))continue;
    const aliases=keys(item.entity,item.row),key=aliases[0]||item.entity+':'+item.row.id;
-   let group=[...groups.values()].find(g=>g.items.some(other=>keys(other.entity,other.row).some((v:any)=>aliases.includes(v))));
+   let group=aliases.map((alias:any)=>groupByAlias.get(alias)).find(Boolean);
    if(!group){group={reference:aliases.map((key:any)=>known.get(key)).find(Boolean)||'',items:[]};groups.set(key,group);}
-   group.items.push(item);
+   group.items.push(item);for(const alias of aliases)groupByAlias.set(String(alias),group);
   }
   const missing=[...groups.values()].filter(g=>!g.reference),allocated=await reserve(api,missing.length);
   missing.forEach((g,i)=>g.reference=allocated[i]);
