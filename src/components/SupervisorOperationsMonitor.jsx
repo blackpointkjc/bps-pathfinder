@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
@@ -16,6 +17,8 @@ const isSupervisorUser = user => {
 };
 
 export default function SupervisorOperationsMonitor({ user, enabled = true }) {
+  const location=useLocation();
+  const supervising=/SupervisorCenter|SupervisorDashboard/.test(location.pathname)||new URLSearchParams(location.search).get('admin_center')==='supervisor';
   const running = useRef(false);
   const pending = useRef(false);
   const timer = useRef(null);
@@ -23,7 +26,7 @@ export default function SupervisorOperationsMonitor({ user, enabled = true }) {
   const authBackoffUntil = useRef(0);
 
   useEffect(() => {
-    if (!enabled || !isSupervisorUser(user)) return undefined;
+    if (!enabled || !supervising || !isSupervisorUser(user)) return undefined;
     let active = true;
     const unsubscribers = [];
 
@@ -63,7 +66,7 @@ export default function SupervisorOperationsMonitor({ user, enabled = true }) {
       } catch (error) {
         const message = String(error?.message || error || '');
         const status = Number(error?.response?.status || error?.status || 0);
-        if (status === 401 || /unauthorized/i.test(message)) authBackoffUntil.current = Date.now() + 5 * 60 * 1000;
+        if ([401,403].includes(status) || /unauthorized/i.test(message)) authBackoffUntil.current = Date.now() + 5 * 60 * 1000;
         console.warn('[Supervisor Operations] Task synchronization failed:', message);
       } finally {
         running.current = false;

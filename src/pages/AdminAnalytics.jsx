@@ -427,7 +427,7 @@ export default function AdminAnalytics() {
       Object.assign(errors, payload.errors || {});
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
-    enabled: Boolean(user && currentSegmentsReady && performanceOfficerUsers.length),
+    enabled: Boolean(user && currentSegmentsReady && !Object.keys(performanceCriticalErrors).length && performanceOfficerUsers.length),
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
