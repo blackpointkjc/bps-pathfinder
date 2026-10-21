@@ -42,7 +42,15 @@ const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
-export default function DispatchCenter() {
+export default function DispatchCenter({embedded=false}) {
+    const workstationRef=React.useRef(null);
+    useEffect(()=>{
+        if(embedded||!workstationRef.current)return;
+        const host=workstationRef.current;
+        const measure=()=>host.style.setProperty('--cad-standalone-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)}px`);
+        measure();window.addEventListener('resize',measure);
+        return()=>window.removeEventListener('resize',measure);
+    },[embedded]);
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
@@ -728,7 +736,7 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="bps-command-page cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white ">
+        <div ref={workstationRef} className={"bps-command-page cad-command-workstation relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}

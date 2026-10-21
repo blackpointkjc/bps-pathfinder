@@ -1653,3 +1653,5 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
 .cad-shell-dispatch .cad-command-workstation{height:100%;min-height:0}
 .cad-shell-dispatch .cad-command-workstation .dispatch-kpis>div{padding:7px 6px}
 .cad-shell-dispatch .cad-command-workstation .dispatch-call-card{padding-block:9px}
+
+.cad-command-workstation.cad-dispatch-standalone{height:var(--cad-standalone-height,calc(100dvh - 130px));min-height:0}
