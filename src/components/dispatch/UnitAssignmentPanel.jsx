@@ -222,7 +222,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         </div>
                     ) : availableUnits.length === 0 ? (
                         <div className="text-xs text-slate-400 text-center p-2">
-                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'All Officers Are Out Of Service Or On Hold.'}
+                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No Eligible Officers. Check Status And Holds Below.'}
                         </div>
                     ) : (
                         availableUnits.map(unit => {
