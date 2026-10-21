@@ -1,3 +1,4 @@
+/* global setTimeout, console */
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 let running = false;
 let complete = false;
