@@ -315,7 +315,7 @@ export default function CallHistory() {
             const report=reportRows[0];
             const callId=row.original_call_id||(row._source==='active'?row.id:'');
             if(!callId)throw new Error('Original CAD call ID missing. Cannot safely link to an archived record.');
-            const callNumber=row.agency_cad_number||row.bps_reference||row.call_id||callId;
+            const callNumber=cadReference(row);
             await createReportCallLink({callId,callNumber,reportType:'IncidentReport',reportId:report.id,reportNumber:report.report_number||report.id});
             await base44.entities.IncidentReport.update(report.id,{linked_call_id:callId,linked_call_number:callNumber});
             const item={id:`linked-${report.id}`,report_type:'IncidentReport',report_id:report.id,report_number:report.report_number||report.id,call_number:callNumber};
@@ -338,7 +338,7 @@ export default function CallHistory() {
         const params = new URLSearchParams({
             from_call: 'true',
             call_id: row.original_call_id || row.id || '',
-            call_number: row.call_id || row.original_call_id || row.id || '',
+            call_number: cadReference(row),
             location: row.location || '',
             incident_type: 'other',
             incident_time: received.toTimeString().slice(0, 5),
@@ -577,7 +577,7 @@ export default function CallHistory() {
                     const isExpanded = expandedId === (row.id);
                     return (
                         <div key={row.id}>
-                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(row.agency_cad_number||row.bps_reference||row.call_id||row.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setExpandedId(isExpanded?null:row.id);}}}
+                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(cadReference(row)||'Reference Pending')} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setExpandedId(isExpanded?null:row.id);}}}
                                 onClick={() => setExpandedId(isExpanded ? null : row.id)}
                                 className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}

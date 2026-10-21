@@ -487,13 +487,21 @@ Deno.serve(async (req) => {
     const incomingKeys = new Set(incoming.map((row: any) => String(row.external_call_id)));
     const newRows = incoming.filter((row: any) => !existingByExternal.has(row.external_call_id) && !archived.has(row.external_call_id));
 
+    const needingReference=[...newRows,...incoming.filter((row:any)=>existingByExternal.has(row.external_call_id)&&!/^BPS-\d{6}-\d{1,8}$/.test(String((existingByExternal.get(row.external_call_id) as any)?.bps_reference||'')))];
+    const referenceByExternal=new Map<string,string>();
+    if(needingReference.length){
+      const response=await base44.asServiceRole.functions.invoke('ensure-cad-references',{action:'allocate',count:Math.min(100,needingReference.length)});
+      const data=response?.data||response||{};
+      if(!Array.isArray(data.references))throw new Error(data.error||'CAD reference allocation failed');
+      needingReference.slice(0,100).forEach((row:any,index:number)=>referenceByExternal.set(row.external_call_id,data.references[index]));
+    }
     let created = 0, updated = 0, closed = 0, audio_events = 0, property_alerts_created = 0;
-    for (let index = 0; index < newRows.length; index += 1) {
+    for (let index = 0; index < newRows.length && index < 100; index += 1) {
       const row = newRows[index];
       const call = await base44.asServiceRole.entities.DispatchCall.create({
         ...row,
-        bps_reference: '',
-        call_id: 'PP',
+        bps_reference: referenceByExternal.get(row.external_call_id),
+        call_id: referenceByExternal.get(row.external_call_id),
         source_first_seen_at: new Date().toISOString(),
       });
       created += 1;
@@ -512,8 +520,8 @@ Deno.serve(async (req) => {
       const safePriority=(rank[String(row.priority||'low').toLowerCase()]??0)>=(rank[normalized]??0)?row.priority:normalized;
       const patch = {
         ...row,priority:existing.priority_override ? existing.priority : safePriority,
-        bps_reference: '',
-        call_id: 'PP',
+        bps_reference: existing.bps_reference || referenceByExternal.get(row.external_call_id),
+        call_id: existing.agency_cad_number || existing.bps_reference || referenceByExternal.get(row.external_call_id) || existing.call_id,
         source_first_seen_at: existing.source_first_seen_at || existing.created_date || new Date().toISOString(),
       };
       let currentCall = existing;

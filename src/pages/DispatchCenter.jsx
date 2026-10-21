@@ -1,3 +1,4 @@
+import { cadReference } from '@/lib/cadReference';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { cadDestination } from '@/lib/cadNavigation';
 import { incidentPriority } from '@/lib/incidentPriority';
@@ -934,7 +935,7 @@ export default function DispatchCenter() {
                                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
-                                            {isPulsePointCall(selectedCall) ? 'PP' : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
+                                            {isPulsePointCall(selectedCall) ? 'PP · '+(cadReference(selectedCall)||'Reference Pending') : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{incidentPriority(selectedCall).toUpperCase()}</span>
                                         {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={incidentPriority(selectedCall)} onSave={async(call,priority)=>{

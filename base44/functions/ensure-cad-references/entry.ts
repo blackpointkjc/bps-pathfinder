@@ -38,9 +38,11 @@ Deno.serve(async req=>{
  try{
   const api=createClientFromRequest(req),actor=await api.auth.me();
   const roles=new Set([actor?.role,...(actor?.additional_roles||[])].map((v:any)=>String(v||'').toLowerCase()));
-  if(!actor||!['admin','dispatch','dispatcher','cad_access','full_access','supervisor'].some(role=>roles.has(role))&&!actor.dispatch_role)return Response.json({error:'CAD access required'},{status:403});
+  let trustedService=false;
+  if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}
+  if(!trustedService&&(!actor||!['admin','dispatch','dispatcher','cad_access','full_access','supervisor'].some(role=>roles.has(role))&&!actor.dispatch_role))return Response.json({error:'CAD access required'},{status:403});
   const body=await req.json().catch(()=>({}));
-  if(body.action==='allocate')return Response.json({success:true,references:await reserve(api,1)});
+  if(body.action==='allocate')return Response.json({success:true,references:await reserve(api,Math.max(1,Math.min(100,Number(body.count)||1)))});
   const selected=Array.isArray(body.records)?body.records.slice(0,60):[];
   const rows:any[]=[];
   for(const entity of collections){

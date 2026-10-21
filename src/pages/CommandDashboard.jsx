@@ -1,3 +1,4 @@
+import { cadReference } from '@/lib/cadReference';
 import useCadRoster from '@/hooks/useCadRoster';
 import { cadDestination } from '@/lib/cadNavigation';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
@@ -177,14 +178,14 @@ function CommandDashboardInner() {
     };
 
     const getCallIdentifier = (call) => {
-        if (isPulsePointCall(call)) return { value: 'PP', type: 'pulsepoint' };
+        if (isPulsePointCall(call)) return { value: cadReference(call)||'Reference Pending', type: 'pulsepoint' };
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
         const bps = compactBps(call?.bps_reference);
         const legacy = compactBps(call?.call_id);
         if (official) return { value: official, type: 'official' };
         if (bps) return { value: bps, type: 'bps' };
-        if (legacy && !/^B\d+$/i.test(legacy)) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
+        if (legacy && cadReference(call) && !/^B\d+$/i.test(legacy)) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
         return { value: 'REFERENCE PENDING', type: 'pending' };
     };
 
