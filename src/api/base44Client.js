@@ -380,6 +380,11 @@ function invalidateReadCacheForWrite(meta = {}) {
     if (['ingestGractivecalls','createDispatchCall','updateCadCallStatus','updateCadCallPriority','manageCadUnitAssignment'].includes(name)) {
       addEntity('DispatchCall'); addEntity('PropertyAlert'); addFunction('getActiveDispatchCalls');
     }
+    if (name === 'getFleetScheduleData' || name === 'manageDutySupervisorSchedule') {
+      addEntity(name === 'getFleetScheduleData' ? 'VehicleAssignment' : 'DutySupervisorAssignment');
+      addFunction('getMyScheduleData');
+      addFunction('getWelcomeBriefingData');
+    }
     if (name === 'manageLocations') { addEntity('Location'); addFunction('getAppDirectory'); }
     if (name === 'manageHRDivisions') { addEntity('Division'); addFunction('getAppDirectory'); }
     if (['updateUser','createPortalAccount','manageClientAssignments','manageOfficerCertifications','syncCertToOfficer'].includes(name)) {
