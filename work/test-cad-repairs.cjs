@@ -26,6 +26,9 @@ function backend(p,client){let handler;vm.runInNewContext(compile(p),{exports:{}
  assert.equal((await (await link({call_id:'call',property_id:'p'})).json()).duplicate,true);assert.equal(writes.length,1);
  db.DispatchCall.get=async()=>null;
  const old=await (await link({call_id:'old',property_id:'p'})).json();assert.equal(old.success,true);assert.equal(old.link.archive_id,'archive');
+ db.CallHistory.filter=async()=>[];db.PropertyAlert.get=async()=>({id:'alert',callId:'deleted',cadNumber:'BPS-202610-9025',callIncident:'Trespassing',callLocation:'Test Property',callTime:'2026-10-20T19:31:00Z'});
+ const propertyOnly=await(await link({call_id:'deleted',property_alert_id:'alert',property_id:'p'})).json();assert.equal(propertyOnly.success,true);assert.equal(propertyOnly.link.call_number,'BPS-202610-9025');assert.equal(alerts,0);
+
  // History backend searches persisted active AND archived calls and restores manual property attribution.
  let queries=[];
  const empty={list:async()=>[],filter:async()=>[]};
