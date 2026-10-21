@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
     const authorized = user.role === 'admin' || roles.has('trainer') || roles.has('full_access');
     if (!authorized) return Response.json({ error: 'Trainer access required', users: [] }, { status: 403 });
 
+    const body=await req.json().catch(()=>({}));
+    if(body.refresh===true)userCache=null;
     // Pending invitations are independent from User provisioning; one failing source
     // must not erase the other source's confirmed records.
     const load_errors: string[] = [];
