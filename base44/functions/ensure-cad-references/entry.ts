@@ -55,7 +55,7 @@ Deno.serve(async req=>{
    const verified=(await counters.filter({counter_key:'cad_reference_backfill_v2'},undefined,1))[0];
    if(verified?.ingestion_lock_token!==token)return Response.json({error:'Historical reference batch will retry',retryable:true},{status:409});
    migration=verified;migrationApi=api;
-   if(verified.migration_total===undefined){
+   if(verified.migration_total==null){
     try{const totals=await Promise.all(collections.map(entity=>api.asServiceRole.entities[entity].count()));await counters.update(state.id,{migration_total:totals.reduce((sum:number,value:number)=>sum+Number(value),0)});}
     catch{await counters.update(state.id,{migration_total:-1});}
    }
