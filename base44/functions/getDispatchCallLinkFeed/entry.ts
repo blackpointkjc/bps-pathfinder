@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     // burst, and never silently turn a live-feed failure into an empty dropdown.
     const live = await read('DispatchCall','-time_received');
     const history = await read('CallHistory','-archived_date');
-    const alerts = await search?base44.asServiceRole.entities.PropertyAlert.filter({$or:['cadNumber','callIncident','callLocation'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))},'-created_date',200):base44.asServiceRole.entities.PropertyAlert.list('-created_date',limit);
+    const alerts = await (search?base44.asServiceRole.entities.PropertyAlert.filter({$or:['cadNumber','callIncident','callLocation'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))},'-created_date',200):base44.asServiceRole.entities.PropertyAlert.list('-created_date',limit));
 
     const propertyByCall = new Map<string, any>();
     for (const alert of alerts || []) {
