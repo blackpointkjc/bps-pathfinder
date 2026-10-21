@@ -274,7 +274,7 @@ export default function AdminCenter() {
   const [previewError, setPreviewError] = useState('');
   const [previewRetry, setPreviewRetry] = useState(0);
   const signedInRoles = new Set([signedInUser?.role, ...(Array.isArray(signedInUser?.additional_roles) ? signedInUser.additional_roles : signedInUser?.additional_roles ? [signedInUser.additional_roles] : [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const masterSections = MASTER_SECTIONS.filter(item => item.id !== 'training' || signedInRoles.has('trainer') || signedInRoles.has('full_access'));
+  const masterSections = MASTER_SECTIONS.filter(item => item.id !== 'training' || signedInRoles.has('admin') || signedInRoles.has('trainer') || signedInRoles.has('full_access'));
 
   const canPreview = signedInRoles.has('admin') || signedInRoles.has('full_access');
   useEffect(() => {
