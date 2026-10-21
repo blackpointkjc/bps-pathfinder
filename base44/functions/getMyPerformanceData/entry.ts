@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
     return await loadPerformanceData(base44, officer, body);
-  } catch (error) {
+  } catch (error:any) {
     console.error('getMyPerformanceData failed', error);
     return Response.json({ error: error?.message || 'Unable to load performance data' }, { status: 500 });
   }
