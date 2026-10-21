@@ -1,3 +1,4 @@
+import { cadReference } from '@/lib/cadReference';
 import { cadDestination } from '@/lib/cadNavigation';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { useState, useEffect, useRef } from 'react';
@@ -557,7 +558,7 @@ export default function CallHistory() {
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
                                 <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
-                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span><div className="mt-1 text-[10px] font-bold text-cyan-200">CAD / REF: {row.agency_cad_number||row.bps_reference||row.call_id||row.original_call_id||row.id}</div>
+                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span><div className="mt-1 text-[10px] font-bold text-cyan-200">CAD / REF: {cadReference(row)||'Assigning CAD Reference…'}</div>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">Active</span>}
                                     {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">Property call</span>}
                                     {row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName) && (

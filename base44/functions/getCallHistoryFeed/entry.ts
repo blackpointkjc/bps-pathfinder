@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const validCad = (value:any) => {const text=String(value||'').trim();return !!text&&!/^[a-f0-9]{24}$/i.test(text)&&!/^property-alert-|^web-|^https?:|^[a-f0-9]{48,}$/i.test(text)&&/^(?:BPS-\d{6}-\d{1,8}|CAD[- ]|[A-Z]{0,6}[- ]?\d{3,})/i.test(text);};
+const cadRef = (row:any) => [row?.agency_cad_number,row?.bps_reference,row?.cadNumber,row?.call_number,row?.call_id].find(validCad)||'';
+
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallback: T, maxAttempts = 1): Promise<{ data: T; error: string }> {
@@ -137,7 +140,9 @@ Deno.serve(async (req) => {
       return {
         ...row,
         original_call_id: source === 'archived' ? (originalId || row.original_call_id || '') : row.original_call_id,
-        call_id: row.call_id || fingerprintAlert?.callId || row.id,
+        call_id: cadRef(row) || cadRef(alert),
+        bps_reference: row.bps_reference || (/^BPS-/i.test(cadRef(alert)) ? cadRef(alert) : ''),
+        _referenceEntity:source==='archived'?'CallHistory':'DispatchCall',_referenceId:String(row.id),
         _source: source,
         _assignedUnitDetails: assignmentDetails(originalId, Array.isArray(row.assigned_units) ? row.assigned_units : []),
         _linkedReports:linkedReports(originalId||String(row.id||''),String(row.call_id||row.agency_cad_number||row.bps_reference||'')),
@@ -188,7 +193,9 @@ Deno.serve(async (req) => {
       syntheticPropertyRows.push({
         id: `property-alert-${alert.id}`,
         original_call_id: callId,
-        call_id: callId,
+        call_id: cadRef(alert),
+        bps_reference: /^BPS-/i.test(cadRef(alert))?cadRef(alert):'',
+        _referenceEntity:'PropertyAlert',_referenceId:String(alert.id),
         time_received: alert.callTime || alert.time_received || alert.created_date,
         created_date: alert.created_date,
         incident: alert.callIncident || 'Monitored Property Call',
@@ -220,7 +227,7 @@ Deno.serve(async (req) => {
     for(const link of manualLinks){
       if(represented.has(String(link.call_id))||represented.has(String(link.archive_id||'')))continue;
       if(search && ![link.call_number,link.property_name,link.incident,link.location].some(v=>lower(v).includes(lower(search))))continue;
-      decorated.push({id:link.archive_id||link.call_id,original_call_id:link.call_id,call_id:link.call_number,incident:link.incident,location:link.location,time_received:link.time_received,status:link.status,_source:link.archive_id?'archived':'active',_propertyCall:true,_propertyName:link.property_name,_propertyId:link.property_id,_propertyLinks:[link],assigned_units:[],_assignedUnitDetails:[],_linkedReports:[]});
+      decorated.push({id:link.archive_id||link.call_id,original_call_id:link.call_id,call_id:cadRef(link),_referenceEntity:'PropertyCallLink',_referenceId:String(link.id),incident:link.incident,location:link.location,time_received:link.time_received,status:link.status,_source:link.archive_id?'archived':'active',_propertyCall:true,_propertyName:link.property_name,_propertyId:link.property_id,_propertyLinks:[link],assigned_units:[],_assignedUnitDetails:[],_linkedReports:[]});
       represented.add(String(link.call_id));
     }
     return Response.json({
