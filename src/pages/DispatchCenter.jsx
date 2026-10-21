@@ -801,8 +801,8 @@ export default function DispatchCenter() {
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
                     { label: 'PULSEPOINT', value: pulsePointCalls.length, tone: pulsePointCalls.length ? 'text-red-300' : 'text-slate-300', icon: Radio },
-                    { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
-                    { label: 'HIGH PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
+                    { label: 'PROPERTY UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
+                    { label: 'PROPERTY PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
                     { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
                     { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
                     { label: 'PROPERTY OLDEST', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
@@ -876,7 +876,7 @@ export default function DispatchCenter() {
                             ) : allCalls.map(call => {
                                 const pulsePoint = isPulsePointCall(call);
                                 return (
-                                <div key={call.id} onClick={() => handleSelectCall(call)}
+                                <div key={call.id} role="button" tabIndex={0} aria-label={'Open incident '+(call.bps_reference||call.call_id||call.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();handleSelectCall(call);}}} onClick={() => handleSelectCall(call)}
                                     className={`dispatch-call-card group grid grid-cols-12 cursor-pointer border-b px-2 py-2.5 transition-all ${
                                         selectedCall?.id === call.id
                                             ? pulsePoint ? 'bg-red-950/70 border-l-2 border-l-red-400 border-red-700/70' : 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'

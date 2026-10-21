@@ -1524,7 +1524,7 @@ export default function Layout({ children, currentPageName }) {
   // remain available from the workspace selector, but desktop navigation must not
   // rewrite an inner-page URL back to a center landing page.
   const criticalOutage = outages.some(item => item.severity === 'outage');
-  const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
+  const centerLabel = ['CADCenter','CommandDashboard','DispatchCenter'].includes(currentPageName) ? 'CAD Operations' : (CENTER_CONFIG[activeCenter]?.label || 'CAD Center');
   const primaryCenter = allowedCenters(user)[0] || 'officer';
   const userHomePage = defaultPageForUser(user, true);
   const userHomeLabel = userHomePage === 'AdminCenter'
