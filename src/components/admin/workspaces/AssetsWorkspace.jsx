@@ -15,6 +15,6 @@ export default function AssetsWorkspace(){
   <header><h1 className="text-2xl font-bold">Company Assets</h1><p className="mt-1 text-sm text-slate-400">Vehicles, assigned equipment and maintenance in one inventory workspace.</p></header>
   <section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><VehicleManagement/></section>
   <InlineSection id="assets-maintenance" title="Maintenance & service" description="Upcoming service, repair history and maintenance tasks." initialOpen><MaintenanceTracking units={users}/></InlineSection>
-  <InlineSection id="assets-equipment" title="Equipment & issued property" description="Track equipment ownership, issue and return." initialOpen={new URLSearchParams(window.location.search).get('admin_asset_tool')==='equipment'}><AdminEquipment embedded/></InlineSection>
+  <InlineSection id="assets-equipment" title="Equipment & issued property" description="Track equipment ownership, issue and return." initialOpen><AdminEquipment embedded/></InlineSection>
  </div>;
 }

@@ -1,3 +1,5 @@
+const sourceCache = new Map<string,{at:number;rows:any[]}>();
+const sourcePending = new Map<string,Promise<any[]>>();
 // One complete source read per entity for the entire company refresh.
 // Apply the original officer/date queries locally; never treat a failed read as [].
 export function matchesQuery(row: any, query: any): boolean {
@@ -29,7 +31,7 @@ export function companyPerformanceEntities(entities: any, start: string, end: st
       for (let attempt=0; ; attempt++) {
         try { return await fn(); }
         catch(error: any) {
-          if (attempt >= 2 || !(error?.status === 429 || error?.response?.status === 429 || /429|rate.limit|too many requests/i.test(error?.message || ''))) throw error;
+          if (attempt >= 1 || error?.status === 429 || error?.response?.status === 429 || /429|rate.limit|too many requests/i.test(error?.message || '')) throw error;
           await new Promise(resolve => setTimeout(resolve, 1500 * (attempt + 1)));
         }
       }
@@ -38,7 +40,11 @@ export function companyPerformanceEntities(entities: any, start: string, end: st
     return task;
   };
   const allRows = (name: string) => {
-    if (!pending.has(name)) pending.set(name, (async () => {
+    const key=name+':'+start+':'+end;
+    const cached=sourceCache.get(key);
+    if(cached&&Date.now()-cached.at<300000)return Promise.resolve(cached.rows);
+    if(sourcePending.has(key))return sourcePending.get(key)!;
+    if (!pending.has(name)) { const task=(async () => {
       const date = dateFields[name], stamp = stampFields[name];
       const query = date ? { [date]: { $gte:start, $lte:end } } : stamp ? { [stamp]: { $gte:start+'T00:00:00.000Z', $lt:endDate.toISOString() } } : null;
       const rows: any[] = [];
@@ -46,10 +52,10 @@ export function companyPerformanceEntities(entities: any, start: string, end: st
         const page = await read(() => query ? entities[name].filter(query, '-id', 500, skip) : entities[name].list('-id', 500, skip));
         if (!Array.isArray(page)) throw new Error(name + ' did not return records');
         rows.push(...page);
-        if (page.length < 500) return rows;
+        if (page.length < 500) {sourceCache.set(key,{at:Date.now(),rows});return rows;}
       }
       throw new Error(name + ' exceeded the complete-source read limit; figures were not recalculated');
-    })());
+    })().finally(()=>sourcePending.delete(key)); pending.set(name,task);sourcePending.set(key,task); }
     return pending.get(name)!;
   };
   const select = async (name: string, query: any, sort?: string, limit?: number) => {
