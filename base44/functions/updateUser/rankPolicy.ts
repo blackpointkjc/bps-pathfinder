@@ -1,7 +1,7 @@
 // Shared personnel policy. This module contains no runtime or service dependencies.
 export const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 export const RANK_SERIES: Record<string, {start:number,end:number}> = {
- 'Colonel':{start:100,end:100},'Lt Colonel':{start:101,end:199},
+ 'Colonel':{start:100,end:100},'Lt Colonel':{start:102,end:199},
  'Major':{start:200,end:299},'Captain':{start:350,end:399},
  'Lieutenant':{start:400,end:449},'First Sergeant':{start:450,end:499},
  'Sergeant':{start:500,end:549},'Corporal':{start:550,end:599},
