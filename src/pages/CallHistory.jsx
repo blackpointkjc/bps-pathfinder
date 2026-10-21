@@ -71,6 +71,7 @@ function escapePrintHtml(value) {
 export default function CallHistory() {
     const navigate = useNavigate();
     const [rows, setRows] = useState([]);
+    const referenceRowsRef=useRef(rows); referenceRowsRef.current=rows;
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState(()=>new URLSearchParams(window.location.search).get('q')||'');
@@ -185,6 +186,32 @@ export default function CallHistory() {
             document.removeEventListener('visibilitychange', onVisible);
         };
     }, []);
+
+    useEffect(()=>{
+        if(loading)return;
+        let cancelled=false;
+        const repair=async()=>{
+            while(!cancelled){
+                const missing=referenceRowsRef.current.filter(row=>!cadReference(row)&&row._referenceEntity&&row._referenceId).slice(0,40);
+                if(!missing.length)return;
+                try{
+                    const response=await base44.functions.invoke('ensure-cad-references',{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))});
+                    const data=response?.data||response||{};
+                    if(cancelled)return;
+                    if(data.error)throw new Error(data.error);
+                    if(!data.mappings?.length)return;
+                    setRows(previous=>previous.map(row=>{
+                        const mapping=data.mappings.find(item=>item.entity===row._referenceEntity&&String(item.id)===String(row._referenceId));
+                        return mapping?{...row,bps_reference:mapping.reference,call_id:mapping.reference}:row;
+                    }));
+                    clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+                }catch(error){console.warn('CAD reference repair will resume on the next history refresh',error?.response?.data?.error||error?.message);return;}
+                await new Promise(resolve=>setTimeout(resolve,20000));
+            }
+        };
+        void repair();
+        return()=>{cancelled=true;};
+    },[loading]);
 
     const init = async () => {
         try {
@@ -357,7 +384,7 @@ export default function CallHistory() {
         const reportRows = propertyRows.map((row, index) => {
             const propertyName = row._propertyName || row._propertyAlert?.propertyName || 'Monitored property';
             const lifecycle = String(row._propertyLifecycle || row._propertyAlert?.lifecycle_status || row.status || '').replaceAll('_', ' ');
-            const cad = row.agency_cad_number || row.bps_reference || row.call_id || row.original_call_id || '—';
+            const cad = cadReference(row) || 'Assigning CAD Reference…';
             const distance = Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0
                 ? `${Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft`
                 : 'Inside / not recorded';

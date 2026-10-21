@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
 
@@ -5,6 +6,7 @@ import { requestCadLiveSync } from '@/lib/cadCallFeed';
 // cadCallFeed shares a cross-tab cooldown/lock; the server has its own ingestion lease.
 // PropertyAlert realtime remains responsible for speaking alerts exactly once.
 export default function CadSourceSyncMonitor({ user }) {
+  const location=useLocation();
   useEffect(() => {
     const role = String(user?.role || '').toLowerCase();
     const roles = new Set((user?.additional_roles || []).map(value => String(value).toLowerCase()));
@@ -37,11 +39,11 @@ export default function CadSourceSyncMonitor({ user }) {
       }
     };
     // Let the signed-in page load before beginning expensive source ingestion.
-    const first = window.setTimeout(sync, 12_000);
+    const first = window.setTimeout(sync, 1_000);
     // Tick frequently enough to retry a collided server lease within seconds.
     // cadCallFeed and the backend lease keep this from turning into duplicate writes;
     // command screens should not wait a minute to discover a property call.
-    const timer = window.setInterval(sync, 30_000);
+    const timer = window.setInterval(sync, 20_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
@@ -54,6 +56,6 @@ export default function CadSourceSyncMonitor({ user }) {
       window.removeEventListener('focus', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [user?.email, user?.role, user?.employment_status]);
+  }, [user?.email, user?.role, user?.employment_status, location.pathname, location.search]);
   return null;
 }

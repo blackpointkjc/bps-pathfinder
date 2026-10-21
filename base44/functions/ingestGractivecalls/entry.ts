@@ -1095,6 +1095,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   }).slice(0, 40);
   const numbers = await reserveCadNumbers(base44, newCalls.length);
   const sideEffects: Promise<any>[] = [];
+  const createdCalls:any[]=[];
   let created = 0, updated = 0, propertyAlertsCreated = 0, alertFailures = 0;
   // New records and their PropertyAlert realtime events precede all updates.
   for (let offset = 0; offset < newCalls.length; offset += 4) {
@@ -1107,7 +1108,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         cad_number_source: official ? 'official_government_feed' : 'bps_internal',
         official_cad_verified: Boolean(official),
       });
-      created++;
+      created++; createdCalls.push(call);
       try {
         propertyAlertsCreated += await createImmediatePropertyAlerts(
           base44, call, monitored, callPropertyKeys, alertKeys, sideEffects
@@ -1118,6 +1119,14 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       }
     }));
   }
+  // These rows are already visible through realtime while location enrichment runs.
+  await Promise.all(createdCalls.filter(call=>!Number.isFinite(Number(call.latitude))||!Number.isFinite(Number(call.longitude))).slice(0,8).map(async call=>{
+    const located=await fastGeocodeWebsiteCall(call);
+    if(!Number.isFinite(Number(located.latitude))||!Number.isFinite(Number(located.longitude)))return;
+    const patch={latitude:located.latitude,longitude:located.longitude,geo_confidence:located.geo_confidence,geo_method:located.geo_method,geo_approximate:true};
+    const updatedCall=await base44.asServiceRole.entities.DispatchCall.update(call.id,patch);
+    propertyAlertsCreated+=await createImmediatePropertyAlerts(base44,{...call,...patch,...updatedCall},monitored,callPropertyKeys,alertKeys,sideEffects);
+  }));
   const updateQueue = recent.filter(row => {
     const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
     return existing && existing.manual_dismissed !== true &&
@@ -1296,7 +1305,6 @@ Deno.serve(async (req) => {
     // Website-only rows do not carry map coordinates. Geocode only the newest
     // unmatched rows immediately so monitored-property alerts can be evaluated in
     // the same minute rather than waiting for the slower API to catch up.
-    incoming = await geocodeFreshWebsiteOnlyCalls(incoming);
     // Publish new calls and monitored-property speech before lengthy enrichment.
     if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
       const result = await ingestFastPublishedCalls(base44, incoming);
@@ -1311,6 +1319,7 @@ Deno.serve(async (req) => {
       return Response.json({ ...result, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length });
     }
     // The full historical reconciliation remains available for maintenance.
+    incoming = await geocodeFreshWebsiteOnlyCalls(incoming);
     incoming = await enrichOfficialIdentifiers(incoming);
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);

@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || Boolean(user.dispatch_role);
+    const allowed = roles.has('dispatch') || roles.has('dispatcher') || user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || Boolean(user.dispatch_role);
     if (!allowed) return Response.json({ error: 'Dispatch access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -116,8 +116,15 @@ Deno.serve(async (req) => {
     const doa=/(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(data.incident||''));
     const priority = doa && !['critical','high'].includes(data.priority) ? 'high' : allowedPriorities.has(data.priority) ? data.priority : 'medium';
     const now = new Date().toISOString();
+    const allocationResponse=await base44.functions.invoke('ensure-cad-references',{action:'allocate'});
+    const allocation=allocationResponse?.data||allocationResponse||{};
+    const systemReference=allocation.references?.[0];
+    if(!systemReference)throw new Error(allocation.error||'Unable to allocate the CAD reference. Retry creating this call.');
     const createdCall = await base44.asServiceRole.entities.DispatchCall.create({
       ...data,
+      bps_reference:systemReference,
+      call_id:data.agency_cad_number || systemReference,
+      cad_number_source:data.agency_cad_number?'official_government_feed':'bps_internal',
       priority,
       assigned_units: selectedUnits,
       status: selectedUnits.length ? 'Dispatched' : (data.status || 'New'),

@@ -21,7 +21,8 @@ async function reserve(api:any,count:number){
  const verified=(await entity.filter({counter_key:'dispatch_call'},undefined,1))[0];
  if(verified?.ingestion_lock_token!==token)throw Object.assign(Error('CAD reference allocation will retry'),{status:409});
  try{
-  const period=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).format(new Date()).replace(/\D/g,'');
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+  const period=parts.find(p=>p.type==='year')!.value+parts.find(p=>p.type==='month')!.value;
   const counterKey='bps_dispatch_call:'+period;
   let counter=(await entity.filter({counter_key:counterKey},undefined,1))[0];
   if(!counter)counter=await entity.create({counter_key:counterKey,last_number:0});
