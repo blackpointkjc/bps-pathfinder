@@ -39,7 +39,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     
     const holdOf=unit=>localHold[unit.id]??unit.dispatch_hold_new_calls===true;
     const isOperationalStatus=status=>!['out of service','distress','offline'].includes(String(status||'').toLowerCase());
-    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&u.connection_stale!==true&&!holdOf(u)
+    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&!holdOf(u)
       &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
     const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
     for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
@@ -82,6 +82,21 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
         }
     };
 
+    const handleAddAnotherCall=async unit=>{
+        const targetId=destinationByOfficer[unit.id];
+        if(!targetId||String(targetId)===String(call?.id))return toast.error('Choose another active CAD call.');
+        setReassigning(unit.id);
+        try {
+            const response=await base44.functions.invoke('manageCadUnitAssignment',{action:'assign',call_id:targetId,unit_id:unit.id});
+            const result=response?.data||response||{};
+            if(result.error)throw new Error(result.error);
+            toast.success('Additional call assigned to '+displayUnitName(unit)+' without removing existing calls.');
+            setDestinationByOfficer(old=>({...old,[unit.id]:''}));
+            await queryClient.invalidateQueries({queryKey:['cadUnitRoles',targetId]});
+            await onUpdate?.();
+        }catch(error){toast.error(error?.response?.data?.error||error?.message||'Could not add another call');}
+        finally{setReassigning('');}
+    };
     const handleReassignUnit=async unit=>{
         const targetId=destinationByOfficer[unit.id];
         if(!targetId||targetId===call?.id)return toast.error('Choose a different active CAD call.');
@@ -157,10 +172,10 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                     <div className="flex flex-wrap items-center gap-1">
                                         <Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,!holdOf(unit))} className={`h-8 ${holdOf(unit)?'border-emerald-700 text-emerald-300':'border-amber-700 text-amber-300'}`}>{holding===unit.id?'Saving…':holdOf(unit)?'Remove Hold':'Hold New Calls'}</Button>
                                         <select aria-label={`Reassign ${unitName} to a different call`} value={destinationByOfficer[unit.id]||''} onChange={e=>setDestinationByOfficer(prev=>({...prev,[unit.id]:e.target.value}))} className="max-w-[160px] rounded border border-cyan-900 bg-slate-950 px-1 py-2 text-[10px] text-cyan-100">
-                                            <option value="">Transfer to CAD…</option>
+                                            <option value="">Select another CAD call…</option>
                                             {calls.filter(c=>String(c.id)!==String(call.id)&&!['cleared','cancelled','closed','resolved','completed'].includes(String(c.status||'').toLowerCase())&&c.manual_dismissed!==true).map(c=><option key={c.id} value={c.id}>{c.agency_cad_number||c.bps_reference||c.call_id||c.id} · {String(c.incident||'').slice(0,34)}</option>)}
                                         </select>
-                                        <Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleReassignUnit(unit)} className="h-8 border-cyan-700 text-cyan-300">{reassigning===unit.id?'Moving…':'REASSIGN'}</Button>
+                                        <Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleAddAnotherCall(unit)} className="h-8 border-emerald-700 text-emerald-300">{reassigning===unit.id?'Adding…':'ADD CALL'}</Button><Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleReassignUnit(unit)} className="h-8 border-cyan-700 text-cyan-300">{reassigning===unit.id?'Moving…':'REASSIGN'}</Button>
                                     </div>
                                     <Button
                                         variant="ghost"
@@ -205,7 +220,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         </div>
                     ) : availableUnits.length === 0 ? (
                         <div className="text-xs text-slate-400 text-center p-2">
-                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No signed-in officers can receive another call. Review Dispatch Holds and connection status.'}
+                            {searchTerm ? 'No matching available units' : units.length === 0 ? 'No signed-in units are currently reported.' : 'No officers currently qualify for new calls. Check Out of Service status and Dispatch Holds below.'}
                         </div>
                     ) : (
                         availableUnits.map(unit => {

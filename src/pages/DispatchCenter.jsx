@@ -146,7 +146,7 @@ export default function DispatchCenter() {
             // and do not immediately follow the event with another getOnDutyUnits
             // network request; that duplicate read was a major source of 429s.
             setUnits(current => applyOfficerLocationEvent(current, event)
-                .filter(unit => unit?.id && unit.status)
+                .filter(unit => unit?.id && (unit.email || unit.officer_email))
                 .map(unit => ({
                     ...unit,
                     email: unit.email || unit.officer_email,
@@ -347,10 +347,10 @@ export default function DispatchCenter() {
                             last_name: user.last_name || session.last_name || '',
                             full_name: user.full_name || session.officer_name || '',
                             session_active: session.session_active === true,
-                            status: session.status,
+                            status: session.status || user.status || 'Status pending',
                             label: session.unit_number || user.unit_number ? `Unit ${session.unit_number || user.unit_number}` : [user.rank||'Officer',user.last_name||String(user.full_name||'').split(/\s+/).pop()].filter(Boolean).join(' '),
                         };
-                    }).filter(unit => unit?.id && unit.status);
+                    }).filter(unit => unit?.id && unit.email);
                     if (recovered.length || !(live.units || []).some(session => session.session_active && session.status !== 'Out of Service')) {
                         setUnits(recovered);
                         setUnitLoadStatus('ready');
