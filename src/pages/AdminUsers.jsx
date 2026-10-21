@@ -412,7 +412,18 @@ export default function AdminUsers({ embedded = false }) {
       const result = await base44.functions.invoke('companyImapMail', { action: 'verify', mailbox_id: imapMailboxId });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      alert('Company mailbox connection verified successfully.');
+      const imapOk = payload.imap?.ok === true;
+      const inboxOk = payload.inbox?.ok === true;
+      const smtpOk = payload.smtp?.ok === true;
+      if (!payload.ok || !imapOk || !inboxOk || !smtpOk) {
+        const details = [
+          `IMAP login: ${imapOk ? 'PASS' : 'FAIL — ' + (payload.imap?.error || 'Not verified')}`,
+          `INBOX access: ${inboxOk ? 'PASS' : 'FAIL — ' + (payload.inbox?.error || 'Not verified')}`,
+          `SMTP connection: ${smtpOk ? 'PASS' : 'FAIL — ' + (payload.smtp?.error || 'Not verified')}`,
+        ];
+        throw new Error(details.join('\n'));
+      }
+      alert('Company mailbox fully verified: IMAP login, INBOX access, and SMTP connection passed.');
     } catch (error) {
       alert('Mailbox verification failed: ' + (error?.message || 'Unknown error'));
     } finally {
