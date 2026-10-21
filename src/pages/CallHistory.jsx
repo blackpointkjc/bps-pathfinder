@@ -202,12 +202,9 @@ export default function CallHistory() {
             // Keep a current in-memory copy of monitored property boundaries so
             // active CAD rows can be classified immediately even before the
             // durable PropertyAlert write arrives.
-            try {
-                const locations = await withRequestTimeout(base44.entities.Location.list('site_name', 300), 10000, 'Property monitoring boundaries');
-                monitoredPropertiesRef.current = monitoredPropertiesFromLocations(locations || []);
-            } catch (locationError) {
-                console.warn('[HISTORY] Property boundary refresh unavailable:', locationError?.message || locationError);
-            }
+            void withRequestTimeout(base44.entities.Location.list('site_name',300),10000,'Property monitoring boundaries')
+              .then(locations=>{monitoredPropertiesRef.current=monitoredPropertiesFromLocations(locations||[]);})
+              .catch(error=>console.warn('[HISTORY] Property boundaries unavailable',error?.message));
 
             const result = await withRequestTimeout(
                 base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current}),
@@ -222,6 +219,8 @@ export default function CallHistory() {
             // This makes Call History update immediately even if PropertyAlert
             // persistence is briefly delayed by ingestion or rate limiting.
             feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
+            setRows(feedRows);setLoading(false);setRefreshing(false);
+            setWarnings(Array.isArray(payload.warnings)?payload.warnings:[]);
 
             // PropertyAlert is authoritative property-call history. Always merge it,
             // not only when the backend returned zero property rows. This preserves

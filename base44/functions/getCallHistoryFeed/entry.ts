@@ -48,10 +48,13 @@ Deno.serve(async (req) => {
     }
 
     // Keep historical unit attribution even after a call is closed.
-    const assignmentRead = await readWithRetry('Call assignments', () => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1500), []);
-    const userRead = await readWithRetry('Officer directory', () => base44.asServiceRole.entities.User.list('-updated_date', 750), []);
-    const unitRead = await readWithRetry('CAD units', () => base44.asServiceRole.entities.Unit.list('-last_update_at', 500), []);
-    const linkedRead = await readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.list('-linked_at',1300),[]);
+    const [assignmentRead,userRead,unitRead,linkedRead,propertyLinksRead] = await Promise.all([
+      readWithRetry('Call assignments',()=>base44.asServiceRole.entities.CallAssignment.list('-assigned_at',1500),[]),
+      readWithRetry('Officer directory',()=>base44.asServiceRole.entities.User.list('-updated_date',750),[]),
+      readWithRetry('CAD units',()=>base44.asServiceRole.entities.Unit.list('-last_update_at',500),[]),
+      readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.list('-linked_at',1300),[]),
+      readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',2000),[])
+    ]);
     const linksByCall=new Map<string,any[]>();
     for(const link of linkedRead.data||[]){
       if(String(link.status||'active').toLowerCase()==='detached')continue;
@@ -206,7 +209,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const propertyLinksRead=await readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',2000),[]);
     const manualLinks:any[]=propertyLinksRead.data||[];
     const allRows=[...activeRows,...archivedRows,...syntheticPropertyRows];
     const decorated=allRows.map(row=>{
