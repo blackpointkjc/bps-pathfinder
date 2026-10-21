@@ -500,7 +500,10 @@ function defaultPageForCenter(center) {
 }
 
 function defaultPageForUser(user, desktop = false) {
+  // Officer identities land in CAD, while clients/students remain isolated.
+  const roles = normalizedRoles(user);
   const centers = allowedCenters(user);
+  if (centers.includes('cad') && (roles.has('officer') || roles.has('cad_access') || user?.dispatch_role === true)) return desktop ? 'CADCenter' : 'CommandDashboard';
   const center = centers[0];
   return desktop && DESKTOP_CENTER_PAGE[center] ? DESKTOP_CENTER_PAGE[center] : defaultPageForCenter(center);
 }
