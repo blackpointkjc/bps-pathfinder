@@ -104,8 +104,8 @@ Deno.serve(async req=>{
   for(const [entity,updates] of updatesByEntity){
    const service=recordsApi.entities[entity];
    const saved:any[]=[];
-   for(let offset=0;offset<updates.length;offset+=500){const chunk=updates.slice(offset,offset+500);const result=typeof service.bulkUpdate==='function'?await service.bulkUpdate(chunk):await Promise.all(chunk.map(update=>service.update(update.id,Object.fromEntries(Object.entries(update).filter(([key])=>key!=='id')))));const records=Array.isArray(result)?result:result?.data;if(!Array.isArray(records))throw Error('CAD reference batch did not return verified records');saved.push(...records);}
-   const persisted=Array.isArray(saved)?saved:saved?.data;
+   for(let offset=0;offset<updates.length;offset+=500){const chunk=updates.slice(offset,offset+500);const result:any=typeof service.bulkUpdate==='function'?await service.bulkUpdate(chunk):await Promise.all(chunk.map(update=>service.update(update.id,Object.fromEntries(Object.entries(update).filter(([key])=>key!=='id')))));const records=Array.isArray(result)?result:result?.data;if(!Array.isArray(records))throw Error('CAD reference batch did not return verified records');saved.push(...records);}
+   const persisted=saved;
    if(!Array.isArray(persisted))throw Error('CAD reference batch did not return verified records');
    const byId=new Map(persisted.map((row:any)=>[String(row.id),row]));
    for(const update of updates){

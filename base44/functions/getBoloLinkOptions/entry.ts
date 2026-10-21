@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.IncidentReport.list('-created_date', 75),
     ]);
     return Response.json({ calls: calls || [], reports: reports || [] });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getBoloLinkOptions failed', error);
     return Response.json({ error: error?.message || 'Unable to load CAD/report links' }, { status: 500 });
   }

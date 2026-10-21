@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const calls = [...deduped.values()].sort((a:any,b:any) => new Date(b.time_received || b.created_date || 0).getTime() - new Date(a.time_received || a.created_date || 0).getTime());
     const activeCount = calls.filter((c:any) => !c._archived && !terminal.has(lower(c.status))).length;
     return Response.json({ success:true, calls, active_count: activeCount, history_count: calls.length - activeCount });
-  } catch (error) {
+  } catch (error:any) {
     console.error('getDispatchCallLinkFeed failed', error);
     return Response.json({ error: error?.message || 'Unable to load dispatch call link feed', calls: [] }, { status: 500 });
   }
