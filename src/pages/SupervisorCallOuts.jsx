@@ -38,7 +38,10 @@ export default function SupervisorCallOuts() {
   });
 
   const calloutName = (email, saved) => {
-    const person = allUsers.find(row => [row.email,...(row.email_aliases || [])].some(value => String(value || '').toLowerCase() === String(email || '').toLowerCase()));
+    const identities=row=>[row.email,row.work_email,row.pathfinder_email,row.microsoft_email,row.outlook_email,...(row.email_aliases||[])].filter(Boolean).map(value=>String(value).trim().toLowerCase());
+    const target=String(email||'').trim().toLowerCase();
+    const mailboxMatches=allUsers.filter(row=>identities(row).some(value=>value.split('@')[0]===target.split('@')[0]));
+    const person = allUsers.find(row=>identities(row).includes(target)) || (target&&mailboxMatches.length===1?mailboxMatches[0]:null);
     return person ? previewDisplayName(person) : 'Officer ' + (String(saved || '').trim().split(/\s+/).pop() || 'unavailable');
   };
   const queryClient = useQueryClient();
