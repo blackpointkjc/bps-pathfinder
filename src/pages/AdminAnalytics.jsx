@@ -437,24 +437,6 @@ export default function AdminAnalytics() {
     retry: false,
     placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === analyticsStartDate && previousQuery?.queryKey?.[3] === analyticsEndDate ? previousData : undefined,
   });
-  const performanceTimeEntries = performanceAnalyticsData.timeEntries || [];
-  const performanceSchedules = performanceAnalyticsData.schedules || [];
-  const performanceBids = performanceAnalyticsData.bids || [];
-  const performanceTrainingCompletions = performanceAnalyticsData.trainingCompletions || [];
-  const performanceTrainingAssignments = performanceAnalyticsData.trainingAssignments || [];
-  const performanceTrainingModules = (performanceAnalyticsData.trainingModules || []).filter(module => module.active !== false);
-  const performanceQrScans = performanceAnalyticsData.qrScans || [];
-  const performanceQrCheckpoints = performanceAnalyticsData.qrCheckpoints || [];
-  const performanceIncidentReports = performanceAnalyticsData.incidentReports || [];
-  const performanceDispatchCalls = performanceAnalyticsData.dispatchCalls || [];
-  const performanceCallAssignments = performanceAnalyticsData.callAssignments || [];
-  const performanceCommendations = performanceAnalyticsData.commendations || [];
-  const performanceDailyReports = performanceAnalyticsData.dailyActivityReports || [];
-  const performanceCallOuts = performanceAnalyticsData.callOuts || [];
-  const performanceDutyRules = performanceAnalyticsData.dutyRules || [];
-  const performanceLocations = performanceAnalyticsData.locations || [];
-  const performanceFeedback = performanceAnalyticsData.clientFeedback || [];
-  const performanceReviews = performanceAnalyticsData.performanceReviews || [];
   const trainingCompletions = analyticsData.trainingCompletions || [];
   const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
   const dispatchCalls = analyticsData.dispatchCalls || [];

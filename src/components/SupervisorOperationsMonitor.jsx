@@ -148,7 +148,7 @@ export default function SupervisorOperationsMonitor({ user, enabled = true }) {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('bps-operational-resume', resume);
     };
-  }, [enabled, user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
+  }, [enabled, supervising, user?.id, user?.email, user?.role, user?.rank, user?.is_supervisor, JSON.stringify(user?.additional_roles || [])]);
 
   return null;
 }

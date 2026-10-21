@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const segment = lower(body.segment || 'core');
     const errors:Record<string,string> = {};
+    let recoveredRateLimit = false;
     let activeReads = 0;
     const waiters:Array<() => void> = [];
     const acquire = async () => {
@@ -180,8 +181,17 @@ Deno.serve(async (req) => {
           } catch (error: any) {
             lastError = error;
             const limited = error?.status === 429 || /rate.limit|429/i.test(String(error?.message || ''));
-            if (limited || attempt > 0) break;
-            await new Promise(resolve => setTimeout(resolve, 300));
+            if (attempt > 0) break;
+            if (limited) {
+              if (recoveredRateLimit) break;
+              const seconds=Number(String(error?.message||'').match(/retry after (\d+)s/i)?.[1]||3);
+              if(seconds>10) break;
+              recoveredRateLimit=true;
+              await new Promise(resolve=>setTimeout(resolve,seconds*1000+250));
+            } else {
+              if (Number(error?.status||error?.response?.status)===403) break;
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
           }
         }
         errors[entityName] = lastError?.message || 'Unable to read data';
