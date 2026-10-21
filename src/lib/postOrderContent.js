@@ -40,10 +40,8 @@ export function postOrderSections(order={}){
  if(!imported&&full.trim())sections.push({title:'Additional instructions',content:full.trim()});
  const paragraphs=new Set();
  for(const section of sections){
-  const groups=section.content.split(/
-(?=[●○•])/);
-  section.content=groups.filter(group=>{const normalized=key(group);if(normalized.length<30)return true;if(paragraphs.has(normalized))return false;paragraphs.add(normalized);return true;}).join('
-').trim();
+  const groups=section.content.split(/\n(?=[●○•])/);
+  section.content=groups.filter(group=>{const normalized=key(group);if(normalized.length<30)return true;if(paragraphs.has(normalized))return false;paragraphs.add(normalized);return true;}).join('\n').trim();
  }
  const seen=new Set();
  return sections.filter(section=>{
