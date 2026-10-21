@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({ success: true, status: newStatus, updated_at: now });
-  } catch (error) {
+  } catch (error: any) {
     console.error('updateCadCallStatus failed', error);
     return Response.json({ error: error?.message || 'Unable to update call status' }, { status: 500 });
   }

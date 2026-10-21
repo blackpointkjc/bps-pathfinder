@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       return [];
     });
     const enrollmentsByEmail = new Map((enrollments || []).map((enrollment:any) => [String(enrollment.email || '').toLowerCase(), String(enrollment.status || '')]));
-    const users = (allUsers || [])
+    const users: any[] = (allUsers || [])
       .filter((entry: any) => {
         if (!entry?.email || entry.termination_date) return false;
         const entryRoles = new Set((entry.additional_roles || []).map((r: string) => String(r).toLowerCase()));
