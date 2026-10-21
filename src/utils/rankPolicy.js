@@ -2,7 +2,7 @@
 const RANKS = ["Colonel", "Lt Colonel", "Major", "Captain", "Lieutenant", "First Sergeant", "Sergeant", "Corporal", "Senior officer", "Officer", "Unarmed Officer"];
 const RANK_SERIES = {
   "Colonel": { start: 100, end: 100 },
-  "Lt Colonel": { start: 101, end: 199 },
+  "Lt Colonel": { start: 102, end: 199 },
   "Major": { start: 200, end: 299 },
   "Captain": { start: 350, end: 399 },
   "Lieutenant": { start: 400, end: 449 },
