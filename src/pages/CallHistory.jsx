@@ -1,3 +1,4 @@
+import { startHistoricalCadBackfill } from '@/lib/cadReferenceBackfill';
 import { cadReference } from '@/lib/cadReference';
 import { cadDestination } from '@/lib/cadNavigation';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
@@ -189,12 +190,14 @@ export default function CallHistory() {
 
     useEffect(()=>{
         if(loading)return;
+        void startHistoricalCadBackfill();
         let cancelled=false;
         const repair=async()=>{
             while(!cancelled){
                 const missing=referenceRowsRef.current.filter(row=>!cadReference(row)&&row._referenceEntity&&row._referenceId).slice(0,500);
+                if(!missing.length)return;
                 try{
-                    const response=await base44.functions.invoke('ensure-cad-references',missing.length?{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))}:{action:'backfill'});
+                    const response=await base44.functions.invoke('ensure-cad-references',{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))});
                     const data=response?.data||response||{};
                     if(cancelled)return;
                     if(data.error)throw new Error(data.error);
@@ -683,5 +686,3 @@ export default function CallHistory() {
         </div>
     );
 }
-base44.functions.invoke('ensure-cad-references',{action:'status'}).then(r=>console.info('CAD archive counts',JSON.stringify(r.data||r))).catch(e=>console.warn('CAD counts',e.message));
-base44.functions.invoke('ensure-cad-references',{action:'status'}).then(r=>console.info('CAD archive counts v2',JSON.stringify(r.data||r))).catch(e=>console.warn('CAD counts',e.message));
