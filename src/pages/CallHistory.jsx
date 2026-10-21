@@ -218,7 +218,7 @@ export default function CallHistory() {
         };
         void repair();
         return()=>{cancelled=true;};
-    },[loading]);
+    },[loading,lastRefresh]);
 
     const init = async () => {
         try {

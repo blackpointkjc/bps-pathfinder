@@ -951,30 +951,20 @@ function easternMonthParts(date = new Date()) {
   return { year, month };
 }
 
-async function reserveCadNumbers(base44: any, count: number) {
-  if (count <= 0) return [];
-  const { year, month } = easternMonthParts(new Date());
-  const period = `${year}${month}`;
-  const counterKey = `bps_dispatch_call:${period}`;
-  const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: counterKey });
-  let counter = counters?.[0];
-  // The monthly counter is authoritative after first creation. Scanning up to
-  // 1,000 DispatchCall rows on every live poll added needless latency and read
-  // pressure before a new website call could be published to BPSPF.
-  let highest = Number(counter?.last_number || 0);
-  if (!counter) {
-    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
-    highest = (calls || []).reduce((max: number, call: any) => {
-      const match = String(call.bps_reference || call.call_id || '').match(/^BPS-(\d{6})-(\d{1,8})$/i);
-      return Math.max(max, match && match[1] === period ? Number(match[2]) : 0);
-    }, 0);
-    counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: counterKey, last_number: highest });
+async function reserveCadNumbers(base44:any,count:number){
+ if(count<=0)return [];
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const response=await base44.asServiceRole.functions.invoke('ensure-cad-references',{action:'allocate',count});
+   const data=response?.data||response||{};
+   if(!Array.isArray(data.references)||data.references.length!==count)throw Error(data.error||'CAD references were not reserved');
+   return data.references;
+  }catch(error:any){
+   if(Number(error?.response?.status||error?.status)!==409||attempt===2)throw error;
+   await wait(750);
   }
-  const first = Math.max(highest, Number(counter.last_number || 0)) + 1;
-  const last = first + count - 1;
-  if (last > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
-  await base44.asServiceRole.entities.CadCounter.update(counter.id, { last_number: last });
-  return Array.from({ length: count }, (_, index) => `BPS-${period}-${first + index}`);
+ }
+ throw Error('CAD reference allocation is busy');
 }
 
 function chooseCanonical(records: any[]) {

@@ -11,28 +11,24 @@ const keys=(entity:string,row:any)=>{
 async function reserve(api:any,count:number){
  if(!count)return [];
  const entity=api.asServiceRole.entities.CadCounter;
- let lease=(await entity.filter({counter_key:'dispatch_call'},undefined,1))[0];
- if(!lease)lease=await entity.create({counter_key:'dispatch_call',last_number:0});
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+ const period=parts.find(p=>p.type==='year')!.value+parts.find(p=>p.type==='month')!.value;
+ const counterKey='bps_dispatch_call:'+period;
+ let counter=(await entity.filter({counter_key:counterKey},undefined,1))[0];
+ if(!counter)counter=await entity.create({counter_key:counterKey,last_number:0});
  const now=Date.now();
- if(new Date(lease.ingestion_locked_until||0).getTime()>now)throw Object.assign(Error('CAD source synchronization is in progress'),{status:409});
+ if(new Date(counter.ingestion_locked_until||0).getTime()>now)throw Object.assign(Error('CAD reference allocation is in progress'),{status:409});
  const token=crypto.randomUUID();
- await entity.update(lease.id,{ingestion_lock_token:token,ingestion_locked_until:new Date(now+15000).toISOString()});
+ await entity.update(counter.id,{ingestion_lock_token:token,ingestion_locked_until:new Date(now+15000).toISOString()});
  await pause(500);
- const verified=(await entity.filter({counter_key:'dispatch_call'},undefined,1))[0];
+ const verified=(await entity.filter({counter_key:counterKey},undefined,1))[0];
  if(verified?.ingestion_lock_token!==token)throw Object.assign(Error('CAD reference allocation will retry'),{status:409});
- try{
-  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(new Date());
-  const period=parts.find(p=>p.type==='year')!.value+parts.find(p=>p.type==='month')!.value;
-  const counterKey='bps_dispatch_call:'+period;
-  let counter=(await entity.filter({counter_key:counterKey},undefined,1))[0];
-  if(!counter)counter=await entity.create({counter_key:counterKey,last_number:0});
-  const first=Number(counter.last_number||0)+1,last=first+count-1;
-  if(last>99999999)throw Error('CAD reference sequence is full');
-  await entity.update(counter.id,{last_number:last});
-  return Array.from({length:count},(_,i)=>`BPS-${period}-${first+i}`);
- }finally{
-  await entity.update(lease.id,{ingestion_lock_token:'',ingestion_locked_until:new Date(0).toISOString()});
- }
+ const first=Number(verified.last_number||0)+1,last=first+count-1;
+ if(last>99999999)throw Error('CAD reference sequence is full');
+ // Reserve the range and release only the number-allocation lease. Public feed
+ // fetching/geocoding cannot hold a manual CAD entry or a historical repair.
+ await entity.update(counter.id,{last_number:last,ingestion_lock_token:'',ingestion_locked_until:new Date(0).toISOString()});
+ return Array.from({length:count},(_,i)=>`BPS-${period}-${first+i}`);
 }
 Deno.serve(async req=>{
  try{
@@ -46,7 +42,7 @@ Deno.serve(async req=>{
   const selected=Array.isArray(body.records)?body.records.slice(0,60):[];
   const rows:any[]=[];
   for(const entity of collections){
-   const ids=selected.filter((r:any)=>r.entity===entity).map((r:any)=>String(r.id||'')).filter(Boolean);
+   const ids=selected.filter((r:any)=>r.entity===entity).map((r:any)=>String(r.id||'')).filter((id:string)=>/^[a-f0-9]{24}$/i.test(id));
    if(ids.length)for(const row of await api.asServiceRole.entities[entity].filter({id:{$in:ids}},'-created_date',100))rows.push({entity,row});
   }
   // Read original counterparts once, so a surviving archive/property alert reuses
@@ -55,7 +51,9 @@ Deno.serve(async req=>{
   const related:any[]=[];
   if(identities.length){
    for(const [entity,field] of [['DispatchCall','id'],['CallHistory','original_call_id'],['PropertyAlert','callId'],['PropertyCallLink','call_id']]){
-    const found=await api.asServiceRole.entities[entity].filter({[field]:{$in:identities}},'-created_date',150);
+    const values=field==='id'?identities.filter(id=>/^[a-f0-9]{24}$/i.test(id)):identities;
+    if(!values.length)continue;
+    const found=await api.asServiceRole.entities[entity].filter({[field]:{$in:values}},'-created_date',150);
     for(const row of found)related.push({entity,row});
    }
   }
