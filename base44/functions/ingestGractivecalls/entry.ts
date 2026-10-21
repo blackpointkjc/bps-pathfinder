@@ -75,7 +75,7 @@ const normalizePriority = (incident: unknown) => {
   return 'low';
 };
 
-const validCoordinate = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
+const validCoordinate = (value: unknown) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
 
 const cleanMatchText = (value: unknown) => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -394,7 +394,7 @@ function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
 }
 
 async function fastGeocodeWebsiteCall(call: any) {
-  if (Number.isFinite(Number(call?.latitude)) && Number.isFinite(Number(call?.longitude))) return call;
+  if (call?.latitude != null && call?.longitude != null && Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude)) && (Number(call.latitude)!==0 || Number(call.longitude)!==0)) return call;
   const agency = String(call?.agency || '').toUpperCase();
   const area = ['HPD','HFD'].includes(agency) ? 'Henrico County, VA'
     : ['CCPD','CCFD'].includes(agency) ? 'Chesterfield County, VA'
@@ -1120,12 +1120,14 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     }));
   }
   // These rows are already visible through realtime while location enrichment runs.
-  await Promise.all(createdCalls.filter(call=>!Number.isFinite(Number(call.latitude))||!Number.isFinite(Number(call.longitude))).slice(0,8).map(async call=>{
+  await Promise.all(createdCalls.filter(call=>call.latitude==null||call.longitude==null||!Number.isFinite(Number(call.latitude))||!Number.isFinite(Number(call.longitude))||(Number(call.latitude)===0&&Number(call.longitude)===0)).slice(0,8).map(async call=>{
+    try {
     const located=await fastGeocodeWebsiteCall(call);
     if(!Number.isFinite(Number(located.latitude))||!Number.isFinite(Number(located.longitude)))return;
     const patch={latitude:located.latitude,longitude:located.longitude,geo_confidence:located.geo_confidence,geo_method:located.geo_method,geo_approximate:true};
     const updatedCall=await base44.asServiceRole.entities.DispatchCall.update(call.id,patch);
     propertyAlertsCreated+=await createImmediatePropertyAlerts(base44,{...call,...patch,...updatedCall},monitored,callPropertyKeys,alertKeys,sideEffects);
+    } catch(error:any) {alertFailures++;console.warn('New call is published; coordinate enrichment will retry',error?.message||error);}
   }));
   const updateQueue = recent.filter(row => {
     const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
