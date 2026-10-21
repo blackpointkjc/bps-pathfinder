@@ -40,6 +40,8 @@ function computeDcjsExpiration(certs) {
 
 function computeFirearmExpiration(certs) {
   if (!certs || !certs.length) return "";
+  const explicit = certs.map(c => c?.firearm_expiration_date).filter(Boolean).sort();
+  if (explicit.length) return explicit[explicit.length - 1];
   const firearmCerts = certs.filter(c =>
     FIREARM_COURSE_PREFIXES.some(prefix => c.course_id?.startsWith(prefix)) && c.expiration_date
   );
