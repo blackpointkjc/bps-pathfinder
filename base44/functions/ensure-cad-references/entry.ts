@@ -36,7 +36,7 @@ async function reserve(api:any,count:number){
 }
 Deno.serve(async req=>{
  try{
-  const api=createClientFromRequest(req),actor=await api.auth.me();
+  const api=createClientFromRequest(req),actor=await api.auth.me().catch(()=>null);
   const roles=new Set([actor?.role,...(actor?.additional_roles||[])].map((v:any)=>String(v||'').toLowerCase()));
   let trustedService=false;
   if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}
@@ -71,7 +71,7 @@ Deno.serve(async req=>{
   }
   const missing=[...groups.values()].filter(g=>!g.reference),allocated=await reserve(api,missing.length);
   missing.forEach((g,i)=>g.reference=allocated[i]);
-  const mappings:any[]=[],failures:any[]=[];
+  const mappings:any[]=rows.filter(item=>ref(item.row)).map(item=>({entity:item.entity,id:item.row.id,reference:ref(item.row)})),failures:any[]=[];
   for(const group of groups.values())for(const {entity,row} of group.items){
    try{
     const updates=entity==='PropertyAlert'?{cadNumber:group.reference}:entity==='PropertyCallLink'?{call_number:group.reference}:{bps_reference:group.reference,...(!valid(row.call_id)?{call_id:group.reference}:{})};
