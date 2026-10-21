@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     const deduped = new Map<string, any>();
     for (const call of merged) {
       const fallback = [call.incident, call.location, call.time_received].filter(Boolean).join('|').toLowerCase();
-      const key = String(call.external_call_id || call.original_call_id || call.agency_cad_number || call.bps_reference || call.call_id || fallback || call.id);
+      const key = String(call.bps_reference || (call.agency_cad_number && `${call.agency || ''}:${call.agency_cad_number}`) || call.external_call_id || call.original_call_id || call.call_id || fallback || call.id);
       const prior = deduped.get(key);
       if (!prior) { deduped.set(key, call); continue; }
       // Prefer live row over history for the same call; otherwise newest row wins.
