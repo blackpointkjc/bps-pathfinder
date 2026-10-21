@@ -154,7 +154,24 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
     await refreshCoverage();
    }catch(error){toast.error(error.response?.data?.error||error.message);}finally{setSaving(false);}
   };
-  const remove=async group=>{ if(!canManage||saving||!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`)) return; try { for (const row of (group.rows||[group])) { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); } await refreshCoverage(); await qc.invalidateQueries({queryKey:['myScheduleData']}); toast.success('Duty supervisor coverage block removed.'); } catch(error){ setActionError(error?.response?.data?.error||error?.message||'Unable to remove duty supervisor coverage.'); } };
+  const remove=async group=>{
+    if(!canManage||saving)return;
+    if(!await confirmInApp(`Remove ${group.supervisor_name||personLabel(group.supervisor_email)} from this duty supervisor coverage block?`,{title:'Remove duty coverage',confirmLabel:'Remove coverage'}))return;
+    setSaving(true);setActionError('');
+    try{
+      for(const row of (group.rows||[group])){
+        const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id});
+        const payload=response?.data||response||{};
+        if(payload.error||!payload.success)throw new Error(payload.error||'Duty coverage was not removed.');
+        qc.setQueryData(['dutySupervisorAssignments'],previous=>(previous||[]).filter(item=>item.id!==row.id));
+      }
+      if(editing&&(editing.rows||[editing]).some(row=>(group.rows||[group]).some(removed=>removed.id===row.id)))reset(form.assignment_date);
+      await refreshCoverage();
+      toast.success('Duty supervisor coverage block removed.');
+    }catch(error){
+      setActionError(error?.response?.data?.error||error?.message||'Unable to remove duty supervisor coverage.');
+    }finally{setSaving(false);}
+  };
   const printSchedule=()=>openBlackPointReport({ title:'Duty Supervisor Schedule', subtitle:'BlackPoint Command Coverage', status:'Published', meta:[{label:'Coverage Period',value:`${format(windowStart,'MMM d')} – ${format(addDays(windowStart,6),'MMM d, yyyy')}`},{label:'Coverage Blocks',value:String(groupedVisible.length)}], sections:dates.map(date=>({title:format(new Date(`${date}T12:00:00`),'EEEE, MMMM d, yyyy'),fields:groupedVisible.filter(group=>group.assignment_date===date).map(group=>({label:`${group.start_time}–${group.end_time}`,value:`${group.supervisor_name||personLabel(group.supervisor_email)}\n${group.locations.map(location=>location==='ALL'?'All Sites':location).join(' • ')}${group.notes?`\n${group.notes}`:''}`,wide:true}))})).filter(section=>section.fields.length), officer:{name:user?.full_name||user?.email||'Command Staff'}, footerNote:'Official BlackPoint duty supervisor command coverage schedule.' });
 
   if (userLoading) return <div className="min-h-screen bg-[#080d16] p-8 text-center text-slate-300">Checking administrator access…</div>;
