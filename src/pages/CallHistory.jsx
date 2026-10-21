@@ -205,7 +205,14 @@ export default function CallHistory() {
                         return mapping?{...row,bps_reference:mapping.reference,call_id:mapping.reference}:row;
                     }));
                     clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
-                }catch(error){console.warn('CAD reference repair will resume on the next history refresh',error?.response?.data?.error||error?.message);return;}
+                }catch(error){
+                    const status=Number(error?.response?.status||error?.status),message=error?.response?.data?.error||error?.message||'';
+                    if([409,429,502,503,504].includes(status)||/rate.limit|429/i.test(message)){
+                        await new Promise(resolve=>setTimeout(resolve,status===409?10000:60000));
+                        continue;
+                    }
+                    console.warn('CAD reference repair will resume on the next history refresh',message);return;
+                }
                 await new Promise(resolve=>setTimeout(resolve,20000));
             }
         };
