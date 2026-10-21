@@ -32,6 +32,17 @@ function backend(path,client,deps={}){let handler;vm.runInNewContext(compile(pat
  assert.equal((await balance({action:'apply',version:'stale'})).status,409);assert.equal(updates,0);
  const result=await (await balance({action:'apply',version:preview.version})).json();assert.equal(result.success,true);assert.equal(updates,preview.changes.length);assert.equal(notifyCount,updates);
  assert.equal((await balance({action:'apply',version:preview.version})).status,409);
+
+ db=structuredClone(users);updates=0;
+ const failingBalance=backend('base44/functions/balance-platoons/entry.ts',balanceClient,{'./plan.ts':planModule,'./notifyPlatoonChange.ts':{notifyPlatoonChange:async()=>{throw new Error('Notification transport unavailable');}}});
+ const failurePreview=await (await failingBalance({action:'preview'})).json();
+ const failure=await (await failingBalance({action:'apply',version:failurePreview.version})).json();
+ assert.equal(failure.success,false);assert.equal(failure.failed.length,1);assert.equal(failure.failed[0].assignment_saved,true);assert.equal(updates,1);assert.equal(failure.remaining,failurePreview.changes.length-1);
+ const bannerSource=fs.readFileSync('src/components/GlobalMessageBanner.jsx','utf8');
+ assert(bannerSource.includes("source.sourceName && record.source_name !== source.sourceName"));
+ assert(bannerSource.includes("source.sourceName === 'Platoon Command') ? record.id : null"));
+ assert(fs.readFileSync('src/pages/AdminOfficerManagement.jsx','utf8').includes('<PlatoonBalancePreview'));
+ for(const [file,marker] of [['base44/functions/ingestGractivecalls/entry.ts','previous.priority_override ? {priority:previous.priority}'],['base44/functions/ingestPulsePoint/entry.ts','existing.priority_override ? existing.priority']])assert(fs.readFileSync(file,'utf8').includes(marker));
  const schema=JSON.parse(fs.readFileSync('base44/entities/DispatchCall.jsonc'));assert.equal(schema.properties.priority.rls.update,false);
  const selector=moduleAt('src/components/dispatch/IncidentPrioritySelect.jsx').default;
  const html=renderToStaticMarkup(React.createElement(selector,{call:{id:'c'},priority:'high',onSave:()=>{}}));assert.equal((html.match(/<option /g)||[]).length,4);assert(html.includes('value="high" selected'));

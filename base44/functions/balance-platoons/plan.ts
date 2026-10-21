@@ -2,7 +2,7 @@ const RANKS=['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergea
 const level=(p:any)=>RANKS.indexOf(p.rank);
 const name=(p:any)=>[p.rank,p.last_name||p.full_name||p.email].filter(Boolean).join(' ');
 export function balancePlan(users:any[]) {
- const eligible=users.filter(p=>p.email&&!p.termination_date&&!['inactive','terminated'].includes(p.employment_status)&&level(p)>=0&&!['client','student','pending'].some(r=>(p.additional_roles||[]).includes(r)));
+ const eligible=users.filter(p=>p.email&&!p.termination_date&&!['inactive','terminated'].includes(p.employment_status)&&!['client','student','pending'].includes(String(p.user_type||p.account_type||p.portal_type||'').toLowerCase())&&String(p.account_status||'').toLowerCase()!=='pending'&&level(p)>=0&&!['client','student','pending'].some(r=>(p.additional_roles||[]).includes(r)));
  const field=eligible.filter(p=>level(p)>2).sort((a,b)=>level(a)-level(b)||String(a.hire_date||'9999').localeCompare(String(b.hire_date||'9999'))||String(a.id).localeCompare(String(b.id)));
  const totals:any={A:0,B:0},counts:any={},assignment=new Map();
  for(const p of field){counts[p.rank]||={A:0,B:0};const c=counts[p.rank];let to=c.A<c.B?'A':c.B<c.A?'B':totals.A<totals.B?'A':totals.B<totals.A?'B':['A','B'].includes(p.platoon)?p.platoon:'A';assignment.set(p.id,to);totals[to]++;c[to]++;}
