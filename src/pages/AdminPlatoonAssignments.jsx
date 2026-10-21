@@ -7,7 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Users, RefreshCw, Save, Network } from 'lucide-react';
+import { Shield, Users, Save, Network } from 'lucide-react';
 import { toast } from 'sonner';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 

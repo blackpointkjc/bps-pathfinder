@@ -1,3 +1,4 @@
+import { incidentPriority } from '@/lib/incidentPriority';
 import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import '@/components/dispatch/cad-console.css';
@@ -686,7 +687,7 @@ export default function DispatchCenter() {
         const property=propertyCallIds.has(String(call.id));
         const matchesFilter = queueFilter === 'agency' || (property && (queueFilter === 'all' ||
             (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
-            (queueFilter === 'priority' && ['critical', 'high'].includes(call.priority)) ||
+            (queueFilter === 'priority' && ['critical', 'high'].includes(incidentPriority(call))) ||
             String(propertyCallProgress(call)||'').toLowerCase()===String(queueFilter).toLowerCase()));
         const haystack = `${call.call_id || ''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
@@ -696,7 +697,7 @@ export default function DispatchCenter() {
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
     const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
     const unassignedCalls = propertyAlertCalls.filter(call => !call.assigned_units?.length);
-    const priorityCalls = propertyAlertCalls.filter(call => ['critical', 'high'].includes(call.priority));
+    const priorityCalls = propertyAlertCalls.filter(call => ['critical', 'high'].includes(incidentPriority(call)));
     // "Old/wait" time is a Pathfinder property-monitoring metric only. General
     // GRAC/agency calls must never make this timer old or red.
     const callAgeMinutes = (call) => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000));
@@ -882,8 +883,8 @@ export default function DispatchCenter() {
                                             : pulsePoint ? 'border-red-900/70 bg-red-950/25 hover:bg-red-900/35' : 'border-[#172536] hover:bg-[#111827]'
                                     }`}>
                                     <div className="col-span-2">
-                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(call.priority)}`}>
-                                            {call.priority ? call.priority[0].toUpperCase() : 'L'}
+                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(incidentPriority(call))}`}>
+                                            {{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}
                                         </span>
                                     </div>
                                     <div className="col-span-5">
@@ -922,8 +923,8 @@ export default function DispatchCenter() {
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {isPulsePointCall(selectedCall) ? 'PP' : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
-                                        {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={selectedCall.priority} onSave={async(call,priority)=>{
+                                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{incidentPriority(selectedCall).toUpperCase()}</span>
+                                        {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={incidentPriority(selectedCall)} onSave={async(call,priority)=>{
                                             const response=await base44.functions.invoke('updateCadCallPriority',{call_id:call.id,priority});
                                             if(response?.data?.error)throw new Error(response.data.error);
                                             setActiveCalls(previous=>previous.map(row=>row.id===call.id?{...row,priority,priority_override:true}:row));
@@ -938,7 +939,7 @@ export default function DispatchCenter() {
                                     <div className="px-3 md:px-4 py-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
                                         <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{cleanIncident(selectedCall)}</span></div>
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
-                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{selectedCall.priority ? selectedCall.priority.charAt(0).toUpperCase() + selectedCall.priority.slice(1).toLowerCase() : '—'}</span></div>
+                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{incidentPriority(selectedCall).toUpperCase()}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
@@ -1024,8 +1025,8 @@ export default function DispatchCenter() {
                         </div>
 
                         {/* MAP */}
-                        {mobileView === 'map' && (
-                            <div className="flex min-h-0 flex-1 flex-col xl:hidden">
+                        {(
+                            <div className={`${mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col xl:flex xl:max-h-[320px] xl:min-h-[240px]`}>
                                 <div className="flex-none px-3 py-1 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>

@@ -8,6 +8,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
 const SOURCES = [
+  { entity:'Notification',label:'Platoon / command reassignment',page:'OfficerInbox',kind:'assignment',targeted:'system_issue',sourceName:'Platoon Command' },
   // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
   // notifications are owned by TeamsNotificationMonitor so the local metadata
   // cache cannot produce a second banner/unread count for the same Teams message.
@@ -318,6 +319,7 @@ export default function GlobalMessageBanner({ user }) {
     const showBanner = (source, record, options = {}) => {
       const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
+      if (source.sourceName && record.source_name !== source.sourceName) return;
       const senderIdentity = normalized(record.created_by_id || record.sender_user_id || record.sender_id || record.sender_email || record.created_by);
       const isOwnRecord = myIds.includes(senderIdentity);
       if (isOwnRecord && !source.targeted) return;
@@ -418,9 +420,9 @@ export default function GlobalMessageBanner({ user }) {
         // Supervisor task cards are urgent but should not sit over the workspace
         // indefinitely. The durable task remains on Supervisor Operations after
         // this visual alert auto-closes or the user dismisses it.
-        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification),
+        persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification || source.sourceName === 'Platoon Command'),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
-        notificationId: (isWelfareNotification || isSupervisorTask) ? record.id : null,
+        notificationId: (isWelfareNotification || isSupervisorTask || source.sourceName === 'Platoon Command') ? record.id : null,
         relatedId: isWelfareNotification ? String(record.related_id || '') : '',
         fingerprint,
         sender: text.sender,
@@ -514,6 +516,7 @@ export default function GlobalMessageBanner({ user }) {
     const showPropertyCall = async (record, options = {}) => {
       const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
+      if (source.sourceName && record.source_name !== source.sourceName) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
@@ -862,6 +865,7 @@ export default function GlobalMessageBanner({ user }) {
         return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
+      if (source.sourceName && record.source_name !== source.sourceName) return;
             const created = new Date(record.created_date || 0).getTime();
             if (Number.isFinite(created) && created >= propertyCutoff) {
               void showPropertyCall(record, { allowAudio: false });
@@ -891,6 +895,7 @@ export default function GlobalMessageBanner({ user }) {
       base44.entities.BOLOAlert.list('-updated_date', 100).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.id) return;
+      if (source.sourceName && record.source_name !== source.sourceName) return;
           const version = record.updated_date || record.created_date || 'active';
           const changedAt = new Date(version).getTime();
           if (record.status === 'active' && Number.isFinite(changedAt) && changedAt >= boloCutoff) {
@@ -962,6 +967,12 @@ export default function GlobalMessageBanner({ user }) {
           .reverse()
           .forEach(record => showBanner(supervisorTaskSource, record, { allowAudio: false })))
         .catch(() => null);
+    }
+
+    const platoonSource = SOURCES.find(source=>source.sourceName==='Platoon Command');
+    if (platoonSource && user.email) {
+      base44.entities.Notification.filter({recipient_email:normalized(user.email),type:'system_issue',source_name:'Platoon Command',is_read:false},'-created_date',50)
+        .then(records=>(records||[]).reverse().forEach(record=>{if(active)showBanner(platoonSource,record,{allowAudio:false});})).catch(()=>null);
     }
 
     const welfareSource = SOURCES.find(source => source.assignment === 'call_assignment');

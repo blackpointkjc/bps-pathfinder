@@ -1129,6 +1129,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
       const patch = {
         ...persistableCall(row),
+        ...(previous.priority_override ? {priority:previous.priority} : {}),
         source_first_seen_at: previous.source_first_seen_at || previous.created_date || row.source_first_seen_at || new Date().toISOString(),
         source_channel: row.source_channel || previous.source_channel || 'grac_api',
         agency_cad_number: previous.official_cad_verified ? previous.agency_cad_number : (row.agency_cad_number || ''),
@@ -1451,6 +1452,7 @@ Deno.serve(async (req) => {
         const manuallyCleared = existing.manual_dismissed === true;
         const incomingWithCad = {
           ...persistableCall(callData),
+          ...(existing.priority_override ? {priority:existing.priority} : {}),
           source_first_seen_at: existing.source_first_seen_at || existing.created_date || callData.source_first_seen_at || new Date().toISOString(),
           source_channel: callData.source_channel || existing.source_channel || 'grac_api',
           // A Pathfinder manual clear is authoritative for this exact upstream call

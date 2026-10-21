@@ -6,7 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
-import { classifyCall } from '@/lib/cadCallTypes';
+import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
@@ -19,13 +19,6 @@ import AdminLiveLocationPrivacy from '@/components/dispatch/AdminLiveLocationPri
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
-
-function getCallPriority(call) {
-    if (call.priority_override && call.priority) return call.priority;
-    const classification = classifyCall(`${call.incident || ''} ${call.description || ''}`);
-    if (classification.matched_type) return classification.matched_type.priority;
-    return call.priority || 'medium';
-}
 
 function isPulsePointCall(call) {
     const sourceChannel = String(call?.source_channel || '').toLowerCase();

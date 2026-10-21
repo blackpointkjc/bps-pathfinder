@@ -1,6 +1,5 @@
 import { useLocation,useNavigate } from 'react-router-dom';
 import '@/components/dispatch/cad-console.css';
-import { Activity, AlertTriangle, History } from 'lucide-react';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
@@ -9,12 +8,6 @@ import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
 import RecordsAssistant from './RecordsAssistant';
 import OfficerDispatchQueue from './OfficerDispatchQueue';
-
-const BASE_SECTIONS = [
-  { id: 'live', label: 'Live Command', description: 'Command board, dispatch queues and live map', icon: Activity },
-  { id: 'alerts', label: 'Alerts & Safety', description: 'BOLOs, officer-safety and property notices', icon: AlertTriangle },
-  { id: 'history', label: 'History & Records', description: 'Call history and company-wide record search', icon: History },
-];
 
 const TOOLS = {
   live: [

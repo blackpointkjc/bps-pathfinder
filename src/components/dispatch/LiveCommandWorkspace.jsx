@@ -3,7 +3,7 @@ import './cad-console.css';
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { MapPin, ArrowUpRight, Radio, RefreshCw, Search, Shield, CheckCheck, Users } from 'lucide-react';
+import { Radio, RefreshCw, Search, Users } from 'lucide-react';
 
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,isExternal,actions,settings}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
