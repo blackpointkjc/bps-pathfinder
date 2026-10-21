@@ -1,4 +1,4 @@
-/* global setTimeout, console */
+/* global setTimeout, console, document */
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 let running = false;
 let complete = false;
@@ -8,6 +8,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 export async function startHistoricalCadBackfill() {
   if (running || complete) return;
   running = true;
+  document.documentElement.dataset.cadReferenceRepair = 'Starting';
   try {
     while (!complete) {
       try {
@@ -15,11 +16,13 @@ export async function startHistoricalCadBackfill() {
         const data = result?.data || result || {};
         if (data.error) throw new Error(data.error);
         complete = Boolean(data.done);
+        document.documentElement.dataset.cadReferenceRepair = JSON.stringify({complete,scanned:data.scanned,updated:data.updated});
         if (data.updated) clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
         if (!complete) await wait(3000);
       } catch (error) {
         const status = Number(error?.response?.status || error?.status);
         const message = error?.response?.data?.error || error?.message || '';
+        document.documentElement.dataset.cadReferenceRepair = JSON.stringify({status,error:message});
         if ([409,429,502,503,504].includes(status) || /rate.limit|429/i.test(message)) {
           await wait(status === 409 ? 10000 : 60000);
           continue;
