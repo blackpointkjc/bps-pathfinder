@@ -84,6 +84,7 @@ const BLANK_CERT = {
   status: "active",
   issue_date: "",
   expiration_date: "",
+  firearm_expiration_date: "",
   renewal_period_months: 24,
   course_ids: [],
   certificate_number: "",
@@ -163,7 +164,8 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             <p className="font-semibold text-slate-900">{[cert.course_id, cert.training_name].filter(Boolean).join(' — ') || 'Certification'}</p>
             <p className="mt-1 text-xs text-slate-500">
               {cert.issue_date ? `Issued ${format(new Date(cert.issue_date), 'MM/dd/yyyy')}` : 'Issue date not recorded'}
-              {cert.expiration_date ? ` • Expires ${format(new Date(cert.expiration_date), 'MM/dd/yyyy')}` : ''}
+              {cert.expiration_date ? ` • DCJS expires ${format(new Date(cert.expiration_date), 'MM/dd/yyyy')}` : ''}
+              {cert.firearm_expiration_date ? ` • Firearm expires ${format(new Date(cert.firearm_expiration_date), 'MM/dd/yyyy')}` : ''}
             </p>
             {cert.certificate_number && <p className="mt-1 text-xs text-slate-600">Card/Certificate #: {cert.certificate_number}</p>}
             {recoveredCodes(cert).length > 1 && <p className="mt-1 text-xs font-semibold text-blue-700">Codes checked on shared credential: {recoveredCodes(cert).join(', ')}</p>}
@@ -288,7 +290,8 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             </div>
             <div className="text-xs text-slate-500 mt-1 space-x-3">
               {cert.issue_date && <span>Issued: {format(new Date(cert.issue_date), 'MM/dd/yyyy')}</span>}
-              {cert.expiration_date && <span>Expires: {format(new Date(cert.expiration_date), 'MM/dd/yyyy')}</span>}
+              {cert.expiration_date && <span>DCJS expires: {format(new Date(cert.expiration_date), 'MM/dd/yyyy')}</span>}
+              {cert.firearm_expiration_date && <span>Firearm expires: {format(new Date(cert.firearm_expiration_date), 'MM/dd/yyyy')}</span>}
               {cert.certificate_number && <span className="font-medium text-slate-700">Card #: {cert.certificate_number}</span>}
             </div>
             {recoveredCodes(cert).length > 1 && <p className="text-xs font-semibold text-blue-700">Codes on this credential: {recoveredCodes(cert).join(', ')}</p>}
@@ -409,9 +412,15 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
                 <Input type="date" className="mt-1" value={newCert.issue_date} onChange={e => setNewCert(p => ({ ...p, issue_date: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Expiration Date</Label>
+                <Label className="text-xs">DCJS Registration Expiration</Label>
                 <Input type="date" className="mt-1" value={newCert.expiration_date} onChange={e => setNewCert(p => ({ ...p, expiration_date: e.target.value }))} />
               </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <Label className="text-xs font-semibold text-amber-950">Firearm Qualification Expiration (separate from DCJS)</Label>
+              <Input type="date" className="mt-1" value={newCert.firearm_expiration_date || ""} onChange={e => setNewCert(p => ({ ...p, firearm_expiration_date: e.target.value }))} />
+              <p className="mt-1 text-xs text-amber-900">Enter the firearm qualification expiration printed on the firearm credential. Leave blank if this record has no firearm qualification.</p>
             </div>
 
             {COURSES_WITH_CERT_NUMBER.includes(newCert.course_id) && (
