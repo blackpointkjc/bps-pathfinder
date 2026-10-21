@@ -1,7 +1,7 @@
+import { cadDestination } from '@/lib/cadNavigation';
 import { incidentPriority } from '@/lib/incidentPriority';
 import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
-import '@/components/dispatch/cad-console.css';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
@@ -19,7 +19,7 @@ import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
-import PriorCallsView from '@/components/dispatch/PriorCallsView';
+import CallHistory from './CallHistory';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import CadVoiceBroadcastButton from '@/components/dispatch/CadVoiceBroadcastButton';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
@@ -735,8 +735,7 @@ export default function DispatchCenter() {
                     </button>
 
                     <button onClick={() => {
-                        if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileView('map');
-                        else setShowMap(true);
+                        setShowMap(true);
                     }}
                         className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-blue-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
                         <MapIcon className="w-2.5 h-2.5" /> MAP
@@ -745,7 +744,7 @@ export default function DispatchCenter() {
                         className={`px-2 py-1 border rounded text-[10px] ${
                             showPriorCalls ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'
                         }`}>
-                        {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
+                        {showPriorCalls ? 'BACK TO ACTIVE' : 'CALL / PROPERTY HISTORY'}
                     </button>
                     <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-blue-950/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> DISPATCH LOG</button>
                     <button onClick={() => {
@@ -754,7 +753,7 @@ export default function DispatchCenter() {
                             params.set('call_id', selectedCall.id);
                             params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
                         }
-                        navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
+                        navigate(cadDestination('BOLOAlerts',params));
                     }} className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
                     <CadVoiceBroadcastButton user={currentUser} />
                     <button onClick={() => setShowMessaging(!showMessaging)}
@@ -819,7 +818,7 @@ export default function DispatchCenter() {
                     {[
                         ['calls','CALLS'], ['detail','DETAIL'], ['assignment','ASSIGN'], ['units','UNITS'], ['map','MAP']
                     ].map(([value,label]) => (
-                        <button key={value} onClick={() => setMobileView(value)} className={`h-9 min-w-[74px] flex-1 rounded-lg border px-2 text-[9px] font-black tracking-wide ${mobileView === value ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-500'}`}>{label}</button>
+                        <button key={value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`h-9 min-w-[74px] flex-1 rounded-lg border px-2 text-[9px] font-black tracking-wide ${mobileView === value ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-500'}`}>{label}</button>
                     ))}
                 </div>
             </div>
@@ -850,7 +849,7 @@ export default function DispatchCenter() {
             {/* ══ MAIN GRID ══ */}
             {showPriorCalls ? (
                 <div className="flex-1 overflow-auto p-3">
-                    <PriorCallsView currentUser={currentUser} units={units} />
+                    <CallHistory embedded />
                 </div>
             ) : (
                 <div className="dispatch-main flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
@@ -1024,31 +1023,7 @@ export default function DispatchCenter() {
                             )}
                         </div>
 
-                        {/* MAP */}
-                        {(
-                            <div className={`${mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col xl:flex xl:max-h-[320px] xl:min-h-[240px]`}>
-                                <div className="flex-none px-3 py-1 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
-                                </div>
-                                <div className="flex-1" style={{height: '55dvh', minHeight: '320px', position: 'relative', zIndex: 0}}>
-                                    <MapContainer
-                                        center={[37.5407, -77.4360]}
-                                        zoom={11}
-                                        className="h-full w-full"
-                                        zoomControl={true}
-                                    >
-                                        <PathfinderTileLayer theme={mapTheme} />
-                                        <ActiveCallMarkers
-                                            calls={activeCalls}
-                                            onCallClick={handleSelectCall}
-                                        />
-                                        <OtherUnitsLayer units={units} currentUserId={null} />
-                                        <OfficerDistressMarker autoCenter={true} />
-                                    </MapContainer>
-                                </div>
-                            </div>
-                        )}
+
                     </div>
 
                     {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
@@ -1084,8 +1059,8 @@ export default function DispatchCenter() {
             )}
 
             {showMap && (
-                <div className="fixed inset-0 z-[120] hidden items-center justify-center bg-black/75 p-6 backdrop-blur-sm md:flex" onClick={() => setShowMap(false)}>
-                    <div className="flex h-[82vh] w-[88vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-2 backdrop-blur-sm md:p-6" onClick={() => setShowMap(false)}>
+                    <div role="dialog" aria-modal="true" aria-label="Live tactical map" className="flex h-[82vh] w-[88vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-emerald-400" />
                             <span className="text-xs font-black tracking-widest text-emerald-300">LIVE TACTICAL MAP</span>

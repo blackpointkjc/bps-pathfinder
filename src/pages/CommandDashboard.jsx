@@ -1,3 +1,5 @@
+import useCadRoster from '@/hooks/useCadRoster';
+import { cadDestination } from '@/lib/cadNavigation';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
@@ -56,7 +58,7 @@ function elapsed(call) {
 // Inner dashboard — consumes context
 function CommandDashboardInner() {
     const navigate = useNavigate();
-    const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
+    const { calls, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
 
     const [currentUser, setCurrentUser] = useState(() => authenticatedUser ? { ...authenticatedUser, status: authenticatedUser.status || getLastOfficerStatus() || 'Out of Service' } : null);
@@ -64,8 +66,7 @@ function CommandDashboardInner() {
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [statusSaving,setStatusSaving] = useState(false);
-    const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
-    const [canonicalLoaded, setCanonicalLoaded] = useState(false);
+    const {rows:roster,loading:rosterLoading,error:rosterError,refresh:refreshRoster}=useCadRoster();
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
@@ -99,60 +100,6 @@ function CommandDashboardInner() {
         window.addEventListener('bps-officer-status-changed', syncStatus);
         return () => window.removeEventListener('bps-officer-status-changed', syncStatus);
     }, [authenticatedUser?.id, authenticatedUser?.email]);
-
-    useEffect(() => {
-        let active = true;
-        const syncUnitStatus = async (force = false) => {
-            try {
-                const payload = await getOfficerLocationSnapshot({ force });
-                if (active) {
-                    const rows = Array.isArray(payload.units) ? payload.units : (Array.isArray(payload.users) ? payload.users : []);
-                    setCanonicalStatusUsers(rows);
-                    setCanonicalLoaded(true);
-                    setCurrentUser(previous => {
-                        const own = rows.find(u => String(u.email || u.officer_email || '').toLowerCase() === String(previous?.email || '').toLowerCase());
-                        return previous && own ? { ...previous, status: own.status, current_call_id: own.current_call_id, current_call_info: own.current_call_info } : previous;
-                    });
-                }
-            } catch {}
-        };
-        // DashboardDataContext intentionally loads Active Calls first, then the
-        // shared roster. Do not launch a second location snapshot during the same
-        // startup burst. This is only a delayed safety refresh.
-        const initialTimer = window.setTimeout(syncUnitStatus, 30000);
-        const timer = setInterval(syncUnitStatus, 60000);
-        let realtimeTimer;
-        const onStatusChanged = (event) => {
-            const detail = event?.detail || {};
-            if (detail.email && detail.status) {
-                setCanonicalStatusUsers(prev => prev.map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
-                    ? { ...unit, status: detail.status, last_updated: new Date().toISOString(), last_update: new Date().toISOString() }
-                    : unit));
-            }
-            window.clearTimeout(realtimeTimer);
-            realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
-        };
-        const onLiveOfficerChanged = (event) => {
-            const record = event?.data || event?.record;
-            if (record?.status && event?.type !== 'delete') setCurrentUser(previous =>
-                previous && String(record.officer_email || record.email || '').toLowerCase() === String(previous.email || '').toLowerCase()
-                    ? { ...previous, status: record.status, current_call_id: record.current_call_id ?? previous.current_call_id, current_call_info: record.current_call_info ?? previous.current_call_info } : previous);
-
-            setCanonicalStatusUsers(prev => applyOfficerLocationEvent(prev, event));
-            window.clearTimeout(realtimeTimer);
-            realtimeTimer = window.setTimeout(() => syncUnitStatus(true), 1500);
-        };
-        const unsubscribeLiveOfficers = subscribeOfficerLocationChanges(onLiveOfficerChanged);
-        window.addEventListener('bps-officer-status-changed', onStatusChanged);
-        return () => {
-            active = false;
-            window.clearTimeout(initialTimer);
-            window.clearTimeout(realtimeTimer);
-            clearInterval(timer);
-            unsubscribeLiveOfficers?.();
-            window.removeEventListener('bps-officer-status-changed', onStatusChanged);
-        };
-    }, []);
 
     // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
     // Frontend just displays data — no redundant LLM polling (was causing rate-limit lockouts).
@@ -228,7 +175,7 @@ function CommandDashboardInner() {
             params.set('lat', String(call.latitude));
             params.set('lng', String(call.longitude));
         }
-        navigate(`${createPageUrl('Navigation')}?${params.toString()}`);
+        navigate(cadDestination('Navigation',params));
     };
 
     const getCallIdentifier = (call) => {
@@ -243,10 +190,10 @@ function CommandDashboardInner() {
         return { value: 'REFERENCE PENDING', type: 'pending' };
     };
 
-    const cadOfficerUnits = (canonicalLoaded ? canonicalStatusUsers : users).filter(isOperationalOfficer);
+    const cadOfficerUnits = roster.filter(isOperationalOfficer);
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
-    const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
+    const statusUnits = cadOfficerUnits;
     const isAdmin            = currentUser?.role === 'admin';
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const currentRoles = new Set((currentUser?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
@@ -261,11 +208,11 @@ function CommandDashboardInner() {
         : DISPATCH_STATUSES;
 
     return <>
-      <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={manualRefresh}
+      <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} isExternal={isPulsePointCall}
-        actions={<><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
+        actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
     </>;
