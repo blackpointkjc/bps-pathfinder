@@ -54,7 +54,7 @@ function elapsed(call) {
 }
 
 // Inner dashboard — consumes context
-function CommandDashboardInner({ embedded = false }) {
+function CommandDashboardInner() {
     const navigate = useNavigate();
     const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
@@ -272,10 +272,10 @@ function CommandDashboardInner({ embedded = false }) {
 
 }
 
-export default function CommandDashboard({ embedded = false }) {
+export default function CommandDashboard() {
     return (
         <DashboardDataProvider>
-            <CommandDashboardInner embedded={embedded} />
+            <CommandDashboardInner />
         </DashboardDataProvider>
     );
 }

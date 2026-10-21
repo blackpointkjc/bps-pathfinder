@@ -1,3 +1,4 @@
+import { invalidateAppDirectory } from '@/lib/appDirectory';
 import PlatoonBalancePreview from '@/components/PlatoonBalancePreview';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
@@ -108,7 +109,7 @@ export default function AdminPlatoonAssignments() {
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <div className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-3"><div className="rounded-xl bg-amber-500/10 p-3"><Network className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black">PLATOON & CHAIN ASSIGNMENTS</h1><p className="text-sm text-slate-400">Assign Platoon A/B and reporting supervisors by rank. Both Majors report to both Lt Colonels; assign each Major a platoon below.</p></div></div>
-      <PlatoonBalancePreview onApplied={async()=>{setDrafts({});await queryClient.invalidateQueries();}} />
+      <PlatoonBalancePreview onApplied={async()=>{invalidateAppDirectory();setDrafts({});await queryClient.invalidateQueries();}} />
     </div>
 
     <section className="rounded-xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-3 flex items-center gap-2 text-sm font-black text-amber-300"><Shield className="h-4 w-4"/>SHARED COMMAND — OVERSEES PLATOON A & B</div><div className="grid gap-3 md:grid-cols-3">{command.map(user=><div key={user.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3"><div className="font-bold">{displayName(user)}</div><div className="text-xs text-slate-400">Unit {user.unit_number || '—'}</div><div className="mt-2 text-xs">{oversightLabel(user)} · Reports to {reportingLabel(user,operational,displayName)}</div>{user.rank==='Major' && <MajorPlatoonAssignment person={user}/>}</div>)}</div></section>
