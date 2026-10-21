@@ -1,5 +1,5 @@
 export async function notifyPlatoonChange(entities:any,before:any,after:any) {
- if(!after.email || (String(before.platoon||'')===String(after.platoon||'') && String(before.supervisor_id||'')===String(after.supervisor_id||'')))return;
+ if(!after.email || (String(before.platoon||'')===String(after.platoon||'') && String(before.supervisor_id||'')===String(after.supervisor_id||'') && String(before.next_level_supervisor_id||'')===String(after.next_level_supervisor_id||'')))return;
  const event_key='platoon:'+after.id+':'+String(after.updated_date||new Date().toISOString())+':'+after.platoon+':'+after.supervisor_id;
  const existing=await entities.Notification.filter({event_key},'-created_date',1);
  if(existing.length)return;
