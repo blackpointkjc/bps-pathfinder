@@ -94,6 +94,7 @@ export default function CallHistory() {
     const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
     const lastServerReadRef=useRef(0);
+    const pendingSearchRef=useRef(false);
     const monitoredPropertiesRef = useRef([]);
 
     const decorateRealtimePropertyMatch = (row) => {
@@ -198,7 +199,8 @@ export default function CallHistory() {
     };
 
     const loadAll = async (force=false) => {
-        if (loadInFlightRef.current || (!force&&Date.now()-lastServerReadRef.current<45000)) return;
+        if(loadInFlightRef.current){if(force)pendingSearchRef.current=true;return;}
+        if(!force&&Date.now()-lastServerReadRef.current<45000)return;
         lastServerReadRef.current=Date.now();
         loadInFlightRef.current = true;
         try {
@@ -264,6 +266,7 @@ export default function CallHistory() {
             loadInFlightRef.current = false;
             setLoading(false);
             setRefreshing(false);
+            if(pendingSearchRef.current){pendingSearchRef.current=false;window.setTimeout(()=>loadAll(true),0);}
         }
     };
 
@@ -549,7 +552,7 @@ export default function CallHistory() {
                     const isExpanded = expandedId === (row.id);
                     return (
                         <div key={row.id}>
-                            <div
+                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(row.agency_cad_number||row.bps_reference||row.call_id||row.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setExpandedId(isExpanded?null:row.id);}}}
                                 onClick={() => setExpandedId(isExpanded ? null : row.id)}
                                 className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
@@ -557,7 +560,7 @@ export default function CallHistory() {
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
                                 <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
-                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span>
+                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span><div className="mt-1 text-[10px] font-bold text-cyan-200">CAD / REF: {row.agency_cad_number||row.bps_reference||row.call_id||row.original_call_id||row.id}</div>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">Active</span>}
                                     {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">Property call</span>}
                                     {row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName) && (
