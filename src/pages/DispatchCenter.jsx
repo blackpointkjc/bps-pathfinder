@@ -1,3 +1,6 @@
+import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
+import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
+import '@/components/dispatch/cad-console.css';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
@@ -51,13 +54,13 @@ export default function DispatchCenter() {
     const [showMessaging, setShowMessaging] = useState(false);
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
-    const [showMap, setShowMap] = useState(false);
+    const [showMap, setShowMap] = useState(true);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
     const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
-    const [queueFilter, setQueueFilter] = useState('all');
+    const [queueFilter, setQueueFilter] = useState('agency');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
@@ -717,11 +720,11 @@ export default function DispatchCenter() {
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <div className="min-w-0">
-                        <h1 className="text-sm font-bold leading-snug text-white">Dispatch Center</h1>
+                        <h1 className="text-sm font-bold leading-snug text-white">BPS / DISPATCH CONTROL</h1>
                         <p className="mt-0.5 text-[10px] leading-snug text-slate-300">BPS CAD · Computer-Aided Dispatch</p>
                     </div>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
-                    <span className="text-green-400 text-[10px]">ONLINE</span>
+                    <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : 'CAD FEED'}</span>
                 </div>
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
@@ -920,6 +923,12 @@ export default function DispatchCenter() {
                                             {isPulsePointCall(selectedCall) ? 'PP' : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
+                                        {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={selectedCall.priority} onSave={async(call,priority)=>{
+                                            const response=await base44.functions.invoke('updateCadCallPriority',{call_id:call.id,priority});
+                                            if(response?.data?.error)throw new Error(response.data.error);
+                                            setActiveCalls(previous=>previous.map(row=>row.id===call.id?{...row,priority,priority_override:true}:row));
+                                            setSelectedCall(previous=>previous?.id===call.id?{...previous,priority,priority_override:true}:previous);
+                                        }}/>}
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
                                         {isPulsePointCall(selectedCall) && <span className="rounded border border-red-500/50 bg-red-500/20 px-2 py-0.5 text-[9px] font-black text-red-100">PULSEPOINT</span>}
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">

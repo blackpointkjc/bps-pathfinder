@@ -5,10 +5,9 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    const allowed = user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role)
-      || roles.has('full_access') || roles.has('supervisor') || roles.has('cad_access');
-    if (!allowed) return Response.json({ error: 'Dispatch or supervisor access required' }, { status: 403 });
+    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
+    const allowed = String(user.role || '').trim().toLowerCase() === 'dispatch' || user.dispatch_role === true || roles.has('dispatch');
+    if (!allowed) return Response.json({ error: 'Dispatcher role required' }, { status: 403 });
 
     const { call_id, priority, reason } = await req.json().catch(() => ({}));
     const allowedPriorities = new Set(['low', 'medium', 'high', 'critical']);
@@ -16,7 +15,7 @@ Deno.serve(async (req) => {
 
     const call = await base44.asServiceRole.entities.DispatchCall.get(call_id);
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
-    if (call.priority === priority) return Response.json({ success: true, priority, duplicate_transition: true });
+    if (call.priority === priority && call.priority_override === true) return Response.json({ success: true, priority, duplicate_transition: true });
 
     const weights: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
     const upgraded = weights[priority] > weights[call.priority || 'medium'];

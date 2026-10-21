@@ -1,3 +1,4 @@
+import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef } from 'react';
@@ -207,15 +208,13 @@ function CommandDashboardInner({ embedded = false }) {
         return () => window.removeEventListener('bps-alert-mute-changed', syncMute);
     }, []);
 
-    const handlePriorityOverride = async (call, e) => {
-        e.stopPropagation();
-        const order = ['critical', 'high', 'medium', 'low'];
-        const current = getCallPriority(call);
-        const next = order[(order.indexOf(current) + 1) % order.length];
+    const handlePriorityOverride = async (call, next) => {
+        if (!canEditIncidentPriority(currentUser)) throw new Error('Dispatcher role required');
         const response = await base44.functions.invoke('updateCadCallPriority', { call_id: call.id, priority: next });
-        const payload = response?.data || response || {};
+        const payload = response?.data || {};
         if (payload.error) throw new Error(payload.error);
-        manualRefresh();
+        setSelectedCall(previous => previous?.id === call.id ? {...previous,priority:next,priority_override:true} : previous);
+        await manualRefresh();
     };
 
     const handleMarkCleared = async (call, e) => {
@@ -271,7 +270,7 @@ function CommandDashboardInner({ embedded = false }) {
     return <>
       <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={manualRefresh}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
-        canChangePriority={isAdmin} canClear={isDispatchOrAdmin}
+        canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} isExternal={isPulsePointCall}
         actions={<><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
