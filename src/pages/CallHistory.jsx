@@ -90,7 +90,6 @@ export default function CallHistory() {
     const [existingReportNumber,setExistingReportNumber]=useState('');
     const [linkBusy,setLinkBusy]=useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [warnings, setWarnings] = useState([]);
     const intervalRef = useRef(null);
     const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
@@ -226,7 +225,6 @@ export default function CallHistory() {
             // persistence is briefly delayed by ingestion or rate limiting.
             feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
             setRows(feedRows);setLoading(false);setRefreshing(false);
-            setWarnings(Array.isArray(payload.warnings)?payload.warnings:[]);
 
             // Collapse active/archive copies by the original CAD entity id while
             // preserving property metadata from either copy. Prefer the active row
@@ -256,7 +254,6 @@ export default function CallHistory() {
                 });
             }
             setRows([...mergedByCall.values()]);
-            setWarnings(Array.isArray(payload.warnings) ? payload.warnings.filter(Boolean) : []);
             setLastRefresh(new Date());
         } catch (e) {
             console.error('[HISTORY] feed load failed:', e);
