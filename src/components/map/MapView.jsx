@@ -138,7 +138,7 @@ function MapViewportSync() {
 }
 
 // Component to handle map center updates
-function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating, heading }) {
+function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating, heading, mapPickEnabled }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
     const userInteractingRef = useRef(false);
@@ -177,8 +177,9 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
             // run after the map pane has already been torn down during a CAD Center
             // tab/unmount transition. Only touch the map while it is still live.
-            try { map.stop(); } catch (_) {}
-            if (interactionContainer?.isConnected) {
+            // Do not stop an unmounting Leaflet map: Leaflet's animation teardown
+            // can dereference a removed map pane (_leaflet_pos).
+            if (interactionContainer?.isConnected && map._loaded) {
                 try { map.closePopup(); } catch (_) {}
             }
         };
@@ -188,14 +189,14 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
 
     // Handle external map centering (from call detail sidebar)
     useEffect(() => {
-        if (mapCenter) {
+        if (!mapPickEnabled && mapCenter && map.getContainer()?.isConnected && map._loaded) {
             map.setView(mapCenter, 16, { animate: false });
         }
-    }, [mapCenter, map]);
+    }, [mapCenter, map, mapPickEnabled]);
 
     // Handle "fit all units" — zoom out so every unit with GPS is visible
     useEffect(() => {
-        if (!fitBounds || fitBounds.length === 0) return;
+        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || !fitBounds || fitBounds.length === 0) return;
         const valid = fitBounds.filter(c => Number.isFinite(c[0]) && Number.isFinite(c[1]));
         if (valid.length === 0) return;
         const bounds = L.latLngBounds(valid.map(c => [c[0], c[1]]));
@@ -203,12 +204,12 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             map.fitBounds(bounds, { padding: [70, 70], animate: false, maxZoom: 15 });
             if (map.getZoom() < 10) map.setZoom(10, { animate: false });
         }
-    }, [fitBounds, map]);
+    }, [fitBounds, map, mapPickEnabled]);
 
     useEffect(() => {
         // Outside navigation, briefly respect a real manual pan. Active
         // navigation uses NavigationCamera and always returns to GPS follow.
-        if (userInteractingRef.current && !isNavigating) return;
+        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || (userInteractingRef.current && !isNavigating)) return;
 
         // Throttle updates to improve performance
         const now = Date.now();
@@ -233,7 +234,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
             }
             prevCenterRef.current = center;
         }
-    }, [center, routeBounds, map, isNavigating]);
+    }, [center, routeBounds, map, isNavigating, mapPickEnabled]);
 
     return null;
 }
@@ -315,6 +316,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     fitBounds={fitBounds}
                     isNavigating={isNavigating}
                     heading={heading}
+                    mapPickEnabled={mapPickEnabled}
                 />
             ) : (
                 <NavigationCamera
