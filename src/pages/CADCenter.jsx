@@ -1,6 +1,6 @@
+import { useLocation,useNavigate } from 'react-router-dom';
+import '@/components/dispatch/cad-console.css';
 import { Activity, AlertTriangle, History } from 'lucide-react';
-import UnifiedCenter from '@/components/UnifiedCenter';
-import CenterToolSection from '@/components/CenterToolSection';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
@@ -32,25 +32,17 @@ const TOOLS = {
 };
 
 export default function CADCenter({ embedded = false }) {
-  const sections = BASE_SECTIONS;
-
-
-  return (
-    <UnifiedCenter
-      eyebrow="Computer Aided Dispatch"
-      title="CAD Center"
-      description="One desktop workspace for live calls, unit status, mapping, alerts, history, and records intelligence."
-      sections={sections}
-      defaultSection="live"
-      contentClassName="bg-[radial-gradient(circle_at_top,_rgba(20,43,71,.22),_transparent_42%),#050b13] text-slate-100"
-      queryParam={embedded ? 'cad_section' : 'section'}
-      embedded={embedded}
-    >
-      {section => <CenterToolSection
-        tools={TOOLS[section] || TOOLS.live}
-        queryParam={embedded ? 'cad_tool' : 'tool'}
-        workspaceClassName="bg-[#050b13]"
-      />}
-    </UnifiedCenter>
-  );
+ const location=useLocation(),navigate=useNavigate();
+ const params=new URLSearchParams(location.search);
+ const section=params.get(embedded?'cad_section':'section')||'live';
+ const toolKey=embedded?'cad_tool':'tool';
+ const tools=TOOLS[section]||TOOLS.live;
+ const active=tools.find(t=>t.id===params.get(toolKey))||tools[0];
+ const Component=active.component;
+ const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
+ return <main className="cad-console-shell">
+  <header className="cad-system-header"><div><span className="cad-insignia">BPS</span><strong>PATHFINDER <small>COMPUTER AIDED DISPATCH</small></strong></div><span className="cad-system-label">OPERATIONS / COMMAND & CONTROL</span></header>
+  <nav className="cad-mode-nav" aria-label="CAD workstations">{Object.entries(TOOLS).flatMap(([group,items])=>items.map(item=><button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)}>{item.label}</button>))}</nav>
+  <div className={'cad-active-screen '+(active.id==='dispatch'?'cad-screen-dispatch':'')}><Component embedded /></div>
+ </main>;
 }
