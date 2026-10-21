@@ -1,3 +1,4 @@
+import PlatoonBalancePreview from '@/components/PlatoonBalancePreview';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
 import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
@@ -98,36 +99,6 @@ export default function AdminPlatoonAssignments() {
     onError: error => toast.error(error.message || 'Unable to save assignment'),
   });
 
-  const autoBalanceMutation = useMutation({
-    mutationFn: async () => {
-      const belowCommand = operational.filter(u => !COMMAND_RANKS.has(u.rank));
-      const assignment = new Map();
-      for (const rank of RANKS.filter(r => !COMMAND_RANKS.has(r))) {
-        const sameRank = belowCommand.filter(u => u.rank === rank);
-        sameRank.forEach((u, idx) => assignment.set(u.id, idx % 2 === 0 ? 'A' : 'B'));
-      }
-      const projected = operational.map(u => ({ ...u, platoon: COMMAND_RANKS.has(u.rank) ? 'Command' : (assignment.get(u.id) || u.platoon || 'A') }));
-      const supervisorLoads = new Map();
-      for (const person of operational) {
-        const platoon = COMMAND_RANKS.has(person.rank) ? 'Command' : (assignment.get(person.id) || 'A');
-        const candidates = eligibleSupervisors({ ...person, platoon }, projected, platoon);
-        let supervisor = null;
-        if (candidates.length) {
-          supervisor = [...candidates].sort((a,b) => (supervisorLoads.get(a.id) || 0) - (supervisorLoads.get(b.id) || 0) || Number(a.unit_number || 9999) - Number(b.unit_number || 9999))[0];
-          supervisorLoads.set(supervisor.id, (supervisorLoads.get(supervisor.id) || 0) + 1);
-        }
-        await saveOne(person, { platoon, supervisor_id: supervisor?.id || '' });
-      }
-    },
-    onSuccess: async () => {
-      setDrafts({});
-      await queryClient.invalidateQueries({ queryKey:['platoonUsers'] });
-      await queryClient.invalidateQueries({ queryKey:['allUsersRank'] });
-      toast.success('Platoons balanced and chain of command rebuilt');
-    },
-    onError: error => toast.error(error.message || 'Unable to auto-balance platoons'),
-  });
-
   if (!allowed) return <div className="p-8 text-center text-slate-300"><Shield className="mx-auto mb-3 h-12 w-12"/><h2 className="text-xl font-bold">Admin Access Required</h2></div>;
   if (isLoading) return <div className="p-8 text-slate-400">Loading platoon assignments…</div>;
 
@@ -137,7 +108,7 @@ export default function AdminPlatoonAssignments() {
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <div className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-3"><div className="rounded-xl bg-amber-500/10 p-3"><Network className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black">PLATOON & CHAIN ASSIGNMENTS</h1><p className="text-sm text-slate-400">Assign Platoon A/B and reporting supervisors by rank. Both Majors report to both Lt Colonels; assign each Major a platoon below.</p></div></div>
-      <Button onClick={()=>autoBalanceMutation.mutate()} disabled={autoBalanceMutation.isPending} className="bg-amber-500 text-black hover:bg-amber-400"><RefreshCw className={`mr-2 h-4 w-4 ${autoBalanceMutation.isPending?'animate-spin':''}`}/>Auto Balance Platoons</Button>
+      <PlatoonBalancePreview onApplied={async()=>{setDrafts({});await queryClient.invalidateQueries();}} />
     </div>
 
     <section className="rounded-xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-3 flex items-center gap-2 text-sm font-black text-amber-300"><Shield className="h-4 w-4"/>SHARED COMMAND — OVERSEES PLATOON A & B</div><div className="grid gap-3 md:grid-cols-3">{command.map(user=><div key={user.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3"><div className="font-bold">{displayName(user)}</div><div className="text-xs text-slate-400">Unit {user.unit_number || '—'}</div><div className="mt-2 text-xs">{oversightLabel(user)} · Reports to {reportingLabel(user,operational,displayName)}</div>{user.rank==='Major' && <MajorPlatoonAssignment person={user}/>}</div>)}</div></section>

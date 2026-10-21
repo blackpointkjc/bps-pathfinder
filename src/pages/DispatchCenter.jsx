@@ -54,7 +54,7 @@ export default function DispatchCenter() {
     const [showMessaging, setShowMessaging] = useState(false);
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
-    const [showMap, setShowMap] = useState(true);
+    const [showMap, setShowMap] = useState(false);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);

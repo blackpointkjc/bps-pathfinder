@@ -100,7 +100,12 @@
         "high",
         "critical"
       ],
-      "default": "medium"
+      "default": "medium",
+      "rls": {
+        "read": true,
+        "update": false,
+        "delete": false
+      }
     },
     "agency": {
       "type": "string",
@@ -196,6 +201,14 @@
       "type": "string",
       "format": "date-time",
       "description": "When BPSPF first observed this call in a live upstream source poll"
+    },
+    "priority_override": {
+      "type": "boolean",
+      "rls": {
+        "read": true,
+        "update": false,
+        "delete": false
+      }
     }
   },
   "required": [
