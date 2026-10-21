@@ -112,16 +112,19 @@ export default function Dashboard({ embedded = false }) {
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const email = String(user.email).trim().toLowerCase();
-      const entries = await base44.entities.TimeEntry.list('-created_date', 500);
-      const userEntries = entries.filter(e => String(e.officer_email || '').trim().toLowerCase() === email);
-      return userEntries.find(e => !e.clock_out) || null;
+      const response = await base44.functions.invoke('getMyTimeEntries', { ...getOfficerPreviewRequest(), active_only: true });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (!Array.isArray(payload.entries)) throw new Error('Unable to confirm current shift.');
+      return payload.entries.find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
     enabled: !!user?.email,
-    refetchInterval: 60000,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: todaySchedule } = useQuery({
+  const { data: todaySchedule, isPending: schedulePending, isError: scheduleError, refetch: retrySchedule } = useQuery({
     queryKey: ['todaySchedule', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
@@ -136,7 +139,9 @@ export default function Dashboard({ embedded = false }) {
       ).sort((a,b)=>String(a.start_time||'').localeCompare(String(b.start_time||'')));
     },
     enabled: !!user?.email,
-    refetchInterval: 60000,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: pendingRequests } = useQuery({
@@ -450,6 +455,10 @@ export default function Dashboard({ embedded = false }) {
                       <p className="text-sm text-slate-300 mt-1 font-medium flex items-start gap-1"><MapPin className="w-3 h-3 mt-1 shrink-0" /> {shift.location}</p>
                     </div>)}
                   </div>
+                ) : schedulePending ? (
+                  <p role="status" className="text-sm text-violet-200">Loading today's shifts…</p>
+                ) : scheduleError ? (
+                  <div className="space-y-2"><p role="alert" className="text-sm text-amber-300">Schedule could not be loaded. This does not mean you have no shift.</p><Button size="sm" variant="outline" onClick={() => retrySchedule()}>Retry schedule</Button></div>
                 ) : (
                   <p className="text-lg md:text-xl text-slate-400 font-medium">No shift scheduled</p>
                 )}
