@@ -32,6 +32,7 @@ export function postOrderSections(order={}){
  const sections=imported?importedSections(order):[];
  for(const [title,field]of fields){
   const content=String(order[field]||'').trim();if(!content)continue;
+  if(imported&&field==='site_overview'&&content==='Black Point property instructions for '+order.site_name+'.')continue;
   if(imported&&field==='patrol_schedule'&&content==='Follow the patrol frequency and authorized areas in the full property instructions.')continue;
   if(sections.some(section=>key(section.content).includes(key(content))))continue;
   const existing=sections.find(section=>key(section.title)===key(title));
