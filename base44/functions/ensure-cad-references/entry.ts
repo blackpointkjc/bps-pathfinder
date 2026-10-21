@@ -39,6 +39,7 @@ Deno.serve(async req=>{
   if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}
   if(!trustedService&&(!actor||!['admin','dispatch','dispatcher','cad_access','full_access','supervisor'].some(role=>roles.has(role))&&!actor.dispatch_role))return Response.json({error:'CAD access required'},{status:403});
   const body=await req.json().catch(()=>({}));
+  if(body.action==='status'){const counts:any={};for(const entity of collections)counts[entity]=await api.asServiceRole.entities[entity].count();return Response.json({counts});}
   if(body.action==='allocate')return Response.json({success:true,references:await reserve(api,Math.max(1,Math.min(100,Number(body.count)||1)))});
   const selected=Array.isArray(body.records)?body.records.slice(0,500):[];
   const rows:any[]=[];

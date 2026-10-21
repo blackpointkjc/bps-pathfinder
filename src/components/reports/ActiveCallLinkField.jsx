@@ -29,8 +29,8 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
     };
   }, [refetch]);
 
-  const handleSelect = (callId) => {
-    const call = calls.find(item => item.id === callId || item.original_call_id === callId);
+  const handleSelect = (callId, found) => {
+    const call = found || calls.find(item => item.id === callId || item.original_call_id === callId);
     if (!call) return;
     setFormData(prev => applyDispatchCallToForm(prev, call));
   };
@@ -71,7 +71,7 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
       {formData?.linked_call_id && (
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-cyan-700 dark:text-cyan-300">
-            Linked CAD: <strong>{formData.linked_call_number || formData.linked_call_id}</strong>
+            Linked CAD: <strong>{formData.linked_call_number || 'Reference Pending'}</strong>
             {formData.linked_call_type ? ` · ${formData.linked_call_type}` : ''}
             {formData.linked_call_location ? ` · ${formData.linked_call_location}` : ''}
           </div>

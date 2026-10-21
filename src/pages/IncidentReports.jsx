@@ -1,3 +1,4 @@
+import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
@@ -281,12 +282,12 @@ export default function IncidentReports() {
     refetchOnWindowFocus: false,
   });
 
-  const selectDispatchCall = (callId) => {
+  const selectDispatchCall = (callId, found) => {
     if (callId === 'none') {
       setFormData(prev => ({ ...prev, linked_call_id: '', linked_call_number: '', primary_officer_id: '', primary_officer_name: '', backup_officer_ids: [] }));
       return;
     }
-    const call = activeDispatchCalls.find(item => String(item.id) === String(callId) || String(item.original_call_id || '') === String(callId));
+    const call = found || activeDispatchCalls.find(item => String(item.id) === String(callId) || String(item.original_call_id || '') === String(callId));
     if (!call) return;
     const primaryId = call.assigned_units?.[0] || '';
     const primary = allUsers.find(item => String(item.id) === String(primaryId));
@@ -1328,23 +1329,7 @@ Provide:
                       </div>
                     ) : (
                       <>
-                        <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select CAD call number" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-80">
-                            <SelectItem value="none">No linked CAD call</SelectItem>
-                            {activeDispatchCalls.map(call => {
-                              const cad = callDisplayNumber(call);
-                              const label = [cad, call.incident, call.location].filter(Boolean).join(' · ');
-                              return (
-                                <SelectItem key={String(call.id)} value={String(call.id)}>
-                                  {label || String(call.id)}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                        <CallLinkCombobox calls={activeDispatchCalls} value={formData.linked_call_id} onSelect={selectDispatchCall} /> <Button type="button" variant="ghost" onClick={()=>selectDispatchCall('none')}>Clear CAD Link</Button>
                         {formData.linked_call_id && (
                           <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                             <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}

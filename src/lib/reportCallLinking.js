@@ -1,3 +1,4 @@
+import { cadReference } from '@/lib/cadReference';
 import { base44 } from '@/api/base44Client';
 import { cleanIncident } from '@/utils/callUtils';
 
@@ -14,7 +15,7 @@ export function isActiveDispatchCall(call) {
 }
 
 export function callDisplayNumber(call) {
-  return call?.agency_cad_number || call?.bps_reference || call?.call_id || call?.id || '';
+  return cadReference(call);
 }
 
 export async function listActiveDispatchCalls(limit = 500) {
@@ -40,10 +41,10 @@ export async function listActiveDispatchCalls(limit = 500) {
 // and sorted most-recent first. Used by report call-linking so officers can link
 // reports to calls that have already aged out of the live CAD queue, and search
 // them by any part of the CAD number (e.g. the last 5 digits of the BPS reference).
-export async function listAllDispatchCallsForLinking(limit = 1000) {
+export async function listAllDispatchCallsForLinking(limit = 1000, search = '') {
   // Use one server-side operational feed so dispatch/officer report forms are not
   // dependent on browser RLS for DispatchCall, CallHistory, or PropertyAlert.
-  const response = await base44.functions.invoke('getDispatchCallLinkFeed', { limit });
+  const response = await base44.functions.invoke('getDispatchCallLinkFeed', { limit: typeof limit === 'number' ? limit : 300, search });
   const payload = response?.data || response || {};
   if (payload.error) throw new Error(payload.error);
   return Array.isArray(payload.calls) ? payload.calls : [];

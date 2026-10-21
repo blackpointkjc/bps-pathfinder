@@ -1,24 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { isActiveDispatchCall, callDisplayNumber } from '@/lib/reportCallLinking';
+import { isActiveDispatchCall, callDisplayNumber, listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
 import { cleanIncident } from '@/utils/callUtils';
 
 export default function CallLinkCombobox({ calls = [], value, onSelect, placeholder = 'Search CAD number, incident, or location…', isLoading = false }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  const selected = calls.find(c => c.id === value) || null;
+  const [remote,setRemote]=useState([]);
+  const [picked,setPicked]=useState(null);
+  const [searching,setSearching]=useState(false);
+  const [searchError,setSearchError]=useState('');
+  useEffect(()=>{let active=true;if(!open||!query.trim()){setRemote([]);setSearching(false);return;}
+    setSearching(true);setSearchError('');
+    const timer=setTimeout(()=>{listAllDispatchCallsForLinking(200,query.trim()).then(rows=>{if(active)setRemote(rows);}).catch(error=>{if(active)setSearchError(error.message||'CAD search failed');}).finally(()=>{if(active)setSearching(false);});},400);
+    return()=>{active=false;clearTimeout(timer);};
+  },[open,query]);
+  const options=[...new Map([...calls,...remote,...(picked?[picked]:[])].map(call=>[call.id,call])).values()];
+  const selected = options.find(c => c.id === value) || null;
   const q = query.trim().toLowerCase();
   const haystack = (call) => [callDisplayNumber(call), call.bps_reference, call.agency_cad_number, call.call_id, call.incident, call.location, call.cross_street, call.landmark, call.property_name].filter(Boolean).join(' ').toLowerCase();
-  const filtered = q ? calls.filter(c => haystack(c).includes(q)) : calls;
+  const filtered = q ? options.filter(c => haystack(c).includes(q)) : options;
   const active = filtered.filter(isActiveDispatchCall);
   const history = filtered.filter(c => !isActiveDispatchCall(c));
 
   const handleSelect = (callId) => {
-    onSelect(callId);
+    const call=options.find(row=>row.id===callId);setPicked(call);onSelect(callId,call);
     setOpen(false);
     setQuery('');
   };
@@ -44,7 +54,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
         <Command shouldFilter={false}>
           <CommandInput placeholder="Search by CAD number, incident, or location…" value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>No matching calls. Try a different CAD number.</CommandEmpty>
+            {searching&&<div role="status" className="px-3 py-2 text-xs">Searching Call Archive…</div>}{searchError&&<div role="alert" className="px-3 py-2 text-xs text-red-500">{searchError}</div>}<CommandEmpty>{searching?'Searching…':'No Matching Calls. Search A Full Or Partial CAD Number.'}</CommandEmpty>
             {active.length > 0 && (
               <CommandGroup heading={`Active Calls (${active.length})`}>
                 {active.slice(0, 200).map(call => (

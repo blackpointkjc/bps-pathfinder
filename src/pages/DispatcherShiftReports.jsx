@@ -71,8 +71,8 @@ export default function DispatcherShiftReports({ embedded = false }) {
     return unitId;
   };
 
-  const handleAttachCall = async (callId) => {
-    const call = calls.find((c) => c.id === callId);
+  const handleAttachCall = async (callId, found) => {
+    const call = found || calls.find((c) => c.id === callId);
     if (!call) return;
     if (formData.dispatch_log.some((e) => e.call_id === callId)) {
       toast.error('That call is already in the log.');

@@ -1,3 +1,5 @@
+import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
+import { callDisplayNumber } from '@/lib/reportCallLinking';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -123,7 +125,7 @@ function FormView({ data, onChange }) {
     }
   };
 
-  const callLabel = c => c.agency_cad_number || c.bps_reference || c.call_id || c.id;
+  const callLabel = callDisplayNumber;
   const reportLabel = r => r.report_number || r.incident_report_number || r.id;
 
   return <div className="space-y-4 font-mono">
@@ -140,7 +142,7 @@ function FormView({ data, onChange }) {
       {linkLoading && <div className="mb-3 rounded border border-cyan-900 bg-cyan-950/30 px-3 py-2 text-[10px] text-cyan-200">Loading CAD calls and incident reports…</div>}
       {linkError && <div className="mb-3 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-[10px] text-red-300">{linkError}</div>}
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="DISPATCH CALL"><select value={data.linked_call_id || ''} onChange={e => { const c = calls.find(x => x.id === e.target.value); set('linked_call_id', e.target.value); set('linked_call_number', c ? callLabel(c) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked call</option>{calls.map(c => <option key={c.id} value={c.id}>{callLabel(c)} — {titleCase(c.incident || '')} — {titleCase(c.location || '')}</option>)}</select></Field>
+        <Field label="DISPATCH CALL"><CallLinkCombobox calls={calls} value={data.linked_call_id} isLoading={linkLoading} onSelect={(id,call)=>onChange(prev=>({...prev,linked_call_id:id,linked_call_number:callLabel(call)}))} /><button type="button" className="mt-1 text-xs text-slate-400" onClick={()=>onChange(prev=>({...prev,linked_call_id:'',linked_call_number:''}))}>Clear CAD Link</button></Field>
         <Field label="INCIDENT REPORT"><select value={data.linked_incident_report_id || ''} onChange={e => { const r = reports.find(x => x.id === e.target.value); set('linked_incident_report_id', e.target.value); set('linked_incident_report_number', r ? reportLabel(r) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked incident report</option>{reports.map(r => <option key={r.id} value={r.id}>{reportLabel(r)} — {titleCase(r.incident_type || r.report_type || r.location || '')}</option>)}</select></Field>
       </div>
     </div>
