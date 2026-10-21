@@ -134,6 +134,12 @@ Deno.serve(async (req) => {
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
+        // Confirm edits to identity/contact/onboarding fields reached persistent User.
+        // A successful SDK call alone is not proof that every field was retained.
+        const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
+        const verifiedFields = ['first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
+        const missingWrites = verifiedFields.filter(field => updatePayload[field] !== undefined && String(verifiedUser?.[field] ?? '') !== String(updatePayload[field] ?? ''));
+        if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId });
 
         // On the first admin approval of an officer, create an actionable
