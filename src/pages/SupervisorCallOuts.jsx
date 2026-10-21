@@ -13,7 +13,7 @@ import { Plus, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations, listSupervisorDirectoryOfficers, listDirectoryUsers } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorCallOuts() {
@@ -43,9 +43,9 @@ export default function SupervisorCallOuts() {
   };
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => getCurrentDirectoryUser(),
+  const { data: user, isPending: actorLoading, error: actorError } = useQuery({
+    queryKey: ['callOutAuthenticatedActor'],
+    queryFn: () => base44.auth.me(),
   });
 
   const { data: allUsers = [] } = useQuery({
@@ -140,6 +140,8 @@ export default function SupervisorCallOuts() {
 
   const isSupervisorOrAdmin = hasSupervisorAccess(user);
 
+  if (actorLoading) return <p role="status" className="p-6 text-slate-300">Loading Call-Out Management…</p>;
+  if (actorError) return <p role="alert" className="p-6 text-red-300">Unable To Verify Call-Out Access. Refresh The Page To Retry.</p>;
   if (!isSupervisorOrAdmin) {
     return (
       <div className="p-8 text-center">
