@@ -1,9 +1,10 @@
+import { isOperationalOutage } from '@/lib/operationalOutages';
 import { parseServerTimestamp } from '@/lib/easternTime';
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, RefreshCw, ServerCrash, Wrench } from 'lucide-react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import RateLimitDiagnostics from '@/components/admin/RateLimitDiagnostics';
-import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
+
 import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 
 const severityConfig = {
@@ -100,7 +101,7 @@ export default function SystemStatus() {
 
   const activeOutages = useMemo(() => {
     const bySignature = new Map();
-    for (const issue of issues.filter(issue => !issue.resolved_at)) {
+    for (const issue of issues.filter(issue => !issue.resolved_at && isOperationalOutage(issue))) {
       const signature = [issue.component, issue.title, issue.source].map(value => String(value || '').trim().toLowerCase()).join('|');
       const existing = bySignature.get(signature);
       const issueStamp = new Date(issue.last_seen_at || issue.created_date || 0).getTime();
@@ -110,9 +111,6 @@ export default function SystemStatus() {
     return [...bySignature.values()].sort((a, b) => new Date(b.last_seen_at || b.created_date || 0) - new Date(a.last_seen_at || a.created_date || 0));
   }, [issues]);
 
-  const requestHealth = getBase44RequestHealth();
-  const rateLimitSummary = getBase44RateLimitSummary();
-  const rateLimitCount = rateLimitSummary.reduce((sum, item) => sum + (Number(item.rateLimits) || 0), 0);
   const diagnosticIssues = useMemo(() => (diagnosticFindings || []).map(item => ({
     id: `diagnostic:${item.key || item.title}`,
     severity: item.severity || 'degraded',
@@ -124,27 +122,14 @@ export default function SystemStatus() {
     source: 'functional_audit',
     occurrence_count: item.count || 1,
   })), [diagnosticFindings, lastCheckedAt]);
-  const requestPressureIssue = requestHealth.rateLimitedUntil ? [{
-    id: 'diagnostic:api-pressure',
-    severity: 'degraded',
-    component: 'Base44 API',
-    title: requestHealth.rateLimitedUntil ? 'API request throttling is active' : 'API rate limiting was detected recently',
-    description: requestHealth.rateLimitedUntil
-      ? `Pathfinder is deliberately suppressing and deduplicating background requests until ${formatTime(requestHealth.rateLimitedUntil)} so live CAD/GPS traffic can recover.`
-      : `${rateLimitCount} rate-limit event(s) were recorded during the last 15 minutes. Open API Trace to see the affected functions.`,
-    created_date: requestHealth.recentRateLimitAt || new Date().toISOString(),
-    last_seen_at: requestHealth.recentRateLimitAt || new Date().toISOString(),
-    source: 'request_health',
-    occurrence_count: Math.max(1, rateLimitCount),
-  }] : [];
   const statusIssues = useMemo(() => {
     const map = new Map();
-    [...activeOutages, ...diagnosticIssues, ...requestPressureIssue].forEach(item => {
+    [...activeOutages, ...diagnosticIssues].forEach(item => {
       const key = [item.component, item.title].map(value => String(value || '').trim().toLowerCase()).join('|');
       if (!map.has(key)) map.set(key, item);
     });
     return [...map.values()];
-  }, [activeOutages, diagnosticIssues, requestPressureIssue]);
+  }, [activeOutages, diagnosticIssues]);
 
   return (
     <div className="min-h-full bg-[#060b12] p-3 text-white sm:p-5">

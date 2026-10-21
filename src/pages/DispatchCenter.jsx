@@ -64,6 +64,7 @@ export default function DispatchCenter() {
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('agency');
     const [supervisorWorking,setSupervisorWorking]=useState(false);
+    const [statusWorking,setStatusWorking]=useState(false);
     const [dispatchFeedback,setDispatchFeedback]=useState('');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
     const [queueSearch, setQueueSearch] = useState('');
@@ -525,7 +526,8 @@ export default function DispatchCenter() {
     }, [selectedCall?.id]);
 
     const updateCallStatus = async (newStatus) => {
-        if (!selectedCall || selectedCall.status === newStatus) return;
+        if (!selectedCall || selectedCall.status === newStatus || statusWorking) return;
+        setStatusWorking(true); setDispatchFeedback('Updating Call Status…');
         try {
             const result = await base44.functions.invoke('updateCadCallStatus', {
                 call_id: selectedCall.id,
@@ -533,13 +535,16 @@ export default function DispatchCenter() {
             });
             const payload = result?.data || result || {};
             if (payload.error) throw new Error(payload.error);
+            setDispatchFeedback(`Call Updated: ${newStatus}`); setSelectedCall(previous=>previous?{...previous,status:newStatus}:previous);
             toast.success(`Call marked ${newStatus}`);
             if (['Cleared', 'Cancelled'].includes(newStatus)) setSelectedCall(null);
-            await loadActiveCalls();
+            clearActiveDispatchCallMemoryCache();lastActiveCallsLoadRef.current=0;
+            await loadActiveCalls(true);
         } catch (error) {
             console.error('Status update failed:', error);
-            toast.error('Unable to update call status');
-        }
+            setDispatchFeedback(error?.response?.data?.error||error?.message||'Unable To Update Call Status');
+            toast.error(error?.response?.data?.error||error?.message||'Unable to update call status');
+        } finally {setStatusWorking(false);}
     };
 
     const requestWelfareForSelectedCall = async () => {
@@ -690,15 +695,17 @@ export default function DispatchCenter() {
         ||persistedPropertyCallIds.includes(String(call.id))
         ||Boolean(findPropertyMatch(call,companyPropertyBoundaries)));
     const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
-    const allCalls = activeCalls.filter(call => {
-        const property=propertyCallIds.has(String(call.id));
-        const matchesFilter = queueFilter === 'agency' || (property && (queueFilter === 'all' ||
-            (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
-            (queueFilter === 'priority' && ['critical', 'high'].includes(incidentPriority(call))) ||
-            String(propertyCallProgress(call)||'').toLowerCase().replace(/[ _-]/g,'')===String(queueFilter).toLowerCase().replace(/[ _-]/g,'')));
-        const haystack = `${call.call_id || ''} ${call.bps_reference||''} ${call.agency_cad_number||''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
-        return matchesFilter && haystack.includes(queueSearch.toLowerCase());
-    });
+    const matchesQueue = (call,filter) => {
+        if (filter==='agency') return true;
+        if (!propertyCallIds.has(String(call.id))) return false;
+        const activeAssignments=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+        if(filter==='all')return true;
+        if(filter==='unassigned')return !call.assigned_units?.length&&!activeAssignments.length;
+        if(filter==='priority')return ['critical','high'].includes(incidentPriority(call));
+        const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
+        return normalize(propertyCallProgress(call))===normalize(filter);
+    };
+    const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
 
     const statusUnits = units.filter(unit => Boolean(unit.status));
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
@@ -840,7 +847,7 @@ export default function DispatchCenter() {
                 {[
                     ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED PROPERTY'], ['priority','HIGH PRIORITY PROPERTY'], ['New','NEW PROPERTY'], ['Dispatched','DISPATCHED PROPERTY'], ['Enroute','EN ROUTE PROPERTY'], ['On Scene','ON SCENE PROPERTY'], ['agency','ALL ACTIVE CALLS']
                 ].map(([value,label]) => (
-                    <button key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label}</button>
+                    <button key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
                 ))}
                 <div className="flex-1" />
                 <span className="text-[10px] text-slate-500">SORT:</span>
@@ -878,7 +885,7 @@ export default function DispatchCenter() {
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {allCalls.length === 0 ? (
-                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'LOADING CURRENT CALLS…' : 'NO ACTIVE CALLS'}</div>
+                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
                             ) : allCalls.map(call => {
                                 const pulsePoint = isPulsePointCall(call);
                                 return (
@@ -966,12 +973,12 @@ export default function DispatchCenter() {
                                     <div className="px-4 pb-2 flex items-center gap-1.5 flex-wrap">
                                         <span className="text-[9px] text-slate-500 mr-1">CALL STATUS</span>
                                         {['New','Dispatched','Enroute','On Scene','Cleared'].map(status => (
-                                            <button key={status} onClick={() => updateCallStatus(status)} disabled={selectedCall.status === status}
+                                            <button key={status} onClick={() => updateCallStatus(status)} disabled={statusWorking || selectedCall.status === status}
                                                 className={`px-2 py-1 rounded border text-[9px] ${selectedCall.status === status ? 'border-blue-400 bg-blue-500/20 text-blue-200' : 'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-white'}`}>
                                                 {status.toUpperCase()}
                                             </button>
                                         ))}
-                                        <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
+                                        <button disabled={statusWorking} onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
                                         <button disabled={supervisorWorking} onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">{supervisorWorking?'REQUESTING…':'REQUEST SUPERVISOR'}</button>{dispatchFeedback&&<p role="status" className="w-full rounded border border-cyan-700 p-2 text-xs text-cyan-200">{dispatchFeedback}</p>}
                                         <button onClick={requestWelfareForSelectedCall} disabled={welfareWorking} className="px-2 py-1 rounded border border-red-600 bg-red-950/40 text-[9px] font-bold text-red-200 hover:bg-red-900/50 disabled:opacity-50">{welfareWorking ? 'SENDING…' : 'WELFARE CHECK'}</button>
                                     </div>

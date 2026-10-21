@@ -89,25 +89,17 @@ Deno.serve(async (req) => {
       /rate limit|too many requests|429/i.test(item.message)
     );
     if (throttledFailures.length) {
-      const throttledFinding: Finding = {
-        key: 'scan:rate-limited',
-        area: 'System Audit',
-        severity: 'degraded',
-        title: 'Full application scan was safely paused by request throttling',
-        description: `Base44 temporarily limited ${throttledFailures.length} scan read(s). Operational modules were not marked down. Remaining scan reads were skipped immediately. The hourly scanner will retry after the recovery window.`,
-        count: throttledFailures.length,
-      };
       return Response.json({
         success: true,
         scope: 'entire_app',
-        status: 'issues_found',
+        status: 'incomplete',
         scan_incomplete: true,
-        findings: [throttledFinding],
+        findings: [],
         summary: {
           areas_checked: checkedAreas.length,
-          issues_found: 1,
+          issues_found: 0,
           outages: 0,
-          degraded: 1,
+          degraded: 0,
           maintenance: 0,
         },
         checked_areas: checkedAreas,

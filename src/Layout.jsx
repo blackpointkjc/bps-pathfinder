@@ -1,3 +1,4 @@
+import { isOperationalOutage } from '@/lib/operationalOutages';
 import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useFleetScheduling } from '@/hooks/useFleetScheduling';
 import { useAbsenceReconciliation } from '@/hooks/useAbsenceReconciliation';
@@ -1261,7 +1262,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     let active = true;
     const load = () => base44.entities.SystemOutage.filter({ resolved_at: null }).then(rows => {
-      if (active) setOutages(rows || []);
+      if (active) setOutages((rows || []).filter(isOperationalOutage));
     }).catch(() => { if (active) setOutages([]); });
     load();
     let unsubscribe;

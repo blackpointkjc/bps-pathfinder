@@ -177,7 +177,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                             <option value="">Select another CAD call…</option>
                                             {calls.filter(c=>String(c.id)!==String(call.id)&&!['cleared','cancelled','closed','resolved','completed'].includes(String(c.status||'').toLowerCase())&&c.manual_dismissed!==true).map(c=><option key={c.id} value={c.id}>{c.agency_cad_number||c.bps_reference||c.call_id||c.id} · {String(c.incident||'').slice(0,34)}</option>)}
                                         </select>
-                                        <Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleAddAnotherCall(unit)} className="h-8 border-emerald-700 text-emerald-300">{reassigning===unit.id?'Adding…':'ADD CALL'}</Button><Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleReassignUnit(unit)} className="h-8 border-cyan-700 text-cyan-300">{reassigning===unit.id?'Moving…':'REASSIGN'}</Button>
+                                        <Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleAddAnotherCall(unit)} className="h-8 border-emerald-700 text-emerald-300">{reassigning===unit.id?'Adding…':'ADD CALL'}</Button><Button size="sm" variant="outline" disabled={!destinationByOfficer[unit.id]||!!reassigning} onClick={()=>handleReassignUnit(unit)} className="h-8 border-cyan-700 text-cyan-300">{reassigning===unit.id?'Moving…':'TRANSFER CALL'}</Button>
                                     </div>
                                     <Button
                                         variant="ghost"
