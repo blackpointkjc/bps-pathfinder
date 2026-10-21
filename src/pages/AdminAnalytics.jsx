@@ -381,7 +381,7 @@ export default function AdminAnalytics() {
     clearBase44ReadCacheMatching('function:getCompanyPerformanceData:');
         queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'] });
         timers.delete(segment);
-      }, 1500));
+      }, 60000));
     };
 
     const unsubscribers = [];
