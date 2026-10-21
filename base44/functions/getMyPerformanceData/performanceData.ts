@@ -82,6 +82,12 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
       lower(officer.outlook_email),
       ...((officer.email_aliases || []).map(lower)),
     ].filter(Boolean));
+    if (/@(?:officer|employee)\.blackpointkjc\.com$/i.test(email)) {
+      const mailbox=email.split('@')[0];
+      const directory=await cachedRows('performance-identity-directory',300000,()=>base44.asServiceRole.entities.User.list('-updated_date',1000)).catch(()=>[]);
+      const owners=directory.filter((person:any)=>[person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[])].some((value:any)=>lower(value).split('@')[0]===mailbox));
+      if(owners.length===1&&String(owners[0].id)===officerId)aliases.add(mailbox+'@blackpointkjc.com');
+    }
     const aliasValues = [...aliases];
     const officerEmailQuery = (field = 'officer_email') => ({ [field]: { $in: aliasValues } });
     const officerRecordQuery = (emailFields = ['officer_email'], idFields = ['officer_id']) => ({

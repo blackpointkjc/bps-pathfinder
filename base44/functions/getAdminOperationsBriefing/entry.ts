@@ -46,7 +46,7 @@ Deno.serve(async req => {
     const openTasks=(tasks||[]).filter((row:any)=>String(row.status||'open').toLowerCase()==='open');
     // Trainer assignments remain actionable, but the admin queue counts officers.
     const officerReviews = [...new Map(openTasks
-      .filter((item:any)=>item.title === 'Review new officer certifications')
+      .filter((item:any)=>item.title === 'Review new officer certifications' && (users||[]).some((person:any)=>person.id===item.related_id&&!person.termination_date))
       .map((item:any)=>[String(item.related_id || item.id),item])).values()];
     const pendingEmployees = (users || []).filter((user:any)=>{
       const rank = String(user.rank || '').toLowerCase();

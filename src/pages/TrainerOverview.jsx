@@ -67,7 +67,7 @@ export default function TrainerOverview() {
   const recentCutoff = Date.now() - (14 * 86400000);
   const recentCompletions = completions.filter(row => new Date(row.completion_date || row.completed_date || row.created_date || 0).getTime() >= recentCutoff).slice(0, 5);
 
-  const certificationReviewTasks = (data.trainerTasks || []).filter(task => task.title === 'Review new officer certifications');
+  const certificationReviewTasks = (data.trainerTasks || []).filter(task => task.title === 'Review new officer certifications' && (data.users||[]).some(person=>person.id===task.related_id));
   const taskQueue = [
     ...certificationReviewTasks.slice(0, 5).map(task => ({
       id: `cert-review-${task.id}`,

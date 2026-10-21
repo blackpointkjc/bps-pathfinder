@@ -35,6 +35,9 @@ function canonicalizer(users:any[]) {
       if (key) byEmail.set(key, primary);
     }
   }
+  const mailboxes=new Map<string,Set<string>>();
+  for(const user of users||[]){const primary=byId.get(String(user.id));if(!primary)continue;for(const alias of [user.email,user.work_email,user.pathfinder_email,...(user.email_aliases||[])]){const box=lower(alias).split('@')[0];if(!box)continue;if(!mailboxes.has(box))mailboxes.set(box,new Set());mailboxes.get(box)!.add(primary);}}
+  for(const [mailbox,owners] of mailboxes){if(owners.size===1){const primary=[...owners][0];if(/@(?:officer|employee)\.blackpointkjc\.com$/i.test(primary))byEmail.set(mailbox+'@blackpointkjc.com',primary);}}
   const canonicalEmail = (value:any) => byEmail.get(lower(value)) || lower(value);
   const row = (record:any) => {
     if (!record) return record;
