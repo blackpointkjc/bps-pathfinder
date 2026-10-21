@@ -14,10 +14,10 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const [ownedUnits, sessions, lastShifts] = await Promise.all([
+    const [ownedUnits, sessions] = await Promise.all([
       base44.asServiceRole.entities.Unit.filter({user_id:me.id},'-last_update_at',20).catch(()=>[]),
       base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:me.email},'-last_update',10).catch(()=>[]),
-      base44.asServiceRole.entities.TimeEntry.filter({officer_email:me.email},'-clock_in',5).catch(()=>[]),
+
     ]);
     const aliases=[String(me.id),String(me.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(sessions||[]).map((row:any)=>String(row.id))].filter(Boolean);
     // One bounded roster snapshot per queue refresh, rather than unsupported
@@ -28,22 +28,22 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.CallStatusLog.list('-created_date',650),
       base44.asServiceRole.entities.User.list('-updated_date',350),
     ]);
-    const assignments=(allRecentAssignments||[]).filter((a:any)=>aliases.includes(String(a.unit_id)));
+    const ownedAssignmentGroups = await Promise.all(aliases.map(id => base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',300)));
+    const assignments = [...new Map(ownedAssignmentGroups.flat().map((a:any)=>[String(a.id),a])).values()];
     const linkedRecords=(allRecentCalls||[]).filter((call:any)=>Array.isArray(call.assigned_units)&&call.assigned_units.some((id:any)=>aliases.includes(String(id))));
 
-    const openShift=(lastShifts||[]).find((row:any)=>row.clock_in&&!row.clock_out&&row.archived!==true);
-    const shiftStart=openShift ? Date.parse(openShift.clock_in)-2*60*60*1000 : Date.now()-12*60*60*1000;
-    const recentCutoff=Number.isFinite(shiftStart)?shiftStart:Date.now()-12*60*60*1000;
     const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []);
-    const activeAssignments=(assignments||[]).filter((a:any)=> !['cleared','cancelled','canceled'].includes(lower(a.status))
-      && Number.isFinite(Date.parse(a.assigned_at||a.created_date||''))
-      && Date.parse(a.assigned_at||a.created_date||'')>=recentCutoff);
+    const activeAssignments=(assignments||[]).filter((a:any)=> !['cleared','cancelled','canceled'].includes(lower(a.status)));
     // CAD's assigned_units is a second explicit assignment source when a
     // legacy dispatcher wrote the call but missed its CallAssignment row.
-    const linkedCalls=(linkedRecords||[]).filter((call:any)=>!isTerminalCall(call) && Date.parse(call.time_dispatched||call.created_date||'')>=recentCutoff);
+    const linkedCalls=(linkedRecords||[]).filter((call:any)=>!isTerminalCall(call));
     const linkedById=new Map(linkedCalls.map((call:any)=>[String(call.id),call]));
     const callIds=[...new Set([...activeAssignments.map((a:any)=>String(a.call_id||'')),...linkedById.keys()].filter(Boolean))];
     const callById=new Map((allRecentCalls||[]).map((call:any)=>[String(call.id),call]));
+    await Promise.all(callIds.filter(id=>!linkedById.has(id)&&!callById.has(id)).map(async id=>{
+      const row=await base44.asServiceRole.entities.DispatchCall.get(id).catch(()=>null);
+      if(row)callById.set(id,row);
+    }));
     const calls:any[]=[];
     for(const callId of callIds){
       const call=linkedById.get(callId)||callById.get(callId);
