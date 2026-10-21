@@ -40,13 +40,13 @@ export default function BOLOAlerts() {
   useEffect(() => {
     if (isLoadingAuth) return;
     const init = async () => {
-      const loadedBolos = await load();
       const params = new URLSearchParams(window.location.search);
       if (params.get('new') === '1' && user) setModal({ mode: 'create', bolo: {
         alert_type: 'wanted_person', priority: 'medium', status: 'active',
         linked_call_id: params.get('call_id') || '',
         linked_call_number: params.get('call_number') || '',
       } });
+      const loadedBolos = await load();
       const openId = params.get('open');
       if (openId) {
         const target = (loadedBolos || []).find(item => String(item.id) === String(openId));

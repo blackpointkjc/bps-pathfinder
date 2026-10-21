@@ -7,6 +7,7 @@ function backend(p,client){let handler;vm.runInNewContext(compile(p),{exports:{}
  for(const [page,section,tool] of [['BOLOAlerts','alerts','bolo'],['Navigation','live','map'],['CallHistory','history','history']]){
   const url=new URL(nav(page,{new:'1',call_id:'c'}),'https://test');assert.equal(url.pathname,'/CADCenter');assert.equal(url.searchParams.get('section'),section);assert.equal(url.searchParams.get('tool'),tool);assert.equal(url.searchParams.get('call_id'),'c');
  }
+ const adminNav=nav('BOLOAlerts',{new:'1'},{pathname:'/AdminCenter',search:'?admin_center=cad&cad_tool=command'});assert(adminNav.startsWith('/AdminCenter?'));assert(adminNav.includes('admin_center=cad'));assert(adminNav.includes('cad_tool=bolo'));
  const embedded=nav('BOLOAlerts',{new:'1'},{search:'?cad_tool=command'});assert(embedded.includes('cad_tool=bolo'));assert(embedded.includes('cad_section=alerts'));
  const directory=[{id:'a',email:'a@test',rank:'Officer',last_name:'Alpha'},{id:'b',email:'b@test',rank:'Sergeant',last_name:'Beta',status:'Out of Service'},{id:'client',email:'client@test',rank:'Client',additional_roles:['client']}];
  const operational=p=>p.email&&p.rank!=='Client';

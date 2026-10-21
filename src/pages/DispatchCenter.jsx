@@ -108,6 +108,7 @@ export default function DispatchCenter() {
             if (event.key.toLowerCase() === 'n') setShowCreateDialog(true);
             if (event.key.toLowerCase() === 'm') setShowMap(value => !value);
             if (event.key === 'Escape') {
+                setShowMap(false);
                 setSelectedCall(null);
                 setShowMessaging(false);
                 setShowDispatchLog(false);
