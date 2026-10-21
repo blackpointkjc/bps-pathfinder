@@ -8,7 +8,7 @@ const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:v1';
 const BUSY_LEASE_RETRY_MS = 15_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 60 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 20 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 60 * 1000;
 let liveSyncInFlight = null;
 
@@ -87,7 +87,9 @@ async function performCadLiveSync() {
   if (health.rateLimitedUntil || health.readRetryAt) {
     return { skipped: true, reason: 'rate_limit_backoff' };
   }
-  if (health.queuedReads > 0 || health.activeReads > 0 || health.activeWrites > 0) {
+  // Routine dashboard reads must not starve emergency-call ingestion indefinitely.
+  // Skip only when the shared queue is materially overloaded or writes are active.
+  if (health.queuedReads >= 8 || health.activeWrites > 0) {
     return { skipped: true, reason: 'app_data_loading' };
   }
   const backoffUntil = liveSyncBackoffUntil();
