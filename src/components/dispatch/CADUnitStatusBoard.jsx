@@ -1,4 +1,5 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { getAppDirectory } from '@/lib/appDirectory';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -50,11 +51,17 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
     let active = true;
     const sync = async (force = false) => {
       try {
-        const payload = await getOfficerLocationSnapshot({ force });
+        const [payload, directorySnapshot] = await Promise.all([getOfficerLocationSnapshot({ force }), getAppDirectory().catch(() => null)]);
         if (!active) return;
         // The canonical `units` feed is built from Manage Users and includes
         // signed-out personnel resolved as Out of Service. `users` is live-only.
-        setCanonicalUnits(Array.isArray(payload.units) ? payload.units : []);
+        const roster = [...(Array.isArray(payload.units) ? payload.units : [])];
+        const ids = new Set(roster.map(row => String(row.user_id || row.id)));
+        for (const person of directorySnapshot?.users || []) {
+          if (!person.id || !person.email || !Array.isArray(person.additional_roles) || !person.additional_roles.includes('officer') || person.termination_date || ids.has(String(person.id)) || roster.some(row => String(row.email || row.officer_email || '').toLowerCase() === String(person.email).toLowerCase())) continue;
+          roster.push({ ...person, status: person.status || 'Status unconfirmed', session_active: false, presence_online: false, connection_stale: true, roster_source: 'directory_fallback' });
+        }
+        setCanonicalUnits(roster);
         setCanonicalLoaded(true);
       } catch {
         // Keep rendering the parent feed if the canonical refresh is temporarily unavailable.
