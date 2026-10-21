@@ -138,6 +138,7 @@ const readPriority = meta => {
   return 72;
 };
 const readTimeoutMs = meta => {
+  if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;
   // These authenticated snapshots intentionally serialize many source reads.
   // Do not abandon them at the 20-second limit used for individual entity calls.

@@ -85,7 +85,7 @@ function useAnalyticsSegment(name, enabled, startDate, endDate) {
       const result = await base44.functions.invoke('getCompanyAnalyticsSegment', { segment: name, start_date: startDate, end_date: endDate });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      if (Object.keys(payload.service_errors||{}).length) { console.warn('Analytics Source Diagnostics', JSON.stringify(payload.service_errors)); clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:'); }
+      if (Object.keys(payload.service_errors||{}).length) { clearBase44ReadCacheMatching('function:getCompanyAnalyticsSegment:'); }
       const previous = queryClient.getQueryData(['companyAnalyticsSegment', name, startDate, endDate]);
       const retained = { ...payload };
       for (const [field, sources] of Object.entries(config.fields)) {
@@ -831,7 +831,8 @@ export default function AdminAnalytics() {
             <div className="space-y-3">
               {!performanceCardsReady && (
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
-                  Loading officer performance for this period…
+                  {officerPerformanceSnapshots.error ? 'Officer Performance Could Not Be Loaded.' : 'Loading Officer Performance For This Period…'}
+                  {officerPerformanceSnapshots.error && <button className="ml-3 underline" onClick={()=>officerPerformanceSnapshots.refetch()}>Retry Officer Performance</button>}
                   {Object.keys(performanceCriticalErrors).length > 0 && (
                     <div className="mt-2 text-amber-200">Sources awaiting refresh: {Object.keys(performanceCriticalErrors).join(', ')}</div>
                   )}

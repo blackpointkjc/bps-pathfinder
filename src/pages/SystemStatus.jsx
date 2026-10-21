@@ -1,3 +1,4 @@
+import { getBase44RateLimitSummary, getBase44RequestHealth } from '@/api/base44Client';
 import { isOperationalOutage } from '@/lib/operationalOutages';
 import { parseServerTimestamp } from '@/lib/easternTime';
 import { useEffect, useMemo, useState } from 'react';
@@ -111,6 +112,8 @@ export default function SystemStatus() {
     return [...bySignature.values()].sort((a, b) => new Date(b.last_seen_at || b.created_date || 0) - new Date(a.last_seen_at || a.created_date || 0));
   }, [issues]);
 
+  const requestHealth = getBase44RequestHealth();
+  const rateLimitCount = getBase44RateLimitSummary().reduce((sum,item)=>sum+(Number(item.rateLimits)||0),0);
   const diagnosticIssues = useMemo(() => (diagnosticFindings || []).map(item => ({
     id: `diagnostic:${item.key || item.title}`,
     severity: item.severity || 'degraded',
