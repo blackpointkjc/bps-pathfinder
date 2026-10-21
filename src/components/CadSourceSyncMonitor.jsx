@@ -21,7 +21,9 @@ export default function CadSourceSyncMonitor({ user }) {
       // Dispatch Center must not intentionally stop all source updates. Mobile
       // operating systems may still suspend web pages; server scheduling is needed
       // for guaranteed unattended delivery.
-      if (!active || running || !navigator.onLine) return;
+      if (!active || running || !navigator.onLine || document.visibilityState !== 'visible') return;
+      const page = window.location.pathname + window.location.search;
+      if (!/CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|admin_center=cad/i.test(page)) return;
       running = true;
       try {
         const result = await requestCadLiveSync();
@@ -35,11 +37,11 @@ export default function CadSourceSyncMonitor({ user }) {
       }
     };
     // Let the signed-in page load before beginning expensive source ingestion.
-    const first = window.setTimeout(sync, 2_000);
+    const first = window.setTimeout(sync, 12_000);
     // Tick frequently enough to retry a collided server lease within seconds.
     // cadCallFeed and the backend lease keep this from turning into duplicate writes;
     // command screens should not wait a minute to discover a property call.
-    const timer = window.setInterval(sync, 15_000);
+    const timer = window.setInterval(sync, 30_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);

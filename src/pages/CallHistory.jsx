@@ -26,7 +26,7 @@ const historyCallStatus=row=>row?.time_cleared?'Cleared':row?.time_on_scene?'On 
 const sentenceCase=(value)=>{
     const raw=String(value||'').trim();
     if(!raw)return '—';
-    return raw.replace(/\s+,/g,',').replace(/,([^\s])/g,', $1').toLowerCase().replace(/^(.)/,(_,a)=>a.toUpperCase())
+    return raw.replace(/\s+,/g,',').replace(/,([^\s])/g,', $1').toLowerCase().replace(/\b[a-z]/g,a=>a.toUpperCase())
         .replace(/\bd\.o\.a\./gi,'D.O.A.').replace(/\bems\b/gi,'EMS')
         .replace(/\bcad\b/gi,'CAD').replace(/\brpd\b/gi,'RPD')
         .replace(/\brfd\b/gi,'RFD').replace(/\bgrac\b/gi,'GRAC');
@@ -499,7 +499,6 @@ export default function CallHistory() {
                 </div>
             </div>
 
-            {warnings.length > 0 && <div className="mt-2 rounded-xl border border-amber-700/50 bg-amber-950/20 px-3 py-2 text-[10px] text-amber-200">Partial source warning: {warnings.join(' · ')}</div>}
 
             {/* Filter Bar */}
             <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#293f55] bg-[#091522] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">

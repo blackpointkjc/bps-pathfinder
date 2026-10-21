@@ -49,10 +49,10 @@ export default function AdminEquipment({ embedded=false }) {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: equipment, isLoading } = useQuery({
+  const { data: equipment = [], error: equipmentError, refetch: refreshEquipment, isLoading } = useQuery({
     queryKey: ['equipment'],
-    queryFn: () => base44.entities.Equipment.list(),
-    initialData: [],
+    queryFn: () => base44.entities.Equipment.list('-created_date', 1000),
+    staleTime: 120000,
   });
 
   const { data: users } = useQuery({
@@ -476,7 +476,9 @@ export default function AdminEquipment({ embedded=false }) {
         ))}
       </div>
 
-      {filteredEquipment.length === 0 && !isLoading && (
+      {isLoading && <p role="status" className="p-4">Loading Equipment…</p>}
+      {equipmentError && <div role="alert" className="p-4 text-red-300">Equipment Could Not Be Loaded. <button onClick={()=>refreshEquipment()} className="underline">Retry Equipment</button></div>}
+      {filteredEquipment.length === 0 && !isLoading && !equipmentError && (
         <Card className="p-12 text-center">
           <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
           <h3 className="text-xl font-bold text-slate-700 mb-2">No Equipment Found</h3>

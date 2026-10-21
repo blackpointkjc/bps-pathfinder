@@ -11,45 +11,7 @@ import { Plus, X, Edit, CheckCircle, AlertTriangle, Upload, FileText, Image, Ext
 import { format, isPast, addMonths } from "date-fns";
 
 // Full DCJS training list
-const DCJS_COURSES = [
-  // Entry Level
-  { id: "01E", name: "Security Officer Core Subjects", level: "Entry Level", converts_to: "01I" },
-  { id: "02E", name: "Private Investigator", level: "Entry Level", converts_to: "02I" },
-  { id: "03E", name: "Armored Car Personnel", level: "Entry Level", converts_to: "03I" },
-  { id: "04ES", name: "Security Canine Handler", level: "Entry Level", converts_to: "04IS" },
-  { id: "04ED", name: "Detector Canine Handler", level: "Entry Level", converts_to: "04ID" },
-  { id: "05E", name: "Armed Security Officer Arrest Authority", level: "Entry Level" },
-  { id: "06E", name: "Special Conservator of the Peace Core Subjects", level: "Entry Level", converts_to: "06I" },
-  { id: "07E", name: "Handgun", level: "Entry Level", converts_to: "07R" },
-  { id: "08E", name: "Shotgun", level: "Entry Level", converts_to: "08R" },
-  { id: "09E", name: "Advanced Handgun", level: "Entry Level", converts_to: "09R" },
-  { id: "10E", name: "Patrol Rifle", level: "Entry Level", converts_to: "10R" },
-  { id: "25E", name: "Locksmith", level: "Entry Level", converts_to: "25I" },
-  { id: "30E", name: "Electronic Security Core Subjects", level: "Entry Level", converts_to: "30I" },
-  { id: "32E", name: "Personal Protection Specialist", level: "Entry Level", converts_to: "32I" },
-  { id: "35E", name: "Electronic Security Technician", level: "Entry Level" },
-  { id: "38E", name: "Central Dispatcher", level: "Entry Level" },
-  { id: "39E", name: "Electronic Security Sales Representative", level: "Entry Level" },
-  { id: "40E", name: "Bail Bondsman", level: "Entry Level", converts_to: "40I" },
-  { id: "44E", name: "Bail Enforcement Agent", level: "Entry Level", converts_to: "44I" },
-  // In-Service
-  { id: "01I", name: "Security Officer Core Subjects", level: "In-Service" },
-  { id: "02I", name: "Private Investigator", level: "In-Service" },
-  { id: "03I", name: "Armored Car Personnel", level: "In-Service" },
-  { id: "04IS", name: "Security Canine Handler", level: "In-Service" },
-  { id: "04ID", name: "Detector Canine Handler", level: "In-Service" },
-  { id: "06I", name: "Special Conservator of the Peace Core Subjects", level: "In-Service" },
-  { id: "25I", name: "Locksmith", level: "In-Service" },
-  { id: "30I", name: "Electronic Security Core Subjects", level: "In-Service" },
-  { id: "32I", name: "Personal Protection Specialist", level: "In-Service" },
-  { id: "40I", name: "Bail Bondsman", level: "In-Service" },
-  { id: "44I", name: "Bail Enforcement Agent", level: "In-Service" },
-  // Retraining
-  { id: "07R", name: "Handgun Re-Training", level: "Retraining" },
-  { id: "08R", name: "Shotgun Re-Training", level: "Retraining" },
-  { id: "09R", name: "Advanced Handgun Re-Training", level: "Retraining" },
-  { id: "10R", name: "Patrol Rifle Re-Training", level: "Retraining" },
-];
+import { DCJS_COURSES } from '@/lib/certificationCatalog';
 
 const ENTRY_CONVERSIONS = {
   "01E": "01I", "02E": "02I", "03E": "03I", "04ES": "04IS", "04ED": "04ID",

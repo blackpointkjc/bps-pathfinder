@@ -1,18 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-async function loadUsers(base44: any) {
-  let lastError: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const rows = await base44.asServiceRole.entities.User.list(undefined, 1000);
-      return Array.isArray(rows) ? rows : [];
-    } catch (error: any) {
-      lastError = error;
-      if (attempt < 2) await delay(500 * (attempt + 1));
-    }
-  }
-  throw lastError || new Error('Unable to load training users');
+let userCache: { at:number; rows:any[] } | null = null;
+let userRead: Promise<any[]> | null = null;
+async function loadUsers(base44:any) {
+  if (userCache && Date.now()-userCache.at<30000) return userCache.rows;
+  if (!userRead) userRead = base44.asServiceRole.entities.User.list(undefined,1000).then((rows:any[])=>{
+    if (!Array.isArray(rows)) throw new Error('Invalid officer directory response');
+    userCache={at:Date.now(),rows}; return rows;
+  }).finally(()=>{userRead=null;});
+  return await userRead;
 }
 
 Deno.serve(async (req) => {
@@ -27,12 +23,9 @@ Deno.serve(async (req) => {
     // Pending invitations are independent from User provisioning; one failing source
     // must not erase the other source's confirmed records.
     const load_errors: string[] = [];
+    const allUsers = await loadUsers(base44);
     const enrollments = await base44.asServiceRole.entities.StudentEnrollment.list('-created_date', 300).catch((error:any) => {
       load_errors.push('Student invitations: ' + (error?.message || 'unavailable'));
-      return [];
-    });
-    const allUsers = await loadUsers(base44).catch((error:any) => {
-      load_errors.push('User directory: ' + (error?.message || 'unavailable'));
       return [];
     });
     const enrollmentsByEmail = new Map((enrollments || []).map((enrollment:any) => [String(enrollment.email || '').toLowerCase(), String(enrollment.status || '')]));
@@ -44,7 +37,7 @@ Deno.serve(async (req) => {
         const rank = String(entry.rank || '').toLowerCase();
         if (entryRoles.has('student') || type === 'student' || rank === 'student' || rank === 'student registration pending') return true;
         if (entryRoles.has('client') || ['client','pending'].includes(type) || rank === 'client') return false;
-        return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('cad_access') || ['officer','corporal','sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank) || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
+        return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('cad_access') || ['unarmed officer','senior officer','first sergeant','officer','corporal','sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(rank) || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
       })
       .map((entry: any) => ({
         id: entry.id,

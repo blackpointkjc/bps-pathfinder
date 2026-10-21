@@ -76,7 +76,7 @@ export default function SupervisorCallOuts() {
 
   const { data: scheduledShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery({
     queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
-    queryFn: async () => { const rows = await base44.entities.Schedule.filter({officer_email:formData.officer_email,shift_date:formData.call_out_date},'start_time',250); return (rows || []).filter(shift => String(shift.officer_email || '').trim().toLowerCase() === String(formData.officer_email || '').trim().toLowerCase() && String(shift.shift_date || '').slice(0,10) === formData.call_out_date); },
+    queryFn: async () => { const officer=allUsers.find(u=>u.email===formData.officer_email); const aliases=[...new Set([formData.officer_email,officer?.work_email,officer?.pathfinder_email,...(officer?.email_aliases||[])].filter(Boolean))]; return await base44.entities.Schedule.filter({officer_email:{$in:aliases},shift_date:formData.call_out_date},'start_time',250); },
     enabled: Boolean(formData.officer_email && formData.call_out_date),
     initialData: [],
   });
@@ -85,8 +85,8 @@ export default function SupervisorCallOuts() {
 
   const { data: callOuts=[],error:callOutError,isPending:callOutLoading,refetch:refreshCallOuts } = useQuery({
     queryKey: ['callOuts'],
-    queryFn: () => base44.entities.CallOut.list('-call_out_date'),
-    initialData: [],
+    queryFn: () => base44.entities.CallOut.list('-call_out_date', 1000),
+    staleTime: 120000,
   });
 
   const createCallOutMutation = useMutation({

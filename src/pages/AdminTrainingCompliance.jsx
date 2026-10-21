@@ -1,3 +1,4 @@
+import { DCJS_COURSES } from '@/lib/certificationCatalog';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useMemo, useEffect } from "react";
@@ -1043,7 +1044,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Requirement / Certification Name *</Label>
-              <Input value={requirementForm.training_name} onChange={e => setRequirementForm(p => ({ ...p, training_name: e.target.value }))} placeholder="e.g., CPR, DCJS, Fire Watch" list="preset-trainings" />
+              <select aria-label="Requirement / Certification Name" value={requirementForm.training_name} onChange={e => setRequirementForm(p => ({ ...p, training_name: e.target.value }))} className="w-full rounded-md border border-slate-300 bg-white p-2 text-slate-900"><option value="">Select A System Certification…</option>{[...new Set([...DCJS_COURSES.map(c=>c.name), ...allUsers.flatMap(u=>(u.officer_certifications||[]).map(c=>c.training_name)), ...requirements.map(r=>r.training_name), ...trainingModules.map(m=>m.title), requirementForm.training_name].filter(Boolean))].sort().map(name=><option key={name} value={name}>{name}</option>)}</select>
               <datalist id="preset-trainings">{PRESET_TRAININGS.map(t => <option key={t} value={t} />)}</datalist>
             </div>
             <div className="space-y-2">
