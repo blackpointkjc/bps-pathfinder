@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const roles = new Set((me.additional_roles || []).map((r:string) => lower(r)));
+    const roles = new Set([me.role,...(me.additional_roles || [])].map((r:string) => lower(r)));
     // Report forms are available to internal users whose primary role may still be
     // the Base44 default "user" role. Do not require a separate officer role just
     // to populate the call-link field. Only external/client/student/pending users
@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
     const read=(entity:string,sort:string)=>filter?base44.asServiceRole.entities[entity].filter(filter,sort,200):base44.asServiceRole.entities[entity].list(sort,limit);
     const limit = Math.max(50, Math.min(3000, Number(body?.limit || 1500)));
     // The live call list is required; history/property metadata are enhancements.
-    // Read sequentially so this shared report field does not create another API
-    // burst, and never silently turn a live-feed failure into an empty dropdown.
+    // Read the three bounded search sources together and report errors instead
+    // of silently turning an unavailable archive into an empty dropdown.
     const [live,history,alerts]=await Promise.all([read('DispatchCall','-time_received'),read('CallHistory','-archived_date'),search?base44.asServiceRole.entities.PropertyAlert.filter({$or:['cadNumber','callIncident','callLocation'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))},'-created_date',200):base44.asServiceRole.entities.PropertyAlert.list('-created_date',limit)]);
 
     const propertyByCall = new Map<string, any>();

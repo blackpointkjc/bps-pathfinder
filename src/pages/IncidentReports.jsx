@@ -1329,7 +1329,7 @@ Provide:
                       </div>
                     ) : (
                       <>
-                        <CallLinkCombobox calls={activeDispatchCalls} value={formData.linked_call_id} onSelect={selectDispatchCall} /> <Button type="button" variant="ghost" onClick={()=>selectDispatchCall('none')}>Clear CAD Link</Button>
+                        <CallLinkCombobox calls={activeDispatchCalls} value={formData.linked_call_id} selectedLabel={formData.linked_call_number} onSelect={selectDispatchCall} /> <Button type="button" variant="ghost" onClick={()=>selectDispatchCall('none')}>Clear CAD Link</Button>
                         {formData.linked_call_id && (
                           <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                             <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}

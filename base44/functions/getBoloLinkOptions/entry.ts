@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((me.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = me.role === 'admin' || me.role === 'dispatch' || roles.has('officer') || roles.has('supervisor') || roles.has('full_access') || roles.has('cad_access');
+    const allowed = me.role === 'admin' || ['dispatch','dispatcher'].includes(me.role) || Boolean(me.dispatch_role) || roles.has('dispatch') || roles.has('dispatcher') || roles.has('officer') || roles.has('supervisor') || roles.has('full_access') || roles.has('cad_access');
     if (!allowed) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     // These are only picker options inside the BOLO editor. Pulling 600 full

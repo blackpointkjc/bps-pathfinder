@@ -64,6 +64,7 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
       <CallLinkCombobox
         calls={calls}
         value={formData?.linked_call_id || ''}
+        selectedLabel={formData?.linked_call_number}
         onSelect={handleSelect}
         isLoading={isLoading}
         placeholder="Search active or cleared calls by CAD number…"

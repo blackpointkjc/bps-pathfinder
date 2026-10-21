@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { isActiveDispatchCall, callDisplayNumber, listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
 import { cleanIncident } from '@/utils/callUtils';
 
-export default function CallLinkCombobox({ calls = [], value, onSelect, placeholder = 'Search CAD number, incident, or location…', isLoading = false }) {
+export default function CallLinkCombobox({ calls = [], value, onSelect, placeholder = 'Search CAD number, incident, or location…', isLoading = false, selectedLabel = '' }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -33,7 +33,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
     setQuery('');
   };
 
-  const label = (call) => `${callDisplayNumber(call) || 'No CAD #'} — ${cleanIncident(call) || 'Incident pending'} — ${call.property_name ? `${call.property_name} · ` : ''}${call.location || 'Location pending'}`;
+  const label = (call) => `${callDisplayNumber(call) || 'No CAD #'} — ${String(cleanIncident(call)||'Incident Pending').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase())} — ${call.property_name ? `${call.property_name} · ` : ''}${call.location || 'Location pending'}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -45,7 +45,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
               <span className="truncate">{label(selected)}</span>
             </span>
           ) : (
-            <span className="text-slate-500">{isLoading ? 'Loading calls…' : placeholder}</span>
+            <span className="text-slate-500">{value && selectedLabel ? selectedLabel : isLoading ? 'Loading Calls…' : placeholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
