@@ -43,8 +43,11 @@ export default function NavigationCamera({ isNavigating, currentLocation, headin
         map.setZoom(16, { animate: false });
         return () => {
             cancelAnimationFrame(rotationFrame.current);
-            map.stop();
-            map.setBearing(0);
+            // Navigation can unmount while Leaflet panes are already removed.
+            // Never stop an unmounted map: Leaflet may access _leaflet_pos.
+            if (map.getContainer()?.isConnected && map._loaded) {
+                try { map.stop(); map.setBearing(0); } catch (error) { console.warn('Map navigation cleanup skipped', error?.message); }
+            }
         };
     }, [map, isNavigating]);
 
