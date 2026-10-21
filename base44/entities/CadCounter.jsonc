@@ -57,6 +57,9 @@
     },
     "migration_updated": {
       "type": "number"
+    },
+    "migration_total": {
+      "type": "number"
     }
   },
   "required": [
