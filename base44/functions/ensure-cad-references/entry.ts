@@ -58,7 +58,7 @@ Deno.serve(async req=>{
    scanStage=Number(verified.migration_stage||0);
    scanEntity=['CallHistory','PropertyAlert','DispatchCall','PropertyCallLink'][scanStage];
    if(!scanEntity){await counters.update(state.id,{migration_complete:true});return Response.json({success:true,done:true,mappings:[]});}
-   scanPage=verified.migration_cursor?await api.asServiceRole.entities[scanEntity].filter({id:{$gt:verified.migration_cursor}},'id',500):await api.asServiceRole.entities[scanEntity].list('id',500);
+   scanPage=verified.migration_cursor?await api.asServiceRole.entities[scanEntity].filter({id:{$gt:verified.migration_cursor}},'id',2000):await api.asServiceRole.entities[scanEntity].list('id',2000);
    for(const row of scanPage)rows.push({entity:scanEntity,row});
   }
 
@@ -99,7 +99,8 @@ Deno.serve(async req=>{
   }
   for(const [entity,updates] of updatesByEntity){
    const service=api.asServiceRole.entities[entity];
-   const saved=typeof service.bulkUpdate==='function'?await service.bulkUpdate(updates):await Promise.all(updates.map(update=>service.update(update.id,Object.fromEntries(Object.entries(update).filter(([key])=>key!=='id')))));
+   const saved:any[]=[];
+   for(let offset=0;offset<updates.length;offset+=500){const chunk=updates.slice(offset,offset+500);const result=typeof service.bulkUpdate==='function'?await service.bulkUpdate(chunk):await Promise.all(chunk.map(update=>service.update(update.id,Object.fromEntries(Object.entries(update).filter(([key])=>key!=='id')))));const records=Array.isArray(result)?result:result?.data;if(!Array.isArray(records))throw Error('CAD reference batch did not return verified records');saved.push(...records);}
    const persisted=Array.isArray(saved)?saved:saved?.data;
    if(!Array.isArray(persisted))throw Error('CAD reference batch did not return verified records');
    const byId=new Map(persisted.map((row:any)=>[String(row.id),row]));
@@ -110,8 +111,8 @@ Deno.serve(async req=>{
    }
   }
   if(migration){
-   const nextStage=scanPage.length<500?scanStage+1:scanStage;
-   const cursor=scanPage.length<500?'':String(scanPage[scanPage.length-1].id);
+   const nextStage=scanPage.length<2000?scanStage+1:scanStage;
+   const cursor=scanPage.length<2000?'':String(scanPage[scanPage.length-1].id);
    const scanned=Number(migration.last_number||0)+scanPage.length,updated=Number(migration.migration_updated||0)+mappings.length,done=nextStage>=4;
    await api.asServiceRole.entities.CadCounter.update(migration.id,{migration_stage:nextStage,migration_cursor:cursor,last_number:scanned,migration_updated:updated,migration_complete:done});
    return Response.json({success:true,done,scanned,updated,entity:scanEntity,mappings,failures});
