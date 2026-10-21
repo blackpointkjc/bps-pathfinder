@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -25,6 +26,7 @@ const mergeBoloRecord = (rows, record) => {
 };
 
 export default function BOLOAlerts() {
+  const navigate=useNavigate();
   const [bolos, setBolos] = useState(() => readBoloCache());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -46,6 +48,10 @@ export default function BOLOAlerts() {
         linked_call_id: params.get('call_id') || '',
         linked_call_number: params.get('call_number') || '',
       } });
+      if(params.get('new')==='1'&&user){
+        params.delete('new');
+        navigate({pathname:window.location.pathname,search:params.toString()?'?'+params.toString():''},{replace:true});
+      }
       const loadedBolos = await load();
       const openId = params.get('open');
       if (openId) {
