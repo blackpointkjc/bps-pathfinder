@@ -21,15 +21,14 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const search=String(body.search||'').trim().slice(0,160);
     const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
-    const filter=search?{$or:['agency_cad_number','bps_reference','call_id','incident','location'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
+    const fullCad=/^BPS-\d{6}-\d+$/i.test(search);
+    const filter=fullCad?{$or:['agency_cad_number','bps_reference','call_id'].map(field=>({[field]:search.toUpperCase()}))}:search?{$or:['agency_cad_number','bps_reference','call_id','incident','location'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
     const read=(entity:string,sort:string)=>filter?base44.asServiceRole.entities[entity].filter(filter,sort,200):base44.asServiceRole.entities[entity].list(sort,limit);
     const limit = Math.max(50, Math.min(3000, Number(body?.limit || 1500)));
     // The live call list is required; history/property metadata are enhancements.
     // Read sequentially so this shared report field does not create another API
     // burst, and never silently turn a live-feed failure into an empty dropdown.
-    const live = await read('DispatchCall','-time_received');
-    const history = await read('CallHistory','-archived_date');
-    const alerts = await (search?base44.asServiceRole.entities.PropertyAlert.filter({$or:['cadNumber','callIncident','callLocation'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))},'-created_date',200):base44.asServiceRole.entities.PropertyAlert.list('-created_date',limit));
+    const [live,history,alerts]=await Promise.all([read('DispatchCall','-time_received'),read('CallHistory','-archived_date'),search?base44.asServiceRole.entities.PropertyAlert.filter({$or:['cadNumber','callIncident','callLocation'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))},'-created_date',200):base44.asServiceRole.entities.PropertyAlert.list('-created_date',limit)]);
 
     const propertyByCall = new Map<string, any>();
     for (const alert of alerts || []) {
