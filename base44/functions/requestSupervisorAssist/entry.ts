@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
           triggering_action:'requestSupervisorAssist.pending',
           audio_enabled:true,
           sensitive:false
-        }).catch(()=>null);
+        });
         for (const supervisor of (users || []).filter((u:any)=>String(u.id)!==String(me.id) && isSupervisor(u) && u.email && !u.termination_date)) {
           await base44.asServiceRole.entities.Notification.create({
             recipient_email:lower(supervisor.email),
