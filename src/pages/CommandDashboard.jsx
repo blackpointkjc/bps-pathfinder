@@ -6,7 +6,6 @@ import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusCon
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '../utils';
 import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
@@ -14,7 +13,6 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
-import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
 import { useAuth } from '@/lib/AuthContext';
 import AdminLiveLocationPrivacy from '@/components/dispatch/AdminLiveLocationPrivacy';

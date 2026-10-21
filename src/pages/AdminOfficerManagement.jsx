@@ -51,6 +51,7 @@ export default function AdminOfficerManagement() {
   const [notes, setNotes] = useState('');
   const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
   const [saving, setSaving] = useState(false);
+  const [actionFeedback,setActionFeedback]=useState('');
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(normalize));
@@ -163,7 +164,7 @@ export default function AdminOfficerManagement() {
   const saveAvailabilityMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOfficer) throw new Error('Select an officer first.');
-      setSaving(true);
+      setSaving(true);setActionFeedback('Saving availability and address…');
       const existing = allAvailability.filter(a => normalize(a.officer_email) === normalize(selectedOfficer));
       for (const day of DAYS) {
         const dayData = availability[day] || {};
@@ -207,9 +208,9 @@ export default function AdminOfficerManagement() {
         queryClient.invalidateQueries({ queryKey: ['officerDirectory'] }),
       ]);
       setSaving(false);
-      alert('Officer availability and Home navigation address saved.');
+      setActionFeedback('Officer availability and Home navigation address saved successfully.');
     },
-    onError: error => { setSaving(false); alert(error.message || 'Failed to save.'); },
+    onError: error => { setSaving(false); setActionFeedback(error.message || 'Failed to save. Please retry.'); },
   });
 
   const updateDay = (day, field, value) => setAvailability(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
@@ -221,6 +222,7 @@ export default function AdminOfficerManagement() {
   return (
     <div className="min-h-screen bg-[#07101b] p-4 text-white md:p-6">
       <div className="mx-auto max-w-[1500px] space-y-5">
+        {actionFeedback&&<p role="status" className="rounded border border-cyan-600 bg-cyan-950 p-3 text-sm text-cyan-100">{actionFeedback}</p>}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3"><div><h1 className="text-xl font-black">Personnel & Command</h1><p className="mt-1 text-xs text-slate-400">Select one officer to manage platoon, reporting chain, CAD status, absence and weekly availability.</p></div><div className="flex flex-wrap gap-2"><PlatoonBalancePreview onApplied={async()=>{invalidateAppDirectory();await queryClient.invalidateQueries();}}/><Button size="sm" variant="outline" onClick={()=>window.location.href=createPageUrl('AdminScheduling')}>Scheduling</Button>{selectedOfficer && <Button size="sm" onClick={()=>saveAvailabilityMutation.mutate()} disabled={saving} className="bg-emerald-700">{saving?'Saving…':'Save working availability'}</Button>}</div></header>
         <div className="grid items-start gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
           <aside className="rounded-xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-3"><label className="text-xs text-slate-400">Find officer<Input value={searchTerm} onChange={event=>setSearchTerm(event.target.value)} placeholder="Rank, name, unit…" className="mt-2 border-slate-600 bg-slate-950 text-white"/></label><div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[70vh]">{officersLoading?<p className="p-3 text-sm">Loading officers…</p>:officersError?<button type="button" onClick={()=>retryOfficers()} className="p-3 text-sm text-cyan-300">Could not load officers. Retry</button>:filteredOfficers.map(officer=><button type="button" key={officer.id} aria-pressed={selectedOfficer===officer.email} onClick={()=>setSelectedOfficer(officer.email)} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-600 aria-pressed:bg-cyan-950"><strong className="block">{rankLast(officer)}</strong><span className="mt-1 block text-xs text-slate-400">{officer.platoon?'Platoon '+officer.platoon:'Command'}{isOutOfOffice(officer)?' · Out of office':''}</span></button>)}</div></aside>
@@ -228,7 +230,7 @@ export default function AdminOfficerManagement() {
         {selectedOfficer && <>
           <section className="rounded-xl border border-cyan-800 bg-cyan-950/20 p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-bold">{rankLast(selectedOfficerRecord)}</h2><p className="mt-1 text-xs text-slate-400">{selectedOfficerRecord?.platoon ? 'Platoon '+selectedOfficerRecord.platoon : 'Command'} · {selectedOfficerRecord?.unit_number ? 'Unit '+selectedOfficerRecord.unit_number : selectedOfficerRecord?.email}</p></div><span className="rounded-full border border-slate-600 px-3 py-1 text-xs">{isOutOfOffice(selectedOfficerPrivate || selectedOfficerRecord)?'Out of office':'Available'}</span></div>
-            <OfficerCommandControls key={[(selectedOfficerPrivate||selectedOfficerRecord)?.id,(selectedOfficerPrivate||selectedOfficerRecord)?.updated_date,(selectedOfficerPrivate||selectedOfficerRecord)?.supervisor_id,(selectedOfficerPrivate||selectedOfficerRecord)?.platoon].join(':')} officer={selectedOfficerPrivate||selectedOfficerRecord} users={commandUsers}/>
+            <OfficerCommandControls key={(selectedOfficerPrivate||selectedOfficerRecord)?.id} officer={selectedOfficerPrivate||selectedOfficerRecord} users={commandUsers}/>
             <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(220px,.65fr)]">
               <AdminOutOfOffice key={[selectedOfficer,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_start,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_return].join(':')} user={selectedOfficerPrivate || selectedOfficerRecord}/>
               <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-950 p-4"><h3 className="text-sm font-bold text-cyan-200">Automatic acting coverage</h3><p className="text-lg font-bold">{(() => {const profile={...(selectedOfficerPrivate || selectedOfficerRecord),out_of_office:true,out_of_office_start:new Date(Date.now()-1000).toISOString(),out_of_office_return:new Date(Date.now()+60000).toISOString()};const acting=actingCoverage(profile,commandUsers);return acting?rankLast(acting)+(acting.unit_number?' · Unit '+acting.unit_number:''):'No available replacement';})()}</p><p className="text-xs leading-5 text-slate-400">Chosen by platoon, highest eligible rank, then earliest hire date, then unit number. Covers platoon command and assigned site supervision during the absence.</p><div className="border-t border-slate-700 pt-3 text-xs text-slate-300"><strong>Assigned tasks:</strong> eligible duties are shared among the highest available rank, starting with the longest-serving employee. Unfinished duties return automatically.</div></div>

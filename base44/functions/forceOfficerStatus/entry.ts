@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
     const officer = (users || []).find((entry: any) => entry.id === officer_id);
     if (!officer) return Response.json({ error: 'Officer not found' }, { status: 404 });
 
+    if(action==='force_oos'&&!String(reason).trim())return Response.json({error:'A restriction reason is required'},{status:400});
     const now = new Date().toISOString();
     const actorName = [user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email;
     const existing = await base44.asServiceRole.entities.OfficerStatusOverride.filter({ officer_id, active: true }, '-forced_at', 1);
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.Notification.create({
         recipient_email: officer.email,
-        type: 'status_override',
+        type: 'system_issue',
         title: 'You Have Been Placed Out of Service',
         message: `Your duty status was placed Out of Service by ${actorName}.${reason ? ` Reason: ${String(reason).trim()}` : ''} You cannot change your status until an authorized user releases the override.`,
         priority: 'high',
@@ -94,6 +95,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, status: 'Out of Service', forced: true });
     }
 
+    if(!override)return Response.json({success:true,status:officer.status||'Out of Service',forced:false,message:'No active CAD restriction was found. Officer status is unchanged.'});
     if (override) {
       await base44.asServiceRole.entities.OfficerStatusOverride.update(override.id, {
         active: false,
@@ -122,7 +124,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Notification.create({
       recipient_email: officer.email,
-      type: 'status_override',
+      type: 'system_issue',
       title: 'Out of Service Override Released',
       message: `Your forced Out of Service status was released by ${actorName}. Your status is now Available.`,
       priority: 'normal',
@@ -130,7 +132,7 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({ success: true, status: 'Available', forced: false });
-  } catch (error) {
+  } catch (error:any) {
     console.error('forceOfficerStatus failed', error);
     return Response.json({ error: error?.message || 'Unable to update officer status' }, { status: 500 });
   }

@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
     const input=await req.json().catch(()=>({}));
     const search=String(input.search||'').trim().slice(0,160);
-    const escaped=search.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&');
+    const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
     const searchQuery=search?{$or:['call_id','bps_reference','agency_cad_number','incident','location','original_call_id'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
     // Call history is core data; property-alert enrichment is optional. Never
     // let a slow PropertyAlert read turn hundreds of valid calls into a "0 records"
