@@ -666,7 +666,7 @@ export default function AdminAnalytics() {
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0), pending };
   }, [allComplaints, filteredUsers, currentMonthStart, currentMonthEnd]);
 
-  if (isLoadingAuth || (analyticsLoading && !analyticsData?.generated_at)) {
+  if (isLoadingAuth || (analyticsLoading && !coreAnalytics.data && !companySnapshot?.data)) {
     return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
   }
 
