@@ -10,13 +10,15 @@ export default function NavigationTracker() {
     const mainPageKey = mainPage ?? Object.keys(Pages)[0];
     const { isAuthenticated } = useAuth();
 
-    // Post navigation changes to parent window
+    // Notify the builder when the page changes. Inline CAD/admin tabs use query
+    // parameters; reporting those as page navigations can reload the preview
+    // back to its page URL and discard the tab the user just selected.
     useEffect(() => {
         window.parent?.postMessage({
             type: "app_changed_url",
             url: window.location.href
         }, '*');
-    }, [location]);
+    }, [location.pathname]);
 
     // Log user activity when navigating to a page
     useEffect(() => {
@@ -44,7 +46,7 @@ export default function NavigationTracker() {
                 // Silently fail - logging shouldn't break the app
             });
         }
-    }, [location, isAuthenticated]);
+    }, [location.pathname, isAuthenticated]);
 
     return null;
 }
