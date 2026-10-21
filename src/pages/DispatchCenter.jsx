@@ -186,7 +186,7 @@ export default function DispatchCenter() {
                     .map(unit => String(unit.email || unit.officer_email || '').toLowerCase() === String(detail.email).toLowerCase()
                         ? { ...unit, status: detail.status, last_updated: detail.last_updated || new Date().toISOString() }
                         : unit)
-                    .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true));
+                    .filter(unit => unit?.id && (unit.email || unit.officer_email)));
             }
             // Realtime status event already updated the visible row. The two-minute
             // fallback reconciliation below will recover any missed related fields.

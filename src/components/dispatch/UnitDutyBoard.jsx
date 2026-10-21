@@ -4,7 +4,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export function dutyRows(units = [], calls = [], query = '', status = 'ALL') {
     const terminal = /^(cleared|cancelled|canceled|closed|resolved|completed)$/i;
-    return units.filter(isOperationalOfficer).filter(u => u.status && u.status !== 'Dispatch')
+    return units.filter(isOperationalOfficer).filter(u => u.status !== 'Dispatch')
         .map(unit => {
             const ids = [unit.id, unit.user_id, unit.officer_id, unit.active_officer_id, unit.email, unit.officer_email].filter(Boolean).map(String);
             const assigned = calls.filter(c => !terminal.test(c.status || '') && !c.manual_dismissed &&

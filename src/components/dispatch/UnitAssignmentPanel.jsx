@@ -39,7 +39,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     
     const holdOf=unit=>localHold[unit.id]??unit.dispatch_hold_new_calls===true;
     const isOperationalStatus=status=>!['out of service','distress','offline'].includes(String(status||'').toLowerCase());
-    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&!holdOf(u)
+    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&u.session_active!==false&&!holdOf(u)
       &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
     const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
     for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
