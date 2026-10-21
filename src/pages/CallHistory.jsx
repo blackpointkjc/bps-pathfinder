@@ -1,3 +1,4 @@
+import { cadDestination } from '@/lib/cadNavigation';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { useState, useEffect, useRef } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
@@ -621,7 +622,7 @@ export default function CallHistory() {
                                     </div>
                                     <div className="mt-2 flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap lg:col-span-3">
                                         {isActive && (
-                                            <button onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${row.id}${row.latitude ? `&lat=${row.latitude}&lng=${row.longitude}` : ''}`)}
+                                            <button onClick={() => navigate(cadDestination('Navigation',new URLSearchParams({callId:row.original_call_id||row.id,...(row.latitude&&row.longitude?{lat:String(row.latitude),lng:String(row.longitude)}:{})})))}
                                                 className="rounded border border-blue-600 bg-blue-700 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-600">
                                                 VIEW ON MAP
                                             </button>
