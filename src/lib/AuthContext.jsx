@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }) => {
       const operational = roleSet.has('officer') || roleSet.has('cad_access') || roleSet.has('supervisor') || currentUser.is_supervisor === true || fieldRank;
       if (operational) cacheOfficerStatus(currentUser.status || 'Out of Service');
 
-      setUser(currentUser);
+      setUser(currentUser?.profile_photo_original_url ? { ...currentUser, profile_photo_url: currentUser.profile_photo_original_url } : currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
 

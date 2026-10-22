@@ -70,7 +70,7 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
     badge_number: entry.badge_number || '',
     division: entry.division || '',
     subdivision: entry.subdivision || '',
-    profile_photo_url: entry.profile_photo_url || '',
+    profile_photo_url: entry.profile_photo_original_url || entry.profile_photo_url || '',
     profile_photo_original_url: entry.profile_photo_original_url || '',
     additional_roles: entry.additional_roles || [],
     role: entry.role || 'user',

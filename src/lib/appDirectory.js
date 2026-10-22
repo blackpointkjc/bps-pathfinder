@@ -17,7 +17,7 @@ let supervisorOfficerPending = null;
 // five large directory entities and competing with CAD/time-clock requests.
 const TTL_MS = 10 * 60_000;
 const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
-const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v9';
+const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v10';
 
 function readPersistedDirectory() {
   try {
@@ -39,6 +39,11 @@ if (persistedDirectory?.data) {
 }
 
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
+
+export function preferOriginalPersonnelPhoto(user) {
+  if (!user || !user.profile_photo_original_url) return user;
+  return { ...user, profile_photo_url: user.profile_photo_original_url };
+}
 
 export function directoryUserEmails(user) {
   return [...new Set([
@@ -105,7 +110,7 @@ export async function getAppDirectory(force = false) {
     if (payload.error) throw new Error(payload.error);
     const degraded = new Set(payload?.meta?.degraded_sources || []);
     const next = {
-      users: Array.isArray(payload.users) ? payload.users : [],
+      users: Array.isArray(payload.users) ? payload.users.map(preferOriginalPersonnelPhoto) : [],
       locations: Array.isArray(payload.locations) ? payload.locations : [],
       divisions: Array.isArray(payload.divisions) ? payload.divisions : [],
       meta: payload.meta || {},
@@ -113,7 +118,7 @@ export async function getAppDirectory(force = false) {
     // A partial directory refresh must never erase previously verified roster/site
     // data. Keep the last good bucket only for the source that failed.
     if (cache) {
-      if (degraded.has('company employees') && Array.isArray(cache.users) && cache.users.length) next.users = cache.users;
+      if (degraded.has('company employees') && Array.isArray(cache.users) && cache.users.length) next.users = cache.users.map(preferOriginalPersonnelPhoto);
       if (degraded.has('locations') && Array.isArray(cache.locations) && cache.locations.length) next.locations = cache.locations;
       if (degraded.has('divisions') && Array.isArray(cache.divisions) && cache.divisions.length) next.divisions = cache.divisions;
     }
@@ -257,7 +262,7 @@ export async function listOfficerDirectory(sort = 'last_name', limit = 1000, for
     officerPending = withRequestTimeout(base44.functions.invoke('getOfficerDirectory', {}), 15000, 'Officer directory request').then(result => {
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      officerCache = Array.isArray(payload.officers) ? payload.officers : [];
+      officerCache = Array.isArray(payload.officers) ? payload.officers.map(preferOriginalPersonnelPhoto) : [];
       officerCacheAt = Date.now();
       return officerCache;
     }).finally(() => { officerPending = null; });

@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
         badge_number: entry.badge_number || '',
         division: entry.division || '',
         subdivision: entry.subdivision || '',
-        profile_photo_url: entry.profile_photo_url || '',
+        profile_photo_url: entry.profile_photo_original_url || entry.profile_photo_url || '',
         profile_photo_original_url: entry.profile_photo_original_url || '',
         pto_balance_hours: Number(entry.pto_balance_hours || 0),
         pto_year_to_date_accrued: Number(entry.pto_year_to_date_accrued || 0),

@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         full_name: entry.full_name || '',
         rank: entry.rank || '',
         unit_number: entry.unit_number || '',
-        profile_photo_url: entry.profile_photo_url || '',
+        profile_photo_url: entry.profile_photo_original_url || entry.profile_photo_url || '',
         additional_roles: entry.additional_roles || [],
         pto_balance_hours: entry.pto_balance_hours || 0,
         sick_time_balance_hours: entry.sick_time_balance_hours || entry.sick_balance_hours || 0,
