@@ -23,6 +23,17 @@ export default function useCadRoster(){
   catch(e){setError(previous=>previous||'Live status update delayed. Directory officers remain visible; use Retry.');}
   finally{setLoading(false);}
  },[]);
+ useEffect(()=>{
+  const onPhotoUpdated = event => {
+   const change=event.detail;
+   if(!change?.userId || !change?.profile_photo_url)return;
+   setRows(previous=>previous.map(officer=>String(officer.id)===String(change.userId)
+    ? {...officer,profile_photo_url:change.profile_photo_url} : officer));
+   refresh(true);
+  };
+  window.addEventListener('bps-personnel-photo-updated',onPhotoUpdated);
+  return()=>window.removeEventListener('bps-personnel-photo-updated',onPhotoUpdated);
+ },[refresh]);
  useEffect(()=>{refresh();const unsub=subscribeOfficerLocationChanges(event=>setRows(rows=>applyOfficerLocationEvent(rows,event)));const timer=setInterval(()=>refresh(),60000);return()=>{unsub?.();clearInterval(timer);};},[refresh]);
  return {rows,loading,error,refresh};
 }

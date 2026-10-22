@@ -228,6 +228,16 @@ if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
     if (shouldClearDirectory(event?.detail)) invalidateAppDirectory();
   };
   window.addEventListener('bps-data-changed', handleDirectoryChange);
+  // A changed photo must invalidate persisted and in-memory rosters in other tabs.
+  try {
+    const photoChannel = new BroadcastChannel('bps-pathfinder-personnel-photos');
+    photoChannel.addEventListener('message', event => {
+      if (!event?.data?.userId || !event?.data?.profile_photo_url) return;
+      invalidateAppDirectory();
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: event.data }));
+    });
+    window.__bpsPersonnelPhotoChannel = photoChannel;
+  } catch {}
   try {
     const channel = new BroadcastChannel('bps-pathfinder-data-sync');
     channel.addEventListener('message', event => {

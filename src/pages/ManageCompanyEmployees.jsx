@@ -407,7 +407,13 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule');
       }});
-      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: photoUrl } }));
+      const photoChange = { userId: editingUser, profile_photo_url: photoUrl };
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: photoChange }));
+      try {
+        const channel = new BroadcastChannel('bps-pathfinder-personnel-photos');
+        channel.postMessage(photoChange);
+        channel.close();
+      } catch {}
       alert('Officer photo updated successfully.');
     } catch (error) {
       console.error('Profile photo save failed:', error);

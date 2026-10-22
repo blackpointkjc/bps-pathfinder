@@ -84,6 +84,18 @@ export const AuthProvider = ({ children }) => {
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
   }, [user?.id]);
 
+  useEffect(() => {
+    const onPhotoUpdated = event => {
+      const change = event.detail;
+      if (!change?.userId || !change?.profile_photo_url) return;
+      setUser(previous => previous && String(previous.id) === String(change.userId)
+        ? { ...previous, profile_photo_url: change.profile_photo_url }
+        : previous);
+    };
+    window.addEventListener('bps-personnel-photo-updated', onPhotoUpdated);
+    return () => window.removeEventListener('bps-personnel-photo-updated', onPhotoUpdated);
+  }, []);
+
   const checkUserAuth = useCallback(async (requestId) => {
     try {
       setIsLoadingAuth(true);

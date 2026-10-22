@@ -29,6 +29,16 @@ registerDiagnosticPages(Pages);
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
+// Refresh mounted personnel views when a photo changes, including updates from another tab.
+if (typeof window !== 'undefined' && !window.__bpsPhotoQuerySyncInstalled) {
+  window.addEventListener('bps-personnel-photo-updated', () => {
+    queryClientInstance.invalidateQueries({ predicate: query =>
+      /user|directory|officer|supervisor|chat|personnel|rank|cad|roster|employee|dispatch/i.test(JSON.stringify(query.queryKey || []))
+    });
+  });
+  window.__bpsPhotoQuerySyncInstalled = true;
+}
+
 const DATA_SYNC_TERMS = {
   User: ['user', 'directory', 'officer', 'personnel', 'client', 'supervisor', 'training', 'currentuser', 'portal', 'rank', 'pto'],
   Division: ['division', 'directory', 'location', 'schedule', 'client', 'user'],
