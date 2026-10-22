@@ -483,7 +483,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
             {userData.profile_photo_url ? (
-              <button type="button" onClick={() => setFullPhoto({url:userData.profile_photo_original_url || userData.profile_photo_url,fallback:userData.profile_photo_url,name:`${userData.first_name || ''} ${userData.last_name || ''}`})} aria-label="View full officer photo"><img src={userData.profile_photo_url} alt={`${userData.first_name} ${userData.last_name}`} className={`w-14 h-14 rounded-full object-cover ${isTerminated ? 'grayscale' : ''}`} /></button>
+              <button type="button" onClick={() => setFullPhoto({url:userData.profile_photo_url,fallback:userData.profile_photo_url,name:`${userData.first_name || ''} ${userData.last_name || ''}`})} aria-label="View full officer photo"><img src={userData.profile_photo_url} alt={`${userData.first_name} ${userData.last_name}`} className={`w-14 h-14 rounded-full object-cover ${isTerminated ? 'grayscale' : ''}`} /></button>
             ) : (
               <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md ${isTerminated ? 'bg-gradient-to-br from-slate-400 to-slate-600' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}>
                 {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
@@ -547,7 +547,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     return <div key={person.id} className="flex min-w-0 flex-col items-center" style={{flex:'0 0 auto'}}>
       <div className="w-[280px] max-w-[calc(100vw-48px)] rounded-xl border border-amber-600/60 bg-[#101b30] p-3 text-white shadow-lg">
         <div className="flex items-start gap-3">
-          <button type="button" onClick={() => person.profile_photo_url && setFullPhoto({url:person.profile_photo_original_url || person.profile_photo_url,fallback:person.profile_photo_url,name:`${person.first_name || ''} ${person.last_name || ''}`})} aria-label={`View full photo of ${person.first_name} ${person.last_name}`} className="shrink-0">
+          <button type="button" onClick={() => person.profile_photo_url && setFullPhoto({url:person.profile_photo_url,fallback:person.profile_photo_url,name:`${person.first_name || ''} ${person.last_name || ''}`})} aria-label={`View full photo of ${person.first_name} ${person.last_name}`} className="shrink-0">
             {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-[78px] w-[64px] rounded-md border border-amber-600/60 object-cover"/> : <div className="flex h-[78px] w-[64px] items-center justify-center rounded-md bg-slate-700 font-bold">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
           </button>
           <div className="min-w-0 flex-1"><div className="text-[11px] font-black uppercase tracking-wider text-amber-300">{person.rank || 'Employee'}</div><div className="break-words text-sm font-black">{person.first_name} {person.last_name}</div><div className="mt-1 text-[11px] text-slate-300">Badge {person.badge_number || '—'} · Unit {person.unit_number || '—'}</div><div className="text-[11px] text-slate-300">{person.division || 'No division'} · {commandRanks.has(person.rank) ? 'Command' : `Platoon ${person.platoon || 'Unassigned'}`}{person.rank==='Major' && <div className="mt-1 text-amber-300">{oversightLabel(person)}</div>}</div></div>
@@ -651,7 +651,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
               <div className="relative">
                 {(photoPreview || editFormData.profile_photo_url) ? (
-                  <button type="button" onClick={() => setFullPhoto({url:editFormData.profile_photo_original_url || photoPreview || editFormData.profile_photo_url,fallback:photoPreview || editFormData.profile_photo_url,name:`${editFormData.first_name || ''} ${editFormData.last_name || ''}`})} aria-label="View full officer photo"><img src={photoPreview || editFormData.profile_photo_url} alt="photo" className="w-20 h-20 rounded-full object-cover border-2 border-slate-300" /></button>
+                  <button type="button" onClick={() => setFullPhoto({url:photoPreview || editFormData.profile_photo_url,fallback:photoPreview || editFormData.profile_photo_url,name:`${editFormData.first_name || ''} ${editFormData.last_name || ''}`})} aria-label="View full officer photo"><img src={photoPreview || editFormData.profile_photo_url} alt="photo" className="w-20 h-20 rounded-full object-cover border-2 border-slate-300" /></button>
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
                     {editFormData.first_name?.charAt(0)}{editFormData.last_name?.charAt(0)}
