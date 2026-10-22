@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Slider } from "@/components/ui/slider";
 import { Crop, Loader2, Move, RotateCcw, ZoomIn } from "lucide-react";
 
-const OUTPUT_SIZE = 420;
+const OUTPUT_SIZE = 1024;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -99,8 +99,10 @@ export default function ProfilePhotoCropper({ open, imageFile, onClose, onSave, 
     const drawY = (160 - displayed.height / 2 + position.y) * scaleToOutput;
     context.fillStyle = "#0b1420";
     context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
     context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
     await onSave({ dataUrl, file: dataUrlToFile(dataUrl) });
   };
 

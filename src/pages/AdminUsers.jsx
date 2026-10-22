@@ -450,21 +450,31 @@ export default function AdminUsers({ embedded = false }) {
     setPhotoPreview(dataUrl);
     try {
       let photoUrl = dataUrl;
+      let originalUrl = "";
       if (file) {
         try {
           const uploaded = await uploadInternalFile(file);
           if (uploaded?.file_url) photoUrl = uploaded.file_url;
         } catch (uploadError) {
-          console.warn('Profile photo file upload failed; using compressed image fallback:', uploadError?.message || uploadError);
+          throw new Error('Cropped photo upload failed: ' + (uploadError?.message || uploadError));
+        }
+      }
+      if (!file || photoUrl === dataUrl) throw new Error('The cropped photo could not be stored.');
+      if (photoToCrop) {
+        try {
+          const original = await uploadInternalFile(photoToCrop);
+          originalUrl = original?.file_url || '';
+        } catch (error) {
+          console.warn('Full-resolution original unavailable; the high-resolution crop will be used:', error?.message);
         }
       }
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,
-        updates: { profile_photo_url: photoUrl },
+        updates: { profile_photo_url: photoUrl, profile_photo_original_url: originalUrl || photoUrl },
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
-      setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl }));
+      setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl || photoUrl }));
       setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();

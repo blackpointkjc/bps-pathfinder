@@ -251,12 +251,19 @@ export default function OfficerProfile() {
     setPhotoToCrop(file);
   };
 
-  const saveCroppedPhoto = async ({ dataUrl }) => {
+  const saveCroppedPhoto = async ({ dataUrl, file }) => {
     setUploading(true);
     try {
-      const original = await uploadInternalFile(photoToCrop);
-      if (!original?.file_url) throw new Error('Could not preserve the full original photo');
-      await updateProfileMutation.mutateAsync({ profile_photo_url: dataUrl, profile_photo_original_url: original.file_url });
+      const cropped = await uploadInternalFile(file);
+      if (!cropped?.file_url) throw new Error('The cropped photo upload failed');
+      let originalUrl = cropped.file_url;
+      try {
+        const original = await uploadInternalFile(photoToCrop);
+        if (original?.file_url) originalUrl = original.file_url;
+      } catch (error) {
+        console.warn('Full-size original unavailable; using the high-resolution crop:', error?.message);
+      }
+      await updateProfileMutation.mutateAsync({ profile_photo_url: cropped.file_url, profile_photo_original_url: originalUrl });
       setPhotoToCrop(null);
       alert('Profile photo cropped and updated successfully!');
     } catch (error) {
@@ -269,7 +276,7 @@ export default function OfficerProfile() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
-      <Dialog open={fullPhotoOpen} onOpenChange={setFullPhotoOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Full profile photo</DialogTitle></DialogHeader>{user?.profile_photo_url && <img src={user.profile_photo_original_url || user.profile_photo_url} alt="Full profile photo" className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
+      <Dialog open={fullPhotoOpen} onOpenChange={setFullPhotoOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Full profile photo</DialogTitle></DialogHeader>{user?.profile_photo_url && <img src={user.profile_photo_original_url || user.profile_photo_url} onError={event => { if (event.currentTarget.src !== user.profile_photo_url) event.currentTarget.src = user.profile_photo_url; }} alt="Full profile photo" className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}
