@@ -384,15 +384,20 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           const uploaded = await uploadInternalFile(file);
           if (uploaded?.file_url) photoUrl = uploaded.file_url;
         } catch (uploadError) {
-          console.warn('Profile photo file upload failed; using compressed image fallback:', uploadError?.message || uploadError);
+          throw new Error('Cropped photo upload failed: ' + (uploadError?.message || uploadError));
         }
       }
       let originalUrl = '';
       if (photoToCrop) {
-        const original = await uploadInternalFile(photoToCrop);
-        originalUrl = original?.file_url || '';
+        try {
+          const original = await uploadInternalFile(photoToCrop);
+          originalUrl = original?.file_url || '';
+        } catch (error) {
+          console.warn('Full-resolution original unavailable; using high-resolution crop:', error?.message);
+        }
       }
-      if (!originalUrl) throw new Error('Original photo upload failed; image was not replaced.');
+      if (!file || photoUrl === dataUrl) throw new Error('The cropped photo could not be stored.');
+      if (!originalUrl) originalUrl = photoUrl;
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,
         updates: { profile_photo_url: photoUrl, profile_photo_original_url: originalUrl },
