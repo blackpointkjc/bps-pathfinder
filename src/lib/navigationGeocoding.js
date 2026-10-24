@@ -1,3 +1,4 @@
+import { matchManagedLocations } from '@/lib/managedNavigationLocations';
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
@@ -51,9 +52,25 @@ export async function lookupNavigationPoint(latitude, longitude) {
   }
 }
 
-export async function lookupNavigationDestinations(query, location) {
+export async function lookupNavigationDestinations(query, location, { skipManaged = false } = {}) {
   const value = String(query || '').trim();
   if (value.length < 3) return [];
+  if (!skipManaged) {
+    try {
+      const locations = [];
+      // Use caller permissions and paginate: every listed property is searchable.
+      for (let skip = 0; ; skip += 200) {
+        const page = await withRequestTimeout(base44.entities.Location.list('site_name', 200, skip), 10000, 'Managed property search');
+        locations.push(...page);
+        if (page.length < 200) break;
+      }
+      const matches = matchManagedLocations(locations, value);
+      if (matches.length) return matches;
+    } catch (error) {
+      console.warn('[NAV] Managed property search unavailable:', error?.message);
+      throw new Error('Managed properties could not be loaded. Retry the search when the connection recovers.');
+    }
+  }
   const encoded = encodeURIComponent(value);
   const searches = [
     async () => {
