@@ -219,7 +219,8 @@ function pumpReads() {
     job.priority < 70 ? cooldown : 0);
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
-    || (a.priority >= 90 && b.priority < 90 ? -1 : b.priority >= 90 && a.priority < 90 ? 1 : score(b) - score(a)));
+    || Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth')
+    || score(b) - score(a) || a.queuedAt - b.queuedAt);
   // Only defer requests while the backend requests a cooldown. Never synthesize
   // 429 errors for queued reads: the UI interprets them as *new* API throttles,
   // repeatedly failing every briefing/task query and retriggering recovery.
