@@ -1298,19 +1298,20 @@ export default function Navigation() {
     // Frontend must not call geocoding providers directly (causes 502s / rate limits).
 
     const fetchCalls = async () => {
+        if (callsLoadingRef.current) return;
+        callsLoadingRef.current = true;
         try {
             let all = await loadActiveDispatchCallRows(500);
             if (cadCallFeedIsStale(all)) {
-                try {
-                    const recovery = await refreshCadIngestionIfStale(all);
-                    if (recovery?.reason !== 'feed_fresh') {
-                        clearActiveDispatchCallMemoryCache();
-                        all = await loadActiveDispatchCallRows(500);
-                    }
-                } catch (recoveryError) {
-                    console.warn('[NAV] stale-feed recovery did not complete:', recoveryError?.message || recoveryError);
-                }
+                // Render the persisted queue now; ingestion runs independently.
+                void refreshCadIngestionIfStale(all).then(recovery => {
+                    if (!recovery?.success || recovery?.skipped) return;
+                    clearActiveDispatchCallMemoryCache();
+                    window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished'));
+                }).catch(error => setCallsError('Source sync delayed: ' + (error?.message || 'retrying')));
             }
+            setCallsCheckedAt(new Date());
+            setCallsError('');
             const uniqueCalls = new Map();
             for (const call of all || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
@@ -1349,6 +1350,9 @@ export default function Navigation() {
             // geocoding handled by backend automation
         } catch (e) {
             console.warn('[NAV] fetchCalls error:', e.message);
+            setCallsError(e?.message || 'Call feed unavailable; retrying');
+        } finally {
+            callsLoadingRef.current = false;
         }
     };
 
@@ -1749,6 +1753,10 @@ export default function Navigation() {
                 </div>
             </motion.div>
 
+            <div className="absolute bottom-9 left-2 right-24 z-[1400] flex flex-wrap items-center gap-2 rounded-lg bg-[#07111f]/95 p-2 text-xs text-slate-200" role="status">
+                <span>{callsError || (callsCheckedAt ? `Calls checked ${formatEasternTime(callsCheckedAt)} · ${activeCalls.length} open · ${unmappedCalls.length} without map coordinates` : 'Loading active calls…')}</span>
+                <button type="button" className="min-h-11 rounded border border-slate-600 px-3" onClick={() => { clearActiveDispatchCallMemoryCache(); fetchCalls(); }}>Refresh calls</button>
+            </div>
             {/* ══ BOTTOM STATUS STRIP ══ */}
             <div className="absolute bottom-0 left-0 right-0 z-[1400] pointer-events-none">
                 <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-t border-[#1e2d4a]">
