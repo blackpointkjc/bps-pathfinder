@@ -25,7 +25,7 @@ export default function CadSourceSyncMonitor({ user }) {
       // for guaranteed unattended delivery.
       if (!active || running || !navigator.onLine || document.visibilityState !== 'visible') return;
       const page = window.location.pathname + window.location.search;
-      if (!/CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|admin_center=cad/i.test(page)) return;
+      if (!/Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|admin_center=cad/i.test(page)) return;
       running = true;
       try {
         const result = await requestCadLiveSync();
