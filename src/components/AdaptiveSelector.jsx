@@ -37,7 +37,6 @@ export default function AdaptiveSelector({
         <Dialog.Trigger asChild>
         <button
           type="button"
-          onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
           className="group flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-700/80 bg-[#0b1624] px-2.5 py-1.5 text-left transition hover:border-cyan-500/60"
