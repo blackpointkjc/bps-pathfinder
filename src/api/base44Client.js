@@ -89,15 +89,30 @@ const errorText = error => String(error?.response?.data?.error || error?.respons
 const tracePage = () => {
   try { return window.location.pathname + window.location.search; } catch { return ''; }
 };
+let traceRows = null;
+let traceFlushTimer = null;
 const loadTrace = () => {
+  if (traceRows) return traceRows;
   try {
     const parsed = JSON.parse(localStorage.getItem(TRACE_STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch { return []; }
+    traceRows = Array.isArray(parsed) ? parsed.slice(0, TRACE_MAX) : [];
+  } catch { traceRows = []; }
+  return traceRows;
+};
+const flushTrace = () => {
+  if (traceFlushTimer) window.clearTimeout(traceFlushTimer);
+  traceFlushTimer = null;
+  if (!traceRows) return;
+  try { localStorage.setItem(TRACE_STORAGE_KEY, JSON.stringify(traceRows)); } catch {}
 };
 const saveTrace = rows => {
-  try { localStorage.setItem(TRACE_STORAGE_KEY, JSON.stringify(rows.slice(0, TRACE_MAX))); } catch {}
+  traceRows = rows.slice(0, TRACE_MAX);
+  if (!traceFlushTimer) traceFlushTimer = window.setTimeout(flushTrace, 2000);
 };
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushTrace);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushTrace(); });
+}
 const recordRequestTrace = entry => {
   try {
     const row = {
@@ -294,6 +309,8 @@ function queuedRead(key, task, meta = {}) {
       markStarted,
       task: async () => {
         const value = await task();
+        // Bound memory use during long shifts with many search/filter keys.
+        if (readCache.size >= 250 && !readCache.has(key)) readCache.delete(readCache.keys().next().value);
         readCache.set(key, { at: Date.now(), value });
         return value;
       },
@@ -620,11 +637,12 @@ export function getBase44RequestHealth() {
 }
 
 export function getBase44RequestTrace() {
-  return loadTrace();
+  return [...loadTrace()];
 }
 
 export function clearBase44RequestTrace() {
   saveTrace([]);
+  flushTrace();
   try { window.dispatchEvent(new CustomEvent('bps-base44-request-trace-cleared')); } catch {}
 }
 
