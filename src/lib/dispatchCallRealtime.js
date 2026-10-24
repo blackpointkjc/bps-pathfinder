@@ -7,7 +7,7 @@ let connectError = null;
 let reconnectTimer = null;
 
 const HIDDEN = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-const ACTIVE_CALL_MAX_AGE_MS = 0;
+const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const statusOf = call => String(call?.status || '').trim().toLowerCase();
 const isPulsePointCall = call => {
   const sourceChannel = String(call?.source_channel || '').toLowerCase();

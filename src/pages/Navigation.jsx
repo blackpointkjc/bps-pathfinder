@@ -320,7 +320,7 @@ export default function Navigation() {
             }
             // Keep the map aligned with the canonical CAD dashboard window. Calls
             // older than the one-hour operational window are left to history/archive.
-            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 0, limit: 500 }));
+            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 60 * 60_000, limit: 250 }));
         });
         const recoverCalls = () => {
             window.clearTimeout(refreshTimer);
