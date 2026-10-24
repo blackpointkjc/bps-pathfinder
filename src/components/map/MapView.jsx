@@ -1,6 +1,6 @@
 import { observeElementSize } from '@/lib/observeElementSize';
 import { useEffect, useRef } from 'react';
-import { MapContainer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '@/lib/leafletGlobal';
 import 'leaflet-rotate/dist/leaflet-rotate.js';
@@ -87,15 +87,40 @@ const destinationIcon = new L.DivIcon({
 });
 
 function MapClickSelector({ enabled, onPick }) {
-    useMapEvents({
-        click(event) {
-            if (!enabled || typeof onPick !== 'function') return;
-            const lat = Number(event?.latlng?.lat);
-            const lng = Number(event?.latlng?.lng);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-            onPick([lat, lng]);
-        },
-    });
+    const map = useMap();
+    useEffect(() => {
+        if (!enabled || typeof onPick !== 'function') return;
+        const container = map.getContainer();
+        const previousCursor = container.style.cursor;
+        container.style.cursor = 'crosshair';
+        let start = null;
+        const down = event => {
+            if (!event.isPrimary || event.button !== 0 || event.target.closest('.leaflet-control, .leaflet-popup')) { start = null; return; }
+            start = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        };
+        const cancel = () => { start = null; };
+        const up = event => {
+            const initial = start;
+            start = null;
+            if (!initial || initial.id !== event.pointerId || !event.isPrimary
+                || Math.hypot(event.clientX - initial.x, event.clientY - initial.y) > 10) return;
+            // Capture before marker/polygon handlers swallow the click. Leaflet
+            // performs the rotation-aware screen-to-map coordinate conversion.
+            const point = map.mouseEventToLatLng(event);
+            if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) onPick([point.lat, point.lng]);
+        };
+        container.addEventListener('pointerdown', down, true);
+        container.addEventListener('pointerup', up, true);
+        container.addEventListener('pointercancel', cancel, true);
+        map.on('dragstart zoomstart', cancel);
+        return () => {
+            container.style.cursor = previousCursor;
+            container.removeEventListener('pointerdown', down, true);
+            container.removeEventListener('pointerup', up, true);
+            container.removeEventListener('pointercancel', cancel, true);
+            map.off('dragstart zoomstart', cancel);
+        };
+    }, [map, enabled, onPick]);
     return null;
 }
 
