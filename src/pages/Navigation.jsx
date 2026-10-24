@@ -154,6 +154,10 @@ export default function Navigation() {
     const navSnapIndexRef = useRef(0);
     const navStepRouteIndexesRef = useRef([]);
     const initialOperationalFitRef = useRef(false);
+    const destinationRequestRef = useRef(0);
+    const callsLoadingRef = useRef(false);
+    const [callsError, setCallsError] = useState('');
+    const [callsCheckedAt, setCallsCheckedAt] = useState(null);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -315,7 +319,7 @@ export default function Navigation() {
             }
             // Keep the map aligned with the canonical CAD dashboard window. Calls
             // older than the one-hour operational window are left to history/archive.
-            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 60 * 60_000, limit: 250 }));
+            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 0, limit: 500 }));
         });
         const recoverCalls = () => {
             window.clearTimeout(refreshTimer);
@@ -324,6 +328,7 @@ export default function Navigation() {
         const localInterval = setInterval(() => {
             if (document.visibilityState === 'visible') fetchCalls();
         }, 15000);
+        window.addEventListener('bps-cad-ingest-finished', recoverCalls);
         window.addEventListener('bps-operational-resume', recoverCalls);
         window.addEventListener('online', recoverCalls);
         window.addEventListener('pageshow', recoverCalls);
@@ -331,6 +336,7 @@ export default function Navigation() {
             unsubscribe?.();
             clearInterval(localInterval);
             window.clearTimeout(refreshTimer);
+            window.removeEventListener('bps-cad-ingest-finished', recoverCalls);
             window.removeEventListener('bps-operational-resume', recoverCalls);
             window.removeEventListener('online', recoverCalls);
             window.removeEventListener('pageshow', recoverCalls);
@@ -756,6 +762,18 @@ export default function Navigation() {
     };
 
     const startNavigationToPoint = async (destination, options = {}) => {
+        if (destination?.type === 'managed_property' && !destination.coords) {
+            setNavigationFallbackAddress(destination.address || destination.name);
+            try {
+                const matches = await lookupNavigationDestinations(destination.address, currentLocation, { skipManaged: true });
+                if (!matches[0]?.coords) throw new Error('The saved property address could not be mapped. Use Open driving directions in Google Maps.');
+                destination = { ...destination, coords: matches[0].coords };
+            } catch (error) {
+                setAddressSearchError(error.message);
+                setShowAddressSearch(true);
+                return;
+            }
+        }
         const coords = destination?.coords || (destination?.latitude && destination?.longitude ? [Number(destination.latitude), Number(destination.longitude)] : null);
         if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) {
             toast.error('This destination does not have mapped coordinates');
@@ -763,7 +781,7 @@ export default function Navigation() {
         }
         setRouting(true);
         setAddressSearchError('');
-        setNavigationFallbackAddress(destination.name || destination.address || coords.join(','));
+        setNavigationFallbackAddress(destination.address || coords.join(','));
         try {
             const originOverride = Array.isArray(options.originOverride) && validPosition(options.originOverride[0], options.originOverride[1])
                 ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
@@ -1032,6 +1050,7 @@ export default function Navigation() {
 
     const searchAddress = async (event) => {
         event?.preventDefault();
+        const request = ++destinationRequestRef.current;
         const query = addressQuery.trim();
         if (query.length < 3) return;
         setAddressSearching(true);
@@ -1042,6 +1061,7 @@ export default function Navigation() {
         setNavigationFallbackAddress(query);
         try {
             const results = await lookupNavigationDestinations(query, currentLocation);
+            if (request !== destinationRequestRef.current) return;
             setAddressResults(results);
             if (!results.length) {
                 setAddressSearchError('No mapped address or place was returned. Try the full street, business, building, or city.');
@@ -1050,7 +1070,7 @@ export default function Navigation() {
                 const points = results.map(result => result.coords).filter(coords => Array.isArray(coords));
                 setFitBounds(points);
                 window.setTimeout(() => setFitBounds(null), 1100);
-                toast.success(`${results.length} mapped location${results.length === 1 ? '' : 's'} found`);
+                toast.success(`${results.length} location${results.length === 1 ? '' : 's'} found`);
             }
         } catch (error) {
             const message = error?.message || 'Unable to search locations';
@@ -1065,6 +1085,7 @@ export default function Navigation() {
         if (!mapPickMode || !Array.isArray(coords) || coords.length < 2) return;
         const [lat, lng] = coords.map(Number);
         if (!validPosition(lat, lng)) return;
+        const request = ++destinationRequestRef.current;
         setMapPickMode(false);
         setFitBounds(null);
         setMapCenter(null);
@@ -1083,7 +1104,8 @@ export default function Navigation() {
         setNavigationFallbackAddress(pending.address);
         try {
             const resolved = await lookupNavigationPoint(lat, lng);
-            const destination = { ...resolved, label: 'Selected Map Location' };
+            if (request !== destinationRequestRef.current) return;
+            const destination = { ...resolved, coords: pending.coords, label: 'Selected Map Location' };
             setMapSelectedDestination(destination);
             setAddressQuery(destination.address || destination.name || '');
             setNavigationFallbackAddress(destination.address || destination.name || pending.address);
@@ -1478,8 +1500,9 @@ export default function Navigation() {
             )}
 
 
+            {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
-            {showAddressSearch && (
+            {showAddressSearch && !mapPickMode && (
                 <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="absolute left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
@@ -1501,6 +1524,11 @@ export default function Navigation() {
                             <Home className="h-3.5 w-3.5" /> HOME
                         </button>
                         <button type="button" onClick={() => {
+                            destinationRequestRef.current += 1;
+                            setAddressSearching(false);
+                            setMapSelectedDestination(null);
+                            setShowCallSidebar(false);
+                            setShowUnmapped(false);
                             setMapPickMode(enabled => !enabled);
                             setShowAddressSearch(true);
                             setAddressResults([]);
@@ -1534,7 +1562,7 @@ export default function Navigation() {
                                     <div className="mt-1 text-xs leading-relaxed text-white">{mapSelectedDestination.address || mapSelectedDestination.name}</div>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={addressSearching || routing}
+                            <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={routing}
                                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
                                 <Navigation2 className="h-4 w-4" /> NAVIGATE HERE
                             </button>
@@ -1554,7 +1582,7 @@ export default function Navigation() {
                                 <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
                                     className="flex w-full items-start gap-3 border-b border-[#1e2d4a] px-4 py-3 text-left hover:bg-[#142336] last:border-b-0">
                                     <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
-                                    <span className="text-xs leading-relaxed text-slate-100">{result.name}</span>
+                                    <span className="min-w-0 text-xs leading-relaxed text-slate-100"><span className="block font-bold">{result.name}</span><span className="block text-slate-400">{result.address}</span>{result.label && <span className="block text-cyan-300">{result.label}</span>}</span>
                                 </button>
                             ))}
                         </div>
@@ -1655,7 +1683,12 @@ export default function Navigation() {
                             key: 'pick',
                             onClick: () => {
                                 setShowAddressSearch(true);
-                                setMapPickMode(enabled => !enabled);
+                                destinationRequestRef.current += 1;
+                            setAddressSearching(false);
+                            setMapSelectedDestination(null);
+                            setShowCallSidebar(false);
+                            setShowUnmapped(false);
+                            setMapPickMode(enabled => !enabled);
                                 setAddressResults([]);
                                 setAddressSearchError('');
                             },
