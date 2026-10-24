@@ -37,7 +37,7 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
-const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v3';
+const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v4';
 const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
