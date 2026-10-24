@@ -1,6 +1,5 @@
 {
   "name": "Geocode Missing Call Coordinates",
-  "description": "Continuously geocodes dispatch calls that are missing map coordinates so they appear on the live tactical map",
   "trigger": {
     "condition": null,
     "config": {
@@ -12,12 +11,13 @@
       "timezone": "UTC",
       "interval_value": 5,
       "interval_unit": "minutes",
-      "interval_anchor": "2026-04-07T02:37:16.783000",
+      "interval_anchor": "2026-04-07T02:37:16.783000Z",
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null
     }
   },
+  "description": "Continuously geocodes dispatch calls that are missing map coordinates so they appear on the live tactical map",
   "definition": {
     "document": {
       "dsl": "1.0.0",
