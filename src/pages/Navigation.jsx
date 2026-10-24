@@ -116,6 +116,7 @@ export default function Navigation() {
     const [assigning, setAssigning] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
+    useEffect(() => { setUnmappedCalls(splitCallsByCoords(activeCalls).unmapped); }, [activeCalls]);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
