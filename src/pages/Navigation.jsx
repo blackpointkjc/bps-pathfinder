@@ -25,7 +25,7 @@ import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer
 import { formatEasternTime } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
-import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -1074,10 +1074,11 @@ export default function Navigation() {
             }
         } catch (error) {
             const message = error?.message || 'Unable to search locations';
+            if (request !== destinationRequestRef.current) return;
             setAddressSearchError(message + '. Use Google Maps below if the address services are unavailable.');
             toast.error(message);
         } finally {
-            setAddressSearching(false);
+            if (request === destinationRequestRef.current) setAddressSearching(false);
         }
     };
 
@@ -1110,9 +1111,10 @@ export default function Navigation() {
             setAddressQuery(destination.address || destination.name || '');
             setNavigationFallbackAddress(destination.address || destination.name || pending.address);
         } catch (error) {
+            if (request !== destinationRequestRef.current) return;
             setAddressSearchError(error?.message || 'The map point could not be identified by street name, but its coordinates can still be used.');
         } finally {
-            setAddressSearching(false);
+            if (request === destinationRequestRef.current) setAddressSearching(false);
         }
     };
 
@@ -1310,8 +1312,9 @@ export default function Navigation() {
                     window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished'));
                 }).catch(error => setCallsError('Source sync delayed: ' + (error?.message || 'retrying')));
             }
-            setCallsCheckedAt(new Date());
-            setCallsError('');
+            const readAt = getActiveDispatchCallReadTime();
+            setCallsCheckedAt(readAt ? new Date(readAt) : null);
+            setCallsError(!readAt || Date.now() - readAt > 30000 ? 'Showing saved calls; live feed is reconnecting.' : '');
             const uniqueCalls = new Map();
             for (const call of all || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];

@@ -3,7 +3,6 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v3';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
-const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 let inFlight = null;
 let memoryRows = null;
@@ -24,19 +23,8 @@ function callTimestamp(call) {
   return Number.isFinite(created) && created > 0 ? created : (Number.isFinite(received) ? received : 0);
 }
 
-function isPulsePointCall(call) {
-  const sourceChannel = String(call?.source_channel || '').toLowerCase();
-  const externalId = String(call?.external_call_id || '').toLowerCase();
-  const source = String(call?.source || '').toLowerCase();
-  return sourceChannel.includes('pulsepoint') || externalId.startsWith('pulsepoint:') || source === 'pulsepoint';
-}
-
-function isVisibleActiveCall(call, now = Date.now()) {
-  const status = String(call?.status || '').trim().toLowerCase();
-  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(status)) return false;
-  if (isPulsePointCall(call)) return true;
-  const stamp = callTimestamp(call);
-  return stamp > 0 && now - stamp < ACTIVE_CALL_MAX_AGE_MS;
+function isVisibleActiveCall(call) {
+  return call?.manual_dismissed !== true && !TERMINAL_STATUSES.has(String(call?.status || '').trim().toLowerCase());
 }
 
 function filterVisibleActiveCalls(rows = []) {
@@ -201,4 +189,5 @@ export function clearActiveDispatchCallMemoryCache() {
   memoryRowsAt = 0;
 }
 
+export const getActiveDispatchCallReadTime = () => memoryRowsAt;
 export { readLastGoodCalls };
