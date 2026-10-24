@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { base44 } from '@/api/base44Client';
-import { pagesConfig } from '@/pages.config';
+import { pagesConfig } from '@/lib/lazyPages';
 
 export default function NavigationTracker() {
     const location = useLocation();

@@ -1,7 +1,6 @@
-import AdminAbsenceCoverage from './pages/AdminAbsenceCoverage';
 import { registerDiagnosticPages } from '@/utils/appDiagnostics';
 import AppUpdateNotice from '@/components/AppUpdateNotice';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -11,8 +10,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
-import { pagesConfig } from './pages.config';
-import UnitStatus from './pages/UnitStatus';
+import { pagesConfig } from './lib/lazyPages';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -24,7 +22,7 @@ import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
 const { Layout, mainPage } = pagesConfig;
 // Supplemental routes remain available before the builder regenerates pages.config.
-const Pages = { ...pagesConfig.Pages, UnitStatus, AdminAbsenceCoverage };
+const Pages = pagesConfig.Pages;
 registerDiagnosticPages(Pages);
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
@@ -172,8 +170,8 @@ function GlobalDataRealtimeSync({ enabled }) {
 }
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout
-  ? <Layout currentPageName={currentPageName}><PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary></Layout>
-  : <PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary>;
+  ? <Layout currentPageName={currentPageName}><PageErrorBoundary pageName={currentPageName}><Suspense fallback={<div role="status" className="p-6 text-slate-300">Loading workspace…</div>}>{children}</Suspense></PageErrorBoundary></Layout>
+  : <PageErrorBoundary pageName={currentPageName}><Suspense fallback={<div role="status" className="p-6 text-slate-300">Loading workspace…</div>}>{children}</Suspense></PageErrorBoundary>;
 
 function LoadingScreen() {
   return (

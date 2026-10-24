@@ -1,3 +1,4 @@
+import HeaderClock from '@/components/HeaderClock';
 import { isOperationalOutage } from '@/lib/operationalOutages';
 import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useFleetScheduling } from '@/hooks/useFleetScheduling';
@@ -878,7 +879,6 @@ export default function Layout({ children, currentPageName }) {
   const dismissedPropertyAlertIdsRef = useRef(new Set());
   const dismissedPropertyAlertKeysRef = useRef(new Set());
   const [outages, setOutages] = useState([]);
-  const [clock, setClock] = useState(new Date());
   const [refreshingApp, setRefreshingApp] = useState(false);
   const [backgroundServicesReady, setBackgroundServicesReady] = useState(false);
   const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
@@ -1254,10 +1254,7 @@ export default function Layout({ children, currentPageName }) {
   // silently switch the sidebar to another center; only the workspace selector may
   // change activeCenter. Access changes are handled by the availability effect below.
 
-  useEffect(() => {
-    const id = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
+
 
   useEffect(() => {
     let active = true;
@@ -1787,10 +1784,7 @@ export default function Layout({ children, currentPageName }) {
             <RotateCw className={`h-3.5 w-3.5 ${refreshingApp ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{refreshingApp ? 'Refreshing' : 'Refresh App'}</span>
           </button>
-          <div className="pathfinder-header-clock hidden shrink-0 text-right font-mono leading-tight text-[#9fb6cc] lg:block">
-            <div className="text-[11px] font-black tracking-wider text-white">{clock.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-            <div className="text-[8px] font-bold tracking-[0.12em] text-[#7894af]">{clock.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} ET</div>
-          </div>
+          <HeaderClock />
 
         </div>
       </header>
