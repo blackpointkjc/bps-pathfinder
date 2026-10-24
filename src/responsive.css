@@ -1,4 +1,31 @@
 /* Shared responsive layout. Loaded after legacy themes to keep breakpoints consistent. */
+
+/* Portaled workspace menus must escape the shell's stacking/scroll contexts. */
+.bps-selector-overlay {
+  position: fixed; inset: 0; z-index: 100060;
+  background: rgb(0 0 0 / .75); backdrop-filter: blur(4px);
+}
+.bps-selector-sheet {
+  position: fixed; z-index: 100061; box-sizing: border-box;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  width: auto; min-width: 0; max-width: 680px; margin-inline: auto;
+  max-height: calc(100vh - max(12px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)));
+  max-height: calc(100dvh - max(12px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)));
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid #334155; border-radius: 22px;
+  background: #09131f; color: white; box-shadow: 0 24px 60px rgb(0 0 0 / .5);
+}
+.bps-selector-options { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.bps-selector-sheet button { min-width: 44px; min-height: 44px; }
+.bps-selector-sheet button:focus-visible { outline: 2px solid #67e8f9; outline-offset: -3px; }
+@media (max-width: 1279px) {
+  .bps-center-header-row { flex-wrap: wrap; }
+  .bps-center-heading { min-width: 0; flex-shrink: 1; }
+  .bps-center-selector { flex-basis: 12rem; }
+}
+
 @media (max-width: 1279px) {
   .cad-app { height: 100dvh; width: 100%; min-width: 0; }
   .cad-app > section { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
