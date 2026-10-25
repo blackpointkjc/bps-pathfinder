@@ -1,3 +1,4 @@
+import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
 import { useState, useEffect, useRef } from 'react';
@@ -891,7 +892,7 @@ export default function Navigation() {
             setMapSelectedDestination(null);
             setFitBounds(null);
             setMapCenter(null);
-            if (options.setEnroute !== false) await handleStatusChange('Enroute');
+            if (shouldSetDispatchEnroute(options, currentUser)) await handleStatusChange('Enroute');
             if (options.reroute) toast.success('Route updated from your current position');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
@@ -1037,7 +1038,7 @@ export default function Navigation() {
     const startInAppNavigation = () => startNavigationToPoint({
         coords: selectedCall?.latitude && selectedCall?.longitude ? [Number(selectedCall.latitude), Number(selectedCall.longitude)] : null,
         name: selectedCall?.location || selectedCall?.incident || 'Call location',
-    });
+    }, { dispatchCall: selectedCall });
 
     const openInAppStreetView = () => {
         const lat = Number(selectedCall?.latitude);

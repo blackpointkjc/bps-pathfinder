@@ -6,13 +6,6 @@ const TEXT_SIZES = ['standard', 'large', 'extra-large'];
 const TEXT_LABELS = { standard: 'Standard', large: 'Larger', 'extra-large': 'Largest' };
 
 export default function DisplayPreferences({ userId }) {
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 767px)');
-    const sync = () => setIsMobile(query.matches);
-    query.addEventListener('change', sync);
-    return () => query.removeEventListener('change', sync);
-  }, []);
   const storageKey = displayStorageKey(userId);
   const [settings, setSettings] = useState(() => {
     try { return readDisplayPreferences(window.localStorage, storageKey); }
@@ -23,11 +16,13 @@ export default function DisplayPreferences({ userId }) {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    Object.entries(settings).forEach(([key, value]) => root.setAttribute('data-pf-' + key, key === 'text' && isMobile ? 'standard' : value));
+    Object.entries(settings).forEach(([key, value]) => root.setAttribute('data-pf-' + key, value));
     return () => Object.keys(DISPLAY_DEFAULTS).forEach(key => root.removeAttribute('data-pf-' + key));
-  }, [settings, isMobile]);
+  }, [settings]);
 
   useEffect(() => {
+    try { setSettings(readDisplayPreferences(window.localStorage, storageKey)); }
+    catch { setSettings({ ...DISPLAY_DEFAULTS }); }
     const sync = event => {
       if (event.key === storageKey || event.key === null) {
         try { setSettings(readDisplayPreferences(window.localStorage, storageKey)); }
@@ -47,16 +42,15 @@ export default function DisplayPreferences({ userId }) {
     } catch { setSaveError(true); }
   };
 
-  if (isMobile) return null;
 
   return (
-    <Popover>
+    <Popover modal>
       <PopoverTrigger asChild>
         <button type="button" className="pf-display-trigger" aria-label="Display settings: text size, contrast and spacing" title="Display settings">
           <span aria-hidden="true">A− / A+</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} aria-label="Display settings" className="pf-display-panel w-[min(400px,calc(100vw-24px))] max-h-[min(760px,calc(100dvh-90px))] overflow-y-auto space-y-4">
+      <PopoverContent align="end" sideOffset={8} aria-label="Display settings" className="pf-display-panel bg-slate-900 text-white border-slate-600 w-[min(400px,calc(100vw-24px))] max-h-[min(760px,calc(100dvh-90px))] overflow-y-auto space-y-4">
         <h2 className="font-bold">Display settings</h2>
         <p>Make Pathfinder comfortable to read. Changes apply across your pages immediately.</p>
 

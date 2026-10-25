@@ -114,7 +114,7 @@
   }
 
   /* The controls themselves stay legible at every setting, including reset. */
-  .pf-display-trigger { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; padding: 6px 10px; border: 1px solid #64748b; border-radius: 8px; background: #10263a; color: #f8fafc; font-size: 20px; font-weight: 700; }
+  .pf-display-trigger { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 6px 10px; border: 1px solid #64748b; border-radius: 8px; background: #10263a; color: #f8fafc; font-size: 20px; font-weight: 700; }
   .pf-display-trigger:hover { background: #1e405d; }
   .pf-display-panel { font-size: 14px; line-height: 1.45; gap: 16px; }
   .pf-display-panel h2 { padding-right: 28px; font-size: 22px !important; line-height: 1.3; }
@@ -136,4 +136,16 @@
   .pf-display-sample strong { display: block; }
   .pf-display-panel .pf-display-save { font-size: 12px; }
   .pf-display-reset { width: 100%; }
+}
+
+
+/* Current incident board uses custom CSS rather than Tailwind type utilities. */
+@media screen {
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-incident-table :is(button, strong, .cad-priority) { font-size: var(--pf-body) !important; line-height: 1.5 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-incident-table small { font-size: var(--pf-small) !important; line-height: 1.5 !important; }
+  html[data-pf-spacing="comfortable"] .cad-incident-table :is(td, th) { padding: 18px 14px !important; }
+  html[data-pf-spacing="comfortable"] :is(.live-command-workspace, [role="dialog"]) button { min-height: 44px !important; padding-block: 10px !important; height: auto; }
+  html[data-pf-contrast="high"] .cad-incident-table :is(small, th) { color: #f1f5f9 !important; }
+  html[data-pf-contrast="high"] .cad-incident-table :is(td, th) { border-color: #94a3b8 !important; }
+  .pf-display-panel { max-height: min(760px, var(--radix-popover-content-available-height, calc(100dvh - 24px))); overscroll-behavior: contain; }
 }
