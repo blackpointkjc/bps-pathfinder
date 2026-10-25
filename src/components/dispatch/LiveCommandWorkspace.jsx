@@ -37,12 +37,12 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
     </div>
     <div className="cad-incident-scroll"><table className="cad-incident-table"><thead><tr><th>PRI</th><th>CAD / RECEIVED</th><th>INCIDENT / LOCATION</th><th>STATUS / UNITS</th><th>ELAPSED</th><th>ACTIONS</th></tr></thead><tbody>
     {visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <tr key={call.id} data-priority={priorityOf(call)} aria-selected={detail?.id===call.id}>
-     <td><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span></td>
-     <td><button type="button" onClick={()=>onOpen(call)} className="font-bold text-cyan-200">{identifierOf(call).value}</button><small>{timeOf(call.time_received||call.created_date)} ET · {call.agency||'BPS'}</small></td>
-     <td><button type="button" onClick={()=>onOpen(call)} className="text-left font-bold uppercase text-white">{incidentOf(call)}</button><small>{call.location||'Location pending'}{call.cross_street?' / '+call.cross_street:''}</small>{isExternal(call)&&<small className="text-red-300">PULSEPOINT</small>}</td>
-     <td><strong className={needsDispatch(call)?'text-amber-300':'text-emerald-200'}>{needsDispatch(call)?'UNASSIGNED':call.status||'ACTIVE'}</strong><small>{(call.assigned_units||[]).length} units assigned</small></td>
-     <td className="whitespace-nowrap text-amber-200">{elapsedOf(call)}</td>
-     <td><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>onMap(call)} className="cad-row-action">MAP / ASSIGN</button><button type="button" onClick={()=>onOpen(call)} className="cad-row-action">DETAIL</button>{canChangePriority&&<IncidentPrioritySelect call={call} priority={priorityOf(call)} onSave={onPriority} disabled={!!working}/>}</div></td>
+     <td data-label="Priority"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span></td>
+     <td data-label="CAD / received"><button type="button" onClick={()=>onOpen(call)} className="font-bold text-cyan-200">{identifierOf(call).value}</button><small>{timeOf(call.time_received||call.created_date)} ET · {call.agency||'BPS'}</small></td>
+     <td data-label="Incident / location"><button type="button" onClick={()=>onOpen(call)} className="text-left font-bold uppercase text-white">{incidentOf(call)}</button><small>{call.location||'Location pending'}{call.cross_street?' / '+call.cross_street:''}</small>{isExternal(call)&&<small className="text-red-300">PULSEPOINT</small>}</td>
+     <td data-label="Status / units"><strong className={needsDispatch(call)?'text-amber-300':'text-emerald-200'}>{needsDispatch(call)?'UNASSIGNED':call.status||'ACTIVE'}</strong><small>{(call.assigned_units||[]).length} units assigned</small></td>
+     <td data-label="Elapsed" className="whitespace-nowrap text-amber-200">{elapsedOf(call)}</td>
+     <td data-label="Actions"><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>onMap(call)} className="cad-row-action">MAP / ASSIGN</button><button type="button" onClick={()=>onOpen(call)} className="cad-row-action">DETAIL</button>{canChangePriority&&<IncidentPrioritySelect call={call} priority={priorityOf(call)} onSave={onPriority} disabled={!!working}/>}</div></td>
     </tr>;})}</tbody></table>{!visible.length&&<p role="status" className="p-10 text-center text-slate-400">{loading?'Loading incidents…':allCalls.length?'No incidents match these filters':'No active incidents'}</p>}</div>
    </section>
 

@@ -180,3 +180,54 @@
   .live-map-toolbar .command-status-options { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
   .live-map-toolbar .command-status-options button { min-height: 28px; padding: 4px; font-size: 10px; }
 }
+
+
+/* Phone viewport containment: page content must shrink within the shell. */
+@media (max-width: 767px), (max-width: 1279px) and (max-height: 500px) {
+  .cad-app { max-width: 100%; height: 100dvh; }
+  .cad-app > section { width: 100%; min-width: 0; padding-left: 0; padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .cad-app .pathfinder-field-nav {
+    top: auto; bottom: 0; left: 0; right: 0; width: 100%;
+    height: calc(68px + env(safe-area-inset-bottom));
+    flex-direction: row; justify-content: space-around; gap: 4px;
+    border-right: 0; border-top: 1px solid #29445f;
+    padding: 4px max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
+  }
+  .cad-app .pathfinder-field-nav > :is(a,button) { flex: 1 1 0; width: auto; min-width: 0; min-height: 54px; }
+  .cad-app .pathfinder-header { flex-wrap: wrap; gap: 6px; padding-bottom: 6px; }
+  .cad-app .pathfinder-header > :first-child { flex: 1 1 100%; min-width: 0; }
+  .cad-app .pathfinder-header > :last-child { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .cad-app .mobile-field-content { width: 100%; max-width: 100%; padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+  .cad-app .mobile-field-content :is(.flex, .grid) > :not(svg):not(.leaflet-pane):not(.leaflet-control) { min-width: 0; }
+  .cad-app .mobile-field-content > :is(div, section) { min-width: 0; max-width: 100%; }
+  .cad-app .mobile-field-content form .grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .cad-app .mobile-field-content form [class*="col-span-"] { grid-column: auto; }
+  .cad-app .mobile-field-content :is(.bps-table-scroll, .overflow-x-auto) { width: 100%; min-width: 0; max-width: 100%; overscroll-behavior-x: contain; }
+  /* A table outside a scrolling wrapper must not enlarge or clip the page. */
+  .cad-app .mobile-field-content table { min-width: 0; max-width: 100% !important; }
+  .cad-app .mobile-field-content table:not(.cad-incident-table) { display: block; overflow-x: auto; touch-action: pan-x pan-y; }
+  .cad-app .pathfinder-mobile-drawer {
+    width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    max-width: 620px !important;
+    height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding-top: 0; padding-bottom: 0;
+  }
+}
+
+/* The live incident queue becomes labeled cards on phones, with every action retained. */
+@media (max-width: 767px) {
+  .cad-app .live-command-workspace header { align-items: stretch; }
+  .cad-app .live-command-workspace header > div { width: 100%; min-width: 0; }
+  .cad-app .live-command-workspace nav[aria-label="Command Board tools"] { display: grid; grid-template-columns: minmax(0,1fr); }
+  .cad-app .live-command-workspace .cad-incident-scroll { overflow: visible; max-height: none; }
+  .cad-app .live-command-workspace .cad-incident-table { display: block; width: 100%; min-width: 0; max-width: 100% !important; }
+  .cad-incident-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .cad-incident-table tbody { display: grid; gap: 12px; padding: 10px; }
+  .cad-incident-table tbody tr { display: grid; grid-template-columns: minmax(0,1fr); border: 1px solid #475569; border-radius: 10px; overflow: hidden; }
+  .cad-app .live-command-workspace .cad-incident-table td { display: block; min-width: 0; padding: 10px 12px; white-space: normal; overflow-wrap: anywhere; font-size: 14px; }
+  .cad-incident-table td::before { content: attr(data-label); display: block; margin-bottom: 5px; color: #a9c6df; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .cad-incident-table td:last-child { border-bottom: 0; }
+  .cad-incident-table small { font-size: 13px; }
+  .cad-incident-table .cad-row-action { flex: 1 1 110px; min-height: 44px; font-size: 12px; white-space: normal; }
+}
