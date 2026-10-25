@@ -231,3 +231,8 @@
   .cad-incident-table small { font-size: 13px; }
   .cad-incident-table .cad-row-action { flex: 1 1 110px; min-height: 44px; font-size: 12px; white-space: normal; }
 }
+
+@media (min-width: 640px) and (max-width: 1279px) and (max-height: 500px) {
+  .cad-app .pathfinder-header > :first-child { flex: 1 1 auto; }
+  .cad-app .pathfinder-header > :last-child { flex: 1 1 auto; }
+}
