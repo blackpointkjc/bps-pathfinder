@@ -89,7 +89,7 @@ Deno.serve(async req => {
       if (outcome.status !== 'fulfilled') continue;
       for (const row of outcome.value) {
         if (!valid(row.coords?.[0], row.coords?.[1])) continue;
-        const number = query.match(/^\d{1,6}/)?.[0];
+        const number = query.match(/^\d{1,6}\b/)?.[0];
         if (number && !new RegExp('(^|[^0-9])' + number + '([^0-9]|$)').test(String(row.houseNumber || row.address || ''))) continue;
         const key = Number(row.coords[0]).toFixed(5) + ':' + Number(row.coords[1]).toFixed(5);
         if (seen.has(key)) continue;
