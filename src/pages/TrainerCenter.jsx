@@ -20,7 +20,7 @@ const workflows = [
 export default function TrainerCenter({embedded=false}) {
  const [params,setParams] = useSearchParams();
  const sectionKey=embedded?'trainer_section':'section';
- const selected=workflows.find(w=>w.id===params.get(sectionKey))||workflows[0];
+ const selected=workflows.find(w=>w.id===params.get(sectionKey))||workflows.find(w=>w.id==='overview');
  const [filter,setFilter]=useState('');
  const choose=id=>{const next=new URLSearchParams(params);next.set(sectionKey,id);setParams(next,{replace:true});};
  const View=selected.View;
