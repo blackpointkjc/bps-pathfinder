@@ -1,3 +1,5 @@
+import AddressCallHistory from '@/components/map/AddressCallHistory';
+import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
@@ -100,7 +102,7 @@ export default function Navigation() {
     const toolbarRef = useRef(null);
     const [toolbarHeight,setToolbarHeight] = useState(110);
     const [mapFullscreen, setMapFullscreen] = useState(false);
-    const [showMapStatus, setShowMapStatus] = useState(false);
+    const [callsRefreshing, setCallsRefreshing] = useState(false);
     useEffect(() => {
         document.documentElement.classList.toggle('pf-map-fullscreen', mapFullscreen);
         const escape = event => { if (event.key === 'Escape') setMapFullscreen(false); };
@@ -136,6 +138,9 @@ export default function Navigation() {
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [navDestination, setNavDestination] = useState(null);
+    const [recentDestinations, setRecentDestinations] = useState([]);
+    useEffect(() => { setRecentDestinations(readRecentDestinations(currentUser?.id)); }, [currentUser?.id]);
+
     const [navRoute, setNavRoute] = useState([]);
     const [navSteps, setNavSteps] = useState([]);
     const [navStepIndex, setNavStepIndex] = useState(0);
@@ -895,6 +900,7 @@ export default function Navigation() {
             setNavDistanceMiles(route.distance / 1609.344);
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
             setIsNavigating(true);
+            setRecentDestinations(rememberDestination(currentUser?.id, { ...destination, coords: [destLat, destLng] }));
             setShowCallSidebar(false);
             setShowAddressSearch(false);
             setAddressResults([]);
@@ -1317,6 +1323,7 @@ export default function Navigation() {
     const fetchCalls = async () => {
         if (callsLoadingRef.current) return;
         callsLoadingRef.current = true;
+        setCallsRefreshing(true);
         try {
             let all = await loadActiveDispatchCallRows(500);
             if (cadCallFeedIsStale(all)) {
@@ -1371,6 +1378,7 @@ export default function Navigation() {
             setCallsError(e?.message || 'Call feed unavailable; retrying');
         } finally {
             callsLoadingRef.current = false;
+            setCallsRefreshing(false);
         }
     };
 
@@ -1452,6 +1460,9 @@ export default function Navigation() {
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
                 <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
                     onBack={() => navigate('/CommandDashboard')} onRecenter={recenter}
+                    onRefreshCalls={() => { clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
+                    callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
+                    criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={() => setMapFullscreen(value => !value)}
                     gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
@@ -1526,7 +1537,7 @@ export default function Navigation() {
             {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
-                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="absolute left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
+                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="absolute bottom-3 left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 overflow-y-auto pointer-events-auto">
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
@@ -1576,6 +1587,10 @@ export default function Navigation() {
                     {addressSearchError && (
                         <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>
                     )}
+                    {!mapSelectedDestination && addressResults.length === 0 && recentDestinations.length > 0 && <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3">
+                        <h3 className="text-sm font-bold text-white">Recent destinations · this device</h3>
+                        {recentDestinations.map(item => <button type="button" key={item.key} onClick={() => { setMapSelectedDestination(item); setAddressQuery(item.address || item.name); }} className="block min-h-11 w-full border-b border-slate-800 py-2 text-left text-sm text-white"><strong className="block">{item.name}</strong><span className="block text-xs text-slate-300">{item.address}</span><span className="text-xs text-slate-400">Last routed {new Date(item.visitedAt).toLocaleString()}</span></button>)}
+                    </div>}
                     {mapSelectedDestination && (
                         <div className="mt-2 rounded-xl border border-emerald-500/50 bg-[#071b19]/95 p-3 shadow-lg">
                             <div className="flex items-start gap-2">
@@ -1585,6 +1600,7 @@ export default function Navigation() {
                                     <div className="mt-1 text-sm font-bold text-white">{mapSelectedDestination.name}</div><div className="mt-1 text-xs leading-relaxed text-slate-300">{mapSelectedDestination.address}</div>
                                 </div>
                             </div>
+                            <AddressCallHistory address={mapSelectedDestination.address || mapSelectedDestination.name} propertyId={mapSelectedDestination.locationId} />
                             <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={routing}
                                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
                                 <Navigation2 className="h-4 w-4" /> NAVIGATE HERE
@@ -1602,7 +1618,7 @@ export default function Navigation() {
                                 Select a destination · pins are shown on the map
                             </div>
                             {addressResults.map((result, index) => (
-                                <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
+                                <button key={`${result.name}-${index}`} onClick={() => { setMapSelectedDestination(result); setAddressResults([]); }}
                                     className="flex w-full items-start gap-3 border-b border-[#1e2d4a] px-4 py-3 text-left hover:bg-[#142336] last:border-b-0">
                                     <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
                                     <span className="min-w-0 text-xs leading-relaxed text-slate-100"><span className="block font-bold">{result.name}</span><span className="block text-slate-400">{result.address}</span>{result.label && <span className="block text-cyan-300">{result.label}</span>}</span>
@@ -1772,36 +1788,6 @@ export default function Navigation() {
                 </div>
             </motion.div>
 
-            {showMapStatus && <div className="absolute bottom-14 left-2 right-24 z-[1400] flex flex-wrap items-center gap-2 rounded-lg bg-[#07111f]/95 p-2 text-xs text-slate-200" role="status">
-                <span>{callsError || (callsCheckedAt ? `Calls checked ${formatEasternTime(callsCheckedAt)} · ${activeCalls.length} open · ${unmappedCalls.length} without map coordinates` : 'Loading active calls…')}</span>
-                <button type="button" className="min-h-11 rounded border border-slate-600 px-3" onClick={() => { clearActiveDispatchCallMemoryCache(); fetchCalls(); }}>Refresh calls</button>
-            </div>}
-            {/* ══ BOTTOM STATUS STRIP ══ */}
-            <div className="absolute bottom-0 left-0 right-0 z-[1400] pointer-events-none">
-                <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-t border-[#1e2d4a]">
-                    <button type="button" aria-expanded={showMapStatus} onClick={() => setShowMapStatus(value => !value)} className="pointer-events-auto min-h-11 rounded px-2 text-xs text-slate-200">CAD details {showMapStatus ? '▾' : '▴'}</button>
-                    {!isNavigating && <><span className="text-[9px] font-mono text-slate-500">
-                        CALLS: <span className="text-white">{activeCalls.length}</span>
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-500">
-                        UNITS: <span className="text-green-400">{onlineUnits.length}</span>
-                    </span></>}
-                    {criticalCalls.length > 0 && (
-                        <span className="text-[9px] font-mono text-red-400 font-bold animate-pulse">
-                            ⚠ {criticalCalls.length} CRITICAL
-                        </span>
-                    )}
-                    <div className="flex-1" />
-                    <div className="pointer-events-auto">
-                        <OfficerDistressButton currentUser={currentUser} />
-                    </div>
-                    <div className="flex items-center gap-1 text-[9px] font-mono text-green-400 font-bold pointer-events-none">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                        ONLINE
-                    </div>
-                </div>
-            </div>
-
             {/* ══ CALL DETAIL SIDEBAR ══ */}
             <AnimatePresence>
                 {showCallSidebar && selectedCall && (
@@ -1810,7 +1796,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 320 }}
                         transition={{ duration: 0.2 }}
-                        style={{ top: toolbarHeight + 8 }} className={`absolute bottom-[64px] right-0 z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
+                        style={{ top: toolbarHeight + 8 }} className={`absolute bottom-2 right-0 z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
                     >
                         {/* Header / collapsed edge tab */}
                         <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>

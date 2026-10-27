@@ -1,5 +1,6 @@
+import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
-export default function LiveMapToolbar({ user, status, saving, onStatusChange, onBack, onRecenter, gpsLabel, gpsActive, online, speed, unitCount, callCount, unassignedCount, fullscreen, onToggleFullscreen }) {
+export default function LiveMapToolbar({ user, status, saving, onStatusChange, onBack, onRecenter, gpsLabel, gpsActive, online, speed, unitCount, callCount, unassignedCount, fullscreen, onToggleFullscreen, onRefreshCalls, callsRefreshing, callsStatus, criticalCount }) {
     return <header aria-label="Live Map controls" className="live-map-toolbar pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-700 bg-[#0a1220]/95 px-2 py-1 text-white backdrop-blur">
         <button type="button" onClick={onBack} className="flex h-7 shrink-0 items-center gap-1.5 text-xs font-bold"><span aria-hidden="true">←</span> Live Map</button>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px]">
@@ -12,6 +13,9 @@ export default function LiveMapToolbar({ user, status, saving, onStatusChange, o
             {unassignedCount > 0 && <span className="text-red-300">{unassignedCount} unassigned</span>}
         </div>
         <button type="button" aria-pressed={fullscreen} onClick={onToggleFullscreen} className="ml-auto min-h-11 rounded-lg border border-cyan-600 px-3 text-xs font-bold text-cyan-100">{fullscreen ? 'Exit full screen' : 'Full screen map'}</button>
+        <button type="button" disabled={callsRefreshing} onClick={onRefreshCalls} className="min-h-11 rounded-lg border border-slate-500 px-3 text-xs font-bold disabled:opacity-50">{callsRefreshing ? 'Refreshing calls…' : 'Refresh calls'}</button>
+        <span role="status" className="text-xs text-slate-300">{callsStatus}{criticalCount > 0 ? ' · ' + criticalCount + ' critical' : ''}</span>
+        <OfficerDistressButton currentUser={user} />
         <OfficerDutyStatusControl user={user} status={status} saving={saving} onChange={onStatusChange} inline />
     </header>;
 }
