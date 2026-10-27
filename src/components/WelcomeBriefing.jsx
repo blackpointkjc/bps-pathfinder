@@ -1,3 +1,4 @@
+import { briefingPersonnelIndex, briefingOfficerName, mergeBriefingStaffing } from '@/lib/briefingPersonnel';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -249,7 +250,7 @@ export default function WelcomeBriefing({ user }) {
         const shift = relevantUserSchedules.find(item => !item.is_open) || null;
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
-        const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
+        const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out && entry.archived !== true);
         setBrief(previous => {
           const failed = (...labels) => labels.some(label => sourceErrors.includes(label));
           return {
@@ -356,38 +357,39 @@ export default function WelcomeBriefing({ user }) {
   const statusOverride = brief.override?.active ? (brief.override.reason || 'Administrative Out of Service override is active') : '';
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).map(normalized).includes('full_access');
   const canOpenSupervisorTasks = isAdmin || (user?.additional_roles || []).map(normalized).includes('supervisor');
-  const userByEmail = useMemo(() => new Map((brief.allUsers || []).map(person => [normalized(person.email), person])), [brief.allUsers]);
+  const userByEmail = useMemo(() => briefingPersonnelIndex(brief.allUsers || []), [brief.allUsers]);
+  const canonicalEmail = useCallback(value => { const key = normalized(value); return normalized(userByEmail.get(key)?.email || key); }, [userByEmail]);
   const userById = useMemo(() => new Map((brief.allUsers || []).map(person => [String(person.id || ''), person])), [brief.allUsers]);
   const unitByEmail = useMemo(() => {
     const map = new Map();
     (brief.allUnits || []).forEach(unitRow => {
-      const email = normalized(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email);
-      if (email) map.set(email, unitRow);
+      const email = canonicalEmail(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email);
+      if (email && !map.has(email)) map.set(email, unitRow);
     });
     // ActiveOfficer is the live CAD/device session and may exist even when a separate
     // Unit row has not been provisioned. Prefer a live session for status/location.
-    (brief.allLiveOfficers || []).forEach(session => {
-      const email = normalized(session.officer_email);
+    [...(brief.allLiveOfficers || [])].reverse().forEach(session => {
+      const email = canonicalEmail(session.officer_email);
       if (!email || session.session_active === false) return;
       const current = map.get(email) || {};
       map.set(email, { ...current, ...session, id: current.id || session.id });
     });
     return map;
-  }, [brief.allUnits, brief.allLiveOfficers, userById]);
+  }, [brief.allUnits, brief.allLiveOfficers, userById, canonicalEmail]);
   const isCadOfficer = isOperationalOfficer;
-  const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [normalized(entry.officer_email), entry])), [brief.activeTimeEntries]);
+  const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [canonicalEmail(entry.officer_email), entry])), [brief.activeTimeEntries, canonicalEmail]);
   const vehicleByEmail = useMemo(() => {
     const map = new Map();
     (brief.todayVehicleAssignments || []).forEach(item => {
-      if (item.primary_officer_email) map.set(normalized(item.primary_officer_email), item);
-      if (item.partner_officer_email) map.set(normalized(item.partner_officer_email), item);
+      if (item.primary_officer_email) map.set(canonicalEmail(item.primary_officer_email), item);
+      if (item.partner_officer_email) map.set(canonicalEmail(item.partner_officer_email), item);
     });
     return map;
-  }, [brief.todayVehicleAssignments]);
+  }, [brief.todayVehicleAssignments, canonicalEmail]);
   const onDutyRows = useMemo(() => {
     const seen = new Set();
     return (brief.activeTimeEntries || []).map(entry => {
-      const email = normalized(entry.officer_email);
+      const email = canonicalEmail(entry.officer_email);
       if (!email || seen.has(email)) return null;
       const person = userByEmail.get(email);
       if (person && !isCadOfficer(person)) return null;
@@ -398,11 +400,11 @@ export default function WelcomeBriefing({ user }) {
       const vehicleRow = vehicleByEmail.get(email);
       return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
     }).filter(Boolean).sort((a,b)=>comparePersonnel(a.person || {email:a.email},b.person || {email:b.email}));
-  }, [brief.activeTimeEntries, userByEmail, unitByEmail, vehicleByEmail]);
+  }, [brief.activeTimeEntries, userByEmail, unitByEmail, vehicleByEmail, canonicalEmail]);
   const scheduledDutyRows = useMemo(() => {
     const rows = (brief.todaySchedules || []).filter(item => {
       if (!item.officer_email || item.officer_email === 'OPEN' || item.is_open) return false;
-      const person = userByEmail.get(normalized(item.officer_email));
+      const person = userByEmail.get(canonicalEmail(item.officer_email));
       return !person || isCadOfficer(person);
     });
     // Multiple same-day site shifts are legitimate schedule records, not
@@ -413,19 +415,20 @@ export default function WelcomeBriefing({ user }) {
     const startMinutes = shift => { const match = String(shift.start_time || '').match(/^(\d{1,2}):(\d{2})/); return match ? Number(match[1]) * 60 + Number(match[2]) : 0; };
     rows.sort((a, b) => startMinutes(a) - startMinutes(b))
       .forEach(shift => {
-        const key = normalized(shift.officer_email);
+        const key = canonicalEmail(shift.officer_email);
         const previous = uniqueShifts.get(key);
         if (!previous || startMinutes(shift) <= currentMinutes && (startMinutes(previous) > currentMinutes || startMinutes(shift) >= startMinutes(previous))) uniqueShifts.set(key, shift);
       });
     return [...uniqueShifts.values()].map(shiftRow => {
-      const email = normalized(shiftRow.officer_email);
+      const email = canonicalEmail(shiftRow.officer_email);
       const person = userByEmail.get(email);
       const unitRow = unitByEmail.get(email);
       const entry = activeEntryByEmail.get(email);
       const vehicleRow = vehicleByEmail.get(email);
       return { email, shift: shiftRow, person, unit: unitRow, entry, vehicle: vehicleRow };
     }).sort((a,b) => `${a.shift.start_time || ''}${a.person?.last_name || a.email}`.localeCompare(`${b.shift.start_time || ''}${b.person?.last_name || b.email}`));
-  }, [brief.todaySchedules, userByEmail, unitByEmail, activeEntryByEmail, vehicleByEmail]);
+  }, [brief.todaySchedules, userByEmail, unitByEmail, activeEntryByEmail, vehicleByEmail, canonicalEmail]);
+  const staffingRows = useMemo(() => mergeBriefingStaffing(scheduledDutyRows, onDutyRows), [scheduledDutyRows, onDutyRows]);
   const offlineText = useMemo(() => {
     if (!offlineSince) return 'First briefing on this device';
     const minutes = Math.max(1, Math.floor((Date.now() - offlineSince) / 60000));
@@ -526,7 +529,7 @@ export default function WelcomeBriefing({ user }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <Users className="h-4 w-4 text-emerald-300"/>
                       <div className="text-xs font-black uppercase tracking-[.16em] text-emerald-200">{isAdmin ? 'Today’s Staffing & On-Duty Status' : 'Who’s On Duty'}</div>
-                      <span className="ml-auto rounded-full border border-emerald-800/60 bg-emerald-950/50 px-2.5 py-1 text-[10px] font-black text-emerald-300">{onDutyRows.length} CLOCKED IN</span>
+                      <span className="ml-auto rounded-full border border-emerald-800/60 bg-emerald-950/50 px-2.5 py-1 text-[10px] font-black text-emerald-300">{dataErrors.includes('active staffing/time entries') ? 'CLOCK-IN DATA UNAVAILABLE' : onDutyRows.length + ' CLOCKED IN'}</span>
                     </div>
 
                     {isAdmin ? (
@@ -534,16 +537,16 @@ export default function WelcomeBriefing({ user }) {
                         <div className="hidden grid-cols-[1.35fr_.8fr_1fr_.8fr_.9fr_.9fr] gap-2 bg-slate-900/90 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-500 md:grid">
                           <div>Officer</div><div>Scheduled</div><div>Location</div><div>Clock</div><div>CAD Status</div><div>Vehicle / Partner</div>
                         </div>
-                        <div className="max-h-64 divide-y divide-slate-800 overflow-y-auto">
-                          {scheduledDutyRows.length === 0 ? <div className="p-4 text-center text-xs text-slate-500">No officers are scheduled today.</div> : scheduledDutyRows.map(row => {
-                            const name = row.person ? `${row.person.rank || 'Officer'} ${row.person.last_name || row.person.first_name || ''}`.trim() : row.email;
+                        <div className="divide-y divide-slate-800">
+                          {staffingRows.length === 0 ? <div className="p-4 text-center text-xs text-slate-500">No scheduled or clocked-in officers found.</div> : staffingRows.map(row => {
+                            const name = briefingOfficerName(row);
                             const location = String(row.shift.location || '').split(':')[0] || '—';
-                            const liveStatus = row.entry ? (row.unit?.status || row.person?.status || 'Available') : 'Out of Service';
+                            const liveStatus = row.unit?.status || row.person?.status || 'Status unavailable';
                             return <div key={`${row.shift.id}-${row.email}`} className="grid gap-2 bg-slate-950/45 p-3 text-xs md:grid-cols-[1.35fr_.8fr_1fr_.8fr_.9fr_.9fr] md:items-center">
-                              <div className="min-w-0"><div className="truncate font-black text-white">{name}</div><div className="mt-0.5 text-[9px] text-slate-500">{row.person?.unit_number ? `UNIT-${row.person.unit_number}` : row.email}</div></div>
-                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Scheduled</span><span className="font-bold text-slate-200">{row.shift.start_time}-{row.shift.end_time}</span>{row.shift.attendance_status && row.shift.attendance_status !== 'scheduled' && <div className="mt-1 font-black text-red-400">{row.shift.attendance_status.replaceAll('_', ' ').toUpperCase()}</div>}</div>
+                              <div className="min-w-0"><div className="truncate font-black text-white">{name}</div><div className="mt-0.5 text-[9px] text-slate-500">{row.person?.unit_number ? `UNIT-${row.person.unit_number}` : 'Unit not assigned'}</div></div>
+                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Scheduled</span><span className="font-bold text-slate-200">{row.shift.start_time ? row.shift.start_time + '–' + row.shift.end_time : 'No current scheduled shift'}</span>{row.shift.attendance_status && row.shift.attendance_status !== 'scheduled' && <div className="mt-1 font-black text-red-400">{row.shift.attendance_status.replaceAll('_', ' ').toUpperCase()}</div>}</div>
                               <div className="min-w-0"><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Location</span><span className="break-words text-slate-300">{location}</span></div>
-                              <div><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${row.entry ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>{row.entry ? 'CLOCKED IN' : 'NOT CLOCKED IN'}</span>{row.entry?.clock_in && <div className="mt-1 text-[9px] text-slate-500">Since {new Date(row.entry.clock_in).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}</div>
+                              <div><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${row.entry ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>{dataErrors.includes('active staffing/time entries') ? 'CLOCK-IN DATA UNAVAILABLE' : row.entry ? 'CLOCKED IN' : 'NOT CLOCKED IN'}</span>{row.entry?.clock_in && <div className="mt-1 text-[9px] text-slate-500">Since {new Date(row.entry.clock_in).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}</div>
                               <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">CAD</span><span className="font-bold text-blue-300">{liveStatus}</span>{row.entry && row.unit?.current_call_info && <div className="mt-0.5 line-clamp-1 text-[9px] text-slate-500">{row.unit.current_call_info}</div>}</div>
                               <div className="min-w-0"><div className="truncate font-bold text-amber-300">{row.vehicle?.vehicle_label || 'No vehicle'}</div><div className="mt-0.5 truncate text-[9px] text-blue-300">{row.unit?.partner_name || (row.shift.partner_officer_email ? `Partner: ${row.shift.partner_officer_email}` : 'No partner')}</div></div>
                             </div>;
@@ -553,7 +556,7 @@ export default function WelcomeBriefing({ user }) {
                     ) : (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {onDutyRows.length === 0 ? <div className="col-span-full rounded-xl border border-dashed border-slate-800 p-4 text-center text-xs text-slate-500">No CAD officers are currently clocked in.</div> : onDutyRows.map(row => {
-                          const name = row.person ? `${row.person.rank || 'Officer'} ${row.person.last_name || row.person.first_name || ''}`.trim() : row.email;
+                          const name = briefingOfficerName(row);
                           const liveStatus = row.unit?.status || row.person?.status || 'On Duty';
                           return <div key={row.email} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3">
                             <div className="flex items-start gap-2"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.45)]"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{name}</div><div className="mt-0.5 text-[9px] font-bold text-blue-300">{liveStatus}</div></div></div>
@@ -566,10 +569,10 @@ export default function WelcomeBriefing({ user }) {
                   </div>
 
                   <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 sm:gap-3">
-                    <BriefCard icon={MessageCircle} label="Teams Messages" value={pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
-                    <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
+                    <BriefCard icon={MessageCircle} label="Teams Mentions" value={dataErrors.includes('Teams mentions') ? 'Unavailable' : pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
+                    <BriefCard icon={Megaphone} label="Announcements" value={dataErrors.some(source => ['announcements', 'announcement receipts'].includes(source)) ? 'Unavailable' : brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
                     {brief.appUpdates.length > 0 && <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail="Unread platform or software update records" tone="violet" />}
-                    <BriefCard icon={ClipboardList} label="Assigned Tasks" value={brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} />
+                    <BriefCard icon={ClipboardList} label="Assigned Tasks" value={dataErrors.includes('assigned tasks') ? 'Unavailable' : brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} />
                     {brief.updates.length > 0 && <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail="Unread account, schedule, or system notification records" tone="blue" />}
                     <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
