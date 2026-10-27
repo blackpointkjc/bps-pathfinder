@@ -1,3 +1,4 @@
+import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
@@ -166,6 +167,7 @@ export default function PropertyAlertsBanner() {
                                         <span>{alert.distanceMeters}m from property</span>
                                         <span className="flex items-center gap-1"><Clock3 className="h-3 w-3" />{formatEasternTime(alert._callTime || alert.callTime || alert.time_received || alert.created_date)} ET</span>
                                     </div>
+                                    <AddressCallHistory propertyId={alert.propertyId} address={alert.callLocation} excludeCallId={alert.callId} />
                                     <AutoDispatchRecommendation alert={alert} />
                                 </div>
                                 <Button size="sm" variant="ghost" onClick={() => handleAcknowledge(alert)} className="text-slate-400 hover:text-white" title="Acknowledge for my account">

@@ -1,3 +1,4 @@
+import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
 import { isOperationalOutage } from '@/lib/operationalOutages';
 import { canAccessAccounting } from '@/lib/accountingAccess';
@@ -1562,7 +1563,7 @@ export default function Layout({ children, currentPageName }) {
           initial={{ scale: 0.94, y: 24, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.96, y: 12, opacity: 0 }}
-          className="w-full max-w-xl overflow-hidden rounded-xl border-2 border-red-500 bg-[#0b1523] shadow-[0_0_60px_rgba(239,68,68,.35)]"
+          className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-xl border-2 border-red-500 bg-[#0b1523] shadow-[0_0_60px_rgba(239,68,68,.35)]"
         >
           <div className="flex items-center gap-3 border-b border-red-700/60 bg-red-950/70 px-5 py-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-400 bg-red-600/20">
@@ -1589,6 +1590,7 @@ export default function Layout({ children, currentPageName }) {
               <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">PROPERTY ADDRESS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.property.address}</div></div>
               <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">CALL STATUS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.call.status || 'New'} · {(propertyAlert.call.priority || 'medium').toUpperCase()}</div></div>
             </div>
+            <AddressCallHistory address={propertyAlert.property.address || propertyAlert.call.location} propertyId={propertyAlert.property.id} excludeCallId={propertyAlert.call.id} />
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
