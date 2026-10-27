@@ -12,6 +12,7 @@ Deno.serve(async req => {
   const input = await req.json();
   const address = clean(input.address).slice(0,200);
   const propertyId = clean(input.propertyId).slice(0,80);
+  const locality = address.split(',')[1]?.trim().toLowerCase() || '';
   const since = new Date(Date.now()-90*86400000).toISOString();
   const number = address.match(/^\s*(\d+[a-z]?)\s+(.+)/i);
   if (!propertyId && !number) return Response.json({error:'Select a numbered street address or managed property to check call history.'}, {status:400});
@@ -46,6 +47,7 @@ Deno.serve(async req => {
     const id=clean(r.callId||r.original_call_id||r.id);
     const incident=clean(r.callIncident||r.incident)||'Incident type unavailable';
     const location=clean(r.callLocation||r.location||address);
+    if (!propertyId && locality && !location.toLowerCase().includes(locality)) continue;
     const fingerprint=[time,incident.toLowerCase(),location.toLowerCase()].join('|');
     if(identities.has(id)||fingerprints.has(fingerprint))continue;
     identities.add(id);fingerprints.add(fingerprint);

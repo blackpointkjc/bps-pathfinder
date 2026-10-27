@@ -89,7 +89,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
       const payload = await fetchJson(`https://photon.komoot.io/api/?q=${encoded}&limit=6${near}`);
       return (payload.features || []).map(item => {
         const p = item.properties || {};
-        const label = [p.housenumber, p.street, p.city, p.state].filter(Boolean).join(' ');
+        const label = [[p.housenumber, p.street].filter(Boolean).join(' '), p.city, p.state, p.postcode].filter(Boolean).join(', ');
         return {
           coords: [Number(item.geometry?.coordinates?.[1]), Number(item.geometry?.coordinates?.[0])],
           name: p.name || label || value,

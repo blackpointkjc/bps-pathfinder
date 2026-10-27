@@ -67,7 +67,7 @@ Deno.serve(async req => {
           !f?.properties?.countrycode || String(f.properties.countrycode).toLowerCase() === 'us'
         ).map((f: any) => {
           const p = f.properties || {};
-          const place = [p.housenumber, p.street, p.city, p.state].filter(Boolean).join(' ');
+          const place = [[p.housenumber, p.street].filter(Boolean).join(' '), p.city, p.state, p.postcode].filter(Boolean).join(', ');
           const label = place || [p.name, p.city, p.state].filter(Boolean).join(', ') || query;
           return { name: p.name || place || 'Address', address: place || label, houseNumber: p.housenumber || '', coords: [f.geometry?.coordinates?.[1], f.geometry?.coordinates?.[0]], type: p.type || '' };
         });
