@@ -14,10 +14,12 @@ const valid = coords => Array.isArray(coords) && coords.length === 2
   && coords.every(value => Number.isFinite(Number(value)))
   && Math.abs(Number(coords[0])) <= 90 && Math.abs(Number(coords[1])) <= 180;
 
-const unique = rows => {
+const unique = (rows, query = '') => {
+  const number = query.match(/^\d{1,6}\b/)?.[0];
   const seen = new Set();
   return rows.filter(row => {
     if (!valid(row.coords)) return false;
+    if (number && !new RegExp('(^|[^0-9])' + number + '([^0-9]|$)').test(String(row.houseNumber || row.address || ''))) return false;
     const key = row.coords.map(value => Number(value).toFixed(5)).join(':');
     if (seen.has(key)) return false;
     seen.add(key);
@@ -77,7 +79,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
       const rows = await fetchJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=us&addressdetails=1&q=${encoded}`);
       return (rows || []).map(row => ({
         coords: [Number(row.lat), Number(row.lon)],
-        name: row.display_name,
+        name: row.name || row.display_name,
         address: row.display_name,
         type: row.type,
       }));
@@ -90,7 +92,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
         const label = [p.housenumber, p.street, p.city, p.state].filter(Boolean).join(' ');
         return {
           coords: [Number(item.geometry?.coordinates?.[1]), Number(item.geometry?.coordinates?.[0])],
-          name: label || p.name || value,
+          name: p.name || label || value,
           address: label || p.name || value,
           type: p.type || '',
         };
@@ -113,7 +115,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
       ...(valid(location) ? { latitude: Number(location[0]), longitude: Number(location[1]) } : {}),
     }), 10_000, 'Navigation address lookup');
     const payload = response?.data || response || {};
-    const matches = unique(payload.results || []);
+    const matches = unique(payload.results || [], value);
     if (matches.length) return matches;
   } catch (error) {
     console.warn('[NAV] Server address lookup failed; trying public services:', error?.message || error);
@@ -123,7 +125,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
   const settled = await Promise.allSettled(searches.map(search => search()));
   for (const result of settled) {
     if (result.status !== 'fulfilled') continue;
-    const matches = unique(result.value);
+    const matches = unique(result.value, value);
     if (matches.length) return matches;
   }
   return [];

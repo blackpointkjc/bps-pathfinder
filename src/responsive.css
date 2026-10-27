@@ -236,3 +236,13 @@
   .cad-app .pathfinder-header > :first-child { flex: 1 1 auto; }
   .cad-app .pathfinder-header > :last-child { flex: 1 1 auto; }
 }
+
+/* App fullscreen works on iPhone without requiring the Fullscreen API. */
+html.pf-map-fullscreen .cad-app > section { padding: 0 !important; }
+html.pf-map-fullscreen .cad-app > section > :not(main) { display: none !important; }
+html.pf-map-fullscreen .pathfinder-field-nav { display: none !important; }
+html.pf-map-fullscreen .cad-app main[data-page="Navigation"] {
+  position: fixed; inset: 0; z-index: 5000; width: 100%; height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow: hidden; background: #07101a;
+}

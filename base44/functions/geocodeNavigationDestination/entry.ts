@@ -59,7 +59,7 @@ Deno.serve(async req => {
     const near = valid(lat, lon) && input.latitude != null && input.longitude != null
       ? '&lat=' + lat + '&lon=' + lon : '';
     const encoded = encodeURIComponent(query);
-    const hasHouseNumber = /^\\d{1,6}\\s/.test(query);
+    const hasHouseNumber = /^\d{1,6}\s/.test(query);
     const providers: Array<() => Promise<any[]>> = [
       async () => {
         const result = await fetchJson('https://photon.komoot.io/api/?q=' + encoded + '&limit=8' + near);
@@ -69,7 +69,7 @@ Deno.serve(async req => {
           const p = f.properties || {};
           const place = [p.housenumber, p.street, p.city, p.state].filter(Boolean).join(' ');
           const label = place || [p.name, p.city, p.state].filter(Boolean).join(', ') || query;
-          return { name: label, address: label, coords: [f.geometry?.coordinates?.[1], f.geometry?.coordinates?.[0]], type: p.type || '' };
+          return { name: p.name || place || 'Address', address: place || label, houseNumber: p.housenumber || '', coords: [f.geometry?.coordinates?.[1], f.geometry?.coordinates?.[0]], type: p.type || '' };
         });
       },
       async () => {
@@ -89,6 +89,8 @@ Deno.serve(async req => {
       if (outcome.status !== 'fulfilled') continue;
       for (const row of outcome.value) {
         if (!valid(row.coords?.[0], row.coords?.[1])) continue;
+        const number = query.match(/^\d{1,6}/)?.[0];
+        if (number && !new RegExp('(^|[^0-9])' + number + '([^0-9]|$)').test(String(row.houseNumber || row.address || ''))) continue;
         const key = Number(row.coords[0]).toFixed(5) + ':' + Number(row.coords[1]).toFixed(5);
         if (seen.has(key)) continue;
         seen.add(key);

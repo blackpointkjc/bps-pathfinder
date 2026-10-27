@@ -99,6 +99,19 @@ export default function Navigation() {
     const [statusSaving, setStatusSaving] = useState(false);
     const toolbarRef = useRef(null);
     const [toolbarHeight,setToolbarHeight] = useState(110);
+    const [mapFullscreen, setMapFullscreen] = useState(false);
+    const [showMapStatus, setShowMapStatus] = useState(false);
+    useEffect(() => {
+        document.documentElement.classList.toggle('pf-map-fullscreen', mapFullscreen);
+        const escape = event => { if (event.key === 'Escape') setMapFullscreen(false); };
+        window.addEventListener('keydown', escape);
+        window.dispatchEvent(new Event('resize'));
+        return () => {
+            document.documentElement.classList.remove('pf-map-fullscreen');
+            window.removeEventListener('keydown', escape);
+        };
+    }, [mapFullscreen]);
+
     useEffect(() => {
         const element = toolbarRef.current;
         if (!element) return;
@@ -1439,6 +1452,7 @@ export default function Navigation() {
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
                 <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
                     onBack={() => navigate('/CommandDashboard')} onRecenter={recenter}
+                    fullscreen={mapFullscreen} onToggleFullscreen={() => setMapFullscreen(value => !value)}
                     gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
             </div>
@@ -1568,7 +1582,7 @@ export default function Navigation() {
                                 <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                                 <div className="min-w-0 flex-1">
                                     <div className="text-[10px] font-black uppercase tracking-wide text-emerald-300">{mapSelectedDestination.label || 'Selected Location'}</div>
-                                    <div className="mt-1 text-xs leading-relaxed text-white">{mapSelectedDestination.address || mapSelectedDestination.name}</div>
+                                    <div className="mt-1 text-sm font-bold text-white">{mapSelectedDestination.name}</div><div className="mt-1 text-xs leading-relaxed text-slate-300">{mapSelectedDestination.address}</div>
                                 </div>
                             </div>
                             <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={routing}
@@ -1758,19 +1772,20 @@ export default function Navigation() {
                 </div>
             </motion.div>
 
-            <div className="absolute bottom-9 left-2 right-24 z-[1400] flex flex-wrap items-center gap-2 rounded-lg bg-[#07111f]/95 p-2 text-xs text-slate-200" role="status">
+            {showMapStatus && <div className="absolute bottom-14 left-2 right-24 z-[1400] flex flex-wrap items-center gap-2 rounded-lg bg-[#07111f]/95 p-2 text-xs text-slate-200" role="status">
                 <span>{callsError || (callsCheckedAt ? `Calls checked ${formatEasternTime(callsCheckedAt)} · ${activeCalls.length} open · ${unmappedCalls.length} without map coordinates` : 'Loading active calls…')}</span>
                 <button type="button" className="min-h-11 rounded border border-slate-600 px-3" onClick={() => { clearActiveDispatchCallMemoryCache(); fetchCalls(); }}>Refresh calls</button>
-            </div>
+            </div>}
             {/* ══ BOTTOM STATUS STRIP ══ */}
             <div className="absolute bottom-0 left-0 right-0 z-[1400] pointer-events-none">
                 <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-t border-[#1e2d4a]">
-                    <span className="text-[9px] font-mono text-slate-500">
+                    <button type="button" aria-expanded={showMapStatus} onClick={() => setShowMapStatus(value => !value)} className="pointer-events-auto min-h-11 rounded px-2 text-xs text-slate-200">CAD details {showMapStatus ? '▾' : '▴'}</button>
+                    {!isNavigating && <><span className="text-[9px] font-mono text-slate-500">
                         CALLS: <span className="text-white">{activeCalls.length}</span>
                     </span>
                     <span className="text-[9px] font-mono text-slate-500">
                         UNITS: <span className="text-green-400">{onlineUnits.length}</span>
-                    </span>
+                    </span></>}
                     {criticalCalls.length > 0 && (
                         <span className="text-[9px] font-mono text-red-400 font-bold animate-pulse">
                             ⚠ {criticalCalls.length} CRITICAL
