@@ -58,23 +58,25 @@ export default function SupervisorOverview() {
     onError: error => toast.error(error?.message || 'Unable to finish this task'),
   });
 
-  const { data = {}, isLoading } = useQuery({
+  const { data = {}, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['supervisorOverviewSnapshot'],
     queryFn: async () => {
-      const users = await listDirectoryUsers('-last_updated', 500).catch(() => []);
-      const assignmentResult = await base44.functions.invoke('syncSupervisorOperationalTasks', {}).catch(() => ({}));
+      const failures = [];
+      const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };
+      const users = await read('Officer directory', () => listDirectoryUsers('-last_updated', 500), []);
+      const assignmentResult = await read('Task assignments', () => base44.functions.invoke('syncSupervisorOperationalTasks', {}));
       const supervisorAssignments = assignmentResult?.data || assignmentResult || {};
-      const taskResult = await base44.functions.invoke('getSupervisorScopedTasks', {}).catch(() => ({}));
+      const taskResult = await read('Personnel actions', () => base44.functions.invoke('getSupervisorScopedTasks', {}));
       const taskPayload = taskResult?.data || taskResult || {};
       const [boardResult, reportResult, locationSnapshot] = await Promise.all([
-        base44.functions.invoke('getSupervisorWelfareBoard', {}).catch(() => ({})),
-        base44.functions.invoke('getRoleWorkQueue', { queue_role:'supervisor_reports' }).catch(() => ({})),
-        getOfficerLocationSnapshot().catch(() => ({})),
+        read('Live command board', () => base44.functions.invoke('getSupervisorWelfareBoard', {})),
+        read('Report work queue', () => base44.functions.invoke('getRoleWorkQueue', { queue_role:'supervisor_reports' })),
+        read('Live units', () => getOfficerLocationSnapshot()),
       ]);
       const board = boardResult?.data || boardResult || {};
       const reportWork = reportResult?.data || reportResult || {};
       const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true);
-      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits };
+      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits, failures: [...failures,...(reportWork.load_errors||[])] };
     },
     staleTime: 30000,
     refetchInterval: 60000,
@@ -83,7 +85,7 @@ export default function SupervisorOverview() {
   const directory = buildDirectoryIndex(data.users || []);
   const tasks = data.tasks || {};
   const board = data.board || {};
-  const reportTasks = (data.reportWork?.tasks || []).filter(task => task.kind === 'report_review');
+  const reportTasks = (data.reportWork?.tasks || []).filter(task => ['report_review','missing_report'].includes(task.kind));
   const supervisorAssignments = data.supervisorAssignments || {};
   const assignedSupervisorTasks = supervisorAssignments.assigned_tasks || [];
   const complaints = tasks.complaints || [];
@@ -119,10 +121,11 @@ export default function SupervisorOverview() {
     assigned_distance_miles: row.assigned_distance_miles,
   }));
   const taskQueue = [
-    ...(supervisorAssignments.success ? autoAssignedQueue : legacyTaskQueue),
-    ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:'report_review', title:row.title || 'Report Awaiting Review', person:row.person || 'Officer', detail:row.detail || 'Submitted report requires supervisor review' })),
+    ...(supervisorAssignments.success ? autoAssignedQueue : legacyTaskQueue).filter(item => item.kind !== 'missing_report'),
+    ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Report Awaiting Review', person:row.person || 'Officer', detail:row.detail || 'Submitted report requires supervisor review' })),
   ];
 
+  const degraded = Boolean(error || data.failures?.length);
   const totalTasks = taskQueue.length;
   const attention = [
     ...taskQueue.filter(item => item.kind !== 'report_review').slice(0,4).map(item => ({ label: item.title, detail: `${item.person} · ${item.detail}` })),
@@ -137,18 +140,19 @@ export default function SupervisorOverview() {
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div><div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[.22em] text-blue-300"><ShieldCheck className="h-4 w-4"/>Field Leadership</div><h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Supervisor Command Overview</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Live command status, active calls, welfare, supervisor requests and pending personnel actions in one screen.</p></div>
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-200">{isLoading ? 'LOADING COMMAND DATA' : 'COMMAND READY'}</div>
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-200">{isLoading ? 'LOADING COMMAND DATA' : degraded ? 'DATA NEEDS RETRY' : 'COMMAND READY'}</div>
           </div>
         </section>
 
+        <div className="flex flex-wrap gap-3"><button type="button" disabled={isFetching} onClick={()=>refetch()} className="min-h-11 rounded border border-blue-500 px-4">{isFetching?'Refreshing…':'Refresh command data'}</button>{degraded&&<p role="alert" className="text-amber-200">Some command data is unavailable: {(data.failures||[]).join(', ') || error?.message}. Empty sections are not confirmation that work is complete.</p>}</div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[['Live Units', liveUnits.length, Users, 'Units currently visible to supervisor'], ['Active Calls', activeCalls.length, Siren, 'Calls requiring field response'], ['Welfare / Requests', welfare.length + supervisorRequests.length, Activity, 'Officer welfare and assist requests'], ['Action Items', totalTasks, ClipboardList, 'Attendance, reports, reviews and discipline']].map(([label,value,Icon,detail]) => <div key={label} className="bps-kpi-card rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="bps-kpi-icon bg-blue-500/10 text-blue-300"><Icon className="h-5 w-5"/></div><span className="bps-kpi-value text-3xl font-black">{value}</span><div className="bps-kpi-label text-sm font-black">{label}</div><div className="bps-kpi-detail text-xs text-slate-500">{detail}</div></div>)}
+          {[['Live Units', liveUnits.length, Users, 'Units currently visible to supervisor'], ['Active Calls', activeCalls.length, Siren, 'Calls requiring field response'], ['Welfare / Requests', welfare.length + supervisorRequests.length, Activity, 'Officer welfare and assist requests'], ['Action Items', totalTasks, ClipboardList, 'Attendance, reports, reviews and discipline']].map(([label,value,Icon,detail]) => <div key={label} className="bps-kpi-card rounded-2xl border border-slate-800 bg-[#0b1624] p-5 shadow-lg"><div className="bps-kpi-icon bg-blue-500/10 text-blue-300"><Icon className="h-5 w-5"/></div><span className="bps-kpi-value text-3xl font-black">{isLoading || degraded ? '—' : value}</span><div className="bps-kpi-label text-sm font-black">{label}</div><div className="bps-kpi-detail text-xs text-slate-500">{detail}</div></div>)}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
           <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="flex items-center justify-between"><div><div className="text-xs font-black uppercase tracking-[.16em] text-blue-300">Command Attention</div><h3 className="mt-1 text-xl font-black">Needs supervisor action</h3></div><Siren className="h-5 w-5 text-red-300"/></div><div className="mt-4 space-y-2">{attention.length ? attention.map((item,index) => <div key={`${item.label}-${index}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-[#0d1a2a] px-4 py-3"><div className="text-sm font-bold">{item.label}</div><div className="text-right text-xs text-slate-400">{item.detail}</div></div>) : <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No urgent command attention items are currently listed.</div>}</div></section>
 
-          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="text-xs font-black uppercase tracking-[.16em] text-blue-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">Supervisor work queue</h3><div className="mt-4 space-y-2">{taskQueue.map(item => <div key={item.id} className="rounded-xl border border-slate-800 bg-[#0d1a2a] p-3"><div className="text-sm font-black">{item.title}</div><div className="text-xs font-bold text-blue-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div>{item.assignment_basis && <div className="mt-2 text-[10px] font-black uppercase tracking-wide text-cyan-300">{item.assignment_basis === 'nearest_gps' ? 'Closest supervisor by live GPS' : item.assignment_basis === 'nearest_site' ? 'Closest supervisor by current site' : 'Assigned by active workload'}{Number.isFinite(Number(item.assigned_distance_miles)) ? ` · ${Number(item.assigned_distance_miles).toFixed(1)} mi` : ''}</div>}<button type="button" onClick={()=>finishTask.mutate(item)} disabled={finishTask.isPending} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"><ShieldCheck className="h-3.5 w-3.5"/>{finishTask.isPending && finishTask.variables?.id===item.id ? 'FINISHING…' : 'MARK FINISHED'}</button></div>)}{!taskQueue.length && <div className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-sm text-slate-500">No personnel actions are waiting.</div>}</div></section>
+          <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-5"><div className="text-xs font-black uppercase tracking-[.16em] text-blue-300">Pending Actions</div><h3 className="mt-1 text-xl font-black">Supervisor work queue</h3><div className="mt-4 space-y-2">{taskQueue.map(item => <div key={item.id} className="rounded-xl border border-slate-800 bg-[#0d1a2a] p-3"><div className="text-sm font-black">{item.title}</div><div className="text-xs font-bold text-blue-200">{item.person}</div><div className="mt-1 text-xs text-slate-500">{item.detail}</div>{item.assignment_basis && <div className="mt-2 text-[10px] font-black uppercase tracking-wide text-cyan-300">{item.assignment_basis === 'nearest_gps' ? 'Closest supervisor by live GPS' : item.assignment_basis === 'nearest_site' ? 'Closest supervisor by current site' : 'Assigned by active workload'}{Number.isFinite(Number(item.assigned_distance_miles)) ? ` · ${Number(item.assigned_distance_miles).toFixed(1)} mi` : ''}</div>}<Link to={createPageUrl(item.kind==='report_review'||item.kind==='missing_report'?'AdminReports':'SupervisorTasks')} className="mt-2 mr-2 inline-flex min-h-11 items-center rounded border border-blue-600 px-3 text-xs font-bold">OPEN TASK</Link>{!['report_review','missing_report'].includes(item.kind)&&<button type="button" onClick={()=>finishTask.mutate(item)} disabled={finishTask.isPending} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"><ShieldCheck className="h-3.5 w-3.5"/>{finishTask.isPending && finishTask.variables?.id===item.id ? 'FINISHING…' : 'MARK FINISHED'}</button>}</div>)}{!taskQueue.length && <div className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-sm text-slate-500">{isLoading ? 'Loading personnel actions…' : degraded ? 'Queue incomplete. Retry command data.' : 'No personnel actions are waiting.'}</div>}</div></section>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{actions.map(({ label, detail, icon: Icon, page }) => <Link key={label} to={createPageUrl(page)} className="group rounded-2xl border border-slate-800 bg-[#0b1624] p-4 transition hover:-translate-y-0.5 hover:border-blue-500/40 hover:bg-[#102238]"><div className="flex items-start justify-between gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-blue-300"><Icon className="h-5 w-5"/></div><ArrowRight className="h-4 w-4 text-slate-600 transition group-hover:translate-x-1 group-hover:text-blue-300"/></div><div className="mt-4 text-sm font-black text-white">{label}</div><div className="mt-1 text-xs leading-5 text-slate-500">{detail}</div></Link>)}</div>

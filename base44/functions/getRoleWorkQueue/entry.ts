@@ -540,10 +540,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    let supervisorMissingIds: Set<string> | null = null;
+    if (queueRole === 'supervisor') {
+      const scopedResponse = await base44.functions.invoke('getSupervisorScopedTasks', {peopleOnly:true});
+      const scoped = scopedResponse?.data || scopedResponse;
+      if (!Array.isArray(scoped?.assignedPeople)) throw new Error('Supervisor personnel scope unavailable');
+      const emails = new Set(scoped.assignedPeople.flatMap((person:any)=>[person.email,...(person.email_aliases||[])].map(normalized)));
+      supervisorMissingIds = new Set((entries||[]).filter((entry:any)=>emails.has(normalized(entry.officer_email))).map((entry:any)=>String(entry.id)));
+      for(let i=candidates.length-1;i>=0;i--) if(candidates[i].kind==='missing_report'&&!supervisorMissingIds.has(String(candidates[i].source_id))) candidates.splice(i,1);
+    }
     const allowedKinds = queueRole === 'hr'
-      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'performance_review', 'annual_review_due'])
+      ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'pto', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
-        ? new Set(['report_review'])
+        ? new Set(['report_review', 'missing_report'])
         : new Set(['pto', 'missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
       if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
@@ -696,6 +705,7 @@ Deno.serve(async (req) => {
     });
     const heldIds = new Set(heldTasks.map(task => task.id));
     tasks = tasks.filter(task => !heldIds.has(task.id));
+    if(supervisorMissingIds) tasks=tasks.filter(task=>task.kind!=='missing_report'||supervisorMissingIds.has(String(task.source_id)));
     const countKind = (kind: string) => tasks.filter(task => task.kind === kind).length;
     return Response.json({
       success: true,

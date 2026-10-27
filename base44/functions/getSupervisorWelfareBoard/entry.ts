@@ -20,14 +20,14 @@ Deno.serve(async (req) => {
     // independent sources together so the board does not wait through five serial
     // database round trips before it can paint.
     const [calls, allAssignments, welfareChecks, statusLogs, users, dutyEntries] = await Promise.all([
-      base44.asServiceRole.entities.DispatchCall.list('-created_date', 300).catch(() => []),
-      base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600).catch(() => []),
-      base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200).catch(() => []),
-      base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300).catch(() => []),
-      base44.asServiceRole.entities.User.list('-updated_date', 750).catch(() => []),
-      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 750).catch(() => []),
+      base44.functions.invoke('getActiveDispatchCalls', {limit:500}).then((response:any) => { const data=response?.data||response; if(data?.error||!Array.isArray(data?.calls))throw new Error(data?.error||'Active call feed unavailable'); return data.calls; }),
+      base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 600),
+      base44.asServiceRole.entities.OfficerWelfareCheck.list('-requested_at', 200),
+      base44.asServiceRole.entities.CallStatusLog.list('-created_date', 300),
+      base44.asServiceRole.entities.User.list('-updated_date', 750),
+      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 750),
     ]);
-    const activeCalls = (calls || []).filter((call:any) => !terminalCall(call)).slice(0, 200);
+    const activeCalls = (calls || []).filter((call:any) => !terminalCall(call));
     const activeCallIds = new Set(activeCalls.map((call:any) => String(call.id)));
     const assignments = (allAssignments || [])
       .filter((a:any) => activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status)));
