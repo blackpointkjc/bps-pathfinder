@@ -1,3 +1,4 @@
+import { dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, ClipboardList, Radio, ClipboardCheck, FileWarning, ArrowRight, Siren, Users, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -96,7 +97,7 @@ export default function SupervisorOverview() {
   const missedClockIns = tasks.missedClockIns || [];
   const missingReports = tasks.missingReports || [];
   const liveUnits = data.liveUnits || [];
-  const activeCalls = board.active_calls || [];
+  const activeCalls = dedupeOperationalCalls(board.active_calls || []);
   const welfare = board.welfare_checks || board.active_welfare || [];
   const supervisorRequests = board.supervisor_requests || [];
 
