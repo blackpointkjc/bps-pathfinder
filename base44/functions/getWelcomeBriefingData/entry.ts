@@ -16,6 +16,18 @@ Deno.serve(async (req) => {
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(new Date());
+    const previousDate = new Date(today+'T12:00:00Z'); previousDate.setUTCDate(previousDate.getUTCDate()-1);
+    const yesterday=previousDate.toISOString().slice(0,10);
+    async function completeRows(name:string, query:any = null) {
+      const rows:any[]=[];
+      for(let skip=0;skip<10000;skip+=500) {
+        const entity=base44.asServiceRole.entities[name];
+        const page=query ? await entity.filter(query,'-id',500,skip) : await entity.list('-id',500,skip);
+        rows.push(...page);
+        if(page.length<500)return rows;
+      }
+      throw new Error(name+' list exceeds the complete briefing limit');
+    }
     const email = lower(me.email);
     const roles = new Set([me.role, ...(me.additional_roles || [])].filter(Boolean).map(lower));
     const operational = !roles.has('client') && !roles.has('student') && me.user_type !== 'client';
@@ -65,15 +77,15 @@ Deno.serve(async (req) => {
       : [];
 
     const allSchedules = operational
-      ? await loadSource("today's schedule", () => base44.asServiceRole.entities.Schedule.filter({ shift_date: today }, 'start_time', 250), { required: false })
+      ? await loadSource("today's schedule", () => completeRows('Schedule', {shift_date:{$gte:yesterday,$lte:today},archived:{$ne:true}}), { required: false })
       : [];
 
     const timeEntries = operational
-      ? await loadSource('active staffing/time entries', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 250), { required: false })
+      ? await loadSource('active staffing/time entries', () => completeRows('TimeEntry', {clock_out:null,archived:{$ne:true}}), { required: false })
       : [];
 
     const allUsers = operational
-      ? await loadSource('company users', () => base44.asServiceRole.entities.User.list('last_name', 500), { required: false })
+      ? await loadSource('company users', () => completeRows('User'), { required: false })
       : [];
 
     const allUnits = operational
@@ -111,7 +123,8 @@ Deno.serve(async (req) => {
     const dispatchCalls: any[] = [];
 
     const units = officerLike ? (allUnits || []).filter((unit: any) => String(unit.user_id || '') === String(me.id)) : [];
-    const schedules = officerLike ? (allSchedules || []).filter((shift: any) => lower(shift.officer_email) === email) : [];
+    const ownEmails=new Set([me.email,me.work_email,me.pathfinder_email,me.microsoft_email,me.outlook_email,...(me.email_aliases||[])].map(lower).filter(Boolean));
+    const schedules = officerLike ? (allSchedules || []).filter((shift: any) => ownEmails.has(lower(shift.officer_email))) : [];
 
     return Response.json({
       success: true,

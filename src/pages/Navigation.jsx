@@ -1597,10 +1597,10 @@ export default function Navigation() {
                                 <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                                 <div className="min-w-0 flex-1">
                                     <div className="text-[10px] font-black uppercase tracking-wide text-emerald-300">{mapSelectedDestination.label || 'Selected Location'}</div>
-                                    <div className="mt-1 text-sm font-bold text-white">{mapSelectedDestination.name}</div><div className="mt-1 text-xs leading-relaxed text-slate-300">{mapSelectedDestination.address}</div>
+                                    <div className="mt-1 text-sm font-bold text-white">{mapSelectedDestination.name}</div>{mapSelectedDestination.address !== mapSelectedDestination.name && <div className="mt-1 text-xs leading-relaxed text-slate-300">{mapSelectedDestination.address}</div>}
                                 </div>
                             </div>
-                            <AddressCallHistory address={mapSelectedDestination.address || mapSelectedDestination.name} propertyId={mapSelectedDestination.locationId} />
+                            {(mapSelectedDestination.locationId || /^\d+[a-z]?\s+\S/i.test(mapSelectedDestination.address || mapSelectedDestination.name || "")) ? <AddressCallHistory address={mapSelectedDestination.address || mapSelectedDestination.name} propertyId={mapSelectedDestination.locationId} /> : <p className="mt-2 text-xs text-slate-300">Call history requires a street address. You can still navigate to this pin.</p>}
                             <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={routing}
                                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
                                 <Navigation2 className="h-4 w-4" /> NAVIGATE HERE

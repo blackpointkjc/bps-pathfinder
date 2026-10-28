@@ -59,7 +59,7 @@ Deno.serve(async req => {
     const near = valid(lat, lon) && input.latitude != null && input.longitude != null
       ? '&lat=' + lat + '&lon=' + lon : '';
     const encoded = encodeURIComponent(query);
-    const hasHouseNumber = /^\d{1,6}\s/.test(query);
+
     const providers: Array<() => Promise<any[]>> = [
       async () => {
         const result = await fetchJson('https://photon.komoot.io/api/?q=' + encoded + '&limit=8' + near);
@@ -82,7 +82,7 @@ Deno.serve(async req => {
       },
     ];
     // Search parallel rather than waiting for each provider to time out.
-    const settled = await Promise.allSettled(hasHouseNumber ? [providers[1](), providers[0]()] : [providers[0](), providers[1]()]);
+    const settled = await Promise.allSettled([providers[0](), providers[1]()]);
     const seen = new Set<string>();
     const results: any[] = [];
     for (const outcome of settled) {

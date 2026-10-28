@@ -101,13 +101,13 @@ export default function SupervisorOverview() {
   const supervisorRequests = board.supervisor_requests || [];
 
   const legacyTaskQueue = [
-    ...missedClockIns.slice(0,6).map(row => ({ id:`missed-clock-${row.id}`, source_id:row.id, kind:'missed_clock_in', title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}` })),
-    ...missingReports.slice(0,6).map(row => ({ id:`missing-report-${row.id}`, source_id:row.id, kind:'missing_report', title:'Required Daily Report Missing', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${String(row.clock_in || '').slice(0,10)} · ${row.location || 'Location not listed'}` })),
-    ...reviews.slice(0,4).map(row => ({ id:`review-${row.id}`, source_id:row.id, kind:'review', title:'Performance Review', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Supervisor review/signature workflow requires action' })),
-    ...reviewFollowUps.slice(0,4).map(row => ({ id:`review-followup-${row.id}`, source_id:row.id, kind:'review_follow_up', title:'Performance Review Follow-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Officer acknowledgement follow-up requires action' })),
-    ...inspections.slice(0,4).map(row => ({ id:`inspection-${row.id}`, source_id:row.id, kind:'inspection', title:'Officer Inspection', person:operationalName(row,directory,{fallback:'Officer'}), detail:row.location || 'Inspection follow-up required' })),
-    ...writeups.slice(0,4).map(row => ({ id:`writeup-${row.id}`, source_id:row.id, kind:'writeup', title:'Write-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Disciplinary review requires supervisor action' })),
-    ...complaints.slice(0,4).map(row => ({ id:`complaint-${row.id}`, source_id:row.id, kind:'complaint', title:'Complaint Investigation', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Complaint investigation/follow-up required' })),
+    ...missedClockIns.map(row => ({ id:`missed-clock-${row.id}`, source_id:row.id, kind:'missed_clock_in', title:'Scheduled Officer Has Not Clocked In', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${row.start_time || 'Scheduled'} at ${row.location || 'assigned site'}` })),
+    ...missingReports.map(row => ({ id:`missing-report-${row.id}`, source_id:row.id, kind:'missing_report', title:'Required Daily Report Missing', person:operationalName(row,directory,{fallback:'Officer'}), detail:`${String(row.clock_in || '').slice(0,10)} · ${row.location || 'Location not listed'}` })),
+    ...reviews.map(row => ({ id:`review-${row.id}`, source_id:row.id, kind:'review', title:'Performance Review', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Supervisor review/signature workflow requires action' })),
+    ...reviewFollowUps.map(row => ({ id:`review-followup-${row.id}`, source_id:row.id, kind:'review_follow_up', title:'Performance Review Follow-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Officer acknowledgement follow-up requires action' })),
+    ...inspections.map(row => ({ id:`inspection-${row.id}`, source_id:row.id, kind:'inspection', title:'Officer Inspection', person:operationalName(row,directory,{fallback:'Officer'}), detail:row.location || 'Inspection follow-up required' })),
+    ...writeups.map(row => ({ id:`writeup-${row.id}`, source_id:row.id, kind:'writeup', title:'Write-Up', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Disciplinary review requires supervisor action' })),
+    ...complaints.map(row => ({ id:`complaint-${row.id}`, source_id:row.id, kind:'complaint', title:'Complaint Investigation', person:operationalName(row,directory,{fallback:'Officer'}), detail:'Complaint investigation/follow-up required' })),
   ];
   const autoAssignedQueue = assignedSupervisorTasks.map(row => ({
     id: row.task_key,
@@ -121,7 +121,7 @@ export default function SupervisorOverview() {
     assigned_distance_miles: row.assigned_distance_miles,
   }));
   const taskQueue = [
-    ...(supervisorAssignments.success ? autoAssignedQueue : legacyTaskQueue).filter(item => item.kind !== 'missing_report'),
+    ...(supervisorAssignments.success ? autoAssignedQueue : legacyTaskQueue).filter(item => item.kind !== 'missing_report' || !Array.isArray(data.reportWork?.tasks) || data.reportWork?.load_errors?.length),
     ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Report Awaiting Review', person:row.person || 'Officer', detail:row.detail || 'Submitted report requires supervisor review' })),
   ];
 

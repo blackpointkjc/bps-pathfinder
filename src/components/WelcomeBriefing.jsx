@@ -50,6 +50,13 @@ function shiftHasNotEnded(shift, nowMinutes = easternMinutesNow()) {
   };
   const start = parse(shift?.start_time);
   const end = parse(shift?.end_time);
+  if (shift?.archived === true || shift?.is_open === true) return false;
+  const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const day=String(shift?.shift_date || '').slice(0,10);
+  if (day && day < today) {
+    const yesterday=new Date(today+'T12:00:00Z');yesterday.setUTCDate(yesterday.getUTCDate()-1);
+    return day===yesterday.toISOString().slice(0,10) && start>=0 && end>=0 && end<=start && nowMinutes<end;
+  }
   if (end < 0) return true;
   if (start >= 0 && end <= start) return true;
   return end > nowMinutes;
