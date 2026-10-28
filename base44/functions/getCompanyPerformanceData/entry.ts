@@ -1,4 +1,3 @@
-
 function easternMidnight(day:string) {
   const raw = Date.parse(day + 'T00:00:00.000Z');
   const zone = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(raw)).find(part=>part.type==='timeZoneName')?.value || 'GMT';
@@ -405,39 +404,103 @@ function matchesQuery(row: any, query: any): boolean {
 function companyPerformanceEntities(entities: any, start: string, end: string) {
   const pending = new Map<string, Promise<any[]>>();
   const endDate = new Date(end + 'T00:00:00.000Z'); endDate.setUTCDate(endDate.getUTCDate() + 1);
+  const startStamp = easternMidnight(start);
+  const endStamp = easternMidnight(endDate.toISOString().slice(0,10));
   const dateFields: Record<string,string> = { Schedule:'shift_date', CallOut:'call_out_date', DailyActivityReport:'report_date', ShiftReport:'shift_date', Commendation:'commendation_date', Complaint:'complaint_date', ClientFeedback:'feedback_date', PerformanceReview:'review_date' };
-  const stampFields: Record<string,string> = { TimeEntry:'clock_in', ShiftBid:'created_date', QRScanEvent:'scanned_at', DispatchCall:'time_received', CallHistory:'archived_date', PropertyAlert:'created_date' };
+  // CallHistory.archived_date is not indexed, so a month-wide filter over the whole
+  // archive can exceed the database read timeout. The system created_date records
+  // the same archiving moment and is always indexed.
+  const stampFields: Record<string,string> = { TimeEntry:'clock_in', ShiftBid:'created_date', QRScanEvent:'scanned_at', DispatchCall:'time_received', CallHistory:'created_date', PropertyAlert:'created_date' };
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 25;
+  const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const retryable = (error: any) => {
+    const status = Number(error?.status || error?.response?.status || 0);
+    if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
+    return /429|rate.?limit|too many requests|timed? ?out|ETIMEDOUT|ECONNRESET|socket hang up|temporarily unavailable|network/i.test(String(error?.message || ''));
+  };
   let tail: Promise<any> = Promise.resolve();
-  const read = (fn: () => Promise<any[]>) => {
+  const read = (fn: () => Promise<any>) => {
     const task = tail.then(async () => {
-      for (let attempt=0; ; attempt++) {
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
         try { return await fn(); }
-        catch(error: any) {
-          if (attempt >= 1 || error?.status === 429 || error?.response?.status === 429 || /429|rate.limit|too many requests/i.test(error?.message || '')) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1500 * (attempt + 1)));
+        catch (error: any) {
+          lastError = error;
+          if (!retryable(error) || attempt === 3) throw error;
+          const status = Number(error?.status || error?.response?.status || 0);
+          // A rate limit is a wait, not a missing source: back off instead of
+          // marking the whole source unavailable for every officer.
+          const wait = status === 429 ? 4000 * (attempt + 1) : 800 * Math.pow(2, attempt);
+          await pause(wait + Math.floor(Math.random() * 400));
         }
       }
+      throw lastError || new Error('Unable to read data');
     });
     tail = task.catch(() => undefined);
     return task;
   };
+  const shape = (result: any) => Array.isArray(result)
+    ? { items: result, next: null }
+    : { items: Array.isArray(result?.items) ? result.items : [], next: result?.next_cursor || null };
+  const readPage = async (name: string, query: any, cursor: string | null) => {
+    const options: any = { sort: '-created_date', limit: PAGE_SIZE };
+    if (cursor) options.cursor = cursor;
+    const result = query ? await entities[name].filter(query, options) : await entities[name].list(options);
+    return shape(result);
+  };
+  // Calls are never swept as whole collections. The period's property alerts are
+  // the authoritative index of the calls that can affect scoring, so only those
+  // call ids are fetched (plus one recent page for live, not-yet-linked calls).
+  // This replaces ~25 paged reads of a twelve-thousand-row collection.
+  const readAlertLinkedCalls = async (name: string) => {
+    const alerts = await allRows('PropertyAlert');
+    const ids = [...new Set((alerts || []).map((alert: any) => String(alert?.callId || '')).filter(Boolean))];
+    const rows: any[] = [];
+    for (let index = 0; index < ids.length; index += 100) {
+      const chunk = ids.slice(index, index + 100);
+      const query = { $or: [{ id: { $in: chunk } }, { original_call_id: { $in: chunk } }, { call_id: { $in: chunk } }] };
+      const page = await read(() => readPage(name, query, null));
+      rows.push(...page.items);
+    }
+    const recent = await read(() => readPage(name, { [stampFields[name] || 'created_date']: { $gte: startStamp, $lt: endStamp } }, null));
+    rows.push(...recent.items);
+    const seen = new Set<string>();
+    return rows.filter((row: any) => {
+      const key = String(row?.id || '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
   const allRows = (name: string) => {
-    const key=name+':'+start+':'+end;
-    const cached=sourceCache.get(key);
-    if(cached&&Date.now()-cached.at<300000)return Promise.resolve(cached.rows);
-    if(sourcePending.has(key))return sourcePending.get(key)!;
-    if (!pending.has(name)) { const task=(async () => {
-      const date = dateFields[name], stamp = stampFields[name];
-      const query = date ? { [date]: { $gte:start, $lte:end } } : stamp ? { [stamp]: { $gte:easternMidnight(start), $lt:easternMidnight(endDate.toISOString().slice(0,10)) } } : null;
-      const rows: any[] = [];
-      for (let skip=0;skip<20000;skip+=500) {
-        const page = await read(() => query ? entities[name].filter(query, '-id', 500, skip) : entities[name].list('-id', 500, skip));
-        if (!Array.isArray(page)) throw new Error(name + ' did not return records');
-        rows.push(...page);
-        if (page.length < 500) {sourceCache.set(key,{at:Date.now(),rows});return rows;}
-      }
-      throw new Error(name + ' exceeded the complete-source read limit; figures were not recalculated');
-    })().finally(()=>sourcePending.delete(key)); pending.set(name,task);sourcePending.set(key,task); }
+    const key = name + ':' + start + ':' + end;
+    const cached = sourceCache.get(key);
+    if (cached && Date.now() - cached.at < 300000) return Promise.resolve(cached.rows);
+    if (sourcePending.has(key)) return sourcePending.get(key)!;
+    if (!pending.has(name)) {
+      const task = (async () => {
+        let rows: any[] = [];
+        if (name === 'DispatchCall' || name === 'CallHistory') {
+          rows = await readAlertLinkedCalls(name);
+        } else {
+          const date = dateFields[name], stamp = stampFields[name];
+          const query = date ? { [date]: { $gte: start, $lte: end } } : stamp ? { [stamp]: { $gte: startStamp, $lt: endStamp } } : null;
+          let cursor: string | null = null;
+          for (let page = 0; page < MAX_PAGES; page += 1) {
+            const result = await read(() => readPage(name, query, cursor));
+            if (!result.items.length) break;
+            rows.push(...result.items);
+            if (!result.next) break;
+            cursor = result.next;
+          }
+        }
+        sourceCache.set(key, { at: Date.now(), rows });
+        return rows;
+      })().finally(() => sourcePending.delete(key));
+      pending.set(name, task);
+      sourcePending.set(key, task);
+    }
     return pending.get(name)!;
   };
   const select = async (name: string, query: any, sort?: string, limit?: number) => {
@@ -473,7 +536,17 @@ Deno.serve(async (req) => {
         const response = await loadPerformanceData(client, officer, body, { sharedCompanyRead: true });
         const payload = await response.json();
         if (!response.ok || payload.error) throw new Error(payload.error || 'Performance load failed');
-        if (payload.is_partial) throw new Error('Sources unavailable: ' + Object.keys(payload.service_errors || {}).join(', '));
+        if (payload.is_partial) {
+          console.warn('getCompanyPerformanceData partial source read', officer.id, JSON.stringify(payload.service_errors || {}));
+          throw new Error('Sources unavailable: ' + Object.keys(payload.service_errors || {}).join(', '));
+        }
+        // The profile photo is a large base64 payload that the analytics views
+        // never read from a snapshot; carrying it per officer inflated every
+        // company refresh into megabytes.
+        if (payload.officer) {
+          const { profile_photo_url, profile_photo_original_url, ...identity } = payload.officer;
+          payload.officer = identity;
+        }
         snapshots[officer.id] = payload;
       } catch (error: any) { errors[officer.id] = error?.message || 'Unable to refresh performance'; }
     }

@@ -1,4 +1,3 @@
-
 function easternMidnight(day:string) {
   const raw = Date.parse(day + 'T00:00:00.000Z');
   const zone = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(raw)).find(part=>part.type==='timeZoneName')?.value || 'GMT';
@@ -44,15 +43,19 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
       await acquireReadSlot();
       try {
         let lastError:any = null;
-        const attempts = options.sharedCompanyRead ? 1 : 2;
+        // A rate limit or a slow read is transient: wait and retry instead of
+        // reporting the whole source as missing for this officer.
+        const attempts = options.sharedCompanyRead ? 2 : 3;
         for (let attempt = 0; attempt < attempts; attempt += 1) {
           try {
             return await reader() || [];
           } catch (error: any) {
             lastError = error;
-            const isRateLimit = error?.status === 429 || error?.response?.status === 429 || /rate.limit|429|too many requests/i.test(String(error?.message || ''));
-            if (!isRateLimit || attempt === attempts - 1) break;
-            await new Promise(resolve => setTimeout(resolve, 1800));
+            const status = Number(error?.status || error?.response?.status || 0);
+            const transient = [408, 429, 500, 502, 503, 504].includes(status)
+              || /rate.limit|429|too many requests|timed? ?out|ETIMEDOUT|ECONNRESET|socket hang up|network/i.test(String(error?.message || ''));
+            if (!transient || attempt === attempts - 1) break;
+            await new Promise(resolve => setTimeout(resolve, (status === 429 ? 4000 : 1200) * (attempt + 1)));
           }
         }
         throw lastError || new Error('Unable to read data');
