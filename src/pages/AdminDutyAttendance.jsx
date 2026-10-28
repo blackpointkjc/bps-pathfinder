@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -7,8 +7,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, RefreshCw, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
+import { Shield, RefreshCw, CheckCircle2, AlertTriangle, Search, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
 import DutyAttendanceRow from '@/components/admin/DutyAttendanceRow';
 import { getRankLastName } from '@/utils/officerDisplay';
 import { buildDutyAttendanceRows, reviewPeriodDates, summarizeReview } from '@/lib/dutyAttendanceReview';
@@ -54,6 +55,8 @@ export default function AdminDutyAttendance() {
   const [expandedId, setExpandedId] = useState(() => searchParams.get('record_id') || null);
   const [completing, setCompleting] = useState(false);
   const [savingKey, setSavingKey] = useState(null);
+  const [followUpSync, setFollowUpSync] = useState({ status: 'idle', open: 0, supervisors: 0, error: '' });
+  const syncedFindingsRef = useRef('');
 
   const queueTask = searchParams.get('queue_task');
   const queueKind = searchParams.get('queue_kind');
@@ -89,6 +92,46 @@ export default function AdminDutyAttendance() {
     [segmentsReady, reviewData, startDate, endDate, adjustments]
   );
   const summary = useMemo(() => summarizeReview(allRows), [allRows]);
+
+  // Every outstanding finding is handed to the supervisor workflow as a reach-out
+  // task, so an officer is contacted about the gap instead of it only being scored.
+  const findings = useMemo(() => allRows.map(row => {
+    const officerEmail = String(row.officer?.email || '').trim().toLowerCase();
+    if (!officerEmail) return null;
+    const items = [];
+    (row.missedDuties || []).filter(item => !item.exempt).forEach(item => {
+      items.push({ type: item.item_type || 'duty', label: item.label, date: item.date || '', property: item.property || '' });
+    });
+    (row.callOutItems || []).filter(item => !item.exempt).forEach(item => {
+      items.push({ type: 'call_out', label: item.reason ? `Call-out · ${item.reason}` : 'Call-out recorded', date: item.call_out_date || '', property: item.location || '' });
+    });
+    if (!items.length) return null;
+    return { officer_email: officerEmail, officer_name: getRankLastName(row.officer, officerEmail), officer_id: row.officer.id || '', items };
+  }).filter(Boolean), [allRows]);
+
+  const findingsSignature = useMemo(
+    () => `${startDate}|${endDate}|${findings.map(item => `${item.officer_email}=${item.items.length}:${item.items.map(entry => entry.label).join('~')}`).join('|')}`,
+    [findings, startDate, endDate]
+  );
+
+  useEffect(() => {
+    if (!isAdmin || !segmentsReady || syncedFindingsRef.current === findingsSignature) return undefined;
+    syncedFindingsRef.current = findingsSignature;
+    let cancelled = false;
+    setFollowUpSync(current => ({ ...current, status: 'saving', error: '' }));
+    base44.functions.invoke('syncDutyAttendanceFollowUps', { period_start: startDate, period_end: endDate, findings })
+      .then(response => {
+        const data = response?.data || response || {};
+        if (data.error) throw new Error(data.error);
+        if (cancelled) return;
+        setFollowUpSync({ status: 'done', open: Number(data.open_count) || 0, supervisors: Number(data.supervisor_count) || 0, error: '' });
+      })
+      .catch(failure => {
+        if (cancelled) return;
+        setFollowUpSync({ status: 'error', open: 0, supervisors: 0, error: failure?.message || 'Supervisor follow-ups could not be assigned.' });
+      });
+    return () => { cancelled = true; };
+  }, [findingsSignature, segmentsReady, isAdmin, startDate, endDate, findings]);
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -224,6 +267,25 @@ export default function AdminDutyAttendance() {
             <Button onClick={completeReviewTask} disabled={completing} size="sm" className="border border-emerald-500/40 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25">
               <CheckCircle2 className="mr-2 h-4 w-4" />{completing ? 'Saving…' : 'Mark review complete'}
             </Button>
+          </div>
+        )}
+
+        {isAdmin && segmentsReady && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <ClipboardList className="h-4 w-4 shrink-0 text-cyan-300" />
+              {followUpSync.status === 'saving' && 'Assigning officer follow-ups to supervisors…'}
+              {followUpSync.status === 'done' && (followUpSync.open
+                ? `${followUpSync.open} officer follow-up${followUpSync.open === 1 ? '' : 's'} assigned across ${followUpSync.supervisors} supervisor${followUpSync.supervisors === 1 ? '' : 's'} to reach out to the officer.`
+                : 'No outstanding findings need supervisor outreach for this period.')}
+              {followUpSync.status === 'error' && (followUpSync.error || 'Supervisor follow-ups could not be assigned.')}
+              {followUpSync.status === 'idle' && 'Supervisor follow-ups are assigned automatically for this period.'}
+            </span>
+            {followUpSync.open > 0 && (
+              <Link to={createPageUrl('SupervisorTasks')} className="inline-flex min-h-9 items-center rounded-lg border border-cyan-400/40 bg-[#0b2233] px-3 text-xs font-black text-cyan-100 hover:bg-[#0f2c42]">
+                Open Supervisor Action Items
+              </Link>
+            )}
           </div>
         )}
 

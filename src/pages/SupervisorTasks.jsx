@@ -1,241 +1,185 @@
-import { hasSupervisorAccess } from '@/lib/supervisorAccess';
-import { base44 } from "@/api/base44Client";
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ClipboardList, AlertTriangle, FileWarning, ClipboardCheck, UserCheck, ChevronRight } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ClipboardList, RefreshCw, Search, ShieldCheck, UserCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import SupervisorActionItem from '@/components/supervisor/SupervisorActionItem';
+import { ACTION_GROUPS, buildSupervisorActionItems, summarizeActionItems } from '@/lib/supervisorActionItems';
 
 export default function SupervisorTasks() {
+  const queryClient = useQueryClient();
+  const [group, setGroup] = useState('all');
+  const [search, setSearch] = useState('');
+  const [completingId, setCompletingId] = useState(null);
+
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const { data: scopedTasks = {}, isLoading: tasksLoading, error: tasksError } = useQuery({
+  const { data: payload = {}, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['supervisorScopedTasks', user?.id],
     queryFn: async () => {
       const response = await base44.functions.invoke('getSupervisorScopedTasks', {});
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload;
+      const data = response?.data || response || {};
+      if (data.error) throw new Error(data.error);
+      return data;
     },
     enabled: hasSupervisorAccess(user),
     refetchInterval: 60000,
   });
 
-  const assignedPeople = scopedTasks.assignedPeople || [];
-  const pendingComplaints = scopedTasks.complaints || [];
-  const pendingWriteUps = scopedTasks.writeups || [];
-  const pendingPerformanceReviews = scopedTasks.reviews || [];
-  const performanceReviewFollowUps = scopedTasks.reviewFollowUps || [];
-  const allActivePerformanceReviews = [...pendingPerformanceReviews, ...performanceReviewFollowUps];
-  const followUpInspections = scopedTasks.inspections || [];
+  const items = useMemo(() => buildSupervisorActionItems(payload), [payload]);
+  const summary = useMemo(() => summarizeActionItems(items), [items]);
+
+  const visibleItems = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return items.filter(item => {
+      if (group !== 'all' && item.group !== group) return false;
+      if (!term) return true;
+      return [item.title, item.person, item.detail, item.assignedTo]
+        .filter(Boolean)
+        .some(value => String(value).toLowerCase().includes(term));
+    });
+  }, [items, group, search]);
+
+  const complete = async item => {
+    if (!item?.complete) return;
+    setCompletingId(item.id);
+    try {
+      const response = await base44.functions.invoke('getSupervisorScopedTasks', item.complete);
+      const data = response?.data || response || {};
+      if (data.error) throw new Error(data.error);
+      toast.success(`Officer outreach recorded for ${item.person || 'the officer'}.`);
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
+      await refetch();
+    } catch (failure) {
+      toast.error(failure?.message || 'This action item could not be completed.');
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   if (user && !hasSupervisorAccess(user)) {
     return (
       <div className="p-8 text-center">
-        <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Supervisor Access Required</h2>
+        <UserCheck className="mx-auto mb-4 h-16 w-16 text-slate-400" />
+        <h2 className="mb-2 text-2xl font-bold text-slate-900">Supervisor access required</h2>
+        <p className="text-slate-600">This action list is limited to supervisory personnel.</p>
       </div>
     );
   }
 
-  const totalTasks = (pendingComplaints?.length || 0) + 
-                     (pendingWriteUps?.length || 0) + 
-                     (allActivePerformanceReviews?.length || 0) + 
-                     (followUpInspections?.length || 0);
-
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="mb-2 flex items-center gap-2 text-3xl font-black text-white">
-            <ClipboardList className="w-8 h-8 text-green-600" />
-            Supervisor Action Items
-          </h1>
-          <p className="text-slate-600">
-            Tasks for personnel in your assigned command ({assignedPeople.length} personnel · {totalTasks} pending)
-          </p>
+    <div className="min-h-screen bg-[#070d17] p-3 pb-10 text-white sm:p-4">
+      <div className="mx-auto max-w-[1500px] space-y-4">
+        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-4 shadow-lg sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-500/10"><ClipboardList className="h-5 w-5 text-emerald-300" /></div>
+              <div>
+                <h1 className="text-xl font-black leading-tight text-white">Supervisor Action Items</h1>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Everything assigned to you in one list: duty &amp; attendance outreach, report reviews, conduct, inspections, performance reviews and live operations.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => refetch()} disabled={isFetching} className="h-11 border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20">
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-[#0b1725] px-2.5 py-1 font-bold text-slate-200">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+              {payload.fullAccess ? 'Company-wide view' : 'Assigned to you'}
+            </span>
+            <span>Work rotates automatically across supervisors by open workload, so no single supervisor receives every follow-up.</span>
+          </div>
         </div>
 
-        {tasksLoading && <p role="status" className="rounded-lg border border-slate-700 p-3 text-slate-200">Loading supervisor action items…</p>}
-        {tasksError && <p role="alert" className="rounded-lg border border-red-700 bg-red-950/30 p-3 text-red-200">Unable to load supervisor action items: {tasksError.message}</p>}
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-indigo-50 hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5 text-purple-600" />
-                  Performance Reviews
-                </div>
-                <Badge className="bg-purple-600 text-white">
-                  {allActivePerformanceReviews?.length || 0}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-600 mb-4">
-                Review performance evaluations with officers and obtain signatures
-              </p>
-              {allActivePerformanceReviews.length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {allActivePerformanceReviews.slice(0, 3).map((review) => {
-                    const waitingForOfficer = String(review.workflow_stage || '') === 'officer_pending';
-                    return (
-                    <div key={review.id} className="p-3 bg-white rounded-lg border border-purple-200">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-sm">{review.officer_name}</p>
-                        <Badge className={waitingForOfficer ? 'bg-amber-600 text-white' : 'bg-purple-600 text-white'}>
-                          {waitingForOfficer ? 'Awaiting Officer Signature' : 'Supervisor Rating Due'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        {format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                  )})}
-                  {allActivePerformanceReviews.length > 3 && (
-                    <p className="text-xs text-slate-500">+ {allActivePerformanceReviews.length - 3} more</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-green-600 mb-4">✓ All reviews completed</p>
-              )}
-              <Link to={createPageUrl("SupervisorPerformanceReview")}>
-                <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                  View Tasks <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        {error && (
+          <div role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            Unable to load supervisor action items: {error.message}
+          </div>
+        )}
 
-          <Card className="border-none shadow-lg bg-gradient-to-br from-red-50 to-rose-50 hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileWarning className="w-5 h-5 text-red-600" />
-                  Write-Up Approvals
-                </div>
-                <Badge className="bg-red-600 text-white">
-                  {pendingWriteUps?.length || 0}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-600 mb-4">
-                Write-ups awaiting admin approval
-              </p>
-              {pendingWriteUps && pendingWriteUps.length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {pendingWriteUps.slice(0, 3).map((writeUp) => (
-                    <div key={writeUp.id} className="p-3 bg-white rounded-lg border border-red-200">
-                      <p className="font-semibold text-sm">{writeUp.officer_name}</p>
-                      <p className="text-xs text-slate-500">
-                        {writeUp.violation_type?.replace(/_/g, ' ')} - {writeUp.severity?.replace(/_/g, ' ')}
-                      </p>
-                    </div>
-                  ))}
-                  {pendingWriteUps.length > 3 && (
-                    <p className="text-xs text-slate-500">+ {pendingWriteUps.length - 3} more</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-green-600 mb-4">✓ No pending approvals</p>
-              )}
-              <Link to={createPageUrl("SupervisorWriteUps")}>
-                <Button className="w-full bg-red-600 hover:bg-red-700">
-                  View Write-Ups <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className="rounded-xl border border-blue-500/30 bg-[#0d2033] p-4">
+            <div className="text-3xl font-black text-white">{summary.total}</div>
+            <div className="text-sm font-bold text-white">Open action items</div>
+            <p className="text-xs text-blue-200">{summary.urgent} high or critical</p>
+          </div>
+          <div className="rounded-xl border border-cyan-500/30 bg-[#0d2033] p-4">
+            <div className="text-3xl font-black text-white">{summary.byGroup.duty}</div>
+            <div className="text-sm font-bold text-white">Duty &amp; attendance</div>
+            <p className="text-xs text-cyan-200">Officer outreach follow-ups</p>
+          </div>
+          <div className="rounded-xl border border-amber-500/30 bg-[#0d2033] p-4">
+            <div className="text-3xl font-black text-white">{summary.byGroup.conduct}</div>
+            <div className="text-sm font-bold text-white">Conduct &amp; inspections</div>
+            <p className="text-xs text-amber-200">Complaints, write-ups, inspections</p>
+          </div>
+          <div className="rounded-xl border border-purple-500/30 bg-[#0d2033] p-4">
+            <div className="text-3xl font-black text-white">{summary.oldestDays}</div>
+            <div className="text-sm font-bold text-white">Oldest item (days)</div>
+            <p className="text-xs text-purple-200">{summary.byGroup.reviews} review · {summary.byGroup.reports} report · {summary.byGroup.live} live</p>
+          </div>
+        </div>
 
-          <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  Complaint Investigations
-                </div>
-                <Badge className="bg-amber-600 text-white">
-                  {pendingComplaints?.length || 0}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-600 mb-4">
-                Complaints awaiting investigation results
-              </p>
-              {pendingComplaints && pendingComplaints.length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {pendingComplaints.slice(0, 3).map((complaint) => (
-                    <div key={complaint.id} className="p-3 bg-white rounded-lg border border-amber-200">
-                      <p className="font-semibold text-sm">{complaint.officer_name}</p>
-                      <p className="text-xs text-slate-500">
-                        {complaint.complaint_type?.replace(/_/g, ' ')} - {complaint.investigation_status}
-                      </p>
-                    </div>
-                  ))}
-                  {pendingComplaints.length > 3 && (
-                    <p className="text-xs text-slate-500">+ {pendingComplaints.length - 3} more</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-green-600 mb-4">✓ No pending investigations</p>
-              )}
-              <Link to={createPageUrl("SupervisorComplaints")}>
-                <Button className="w-full bg-amber-600 hover:bg-amber-700">
-                  View Complaints <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="rounded-2xl border border-slate-800 bg-[#0a1421] p-4 shadow-lg sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setGroup('all')}
+                className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === 'all' ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#0b1725] text-slate-300 hover:text-white'}`}
+              >
+                All ({summary.total})
+              </button>
+              {ACTION_GROUPS.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setGroup(option.id)}
+                  className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === option.id ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#0b1725] text-slate-300 hover:text-white'}`}
+                >
+                  {option.label} ({summary.byGroup[option.id] || 0})
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="Search officer or task"
+                className="h-11 w-[240px] border-slate-700 bg-[#0b1725] pl-9 text-slate-100 placeholder:text-slate-500"
+              />
+            </div>
+          </div>
 
-          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                  Follow-Up Inspections
-                </div>
-                <Badge className="bg-blue-600 text-white">
-                  {followUpInspections?.length || 0}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-600 mb-4">
-                Officers requiring follow-up inspections
-              </p>
-              {followUpInspections && followUpInspections.length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {followUpInspections.slice(0, 3).map((inspection) => (
-                    <div key={inspection.id} className="p-3 bg-white rounded-lg border border-blue-200">
-                      <p className="font-semibold text-sm">{inspection.officer_inspected}</p>
-                      <p className="text-xs text-slate-500">
-                        {format(parseISO(inspection.inspection_date), 'MMM d, yyyy')} - {inspection.location}
-                      </p>
-                    </div>
-                  ))}
-                  {followUpInspections.length > 3 && (
-                    <p className="text-xs text-slate-500">+ {followUpInspections.length - 3} more</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-green-600 mb-4">✓ No follow-ups needed</p>
-              )}
-              <Link to={createPageUrl("SupervisorInspections")}>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  View Inspections <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="mt-4 space-y-2">
+            {isLoading && <div className="rounded-xl border border-dashed border-slate-800 p-7 text-center text-sm text-slate-400">Loading your action items…</div>}
+            {!isLoading && !visibleItems.length && (
+              <div className="rounded-xl border border-dashed border-slate-800 p-7 text-center text-sm text-emerald-300">
+                {items.length ? 'No action item matches this filter.' : 'Nothing is waiting on you. Every assigned follow-up is complete.'}
+              </div>
+            )}
+            {!isLoading && visibleItems.map(item => (
+              <SupervisorActionItem
+                key={item.id}
+                item={item}
+                showAssignee={Boolean(payload.fullAccess)}
+                onComplete={complete}
+                completing={completingId === item.id}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

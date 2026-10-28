@@ -47,6 +47,7 @@ export default async function(req: Request): Promise<Response> {
       : (users || []).filter((user:any) => isAdminUser(user) && isAvailable(user));
 
     const openRows = await base44.asServiceRole.entities.SupervisorFollowUp.filter({ status:'open' }, '-created_date', 500).catch(() => []);
+    const periodRows = await base44.asServiceRole.entities.SupervisorFollowUp.filter({ period_start: periodStart }, '-created_date', 500).catch(() => []);
     const workload = new Map<string, number>();
     const lastAssigned = new Map<string, number>();
     for (const row of openRows || []) {
@@ -56,11 +57,19 @@ export default async function(req: Request): Promise<Response> {
       const at = new Date(row?.assigned_at || row?.created_date || 0).getTime();
       if (Number.isFinite(at) && at > (lastAssigned.get(owner) || 0)) lastAssigned.set(owner, at);
     }
-    const periodRows = (openRows || []).filter((row:any) => clean(row?.period_start) === periodStart);
+    // Completed follow-ups are permanent for the review month: a supervisor who
+    // already reached out must never be handed the same officer again. Rows that
+    // were auto-closed (findings cleared) can be reopened if the gap returns.
     const stateByKey = new Map<string, any>();
-    for (const row of periodRows) {
+    const reopenByKey = new Map<string, any>();
+    const completedKeys = new Set<string>();
+    for (const row of periodRows || []) {
       const key = clean(row?.task_key);
-      if (key && !stateByKey.has(key)) stateByKey.set(key, row);
+      if (!key) continue;
+      const status = lower(row?.status);
+      if (status === 'completed') completedKeys.add(key);
+      else if (status === 'auto_closed') { if (!reopenByKey.has(key)) reopenByKey.set(key, row); }
+      else if (!stateByKey.has(key)) stateByKey.set(key, row);
     }
 
     // Rotation: the least-loaded supervisor is chosen, and load plus the most
@@ -88,7 +97,8 @@ export default async function(req: Request): Promise<Response> {
     for (const finding of findings.sort((a:any, b:any) => b.items.length - a.items.length)) {
       const taskKey = `duty-followup-${monthKey}-${finding.officer_email}`.slice(0, 200);
       activeKeys.add(taskKey);
-      const existing = stateByKey.get(taskKey) || null;
+      if (completedKeys.has(taskKey)) { alreadyHandled += 1; continue; }
+      const existing = stateByKey.get(taskKey) || reopenByKey.get(taskKey) || null;
       const keep = existing?.assigned_to_id
         ? candidates.find((user:any) => String(user.id) === String(existing.assigned_to_id) && lower(user.email) !== finding.officer_email)
         : null;
