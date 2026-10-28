@@ -160,7 +160,8 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       const deduped = dedupeOperationalCalls(calls);
       saveLastGoodCalls(deduped);
       memoryRows = deduped;
-      memoryRowsAt = Date.now();
+      const serverReadAt = Date.parse(payload.fetched_at || '');
+      memoryRowsAt = Number.isFinite(serverReadAt) ? Math.min(serverReadAt, Date.now()) : Date.now();
       return deduped;
     } catch (error) {
       primaryError = error;

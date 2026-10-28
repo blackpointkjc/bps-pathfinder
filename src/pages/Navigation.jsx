@@ -7,7 +7,7 @@ import LiveMapToolbar from '@/components/map/LiveMapToolbar';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
@@ -1348,13 +1348,11 @@ export default function Navigation() {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            // DispatchCall is the current active-source table. Do not hide a call
-            // simply because it has been open longer than one hour; long-running
-            // police/fire incidents must remain visible until the ingest marks them
-            // Cleared/Cancelled or removes them from the active feed.
+            // Use the same operational visibility and duplicate rules as CAD.
+            // Do not apply a second map-only cap that changes dashboard totals.
             const active = dedupeOperationalCalls([...uniqueCalls.values()].filter(c =>
                 !['Cleared', 'Cancelled', 'Closed'].includes(String(c.status || ''))
-            )).slice(0, 250);
+            ));
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
             setUnmappedCalls(unmapped);
@@ -1460,7 +1458,7 @@ export default function Navigation() {
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
                 <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
                     onBack={() => navigate('/CommandDashboard')} onRecenter={recenter}
-                    onRefreshCalls={() => { clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
+                    onRefreshCalls={() => { clearBase44ReadCacheMatching('function:getActiveDispatchCalls:'); clearBase44ReadCacheMatching('entity:DispatchCall:'); clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={() => setMapFullscreen(value => !value)}
