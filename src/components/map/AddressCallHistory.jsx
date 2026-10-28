@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 const cache = new Map();
 const pending = new Map();
 async function readHistory(key, input, refresh) {
   if (!refresh && cache.get(key)?.until > Date.now()) return cache.get(key).data;
   if (pending.has(key)) return pending.get(key);
+  if (refresh) clearBase44ReadCacheMatching('function:getAddressCallHistory:');
   const task = base44.functions.invoke('getAddressCallHistory', input).then(response => {
     const data = response?.data || response;
     if (data.error) throw new Error(data.error);
+    if (data.partial) clearBase44ReadCacheMatching("function:getAddressCallHistory:");
     if (!data.partial) cache.set(key, { data, until: Date.now() + 60000 });
     if (cache.size > 40) cache.delete(cache.keys().next().value);
     return data;

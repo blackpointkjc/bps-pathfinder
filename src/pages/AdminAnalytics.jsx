@@ -425,6 +425,7 @@ export default function AdminAnalytics() {
       if (payload.error) throw new Error(payload.error);
       Object.assign(snapshots, payload.snapshots || {});
       Object.assign(errors, payload.errors || {});
+      if (Object.keys(errors).length) clearBase44ReadCacheMatching("function:getCompanyPerformanceData:");
       for (const officer of performanceOfficerUsers) {
         if (!payload.snapshots?.[officer.id] && !errors[officer.id]) errors[officer.id] = "No complete snapshot returned. Retry refresh.";
       }
@@ -464,7 +465,7 @@ export default function AdminAnalytics() {
 
   const companyOnTimeStats = useMemo(() => {
     const coreErrors = coreAnalytics.data?.service_errors || {};
-    if (!coreAnalytics.data || Object.keys(coreErrors).length > 0) return { rate: null, byOfficer: [], leaderboard: [] };
+    if (!coreAnalytics.data || ['User','TimeEntry','Schedule','IncidentReport'].some(name => coreErrors[name])) return { rate: null, byOfficer: [], leaderboard: [] };
     const coreUsers = (coreAnalytics.data.users || []).filter(isOperationalOfficer);
     const selectedCoreUsers = selectedDivision === 'all'
       ? coreUsers

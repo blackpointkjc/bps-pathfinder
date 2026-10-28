@@ -38,6 +38,7 @@ Deno.serve(async req => {
     const query={location:{$regex:pattern,$options:'i'},created_date:{$gte:since}};
     await Promise.all([read('DispatchCall',query,'call'), read('CallHistory',query,'history')]);
   }
+  if (errors.length === (propertyId ? 1 : 2)) return Response.json({error:'Call history sources are unavailable. No call count could be verified.'}, {status:503});
   const identities=new Set<string>(); const fingerprints=new Set<string>(); const calls:any[]=[];
   for(const r of rows) {
     if(r.is_test || ['test','false_alarm'].includes(String(r.lifecycle_status||'').toLowerCase())) continue;
