@@ -3,7 +3,7 @@ import { previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +117,7 @@ export default function SupervisorCallOuts() {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       queryClient.invalidateQueries({ queryKey: ['companyAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['officerAnalytics'] });
+      clearBase44ReadCacheMatching('function:getCallOutShifts:');
       queryClient.invalidateQueries({ queryKey: ['calloutScheduledShifts'] });
       queryClient.invalidateQueries({ queryKey: ['roleWorkQueue'] });
       queryClient.invalidateQueries({ queryKey: ['hr'] });
@@ -257,7 +258,7 @@ export default function SupervisorCallOuts() {
               </div>
             </div>
 
-            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{shiftsLoading && <p className="text-xs text-blue-700">Loading officer shifts…</p>}{shiftsError && <p className="text-xs text-red-700">Unable to load shifts: {shiftsError.message} <button type="button" className="underline" onClick={()=>refreshShifts()}>Retry shifts</button></p>}{formData.officer_email && !shiftsLoading && !shiftsError && !availableShifts.length && <p className="text-xs text-red-700">No matching published shift found for this officer/date. Check the schedule and officer email.</p>}</div>
+            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{shiftsLoading && <p className="text-xs text-blue-700">Loading officer shifts…</p>}{shiftsError && <p className="text-xs text-red-700">Unable to load shifts: {shiftsError.message} <button type="button" className="underline" onClick={()=>{clearBase44ReadCacheMatching("function:getCallOutShifts:");refreshShifts();}}>Retry shifts</button></p>}{formData.officer_email && !shiftsLoading && !shiftsError && !availableShifts.length && <p className="text-xs text-red-700">No matching published shift found for this officer/date. Check the schedule and officer email.</p>}</div>
             {formData.call_out_type === 'reassigned' ? (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     const officers = (users || [])
       .filter((entry: any) => {
         if (!entry?.email || entry.termination_date) return false;
-        const roles = new Set((entry.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        const roles = new Set([entry.role, ...(entry.additional_roles || [])].filter(Boolean).map((role: string) => String(role).toLowerCase()));
         return roles.has('officer');
       })
       .map((entry: any) => {
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
         pathfinder_email: pathfinderEmail || workEmail,
         microsoft_email: microsoftEmail,
         outlook_email: email(entry.outlook_email || entry.microsoft_email),
-        email_aliases: [...new Set([workEmail, pathfinderEmail, microsoftEmail, ...((entry.email_aliases || []).map(email))].filter(Boolean))],
+        email_aliases: [...new Set([email(entry.email), workEmail, pathfinderEmail, microsoftEmail, ...((entry.email_aliases || []).map(email))].filter(Boolean))],
         first_name: entry.first_name || '',
         last_name: entry.last_name || '',
         full_name: entry.full_name || '',

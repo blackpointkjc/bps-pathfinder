@@ -52,7 +52,7 @@ Deno.serve(async req => {
     const shift = matching[0];
     if (type === 'reassigned' && (!input.destination_location || !/^\d{2}:\d{2}$/.test(input.destination_start_time || '') || !/^\d{2}:\d{2}$/.test(input.destination_end_time || ''))) return Response.json({error:'Destination site and start/end times are required'}, {status:400});
 
-    const existing = await base44.asServiceRole.entities.CallOut.filter({ officer_email: email, call_out_date: date }, '-created_date', 100);
+    const existing = await base44.asServiceRole.entities.CallOut.filter({ original_shift_id: shift.id }, '-created_date', 100);
     if ((existing || []).some(row => row.original_shift_id === shift.id && row.call_out_type === type && row.voided !== true)) {
       return Response.json({ error: 'This shift already has a recorded call-out of that type.' }, { status: 409 });
     }
