@@ -1,25 +1,10 @@
 import { isOutOfOffice } from './absencePolicy.ts';
+import { clean, lower, isSupervisorAccount as isSupervisor, supervisorDisplayName as displayName } from '../../shared/supervisorIdentity.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 
 
-const lower = (value: unknown) => String(value || '').trim().toLowerCase();
-const clean = (value: unknown) => String(value || '').trim();
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const RANKS = new Set(['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
-
-const rolesOf = (user: any) => new Set((user?.additional_roles || []).map(lower));
-const isSupervisor = (user: any) => {
-  const roles = rolesOf(user);
-  return !!user?.email && !user?.termination_date
-    && !['terminated','on_leave'].includes(lower(user?.employment_status))
-    && (user.role === 'admin' || lower(user.role) === 'supervisor' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || RANKS.has(lower(user.rank)));
-};
-const displayName = (user: any) => {
-  const rank = clean(user?.rank);
-  const last = clean(user?.last_name) || clean(user?.full_name).split(/\s+/).pop() || '';
-  return [rank, last].filter(Boolean).join(' ') || clean(user?.full_name) || clean(user?.email) || 'Supervisor';
-};
 const validCoord = (value: unknown) => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
 const validPosition = (lat: unknown, lon: unknown) => validCoord(lat) && validCoord(lon)
   && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lon)) <= 180

@@ -1,0 +1,159 @@
+{
+  "name": "SupervisorFollowUp",
+  "type": "object",
+  "properties": {
+    "task_key": {
+      "type": "string",
+      "description": "Stable identity of the generated follow-up, for example duty-followup-2026-10-officer@email.com"
+    },
+    "title": {
+      "type": "string",
+      "description": "Supervisor-facing action title"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Officer the supervisor must reach out to"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Rank and last name of the officer"
+    },
+    "officer_id": {
+      "type": "string",
+      "description": "User id of the officer when available"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "First date of the reviewed period"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Last date of the reviewed period"
+    },
+    "month_key": {
+      "type": "string",
+      "description": "Period bucket (YYYY-MM) used to keep one follow-up per officer per review month"
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-line description of what the supervisor must address"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "property": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Outstanding duty and attendance findings behind this follow-up"
+    },
+    "finding_count": {
+      "type": "number",
+      "description": "Number of outstanding findings"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "normal"
+      ],
+      "default": "normal",
+      "description": "Follow-up urgency"
+    },
+    "assigned_to_id": {
+      "type": "string",
+      "description": "Supervisor user id that owns this follow-up"
+    },
+    "assigned_to_email": {
+      "type": "string",
+      "description": "Supervisor email that owns this follow-up"
+    },
+    "assigned_to_name": {
+      "type": "string",
+      "description": "Supervisor rank and last name"
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the follow-up was last assigned"
+    },
+    "assignment_basis": {
+      "type": "string",
+      "description": "How the supervisor was chosen, such as rotation or retained"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "completed",
+        "auto_closed"
+      ],
+      "default": "open"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_by": {
+      "type": "string"
+    },
+    "completion_note": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time the review still reported these findings"
+    }
+  },
+  "required": [
+    "task_key",
+    "officer_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.assigned_to_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

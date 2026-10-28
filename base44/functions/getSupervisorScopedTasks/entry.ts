@@ -184,6 +184,46 @@ Deno.serve(async (req) => {
       return Response.json({ success:true, task_key:taskKey, status:'completed', wording:'Supervisor contacted officer' });
     }
 
+    if (normalized(request?.action) === 'complete_followup') {
+      const followUpId = String(request?.follow_up_id || '').trim();
+      if (!followUpId) return Response.json({ error:'A follow-up id is required' }, { status:400 });
+      const followUp = await base44.asServiceRole.entities.SupervisorFollowUp.get(followUpId)
+        .catch((error:any) => (error?.status === 404 ? null : Promise.reject(error)));
+      if (!followUp) return Response.json({ error:'Follow-up not found' }, { status:404 });
+      const canComplete = me.role === 'admin' || roles.has('full_access')
+        || String(followUp.assigned_to_id || '') === String(me.id || '')
+        || normalized(followUp.assigned_to_email) === normalized(me.email);
+      if (!canComplete) return Response.json({ error:'This follow-up is assigned to another supervisor.' }, { status:403 });
+      const completedAt = new Date().toISOString();
+      const note = String(request?.note || 'Supervisor contacted officer').slice(0, 1000);
+      await base44.asServiceRole.entities.SupervisorFollowUp.update(followUpId, {
+        status:'completed',
+        completed_at:completedAt,
+        completed_by:me.email || String(me.id),
+        completion_note:note,
+        last_seen_at:completedAt,
+      });
+      if (followUp.task_key) {
+        await base44.asServiceRole.entities.Notification.updateMany(
+          { task_key:String(followUp.task_key), is_read:false },
+          { $set:{ is_read:true, acknowledged_at:completedAt } },
+        ).catch(() => null);
+      }
+      await base44.asServiceRole.entities.AuditLog.create({
+        entity_type:'SupervisorFollowUp',
+        entity_id:String(followUpId),
+        action:'status_change',
+        actor_id:String(me.id || me.email),
+        actor_name:[me.first_name, me.last_name].filter(Boolean).join(' ') || me.email,
+        before_value:JSON.stringify({ status:'open' }),
+        after_value:JSON.stringify({ status:'completed', note }),
+        field_changed:'status',
+        timestamp:completedAt,
+        description:`Supervisor reached out to ${followUp.officer_name || followUp.officer_email || 'officer'} about duty and attendance findings.`,
+      }).catch(() => null);
+      return Response.json({ success:true, follow_up_id:followUpId, status:'completed', wording:'Supervisor contacted officer' });
+    }
+
     // User identity is required for every supervisor join. Load it first and
     // retry it independently; optional Microsoft/Outlook aliases must never make
     // the whole work queue disappear.
@@ -353,6 +393,23 @@ Deno.serve(async (req) => {
       return String(r.assigned_supervisor_id || '') === String(me.id || '');
     }).filter((row:any) => !completedSupervisorKeys.has(`review-followup-${row.id}`));
 
+    // Duty & attendance follow-ups and the operational work queue are assigned by
+    // supervisors, so they are returned here as one supervisor action list.
+    const fullAccess = me.role === 'admin' || roles.has('full_access');
+    const followUps = await readRowsWithRetry(
+      'duty and attendance follow-ups',
+      () => base44.asServiceRole.entities.SupervisorFollowUp.filter({ status:'open' }, '-created_date', 500),
+      true,
+    );
+    const mineFollowUps = (followUps || []).filter((row:any) => fullAccess
+      || String(row.assigned_to_id || '') === String(me.id || '')
+      || normalized(row.assigned_to_email) === normalized(me.email));
+    const queueTasks = (supervisorStates || [])
+      .filter((state:any) => normalized(state.status) === 'open')
+      .filter((state:any) => fullAccess
+        || String(state.assigned_to_id || '') === String(me.id || '')
+        || normalized(state.assigned_to_email) === normalized(me.email));
+
     return Response.json({
       assignedPeople,
       missedClockIns:visibleMissedClockIns,
@@ -362,6 +419,9 @@ Deno.serve(async (req) => {
       reviews: visibleReviews,
       reviewFollowUps: visibleReviewFollowUps,
       inspections: visibleInspections,
+      followUps: mineFollowUps,
+      queueTasks,
+      fullAccess,
     });
   } catch (error) {
     console.error('getSupervisorScopedTasks failed', error);
