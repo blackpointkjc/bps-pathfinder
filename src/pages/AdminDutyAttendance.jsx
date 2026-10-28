@@ -135,7 +135,7 @@ export default function AdminDutyAttendance() {
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
               <div>
-                <h1 className="text-xl font-black leading-tight text-white">Duty &amp; attendance review</h1>
+                <h1 className="text-xl font-black leading-tight text-white">Duty &amp; Attendance Review</h1>
                 <p className="mt-0.5 text-xs text-slate-400">Job duty performance and call-out attendance for any period.</p>
               </div>
             </div>
