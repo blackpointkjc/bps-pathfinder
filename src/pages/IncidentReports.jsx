@@ -1,3 +1,4 @@
+import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { uploadInternalFile } from '@/lib/internalUpload';
@@ -1279,7 +1280,7 @@ Provide:
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard owner={user?.id} id={"IncidentReports-"+(editingReport?.id||"new")} title="Incident report" data={formData} onRestore={setFormData} />
                 {formData.report_type === 'supplement' && (
                   <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
                     <div className="font-black">Linked Supplement</div>

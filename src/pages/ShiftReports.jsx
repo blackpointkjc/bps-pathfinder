@@ -1,3 +1,4 @@
+import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -807,7 +808,7 @@ export default function ShiftReports() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard owner={user?.id} id={"ShiftReports-"+(editingReport?.id||"new")} title="Shift report" data={formData} onRestore={setFormData} />
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">

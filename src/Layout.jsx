@@ -1,3 +1,4 @@
+import OfflineWorkPanel from '@/components/OfflineWorkPanel';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
 import { isOperationalOutage } from '@/lib/operationalOutages';
@@ -1042,12 +1043,12 @@ export default function Layout({ children, currentPageName }) {
         await Promise.all(registrations.map(async registration => {
           try { await registration.update(); } catch {}
           try { registration.waiting?.postMessage({ type: 'SKIP_WAITING' }); } catch {}
-          try { await registration.unregister(); } catch {}
+          if (!registration.active?.scriptURL?.endsWith('/pathfinder-sw.js')) { try { await registration.unregister(); } catch {} }
         }));
       }
       if ('caches' in window) {
         const keys = await window.caches.keys();
-        await Promise.all(keys.map(key => window.caches.delete(key)));
+        await Promise.all(keys.filter(key => !key.startsWith('pathfinder-offline-')).map(key => window.caches.delete(key)));
       }
     } catch (error) {
       console.warn('[APP REFRESH] Cache cleanup was partial:', error?.message);
@@ -1635,7 +1636,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-[#7791aa]">
-          <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
+          <OfflineWorkPanel user={user} /><DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
           <button
             type="button"
             onClick={() => navigate(createPageUrl('SystemStatus'))}
