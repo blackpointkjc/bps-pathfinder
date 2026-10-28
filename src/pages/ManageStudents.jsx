@@ -1,4 +1,3 @@
-import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck } from "lucide-react";
+import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X } from "lucide-react";
 import { toast } from "sonner";
-import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirectory';
+import { invalidateTrainingUsers } from '@/lib/trainingDirectory';
 
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);

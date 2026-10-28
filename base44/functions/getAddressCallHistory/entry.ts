@@ -53,7 +53,7 @@ Deno.serve(async req => {
     const id=clean(r.callId||r.original_call_id||r.id);
     const incident=clean(r.callIncident||r.incident)||'Incident type unavailable';
     const location=clean(r.callLocation||r.location||address);
-    if (!propertyId && locality && !location.toLowerCase().includes(locality)) continue;
+    if (r._kind !== 'property' && locality && !location.toLowerCase().includes(locality)) continue;
     const fingerprint=[time,incident.toLowerCase(),location.toLowerCase()].join('|');
     if(identities.has(id)||fingerprints.has(fingerprint))continue;
     identities.add(id);fingerprints.add(fingerprint);
