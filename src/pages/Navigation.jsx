@@ -103,6 +103,38 @@ export default function Navigation() {
     const [toolbarHeight,setToolbarHeight] = useState(110);
     const [mapFullscreen, setMapFullscreen] = useState(false);
     const [callsRefreshing, setCallsRefreshing] = useState(false);
+    const nativeFullscreenRef = useRef(false);
+    const toggleMapFullscreen = async () => {
+        if (mapFullscreen) {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (document.fullscreenElement || document.webkitFullscreenElement) await exit?.call(document);
+            setMapFullscreen(false);
+            return;
+        }
+        setMapFullscreen(true);
+        const request = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+        if (!request) {
+            toast.info('This browser supports expanded map view only. Install Pathfinder to the Home Screen for a browser-bar-free view.');
+            return;
+        }
+        try { await request.call(document.documentElement, { navigationUI: 'hide' }); nativeFullscreenRef.current = true; }
+        catch { toast.info('Device fullscreen was blocked. Open Pathfinder directly outside the editor, or install it to your Home Screen. Expanded map view is active.'); }
+    };
+    useEffect(() => {
+        const changed = () => {
+            const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (active) nativeFullscreenRef.current = true;
+            else if (nativeFullscreenRef.current) { nativeFullscreenRef.current = false; setMapFullscreen(false); }
+        };
+        document.addEventListener('fullscreenchange', changed);
+        document.addEventListener('webkitfullscreenchange', changed);
+        return () => {
+            document.removeEventListener('fullscreenchange', changed);
+            document.removeEventListener('webkitfullscreenchange', changed);
+            if (nativeFullscreenRef.current) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(()=>{});
+        };
+    }, []);
+
     useEffect(() => {
         document.documentElement.classList.toggle('pf-map-fullscreen', mapFullscreen);
         const escape = event => { if (event.key === 'Escape') setMapFullscreen(false); };
@@ -1461,7 +1493,7 @@ export default function Navigation() {
                     onRefreshCalls={() => { clearBase44ReadCacheMatching('function:getActiveDispatchCalls:'); clearBase44ReadCacheMatching('entity:DispatchCall:'); clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
-                    fullscreen={mapFullscreen} onToggleFullscreen={() => setMapFullscreen(value => !value)}
+                    fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
                     gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
             </div>
