@@ -204,8 +204,18 @@ Deno.serve(async (req) => {
       }
     };
     const entity = (name:string) => (base44.asServiceRole.entities as any)[name];
-    const list = (name:string, sort?:string, limit=1000) => safe(name, () => entity(name).list(sort, limit));
-    const filter = (name:string, query:any, sort?:string, limit=1000) => safe(name, () => entity(name).filter(query, sort, limit));
+    const completeRows = async (name:string, query:any = null) => {
+      const rows:any[] = [];
+      for (let skip=0; skip<20000; skip+=500) {
+        const page = query ? await entity(name).filter(query, '-id', 500, skip) : await entity(name).list('-id', 500, skip);
+        if (!Array.isArray(page)) throw new Error(name + ' returned invalid records');
+        rows.push(...page);
+        if (page.length < 500) return rows;
+      }
+      throw new Error(name + ' exceeds the complete read limit; totals unavailable');
+    };
+    const list = (name:string, _sort?:string, _limit=1000) => safe(name, () => completeRows(name));
+    const filter = (name:string, query:any, _sort?:string, _limit=1000) => safe(name, () => completeRows(name, query));
 
     const validDate = (value:any) => {
       const raw = String(value || '');
@@ -231,7 +241,7 @@ Deno.serve(async (req) => {
     endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
     const activityEndExclusive = easternMidnight(endExclusive.toISOString().slice(0,10));
 
-    const getUsers = () => cachedRows('users', 30 * 1000, () => entity('User').list('-updated_date', 1000));
+    const getUsers = () => cachedRows('users', 30 * 1000, () => completeRows('User'));
 
     if (segment === 'core') {
       const [users, divisions, timeEntries, schedules, incidentReports] = await Promise.all([
