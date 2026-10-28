@@ -60,13 +60,10 @@ export async function lookupNavigationDestinations(query, location, { skipManage
   let managedError = null;
   if (!skipManaged) {
     try {
-      const locations = [];
-      // Use caller permissions and paginate: every listed property is searchable.
-      for (let skip = 0; ; skip += 200) {
-        const page = await withRequestTimeout(base44.entities.Location.list('site_name', 200, skip), 10000, 'Managed property search');
-        locations.push(...page);
-        if (page.length < 200) break;
-      }
+      const response = await withRequestTimeout(base44.functions.invoke('getNavigationLocations', {}), 15000, 'Managed property search');
+      const payload=response?.data||response;
+      if(payload?.error || !Array.isArray(payload?.locations)) throw new Error(payload?.error || 'Property directory incomplete');
+      const locations=payload.locations;
       const matches = matchManagedLocations(locations, value);
       if (matches.length) return matches;
     } catch (error) {

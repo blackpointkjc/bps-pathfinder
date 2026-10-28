@@ -37,13 +37,14 @@ Deno.serve(async req => {
     } catch (error) { errors.push(entity); console.warn('Address history source unavailable', entity, error instanceof Error ? error.message : 'Read failed'); }
     finally { if (timer) clearTimeout(timer); }
   };
-  if(propertyId) {
-    await read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property');
-  } else {
+  const reads:Promise<void>[]=[];
+  if(propertyId) reads.push(read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property'));
+  if(number) {
     const query={location:{$regex:pattern,$options:'i'},created_date:{$gte:since}};
-    await Promise.all([read('DispatchCall',query,'call'), read('CallHistory',query,'history')]);
+    reads.push(read('DispatchCall',query,'call'),read('CallHistory',query,'history'));
   }
-  if (errors.length === (propertyId ? 1 : 2)) return Response.json({error:'Call history sources are unavailable. No call count could be verified.'}, {status:503});
+  await Promise.all(reads);
+  if (errors.length === reads.length) return Response.json({error:'Call history sources are unavailable. No call count could be verified.'}, {status:503});
   const identities=new Set<string>(); const fingerprints=new Set<string>(); const calls:any[]=[];
   for(const r of rows) {
     if(r.is_test || ['test','false_alarm'].includes(String(r.lifecycle_status||'').toLowerCase())) continue;
@@ -60,6 +61,6 @@ Deno.serve(async req => {
   }
   calls.sort((a,b)=>Date.parse(b.time)-Date.parse(a.time));
   const types:any={}; for(const call of calls)types[call.incident]=(types[call.incident]||0)+1;
-  return Response.json({count:calls.length,calls:calls.slice(0,30),types,since,days:90,partial:truncated||errors.length>0,errors,scope:propertyId?'Property-linked alerts (may include nearby calls)':'Address matches',displayed:Math.min(calls.length,30)});
+  return Response.json({count:calls.length,calls:calls.slice(0,30),types,since,days:90,partial:truncated||errors.length>0,errors,scope:propertyId?'Address history and property-linked alerts (alerts may include nearby calls)':'Address matches',displayed:Math.min(calls.length,30)});
  } catch {return Response.json({error:'Call history unavailable. Retry when the connection recovers.'},{status:500});}
 });

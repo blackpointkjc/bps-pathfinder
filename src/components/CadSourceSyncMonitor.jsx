@@ -19,13 +19,11 @@ export default function CadSourceSyncMonitor({ user }) {
     let active = true;
     let running = false;
     const sync = async () => {
-      // Continue guarded best-effort checks in background browser tabs. A hidden
-      // Dispatch Center must not intentionally stop all source updates. Mobile
-      // operating systems may still suspend web pages; server scheduling is needed
-      // for guaranteed unattended delivery.
+      // Poll visible command screens only. The backend scheduler remains responsible
+      // for unattended ingestion; browser checks supplement it while in use.
       if (!active || running || !navigator.onLine || document.visibilityState !== 'visible') return;
       const page = window.location.pathname + window.location.search;
-      if (!/Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|admin_center=cad/i.test(page)) return;
+      if (!/Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page)) return;
       running = true;
       try {
         const result = await requestCadLiveSync();
