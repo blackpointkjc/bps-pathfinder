@@ -17,15 +17,17 @@ Deno.serve(async req => {
     const read = async (label:string, callback:()=>Promise<any[]>) => {
       const prior = sourceCache.get(label);
       if (prior && prior.freshUntil > Date.now()) return prior.value;
-      for (let attempt=0; attempt<2; attempt++) {
+      for (let attempt=0; attempt<3; attempt++) {
         try {
           const result = await callback();
           if (!Array.isArray(result)) throw new Error('Invalid source response');
-          sourceCache.set(label, { value:result, freshUntil:Date.now()+120000, staleUntil:Date.now()+600000 });
+          sourceCache.set(label, { value:result, freshUntil:Date.now()+300000, staleUntil:Date.now()+900000 });
           return result;
         } catch(error:any) {
           const rateLimited = Number(error?.status || error?.response?.status) === 429 || /rate limit|too many requests/i.test(String(error?.message || ''));
-          if (attempt === 0 && !rateLimited) { await sleep(300); continue; }
+          // A burst limit clears on its own, so a brief backoff usually recovers
+          // the live count instead of falling back to a stale figure.
+          if (attempt < 2) { await sleep(rateLimited ? 900 * (attempt + 1) : 300); continue; }
           if (prior && prior.staleUntil > Date.now()) { staleSources.push(label); return prior.value; }
           sourceErrors.push(label);
           console.warn('Admin briefing source unavailable:',label,error?.message || error);
