@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
         schedules, entries, dailyReports, availability, accessRequests, shiftReports, incidentReports,
         trespassNotices, parkingViolations, criminalComplaints, dispatcherLogs, forceReports,
         confidentialReports, maintenanceReports, openDoorReports, expenseReports,
-        shiftBids, specialCoverageRequests, weekStatuses,
+        shiftBids, specialCoverageRequests, weekStatuses, callOuts,
       ] = await loadLimited([
         () => safeList('schedules for payroll exceptions', () => base44.asServiceRole.entities.Schedule.list('-shift_date', 5000)),
         () => safeList('time entries for report matching', () => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000)),
@@ -275,6 +275,7 @@ Deno.serve(async (req) => {
         () => safeList('shift bids', () => base44.asServiceRole.entities.ShiftBid.list('-created_date', 1000)),
         () => safeOptionalList('special coverage requests', () => base44.asServiceRole.entities.SpecialCoverageRequest.list('-created_date', 250)),
         () => safeOptionalList('schedule publication status', () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 100)),
+        () => safeOptionalList('call-outs for attendance review', () => base44.asServiceRole.entities.CallOut.list('-call_out_date', 1500)),
       ]);
     }
 
@@ -540,6 +541,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Duty and attendance reviews: officers whose recorded job duties or call-out
+    // attendance need an administrative review in the trailing 30 days. The task
+    // opens the review page where the whole period is inspected and closed out.
+    const reviewWindowStart = addDays(now.date, -30);
+    const reviewPeriod = now.date.slice(0, 7);
+    const missedDutyByOfficer = new Map<string, { count: number; lastDate: string }>();
+    for (const entry of missingReports) {
+      const date = easternParts(entry.clock_in).date;
+      if (!date || date < reviewWindowStart) continue;
+      const email = normalized(entry.officer_email);
+      if (!email) continue;
+      const current = missedDutyByOfficer.get(email) || { count: 0, lastDate: date };
+      missedDutyByOfficer.set(email, { count: current.count + 1, lastDate: date > current.lastDate ? date : current.lastDate });
+    }
+    for (const [email, summary] of missedDutyByOfficer) {
+      if (summary.count < 2) continue;
+      const officer = userByEmail.get(email);
+      candidates.push({
+        id: `duty-performance-${officer?.id || email}-${reviewPeriod}`,
+        source_id: String(officer?.id || email),
+        kind: 'job_duty_performance',
+        priority: summary.count >= 4 ? 'critical' : 'high',
+        title: 'Job duty performance review',
+        person: officer ? displayName(officer) : email,
+        detail: `${summary.count} required site reports missed since ${reviewWindowStart} · last ${summary.lastDate} · review duty compliance and take action`,
+        page: 'AdminDutyAttendance',
+      });
+    }
+    const callOutByOfficer = new Map<string, { count: number; lastDate: string }>();
+    for (const row of (callOuts || [])) {
+      if (row.voided === true || normalized(row.call_out_type) !== 'called_out') continue;
+      const date = String(row.call_out_date || '').slice(0, 10) || easternParts(row.created_date).date;
+      if (!date || date < reviewWindowStart) continue;
+      const email = normalized(row.officer_email);
+      if (!email) continue;
+      const current = callOutByOfficer.get(email) || { count: 0, lastDate: date };
+      callOutByOfficer.set(email, { count: current.count + 1, lastDate: date > current.lastDate ? date : current.lastDate });
+    }
+    for (const [email, summary] of callOutByOfficer) {
+      if (summary.count < 2) continue;
+      const officer = userByEmail.get(email);
+      candidates.push({
+        id: `callout-attendance-${officer?.id || email}-${reviewPeriod}`,
+        source_id: String(officer?.id || email),
+        kind: 'call_out_attendance',
+        priority: summary.count >= 4 ? 'critical' : 'high',
+        title: 'Call-out attendance review',
+        person: officer ? displayName(officer) : email,
+        detail: `${summary.count} call-outs since ${reviewWindowStart} · last ${summary.lastDate} · review attendance and take action`,
+        page: 'AdminDutyAttendance',
+      });
+    }
+
     let supervisorMissingIds: Set<string> | null = null;
     if (queueRole === 'supervisor') {
       const scopedResponse = await base44.functions.invoke('getSupervisorScopedTasks', {peopleOnly:true});
@@ -553,7 +607,7 @@ Deno.serve(async (req) => {
       ? new Set(['missed_clock_in', 'late_clock_out', 'call_out_review', 'certification_renewal', 'pto', 'performance_review', 'annual_review_due'])
       : queueRole === 'supervisor'
         ? new Set(['report_review', 'missing_report'])
-        : new Set(['pto', 'missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule']);
+        : new Set(['pto', 'missing_report', 'availability', 'access', 'report_review', 'expense', 'shift_bid', 'special_coverage', 'weekly_schedule', 'job_duty_performance', 'call_out_attendance']);
     for (let index = candidates.length - 1; index >= 0; index -= 1) {
       if (!allowedKinds.has(String(candidates[index]?.kind || ''))) candidates.splice(index, 1);
     }
@@ -663,6 +717,7 @@ Deno.serve(async (req) => {
       const destinationFor = (kind: string) => {
         if (kind === 'certification_renewal') return 'AdminCertificationAlerts';
         if (kind === 'call_out_review') return 'ManageTimeEntries';
+        if (kind === 'call_out_attendance' || kind === 'job_duty_performance') return 'AdminDutyAttendance';
         if (kind === 'pto') return 'AdminPTOApproval';
         if (kind === 'performance_review' || kind === 'annual_review_due') return 'AdminPerformanceReviews';
         if (kind === 'missed_clock_in' || kind === 'late_clock_out') return 'ManageTimeEntries';
@@ -732,6 +787,8 @@ Deno.serve(async (req) => {
         shift_bids: countKind('shift_bid'),
         special_coverage: countKind('special_coverage'),
         weekly_schedule: countKind('weekly_schedule'),
+        duty_performance_reviews: countKind('job_duty_performance'),
+        call_out_attendance_reviews: countKind('call_out_attendance'),
         clocked_in: activeEntries.length,
         active_employees: (users || []).filter((user: any) => !user.termination_date).length,
       },

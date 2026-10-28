@@ -32,6 +32,7 @@ const workQueueTaskUrl = task => {
 const ADMIN_QUEUE_KINDS = new Set([
   'missing_report', 'availability', 'access', 'report_review', 'expense',
   'shift_bid', 'special_coverage', 'weekly_schedule',
+  'job_duty_performance', 'call_out_attendance',
 ]);
 
 export default function AdminDashboard() {
@@ -159,6 +160,7 @@ export default function AdminDashboard() {
     { id: "ranks", title: "Rank Structure", icon: Users, url: createPageUrl("RankStructure"), category: "team" },
     { id: "directory", title: "Division Directory", icon: Users, url: createPageUrl("DivisionDirectory"), category: "team" },
     { id: "certs", title: "Certification Alerts", icon: AlertTriangle, url: createPageUrl("AdminCertificationAlerts"), category: "team" },
+    { id: "duty_attendance", title: "Duty & Attendance Review", icon: ClipboardList, url: createPageUrl("AdminDutyAttendance"), category: "team" },
     { id: "training", title: "Training", icon: GraduationCap, url: createPageUrl("AdminTraining"), category: "team" },
     // Reports
     { id: "all_reports", title: "All Reports", icon: ClipboardList, url: createPageUrl("AdminReports"), category: "reports" },

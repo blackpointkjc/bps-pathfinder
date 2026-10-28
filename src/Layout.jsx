@@ -189,6 +189,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'People & Accounts', items: [
         ['Personnel & Command','AdminOfficerManagement',Users],
+        ['Duty & Attendance','AdminDutyAttendance',ClipboardCheck],
         ['Accounts & Access','AdminUsers',UserCheck],
         ['Client Accounts','ManageClients',Building2],
       ]},

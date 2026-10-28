@@ -78,6 +78,7 @@ import AdminConfidentialReports from './pages/AdminConfidentialReports';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDivisions from './pages/AdminDivisions';
 import AdminDocuments from './pages/AdminDocuments';
+import AdminDutyAttendance from './pages/AdminDutyAttendance';
 import AdminEquipment from './pages/AdminEquipment';
 import AdminExpenseApproval from './pages/AdminExpenseApproval';
 import AdminGeofenceAlerts from './pages/AdminGeofenceAlerts';
@@ -231,6 +232,7 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "AdminDivisions": AdminDivisions,
     "AdminDocuments": AdminDocuments,
+    "AdminDutyAttendance": AdminDutyAttendance,
     "AdminAssets": AdminAssets,
     "AdminEquipment": AdminEquipment,
     "AdminExpenseApproval": AdminExpenseApproval,
