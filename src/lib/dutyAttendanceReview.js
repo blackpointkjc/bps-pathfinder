@@ -77,6 +77,7 @@ export function buildDutyAttendanceRows(data = {}, { start_date, end_date, adjus
     const jobDuty = calculateJobDutyCompliance({
       officer,
       timeEntries: entries,
+      schedules: data.schedules || [],
       dailyReports: data.dailyActivityReports || [],
       incidentReports: data.incidentReports || [],
       dispatchCalls: data.dispatchCalls || [],

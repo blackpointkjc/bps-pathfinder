@@ -96,7 +96,11 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
       const mailbox=email.split('@')[0];
       const directory=await cachedRows('performance-identity-directory',300000,()=>base44.asServiceRole.entities.User.list('-updated_date',1000)).catch(()=>[]);
       const owners=directory.filter((person:any)=>[person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[])].some((value:any)=>lower(value).split('@')[0]===mailbox));
-      if(owners.length===1&&String(owners[0].id)===officerId)aliases.add(mailbox+'@blackpointkjc.com');
+      // The legacy @blackpointkjc.com address frequently carries the officer's
+      // schedules and past time entries but has no User row of its own. Bridge it
+      // unless another person genuinely owns that mailbox, otherwise those shifts
+      // never reach the officer's own performance.
+      if(!owners.some((person:any)=>String(person.id)!==officerId))aliases.add(mailbox+'@blackpointkjc.com');
     }
     const aliasValues = [...aliases];
     const officerEmailQuery = (field = 'officer_email') => ({ [field]: { $in: aliasValues } });
@@ -137,10 +141,14 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases) || String(r?.created_by_id || '') === officerId);
     const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
-    const relevantSiteKeys = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
+    // Scheduled sites count too: officers who never clock in are scored from their
+    // published shifts, so their properties must load calls and reports as well.
+    const relevantSiteKeys = new Set([
+      ...myTimeEntries.map((entry:any) => siteKey(entry.location)),
+      ...mySchedules.map((schedule:any) => siteKey(schedule.location)),
+    ].filter(Boolean));
     const relevantDutyRules = (dutyRulesAll || []).filter((rule:any) => rule.active !== false && relevantSiteKeys.has(siteKey(rule.property_site)));
     const qrRequired = relevantDutyRules.some((rule:any) => rule.qr_required === true);
-    const incidentRequired = relevantDutyRules.some((rule:any) => rule.incident_report_required_for_property_calls === true);
     const trainingApplicable = (modulesAll || []).some((module:any) => module.active !== false);
 
     const [bidsAll, completionsAll, assignmentsAll, callOutsAll, scansAll, checkpointsAll, partnerTimeEntriesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, shiftReportsAll, dispatchCallsAll, callHistoryAll, propertyAlertsAll, callAssignmentsAll] = await Promise.all([
@@ -151,16 +159,18 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
       qrRequired ? safeFilter('QRScanEvent', { scanned_at: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-scanned_at', 1000) : Promise.resolve([]),
       qrRequired ? safeRead('QRCheckpoint', () => cachedRows('qrCheckpoints', 5 * 60 * 1000, () => base44.asServiceRole.entities.QRCheckpoint.list('property_site', 500))) : Promise.resolve([]),
       qrRequired ? safeFilter('TimeEntry', { clock_in: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-clock_in', 1500) : Promise.resolve(timeEntriesAll),
-      incidentRequired ? safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-incident_date', 500) : Promise.resolve([]),
+      // Property calls now create an incident obligation by default, so reports and
+      // the property call feed are always read instead of only for ruled properties.
+      safeFilter('IncidentReport', { incident_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-incident_date', 500),
       safeFilter('Commendation', { $and: [officerRecordQuery(), { commendation_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-commendation_date', 250),
       safeFilter('Complaint', { $and: [officerRecordQuery(), { complaint_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-complaint_date', 250),
       safeFilter('ClientFeedback', { $and: [officerRecordQuery(), { feedback_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-feedback_date', 250),
       safeFilter('PerformanceReview', { $and: [officerRecordQuery(), { review_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }] }, '-review_date', 250),
       safeFilter('DailyActivityReport', { report_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-report_date', 500),
       safeFilter('ShiftReport', { shift_date: { $gte: monthDateCutoff, $lte: monthDateEnd } }, '-shift_date', 500),
-      incidentRequired ? safeFilter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 500) : Promise.resolve([]),
-      incidentRequired ? safeFilter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500) : Promise.resolve([]),
-      incidentRequired ? safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 750) : Promise.resolve([]),
+      safeFilter('DispatchCall', { time_received: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-time_received', 500),
+      safeFilter('CallHistory', { archived_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-archived_date', 500),
+      safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 750),
       Promise.resolve([]),
     ]);
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
@@ -283,7 +293,10 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
         status: historyMatch?.status || (alert.acknowledged ? 'Closed' : 'Pending'),
       });
     }
-    const myWorkedSites = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
+    const myWorkedSites = new Set([
+      ...myTimeEntries.map((entry:any) => siteKey(entry.location)),
+      ...mySchedules.map((schedule:any) => siteKey(schedule.location)),
+    ].filter(Boolean));
     const sharedDailyReports = normalizedDutyReports.filter((r:any) => {
       const attachedEmails = new Set((r.attached_officer_emails || []).map((value:any) => lower(value)));
       const attachedIds = new Set((r.attached_officer_ids || []).map((value:any) => String(value)));

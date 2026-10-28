@@ -239,6 +239,7 @@ export default function MyPerformanceAnalytics() {
   const jobDuty = useMemo(() => calculateJobDutyCompliance({
     officer: user,
     timeEntries,
+    schedules,
     dailyReports: performanceData.dailyActivityReports || [],
     incidentReports: performanceData.incidents || [],
     dispatchCalls: performanceData.dispatchCalls || [],

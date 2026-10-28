@@ -542,6 +542,7 @@ Deno.serve(async (req) => {
         const jobDuty = calculateJobDutyCompliance({
           officer: user,
           timeEntries: officerTimeEntries,
+          schedules: officerSchedules,
           dailyReports,
           incidentReports: metricData.incidents || [],
           dispatchCalls,

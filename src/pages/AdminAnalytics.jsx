@@ -153,6 +153,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exe
   const jobDuty = calculateJobDutyCompliance({
     officer,
     timeEntries,
+    schedules,
     dailyReports: snapshot.dailyActivityReports || [],
     incidentReports: snapshot.incidents || [],
     dispatchCalls: snapshot.dispatchCalls || [],
