@@ -75,7 +75,9 @@ const PERFORMANCE_ENTITY_NAMES = new Set([
 ]);
 const entityWrappers = new Map();
 const readCache = new Map();
-let readCacheGeneration = 0;
+const readCacheRevisions = new Map();
+const readCacheVersion = key => [...readCacheRevisions].reduce((sum, [prefix, revision]) => key.startsWith(prefix) ? sum + revision : sum, 0);
+const invalidateReadPrefix = prefix => readCacheRevisions.set(prefix, (readCacheRevisions.get(prefix) || 0) + 1);
 const readInflight = new Map();
 const writeInflight = new Map();
 const readQueue = [];
@@ -257,13 +259,13 @@ function pumpReads() {
     activeReads += 1;
     if (job.priority < 90) activeBackgroundReads += 1;
     const startedAt = Date.now();
-    const cacheGeneration = readCacheGeneration;
+    const cacheGeneration = readCacheVersion(job.key);
     Promise.resolve()
       .then(() => withRequestTimeout(Promise.resolve().then(job.task), readTimeoutMs(job.meta), 'Data request'))
       .then(value => {
         // Cache only reads that met their deadline and began after the last invalidation.
         // A late network completion must not repopulate a cache after a save/refresh.
-        if (cacheGeneration === readCacheGeneration) {
+        if (cacheGeneration === readCacheVersion(job.key)) {
           if (readCache.size >= 250 && !readCache.has(job.key)) readCache.delete(readCache.keys().next().value);
           readCache.set(job.key, { at: Date.now(), value });
         }
@@ -426,7 +428,7 @@ function invalidateReadCacheForWrite(meta = {}) {
   }
 
   if (!prefixes.size) return;
-  readCacheGeneration += 1;
+  for (const prefix of prefixes) invalidateReadPrefix(prefix);
   for (const cacheKey of [...readCache.keys()]) {
     if ([...prefixes].some(prefix => cacheKey.startsWith(prefix))) readCache.delete(cacheKey);
   }
@@ -505,11 +507,14 @@ function invalidateReadCacheForRealtimeEntity(name) {
     prefixes.add('function:getMyTimeEntries:');
     prefixes.add('function:manageHRTimeEntries:');
   }
+  if (name === 'Location') prefixes.add('function:getNavigationLocations:');
+  if (['Schedule','PlannedShift','User','CallOut'].includes(name)) prefixes.add('function:getCallOutShifts:');
   if (name === 'CallHistory') prefixes.add('function:getCallHistoryFeed:');
   if (name === 'GeofenceAlert') prefixes.add('function:manageGeofenceAlerts:');
   if (['LocationHistory', 'GeofenceAlert', 'TimeEntry'].includes(name)) prefixes.add('function:getLocationAuditReport:');
   if (name === 'ActiveOfficer' || name === 'Unit') prefixes.add('function:getOnDutyUnits:');
 
+  for (const prefix of prefixes) invalidateReadPrefix(prefix);
   for (const cacheKey of [...readCache.keys()]) {
     if ([...prefixes].some(prefix => String(cacheKey).startsWith(prefix))) readCache.delete(cacheKey);
   }
@@ -559,7 +564,7 @@ const isReadOnlyFunction = (name, payload = {}) => {
   if (action) return readActions.has(action);
 
   if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
-  if (functionName === 'runSystemAudit') return true;
+  if (['runSystemAudit','geocodeNavigationDestination'].includes(functionName)) return true;
   return false;
 };
 const functions = new Proxy(rawBase44.functions, {
@@ -623,14 +628,14 @@ export const base44 = new Proxy(rawBase44, {
 });
 
 export function clearBase44ReadCache() {
-  readCacheGeneration += 1;
+  invalidateReadPrefix('');
   readCache.clear();
 }
 
 export function clearBase44ReadCacheMatching(prefix) {
-  readCacheGeneration += 1;
   const target = String(prefix || '');
   if (!target) return clearBase44ReadCache();
+  invalidateReadPrefix(target);
   for (const key of [...readCache.keys()]) {
     if (String(key).startsWith(target)) readCache.delete(key);
   }
