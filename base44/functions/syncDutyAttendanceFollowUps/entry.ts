@@ -90,6 +90,7 @@ export default async function(req: Request): Promise<Response> {
     let created = 0;
     let reassigned = 0;
     let retained = 0;
+    let alreadyHandled = 0;
     let unassigned = 0;
     const assignments:any[] = [];
     const activeKeys = new Set<string>();
@@ -164,7 +165,7 @@ export default async function(req: Request): Promise<Response> {
     // Follow-ups whose findings were exempted, corrected or withdrawn are retired
     // so a supervisor never chases an officer about an obligation that no longer exists.
     let closed = 0;
-    for (const row of periodRows) {
+    for (const row of stateByKey.values()) {
       const key = clean(row?.task_key);
       if (!key || activeKeys.has(key)) continue;
       await base44.asServiceRole.entities.SupervisorFollowUp.update(row.id, {
@@ -189,6 +190,7 @@ export default async function(req: Request): Promise<Response> {
       created,
       reassigned,
       retained,
+      already_handled: alreadyHandled,
       closed,
       unassigned,
       supervisor_count: candidates.length,
