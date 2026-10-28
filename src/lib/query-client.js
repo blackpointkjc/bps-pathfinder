@@ -32,6 +32,9 @@ export const queryClientInstance = new QueryClient({
 			// Base44 again, even when the same query had completed seconds earlier.
 			// Critical pages still use subscriptions or explicit polling where needed.
 			staleTime: 30_000,
+			// Empty initial lists are UI placeholders, never evidence of a completed read.
+			// Verified snapshots override this with their actual saved timestamp.
+			initialDataUpdatedAt: 0,
 			// Never automatically retry a rate-limit response. Retrying a 429 from
 			// dozens of mounted queries multiplies the problem. Other transient query
 			// failures get one delayed retry.

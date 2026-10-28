@@ -1,11 +1,41 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const supervisorRanks = new Set(['sergeant','first sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
+
+const identityEmails = (person:any) => [...new Set([person.email, person.work_email, person.pathfinder_email, person.microsoft_email, person.outlook_email, ...(person.email_aliases || [])].map(lower).filter(Boolean))];
+async function callOutContext(api:any, email:string, date:string) {
+  const users:any[]=[];
+  for(let skip=0;skip<20000;skip+=500) {
+    const page=await api.asServiceRole.entities.User.list('-id',500,skip);
+    users.push(...page);
+    if(page.length<500)break;
+    if(skip===19500)throw new Error('Officer directory is incomplete; retry with support.');
+  }
+  const matches=users.filter(person=>identityEmails(person).includes(email));
+  if(matches.length!==1)throw new Error('Officer identity could not be uniquely verified. Refresh the officer list.');
+  const officer=matches[0]; const aliases=new Set(identityEmails(officer));
+  for(const address of [...aliases]) {
+    const [mailbox,domain]=address.split('@');
+    if(!['blackpointkjc.com','officer.blackpointkjc.com','employee.blackpointkjc.com'].includes(domain))continue;
+    const owners=users.filter(person=>identityEmails(person).some(a=>a.split('@')[0]===mailbox));
+    if(owners.length===1)for(const suffix of ['blackpointkjc.com','officer.blackpointkjc.com','employee.blackpointkjc.com'])aliases.add(mailbox+'@'+suffix);
+  }
+  const schedules:any[]=[];
+  for(let skip=0;skip<10000;skip+=500) {
+    const page=await api.asServiceRole.entities.Schedule.filter({shift_date:date},'-id',500,skip);
+    schedules.push(...page);
+    if(page.length<500)break;
+    if(skip===9500)throw new Error('Shift list is incomplete. Retry with support.');
+  }
+  const matching=schedules.filter(shift=>aliases.has(lower(shift.officer_email)) && shift.archived!==true && shift.is_open!==true);
+  return {officer, schedules, matching, aliases};
+}
+
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
     const actor = await base44.auth.me().catch(() => null);
-    const roles = new Set((actor?.additional_roles || []).map(lower));
+    const roles = new Set([actor?.role, ...(actor?.additional_roles || [])].map(lower));
     if (!actor || !(actor.role === 'admin' || actor.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || supervisorRanks.has(lower(actor.rank)))) {
       return Response.json({ error: 'Supervisor authorization required' }, { status: 403 });
     }
@@ -16,8 +46,8 @@ Deno.serve(async req => {
     if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !['called_out','sent_home','reassigned'].includes(type) || !String(input.reason || '').trim()) {
       return Response.json({ error: 'Officer, date, reason and valid type are required' }, { status: 400 });
     }
-    const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
-    const matching = (schedules || []).filter(shift => lower(shift.officer_email) === email && String(shift.shift_date || '').slice(0, 10) === date && !shift.archived && !shift.is_open && String(shift.id) === String(input.shift_id || '') && (!input.location || lower(shift.location).split(':')[0] === lower(input.location).split(':')[0]));
+    const {officer, schedules, matching: officerShifts} = await callOutContext(base44, email, date);
+    const matching = officerShifts.filter(shift => String(shift.id) === String(input.shift_id || ''));
     if (!matching.length) return Response.json({ error: 'Scheduled shift not found for this officer/date. Choose an actual shift from the schedule.' }, { status: 409 });
     const shift = matching[0];
     if (type === 'reassigned' && (!input.destination_location || !/^\d{2}:\d{2}$/.test(input.destination_start_time || '') || !/^\d{2}:\d{2}$/.test(input.destination_end_time || ''))) return Response.json({error:'Destination site and start/end times are required'}, {status:400});
@@ -26,8 +56,7 @@ Deno.serve(async req => {
     if ((existing || []).some(row => row.original_shift_id === shift.id && row.call_out_type === type && row.voided !== true)) {
       return Response.json({ error: 'This shift already has a recorded call-out of that type.' }, { status: 409 });
     }
-    const users = await base44.asServiceRole.entities.User.filter({ email }, '-updated_date', 1);
-    const officer = users?.[0];
+
     const callout = await base44.asServiceRole.entities.CallOut.create({
       officer_email: email, officer_name: [officer?.rank,officer?.last_name].filter(Boolean).join(' ') || 'Officer',
       call_out_type: type, call_out_date: date, call_out_time: String(input.call_out_time || ''),

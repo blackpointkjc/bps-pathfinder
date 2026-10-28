@@ -51,9 +51,14 @@ export default function SupervisorCallOuts() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers = [] } = useQuery({
+  const { data: allUsers = [], isFetching: officersLoading, error: officersError, refetch: refreshOfficers } = useQuery({
     queryKey: ['directoryUsers', 'supervisorCallOuts'],
-    queryFn: async () => { const [all, scoped] = await Promise.all([listDirectoryUsers('last_name', 1500).catch(() => []), listSupervisorDirectoryOfficers('last_name', 1000).catch(() => [])]); const unique = new Map(); for (const row of [...all, ...scoped]) if (isOperationalOfficer(row)) unique.set(String(row.email).toLowerCase(), row); return [...unique.values()].sort(comparePersonnel); },
+    queryFn: async () => {
+      let rows;
+      try { rows = await listDirectoryUsers('last_name', 1500, true); }
+      catch { rows = await listSupervisorDirectoryOfficers('last_name', 1000, true); }
+      return rows.filter(isOperationalOfficer).sort(comparePersonnel);
+    },
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
@@ -77,11 +82,19 @@ export default function SupervisorCallOuts() {
     refetchOnMount: 'always',
   });
 
-  const { data: scheduledShifts = [], isLoading: shiftsLoading, error: shiftsError } = useQuery({
+  const { data: scheduledShifts = [], isFetching: shiftsLoading, error: shiftsError, refetch: refreshShifts } = useQuery({
     queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
-    queryFn: async () => { const officer=allUsers.find(u=>u.email===formData.officer_email); const aliases=[...new Set([formData.officer_email,officer?.work_email,officer?.pathfinder_email,...(officer?.email_aliases||[])].filter(Boolean))]; return await base44.entities.Schedule.filter({officer_email:{$in:aliases},shift_date:formData.call_out_date},'start_time',250); },
-    enabled: Boolean(formData.officer_email && formData.call_out_date),
-    initialData: [],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getCallOutShifts', { officer_email: formData.officer_email, call_out_date: formData.call_out_date });
+      const payload = response?.data || response;
+      if (payload?.error) throw new Error(payload.error);
+      if (!Array.isArray(payload?.shifts)) throw new Error('Shift response was incomplete. Retry loading shifts.');
+      return payload.shifts;
+    },
+    enabled: Boolean(showDialog && formData.officer_email && formData.call_out_date),
+    staleTime: 0,
+    refetchOnMount: 'always',
+
   });
   const availableShifts = scheduledShifts.filter(shift => shift.archived !== true && !shift.is_open);
   const selectedShift = availableShifts.find(shift => shift.id === formData.shift_id);
@@ -196,7 +209,7 @@ export default function SupervisorCallOuts() {
                 </SelectTrigger>
                 <SelectContent>
                   {officers.length === 0 ? (
-                    <div className="p-2 text-sm text-slate-500">No officers found</div>
+                    <div className="p-2 text-sm text-slate-500">{officersLoading ? 'Loading officers…' : officersError ? 'Officer list unavailable' : 'No officers found'}</div>
                   ) : (
                     officers.map((officer) => (
                       <SelectItem key={officer.email} value={officer.email}>
@@ -208,6 +221,7 @@ export default function SupervisorCallOuts() {
               </Select>
             </div>
 
+            {officersError && <p role="alert" className="text-sm text-red-300">Officer list could not load. <button type="button" className="underline" onClick={()=>refreshOfficers()}>Retry officers</button></p>}
             <div className="space-y-2">
               <Label>Type *</Label>
               <Select value={formData.call_out_type} onValueChange={(value) => setFormData({...formData, call_out_type: value})}>
@@ -243,7 +257,7 @@ export default function SupervisorCallOuts() {
               </div>
             </div>
 
-            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{shiftsLoading && <p className="text-xs text-blue-700">Loading officer shifts…</p>}{shiftsError && <p className="text-xs text-red-700">Unable to load shifts: {shiftsError.message}</p>}{formData.officer_email && !shiftsLoading && !shiftsError && !availableShifts.length && <p className="text-xs text-red-700">No matching published shift found for this officer/date. Check the schedule and officer email.</p>}</div>
+            <div className="space-y-2"><Label>Scheduled Shift * (linked to scheduling and performance)</Label><Select value={formData.shift_id} onValueChange={value => setFormData({ ...formData, shift_id: value, location: availableShifts.find(shift => shift.id === value)?.location || '' })}><SelectTrigger><SelectValue placeholder="Select the affected scheduled shift..." /></SelectTrigger><SelectContent>{availableShifts.map(shift => <SelectItem key={shift.id} value={shift.id}>{shift.start_time}–{shift.end_time} · {shift.location} {shift.attendance_status && shift.attendance_status !== 'scheduled' ? `(${shift.attendance_status})` : ''}</SelectItem>)}</SelectContent></Select>{shiftsLoading && <p className="text-xs text-blue-700">Loading officer shifts…</p>}{shiftsError && <p className="text-xs text-red-700">Unable to load shifts: {shiftsError.message} <button type="button" className="underline" onClick={()=>refreshShifts()}>Retry shifts</button></p>}{formData.officer_email && !shiftsLoading && !shiftsError && !availableShifts.length && <p className="text-xs text-red-700">No matching published shift found for this officer/date. Check the schedule and officer email.</p>}</div>
             {formData.call_out_type === 'reassigned' ? (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -305,7 +319,7 @@ export default function SupervisorCallOuts() {
               <Button type="button" variant="outline" onClick={() => { setShowDialog(false); resetForm(); }}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-red-600 hover:bg-red-700" disabled={createCallOutMutation.isPending}>
+              <Button type="submit" className="bg-red-600 hover:bg-red-700" disabled={createCallOutMutation.isPending || shiftsLoading || !!shiftsError || !selectedShift}>
                 Document Call-Out
               </Button>
             </div>
