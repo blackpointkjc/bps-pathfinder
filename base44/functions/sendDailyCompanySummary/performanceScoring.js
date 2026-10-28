@@ -515,13 +515,72 @@ export function calculateJobDutyCompliance({
     return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
   });
 
+  // Officers who never use the time clock (command staff, salaried posts) still owe
+  // the duties of every shift they were scheduled to work. When an elapsed scheduled
+  // shift has no overlapping clock-in and no recorded absence, score it from the
+  // published schedule instead of silently ignoring the shift.
+  const scheduleSessions = [];
+  if (Array.isArray(schedules) && schedules.length) {
+    const nowParts = dateParts(new Date());
+    const nowWall = nowParts
+      ? wallClockMinute(
+          `${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`,
+          `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`,
+        )
+      : null;
+    const absentDates = new Set(
+      (callOuts || [])
+        .filter(item => item?.voided !== true && item?.active !== false
+          && ['called_out', 'sent_home'].includes(String(item?.call_out_type || '').toLowerCase()))
+        .map(item => String(item?.call_out_date || '').slice(0, 10))
+        .filter(Boolean)
+    );
+    for (const schedule of schedules) {
+      if (!schedule?.id || schedule.archived === true || schedule.is_open === true) continue;
+      if (!schedule.shift_date || !schedule.start_time || !schedule.end_time) continue;
+      if (monthStart && schedule.shift_date < monthStart) continue;
+      if (monthEnd && schedule.shift_date > monthEnd) continue;
+      const start = wallClockMinute(schedule.shift_date, schedule.start_time);
+      let end = wallClockMinute(schedule.shift_date, schedule.end_time);
+      if (start == null || end == null) continue;
+      const crossesMidnight = end <= start;
+      if (crossesMidnight) end += 1440;
+      if (nowWall == null || end > nowWall) continue;
+      if (absentDates.has(String(schedule.shift_date).slice(0, 10))) continue;
+      const coveredByClockIn = evaluatedShifts.some(entry => {
+        const inWall = wallClockMinute(easternDateKey(entry.clock_in), easternTimeKey(entry.clock_in));
+        const outWall = entry.clock_out
+          ? wallClockMinute(easternDateKey(entry.clock_out), easternTimeKey(entry.clock_out))
+          : (nowWall || inWall);
+        return inWall != null && outWall != null && inWall < end && outWall > start;
+      });
+      if (coveredByClockIn) continue;
+      const clockIn = easternWallToIso(schedule.shift_date, schedule.start_time);
+      const clockOut = easternWallToIso(
+        crossesMidnight ? addDaysToDateKey(schedule.shift_date, 1) : schedule.shift_date,
+        schedule.end_time,
+      );
+      if (!clockIn || !clockOut) continue;
+      scheduleSessions.push({
+        id: `schedule-${schedule.id}`,
+        officer_email: schedule.officer_email || officer?.email || '',
+        location: schedule.location || '',
+        clock_in: clockIn,
+        clock_out: clockOut,
+        schedule_id: schedule.id,
+        from_schedule: true,
+      });
+    }
+  }
+  const evaluatedAll = [...evaluatedShifts, ...scheduleSessions];
+
   const activeRules = dutyRules.filter(rule => rule.active !== false);
   const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
 
   // DAR is a shift/session obligation, not a TimeEntry-row obligation. Switch Site
   // creates a second TimeEntry for the destination property, so merge contiguous
   // entries for the same officer into one duty session before counting DARs.
-  const sortedEntries = [...evaluatedShifts].sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+  const sortedEntries = [...evaluatedAll].sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
   const darSessions = [];
   const darSessionByEntry = new Map();
   for (const entry of sortedEntries) {
@@ -590,11 +649,10 @@ export function calculateJobDutyCompliance({
   let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
   let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0;
 
-  evaluatedShifts.forEach(entry => {
+  evaluatedAll.forEach(entry => {
     const shiftDate = easternDateKey(entry.clock_in);
     const site = siteKey(entry.location);
-    if (!site) return;
-    const rule = ruleFor(site);
+    const rule = site ? ruleFor(site) : null;
     const shiftStartMs = new Date(entry.clock_in).getTime();
     const isActiveShift = !entry.clock_out;
     const shiftEndMs = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
@@ -652,7 +710,10 @@ export function calculateJobDutyCompliance({
       return callMatchesProperty(call, site, locations);
     });
     const allowedTypes = Array.isArray(rule?.incident_required_call_types) ? rule.incident_required_call_types.map(v => String(v).toLowerCase()) : [];
-    const requireIncident = ruleIsEffective && rule.incident_report_required_for_property_calls === true;
+    // JobDutyRule defaults the property-call incident requirement to true, so a
+    // property call during a shift requires a report unless a rule opts out.
+    const requireIncident = Boolean(site)
+      && (rule ? ruleIsEffective && rule.incident_report_required_for_property_calls !== false : true);
 
     if (requireIncident) {
       calls.forEach(call => {

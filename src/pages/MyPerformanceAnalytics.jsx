@@ -253,7 +253,7 @@ export default function MyPerformanceAnalytics() {
     exemptions: dutyExemptions,
     monthStart: currentMonthStart,
     monthEnd: currentMonthEnd,
-  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.callAssignments, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, dutyExemptions, currentMonthStart, currentMonthEnd]);
+  }), [user, timeEntries, schedules, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.callAssignments, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, dutyExemptions, currentMonthStart, currentMonthEnd]);
 
   const incidentObligations = useMemo(
     () => (jobDuty.shifts || []).flatMap(shift =>
