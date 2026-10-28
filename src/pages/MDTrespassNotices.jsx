@@ -379,12 +379,12 @@ export default function MDTrespassNotices() {
         
         <div class="notice-container">
           <div class="header">
-            <div class="title">MARYLAND TRESPASS NOTICE</div>
-            <div class="subtitle">NO TRESPASSING WARNING</div>
+            <div class="title">Maryland trespass notice</div>
+            <div class="subtitle">No trespassing warning</div>
           </div>
           
           <div class="section">
-            <div class="section-title">NOTICE INFORMATION</div>
+            <div class="section-title">Notice information</div>
             <div class="field-row">
               <div class="field-label">Date Issued:</div>
               <div class="field-value">${format(new Date(notice.notice_date), 'MMMM d, yyyy h:mm a')}</div>
@@ -400,7 +400,7 @@ export default function MDTrespassNotices() {
           </div>
           
           <div class="section">
-            <div class="section-title">SUBJECT INFORMATION</div>
+            <div class="section-title">Subject information</div>
             <div class="field-row">
               <div class="field-label">Name:</div>
               <div class="field-value">${notice.subject_name}</div>
@@ -424,7 +424,7 @@ export default function MDTrespassNotices() {
           </div>
           
           <div class="section">
-            <div class="section-title">REASON FOR TRESPASS NOTICE</div>
+            <div class="section-title">Reason for trespass notice</div>
             <div style="border: 1px solid #000; padding: 10px; min-height: 80px; white-space: pre-wrap;">
               ${notice.reason}
             </div>
@@ -432,14 +432,14 @@ export default function MDTrespassNotices() {
 
           ${notice.photo_url ? `
             <div class="photo-section">
-              <div class="section-title">SUBJECT PHOTO</div>
+              <div class="section-title">Subject photo</div>
               <img src="${notice.photo_url}" alt="Subject photo" />
             </div>
           ` : ''}
 
           ${notice.police_notified ? `
             <div class="section">
-              <div class="section-title">LAW ENFORCEMENT NOTIFICATION</div>
+              <div class="section-title">Law enforcement notification</div>
               <div class="field-row">
                 <div class="field-label">Police Notified:</div>
                 <div class="field-value">YES</div>
@@ -456,7 +456,7 @@ export default function MDTrespassNotices() {
           <div class="warning-box">
             <div class="warning-title">⚠️ LEGAL WARNING</div>
             <div class="legal-text">
-              <p><strong>YOU ARE HEREBY NOTIFIED</strong> that you are not permitted to enter or remain on the above-described property.</p>
+              <p><strong>You are hereby notified</strong> that you are not permitted to enter or remain on the above-described property.</p>
               <p style="margin-top: 8px;">
                 <strong>Maryland Criminal Law § 6-402</strong> - A person may not enter or remain on private property after the person has been notified by the owner or the owner's agent not to trespass on the property.
               </p>
@@ -487,7 +487,7 @@ export default function MDTrespassNotices() {
           </div>
           
           <div class="footer">
-            <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
+            <p style="margin-top: 3px;">This is an official trespass notice - retain for your records</p>
           </div>
         </div>
         
@@ -818,7 +818,7 @@ export default function MDTrespassNotices() {
                   <div className="space-y-4">
                     {filteredInactiveNotices?.map((notice) => (
                       <div key={notice.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-slate-400 opacity-60">
-                        <Badge className="bg-slate-200 text-slate-700 mb-2">EXPIRED</Badge>
+                        <Badge className="bg-slate-200 text-slate-700 mb-2">Expired</Badge>
                         <p className="font-semibold text-slate-700">{notice.subject_name}</p>
                         <p className="text-sm text-slate-600">Issued: {format(new Date(notice.notice_date), 'MMM d, yyyy')}</p>
                       </div>

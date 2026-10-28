@@ -609,7 +609,7 @@ export default function DailyActivityReports() {
         
         <div class="report-container">
           <div class="header">
-            <div class="title">SHIFT ACTIVITY REPORT</div>
+            <div class="title">Shift activity report</div>
             <div class="subtitle">Daily Operations Summary</div>
           </div>
           
@@ -640,19 +640,19 @@ export default function DailyActivityReports() {
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 4px;">
                 ${report.weather_conditions ? `
                 <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">WEATHER</div>
+                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Weather</div>
                   <div style="font-size: 7pt; font-weight: bold; color: #1e40af;">${report.weather_conditions}</div>
                 </div>
                 ` : ''}
                 ${report.patrol_count ? `
                 <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">PATROLS</div>
+                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Patrols</div>
                   <div style="font-size: 9pt; font-weight: bold; color: #1e40af;">${report.patrol_count}</div>
                 </div>
                 ` : ''}
                 ${report.visitors_logged ? `
                 <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">VISITORS</div>
+                  <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Visitors</div>
                   <div style="font-size: 9pt; font-weight: bold; color: #1e40af;">${report.visitors_logged}</div>
                 </div>
                 ` : ''}

@@ -380,7 +380,7 @@ export default function CriminalComplaints() {
         <div class="page-container">
           <!-- LEFT COLUMN -->
           <div class="left-column">
-            <div class="form-title">CRIMINAL COMPLAINT</div>
+            <div class="form-title">Criminal complaint</div>
             <div class="form-subtitle">RULES 3A:3 AND 7C:3</div>
             
             <div class="cw-header">Commonwealth of Virginia</div>
@@ -397,7 +397,7 @@ export default function CriminalComplaints() {
             </div>
             
             <div class="field-group">
-              <span style="font-size: 7pt; font-weight: bold;">CITY OR COUNTY</span>
+              <span style="font-size: 7pt; font-weight: bold;">City or county</span>
               <div style="border-bottom: 1px dotted #000; padding: 3px 0;">${complaint.location?.toUpperCase() || ''}</div>
             </div>
             
@@ -409,7 +409,7 @@ export default function CriminalComplaints() {
               <span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 180px; padding: 3px 10px;">${offenseFormatted}</span>
             </div>
             
-            <div style="font-size: 7pt; font-weight: bold; text-align: center; margin: 5px 0;">DATE OFFENSE OCCURRED</div>
+            <div style="font-size: 7pt; font-weight: bold; text-align: center; margin: 5px 0;">Date offense occurred</div>
             
             <div style="margin: 8px 0; font-size: 8.5pt;">
               in the 
@@ -438,14 +438,14 @@ export default function CriminalComplaints() {
             <div class="signature-area">
               <div class="sig-grid">
                 <div class="sig-box">
-                  <div class="sig-label">NAME OF COMPLAINANT (LAST, FIRST, MIDDLE)</div>
+                  <div class="sig-label">Name of complainant (last, first, middle)</div>
                   <div class="sig-label">(PRINT CLEARLY)</div>
                   <div style="border-bottom: 1px solid #000; padding: 8px 0; font-weight: bold; font-size: 10pt; min-height: 30px;">
                     ${complaint.complainant_name || officerFullName}
                   </div>
                 </div>
                 <div class="sig-box">
-                  <div class="sig-label">SIGNATURE OF COMPLAINANT</div>
+                  <div class="sig-label">Signature of complainant</div>
                   <div class="sig-line"></div>
                 </div>
               </div>
@@ -455,7 +455,7 @@ export default function CriminalComplaints() {
               <p>Subscribed and sworn to before me this day.</p>
               <div class="sworn-grid">
                 <div>
-                  <div class="sig-label">DATE AND TIME</div>
+                  <div class="sig-label">Date and time</div>
                   <div style="border-bottom: 1px solid #000; padding: 5px 0; min-height: 25px;"></div>
                 </div>
                 <div>
@@ -475,21 +475,21 @@ export default function CriminalComplaints() {
           <!-- RIGHT COLUMN -->
           <div class="right-column">
             <div class="right-box">
-              <div class="right-title">CRIMINAL COMPLAINT</div>
+              <div class="right-title">Criminal complaint</div>
               
               <div class="accused-section">
                 <div style="font-size: 7pt; font-weight: bold; margin-bottom: 3px;">ACCUSED: Name, Description, Address/Location</div>
                 <div class="accused-name">
                   ${complaint.accused_last_name || ''}, ${complaint.accused_first_name || ''} ${complaint.accused_middle_name || ''}
                 </div>
-                <div style="font-size: 6pt; font-weight: bold; margin-top: 5px; margin-bottom: 2px;">LAST NAME, FIRST NAME, MIDDLE NAME</div>
+                <div style="font-size: 6pt; font-weight: bold; margin-top: 5px; margin-bottom: 2px;">Last name, first name, middle name</div>
               </div>
               
               <div class="accused-address">${complaint.accused_address || ''}</div>
               
               <table class="data-table">
                 <tr class="label-row">
-                  <td colspan="6" style="background: #e0e0e0; font-weight: bold; font-size: 7pt;">COMPLETE DATA BELOW IF KNOWN</td>
+                  <td colspan="6" style="background: #e0e0e0; font-weight: bold; font-size: 7pt;">Complete data below if known</td>
                 </tr>
                 <tr>
                   <td rowspan="2" style="width: 12%;"><strong>RACE</strong></td>
@@ -538,12 +538,12 @@ export default function CriminalComplaints() {
               </div>
               
               <div style="margin-top: 10px; border-top: 1px solid #000; padding-top: 8px;">
-                <div style="font-size: 6pt; font-weight: bold; margin-bottom: 2px;">NAME OF PERSON AUTHORIZING ISSUANCE OF WARRANT</div>
+                <div style="font-size: 6pt; font-weight: bold; margin-bottom: 2px;">Name of person authorizing issuance of warrant</div>
                 <div class="auth-field">${complaint.is_law_enforcement === false ? (complaint.authorization_given_by || '') : ''}</div>
               </div>
               
               <div style="margin-top: 8px;">
-                <div style="font-size: 6pt; font-weight: bold; margin-bottom: 2px;">DATE AND TIME AUTHORIZATION GIVEN</div>
+                <div style="font-size: 6pt; font-weight: bold; margin-bottom: 2px;">Date and time authorization given</div>
                 <div class="auth-field">${complaint.is_law_enforcement === false && complaint.authorization_date ? format(new Date(complaint.authorization_date), 'MM/dd/yyyy HH:mm') : ''}</div>
               </div>
             </div>

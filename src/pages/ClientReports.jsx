@@ -620,30 +620,30 @@ export default function ClientReports() {
         <div class="section">
           <div class="field-row">
             <div>
-              <div class="field-label">OFFENSE DATE</div>
+              <div class="field-label">Offense date</div>
               <div class="field-value">${offenseDate}</div>
             </div>
             <div>
-              <div class="field-label">OFFENSE TIME</div>
+              <div class="field-label">Offense time</div>
               <div class="field-value">${report.offense_time}</div>
             </div>
           </div>
           <div class="field-full">
-            <div class="field-label">LOCATION</div>
+            <div class="field-label">Location</div>
             <div class="field-value">${report.location}</div>
           </div>
           <div class="field-row">
             <div>
-              <div class="field-label">ACCUSED</div>
+              <div class="field-label">Accused</div>
               <div class="field-value">${report.accused_first_name} ${report.accused_last_name}</div>
             </div>
             <div>
-              <div class="field-label">VIOLATION CODE</div>
+              <div class="field-label">Violation code</div>
               <div class="field-value">${report.violation_code}</div>
             </div>
           </div>
           <div class="field-full">
-            <div class="field-label">FACTS BASIS</div>
+            <div class="field-label">Facts basis</div>
             <div class="field-value" style="min-height: 80px; white-space: pre-wrap;">${report.facts_basis}</div>
           </div>
         </div>
@@ -656,45 +656,45 @@ export default function ClientReports() {
         <div class="section">
           <div class="field-row">
             <div>
-              <div class="field-label">OFFENSE DATE</div>
+              <div class="field-label">Offense date</div>
               <div class="field-value">${offenseDate}</div>
             </div>
             <div>
-              <div class="field-label">OFFENSE TIME</div>
+              <div class="field-label">Offense time</div>
               <div class="field-value">${report.offense_time}</div>
             </div>
           </div>
           <div class="field-full">
-            <div class="field-label">LOCATION</div>
+            <div class="field-label">Location</div>
             <div class="field-value">${report.location}</div>
           </div>
           <div class="field-row">
             <div>
-              <div class="field-label">VIOLATOR</div>
+              <div class="field-label">Violator</div>
               <div class="field-value">${report.violator_first_name} ${report.violator_last_name}</div>
             </div>
             <div>
-              <div class="field-label">VIOLATION CODE</div>
+              <div class="field-label">Violation code</div>
               <div class="field-value">${report.violation_code}</div>
             </div>
           </div>
           <div class="field-full">
-            <div class="field-label">VIOLATION DESCRIPTION</div>
+            <div class="field-label">Violation description</div>
             <div class="field-value" style="min-height: 50px; white-space: pre-wrap;">${report.violation_description}</div>
           </div>
-          <div class="section-title">COURT INFORMATION</div>
+          <div class="section-title">Court information</div>
           <div class="field-row">
             <div>
-              <div class="field-label">COURT DATE</div>
+              <div class="field-label">Court date</div>
               <div class="field-value">${courtDate}</div>
             </div>
             <div>
-              <div class="field-label">COURT TIME</div>
+              <div class="field-label">Court time</div>
               <div class="field-value">${report.court_time || 'N/A'}</div>
             </div>
           </div>
           <div class="field-full">
-            <div class="field-label">COURT LOCATION</div>
+            <div class="field-label">Court location</div>
             <div class="field-value">${report.court_location || 'N/A'}</div>
           </div>
         </div>

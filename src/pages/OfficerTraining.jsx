@@ -237,7 +237,7 @@ export default function OfficerTraining() {
       <button class="back-button no-print" onclick="window.close()">← Back to App</button>
       <div class="certificate">
         <div class="header"><div class="logo"><img src="/black-point-shield.webp" style="width:100%;height:100%;object-fit:contain"/></div>
-        <div class="title">CERTIFICATE</div><div class="subtitle">of Training Completion</div></div>
+        <div class="title">Certificate</div><div class="subtitle">of Training Completion</div></div>
         <div class="content"><div class="recipient">This certifies that</div>
         <div class="name">${user.first_name} ${user.last_name}</div>
         ${user.rank ? `<div style="font-size:14pt;color:#64748b;margin-top:10px">${user.rank}</div>` : ''}
@@ -248,7 +248,7 @@ export default function OfficerTraining() {
             <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/ae268d2bf_ChatGPTImageDec31202509_09_27PM.png" alt="Signature" class="signature-image"/></div>
             <div class="signature-label">Training Coordinator</div>
             <div class="date" style="margin-top:20px">Date: ${format(new Date(completion.completion_date), 'MMMM d, yyyy')}</div></div>
-          <div class="signature-section"><div class="seal"><div>BLACK POINT<br/>PROTECTION<br/>CERTIFIED</div></div>
+          <div class="signature-section"><div class="seal"><div>Black Point<br/>Protection<br/>Certified</div></div>
           <div class="signature-label" style="margin-top:10px">Official Seal</div></div>
         </div>
       </div>

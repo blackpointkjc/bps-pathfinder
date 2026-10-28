@@ -239,13 +239,13 @@ export default function ClientTrespass() {
         <div class="citation-border">
           <div class="header">
             <img src="${LOGO_URL}" alt="Black Point Protection" class="header-logo" />
-            <h1>TRESPASS NOTICE</h1>
-            <h2>OFFICIAL WARNING</h2>
+            <h1>Trespass notice</h1>
+            <h2>Official warning</h2>
             <div class="subtitle"><strong>${notice.location}</strong></div>
             <div class="subtitle">${format(new Date(notice.notice_date), 'MMMM d, yyyy')}</div>
           </div>
           <div class="notice-number">NOTICE NO: ${notice.id.substring(0, 8).toUpperCase()}</div>
-          <div class="warning-banner">OFFICIAL TRESPASS NOTICE - LEGAL DOCUMENT</div>
+          <div class="warning-banner">Official trespass notice - legal document</div>
           <div class="info-grid">
             <div class="info-item"><div class="info-label">Subject Name</div><div class="info-value">${notice.subject_name}</div></div>
             <div class="info-item"><div class="info-label">Date Issued</div><div class="info-value">${format(new Date(notice.notice_date), 'MMM d, yyyy h:mm a')}</div></div>
@@ -257,7 +257,7 @@ export default function ClientTrespass() {
           <div class="section"><div class="section-title">Reason for Trespass Notice</div><div class="section-content">${notice.reason}</div></div>
           ${notice.vehicle_info ? `<div class="section"><div class="section-title">Vehicle Information</div><div class="section-content">${notice.vehicle_info}</div></div>` : ''}
           <div class="notice-box">
-            <h3>LEGAL NOTICE</h3>
+            <h3>Legal notice</h3>
             <p><strong>You are hereby notified that you are not permitted on this property until ${notice.expiration_date ? format(new Date(notice.expiration_date), 'MMMM d, yyyy') : 'an indefinite time'}.</strong></p>
             <p>Violation may result in arrest under Virginia Code § 18.2-119.</p>
             ${notice.police_notified ? '<p style="font-weight: bold;">Police notified.</p>' : ''}
@@ -273,7 +273,7 @@ export default function ClientTrespass() {
             </div>
           </div>
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION</strong> | Richmond, VA | Printed ${format(new Date(), 'MMM d, yyyy h:mm a')}</p>
+            <p><strong>Black Point Protection</strong> | Richmond, VA | Printed ${format(new Date(), 'MMM d, yyyy h:mm a')}</p>
           </div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
@@ -425,7 +425,7 @@ export default function ClientTrespass() {
                   )}
 
                   <div className="pt-4 border-t-2 border-slate-200 bg-yellow-50 p-4 rounded">
-                    <p className="font-bold text-yellow-900 mb-2">LEGAL NOTICE</p>
+                    <p className="font-bold text-yellow-900 mb-2">Legal notice</p>
                     <p className="text-sm text-yellow-900">
                       You are hereby notified that you are not permitted on this property until {selectedNotice.expiration_date ? format(new Date(selectedNotice.expiration_date), 'MMMM d, yyyy') : 'an indefinite time'}. 
                       Violation may result in arrest under Virginia Code § 18.2-119.

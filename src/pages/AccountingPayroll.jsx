@@ -796,14 +796,14 @@ export default function AccountingPayroll() {
         <th class="r">SS (EE)</th>
         <th class="r">Medicare (EE)</th>
         <th class="r">State W/H</th>
-        <th class="r">NET PAY</th>
+        <th class="r">Net pay</th>
         <th>Method</th>
       </tr>
     </thead>
     <tbody>
       ${employeeRows}
       <tr class="total-row">
-        <td>TOTALS</td>
+        <td>Totals</td>
         <td></td><td></td><td></td><td></td><td></td><td></td>
         <td class="r">$${totGross.toFixed(2)}</td>
         <td class="r">$${totFedEE.toFixed(2)}</td>
@@ -831,7 +831,7 @@ export default function AccountingPayroll() {
       <tr><td>Social Security — Employer Match (6.2%)</td><td class="r">$${totSSER.toFixed(2)}</td><td>Employer</td><td>IRS via EFTPS — Form 941</td></tr>
       <tr><td>Medicare — Employee Share (1.45%)</td><td class="r">$${totMedEE.toFixed(2)}</td><td>Employee (withheld)</td><td>IRS via EFTPS — Form 941</td></tr>
       <tr><td>Medicare — Employer Match (1.45%)</td><td class="r">$${totMedER.toFixed(2)}</td><td>Employer</td><td>IRS via EFTPS — Form 941</td></tr>
-      <tr class="total-row"><td>TOTAL IRS 941 DEPOSIT</td><td class="r">$${totalTaxDeposit.toFixed(2)}</td><td colspan="2">Deposit by pay date (semi-weekly) or following month (monthly depositor)</td></tr>
+      <tr class="total-row"><td>Total IRS 941 deposit</td><td class="r">$${totalTaxDeposit.toFixed(2)}</td><td colspan="2">Deposit by pay date (semi-weekly) or following month (monthly depositor)</td></tr>
     </tbody>
   </table>
 
@@ -870,7 +870,7 @@ export default function AccountingPayroll() {
       <tr><td>Social Security — Employer Match (6.2%)</td><td class="r red">$${totSSER.toFixed(2)}</td></tr>
       <tr><td>Medicare — Employer Match (1.45%)</td><td class="r red">$${totMedER.toFixed(2)}</td></tr>
       <tr><td>FUTA Estimated (0.6%)</td><td class="r red">$${totFUTA.toFixed(2)}</td></tr>
-      <tr class="total-row"><td>TOTAL EMPLOYER COST THIS PERIOD</td><td class="r">$${(totGross + totSSER + totMedER + totFUTA).toFixed(2)}</td></tr>
+      <tr class="total-row"><td>Total employer cost this period</td><td class="r">$${(totGross + totSSER + totMedER + totFUTA).toFixed(2)}</td></tr>
     </tbody>
   </table>
 
@@ -970,7 +970,7 @@ export default function AccountingPayroll() {
       {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
       {payrollCatchup.state !== 'idle' && <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${payrollCatchup.state === 'error' ? 'border-red-300 bg-red-50 text-red-900' : payrollCatchup.state === 'created' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-blue-300 bg-blue-50 text-blue-900'}`}>{payrollCatchup.message}</div>}
       {accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><span>Payroll data could not be loaded: {accountingError?.response?.data?.error || accountingError.message}</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-black hover:bg-red-100">RETRY</button></div>}
-      {!!accountingLoadErrors.length && !accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span>Partial payroll data: {accountingLoadErrors.join(', ')} could not be loaded. Available payroll information remains visible.</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-black hover:bg-amber-100">RETRY MISSING DATA</button></div>}
+      {!!accountingLoadErrors.length && !accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span>Partial payroll data: {accountingLoadErrors.join(', ')} could not be loaded. Available payroll information remains visible.</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-black hover:bg-amber-100">Retry missing data</button></div>}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>

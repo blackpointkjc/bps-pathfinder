@@ -81,18 +81,18 @@ export default function RecordsAssistant() {
         <div className="flex items-start gap-3">
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3"><Bot className="h-7 w-7 text-blue-300" /></div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-black tracking-wide">RECORDS AI SEARCH</h1>
+            <h1 className="text-2xl font-black tracking-wide">Records AI search</h1>
             <p className="text-sm text-slate-400">Search every company report for a person, vehicle, address, phone number, report number, or call number.</p>
           </div>
-          <Button type="button" variant="outline" onClick={() => { setVoiceEnabled(true); announceVoice('Records A I audio enabled.', { force: true, dedupeMs: 0 }); }} className="shrink-0 border-cyan-600/50 text-cyan-200"><Volume2 className="mr-2 h-4 w-4" />AUDIO ON / TEST</Button>
+          <Button type="button" variant="outline" onClick={() => { setVoiceEnabled(true); announceVoice('Records A I audio enabled.', { force: true, dedupeMs: 0 }); }} className="shrink-0 border-cyan-600/50 text-cyan-200"><Volume2 className="mr-2 h-4 w-4" />Audio on / test</Button>
         </div>
 
         <Card className="border-slate-700 bg-[#111d2b]">
           <CardContent className="p-4">
             <div className="mb-3 grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setSearchType('all')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'all' ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Search className="h-3.5 w-3.5" />ALL RECORDS</button>
-              <button type="button" onClick={() => setSearchType('person')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'person' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><User className="h-3.5 w-3.5" />PEOPLE</button>
-              <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />MOTOR VEHICLES</button>
+              <button type="button" onClick={() => setSearchType('all')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'all' ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Search className="h-3.5 w-3.5" />All records</button>
+              <button type="button" onClick={() => setSearchType('person')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'person' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><User className="h-3.5 w-3.5" />People</button>
+              <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />Motor vehicles</button>
             </div>
             {searchType === 'person' && (
               <div className="mb-4 grid gap-3 lg:grid-cols-[1.3fr_.7fr]">
@@ -138,8 +138,8 @@ export default function RecordsAssistant() {
                   <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Virginia OCIS requires the individual user to accept its terms before searching and prohibits automated scripting/data mining. Pathfinder therefore keeps court verification as a clearly separate official-site step instead of pretending the internal search is querying Virginia courts.</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button type="button" variant="outline" onClick={async () => { const criteria = [personName || query, courtLevel !== 'All Court Levels' ? courtLevel : '', courtName, caseNumber ? `Case ${caseNumber}` : ''].filter(Boolean).join(' · '); await navigator.clipboard?.writeText(criteria); toast.success('Court search criteria copied'); }} className="border-slate-600 text-slate-300">COPY CRITERIA</Button>
-                  <Button type="button" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="bg-cyan-700 text-white hover:bg-cyan-600">OPEN OFFICIAL OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" /></Button>
+                  <Button type="button" variant="outline" onClick={async () => { const criteria = [personName || query, courtLevel !== 'All Court Levels' ? courtLevel : '', courtName, caseNumber ? `Case ${caseNumber}` : ''].filter(Boolean).join(' · '); await navigator.clipboard?.writeText(criteria); toast.success('Court search criteria copied'); }} className="border-slate-600 text-slate-300">Copy criteria</Button>
+                  <Button type="button" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="bg-cyan-700 text-white hover:bg-cyan-600">Open official OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" /></Button>
                 </div>
               </div>
               <div className="grid gap-2 p-4 text-xs text-slate-400 sm:grid-cols-2 lg:grid-cols-4">

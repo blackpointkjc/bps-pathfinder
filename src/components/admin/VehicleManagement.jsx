@@ -144,7 +144,7 @@ export default function VehicleManagement() {
                 <div className="flex items-center gap-2">
                     <div className="w-1 h-5 bg-gold rounded-sm" />
                     <Car className="w-4 h-4 text-gold" />
-                    <span className="text-white font-bold text-sm tracking-widest">FLEET ASSETS</span>
+                    <span className="text-white font-bold text-sm tracking-widest">Fleet assets</span>
                     <span className="text-slate-500 text-[10px] ml-1">{vehicles.length} RECORDS</span>
                 </div>
                 <button
@@ -176,7 +176,7 @@ export default function VehicleManagement() {
                             )}
                             {vehicle.mileage > 0 && (
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">MILEAGE</span>
+                                    <span className="text-slate-500">Mileage</span>
                                     <span className="text-slate-300 font-bold">{vehicle.mileage.toLocaleString()} MI</span>
                                 </div>
                             )}
@@ -205,7 +205,7 @@ export default function VehicleManagement() {
             {vehicles.length === 0 && (
                 <div className="text-center py-12">
                     <Car className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                    <p className="text-slate-600 text-xs font-mono">NO VEHICLES ON RECORD</p>
+                    <p className="text-slate-600 text-xs font-mono">No vehicles on record</p>
                     <button onClick={() => { resetForm(); setEditingVehicle(null); setShowDialog(true); }}
                         className="mt-4 px-4 py-2 bg-gold/10 border border-gold/40 text-gold text-[10px] font-bold rounded hover:bg-gold/20 transition-all">
                         + ADD VEHICLE
@@ -228,7 +228,7 @@ export default function VehicleManagement() {
                                 <Input value={formData.vehicle_id} onChange={e => setFormData({...formData, vehicle_id: e.target.value})} placeholder="Unit 23" required className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">STATUS</Label>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Status</Label>
                                 <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
                                     <SelectTrigger className="bg-slate-800 border-slate-700 text-white font-mono mt-1"><SelectValue /></SelectTrigger>
                                     <SelectContent className="bg-slate-800 border-slate-700">
@@ -253,11 +253,11 @@ export default function VehicleManagement() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">LICENSE PLATE</Label>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">License plate</Label>
                                 <Input value={formData.license_plate} onChange={e => setFormData({...formData, license_plate: e.target.value})} placeholder="ABC-1234" className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">MILEAGE</Label>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Mileage</Label>
                                 <Input type="number" value={formData.mileage} onChange={e => setFormData({...formData, mileage: parseInt(e.target.value)})} className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                         </div>

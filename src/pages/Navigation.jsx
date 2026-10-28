@@ -1678,7 +1678,7 @@ export default function Navigation() {
                                 className="w-72 bg-[#0a0e1a] border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
                             >
                                 <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between bg-[#0d1220]">
-                                    <span className="text-yellow-400 font-mono text-[10px] font-bold">UNMAPPED CALLS</span>
+                                    <span className="text-yellow-400 font-mono text-[10px] font-bold">Unmapped calls</span>
                                     <button
                                         onClick={() => autoGeocodeUnmapped(unmappedCalls)}
                                         disabled={isGeocoding}
@@ -1844,7 +1844,7 @@ export default function Navigation() {
                                 <>
                                     <div className="flex min-w-0 items-center gap-2">
                                         <div className="h-2 w-2 flex-shrink-0 rounded-full bg-[#f5a623]" />
-                                        <span className="truncate text-xs font-bold tracking-widest text-white font-mono">CALL DETAIL</span>
+                                        <span className="truncate text-xs font-bold tracking-widest text-white font-mono">Call detail</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
@@ -1888,7 +1888,7 @@ export default function Navigation() {
                             >
                                 {routing ? 'ROUTING...' : '🧭 START GPS'}
                             </button>
-                            <button type="button" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(validPosition(selectedCall.latitude, selectedCall.longitude) ? `${selectedCall.latitude},${selectedCall.longitude}` : (selectedCall.location || ''))}&travelmode=driving`, '_blank', 'noopener,noreferrer')} className="px-2 py-1 rounded border border-emerald-500/40 text-emerald-300 text-[9px] font-mono font-bold hover:bg-emerald-500/10">GOOGLE MAPS</button>
+                            <button type="button" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(validPosition(selectedCall.latitude, selectedCall.longitude) ? `${selectedCall.latitude},${selectedCall.longitude}` : (selectedCall.location || ''))}&travelmode=driving`, '_blank', 'noopener,noreferrer')} className="px-2 py-1 rounded border border-emerald-500/40 text-emerald-300 text-[9px] font-mono font-bold hover:bg-emerald-500/10">Google Maps</button>
                             <button onClick={openInAppStreetView} disabled={!selectedCall.latitude || !selectedCall.longitude}
                                 className="px-2 py-1 rounded border border-purple-500/40 text-purple-300 text-[9px] font-mono font-bold hover:bg-purple-500/10 disabled:opacity-40">
                                 STREET VIEW
@@ -1950,7 +1950,7 @@ export default function Navigation() {
                             {/* Description / Narrative */}
                             {selectedCall.description && (
                                 <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
-                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">NARRATIVE</div>
+                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">Narrative</div>
                                     <div className="text-slate-300 text-[10px] leading-relaxed">{selectedCall.description}</div>
                                 </div>
                             )}
@@ -1958,7 +1958,7 @@ export default function Navigation() {
                             {/* AI Summary */}
                             {selectedCall.ai_summary && (
                                 <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
-                                    <div className="text-[8px] text-blue-400 mb-1.5 tracking-widest">AI ANALYSIS</div>
+                                    <div className="text-[8px] text-blue-400 mb-1.5 tracking-widest">AI analysis</div>
                                     <div className="text-blue-200 text-[10px] leading-relaxed">{selectedCall.ai_summary}</div>
                                 </div>
                             )}
@@ -1967,7 +1967,7 @@ export default function Navigation() {
                             {/* Assigned Units */}
                              {selectedCall.assigned_units?.length > 0 && (
                                 <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
-                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">ASSIGNED UNITS</div>
+                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">Assigned units</div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedCall.assigned_units.map((uid, i) => (
                                             <span key={i} className="text-[9px] px-2 py-1 bg-blue-900/30 border border-blue-500/30 rounded text-blue-300 font-bold">
@@ -1989,7 +1989,7 @@ export default function Navigation() {
 
                         {/* Field Unit Console */}
                         <div className="max-h-[36%] flex-none overflow-y-auto border-t border-[#1e2d4a] bg-[#081522] p-3">
-                            <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">FIELD UNIT CONSOLE</div>
+                            <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">Field unit console</div>
                             <FieldCallActions call={selectedCall} />
                         </div>
                         </>}
@@ -2002,7 +2002,7 @@ export default function Navigation() {
                     <div className="flex h-[min(88vh,760px)] w-[min(96vw,1100px)] flex-col overflow-hidden rounded-2xl border border-[#3b5570] bg-[#07111f] shadow-[0_30px_100px_rgba(0,0,0,.8)]" onClick={event => event.stopPropagation()}>
                         <div className="flex flex-none items-center gap-3 border-b border-[#263c52] bg-[#0d1725] px-4 py-3">
                             <div className="min-w-0 flex-1">
-                                <div className="text-xs font-black tracking-[0.16em] text-white">STREET VIEW</div>
+                                <div className="text-xs font-black tracking-[0.16em] text-white">Street view</div>
                                 <div className="text-[10px] text-slate-500">Call location · In-app map view</div>
                             </div>
                             <button type="button" onClick={() => setStreetViewUrl('')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#38516b] text-slate-300 hover:bg-[#17283b] hover:text-white" aria-label="Close Street View">

@@ -41,7 +41,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
         <Button type="button" variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
           {selected ? (
             <span className="flex min-w-0 items-center gap-2">
-              {!isActiveDispatchCall(selected) && <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">HISTORY</span>}
+              {!isActiveDispatchCall(selected) && <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">History</span>}
               <span className="truncate">{label(selected)}</span>
             </span>
           ) : (
@@ -59,8 +59,8 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
               <CommandGroup heading={`Active Calls (${active.length})`}>
                 {active.slice(0, 200).map(call => (
                   <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
-                    <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white">ACTIVE</span>
-                    {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">PROPERTY</span>}
+                    <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Active</span>
+                    {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
                     <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                     {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                   </CommandItem>
@@ -73,8 +73,8 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
                 <CommandGroup heading={`Call History (${history.length})`}>
                   {history.slice(0, 200).map(call => (
                     <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
-                      <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">HISTORY</span>
-                      {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">PROPERTY</span>}
+                      <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">History</span>
+                      {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
                       <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                       {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                     </CommandItem>

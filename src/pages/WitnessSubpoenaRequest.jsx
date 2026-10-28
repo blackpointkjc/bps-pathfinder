@@ -88,12 +88,12 @@ function WitnessBox({ witness, index, onChange, onRemove, canRemove }) {
         )}
       </div>
       <div className="dc-name-grid">
-        <label><LineInput value={witness.last_name} onChange={(v) => set('last_name', v)} ariaLabel={`Witness ${index + 1} last name`} /><small>LAST NAME</small></label>
-        <label><LineInput value={witness.first_name} onChange={(v) => set('first_name', v)} ariaLabel={`Witness ${index + 1} first name`} /><small>FIRST NAME</small></label>
-        <label><LineInput value={witness.middle_name} onChange={(v) => set('middle_name', v)} ariaLabel={`Witness ${index + 1} middle name`} /><small>MIDDLE NAME</small></label>
+        <label><LineInput value={witness.last_name} onChange={(v) => set('last_name', v)} ariaLabel={`Witness ${index + 1} last name`} /><small>Last name</small></label>
+        <label><LineInput value={witness.first_name} onChange={(v) => set('first_name', v)} ariaLabel={`Witness ${index + 1} first name`} /><small>First name</small></label>
+        <label><LineInput value={witness.middle_name} onChange={(v) => set('middle_name', v)} ariaLabel={`Witness ${index + 1} middle name`} /><small>Middle name</small></label>
       </div>
-      <label><LineInput value={witness.street_address} onChange={(v) => set('street_address', v)} ariaLabel={`Witness ${index + 1} address`} /><small>STREET ADDRESS/LOCATION WHERE WITNESS MAY BE FOUND</small></label>
-      <label><LineInput value={witness.city_state_zip} onChange={(v) => set('city_state_zip', v)} ariaLabel={`Witness ${index + 1} city state zip`} /><small>CITY / STATE / ZIP CODE</small></label>
+      <label><LineInput value={witness.street_address} onChange={(v) => set('street_address', v)} ariaLabel={`Witness ${index + 1} address`} /><small>Street address/location where witness may be found</small></label>
+      <label><LineInput value={witness.city_state_zip} onChange={(v) => set('city_state_zip', v)} ariaLabel={`Witness ${index + 1} city state zip`} /><small>City / state / ZIP code</small></label>
       <div className="dc-locality-line">
         <Choice name={`witness-locality-${index}`} checked={witness.locality_type === 'city'} onChange={() => set('locality_type', 'city')} label="City of" />
         <Choice name={`witness-locality-${index}`} checked={witness.locality_type === 'county'} onChange={() => set('locality_type', 'county')} label="County" />
@@ -103,7 +103,7 @@ function WitnessBox({ witness, index, onChange, onRemove, canRemove }) {
         <span>Telephone</span>
         <span>(</span><LineInput className="dc-area" value={witness.phone_area} onChange={(v) => set('phone_area', v)} ariaLabel="Area code" /><span>)</span>
         <LineInput value={witness.phone_number} onChange={(v) => set('phone_number', v)} ariaLabel="Phone number" />
-        <small>AREA CODE</small>
+        <small>Area code</small>
       </div>
     </section>
   );
@@ -118,7 +118,7 @@ function CaptionPanel({ form, setField }) {
   return (
     <section className="dc-caption">
       <div className="dc-case-number">Case No. <LineInput value={form.case_number} onChange={(v) => setField('case_number', v)} /></div>
-      <h2>REQUEST FOR WITNESS SUBPOENA</h2>
+      <h2>Request for witness subpoena</h2>
       <div className="dc-rule" />
       <Choice name="jurisdiction" checked={form.jurisdiction_type === 'commonwealth'} onChange={() => setField('jurisdiction_type', 'commonwealth')} label="Commonwealth of Virginia" />
       <div className="dc-locality-request">
@@ -131,7 +131,7 @@ function CaptionPanel({ form, setField }) {
       </div>
       <label className="dc-caption-name">
         <textarea value={form.plaintiff_petitioner_name} onChange={(e) => setField('plaintiff_petitioner_name', e.target.value)} aria-label="Plaintiff or petitioner name" />
-        <small>PLAINTIFF(S) / PETITIONER</small>
+        <small>Plaintiff(s) / petitioner</small>
       </label>
       <div className="dc-center-choices">
         <Choice name="caption" checked={form.case_caption_type === 'versus'} onChange={() => setField('case_caption_type', 'versus')} label="v." />
@@ -139,14 +139,14 @@ function CaptionPanel({ form, setField }) {
       </div>
       <label className="dc-caption-name">
         <LineInput value={form.defendant_child_name} onChange={(v) => setField('defendant_child_name', v)} ariaLabel="Defendant or child name" />
-        <small>DEFENDANT / CHILD (ONE DEFENDANT ONLY)</small>
+        <small>Defendant / child (one defendant only)</small>
       </label>
       <label className="dc-caption-name">
         <textarea className="dc-charge" value={form.charge} onChange={(e) => setField('charge', e.target.value)} aria-label="Charge" />
-        <small>CHARGE</small>
+        <small>Charge</small>
       </label>
       <div className="dc-court-date">
-        <label><LineInput type="date" value={form.court_date} onChange={(v) => setField('court_date', v)} /><small>COURT DATE</small></label>
+        <label><LineInput type="date" value={form.court_date} onChange={(v) => setField('court_date', v)} /><small>Court date</small></label>
         <label><LineInput type="time" value={form.court_time} onChange={(v) => setField('court_time', v)} /><small>TIME</small></label>
         <select value={form.court_time_period} onChange={(e) => setField('court_time_period', e.target.value)} aria-label="AM or PM">
           <option>AM</option><option>PM</option>
@@ -159,10 +159,10 @@ function CaptionPanel({ form, setField }) {
         ))}
       </div>
       <h3>REQUESTED BY:</h3>
-      <label><LineInput value={form.requested_by_name} onChange={(v) => setField('requested_by_name', v)} /><small>PRINTED NAME</small></label>
+      <label><LineInput value={form.requested_by_name} onChange={(v) => setField('requested_by_name', v)} /><small>Printed name</small></label>
       <label className="dc-signature-line">
         {form.requested_by_signature_url ? <img src={form.requested_by_signature_url} alt="Requestor signature" /> : null}
-        <small>SIGNATURE</small>
+        <small>Signature</small>
       </label>
       <div className="dc-phone-line dc-request-phone">
         <span>Telephone</span>
@@ -170,9 +170,9 @@ function CaptionPanel({ form, setField }) {
         <LineInput value={form.requested_by_phone_number} onChange={(v) => setField('requested_by_phone_number', v)} />
       </div>
       <div className="dc-court-use">
-        <strong>COURT USE ONLY</strong>
-        <label><LineInput type="date" value={form.date_received} onChange={(v) => setField('date_received', v)} /><small>DATE RECEIVED</small></label>
-        <label><LineInput type="date" value={form.date_issued} onChange={(v) => setField('date_issued', v)} /><small>DATE ISSUED</small></label>
+        <strong>Court use only</strong>
+        <label><LineInput type="date" value={form.date_received} onChange={(v) => setField('date_received', v)} /><small>Date received</small></label>
+        <label><LineInput type="date" value={form.date_issued} onChange={(v) => setField('date_issued', v)} /><small>Date issued</small></label>
       </div>
     </section>
   );
@@ -184,15 +184,15 @@ function FirstPage({ form, setField, onWitnessChange, onRemove }) {
       <div className="dc-left">
         <header className="dc-header">
           <div>
-            <h1>REQUEST FOR WITNESS SUBPOENA</h1>
-            <p>COMMONWEALTH OF VIRGINIA</p>
+            <h1>Request for witness subpoena</h1>
+            <p>Commonwealth of Virginia</p>
           </div>
           <div className="dc-code">VA. CODE §§ 8.01-407, 16.1-265,<br />17.1-617, 19.2-267<br />Rules 3A:12, 7A:12, 8:13</div>
         </header>
         <div className="dc-please">(PLEASE PRINT)</div>
         <label className="dc-court-location">
           <LineInput value={form.court_location} onChange={(v) => setField('court_location', v)} ariaLabel="City or county" />
-          <small>CITY OR COUNTY</small>
+          <small>City or county</small>
         </label>
         <div className="dc-court-types">
           <Choice name="court-type" checked={form.court_type === 'general_district'} onChange={() => setField('court_type', 'general_district')} label="GENERAL DISTRICT COURT" />
@@ -223,7 +223,7 @@ function ContinuationPage({ form, witnesses, startIndex, onWitnessChange, onRemo
   return (
     <article className="dc325-page dc-continuation">
       <header>
-        <div><h1>REQUEST FOR WITNESS SUBPOENA</h1><p>WITNESS CONTINUATION SHEET</p></div>
+        <div><h1>Request for witness subpoena</h1><p>Witness continuation sheet</p></div>
         <div><strong>Case No.</strong> {form.case_number || '__________________'}<br /><strong>Court:</strong> {form.court_location || '__________________'}</div>
       </header>
       <p>Additional witnesses requested in the matter of <strong>{form.plaintiff_petitioner_name || '__________________'}</strong> {form.case_caption_type === 'in_re' ? 'In re' : 'v.'} <strong>{form.defendant_child_name || '__________________'}</strong></p>

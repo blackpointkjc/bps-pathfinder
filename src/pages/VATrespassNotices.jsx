@@ -567,12 +567,12 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
         
         <div class="notice-container">
           <div class="header">
-            <div class="title">TRESPASS NOTICE</div>
-            <div class="subtitle">NO TRESPASSING WARNING</div>
+            <div class="title">Trespass notice</div>
+            <div class="subtitle">No trespassing warning</div>
           </div>
           
           <div class="section">
-            <div class="section-title">NOTICE INFORMATION</div>
+            <div class="section-title">Notice information</div>
             <div class="field-row">
               <div class="field-label">Date Issued (Zulu):</div>
               <div class="field-value">${noticeDateZulu}</div>
@@ -588,7 +588,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
           </div>
           
           <div class="section">
-            <div class="section-title">SUBJECT INFORMATION</div>
+            <div class="section-title">Subject information</div>
             <div class="field-row">
               <div class="field-label">Name:</div>
               <div class="field-value">${notice.subject_name}</div>
@@ -612,7 +612,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
           </div>
           
           <div class="section">
-            <div class="section-title">REASON FOR TRESPASS NOTICE</div>
+            <div class="section-title">Reason for trespass notice</div>
             <div style="border: 1px solid #000; padding: 10px; min-height: 80px; white-space: pre-wrap;">
               ${notice.reason}
             </div>
@@ -620,14 +620,14 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
 
           ${notice.photo_url ? `
             <div class="photo-section">
-              <div class="section-title">SUBJECT PHOTO</div>
+              <div class="section-title">Subject photo</div>
               <img src="${notice.photo_url}" alt="Subject photo" />
             </div>
           ` : ''}
 
           ${notice.police_notified ? `
             <div class="section">
-              <div class="section-title">LAW ENFORCEMENT NOTIFICATION</div>
+              <div class="section-title">Law enforcement notification</div>
               <div class="field-row">
                 <div class="field-label">Police Notified:</div>
                 <div class="field-value">YES</div>
@@ -644,7 +644,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
           <div class="warning-box">
             <div class="warning-title">⚠️ LEGAL WARNING</div>
             <div class="legal-text">
-              <p><strong>YOU ARE HEREBY NOTIFIED</strong> that you are not permitted to enter or remain on the above-described property.</p>
+              <p><strong>You are hereby notified</strong> that you are not permitted to enter or remain on the above-described property.</p>
               <p style="margin-top: 8px;">
                 <strong>Virginia Code § 18.2-119</strong> - Any person who, after having been forbidden to do so, 
                 goes upon or remains upon the lands, buildings, or premises of another, or any portion thereof, 
@@ -683,7 +683,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
           </div>
           
           <div class="footer">
-            <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
+            <p style="margin-top: 3px;">This is an official trespass notice - retain for your records</p>
           </div>
         </div>
         
@@ -1219,7 +1219,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
             <div className="py-4">
               {/* Same view dialog content as original */}
               <div className="mx-auto max-w-[8.5in] rounded-sm border border-slate-400 bg-white p-4 text-black shadow-sm sm:p-7">
-                <div className="mb-6 text-center text-2xl font-black underline sm:text-3xl">NOTICE OF NO TRESPASS</div>
+                <div className="mb-6 text-center text-2xl font-black underline sm:text-3xl">Notice of no trespass</div>
 
                 <div className="space-y-2 text-sm leading-6">
                   <div className="grid grid-cols-[150px_1fr] gap-2"><strong className="underline">TO BE SERVED ON:</strong><div className="border-b border-black px-2">{selectedNotice.subject_name}</div></div>
@@ -1228,7 +1228,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                   <div className="grid grid-cols-[150px_1fr] gap-2"><span/><div className="border-b border-black px-2">{selectedNotice.subject_phone || ''}</div></div>
                 </div>
 
-                <p className="my-5 text-sm font-black italic underline">YOU ARE HEREBY NOTIFIED NOT TO CONTACT THE PETITIONER OF THIS NOTICE FOR ANY REASON OR TRESPASS UPON HIS/HER PROPERTY AT ANY TIME.</p>
+                <p className="my-5 text-sm font-black italic underline">You are hereby notified not to contact the petitioner of this notice for any reason or trespass upon his/her property at any time.</p>
                 <p className="text-sm leading-6">If any person without authority of law goes upon or remains upon the lands, buildings or premises of another after having been forbidden to do so, whether orally or in writing, by the owner, lessee, custodian or other person lawfully in charge, such person may be subject to prosecution pursuant to § 18.2-119 Code of Virginia, as amended.</p>
 
                 <div className="my-5 border border-black p-3 text-sm"><strong>REASON FOR NOTICE:</strong> {selectedNotice.reason || ''}{selectedNotice.linked_call_number && <><br/><strong>C A D:</strong> {selectedNotice.linked_call_number}</>}</div>
@@ -1238,17 +1238,17 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                 <div className="grid gap-5 md:grid-cols-3">
                   <div className="text-center">
                     <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{selectedNotice.witness_signature_url ? <img src={selectedNotice.witness_signature_url} alt="Witness digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No witness signature captured</span>}</div>
-                    <div className="mt-1 text-xs font-bold">WITNESS SIGNATURE</div>
+                    <div className="mt-1 text-xs font-bold">Witness signature</div>
                     <div className="mt-1 text-xs">{selectedNotice.witness_name || ''}</div>
                   </div>
                   <div className="text-center">
                     <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{selectedNotice.subject_signature_url ? <img src={selectedNotice.subject_signature_url} alt="Subject digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No subject signature captured / declined</span>}</div>
-                    <div className="mt-1 text-xs font-bold">SUBJECT SIGNATURE / ACKNOWLEDGMENT</div>
+                    <div className="mt-1 text-xs font-bold">Subject signature / acknowledgment</div>
                     <div className="mt-1 text-xs">{selectedNotice.subject_name}</div>
                   </div>
                   <div className="text-center">
                     <div className="flex h-20 items-end justify-center border-b border-black bg-white p-1">{(selectedNotice.officer_signature_url || selectedNotice.signature_url) ? <img src={selectedNotice.officer_signature_url || selectedNotice.signature_url} alt="Authorized agent digital signature" className="max-h-full max-w-full object-contain"/> : <span className="pb-2 text-xs text-slate-400">No authorized-agent signature captured</span>}</div>
-                    <div className="mt-1 text-xs font-bold">AUTHORIZED AGENT SIGNATURE</div>
+                    <div className="mt-1 text-xs font-bold">Authorized agent signature</div>
                     <div className="mt-1 text-xs">{getOfficerSignature(selectedNotice.created_by_id)}</div>
                   </div>
                 </div>

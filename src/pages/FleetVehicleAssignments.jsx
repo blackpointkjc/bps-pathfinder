@@ -290,7 +290,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
           <Badge variant="outline">{format(windowStart, 'MMM d')} - {format(addDays(windowStart, 2), 'MMM d, yyyy')}</Badge>
           <Button variant="outline" size="sm" onClick={() => setDayOffset(0)}>TODAY</Button>
           <Button variant="outline" size="sm" onClick={() => setDayOffset(v => v + 3)}><ChevronRight className="h-4 w-4" /></Button>
-          {isAdmin && <Button size="sm" onClick={() => setShowNewAssignment(value => !value)} className="bg-amber-600 text-slate-950 hover:bg-amber-500"><Plus className="mr-1 h-4 w-4" />NEW ASSIGNMENT</Button>}
+          {isAdmin && <Button size="sm" onClick={() => setShowNewAssignment(value => !value)} className="bg-amber-600 text-slate-950 hover:bg-amber-500"><Plus className="mr-1 h-4 w-4" />New assignment</Button>}
         </div>
       </div></section>}
 
@@ -304,7 +304,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
         <div><Label>Partner Officer (optional)</Label><Select value={manualForm.partner_officer_email || 'none'} onValueChange={value=>setManualForm({...manualForm,partner_officer_email:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="No partner"/></SelectTrigger><SelectContent><SelectItem value="none">No partner</SelectItem>{users.filter(person=>isOperationalOfficer(person)&&person.email!==manualForm.primary_officer_email).map(person=><SelectItem key={person.id||person.email} value={person.email}>{[person.rank,person.last_name].filter(Boolean).join(' ')||person.email}</SelectItem>)}</SelectContent></Select></div>
         <div><Label>Location</Label><Select value={manualForm.location || 'none'} onValueChange={value=>setManualForm({...manualForm,location:value==='none'?'':value})}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Select location"/></SelectTrigger><SelectContent><SelectItem value="none">No specific location</SelectItem>{locations.map(location=><SelectItem key={location.id} value={location.site_name}>{location.site_name}</SelectItem>)}</SelectContent></Select></div>
         <div className="xl:col-span-2"><Label>Notes</Label><Input value={manualForm.notes} onChange={e=>setManualForm({...manualForm,notes:e.target.value})} placeholder="Optional fleet notes" className="border-slate-700 bg-slate-950"/></div>
-        <div className="flex items-end gap-2 xl:col-span-4"><Button onClick={saveManualAssignment} disabled={savingManual} className="bg-amber-600 text-slate-950 hover:bg-amber-500">{savingManual?'SAVING…':editingManual?'UPDATE ASSIGNMENT':'CREATE ASSIGNMENT'}</Button><Button variant="outline" onClick={()=>{setEditingManual('');setShowNewAssignment(false);}}>CANCEL</Button></div>
+        <div className="flex items-end gap-2 xl:col-span-4"><Button onClick={saveManualAssignment} disabled={savingManual} className="bg-amber-600 text-slate-950 hover:bg-amber-500">{savingManual?'SAVING…':editingManual?'UPDATE ASSIGNMENT':'CREATE ASSIGNMENT'}</Button><Button variant="outline" onClick={()=>{setEditingManual('');setShowNewAssignment(false);}}>Cancel</Button></div>
       </CardContent></Card>}
       </div>
 
@@ -312,14 +312,14 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
 
       {!editorOnly&&<div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card className="border-slate-800 bg-slate-900 text-white">
-          <CardHeader><CardTitle className="text-sm">FLEET STATUS</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Fleet status</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded border border-emerald-900 bg-emerald-950/20 p-3">
               <div className="text-[10px] font-bold uppercase text-emerald-300">Available Vehicles</div>
               <div className="mt-1 text-2xl font-black">{availableVehicles.length}</div>
             </div>
             <div className="space-y-1">{availableVehicles.map(v => <div key={v.id} className="rounded border border-slate-800 bg-slate-950 p-2 text-xs"><div className="font-bold text-white">{v.vehicle_id}</div><div className="text-slate-500">{v.year} {v.make} {v.model}</div></div>)}</div>
-            {maintenanceVehicles.length > 0 && <div className="rounded border border-red-900 bg-red-950/20 p-2"><div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-red-300"><Wrench className="h-3 w-3" />UNAVAILABLE</div>{maintenanceVehicles.map(v => <div key={v.id} className="text-[10px] text-slate-400">{v.vehicle_id} · {v.status}</div>)}</div>}
+            {maintenanceVehicles.length > 0 && <div className="rounded border border-red-900 bg-red-950/20 p-2"><div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-red-300"><Wrench className="h-3 w-3" />Unavailable</div>{maintenanceVehicles.map(v => <div key={v.id} className="text-[10px] text-slate-400">{v.vehicle_id} · {v.status}</div>)}</div>}
           </CardContent>
         </Card>
 
@@ -358,7 +358,7 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
                     </div>}
                   </div>;
                 })}
-                {dayShifts.length === 0 && <div className="rounded border border-dashed border-slate-800 py-12 text-center text-xs text-slate-500">NO SCHEDULED SHIFTS FOR THIS DATE</div>}
+                {dayShifts.length === 0 && <div className="rounded border border-dashed border-slate-800 py-12 text-center text-xs text-slate-500">No scheduled shifts for this date</div>}
               </CardContent>
             </Card>;
           })}

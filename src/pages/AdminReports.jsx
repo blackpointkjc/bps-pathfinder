@@ -520,19 +520,19 @@ export default function AdminReports() {
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 4px;">
             ${report.weather_conditions ? `
             <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">WEATHER</div>
+              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Weather</div>
               <div style="font-size: 7pt; font-weight: bold; color: #1e40af;">${report.weather_conditions}</div>
             </div>
             ` : ''}
             ${report.patrol_count ? `
             <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">PATROLS</div>
+              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Patrols</div>
               <div style="font-size: 9pt; font-weight: bold; color: #1e40af;">${report.patrol_count}</div>
             </div>
             ` : ''}
             ${report.visitors_logged ? `
             <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px; text-align: center;">
-              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">VISITORS</div>
+              <div style="font-size: 5.5pt; color: #64748b; font-weight: 600; margin-bottom: 1px;">Visitors</div>
               <div style="font-size: 9pt; font-weight: bold; color: #1e40af;">${report.visitors_logged}</div>
             </div>
             ` : ''}
@@ -669,7 +669,7 @@ export default function AdminReports() {
         <div class="section">
           <div class="section-title">Emergency Services Contacted</div>
           <div style="display: flex; gap: 8px; margin: 3px 0;">
-            ${report.police_notified ? '<div style="background: #dbeafe; padding: 4px 8px; border-radius: 3px; font-size: 6.5pt; font-weight: 600;">POLICE</div>' : ''}
+            ${report.police_notified ? '<div style="background: #dbeafe; padding: 4px 8px; border-radius: 3px; font-size: 6.5pt; font-weight: 600;">Police</div>' : ''}
             ${report.ems_notified ? '<div style="background: #fef3c7; padding: 4px 8px; border-radius: 3px; font-size: 6.5pt; font-weight: 600;">EMS</div>' : ''}
             ${report.fire_notified ? '<div style="background: #fee2e2; padding: 4px 8px; border-radius: 3px; font-size: 6.5pt; font-weight: 600;">FIRE</div>' : ''}
           </div>
@@ -1258,7 +1258,7 @@ export default function AdminReports() {
                            report.violation_date || report.complaint_date || report.offense_date
                          ), 'MMM d, yyyy')} • {report.location}
                         </p>
-                        <Badge className="mt-1 bg-emerald-950 text-emerald-200">APPROVED</Badge>
+                        <Badge className="mt-1 bg-emerald-950 text-emerald-200">Approved</Badge>
                       </div>
                       <div className="flex gap-1.5">
                         <Button variant="outline" size="sm" className="h-7 px-2 text-[9px]" onClick={() => printReport(report, selectedArchiveType)}>

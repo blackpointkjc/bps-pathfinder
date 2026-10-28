@@ -299,7 +299,7 @@ export default function Schedule() {
         <section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div><div className="text-[11px] font-black uppercase tracking-[.25em] text-cyan-300">Officer Scheduling</div><h1 className="mt-2 text-3xl font-black text-white md:text-4xl">My Schedule</h1><p className="mt-2 text-sm text-slate-400">Rolling five-day view · shifts, partners, fleet assignments, and duty supervisor coverage</p></div>
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>LIVE UPDATES ENABLED</span></div>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>Live updates enabled</span></div>
           </div>
         </section>
         {!!scheduleData.sourceErrors?.length && <div role="status" className="rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm text-amber-200">The core schedule loaded, but these supporting sections are temporarily unavailable: {scheduleData.sourceErrors.join(', ')}. Refresh to retry.</div>}
@@ -391,7 +391,7 @@ export default function Schedule() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-green-600 text-white">OPEN SHIFT</Badge>
+                          <Badge className="bg-green-600 text-white">Open shift</Badge>
                           {shift.is_split_shift && (
                             <Badge className="bg-purple-600 text-white">Split Shift</Badge>
                           )}
@@ -484,7 +484,7 @@ export default function Schedule() {
                                   <span className="text-sm font-black text-white xl:text-[13px]">{schedule.start_time}–{schedule.end_time}</span>
                                 </div>
                                 {isSplitShift && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">SPLIT</span>}
-                                {callOutForShift(schedule) && <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] font-black text-red-300">CALLED OUT</span>}
+                                {callOutForShift(schedule) && <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] font-black text-red-300">Called out</span>}
                               </div>
                               {(() => {
                                 const callOut = callOutForShift(schedule);
@@ -591,7 +591,7 @@ export default function Schedule() {
                     </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-3 py-7 text-center">
-                      <div className="text-[11px] font-medium text-slate-600">NO SHIFT</div>
+                      <div className="text-[11px] font-medium text-slate-600">No shift</div>
                     </div>
                   )}
                 </CardContent>

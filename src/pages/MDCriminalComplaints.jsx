@@ -310,13 +310,13 @@ export default function MDCriminalComplaints() {
         <div class="form-container">
           <div class="header-row">
             <div>
-              <div class="header-cell">DISTRICT COURT OF MARYLAND FOR</div>
+              <div class="header-cell">District Court of Maryland for</div>
               <div class="field-value">${complaint.district_court_city_county || ''}</div>
-              <div class="header-cell" style="margin-top: 5px;">LOCATED AT (COURT ADDRESS)</div>
+              <div class="header-cell" style="margin-top: 5px;">Located at (court address)</div>
               <div class="field-value">${complaint.court_address || ''}</div>
             </div>
             <div class="gray-box">
-              DISTRICT COURT<br/>CASE NUMBER<br/>
+              DISTRICT COURT<br/>Case number<br/>
               <div style="min-height: 25px; margin-top: 5px;"></div>
             </div>
             <div>
@@ -327,7 +327,7 @@ export default function MDCriminalComplaints() {
           
           <div class="two-section">
             <div>
-              <div class="section-header">COMPLAINANT</div>
+              <div class="section-header">Complainant</div>
               <div class="field">
                 <div class="field-label">Printed Name</div>
                 <div class="field-value">${complaint.complainant_printed_name || ''}</div>
@@ -351,7 +351,7 @@ export default function MDCriminalComplaints() {
             </div>
             
             <div>
-              <div class="section-header">DEFENDANT</div>
+              <div class="section-header">Defendant</div>
               <div class="field">
                 <div class="field-label">Printed Name</div>
                 <div class="field-value">${complaint.defendant_printed_name || ''}</div>
@@ -393,7 +393,7 @@ export default function MDCriminalComplaints() {
           </div>
           
           <div class="statement-section">
-            <div class="statement-title">APPLICATION FOR STATEMENT OF CHARGES</div>
+            <div class="statement-title">Application for statement of charges</div>
             <p style="font-size: 8pt; margin-bottom: 8px;">
               (Include a statement of facts within your personal knowledge showing that there is probable cause to believe that a crime has been committed and that the defendant has committed it.)
             </p>
@@ -467,7 +467,7 @@ export default function MDCriminalComplaints() {
           </div>
           
           <div class="tracking">
-            <div>TRACKING NUMBER</div>
+            <div>Tracking number</div>
             <div style="min-height: 20px; margin-top: 5px;">${complaint.tracking_number || ''}</div>
           </div>
           

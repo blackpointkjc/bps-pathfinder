@@ -284,7 +284,7 @@ export default function Personnel({ embedded = false }) {
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">LOADING ROSTER...</p></div>
+            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">Loading roster…</p></div>
         </div>
     );
 
@@ -357,7 +357,7 @@ export default function Personnel({ embedded = false }) {
             {/* Header */}
             {!embedded && <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
-                <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
+                <span className="text-white font-bold text-sm tracking-widest">Personnel roster</span>
                 <div className="flex-1" />
                 <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
                 {currentUser?.role === 'admin' && <button onClick={() => { setSignOutAllReason(''); setSignOutAllOpen(true); }} disabled={signOutAllBusy}
@@ -414,11 +414,11 @@ export default function Personnel({ embedded = false }) {
                 <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-4 py-1.5 text-[9px] tracking-widest text-slate-500 md:flex">
                     <div className="w-6 flex-shrink-0" />
                     <div className="w-24 flex-shrink-0">UNIT</div>
-                    <div className="w-40 flex-shrink-0">RANK / NAME</div>
+                    <div className="w-40 flex-shrink-0">Rank / name</div>
                     <div className="flex-1">EMAIL</div>
-                    <div className="w-28 flex-shrink-0">STATUS</div>
+                    <div className="w-28 flex-shrink-0">Status</div>
                     <div className="w-20 flex-shrink-0">ROLE</div>
-                    <div className="w-72 flex-shrink-0">ACTIONS</div>
+                    <div className="w-72 flex-shrink-0">Actions</div>
                 </div>
 
                 {filteredPersonnel.length === 0 ? (
@@ -478,7 +478,7 @@ export default function Personnel({ embedded = false }) {
                                     return <button onClick={() => locked ? handleAccountUnlock(person) : openAccountLockDialog(person)}
                                         title={locked ? 'Unlock this user account' : 'Lock this user account'}
                                         className={`flex items-center gap-1 rounded border px-2 py-1 text-[9px] font-bold transition-all ${locked ? 'border-emerald-700 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900' : 'border-red-700 bg-red-950/60 text-red-300 hover:bg-red-900'}`}>
-                                        {locked ? <><Unlock className="h-2.5 w-2.5" />UNLOCK</> : <><Lock className="h-2.5 w-2.5" />LOCK</>}
+                                        {locked ? <><Unlock className="h-2.5 w-2.5" />Unlock</> : <><Lock className="h-2.5 w-2.5" />LOCK</>}
                                     </button>;
                                 })()}
                             </div>
@@ -489,7 +489,7 @@ export default function Personnel({ embedded = false }) {
 
             {/* Status Bar */}
             <div className="flex-none flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-800 bg-slate-900 px-3 py-1 text-[9px] text-slate-500 sm:px-4">
-                <span>SHOWING <span className="text-white">{filteredPersonnel.length}</span> OF <span className="text-white">{personnel.length}</span> PERSONNEL</span>
+                <span>Showing <span className="text-white">{filteredPersonnel.length}</span> OF <span className="text-white">{personnel.length}</span> PERSONNEL</span>
                 <div className="flex-1" />
                 <span className="text-green-500">● LIVE — 10s REFRESH</span>
             </div>
