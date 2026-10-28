@@ -1,3 +1,5 @@
+import {offlineIdentity} from '@/lib/offlineSession';
+import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
@@ -197,6 +199,10 @@ export const AuthProvider = ({ children }) => {
 
   const checkAppState = useCallback(async () => {
     const requestId = ++requestSequence.current;
+    if(navigator.onLine===false) {
+      const saved=offlineIdentity();
+      if(saved){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
+    }
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);

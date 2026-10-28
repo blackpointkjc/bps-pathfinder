@@ -23,15 +23,19 @@ export async function offlineList(owner,kind) {
 }
 export async function saveWork(owner,id,title,data) {
   if(!owner)throw new Error('Sign in before saving offline work');
-  return offlinePut({key:owner+':work:'+id,id,owner,kind:'work',title,data,updatedAt:Date.now(),revision:crypto.randomUUID(),synced:false});
+  let deviceId=localStorage.getItem('pathfinder-offline-device');
+  if(!deviceId){deviceId=crypto.randomUUID();localStorage.setItem('pathfinder-offline-device',deviceId);}
+  return offlinePut({deviceId,key:owner+':work:'+id,id,owner,kind:'work',title,data,updatedAt:Date.now(),revision:crypto.randomUUID(),synced:false});
 }
 export async function syncWork(api,owner) {
   if(!navigator.onLine)return {synced:0};
   const run=async()=>{
+    const pending=(await offlineList(owner,'work')).filter(row=>!row.synced);
+    if(!pending.length)return {synced:0};
     const me=await api.auth.me();if(me.id!==owner)throw new Error('Sign back in to the account that saved this work');
     let synced=0;
-    for(const item of (await offlineList(owner,'work')).filter(row=>!row.synced)) {
-      const response=await api.functions.invoke('syncOfflineWork',{id:item.id,title:item.title,data:item.data,revision:item.revision,updatedAt:item.updatedAt});
+    for(const item of pending) {
+      const response=await api.functions.invoke('syncOfflineWork',{id:item.deviceId+':'+item.id,title:item.title,data:item.data,revision:item.revision,updatedAt:item.updatedAt});
       if(!(response?.data||response)?.success)throw new Error('Server did not confirm this draft');
       const current=await offlineGet(item.key);
       if(current?.revision===item.revision)await offlinePut({...current,synced:true,syncedAt:Date.now()});

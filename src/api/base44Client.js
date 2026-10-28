@@ -1,3 +1,5 @@
+import {offlineIdentity,rememberOfflineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
+import {offlineGet,offlinePut} from '@/lib/offlineWork';
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -277,6 +279,12 @@ function pumpReads() {
           queue_ms: Math.max(0, startedAt - job.queuedAt),
           duration_ms: Date.now() - startedAt,
         });
+        if (job.meta?.kind==='auth' && job.meta?.method==='me') rememberOfflineIdentity(value);
+        const offlineOwner=offlineIdentity();
+        const saveSnapshot=job.meta?.kind==='function'&&['getNavigationLocations','getMyScheduleData','getActiveDispatchCalls'].includes(job.meta?.name);
+        if(offlineOwner&&saveSnapshot&&cacheGeneration===readCacheVersion(job.key)) {
+          void offlinePut({key:offlineOwner.id+':snapshot:'+job.key,owner:offlineOwner.id,kind:'snapshot',updatedAt:Date.now(),data:{data:value?.data||value}}).catch(()=>{});
+        }
         job.resolve(value);
       }, error => {
         const throttled = isRateLimit(error);
@@ -308,6 +316,15 @@ function pumpReads() {
   }
 }
 function queuedRead(key, task, meta = {}) {
+  if (navigator.onLine === false) {
+    const owner=offlineIdentity();
+    if(meta.kind==='auth'&&meta.method==='me'&&owner)return Promise.resolve(owner);
+    if(!owner)return Promise.reject(new Error('Connect to sign in before using offline work.'));
+    return offlineGet(owner.id+':snapshot:'+key).then(saved=>{
+      if(!saved)throw new Error('This data has not been saved for offline use.');
+      return saved.data;
+    });
+  }
   const cached = readCache.get(key);
   if (cached && Date.now() - cached.at < readCacheTtl(meta)) {
     return Promise.resolve(cached.value);
@@ -435,6 +452,7 @@ function invalidateReadCacheForWrite(meta = {}) {
 }
 
 function protectedWrite(key, task, meta = {}) {
+  if(navigator.onLine===false)return Promise.reject(new Error('Offline: this action was not sent. Save a recovery draft or field note in Offline work.'));
   if (writeInflight.has(key)) {
     recordRequestTrace({ label: requestLabel(meta), kind: meta.kind || 'write', mode: 'write', outcome: 'deduped_inflight', duration_ms: 0 });
     return writeInflight.get(key);
@@ -612,6 +630,7 @@ const auth = new Proxy(rawBase44.auth, {
   get(target, property, receiver) {
     const value = Reflect.get(target, property, receiver);
     if (typeof value !== 'function') return value;
+    if (property === 'logout') return (...args) => { forgetOfflineIdentity(); return value.apply(target,args); };
     if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'me' });
     if (property === 'updateMe') return (...args) => protectedWrite(`auth:updateMe:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'updateMe' });
     return value.bind(target);
