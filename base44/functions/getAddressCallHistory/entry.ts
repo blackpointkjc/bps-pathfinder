@@ -36,8 +36,7 @@ Deno.serve(async req => {
     await read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property');
   } else {
     const query={location:{$regex:pattern,$options:'i'},created_date:{$gte:since}};
-    await read('DispatchCall',query,'call');
-    await read('CallHistory',query,'history');
+    await Promise.all([read('DispatchCall',query,'call'), read('CallHistory',query,'history')]);
   }
   const identities=new Set<string>(); const fingerprints=new Set<string>(); const calls:any[]=[];
   for(const r of rows) {

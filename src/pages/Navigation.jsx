@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
@@ -1413,8 +1414,8 @@ export default function Navigation() {
         return unit?.unit_number || unit?.full_name?.split(' ')[0] || 'UNIT';
     };
 
-    return (
-        <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
+    const mapContent = (
+        <div style={mapFullscreen ? { position: "fixed", inset: 0, zIndex: 2147483000, height: "100dvh", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } : undefined} className="relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
@@ -1987,4 +1988,5 @@ export default function Navigation() {
             )}
         </div>
     );
+    return mapFullscreen ? createPortal(mapContent, document.body) : mapContent;
 }

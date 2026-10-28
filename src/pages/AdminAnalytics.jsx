@@ -146,7 +146,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
   const clientFeedback = calculateClientFeedback(feedback, monthStart, monthEnd);
   const supervisorRating = calculateSupervisorRating(reviews, monthStart, monthEnd);
   const recognition = calculateRecognition(commendations, feedback, monthStart, monthEnd);
-  const callOutAttendance = calculateCallOutAttendance(callOuts, schedules, monthStart, monthEnd);
+  const callOutAttendance = calculateCallOutAttendance(callOuts, schedules, monthStart, monthEnd, officer);
   const jobDuty = calculateJobDutyCompliance({
     officer,
     timeEntries,
@@ -174,7 +174,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
     recognition,
   });
   const categoryRatings = [
-    { label: 'On-Time Arrival', score: (punctuality.total > 0 || punctuality.commandExempt) ? punctuality.rate : null, detail: (punctuality.commandExempt ? 'Command exemption: late/early punches remain visible without deductions. ' : '') + (punctuality.total > 0 ? `${punctuality.onTime} on time · ${punctuality.late} late · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts')) },
+    { label: 'On-Time Arrival', score: (punctuality.total > 0 || punctuality.commandExempt) ? punctuality.rate : null, detail: (punctuality.commandExempt ? 'Major and above: 100% attendance by policy; original attendance records retained. ' : '') + (punctuality.total > 0 ? `${punctuality.onTime} on time · ${punctuality.late} late · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts')) },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: (jobDuty.commandExempt ? 'Command exemption: missing reports remain visible without deductions; QR duties still count. ' : '') + `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} · Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} · QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
     { label: 'Training Completion', score: training.total > 0 ? training.percentage : null, detail: training.total > 0 ? `${training.completed} complete · ${training.pending} pending · ${training.total} assigned` : 'No assigned training/compliance records' },
@@ -257,14 +257,14 @@ export default function AdminAnalytics() {
   // Once core is available, enqueue the four independent segments together. The
   // shared Base44 client limits reads to two at a time, so this remains a controlled
   // two-wave load without the extra React render/dependency delay between waves.
-  const secondarySegmentsEnabled = Boolean(user && coreAnalytics.data);
+  const secondarySegmentsEnabled = Boolean(user && (coreAnalytics.data || coreAnalytics.isError));
   const dutyAnalytics = useAnalyticsSegment('duty', secondarySegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled && Boolean(dutyAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const callsAnalytics = useAnalyticsSegment('calls', secondarySegmentsEnabled && Boolean(dutyAnalytics.data || dutyAnalytics.isError), analyticsStartDate, analyticsEndDate);
   // Keep analytics segments in two controlled waves so the backend does not
   // start four large multi-entity scans at once during a rate-limited session.
-  const laterSegmentsEnabled = secondarySegmentsEnabled && Boolean(dutyAnalytics.data) && Boolean(callsAnalytics.data);
+  const laterSegmentsEnabled = secondarySegmentsEnabled && Boolean(dutyAnalytics.data || dutyAnalytics.isError) && Boolean(callsAnalytics.data || callsAnalytics.isError);
   const trainingAnalytics = useAnalyticsSegment('training', laterSegmentsEnabled, analyticsStartDate, analyticsEndDate);
-  const qualityAnalytics = useAnalyticsSegment('quality', laterSegmentsEnabled && Boolean(trainingAnalytics.data), analyticsStartDate, analyticsEndDate);
+  const qualityAnalytics = useAnalyticsSegment('quality', laterSegmentsEnabled && Boolean(trainingAnalytics.data || trainingAnalytics.isError), analyticsStartDate, analyticsEndDate);
 
   const currentSegmentPayloads = useMemo(() => ({
     core: coreAnalytics.data,
@@ -425,14 +425,17 @@ export default function AdminAnalytics() {
       if (payload.error) throw new Error(payload.error);
       Object.assign(snapshots, payload.snapshots || {});
       Object.assign(errors, payload.errors || {});
+      for (const officer of performanceOfficerUsers) {
+        if (!payload.snapshots?.[officer.id] && !errors[officer.id]) errors[officer.id] = "No complete snapshot returned. Retry refresh.";
+      }
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
-    enabled: Boolean(user && currentSegmentsReady && !Object.keys(performanceCriticalErrors).length && performanceOfficerUsers.length),
+    enabled: Boolean(user && (qualityAnalytics.data || qualityAnalytics.isError) && performanceOfficerUsers.length),
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: query => Object.keys(query.state.data?.errors || {}).length ? 60_000 : 10 * 60 * 1000,
     refetchIntervalInBackground: false,
     retry: false,
     placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === analyticsStartDate && previousQuery?.queryKey?.[3] === analyticsEndDate ? previousData : undefined,
@@ -479,9 +482,9 @@ export default function AdminAnalytics() {
         officer
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
-    }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
-    const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
-    const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
+    }).filter(item => item.total > 0 || item.commandExempt).sort((a, b) => (b.rate || 0) - (a.rate || 0));
+    const totalOnTime = byOfficer.filter(item => !item.commandExempt).reduce((sum, item) => sum + item.onTime, 0);
+    const totalEntries = byOfficer.filter(item => !item.commandExempt).reduce((sum, item) => sum + item.total, 0);
     const leaderboard = byOfficer.filter(item => {
       const officer = selectedCoreUsers.find(user => emailKey(user.email) === emailKey(item.email));
       return officer && isPunctualityLeaderboardOfficer(officer);

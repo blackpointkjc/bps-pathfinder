@@ -153,6 +153,7 @@ const readPriority = meta => {
   return 72;
 };
 const readTimeoutMs = meta => {
+  if (meta?.kind === "function" && meta?.name === "getAddressCallHistory") return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;

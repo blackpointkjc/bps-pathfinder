@@ -221,7 +221,7 @@ export default function MyPerformanceAnalytics() {
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
-  const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd), [myCallOuts, schedules, currentMonthStart, currentMonthEnd]);
+  const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd, user), [myCallOuts, schedules, currentMonthStart, currentMonthEnd, user]);
   const jobDuty = useMemo(() => calculateJobDutyCompliance({
     officer: user,
     timeEntries,

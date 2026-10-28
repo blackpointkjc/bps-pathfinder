@@ -301,9 +301,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   const total = onTime + late + missed + overrun;
   const commandExempt = isCommandPerformanceExempt(officer);
   const rawRate = total ? Math.round((onTime / total) * 100) : null;
-  const rate = commandExempt ? (total ? Math.round(((onTime + late + overrun) / total) * 100) : 100) : rawRate;
+  const rate = commandExempt ? 100 : rawRate;
   return { rate, rawRate, commandExempt, onTime, late, missed, overrun, exempt, total,
-    details: details.map(detail => ({ ...detail, command_exempt: commandExempt && ['late','overrun'].includes(detail.status) })) };
+    details: details.map(detail => ({ ...detail, command_exempt: commandExempt && ['late','overrun','missed'].includes(detail.status) })) };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -899,7 +899,7 @@ export function calculateDarCompliance({ officer = null, timeEntries = [], daily
   return { required, completed, missed, score: required ? Math.round((completed / required) * 100) : null, details };
 }
 
-export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd) {
+export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd, officer = null) {
   const today = easternDateKey(new Date());
   const nowTime = easternTimeKey(new Date());
   const nowWall = wallClockMinute(today, nowTime);
@@ -915,10 +915,11 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
     const date = item.call_out_date || easternDateKey(item.created_date);
     return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
   });
-  if (monthlySchedules.length === 0) return { score: null, count: applicable.length, scheduled: 0, items: applicable };
+  const commandExempt = isCommandPerformanceExempt(officer);
+  if (monthlySchedules.length === 0) return { score: commandExempt ? 100 : null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable };
   const denominator = monthlySchedules.length;
   const score = Math.max(0, Math.round(((denominator - Math.min(denominator, applicable.length)) / denominator) * 100));
-  return { score, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
+  return { score: commandExempt ? 100 : score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
 }
 
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));
