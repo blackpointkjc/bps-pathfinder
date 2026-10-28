@@ -1,0 +1,99 @@
+{
+  "name": "DutyAttendanceAdjustment",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Officer whose obligation was exempted"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Rank and last name of the officer at the time of the decision"
+    },
+    "item_key": {
+      "type": "string",
+      "description": "Stable identity of the exempted obligation (for example dar:session-123, incident:callId, qr:shiftEntryId, call_out:recordId)"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "dar",
+        "incident",
+        "qr",
+        "call_out"
+      ],
+      "description": "Kind of obligation that was exempted"
+    },
+    "item_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Shift or call-out date the obligation belongs to"
+    },
+    "property": {
+      "type": "string",
+      "description": "Property or post the obligation belongs to"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human readable description of the exempted obligation"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "exempt"
+      ],
+      "default": "exempt",
+      "description": "Administrative decision applied to the obligation"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Required explanation for removing the obligation from scoring"
+    },
+    "decided_by": {
+      "type": "string",
+      "description": "Administrator name that granted the exemption"
+    },
+    "decided_by_email": {
+      "type": "string",
+      "description": "Administrator email that granted the exemption"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the exemption was granted"
+    }
+  },
+  "required": [
+    "officer_email",
+    "item_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.officer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

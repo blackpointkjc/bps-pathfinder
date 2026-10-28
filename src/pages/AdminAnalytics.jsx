@@ -126,9 +126,12 @@ const isPunctualityLeaderboardOfficer = (officer) => {
 };
 
 
-function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
+function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exemptionsByEmail = {}) {
   const officer = snapshot?.officer;
   if (!officer?.id && !officer?.email) return null;
+  // Exemptions granted in the Duty & Attendance Review remove those obligations
+  // from the officer's scored performance here as well.
+  const exemptions = exemptionsByEmail[emailKey(officer?.email)] || [];
   const timeEntries = snapshot.timeEntries || [];
   const schedules = snapshot.schedules || [];
   const bids = snapshot.bids || [];
@@ -146,7 +149,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
   const clientFeedback = calculateClientFeedback(feedback, monthStart, monthEnd);
   const supervisorRating = calculateSupervisorRating(reviews, monthStart, monthEnd);
   const recognition = calculateRecognition(commendations, feedback, monthStart, monthEnd);
-  const callOutAttendance = calculateCallOutAttendance(callOuts, schedules, monthStart, monthEnd, officer);
+  const callOutAttendance = calculateCallOutAttendance(callOuts, schedules, monthStart, monthEnd, officer, exemptions);
   const jobDuty = calculateJobDutyCompliance({
     officer,
     timeEntries,
@@ -160,6 +163,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
     qrCheckpoints: snapshot.checkpoints || [],
     dutyRules: snapshot.jobDutyRules || [],
     locations: snapshot.locations || [],
+    exemptions,
     monthStart,
     monthEnd,
   });
@@ -542,13 +546,27 @@ export default function AdminAnalytics() {
       .sort((a, b) => a.percentage - b.percentage);
   }, [trainingCompletions, allTraining, filteredUsers]);
 
+  const { data: dutyAdjustmentRecords } = useQuery({
+    queryKey: ['companyDutyExemptions', analyticsStartDate, analyticsEndDate],
+    queryFn: () => base44.entities.DutyAttendanceAdjustment.filter({ item_date: { $gte: analyticsStartDate, $lte: analyticsEndDate } }, '-created_date', 500),
+    enabled: Boolean(user),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const exemptionsByOfficerEmail = useMemo(() => (dutyAdjustmentRecords || []).reduce((map, row) => {
+    const key = emailKey(row.officer_email);
+    if (!key || !row.item_key) return map;
+    map[key] = [...(map[key] || []), String(row.item_key)];
+    return map;
+  }, {}), [dutyAdjustmentRecords]);
+
   const overallByOfficer = useMemo(() => {
     const snapshots = officerPerformanceSnapshots.data?.snapshots || {};
     return performanceOfficerUsers
-      .map(officer => buildOfficerPerformanceFromSnapshot(snapshots[officer.id], currentMonthStart, currentMonthEnd))
+      .map(officer => buildOfficerPerformanceFromSnapshot(snapshots[officer.id], currentMonthStart, currentMonthEnd, exemptionsByOfficerEmail))
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name) || String(a.user_id).localeCompare(String(b.user_id)));
-  }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd]);
+  }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd, exemptionsByOfficerEmail]);
 
   // Keep the officer windows mounted during background refreshes. The previous
   // isFetching check removed the entire section every refresh cycle, which made

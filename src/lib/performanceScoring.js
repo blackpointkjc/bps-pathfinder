@@ -499,10 +499,13 @@ export function calculateJobDutyCompliance({
   qrCheckpoints = [],
   dutyRules = [],
   locations = [],
+  exemptions = [],
   monthStart,
   monthEnd,
 } = {}) {
   const officerEmail = emailKey(officer?.email);
+  const exemptKeys = new Set((exemptions || []).map(value => String(value)).filter(Boolean));
+  const isExempt = key => Boolean(key) && exemptKeys.has(String(key));
   const evaluatedShifts = timeEntries.filter(entry => {
     if (!entry?.clock_in || entry?.archived === true || entry?.performance_exception === true) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
@@ -581,9 +584,9 @@ export function calculateJobDutyCompliance({
   });
   const shiftDetails = [];
   const usedDarIds = new Set();
-  let darRequired = 0, darCompleted = 0;
-  let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
-  let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0;
+  let darRequired = 0, darCompleted = 0, darExcused = 0;
+  let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0, incidentExcused = 0;
+  let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0, qrExcused = 0;
 
   evaluatedShifts.forEach(entry => {
     const shiftDate = easternDateKey(entry.clock_in);
@@ -611,11 +614,19 @@ export function calculateJobDutyCompliance({
     const sessionLead = session?.entries?.[0] === entry;
     const requiresDar = Boolean(sessionLead && session && !session.active);
     if (requiresDar) {
-      darRequired++;
-      detail.daily_activity.required = true;
+      const darKey = `dar:${session?.id || entry.id || shiftDate}`;
+      const darIsExempt = isExempt(darKey);
+      detail.daily_activity.key = darKey;
+      if (darIsExempt) {
+        darExcused++;
+        detail.daily_activity.excused = true;
+      } else {
+        darRequired++;
+        detail.daily_activity.required = true;
+      }
       detail.daily_activity.session_entry_ids = session.entries.map(item => item.id).filter(Boolean);
       detail.daily_activity.session_sites = [...session.sites].filter(Boolean);
-      const matchingDar = dailyReports.find(report => {
+      const matchingDar = darIsExempt ? null : dailyReports.find(report => {
         if (['draft', 'rejected'].includes(String(report?.status || '').toLowerCase()) || usedDarIds.has(String(report?.id || ''))) return false;
         const reportId = String(report?.id || '');
         const shiftIds = new Set(session.entries.map(item => String(item.id || '')));
@@ -656,6 +667,19 @@ export function calculateJobDutyCompliance({
         const identity = String(call.original_call_id || call.id || call.call_id || '');
         if (!identity || countedIncidentCalls.has(identity)) return;
         countedIncidentCalls.add(identity);
+        const incidentKey = `incident:${identity}`;
+        if (isExempt(incidentKey)) {
+          incidentExcused++;
+          detail.incidents.items.push({
+            call_id: identity,
+            key: incidentKey,
+            call_number: call.bps_reference || call.agency_cad_number || call.call_id || identity,
+            call_type: call.incident || call.incident_type || 'Call for service',
+            call_location: call.location || detail.property,
+            status: 'excused',
+          });
+          return;
+        }
         if (call.performance_decision?.excluded === true) {
           incidentExcluded++;
           detail.incidents.excluded++;
@@ -694,6 +718,7 @@ export function calculateJobDutyCompliance({
           detail.incidents.completed++;
           detail.incidents.items.push({
             call_id: call.id,
+            key: incidentKey,
             call_number: callNumber,
             status: 'completed',
             call_type: callTypeLabel,
@@ -706,6 +731,7 @@ export function calculateJobDutyCompliance({
         } else {
           detail.incidents.items.push({
             call_id: call.id,
+            key: incidentKey,
             call_number: callNumber,
             status: 'missing',
             call_type: callTypeLabel,
@@ -820,11 +846,19 @@ export function calculateJobDutyCompliance({
       const extraRequired = Math.max(0, minimumPerShift - obligationCount);
       const extraAvailable = Math.max(0, successful.length - obligationCompleted);
       const completedCount = Math.min(requiredCount, obligationCompleted + Math.min(extraRequired, extraAvailable));
-      qrRequired += requiredCount;
+      const qrKey = `qr:${entry.id || shiftDate}`;
+      // An administrator can exempt the QR obligations of a shift (checkpoints not
+      // available, equipment failure, post closed). Exempt obligations are removed
+      // from the required total instead of being silently credited as completed.
+      const qrExcusedForShift = isExempt(qrKey) ? Math.max(0, requiredCount - completedCount) : 0;
+      qrExcused += qrExcusedForShift;
+      qrRequired += requiredCount - qrExcusedForShift;
       qrCompleted += completedCount;
+      detail.qr.key = qrKey;
+      detail.qr.excused = qrExcusedForShift;
       detail.qr.required = requiredCount;
       detail.qr.completed = completedCount;
-      detail.qr.missed = Math.max(0, requiredCount - completedCount);
+      detail.qr.missed = Math.max(0, requiredCount - completedCount - qrExcusedForShift);
       detail.qr.required_checkpoint_names = requiredCheckpoints.map(cp => cp.checkpoint_name || cp.location_label || cp.id);
       detail.qr.missed_obligations = missedObligations;
       detail.qr.frequency_minutes = frequency;
@@ -854,9 +888,10 @@ export function calculateJobDutyCompliance({
     score,
     commandExempt,
     countedMissed,
-    dailyActivity: { commandExempt, required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
-    incidentReports: { commandExempt, required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
-    qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
+    exempted: darExcused + incidentExcused + qrExcused,
+    dailyActivity: { commandExempt, required: darRequired, completed: darCompleted, excused: darExcused, missed: Math.max(0, darRequired - darCompleted), score: darScore },
+    incidentReports: { commandExempt, required: incidentRequired, completed: incidentCompleted, excused: incidentExcused, excluded: incidentExcluded, missed: Math.max(0, incidentRequired - incidentCompleted), score: incidentScore },
+    qrCompliance: { required: qrRequired, completed: qrCompleted, excused: qrExcused, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
     dutySessions: darSessions.map(session => ({
       id: session.id,
@@ -907,7 +942,8 @@ export function calculateDarCompliance({ officer = null, timeEntries = [], daily
   return { required, completed, missed, score: required ? Math.round((completed / required) * 100) : null, details };
 }
 
-export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd, officer = null) {
+export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd, officer = null, exemptions = []) {
+  const exemptKeys = new Set((exemptions || []).map(value => String(value)).filter(Boolean));
   const today = easternDateKey(new Date());
   const nowTime = easternTimeKey(new Date());
   const nowWall = wallClockMinute(today, nowTime);
@@ -918,18 +954,24 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
     const startWall = wallClockMinute(schedule.shift_date, schedule.start_time);
     return startWall != null && nowWall != null && startWall <= nowWall;
   });
-  const applicable = callOuts.filter(item => {
+  const recorded = callOuts.filter(item => {
     if (item.call_out_type !== 'called_out' || item.voided === true || item.active === false) return false;
     const date = item.call_out_date || easternDateKey(item.created_date);
     return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
   });
+  // An administrator can exempt a call-out (approved leave, documented emergency).
+  // The exempted call-out is removed from both the numerator cost and the scheduled
+  // denominator so the officer is neither rewarded nor penalized for it.
+  const excusedItems = recorded.filter(item => exemptKeys.has(`call_out:${item.id}`));
+  const applicable = recorded.filter(item => !exemptKeys.has(`call_out:${item.id}`));
   const commandExempt = isCommandPerformanceExempt(officer);
-  if (monthlySchedules.length === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable };
-  const denominator = monthlySchedules.length;
+  if (monthlySchedules.length === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
+  const denominator = Math.max(0, monthlySchedules.length - excusedItems.length);
+  if (denominator === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
   // Every recorded call-out lowers attendance at every rank. There is no automatic
   // 100% for command staff; the score always comes from the verified call-out rows.
   const score = Math.max(0, Math.round(((denominator - Math.min(denominator, applicable.length)) / denominator) * 100));
-  return { score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
+  return { score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable, excusedItems };
 }
 
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));

@@ -25,27 +25,53 @@ export function reviewPeriodDates(preset, today = new Date()) {
   };
 }
 
-function missedDutyItems(jobDuty) {
+// Every outstanding obligation is listed with a stable key so an administrator can
+// grant (or lift) an exemption. Exempted obligations stay visible, marked, and are
+// removed from scoring instead of being silently credited as completed.
+function dutyItems(jobDuty) {
   return (jobDuty?.shifts || []).flatMap(shift => {
     const items = [];
-    if (shift.daily_activity?.required && !shift.daily_activity?.completed) {
-      items.push({ date: shift.shift_date, property: shift.property, label: 'Daily activity report missing' });
+    const dar = shift.daily_activity || {};
+    if (dar.excused) {
+      items.push({ key: dar.key, item_type: 'dar', date: shift.shift_date, property: shift.property, label: 'Daily activity report exempted', exempt: true });
+    } else if (dar.required && !dar.completed) {
+      items.push({ key: dar.key, item_type: 'dar', date: shift.shift_date, property: shift.property, label: 'Daily activity report missing', exempt: false });
     }
-    (shift.incidents?.items || []).filter(item => item.status === 'missing').forEach(item => {
-      items.push({ date: shift.shift_date, property: shift.property, label: `Incident report missing · ${item.call_number || 'property call'}` });
+    (shift.incidents?.items || []).filter(item => item.status === 'missing' || item.status === 'excused').forEach(item => {
+      items.push({
+        key: item.key || `incident:${item.call_id}`,
+        item_type: 'incident',
+        date: shift.shift_date,
+        property: shift.property,
+        label: `${item.status === 'excused' ? 'Incident report exempted' : 'Incident report missing'} · ${item.call_number || 'property call'}`,
+        exempt: item.status === 'excused',
+      });
     });
-    const missedScans = Number(shift.qr?.missed || 0);
-    if (missedScans > 0) {
-      items.push({ date: shift.shift_date, property: shift.property, label: `${missedScans} QR checkpoint${missedScans === 1 ? '' : 's'} missed` });
+    const qr = shift.qr || {};
+    const missed = Number(qr.missed || 0);
+    const excusedQr = Number(qr.excused || 0);
+    if (missed > 0) {
+      items.push({ key: qr.key, item_type: 'qr', date: shift.shift_date, property: shift.property, label: `${missed} QR checkpoint${missed === 1 ? '' : 's'} missed`, exempt: false });
+    } else if (excusedQr > 0) {
+      items.push({ key: qr.key, item_type: 'qr', date: shift.shift_date, property: shift.property, label: `${excusedQr} QR checkpoint${excusedQr === 1 ? '' : 's'} exempted`, exempt: true });
     }
     return items;
   }).sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')));
 }
 
-export function buildDutyAttendanceRows(data = {}, { start_date, end_date } = {}) {
+function callOutItems(attendance) {
+  const list = (attendance?.items || []).map(item => ({ ...item, key: `call_out:${item.id}`, exempt: false }));
+  const excused = (attendance?.excusedItems || []).map(item => ({ ...item, key: `call_out:${item.id}`, exempt: true }));
+  return [...list, ...excused].sort((left, right) => String(right.call_out_date || '').localeCompare(String(left.call_out_date || '')));
+}
+
+export function buildDutyAttendanceRows(data = {}, { start_date, end_date, adjustments = [] } = {}) {
   const officers = (data.users || []).filter(isOperationalOfficer).sort(comparePersonnel);
   return officers.map(officer => {
     const email = emailKey(officer.email);
+    const officerAdjustments = adjustments.filter(row => emailKey(row.officer_email) === email && row.item_key);
+    const exemptions = officerAdjustments.map(row => String(row.item_key));
+    const exemptionReasons = Object.fromEntries(officerAdjustments.map(row => [String(row.item_key), String(row.reason || '')]));
     const entries = (data.timeEntries || []).filter(entry => emailKey(entry.officer_email) === email);
     const callOuts = (data.callOuts || []).filter(row => emailKey(row.officer_email) === email);
     const jobDuty = calculateJobDutyCompliance({
@@ -60,11 +86,20 @@ export function buildDutyAttendanceRows(data = {}, { start_date, end_date } = {}
       qrCheckpoints: data.qrCheckpoints || [],
       dutyRules: data.dutyRules || [],
       locations: data.locations || [],
+      exemptions,
       monthStart: start_date,
       monthEnd: end_date,
     });
-    const attendance = calculateCallOutAttendance(callOuts, data.schedules || [], start_date, end_date, officer);
-    return { officer, jobDuty, attendance, missedDuties: missedDutyItems(jobDuty) };
+    const attendance = calculateCallOutAttendance(callOuts, data.schedules || [], start_date, end_date, officer, exemptions);
+    return {
+      officer,
+      jobDuty,
+      attendance,
+      missedDuties: dutyItems(jobDuty),
+      callOutItems: callOutItems(attendance),
+      exemptions,
+      exemptionReasons,
+    };
   });
 }
 
@@ -81,6 +116,7 @@ export function summarizeReview(rows = []) {
       : null,
     missedDuties: rows.reduce((sum, row) => sum + Number(row.jobDuty?.countedMissed || 0), 0),
     callOuts: rows.reduce((sum, row) => sum + Number(row.attendance?.count || 0), 0),
+    exempted: rows.reduce((sum, row) => sum + Number(row.exemptions?.length || 0), 0),
     flagged: rows.filter(row => (row.jobDuty?.countedMissed || 0) > 0 || (row.attendance?.count || 0) > 0).length,
   };
 }

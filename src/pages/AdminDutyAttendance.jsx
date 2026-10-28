@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Shield, RefreshCw, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import DutyAttendanceRow from '@/components/admin/DutyAttendanceRow';
+import { getRankLastName } from '@/utils/officerDisplay';
 import { buildDutyAttendanceRows, reviewPeriodDates, summarizeReview } from '@/lib/dutyAttendanceReview';
 
 const PERIODS = [
@@ -52,6 +53,7 @@ export default function AdminDutyAttendance() {
   const [sort, setSort] = useState('name');
   const [expandedId, setExpandedId] = useState(() => searchParams.get('record_id') || null);
   const [completing, setCompleting] = useState(false);
+  const [savingKey, setSavingKey] = useState(null);
 
   const queueTask = searchParams.get('queue_task');
   const queueKind = searchParams.get('queue_kind');
@@ -73,9 +75,18 @@ export default function AdminDutyAttendance() {
     .flatMap(payload => Object.keys(payload?.service_errors || {}))
     .filter((value, index, rows) => rows.indexOf(value) === index);
 
+  const adjustmentsQuery = useQuery({
+    queryKey: ['dutyAttendanceAdjustments', startDate, endDate],
+    queryFn: () => base44.entities.DutyAttendanceAdjustment.filter({ item_date: { $gte: startDate, $lte: endDate } }, '-created_date', 500),
+    enabled: !!user && isAdmin,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const adjustments = useMemo(() => adjustmentsQuery.data || [], [adjustmentsQuery.data]);
+
   const allRows = useMemo(
-    () => segmentsReady ? buildDutyAttendanceRows(reviewData, { start_date: startDate, end_date: endDate }) : [],
-    [segmentsReady, reviewData, startDate, endDate]
+    () => segmentsReady ? buildDutyAttendanceRows(reviewData, { start_date: startDate, end_date: endDate, adjustments }) : [],
+    [segmentsReady, reviewData, startDate, endDate, adjustments]
   );
   const summary = useMemo(() => summarizeReview(allRows), [allRows]);
 
@@ -91,7 +102,60 @@ export default function AdminDutyAttendance() {
   }, [allRows, search, sort]);
 
   const refresh = async () => {
-    await Promise.all([core.refetch(), duty.refetch(), calls.refetch()]);
+    await Promise.all([core.refetch(), duty.refetch(), calls.refetch(), adjustmentsQuery.refetch()]);
+  };
+
+  // Exemptions are stored once and read by every scoring surface (this review, the
+  // officer performance card and company analytics), so the decision is not a
+  // display-only flag.
+  const applyExemption = async (officer, item, reason) => {
+    if (!item?.key) return;
+    setSavingKey(item.key);
+    try {
+      await base44.entities.DutyAttendanceAdjustment.create({
+        officer_email: String(officer.email || '').trim().toLowerCase(),
+        officer_name: getRankLastName(officer, officer.email || ''),
+        item_key: String(item.key),
+        item_type: item.item_type || 'dar',
+        item_date: item.date || null,
+        property: item.property || '',
+        label: item.label || '',
+        decision: 'exempt',
+        reason,
+        decided_by: user?.full_name || user?.email || 'Administrator',
+        decided_by_email: user?.email || '',
+        decided_at: new Date().toISOString(),
+      });
+      await refreshScoring();
+      toast.success('Obligation exempted. Scores were recalculated.');
+    } catch (error) {
+      toast.error(error?.message || 'The exemption could not be saved.');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const removeExemption = async (officer, item) => {
+    if (!item?.key) return;
+    setSavingKey(item.key);
+    try {
+      const match = adjustments.find(row => String(row.item_key) === String(item.key) && String(row.officer_email || '').trim().toLowerCase() === String(officer.email || '').trim().toLowerCase());
+      if (match) await base44.entities.DutyAttendanceAdjustment.delete(match.id);
+      await refreshScoring();
+      toast.success('Exemption removed. Scores were recalculated.');
+    } catch (error) {
+      toast.error(error?.message || 'The exemption could not be removed.');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const refreshScoring = async () => {
+    await adjustmentsQuery.refetch();
+    queryClient.invalidateQueries({ queryKey: ['companyAnalyticsSegment'] });
+    queryClient.invalidateQueries({ queryKey: ['companyOfficerPerformanceSnapshots'] });
+    queryClient.invalidateQueries({ queryKey: ['myPerformanceData'] });
+    queryClient.invalidateQueries({ queryKey: ['adminDashboardWorkQueue'] });
   };
 
   const completeReviewTask = async () => {
@@ -230,6 +294,9 @@ export default function AdminDutyAttendance() {
                 row={row}
                 expanded={expandedId === (row.officer.id || row.officer.email)}
                 onToggle={() => setExpandedId(current => (current === (row.officer.id || row.officer.email) ? null : (row.officer.id || row.officer.email)))}
+                onExempt={applyExemption}
+                onRestore={removeExemption}
+                savingKey={savingKey}
               />
             ))}
           </div>

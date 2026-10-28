@@ -1,4 +1,6 @@
-import { ChevronDown, ChevronRight, CalendarDays, MapPin } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { getRankLastName } from '@/utils/officerDisplay';
+import DutyAttendanceItem from '@/components/admin/DutyAttendanceItem';
 
 const scoreTone = score => {
   if (score == null) return 'border-slate-600 bg-slate-800/40 text-slate-300';
@@ -9,10 +11,10 @@ const scoreTone = score => {
 
 const scoreLabel = score => score == null ? 'No obligation' : `${score}%`;
 
-export default function DutyAttendanceRow({ row, expanded, onToggle }) {
-  const { officer, jobDuty, attendance, missedDuties } = row;
-  const name = officer.full_name || [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.email;
-  const callOuts = attendance?.items || [];
+export default function DutyAttendanceRow({ row, expanded, onToggle, onExempt, onRestore, savingKey }) {
+  const { officer, jobDuty, attendance, missedDuties = [], callOutItems = [], exemptionReasons = {} } = row;
+  const name = getRankLastName(officer, officer?.email || 'Unknown officer');
+  const exempted = row.exemptions?.length || 0;
 
   return (
     <div className="rounded-xl border border-slate-800 bg-[#0d1a2a]">
@@ -21,7 +23,10 @@ export default function DutyAttendanceRow({ row, expanded, onToggle }) {
           {expanded ? <ChevronDown className="h-4 w-4 shrink-0 text-cyan-300" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />}
           <div className="min-w-0">
             <div className="truncate text-sm font-bold text-white">{name}</div>
-            <div className="truncate text-xs text-slate-400">{officer.rank || 'Officer'}{officer.unit_number ? ` · Unit ${officer.unit_number}` : ''}</div>
+            <div className="truncate text-xs text-slate-400">
+              {officer.unit_number ? `Unit ${officer.unit_number}` : 'No unit assigned'}
+              {exempted ? ` · ${exempted} exempted` : ''}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
@@ -55,29 +60,39 @@ export default function DutyAttendanceRow({ row, expanded, onToggle }) {
           </div>
 
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[.14em] text-amber-300">Missed job duties ({missedDuties.length})</div>
+            <div className="text-[11px] font-black uppercase tracking-[.14em] text-amber-300">Job duty items ({missedDuties.length})</div>
             <div className="mt-2 space-y-1.5">
-              {missedDuties.length ? missedDuties.map((item, index) => (
-                <div key={`${item.date}-${index}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-300">
-                  <CalendarDays className="h-3.5 w-3.5 text-amber-300" />
-                  <span className="font-bold text-white">{item.date || 'Date missing'}</span>
-                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                  <span className="truncate">{item.property || 'Assigned post'}</span>
-                  <span className="w-full text-slate-400 sm:w-auto">{item.label}</span>
-                </div>
-              )) : <div className="rounded-lg border border-dashed border-slate-800 px-3 py-2 text-xs text-emerald-300">No missed required duties in this period.</div>}
+              {missedDuties.length ? missedDuties.map(item => (
+                <DutyAttendanceItem
+                  key={item.key || `${item.date}-${item.label}`}
+                  item={item}
+                  reason={exemptionReasons[item.key] || ''}
+                  saving={savingKey === item.key}
+                  onExempt={reason => onExempt(officer, item, reason)}
+                  onRestore={() => onRestore(officer, item)}
+                />
+              )) : <div className="rounded-lg border border-dashed border-slate-800 px-3 py-2 text-xs text-emerald-300">No outstanding job duties in this period.</div>}
             </div>
           </div>
 
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[.14em] text-cyan-300">Call-out attendance ({callOuts.length})</div>
+            <div className="text-[11px] font-black uppercase tracking-[.14em] text-cyan-300">Call-out attendance ({callOutItems.length})</div>
             <div className="mt-2 space-y-1.5">
-              {callOuts.length ? callOuts.map(item => (
-                <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-300">
-                  <span className="font-bold text-white">{item.call_out_date || 'Date missing'}{item.call_out_time ? ` · ${item.call_out_time}` : ''}</span>
-                  <span className="truncate">{item.location || 'Scheduled assignment'}</span>
-                  <span className="w-full text-slate-400 sm:w-auto">{item.reason || 'Reason not recorded'}{item.supervisor_name ? ` · ${item.supervisor_name}` : ''}</span>
-                </div>
+              {callOutItems.length ? callOutItems.map(item => (
+                <DutyAttendanceItem
+                  key={item.key}
+                  item={{
+                    key: item.key,
+                    exempt: item.exempt,
+                    date: item.call_out_date,
+                    property: item.location,
+                    label: `${item.call_out_time ? `${item.call_out_time} · ` : ''}${item.reason || 'Reason not recorded'}${item.supervisor_name ? ` · ${item.supervisor_name}` : ''}`,
+                  }}
+                  reason={exemptionReasons[item.key] || ''}
+                  saving={savingKey === item.key}
+                  onExempt={reason => onExempt(officer, { ...item, item_type: 'call_out', date: item.call_out_date, property: item.location, label: item.reason || 'Call-out' }, reason)}
+                  onRestore={() => onRestore(officer, { key: item.key, item_type: 'call_out' })}
+                />
               )) : <div className="rounded-lg border border-dashed border-slate-800 px-3 py-2 text-xs text-emerald-300">No call-outs recorded in this period.</div>}
             </div>
           </div>

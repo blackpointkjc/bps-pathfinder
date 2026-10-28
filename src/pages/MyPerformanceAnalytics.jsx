@@ -218,10 +218,24 @@ export default function MyPerformanceAnalytics() {
     [myBids, currentMonthStart, currentMonthEnd]
   );
 
+  // Administrative exemptions granted in the Duty & Attendance Review remove an
+  // obligation from scoring here too, so the officer card always matches the review.
+  const { data: dutyAdjustmentRecords } = useQuery({
+    queryKey: ['myDutyExemptions', user?.email, currentMonthStart],
+    queryFn: () => base44.entities.DutyAttendanceAdjustment.filter({ officer_email: user?.email }, '-created_date', 200),
+    enabled: !!user?.email,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const dutyExemptions = useMemo(
+    () => (dutyAdjustmentRecords || []).map(row => String(row.item_key || '')).filter(Boolean),
+    [dutyAdjustmentRecords]
+  );
+
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
-  const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd, user), [myCallOuts, schedules, currentMonthStart, currentMonthEnd, user]);
+  const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd, user, dutyExemptions), [myCallOuts, schedules, currentMonthStart, currentMonthEnd, user, dutyExemptions]);
   const jobDuty = useMemo(() => calculateJobDutyCompliance({
     officer: user,
     timeEntries,
@@ -235,9 +249,10 @@ export default function MyPerformanceAnalytics() {
     qrCheckpoints: performanceData.checkpoints || [],
     dutyRules: performanceData.jobDutyRules || [],
     locations: performanceData.locations || [],
+    exemptions: dutyExemptions,
     monthStart: currentMonthStart,
     monthEnd: currentMonthEnd,
-  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.callAssignments, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, currentMonthStart, currentMonthEnd]);
+  }), [user, timeEntries, performanceData.dailyActivityReports, performanceData.incidents, performanceData.dispatchCalls, performanceData.callAssignments, performanceData.sharedQrScanEvents, performanceData.qrScanEvents, performanceData.partnerTimeEntries, performanceData.checkpoints, performanceData.jobDutyRules, performanceData.locations, myCallOuts, dutyExemptions, currentMonthStart, currentMonthEnd]);
 
   const incidentObligations = useMemo(
     () => (jobDuty.shifts || []).flatMap(shift =>
