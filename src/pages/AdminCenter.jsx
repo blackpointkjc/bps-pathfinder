@@ -20,6 +20,7 @@ import AdminGeofenceAlerts from './AdminGeofenceAlerts';
 import AdminAutoDispatchControls from './AdminAutoDispatchControls';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminUsers from './AdminUsers';
+import AdminDutyAttendance from './AdminDutyAttendance';
 import AdminLocations from './AdminLocations';
 import AdminReports from './AdminReports';
 import AdminClientReports from './AdminClientReports';
@@ -153,6 +154,7 @@ function AdminPersonnelAccessHub() {
   {id:'availability',label:'Personnel & Command',component:AdminOfficerManagement},
   {id:'users',label:'Accounts & Access',component:AdminUsers},
   {id:'clients',label:'Client Accounts',component:ManageClients},
+  {id:'duty',label:'Duty & Attendance',component:AdminDutyAttendance},
  ]}/>;
 }
 function AdminSchedulingCoverageHub(){return <SchedulingWorkspace/>;}
