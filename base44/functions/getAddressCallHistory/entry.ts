@@ -26,11 +26,16 @@ Deno.serve(async req => {
   const pattern = number ? '^\\s*'+number[1]+'\\s+'+street.map(token).join('\\s+')+'(?:\\s*(?:,|$)|\\s+(?:apt|unit|suite|#)\\b)' : '';
   const rows:any[]=[]; const errors:string[]=[]; let truncated=false;
   const read=async(entity:string,query:any,kind:string)=>{
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const batch=await api.asServiceRole.entities[entity].filter(query,'-created_date',300);
+      const batch:any = await Promise.race([
+        api.asServiceRole.entities[entity].filter(query,'-created_date',300),
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('History source timeout')),10000);})
+      ]);
       if(batch.length===300) truncated=true;
       for(const r of batch) rows.push({...r,_kind:kind});
-    } catch { errors.push(entity); }
+    } catch (error) { errors.push(entity); console.warn('Address history source unavailable', entity, error instanceof Error ? error.message : 'Read failed'); }
+    finally { if (timer) clearTimeout(timer); }
   };
   if(propertyId) {
     await read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property');

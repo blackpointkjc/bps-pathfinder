@@ -33,6 +33,7 @@ export default function AddressCallHistory({ address = '', propertyId = '', excl
     {state.loading?<p role="status">Loading recorded calls…</p>:state.error?<div role="alert"><p>{state.error}</p><button type="button" onClick={()=>setRetry(n=>n+1)} className="min-h-11 underline">Retry history</button></div>:<>
       <p className="mt-1 font-bold">{data.partial?'At least ':''}{data.count} recorded calls{data.count>1?' · Repeat-call location':''}</p>
       <p className="text-xs text-slate-300">{data.scope}. {data.partial?'Some records could not be checked; this is not a complete count.':'Count is limited to records retained in Pathfinder.'}</p>
+      {data.partial && <button type="button" onClick={()=>setRetry(n=>n+1)} className="min-h-11 underline">Retry missing history</button>}
       <div className="mt-2 flex flex-wrap gap-2">{Object.entries(data.types||{}).map(([type,count])=><span key={type} className="rounded border border-slate-600 px-2 py-1 text-xs">{type}: {count}</span>)}</div>
       <details className="mt-2"><summary className="min-h-11 cursor-pointer py-2 font-semibold">Previous call details ({calls.length} shown)</summary>
         {calls.map(call=><div key={call.id} className="border-t border-slate-700 py-2"><strong>{call.incident}</strong><p>{call.location}</p><p className="text-xs text-slate-300">{new Date(call.time).toLocaleString('en-US',{timeZone:'America/New_York'})} ET · {call.status}{call.reference?' · '+call.reference:''}</p></div>)}
