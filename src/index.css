@@ -1679,3 +1679,58 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
 .bps-dialog {
   background-color: hsl(var(--background)) !important;
 }
+
+/* ============================================================
+   Typography consistency
+   One typeface, one weight scale and one letter case for the whole
+   application. Legacy screens mixed monospace/serif stacks and
+   hard-coded ALL CAPS or all lowercase labels, which made the same
+   kind of label look different on every page. These rules normalize
+   what every screen inherits.
+   ============================================================ */
+:root {
+  --app-font: "Segoe UI Variable", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+}
+
+body,
+button,
+input,
+textarea,
+select,
+optgroup,
+option,
+[role="dialog"],
+[role="alertdialog"],
+[data-radix-popper-content-wrapper] > *,
+[data-sonner-toast] {
+  font-family: var(--app-font);
+}
+
+/* Legacy utilities that switched typeface mid-page. */
+.cad-app :is(.font-mono, .font-serif, .font-display, .font-heading, .font-body, .font-sans, code, kbd, pre, samp),
+.cad-app main :is(.font-mono, .font-serif, .font-display, .font-heading, .font-body) {
+  font-family: var(--app-font) !important;
+}
+
+/* Every heading uses the same weight and tracking. */
+.cad-app main :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Body copy, controls and table text are authored in sentence case, so they
+   must never be rendered in capitals. */
+.cad-app main :is(p, li, td, th, dt, dd, caption, figcaption, blockquote, option, small,
+  button:not([class*="uppercase"]), a:not([class*="uppercase"]),
+  span:not([class*="uppercase"]), strong:not([class*="uppercase"]), em:not([class*="uppercase"])) {
+  text-transform: none !important;
+}
+
+/* Short tracking labels keep their emphasis, but as title case instead of
+   ALL CAPS, so a label never shouts on one screen and whispers on another. */
+.cad-app main :is(h1, h2, h3, h4, h5, h6, span, div, label, button, a, dt, th)[class*="uppercase"],
+[role="dialog"] :is(h1, h2, h3, h4, span, div, label, button, th)[class*="uppercase"],
+[data-radix-dialog-content] :is(h1, h2, h3, h4, span, div, label, button, th)[class*="uppercase"] {
+  text-transform: capitalize !important;
+  letter-spacing: 0.05em !important;
+}

@@ -444,6 +444,14 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
     ? { items: result, next: null }
     : { items: Array.isArray(result?.items) ? result.items : [], next: result?.next_cursor || null };
   const readPage = async (name: string, query: any, cursor: string | null) => {
+    // The User entity only supports the positional read form; cursor options are
+    // rejected there.
+    if (name === 'User') {
+      const result = query
+        ? await entities.User.filter(query, '-created_date', PAGE_SIZE)
+        : await entities.User.list('-created_date', PAGE_SIZE);
+      return shape(result);
+    }
     const options: any = { sort: '-created_date', limit: PAGE_SIZE };
     if (cursor) options.cursor = cursor;
     const result = query ? await entities[name].filter(query, options) : await entities[name].list(options);

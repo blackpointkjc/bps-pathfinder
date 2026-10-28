@@ -244,7 +244,7 @@ export default function Reports() {
                 <div className="px-6 py-3">
                     <div className="flex items-center gap-4">
                         <BarChart className="w-6 h-6 text-blue-400" />
-                        <h1 className="text-xl font-bold text-white tracking-tight font-mono">COMMAND REPORTS</h1>
+                        <h1 className="text-xl font-bold text-white tracking-tight font-mono">Command reports</h1>
                     </div>
                 </div>
             </div>
@@ -255,11 +255,11 @@ export default function Reports() {
                     <div className="w-full md:col-span-4">
                         <Card className="bg-slate-900 border-slate-800">
                             <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                                <h2 className="text-lg font-bold text-white font-mono">REPORT CONFIGURATION</h2>
+                                <h2 className="text-lg font-bold text-white font-mono">Report configuration</h2>
                             </div>
                             <div className="p-4 space-y-4">
                                 <div>
-                                    <label className="text-xs text-slate-400 font-mono mb-2 block">REPORT TYPE</label>
+                                    <label className="text-xs text-slate-400 font-mono mb-2 block">Report type</label>
                                     <Select value={reportType} onValueChange={setReportType}>
                                         <SelectTrigger className="bg-slate-800 border-slate-700 text-white font-mono">
                                             <SelectValue />
@@ -273,11 +273,11 @@ export default function Reports() {
                                     </Select>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-slate-400 font-mono mb-2 block">DATE FROM</label>
+                                    <label className="text-xs text-slate-400 font-mono mb-2 block">Date from</label>
                                     <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-slate-800 border-slate-700 text-white font-mono" />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-slate-400 font-mono mb-2 block">DATE TO</label>
+                                    <label className="text-xs text-slate-400 font-mono mb-2 block">Date to</label>
                                     <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-slate-800 border-slate-700 text-white font-mono" />
                                 </div>
                                 <Button onClick={generateReport} disabled={generating} className="w-full bg-blue-600 hover:bg-blue-700 font-mono">
@@ -293,14 +293,14 @@ export default function Reports() {
                             <Card className="bg-slate-900 border-slate-800 h-[calc(100vh-180px)] flex items-center justify-center">
                                 <div className="text-center text-slate-500 font-mono">
                                     <BarChart className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                    <p>CONFIGURE AND GENERATE REPORT</p>
+                                    <p>Configure and generate report</p>
                                 </div>
                             </Card>
                         ) : (
                             <Card className="bg-slate-900 border-slate-800">
                                 <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-white font-mono">REPORT RESULTS</h2>
+                                        <h2 className="text-lg font-bold text-white font-mono">Report results</h2>
                                         <div className="flex gap-2">
                                             <Button size="sm" onClick={exportCSV} className="bg-green-600 hover:bg-green-700 font-mono text-xs">
                                                 <Download className="w-3 h-3 mr-2" />CSV
@@ -317,7 +317,7 @@ export default function Reports() {
                                         {reportData.type === 'call_volume' && (
                                             <div className="space-y-4">
                                                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                                                    <p className="text-xs text-slate-400 font-mono mb-1">TOTAL CALLS</p>
+                                                    <p className="text-xs text-slate-400 font-mono mb-1">Total calls</p>
                                                     <p className="text-4xl font-bold text-blue-400 font-mono">{reportData.total}</p>
                                                     <p className="text-xs text-slate-400 font-mono mt-2">{reportData.dateRange.from} to {reportData.dateRange.to}</p>
                                                 </div>
@@ -329,7 +329,7 @@ export default function Reports() {
                                                         </div>
                                                         <div className="space-y-2">
                                                             <div>
-                                                                <p className="text-xs text-slate-400 font-mono mb-1">BY TYPE</p>
+                                                                <p className="text-xs text-slate-400 font-mono mb-1">By type</p>
                                                                 {Object.entries(stats.byType).slice(0, 5).map(([type, count]) => (
                                                                     <div key={type} className="flex justify-between text-sm">
                                                                         <span className="text-slate-300">{type}</span>
@@ -338,7 +338,7 @@ export default function Reports() {
                                                                 ))}
                                                             </div>
                                                             <div>
-                                                                <p className="text-xs text-slate-400 font-mono mb-1">BY PRIORITY</p>
+                                                                <p className="text-xs text-slate-400 font-mono mb-1">By priority</p>
                                                                 {Object.entries(stats.byPriority).map(([priority, count]) => (
                                                                     <div key={priority} className="flex justify-between text-sm">
                                                                         <span className="text-slate-300">{priority.toUpperCase()}</span>
@@ -357,26 +357,26 @@ export default function Reports() {
                                                 {reportData.total === 0 ? (
                                                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 text-center">
                                                         <Clock className="w-10 h-10 text-yellow-400 mx-auto mb-2 opacity-50" />
-                                                        <p className="text-yellow-400 font-mono text-sm">NO RESPONSE TIME DATA</p>
+                                                        <p className="text-yellow-400 font-mono text-sm">No response time data</p>
                                                         <p className="text-slate-400 font-mono text-xs mt-2">{reportData.totalFiltered} calls found but none have both Time Received and Time On Scene recorded.</p>
                                                     </div>
                                                 ) : (
                                                     <>
                                                         <div className="grid grid-cols-2 gap-3">
                                                             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                                                                <p className="text-xs text-slate-400 font-mono mb-1">AVG RESPONSE TIME</p>
+                                                                <p className="text-xs text-slate-400 font-mono mb-1">Avg response time</p>
                                                                 <p className="text-3xl font-bold text-green-400 font-mono">{reportData.average} min</p>
                                                                 <p className="text-xs text-slate-400 font-mono mt-1">Based on {reportData.total} calls</p>
                                                             </div>
                                                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-1">
-                                                                <p className="text-xs text-slate-400 font-mono mb-2">DISTRIBUTION</p>
+                                                                <p className="text-xs text-slate-400 font-mono mb-2">Distribution</p>
                                                                 <div className="flex justify-between text-xs"><span className="text-green-400">Under 5 min</span><span className="text-white font-mono">{reportData.breakdown.under5}</span></div>
                                                                 <div className="flex justify-between text-xs"><span className="text-yellow-400">5-10 min</span><span className="text-white font-mono">{reportData.breakdown.under10}</span></div>
                                                                 <div className="flex justify-between text-xs"><span className="text-red-400">Over 10 min</span><span className="text-white font-mono">{reportData.breakdown.over10}</span></div>
                                                             </div>
                                                         </div>
                                                         <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                                                            <p className="text-xs text-slate-400 font-mono mb-2">STATS</p>
+                                                            <p className="text-xs text-slate-400 font-mono mb-2">Stats</p>
                                                             <div className="space-y-1">
                                                                 <div className="flex justify-between text-sm"><span className="text-slate-300">Fastest</span><span className="text-green-400 font-mono">{Math.min(...reportData.times).toFixed(2)} min</span></div>
                                                                 <div className="flex justify-between text-sm"><span className="text-slate-300">Slowest</span><span className="text-red-400 font-mono">{Math.max(...reportData.times).toFixed(2)} min</span></div>
@@ -384,7 +384,7 @@ export default function Reports() {
                                                         </div>
                                                         {reportData.topCalls.length > 0 && (
                                                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                                                                <p className="text-xs text-slate-400 font-mono mb-2">SLOWEST RESPONSES (TOP 10)</p>
+                                                                <p className="text-xs text-slate-400 font-mono mb-2">Slowest responses (top 10)</p>
                                                                 <div className="space-y-2">
                                                                     {reportData.topCalls.map((r, i) => (
                                                                         <div key={i} className="flex justify-between text-xs border-b border-slate-700 pb-1">
@@ -410,7 +410,7 @@ export default function Reports() {
                                         {reportData.type === 'unit_activity' && (
                                             <div className="space-y-4">
                                                 <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                                                    <p className="text-xs text-slate-400 font-mono mb-1">TOTAL STATUS CHANGES</p>
+                                                    <p className="text-xs text-slate-400 font-mono mb-1">Total status changes</p>
                                                     <p className="text-4xl font-bold text-purple-400 font-mono">{reportData.total}</p>
                                                 </div>
                                                 {Object.entries(reportData.data).map(([unit, stats]) => (
@@ -420,7 +420,7 @@ export default function Reports() {
                                                             <span className="text-purple-400 font-mono text-2xl font-bold">{stats.statusChanges}</span>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs text-slate-400 font-mono mb-1">STATUS BREAKDOWN</p>
+                                                            <p className="text-xs text-slate-400 font-mono mb-1">Status breakdown</p>
                                                             {Object.entries(stats.statuses).map(([status, count]) => (
                                                                 <div key={status} className="flex justify-between text-sm">
                                                                     <span className="text-slate-300">{status}</span>

@@ -496,7 +496,7 @@ export default function CallHistory() {
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">LOADING CALL HISTORY...</p></div>
+            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">Loading call history…</p></div>
         </div>
     );
 
@@ -550,7 +550,7 @@ export default function CallHistory() {
 
                 <span className="text-[9px] text-slate-500 tracking-widest">CALL CLASS:</span>
                 <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
-                    <option value="ALL">ALL CALLS</option><option value="PROPERTY">PROPERTY CALLS</option><option value="PUBLIC">PUBLIC SAFETY CALLS</option>
+                    <option value="ALL">All calls</option><option value="PROPERTY">Property calls</option><option value="PUBLIC">Public safety calls</option>
                 </select>
 
                 {/* Status filter */}
@@ -566,12 +566,12 @@ export default function CallHistory() {
                 {/* Column Headers */}
                 <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-3 py-1.5 text-[9px] tracking-widest text-slate-500 select-none md:flex">
                     <div className="w-8 flex-shrink-0">#</div>
-                    <div className="w-36 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('time')}>DATE/TIME <SortIcon field="time" /></div>
-                    <div className="flex-1 cursor-pointer hover:text-slate-300" onClick={() => handleSort('incident')}>INCIDENT TYPE <SortIcon field="incident" /></div>
-                    <div className="w-56 flex-shrink-0">LOCATION</div>
-                    <div className="w-20 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('agency')}>AGENCY <SortIcon field="agency" /></div>
-                    <div className="w-24 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('status')}>STATUS <SortIcon field="status" /></div>
-                    <div className="w-16 flex-shrink-0 text-center">UNITS</div>
+                    <div className="w-36 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('time')}>Date / time <SortIcon field="time" /></div>
+                    <div className="flex-1 cursor-pointer hover:text-slate-300" onClick={() => handleSort('incident')}>Incident type <SortIcon field="incident" /></div>
+                    <div className="w-56 flex-shrink-0">Location</div>
+                    <div className="w-20 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('agency')}>Agency <SortIcon field="agency" /></div>
+                    <div className="w-24 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('status')}>Status <SortIcon field="status" /></div>
+                    <div className="w-16 flex-shrink-0 text-center">Units</div>
                     <div className="w-8 flex-shrink-0" />
                 </div>
 
@@ -591,7 +591,7 @@ export default function CallHistory() {
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
                                     ${isExpanded ? 'bg-slate-800/60' : ''}`}> 
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
-                                <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
+                                <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">Date / time</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span><div className="mt-1 text-[10px] font-bold text-cyan-200">CAD / REF: {cadReference(row)||'Assigning CAD Reference…'}</div>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">Active</span>}

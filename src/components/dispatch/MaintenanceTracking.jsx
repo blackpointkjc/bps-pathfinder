@@ -113,7 +113,7 @@ export default function MaintenanceTracking({ units }) {
                 <div className="flex items-center gap-2">
                     <div className="w-1 h-5 bg-gold rounded-sm" />
                     <Wrench className="w-4 h-4 text-gold" />
-                    <span className="text-white font-bold text-sm tracking-widest">MAINTENANCE TRACKING</span>
+                    <span className="text-white font-bold text-sm tracking-widest">Maintenance tracking</span>
                     <span className="text-slate-500 text-[10px] ml-1">{maintenance.length} RECORDS</span>
                 </div>
                 <button onClick={() => setShowForm(!showForm)}
@@ -132,10 +132,10 @@ export default function MaintenanceTracking({ units }) {
 
             {showForm && (
                 <div className="bg-slate-900 border border-slate-700 rounded p-4 mb-4 space-y-3">
-                    <div className="text-[10px] text-gold font-bold tracking-widest mb-2">NEW MAINTENANCE RECORD</div>
+                    <div className="text-[10px] text-gold font-bold tracking-widest mb-2">New maintenance record</div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">VEHICLE</Label>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Vehicle</Label>
                             <select value={formData.vehicle_id}
                                 onChange={e => {
                                     const sel = vehicles.find(v => v.vehicle_id === e.target.value);
@@ -147,7 +147,7 @@ export default function MaintenanceTracking({ units }) {
                             </select>
                         </div>
                         <div>
-                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">UNIT NUMBER</Label>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Unit number</Label>
                             <select value={formData.unit_number}
                                 onChange={e => setFormData({...formData, unit_number: e.target.value})}
                                 className="mt-1 w-full h-9 bg-slate-800 border border-slate-700 text-white font-mono text-xs rounded px-2">
@@ -169,7 +169,7 @@ export default function MaintenanceTracking({ units }) {
                         </select>
                     </div>
                     <div>
-                        <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DESCRIPTION</Label>
+                        <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Description</Label>
                         <Textarea value={formData.description}
                             onChange={e => setFormData({...formData, description: e.target.value})}
                             placeholder="Describe the maintenance..."
@@ -178,13 +178,13 @@ export default function MaintenanceTracking({ units }) {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DUE DATE</Label>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Due date</Label>
                             <Input type="date" value={formData.due_date}
                                 onChange={e => setFormData({...formData, due_date: e.target.value})}
                                 className="mt-1 bg-slate-800 border-slate-700 text-white font-mono text-xs" />
                         </div>
                         <div>
-                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DUE MILEAGE</Label>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Due mileage</Label>
                             <Input type="number" value={formData.due_mileage}
                                 onChange={e => setFormData({...formData, due_mileage: e.target.value})}
                                 placeholder="Optional"
@@ -193,9 +193,9 @@ export default function MaintenanceTracking({ units }) {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={createMaintenance}
-                            className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">CREATE</button>
+                            className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">Create</button>
                         <button onClick={() => setShowForm(false)}
-                            className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">CANCEL</button>
+                            className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">Cancel</button>
                     </div>
                 </div>
             )}
@@ -203,26 +203,26 @@ export default function MaintenanceTracking({ units }) {
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                 {overdue.length > 0 && (
                     <div>
-                        <div className="text-[9px] text-red-400 font-bold tracking-widest mb-2 px-1">OVERDUE</div>
+                        <div className="text-[9px] text-red-400 font-bold tracking-widest mb-2 px-1">Overdue</div>
                         {overdue.map(item => <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} isOverdue />)}
                     </div>
                 )}
                 {upcoming.length > 0 && (
                     <div>
-                        <div className="text-[9px] text-yellow-400 font-bold tracking-widest mb-2 px-1">UPCOMING</div>
+                        <div className="text-[9px] text-yellow-400 font-bold tracking-widest mb-2 px-1">Upcoming</div>
                         {upcoming.map(item => <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} />)}
                     </div>
                 )}
                 {completed.length > 0 && (
                     <div>
-                        <div className="text-[9px] text-green-400 font-bold tracking-widest mb-2 px-1">COMPLETED</div>
+                        <div className="text-[9px] text-green-400 font-bold tracking-widest mb-2 px-1">Completed</div>
                         {completed.map(item => <MaintenanceCard key={item.id} item={item} onDelete={deleteMaintenance} isCompleted />)}
                     </div>
                 )}
                 {maintenance.length === 0 && (
                     <div className="text-center py-12">
                         <Wrench className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                        <p className="text-slate-600 text-xs font-mono">NO MAINTENANCE RECORDS</p>
+                        <p className="text-slate-600 text-xs font-mono">No maintenance records</p>
                     </div>
                 )}
             </div>

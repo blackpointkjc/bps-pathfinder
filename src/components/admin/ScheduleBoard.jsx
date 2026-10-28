@@ -1354,7 +1354,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
         ${scheduleHTML || '<p style="text-align: center; padding: 20px; color: #999;">No shifts scheduled for this period.</p>'}
 
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong> | Richmond, VA | Confidential Document<br/>
+          <strong>Black Point Protection</strong> | Richmond, VA | Confidential Document<br/>
           Printed: ${format(new Date(), 'MMM d, yyyy h:mm a')}
         </div>
       </body>
@@ -1677,7 +1677,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
         ${divisionsHTML || '<p style="text-align: center; padding: 20px;">No schedules found</p>'}
 
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong> | Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}
+          <strong>Black Point Protection</strong> | Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}
         </div>
         
         <!-- Officer Hours Summary Page (For This Week Only) -->
@@ -1863,7 +1863,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
         </div>
         
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong> | Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}
+          <strong>Black Point Protection</strong> | Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}
         </div>
 
         <!-- Individual Officer Shift Details Pages -->
@@ -1956,7 +1956,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
             '</div>' +
             shiftsHTML +
             '<div style="margin-top:20px; padding-top:12px; border-top:2px solid #000; text-align:center; font-size:9pt; color:#666;">' +
-              '<strong>BLACK POINT PROTECTION</strong> | Richmond, VA | Confidential Document<br/>' +
+              '<strong>Black Point Protection</strong> | Richmond, VA | Confidential Document<br/>' +
               'Printed: ' + format(new Date(), 'MMM d, yyyy h:mm a') +
             '</div>' +
           '</div>';
@@ -2803,7 +2803,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </CardTitle>
                 <p className="mt-1 text-xs text-slate-400">12:00 AM through 11:59 PM. Overnight shifts are split visually at midnight so the remaining hours continue into the next calendar day without creating a second shift record.</p>
               </div>
-              <Badge variant="outline" className="w-fit border-cyan-700/60 bg-cyan-950/30 text-cyan-200">FULL-DAY VIEW</Badge>
+              <Badge variant="outline" className="w-fit border-cyan-700/60 bg-cyan-950/30 text-cyan-200">Full-day view</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -2907,7 +2907,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 <div className="flex items-center gap-3">
                   <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">BLACK POINT PROTECTION</h2>
+                    <h2 className="text-xl font-bold text-slate-900">Black Point Protection</h2>
                     <p className="text-slate-600">Richmond, VA</p>
                   </div>
                 </div>
@@ -2942,7 +2942,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     <p className="text-sm text-blue-700 font-semibold">Status</p>
                     {printOfficerData.hasOvertime ? (
                       <div>
-                        <p className="text-lg font-bold text-orange-600">OVERTIME</p>
+                        <p className="text-lg font-bold text-orange-600">Overtime</p>
                         <p className="text-sm text-orange-700">+{printOfficerData.overtimeHours.toFixed(2)}h overtime</p>
                       </div>
                     ) : (
@@ -3041,7 +3041,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <div className="text-center mb-3 pb-2 border-b-2 border-slate-300">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <img src={LOGO_URL} alt="Black Point Protection" className="w-12 h-12 object-contain" />
-                  <h1 className="text-xl font-bold uppercase">BLACK POINT PROTECTION WEEKLY SCHEDULE</h1>
+                  <h1 className="text-xl font-bold uppercase">Black Point Protection weekly schedule</h1>
                 </div>
                 <p className="text-sm font-semibold">
                   {format(weekStart, 'MMMM d, yyyy')} - {format(weekEnd, 'MMMM d, yyyy')}
@@ -3049,9 +3049,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </div>
 
               <div className="mb-2 text-[9px] flex gap-2">
-                <span className="bg-yellow-200 px-1 py-0.5">ADJUSTED</span>
-                <span className="bg-cyan-200 px-1 py-0.5">OPEN SHIFT</span>
-                <span className="bg-red-200 px-1 py-0.5">CANCELLED</span>
+                <span className="bg-yellow-200 px-1 py-0.5">Adjusted</span>
+                <span className="bg-cyan-200 px-1 py-0.5">Open shift</span>
+                <span className="bg-red-200 px-1 py-0.5">Cancelled</span>
               </div>
 
               {Object.keys(divisionGroups).length === 0 ? (
@@ -3636,12 +3636,12 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 <div className="hidden md:block">
                   <table className="w-full table-fixed border-collapse bg-slate-950 text-[10px] text-slate-200 lg:text-[11px]">
                     <thead><tr className="border-b border-slate-700 bg-[#111827] text-slate-300">
-                      <th className="w-[4%] p-2 text-center">#</th><th className="w-[7%] p-2 text-center">UNIT</th><th className="w-[17%] p-2 text-left">OFFICER</th><th className="w-[12%] p-2 text-left">RANK</th><th className="w-[12%] p-2 text-center">SCHEDULED</th><th className="w-[12%] p-2 text-center">ACTUAL REG</th><th className="w-[10%] p-2 text-center">ACTUAL OT</th><th className="w-[12%] p-2 text-center">ACTUAL TOTAL</th><th className="w-[14%] p-2 text-right">EST. EARNED</th>
+                      <th className="w-[4%] p-2 text-center">#</th><th className="w-[7%] p-2 text-center">UNIT</th><th className="w-[17%] p-2 text-left">Officer</th><th className="w-[12%] p-2 text-left">RANK</th><th className="w-[12%] p-2 text-center">Scheduled</th><th className="w-[12%] p-2 text-center">Actual reg</th><th className="w-[10%] p-2 text-center">Actual OT</th><th className="w-[12%] p-2 text-center">Actual total</th><th className="w-[14%] p-2 text-right">Est. earned</th>
                     </tr></thead>
                     <tbody>{rows.map((r,idx)=><tr key={r.email} className="border-b border-slate-800 odd:bg-slate-950 even:bg-slate-900/60">
                       <td className="p-2 text-center text-slate-500">{idx+1}</td><td className="p-2 text-center font-black text-blue-300">{r.unit ? `#${r.unit}` : '—'}</td><td className="truncate p-2 font-bold text-white" title={r.name}>{r.name}</td><td className="truncate p-2 text-slate-400" title={r.rank}>{r.rank || 'Officer'}</td><td className="p-2 text-center font-semibold text-blue-200">{r.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{r.actualRegular.toFixed(1)}</td><td className={`p-2 text-center ${r.actualOT>0?'font-black text-red-300':'text-slate-500'}`}>{r.actualOT.toFixed(1)}</td><td className="p-2 text-center font-black text-white">{r.actualTotal.toFixed(1)}</td><td className="p-2 text-right font-black text-amber-300">${r.earned.toFixed(2)}</td>
                     </tr>)}</tbody>
-                    <tfoot><tr className="border-t-2 border-blue-700 bg-blue-950/40 font-black"><td colSpan="4" className="p-2 text-right text-blue-200">PAY PERIOD TOTALS</td><td className="p-2 text-center text-blue-200">{totals.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{totals.regular.toFixed(1)}</td><td className="p-2 text-center text-red-300">{totals.ot.toFixed(1)}</td><td className="p-2 text-center text-white">{totals.actual.toFixed(1)}</td><td className="p-2 text-right text-amber-300">${totals.earned.toFixed(2)}</td></tr></tfoot>
+                    <tfoot><tr className="border-t-2 border-blue-700 bg-blue-950/40 font-black"><td colSpan="4" className="p-2 text-right text-blue-200">Pay period totals</td><td className="p-2 text-center text-blue-200">{totals.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{totals.regular.toFixed(1)}</td><td className="p-2 text-center text-red-300">{totals.ot.toFixed(1)}</td><td className="p-2 text-center text-white">{totals.actual.toFixed(1)}</td><td className="p-2 text-right text-amber-300">${totals.earned.toFixed(2)}</td></tr></tfoot>
                   </table>
                 </div>
                 <div className="space-y-3 p-3 lg:hidden">
@@ -3650,7 +3650,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-black text-white">{r.name}</div><div className="text-xs text-slate-400">{r.rank || 'Officer'} · {r.unit ? `#${r.unit}` : 'No unit'}</div></div><div className="text-right text-xs font-black text-amber-300">${r.earned.toFixed(2)}</div></div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded bg-blue-950/30 p-2"><span className="text-slate-500">Scheduled</span><div className="font-black text-blue-200">{r.scheduled.toFixed(1)}h</div></div><div className="rounded bg-slate-900 p-2"><span className="text-slate-500">Actual</span><div className="font-black text-white">{r.actualTotal.toFixed(1)}h</div></div><div className="rounded bg-emerald-950/20 p-2"><span className="text-slate-500">Regular</span><div className="font-black text-emerald-300">{r.actualRegular.toFixed(1)}h</div></div><div className="rounded bg-red-950/20 p-2"><span className="text-slate-500">OT</span><div className="font-black text-red-300">{r.actualOT.toFixed(1)}h</div></div></div>
                   </div>)}
-                  <div className="rounded-xl border border-blue-800 bg-blue-950/30 p-3"><div className="font-black text-blue-200">PAY PERIOD TOTALS</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Scheduled: <b>{totals.scheduled.toFixed(1)}h</b></span><span>Actual: <b>{totals.actual.toFixed(1)}h</b></span><span>OT: <b>{totals.ot.toFixed(1)}h</b></span><span>Earned: <b className="text-amber-300">${totals.earned.toFixed(2)}</b></span></div></div>
+                  <div className="rounded-xl border border-blue-800 bg-blue-950/30 p-3"><div className="font-black text-blue-200">Pay period totals</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Scheduled: <b>{totals.scheduled.toFixed(1)}h</b></span><span>Actual: <b>{totals.actual.toFixed(1)}h</b></span><span>OT: <b>{totals.ot.toFixed(1)}h</b></span><span>Earned: <b className="text-amber-300">${totals.earned.toFixed(2)}</b></span></div></div>
                 </div>
               </>;
             })()}
@@ -3862,7 +3862,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     <p className="text-blue-700 font-semibold">Status:</p>
                     {getOfficerScheduleForDateRange(selectedOfficerForPrint, printStartDate, printEndDate)?.hasOvertime ? (
                       <div>
-                        <p className="text-orange-600 font-bold text-lg">OVERTIME</p>
+                        <p className="text-orange-600 font-bold text-lg">Overtime</p>
                         <p className="text-xs text-orange-700">
                           {getOfficerScheduleForDateRange(selectedOfficerForPrint, printStartDate, printEndDate)?.overtimeHours.toFixed(2)}h overtime
                         </p>

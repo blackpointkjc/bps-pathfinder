@@ -744,7 +744,7 @@ export default function DispatchCenter({embedded=false}) {
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <div className="min-w-0">
-                        <h1 className="text-sm font-bold leading-snug text-white">BPS / DISPATCH CONTROL</h1>
+                        <h1 className="text-sm font-bold leading-snug text-white">BPS / dispatch control</h1>
                         <p className="mt-0.5 text-[10px] leading-snug text-slate-300">BPS CAD · Computer-Aided Dispatch</p>
                     </div>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
@@ -804,7 +804,7 @@ export default function DispatchCenter({embedded=false}) {
                     <div className="flex flex-none items-center gap-3 border-b border-blue-900/70 bg-[#08111d] px-4 py-3">
                         <ClipboardList className="h-4 w-4 text-blue-300" />
                         <div>
-                            <div className="text-xs font-black tracking-[0.14em] text-white">DISPATCHER SHIFT LOG</div>
+                            <div className="text-xs font-black tracking-[0.14em] text-white">Dispatcher shift log</div>
                             <div className="text-[9px] text-slate-500">Inner Dispatch Center workspace</div>
                         </div>
                         <button type="button" onClick={() => setShowDispatchLog(false)} className="ml-auto rounded border border-slate-600 px-3 py-2 text-[10px] font-black text-slate-200 hover:bg-slate-800">
@@ -862,10 +862,10 @@ export default function DispatchCenter({embedded=false}) {
                 <span className="text-[10px] text-slate-500">SORT:</span>
                 <button onClick={() => setSortOrder('desc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'desc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
-                }`}>NEWEST</button>
+                }`}>Newest</button>
                 <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
-                }`}>OLDEST</button>
+                }`}>Oldest</button>
                 <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {queueFilter==='agency'?activeCalls.length:propertyAlertCalls.length}</span>
             </div>
 
@@ -889,7 +889,7 @@ export default function DispatchCenter({embedded=false}) {
                         {/* Table header */}
                         <div className="dispatch-call-headings flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
                             <div className="col-span-2">PRI</div>
-                            <div className="col-span-5">INCIDENT</div>
+                            <div className="col-span-5">Incident</div>
                             <div className="col-span-5">TIME</div>
                         </div>
                         <div className="flex-1 overflow-y-auto">
@@ -953,7 +953,7 @@ export default function DispatchCenter({embedded=false}) {
                                             setSelectedCall(previous=>previous?.id===call.id?{...previous,priority,priority_override:true}:previous);
                                         }}/>}
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
-                                        {isPulsePointCall(selectedCall) && <span className="rounded border border-red-500/50 bg-red-500/20 px-2 py-0.5 text-[9px] font-black text-red-100">PULSEPOINT</span>}
+                                        {isPulsePointCall(selectedCall) && <span className="rounded border border-red-500/50 bg-red-500/20 px-2 py-0.5 text-[9px] font-black text-red-100">PulsePoint</span>}
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
                                             RECV: {formatEasternDateTime(selectedCall.time_received || selectedCall.created_date)} ET
                                         </span>
@@ -975,27 +975,27 @@ export default function DispatchCenter({embedded=false}) {
                                     )}
                                     {selectedCall.description && (
                                         <div className="px-4 pb-2">
-                                            <div className="text-[9px] text-slate-500 mb-1">NARRATIVE</div>
+                                            <div className="text-[9px] text-slate-500 mb-1">Narrative</div>
                                             <div className="text-[10px] text-slate-300 bg-[#111827] rounded p-2 leading-relaxed">{selectedCall.description}</div>
                                         </div>
                                     )}
                                     <div className="px-4 pb-2 flex items-center gap-1.5 flex-wrap">
-                                        <span className="text-[9px] text-slate-500 mr-1">CALL STATUS</span>
+                                        <span className="text-[9px] text-slate-500 mr-1">Call status</span>
                                         {['New','Dispatched','Enroute','On Scene','Cleared'].map(status => (
                                             <button key={status} onClick={() => updateCallStatus(status)} disabled={statusWorking || selectedCall.status === status}
                                                 className={`px-2 py-1 rounded border text-[9px] ${selectedCall.status === status ? 'border-blue-400 bg-blue-500/20 text-blue-200' : 'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-white'}`}>
                                                 {status.toUpperCase()}
                                             </button>
                                         ))}
-                                        <button disabled={statusWorking} onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
+                                        <button disabled={statusWorking} onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">Cancel</button>
                                         <button disabled={supervisorWorking} onClick={requestSupervisorForSelectedCall} className="px-2 py-1 rounded border border-purple-600 bg-purple-950/40 text-[9px] font-bold text-purple-200 hover:bg-purple-900/50">{supervisorWorking?'REQUESTING…':'REQUEST SUPERVISOR'}</button>{dispatchFeedback&&<p role="status" className="w-full rounded border border-cyan-700 p-2 text-xs text-cyan-200">{dispatchFeedback}</p>}
                                         <button onClick={requestWelfareForSelectedCall} disabled={welfareWorking} className="px-2 py-1 rounded border border-red-600 bg-red-950/40 text-[9px] font-bold text-red-200 hover:bg-red-900/50 disabled:opacity-50">{welfareWorking ? 'SENDING…' : 'WELFARE CHECK'}</button>
                                     </div>
                                     {welfareChecks.length > 0 && (
                                         <div className="px-4 pb-2">
                                             <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-[9px] text-slate-500">
-                                                <span>OFFICER WELFARE</span>
-                                                <span className="text-cyan-300">AUTOMATIC CHECK EVERY 10 MINUTES</span>
+                                                <span>Officer welfare</span>
+                                                <span className="text-cyan-300">Automatic check every 10 minutes</span>
                                             </div>
                                             <div className="space-y-1">
                                                 {welfareChecks.slice(0,5).map(check => (
@@ -1031,7 +1031,7 @@ export default function DispatchCenter({embedded=false}) {
                                         </div>
                                         <div>
                                             <PropertyCallLinkControl call={selectedCall}/>
-                                            <div className="text-[9px] text-slate-500 mb-1">ADD DISPATCH NOTE</div>
+                                            <div className="text-[9px] text-slate-500 mb-1">Add dispatch note</div>
                                             <textarea value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCallNote(); } }}
                                                 placeholder="Type update, then Enter..." className="w-full h-16 resize-none bg-[#111827] border border-[#263653] rounded p-2 text-[10px] text-white outline-none focus:border-blue-500" />
                                             <button onClick={addCallNote} disabled={savingNote || !noteText.trim()} className="w-full mt-1 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-[9px] font-bold">
@@ -1056,8 +1056,8 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">UNIT ASSIGNMENT</span>
-                                    <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">CALL SELECTED</span>
+                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">Unit assignment</span>
+                                    <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
                                     <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} allAssignments={cadAssignmentRows} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
@@ -1067,7 +1067,7 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">UNIT ASSIGNMENT</span>
+                                    <span className="text-[10px] font-black tracking-[.16em] text-blue-300">Unit assignment</span>
                                 </div>
                                 <div className="flex min-h-0 flex-1 items-center justify-center p-4">
                                     <div className="max-w-[260px] rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center text-xs text-slate-400">Select an active call, then return to Assignment to dispatch a unit.</div>
@@ -1087,7 +1087,7 @@ export default function DispatchCenter({embedded=false}) {
                     <div role="dialog" aria-modal="true" aria-label="Live tactical map" className="flex h-[82vh] w-[88vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                            <span className="text-xs font-black tracking-widest text-emerald-300">LIVE TACTICAL MAP</span>
+                            <span className="text-xs font-black tracking-widest text-emerald-300">Live tactical map</span>
                             <div className="ml-auto flex items-center gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><button onClick={() => setShowMap(false)} className="rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button></div>
                         </div>
                         <div className="min-h-0 flex-1">
@@ -1104,7 +1104,7 @@ export default function DispatchCenter({embedded=false}) {
 
             {/* ══ BOTTOM STATUS BAR ══ */}
             <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
-                <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">CONNECTED</span></span>
+                <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">Connected</span></span>
                 <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
                 <span>UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
                 <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>

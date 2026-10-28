@@ -124,7 +124,7 @@ export default function SupervisorPerformanceReview() {
       </head>
       <body>
         <div class="header">
-          <div class="title">PERFORMANCE REVIEW</div>
+          <div class="title">Performance review</div>
           <div class="subtitle">Review Period: ${format(parseISO(review.review_period_start), 'MMM d, yyyy')} - ${format(parseISO(review.review_period_end), 'MMM d, yyyy')}</div>
         </div>
 
@@ -150,24 +150,24 @@ export default function SupervisorPerformanceReview() {
         <div class="metrics-grid">
           <div class="metric-box">
             <div class="metric-value">${review.hours_worked || 0}h</div>
-            <div class="metric-label">HOURS WORKED</div>
+            <div class="metric-label">Hours worked</div>
           </div>
           <div class="metric-box">
             <div class="metric-value">${review.on_time_percentage != null ? `${review.on_time_percentage}%` : '—'}</div>
-            <div class="metric-label">ON-TIME RATE</div>
+            <div class="metric-label">On-time rate</div>
           </div>
           <div class="metric-box" style="background: #dcfce7; border-color: #86efac;">
             <div class="metric-value" style="color: #16a34a;">${review.commendations_count || 0}</div>
-            <div class="metric-label" style="color: #15803d;">COMMENDATIONS</div>
+            <div class="metric-label" style="color: #15803d;">Commendations</div>
           </div>
           <div class="metric-box" style="background: #fee2e2; border-color: #fca5a5;">
             <div class="metric-value" style="color: #dc2626;">${review.complaints_count || 0}</div>
-            <div class="metric-label" style="color: #991b1b;">COMPLAINTS</div>
+            <div class="metric-label" style="color: #991b1b;">Complaints</div>
           </div>
         </div>
 
         <div class="ratings-section">
-          <h3 style="font-size: 12pt; font-weight: bold; color: #1e40af; margin-bottom: 15px;">PERFORMANCE RATINGS</h3>
+          <h3 style="font-size: 12pt; font-weight: bold; color: #1e40af; margin-bottom: 15px;">Performance ratings</h3>
           ${[
             { label: 'Punctuality', value: review.punctuality_rating },
             { label: 'Professionalism', value: review.professionalism_rating },
@@ -188,28 +188,28 @@ export default function SupervisorPerformanceReview() {
 
         ${review.strengths ? `
         <div class="text-section" style="background: #dcfce7; border-color: #22c55e;">
-          <div class="section-title" style="color: #16a34a;">STRENGTHS</div>
+          <div class="section-title" style="color: #16a34a;">Strengths</div>
           <div class="section-content">${review.strengths}</div>
         </div>
         ` : ''}
 
         ${review.areas_for_improvement ? `
         <div class="text-section" style="background: #fef3c7; border-color: #f59e0b;">
-          <div class="section-title" style="color: #d97706;">AREAS FOR IMPROVEMENT</div>
+          <div class="section-title" style="color: #d97706;">Areas for improvement</div>
           <div class="section-content">${review.areas_for_improvement}</div>
         </div>
         ` : ''}
 
         ${review.goals ? `
         <div class="text-section">
-          <div class="section-title">GOALS FOR NEXT PERIOD</div>
+          <div class="section-title">Goals for next period</div>
           <div class="section-content">${review.goals}</div>
         </div>
         ` : ''}
 
         ${review.current_hourly_rate ? `
         <div class="text-section" style="background: #dbeafe; border-color: #3b82f6;">
-          <div class="section-title">PAY INFORMATION</div>
+          <div class="section-title">Pay information</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
               <strong>Current Rate:</strong> $${review.current_hourly_rate.toFixed(2)}/hr
@@ -235,7 +235,7 @@ export default function SupervisorPerformanceReview() {
         ` : ''}
 
         <div class="signature-section">
-          <h3 style="font-size: 12pt; font-weight: bold; color: #1e40af; margin-bottom: 15px;">ACKNOWLEDGMENTS</h3>
+          <h3 style="font-size: 12pt; font-weight: bold; color: #1e40af; margin-bottom: 15px;">Acknowledgments</h3>
           <p style="font-size: 9pt; color: #475569; margin-bottom: 20px;">
             By signing below, I acknowledge that I have received and reviewed this performance evaluation with my supervisor.
           </p>

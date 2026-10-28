@@ -197,7 +197,7 @@ export default function PropertyMonitoring() {
                 <div className="flex items-center gap-2">
                     <div className="w-1 h-5 bg-gold rounded-sm" />
                     <MapPin className="w-4 h-4 text-gold" />
-                    <span className="text-white font-bold text-sm tracking-widest">PROPERTY MONITORING</span>
+                    <span className="text-white font-bold text-sm tracking-widest">Property monitoring</span>
                     <span className="text-slate-500 text-[10px] ml-1">{properties.length} ZONES</span>
                 </div>
                 <button onClick={handleAddNew}
@@ -211,7 +211,7 @@ export default function PropertyMonitoring() {
                 {properties.length === 0 ? (
                     <div className="col-span-full text-center py-12">
                         <MapPin className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                        <p className="text-slate-600 text-xs font-mono">NO MONITORED ZONES</p>
+                        <p className="text-slate-600 text-xs font-mono">No monitored zones</p>
                     </div>
                 ) : properties.map((property) => (
                     <div key={property.id} className="bg-slate-900 border border-slate-800 rounded p-3">
@@ -233,18 +233,18 @@ export default function PropertyMonitoring() {
                             </div>
                             {property.boundary_type !== 'polygon' && property.radiusMeters && (
                                 <div className="flex justify-between">
-                                    <span>RADIUS</span>
+                                    <span>Radius</span>
                                     <span className="text-slate-300">{property.radiusMeters >= 1000 ? `${(property.radiusMeters/1000).toFixed(1)} km` : `${property.radiusMeters} m`}</span>
                                 </div>
                             )}
                             {property.boundary_type === 'polygon' && (
                                 <div className="flex justify-between">
-                                    <span>VERTICES</span>
+                                    <span>Vertices</span>
                                     <span className="text-slate-300">{property.polygon?.length || 0} pts</span>
                                 </div>
                             )}
                             <div className="flex justify-between">
-                                <span>STATUS</span>
+                                <span>Status</span>
                                 <span className={property.enabled ? 'text-green-400' : 'text-red-400'}>{property.enabled ? 'ACTIVE' : 'DISABLED'}</span>
                             </div>
                         </div>
@@ -281,14 +281,14 @@ export default function PropertyMonitoring() {
                     <div className="space-y-3 pointer-events-auto">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">ZONE NAME</Label>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Zone name</Label>
                                 <Input value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="e.g., Police HQ Campus"
                                     className="mt-1 bg-slate-800 border-slate-700 text-white font-mono text-xs" />
                             </div>
                             <div>
-                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">ADDRESS</Label>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">Address</Label>
                                 <div className="flex gap-1 mt-1">
                                     <Input value={formData.address}
                                         onChange={e => setFormData({ ...formData, address: e.target.value })}
@@ -366,13 +366,13 @@ export default function PropertyMonitoring() {
                                 {polygonPoints.length >= 3 && <span className="text-green-400">✓ VALID POLYGON</span>}
                                 {polygonPoints.length > 0 && (
                                     <button onClick={() => setPolygonPoints(pts => pts.slice(0, -1))}
-                                        className="ml-auto px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white rounded">UNDO LAST</button>
+                                        className="ml-auto px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white rounded">Undo last</button>
                                 )}
                             </div>
                         )}
 
                         <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded">
-                            <Label className="text-slate-400 font-mono text-[10px] tracking-widest">MONITORING ACTIVE</Label>
+                            <Label className="text-slate-400 font-mono text-[10px] tracking-widest">Monitoring active</Label>
                             <Switch checked={formData.enabled}
                                 onCheckedChange={v => setFormData({ ...formData, enabled: v })} />
                         </div>
