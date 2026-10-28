@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Shield, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, Mail, Calendar, UserCheck, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import OrgScopeFilter from "@/components/OrgScopeFilter";
+import { divisionLevel, indexDivisions, matchesOrgScope } from '@/lib/orgStructure';
 
 
 import {
@@ -110,6 +112,7 @@ function BoundaryPointEditor({ enabled, points, onAddPoint, onMovePoint }) {
 export default function AdminLocations({ embedded = false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+  const [orgScope, setOrgScope] = useState({ region: 'all', division: 'all', substation: 'all' });
   const [focusGeofence, setFocusGeofence] = useState(false);
   const geofenceSectionRef = useRef(null);
 
@@ -131,6 +134,7 @@ export default function AdminLocations({ embedded = false }) {
     longitude: null,
     division: "",
     subdivision: "",
+    substation: "",
     time_zone: "America/New_York",
     active: true,
     contract_start_date: "",
@@ -303,6 +307,7 @@ export default function AdminLocations({ embedded = false }) {
       longitude: null,
       division: "",
       subdivision: "",
+      substation: "",
       time_zone: "America/New_York",
       active: true,
       contract_start_date: "",
@@ -398,6 +403,7 @@ export default function AdminLocations({ embedded = false }) {
       longitude: location.longitude,
       division: location.division || "",
       subdivision: location.subdivision || "",
+      substation: location.substation || "",
       time_zone: location.time_zone || "America/New_York",
       active: location.active !== false,
       contract_start_date: location.contract_start_date || "",
@@ -581,8 +587,13 @@ export default function AdminLocations({ embedded = false }) {
     );
   }
 
-  const activeLocations = locations?.filter(loc => loc.active !== false) || [];
-  const inactiveLocations = locations?.filter(loc => !loc.active) || [];
+  const activeLocations = (locations?.filter(loc => loc.active !== false) || []).filter(loc => matchesOrgScope(loc, orgScope));
+  const inactiveLocations = (locations?.filter(loc => !loc.active) || []).filter(loc => matchesOrgScope(loc, orgScope));
+  const divisionIndex = indexDivisions(divisions || []);
+  const substationOptions = (divisions || [])
+    .filter(record => divisionLevel(record, divisionIndex) === 'substation' && String(record.parent_division || '').trim() === String(formData.subdivision || '').trim())
+    .map(record => record.subdivision || record.division_name)
+    .filter(Boolean);
 
   return (
     <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-0 pb-8 text-white" : "bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8"}> 
@@ -620,6 +631,13 @@ export default function AdminLocations({ embedded = false }) {
           </Card>
         )}
 
+        <div className="rounded-2xl border border-[#29445f] bg-[#0b1725] p-3 shadow-lg sm:p-4">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-blue-300">
+            <MapPin className="h-3 w-3" />Filter by region, division and substation
+          </div>
+          <OrgScopeFilter scope={orgScope} onChange={setOrgScope} />
+        </div>
+
         <Tabs defaultValue="active" className="space-y-6">
           <TabsList className="grid h-auto w-full grid-cols-1 gap-1 border border-slate-200 bg-white p-1 sm:grid-cols-2">
             <TabsTrigger value="active" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-900">
@@ -651,14 +669,9 @@ export default function AdminLocations({ embedded = false }) {
                             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                               Active
                             </Badge>
-                            {location.subdivision && (
+                            {(location.division || location.subdivision || location.substation) && (
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                {location.division} - {location.subdivision}
-                              </Badge>
-                            )}
-                            {!location.subdivision && location.division && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                {location.division}
+                                {[location.division, location.subdivision, location.substation].filter(Boolean).join(' › ')}
                               </Badge>
                             )}
                             {location.assigned_client_email && (() => {
@@ -785,14 +798,9 @@ export default function AdminLocations({ embedded = false }) {
                             <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
                               Inactive
                             </Badge>
-                            {location.subdivision && (
+                            {(location.division || location.subdivision || location.substation) && (
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                {location.division} - {location.subdivision}
-                              </Badge>
-                            )}
-                            {!location.subdivision && location.division && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                {location.division}
+                                {[location.division, location.subdivision, location.substation].filter(Boolean).join(' › ')}
                               </Badge>
                             )}
                             {location.assigned_client_email && (() => {
@@ -904,7 +912,7 @@ export default function AdminLocations({ embedded = false }) {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="division">Division</Label>
+                  <Label htmlFor="division">Region</Label>
                   <Button type="button" size="sm" variant="ghost" onClick={() => refetchDivisions()} className="h-7 px-2 text-[10px]">REFRESH</Button>
                 </div>
                 <select
@@ -930,7 +938,7 @@ export default function AdminLocations({ embedded = false }) {
 
             {formData.division && divisions.filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false).length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="subdivision">Subdivision</Label>
+                <Label htmlFor="subdivision">Division / Operating Area</Label>
                 <select
                   id="subdivision"
                   value={formData.subdivision || ''}
@@ -947,6 +955,29 @@ export default function AdminLocations({ embedded = false }) {
                       <option key={div.id} value={div.subdivision || div.division_name}>{div.subdivision || div.division_name}</option>
                     ))}
                 </select>
+              </div>
+            )}
+
+            {formData.division && formData.subdivision && (
+              <div className="space-y-2">
+                <Label htmlFor="substation">Substation</Label>
+                <select
+                  id="substation"
+                  value={formData.substation || ''}
+                  onChange={(e) => setFormData(prev => ({...prev, substation: e.target.value}))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">None</option>
+                  {formData.substation && !substationOptions.includes(formData.substation) && (
+                    <option value={formData.substation}>{formData.substation} (current)</option>
+                  )}
+                  {substationOptions.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                {substationOptions.length === 0 && (
+                  <p className="text-xs font-semibold text-amber-400">No substations exist under {formData.subdivision} yet. Add one in Company Structure.</p>
+                )}
               </div>
             )}
 

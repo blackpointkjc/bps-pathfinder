@@ -4,20 +4,33 @@
   "properties": {
     "division_name": {
       "type": "string",
-      "description": "Name of the division (e.g., Virginia, Maryland)"
+      "description": "Name of the record (region, division, or substation name)"
     },
     "subdivision": {
       "type": "string",
-      "description": "Subdivision name (e.g., Richmond, NOVA, Tidewater)"
+      "description": "Operating area / subdivision name (mirrors division_name for divisions and substations)"
     },
     "parent_division": {
       "type": "string",
-      "description": "Parent division name if this is a subdivision"
+      "description": "Name of the parent record: a division points to its region, a substation points to its division"
     },
     "is_subdivision": {
       "type": "boolean",
       "default": false,
-      "description": "Whether this is a subdivision or a main division"
+      "description": "False for a region, true for a division or substation"
+    },
+    "division_level": {
+      "type": "string",
+      "enum": [
+        "region",
+        "division",
+        "substation"
+      ],
+      "description": "Placement in the company structure: region (state), division (operating area inside a region), or substation (area inside a division)"
+    },
+    "region": {
+      "type": "string",
+      "description": "Region this record ultimately belongs to (for a region this is its own name)"
     },
     "active": {
       "type": "boolean",

@@ -10,7 +10,10 @@
       "type": "string",
       "description": "Full address of the site"
     },
-    "billing_contact_email": {"type":"string","description":"Verified client billing recipient; if empty automated invoices go to management@blackpointkjc.com"},
+    "billing_contact_email": {
+      "type": "string",
+      "description": "Verified client billing recipient; if empty automated invoices go to management@blackpointkjc.com"
+    },
     "site_email": {
       "type": "string",
       "description": "Email address for site manager/contact (reports will be sent here)"
@@ -36,11 +39,15 @@
     },
     "division": {
       "type": "string",
-      "description": "Main division this location belongs to (e.g., Virginia, Maryland)"
+      "description": "Region this location belongs to (e.g., Virginia, Maryland)"
     },
     "subdivision": {
       "type": "string",
-      "description": "Subdivision this location belongs to (e.g., Richmond, NOVA, Tidewater)"
+      "description": "Division / operating area this location belongs to (e.g., Richmond, Tidewater)"
+    },
+    "substation": {
+      "type": "string",
+      "description": "Substation inside the division (e.g., Midlothian, Chesterfield) used for org filtering and reporting"
     },
     "time_zone": {
       "type": "string",

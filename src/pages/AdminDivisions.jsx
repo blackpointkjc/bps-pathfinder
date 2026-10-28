@@ -1,35 +1,45 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Shield, Layers, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, ChevronDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
-import { useAuth } from '@/lib/AuthContext';
+import { useState, useMemo } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Shield, Layers, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
+import { useAuth } from '@/lib/AuthContext';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { buildOrgTree, divisionLevel, indexDivisions, officerOrgContext } from '@/lib/orgStructure';
+import DivisionStructureTree from '@/components/admin/DivisionStructureTree';
+
+const LEVEL_LABEL = { region: 'Region', division: 'Division', substation: 'Substation' };
+const LEVEL_HINT = {
+  region: 'A primary region such as Virginia.',
+  division: 'An operational division inside a region, such as Richmond or Tidewater.',
+  substation: 'An area inside a division that sites and personnel belong to.',
+};
+
+const emptyForm = (level = 'region') => ({
+  division_level: level,
+  name: '',
+  parent_region: '',
+  parent_division: '',
+  active: true,
+  notes: '',
+});
 
 export default function AdminDivisions() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingDivision, setEditingDivision] = useState(null);
-  const [formData, setFormData] = useState({
-    division_name: "",
-    subdivision: "",
-    parent_division: "",
-    is_subdivision: false,
-    active: true,
-    notes: ""
-  });
-  const [expandedDivisions, setExpandedDivisions] = useState(new Set());
+  const [formData, setFormData] = useState(() => emptyForm('region'));
   const queryClient = useQueryClient();
 
   const { user, isLoadingAuth } = useAuth();
@@ -52,6 +62,30 @@ export default function AdminDivisions() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: locations = [] } = useQuery({
+    queryKey: ['org-structure-locations'],
+    queryFn: async () => {
+      try {
+        const rows = await listDirectoryLocations('site_name', 1000);
+        if (Array.isArray(rows) && rows.length) return rows;
+      } catch {}
+      return base44.entities.Location.list('site_name', 500);
+    },
+    enabled: hasAccess,
+    placeholderData: [],
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['org-structure-users'],
+    queryFn: () => listDirectoryUsers(undefined, 1000, true),
+    enabled: hasAccess,
+    placeholderData: [],
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const createDivisionMutation = useMutation({
     mutationFn: async (data) => {
       const result = await base44.functions.invoke('manageHRDivisions', { action: 'create', data });
@@ -64,7 +98,7 @@ export default function AdminDivisions() {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
       setEditingDivision(null);
-      resetForm();
+      setFormData(emptyForm('region'));
     },
   });
 
@@ -80,7 +114,7 @@ export default function AdminDivisions() {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
       setEditingDivision(null);
-      resetForm();
+      setFormData(emptyForm('region'));
     },
   });
 
@@ -110,74 +144,111 @@ export default function AdminDivisions() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      division_name: "",
-      subdivision: "",
-      parent_division: "",
-      is_subdivision: false,
-      active: true,
-      notes: ""
+  const divisionIndex = useMemo(() => indexDivisions(divisions), [divisions]);
+  const tree = useMemo(() => buildOrgTree(divisions), [divisions]);
+
+  // Membership counts come from real location and personnel records, so each
+  // branch of the tree shows how much is actually assigned to it.
+  const stats = useMemo(() => {
+    const counters = {};
+    const bump = (level, name, field) => {
+      const key = `${level}:${name}`;
+      if (!name) return;
+      if (!counters[key]) counters[key] = { locations: 0, officers: 0 };
+      counters[key][field] += 1;
+    };
+
+    (locations || []).forEach(location => {
+      bump('region', location.division, 'locations');
+      bump('division', location.subdivision, 'locations');
+      bump('substation', location.substation, 'locations');
     });
+
+    (directoryUsers || []).filter(isOperationalOfficer).forEach(officer => {
+      const context = officerOrgContext(officer, locations || []);
+      bump('region', context.division, 'officers');
+      bump('division', context.subdivision, 'officers');
+      bump('substation', context.substation, 'officers');
+    });
+
+    return counters;
+  }, [locations, directoryUsers]);
+
+  const openAdd = (level, { region = '', division = '' } = {}) => {
+    setEditingDivision(null);
+    setFormData({ ...emptyForm(level), parent_region: region, parent_division: division });
+    setShowDialog(true);
   };
 
-  const handleEdit = (division) => {
-    setEditingDivision(division);
+  const handleEdit = (record) => {
+    if (!record?.id) return;
+    const level = divisionLevel(record, divisionIndex);
+    let parentRegion = '';
+    let parentDivision = '';
+    if (level === 'division') {
+      parentRegion = record.parent_division || '';
+    }
+    if (level === 'substation') {
+      parentDivision = record.parent_division || '';
+      const parent = divisionIndex[String(parentDivision).trim().toLowerCase()];
+      parentRegion = record.region || parent?.parent_division || '';
+    }
+    setEditingDivision(record);
     setFormData({
-      division_name: division.division_name,
-      subdivision: division.subdivision || "",
-      parent_division: division.parent_division || "",
-      is_subdivision: division.is_subdivision || false,
-      active: division.active,
-      notes: division.notes || ""
+      division_level: level,
+      name: record.subdivision || record.division_name || '',
+      parent_region: parentRegion,
+      parent_division: parentDivision,
+      active: record.active !== false,
+      notes: record.notes || '',
     });
     setShowDialog(true);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const level = formData.division_level;
+    const name = formData.name.trim();
+    if (!name) return;
+    const payload = {
+      division_name: name,
+      subdivision: level === 'region' ? '' : name,
+      is_subdivision: level !== 'region',
+      division_level: level,
+      parent_division: level === 'region' ? '' : (level === 'division' ? formData.parent_region : formData.parent_division),
+      region: level === 'region' ? name : formData.parent_region,
+      active: formData.active,
+      notes: formData.notes,
+    };
     if (editingDivision) {
-      updateDivisionMutation.mutate({ id: editingDivision.id, data: formData });
+      updateDivisionMutation.mutate({ id: editingDivision.id, data: payload });
     } else {
-      createDivisionMutation.mutate(formData);
+      createDivisionMutation.mutate(payload);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (await confirmInApp('Are you sure you want to delete this division? This may affect officers and locations assigned to it.')) {
-      deleteDivisionMutation.mutate(id);
+  const handleDelete = async (record) => {
+    if (!record?.id) return;
+    const level = divisionLevel(record, divisionIndex);
+    const children = (divisions || []).filter(item => String(item.parent_division || '').trim() === String(record.subdivision || record.division_name || '').trim());
+    if (children.length) {
+      await confirmInApp(`Delete this ${LEVEL_LABEL[level].toLowerCase()}? It still has ${children.length} ${children.length === 1 ? 'child area' : 'child areas'} assigned to it. Move them first so nothing loses its organization.`);
+      return;
+    }
+    if (await confirmInApp(`Delete this ${LEVEL_LABEL[level].toLowerCase()}? Sites and personnel assigned to it keep their records but lose this organization assignment.`)) {
+      deleteDivisionMutation.mutate(record.id);
     }
   };
 
-  const handleToggleActive = (division) => {
-    toggleActiveMutation.mutate({ id: division.id, active: !division.active });
+  const handleToggleActive = (record) => {
+    if (!record?.id) return;
+    toggleActiveMutation.mutate({ id: record.id, active: record.active === false });
   };
 
-  const toggleDivisionExpanded = (divisionName) => {
-    const newSet = new Set(expandedDivisions);
-    if (newSet.has(divisionName)) {
-      newSet.delete(divisionName);
-    } else {
-      newSet.add(divisionName);
-    }
-    setExpandedDivisions(newSet);
-  };
-
-  // Organize divisions hierarchically
-  const { mainDivisions, subdivisionsByParent } = useMemo(() => {
-    if (!divisions) return { mainDivisions: [], subdivisionsByParent: {} };
-
-    const main = divisions.filter(d => !d.is_subdivision);
-    const subs = {};
-    
-    divisions.filter(d => d.is_subdivision).forEach(d => {
-      const parent = d.parent_division || 'Unassigned';
-      if (!subs[parent]) subs[parent] = [];
-      subs[parent].push(d);
-    });
-
-    return { mainDivisions: main, subdivisionsByParent: subs };
-  }, [divisions]);
+  const regionNames = tree.map(region => region.name);
+  const divisionsInRegion = formData.parent_region
+    ? (tree.find(region => region.name === formData.parent_region)?.divisions || []).map(division => division.name)
+    : tree.flatMap(region => region.divisions.map(division => division.name));
 
   if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading division access…</div>;
   if (!hasAccess) {
@@ -192,284 +263,150 @@ export default function AdminDivisions() {
 
   return (
     <div className="bps-command-page divisions-page min-h-screen bg-[#080d16] p-3 text-white sm:p-4 md:p-6">
-      <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-8">
+      <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-6">
         <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <Shield className="h-8 w-8 shrink-0 text-amber-600" />
+            <Shield className="h-8 w-8 shrink-0 text-amber-500" />
             <div className="min-w-0">
-              <h1 className="break-words text-2xl font-black leading-tight text-white sm:text-3xl">Company Areas & Divisions</h1>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">Use two clear levels: Division = state/region; Operating Area = city/market inside that division.</p>
+              <h1 className="break-words text-2xl font-black leading-tight text-white sm:text-3xl">Company Structure</h1>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400 sm:text-base">
+                Three levels everywhere in Pathfinder: Region (Virginia) → Division (Richmond, Tidewater) → Substation. Sites and personnel carry their assignments, so filters and reports stay consistent.
+              </p>
             </div>
           </div>
-          <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto">
-            <Button
-              onClick={() => {
-                setEditingDivision(null);
-                setFormData({
-                  division_name: "",
-                  subdivision: "",
-                  parent_division: "",
-                  is_subdivision: true,
-                  active: true,
-                  notes: ""
-                });
-                setShowDialog(true);
-              }}
-              variant="outline"
-              className="w-full justify-center whitespace-normal border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 xl:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4 shrink-0" />
-              <span>Add Operating Area</span>
+          <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:w-auto">
+            <Button onClick={() => openAdd('region')} className="w-full justify-center bg-blue-600 hover:bg-blue-700 xl:w-auto">
+              <Plus className="mr-2 h-4 w-4 shrink-0" /><span>Region</span>
             </Button>
-            <Button
-              onClick={() => {
-                setEditingDivision(null);
-                resetForm();
-                setShowDialog(true);
-              }}
-              className="w-full justify-center whitespace-normal bg-blue-600 hover:bg-blue-700 xl:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4 shrink-0" />
-              <span>Add Division / Region</span>
+            <Button onClick={() => openAdd('division')} variant="outline" className="w-full justify-center whitespace-normal border-cyan-800 bg-cyan-950/40 text-cyan-200 hover:bg-cyan-900/50 xl:w-auto">
+              <Plus className="mr-2 h-4 w-4 shrink-0" /><span>Division</span>
+            </Button>
+            <Button onClick={() => openAdd('substation')} variant="outline" className="w-full justify-center whitespace-normal border-amber-800 bg-amber-950/30 text-amber-200 hover:bg-amber-900/40 xl:w-auto">
+              <Plus className="mr-2 h-4 w-4 shrink-0" /><span>Substation</span>
             </Button>
           </div>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border border-slate-800 bg-slate-900/40 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-blue-600" />
-              Company Structure
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Layers className="h-5 w-5 text-cyan-400" />
+              Region, Division and Substation Structure
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {mainDivisions?.map((division) => {
-                const subs = subdivisionsByParent[division.division_name] || [];
-                const isExpanded = expandedDivisions.has(division.division_name);
-
-                return (
-                  <div key={division.id}>
-                    {/* Main Division */}
-                    <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 flex-1">
-                          {subs.length > 0 && (
-                            <button
-                              onClick={() => toggleDivisionExpanded(division.division_name)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="w-5 h-5" />
-                              ) : (
-                                <ChevronRight className="w-5 h-5" />
-                              )}
-                            </button>
-                          )}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-blue-900 text-lg">{division.division_name}</h3>
-                              <Badge variant="outline" className={
-                                division.active
-                                  ? 'bg-green-100 text-green-800 border-green-200'
-                                  : 'bg-gray-100 text-gray-800 border-gray-200'
-                              }>
-                                {division.active ? 'Active' : 'Inactive'}
-                              </Badge>
-                              {subs.length > 0 && (
-                                <Badge className="bg-blue-600 text-white">{subs.length} subdivision{subs.length !== 1 ? 's' : ''}</Badge>
-                              )}
-                            </div>
-                            {division.notes && (
-                              <p className="text-sm text-slate-600">{division.notes}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleActive(division)}
-                            title={division.active ? "Deactivate" : "Activate"}
-                          >
-                            {division.active ? (
-                              <ToggleRight className="w-5 h-5 text-green-600" />
-                            ) : (
-                              <ToggleLeft className="w-5 h-5 text-gray-400" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(division)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(division.id)}
-                            className="text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Subdivisions */}
-                    {isExpanded && subs.length > 0 && (
-                      <div className="ml-8 mt-2 space-y-2">
-                        {subs.map((sub) => (
-                          <div key={sub.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-semibold text-purple-900">{sub.subdivision || sub.division_name}</h4>
-                                  <Badge variant="outline" className={
-                                    sub.active
-                                      ? 'bg-green-100 text-green-800 border-green-200'
-                                      : 'bg-gray-100 text-gray-800 border-gray-200'
-                                  }>
-                                    {sub.active ? 'Active' : 'Inactive'}
-                                  </Badge>
-                                </div>
-                                {sub.notes && (
-                                  <p className="text-xs text-slate-600">{sub.notes}</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleToggleActive(sub)}
-                                  title={sub.active ? "Deactivate" : "Activate"}
-                                >
-                                  {sub.active ? (
-                                    <ToggleRight className="w-4 h-4 text-green-600" />
-                                  ) : (
-                                    <ToggleLeft className="w-4 h-4 text-gray-400" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEdit(sub)}
-                                >
-                                  <Pencil className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(sub.id)}
-                                  className="text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {!mainDivisions?.length && (
-                <p className="text-center text-slate-500 py-8">No divisions yet. Add your first division.</p>
-              )}
-            </div>
+            <DivisionStructureTree
+              regions={tree}
+              stats={stats}
+              onEdit={handleEdit}
+              onToggleActive={handleToggleActive}
+              onDelete={handleDelete}
+              onAddRegion={() => openAdd('region')}
+              onAddDivision={record => openAdd('division', { region: record?.division_name || '' })}
+              onAddSubstation={record => {
+                const name = record?.subdivision || record?.division_name || '';
+                const parent = divisionIndex[String(name).trim().toLowerCase()];
+                openAdd('substation', { region: record?.region || parent?.parent_division || '', division: name });
+              }}
+            />
           </CardContent>
         </Card>
-
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border-slate-700 bg-slate-950 text-white">
           <DialogHeader>
             <DialogTitle>
-              {editingDivision ? 'Edit Division' : (formData.is_subdivision ? 'Add New Subdivision' : 'Add New Division')}
+              {editingDivision ? `Edit ${LEVEL_LABEL[formData.division_level]}` : `Add ${LEVEL_LABEL[formData.division_level]}`}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
-              <input
-                type="checkbox"
-                id="is_subdivision"
-                checked={formData.is_subdivision}
-                onChange={(e) => setFormData({...formData, is_subdivision: e.target.checked, parent_division: e.target.checked ? formData.parent_division : ""})}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="is_subdivision" className="text-sm font-medium text-purple-900 cursor-pointer">
-                This is an Operating Area (inside a Division)
-              </Label>
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>This record is a</Label>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1">
+                {['region', 'division', 'substation'].map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, division_level: level, parent_division: level === 'division' ? prev.parent_division : '' }))}
+                    className={`rounded-md px-2 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                      formData.division_level === level ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {LEVEL_LABEL[level]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">{LEVEL_HINT[formData.division_level]}</p>
             </div>
 
-            {formData.is_subdivision && (
+            {formData.division_level !== 'region' && (
               <div className="space-y-2">
-                <Label htmlFor="parent_division">Division / Region *</Label>
+                <Label htmlFor="parent_region">Region *</Label>
                 <select
-                  id="parent_division"
-                  value={formData.parent_division || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, parent_division: e.target.value}))}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                  id="parent_region"
+                  value={formData.parent_region}
+                  onChange={event => setFormData(prev => ({ ...prev, parent_region: event.target.value }))}
+                  className="flex h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
                   required
                 >
-                  <option value="">Select the Division this area belongs to...</option>
-                  {mainDivisions?.filter(div => div.active !== false).map((div) => (
-                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
-                  ))}
+                  <option value="">Select the region…</option>
+                  {regionNames.map(name => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {formData.division_level === 'substation' && (
+              <div className="space-y-2">
+                <Label htmlFor="parent_division">Division *</Label>
+                <select
+                  id="parent_division"
+                  value={formData.parent_division}
+                  onChange={event => setFormData(prev => ({ ...prev, parent_division: event.target.value }))}
+                  className="flex h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                  required
+                >
+                  <option value="">Select the division…</option>
+                  {divisionsInRegion.map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="division_name">{formData.is_subdivision ? 'Operating Area Name' : 'Division / Region Name'} *</Label>
+              <Label htmlFor="name">{LEVEL_LABEL[formData.division_level]} name *</Label>
               <Input
-                id="division_name"
-                placeholder={formData.is_subdivision ? "e.g., Richmond, NOVA, Tidewater" : "e.g., Virginia, Maryland"}
-                value={formData.is_subdivision ? formData.subdivision : formData.division_name}
-                onChange={(e) => {
-                  if (formData.is_subdivision) {
-                    setFormData({...formData, subdivision: e.target.value, division_name: e.target.value});
-                  } else {
-                    setFormData({...formData, division_name: e.target.value});
-                  }
-                }}
+                id="name"
+                placeholder={formData.division_level === 'region' ? 'e.g., Virginia' : formData.division_level === 'division' ? 'e.g., Richmond' : 'e.g., Midlothian'}
+                value={formData.name}
+                onChange={event => setFormData(prev => ({ ...prev, name: event.target.value }))}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Label htmlFor="notes">Notes (optional)</Label>
               <Textarea
                 id="notes"
-                placeholder="Additional information..."
+                placeholder="Additional information…"
                 value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                onChange={event => setFormData(prev => ({ ...prev, notes: event.target.value }))}
                 rows={3}
               />
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="active"
                 checked={formData.active}
-                onChange={(e) => setFormData({...formData, active: e.target.checked})}
-                className="rounded"
+                onChange={event => setFormData(prev => ({ ...prev, active: event.target.checked }))}
+                className="h-4 w-4 rounded"
               />
-              <Label htmlFor="active" className="cursor-pointer">
-                Active (visible in dropdowns)
-              </Label>
+              <Label htmlFor="active" className="cursor-pointer">Active (visible in dropdowns and filters)</Label>
             </div>
 
-            <div className="flex gap-3 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowDialog(false)}
-              >
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)} className="border-slate-700">
                 Cancel
               </Button>
               <Button
@@ -478,10 +415,8 @@ export default function AdminDivisions() {
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {createDivisionMutation.isPending || updateDivisionMutation.isPending
-                  ? 'Saving...'
-                  : editingDivision
-                  ? 'Update'
-                  : 'Create'}
+                  ? 'Saving…'
+                  : editingDivision ? 'Update' : 'Create'}
               </Button>
             </div>
           </form>

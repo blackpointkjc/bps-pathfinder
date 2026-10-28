@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { invalidateAppDirectory, listDirectoryUsers } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import OrgScopeFilter from '@/components/OrgScopeFilter';
+import { matchesOrgScope, officerOrgContext, orgPathLabel } from '@/lib/orgStructure';
 import { useAuth } from '@/lib/AuthContext';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
@@ -26,6 +28,8 @@ export default function Personnel({ embedded = false }) {
     const [personnel, setPersonnel] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('all');
+    const [orgScope, setOrgScope] = useState({ region: 'all', division: 'all', substation: 'all' });
+    const [orgLocations, setOrgLocations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -105,6 +109,19 @@ export default function Personnel({ embedded = false }) {
             console.warn('Unable to load forced status overrides:', error?.message);
         }
     };
+
+    // Locations carry the substation assignment; officers inherit it from the
+    // site they are assigned to so the roster can filter by the full hierarchy.
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const rows = await listDirectoryLocations('site_name', 1000);
+                if (active) setOrgLocations(Array.isArray(rows) ? rows : []);
+            } catch { /* roster still works without site substations */ }
+        })();
+        return () => { active = false; };
+    }, []);
 
     const loadPersonnel = async () => {
         try {
@@ -258,7 +275,8 @@ export default function Personnel({ embedded = false }) {
     const filteredPersonnel = personnel.filter(person => {
         const matchesRole = filterRole === 'all' || (filterRole === 'officer' && person.role !== 'admin') || (filterRole === 'admin' && person.role === 'admin') || (filterRole === 'dispatch' && person.dispatch_role);
         const matchesSearch = !searchQuery || person.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || person.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) || person.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesRole && matchesSearch;
+        const matchesOrg = matchesOrgScope(officerOrgContext(person, orgLocations), orgScope);
+        return matchesRole && matchesSearch && matchesOrg;
     }).sort(comparePersonnel);
 
     const available = filteredPersonnel.filter(p => p.status === 'Available').length;
@@ -385,6 +403,9 @@ export default function Personnel({ embedded = false }) {
                         </button>
                     ))}
                 </div>
+                <div className="w-full min-w-0 sm:w-[420px] sm:flex-none">
+                    <OrgScopeFilter scope={orgScope} onChange={setOrgScope} />
+                </div>
             </div>
 
             {/* Table */}
@@ -416,7 +437,12 @@ export default function Personnel({ embedded = false }) {
                                 <div className="text-white font-bold">{person.last_name || '—'}</div>
                                 {person.rank && <div className="text-slate-500 text-[9px]">{person.rank}</div>}
                             </div>
-                            <div className="col-span-2 min-w-0 break-all text-slate-400 md:col-span-1 md:flex-1 md:truncate md:pr-2">{person.email || '—'}</div>
+                            <div className="col-span-2 min-w-0 md:col-span-1 md:flex-1 md:pr-2">
+                                <div className="break-all text-slate-400 md:truncate">{person.email || '—'}</div>
+                                {orgPathLabel(officerOrgContext(person, orgLocations)) && (
+                                    <div className="truncate text-[9px] font-semibold text-cyan-500">{orgPathLabel(officerOrgContext(person, orgLocations))}</div>
+                                )}
+                            </div>
                             <div className="min-w-0 md:w-28 md:flex-shrink-0">
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${cfg.badge}`}>{person.status || 'UNKNOWN'}</span>
                             </div>
