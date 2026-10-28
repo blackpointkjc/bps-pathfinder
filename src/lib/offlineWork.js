@@ -27,7 +27,9 @@ export async function saveWork(owner,id,title,data) {
   if(!deviceId){deviceId=crypto.randomUUID();localStorage.setItem('pathfinder-offline-device',deviceId);}
   return offlinePut({deviceId,key:owner+':work:'+id,id,owner,kind:'work',title,data,updatedAt:Date.now(),revision:crypto.randomUUID(),synced:false});
 }
+const syncRuns=new Map();
 export async function syncWork(api,owner) {
+  if(syncRuns.has(owner))return syncRuns.get(owner);
   if(!navigator.onLine)return {synced:0};
   const run=async()=>{
     const pending=(await offlineList(owner,'work')).filter(row=>!row.synced);
@@ -43,7 +45,8 @@ export async function syncWork(api,owner) {
     }
     return {synced};
   };
-  return navigator.locks ? navigator.locks.request('pathfinder-offline-sync:'+owner,run) : run();
+  const pending=(navigator.locks ? navigator.locks.request('pathfinder-offline-sync:'+owner,run) : run()).finally(()=>syncRuns.delete(owner));
+  syncRuns.set(owner,pending);return pending;
 }
 
 export async function offlineDelete(key){const db=await database();return new Promise((resolve,reject)=>{const tx=db.transaction('items','readwrite');tx.objectStore('items').delete(key);tx.oncomplete=()=>{changed();resolve();};tx.onerror=()=>reject(tx.error);});}

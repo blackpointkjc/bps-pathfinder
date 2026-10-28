@@ -246,3 +246,11 @@ html.pf-map-fullscreen .cad-app main[data-page="Navigation"] {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   overflow: hidden; background: #07101a;
 }
+
+/* Native fullscreen keeps controls clear of the notch in either orientation. */
+html.pf-map-fullscreen .live-map-toolbar {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
+}
+.pf-navigation-workspace:fullscreen { width: 100vw; height: 100dvh; }
