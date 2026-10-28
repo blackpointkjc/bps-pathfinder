@@ -266,8 +266,8 @@ export default function MyPerformanceAnalytics() {
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const categoryRatings = useMemo(() => [
-    { label: 'On-Time Arrival', score: (onTimeStats.total > 0 || onTimeStats.commandExempt) ? onTimeStats.rate : null, detail: (onTimeStats.commandExempt ? 'Command exemption: late/early punches remain visible without deductions. ' : '') + (onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts')) },
-    { label: 'Job Duty / Performance', score: jobDuty.score, detail: (jobDuty.commandExempt ? 'Command exemption: missing reports remain visible without deductions; QR duties still count. ' : '') + `One weighted category. Breakdown: DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'Attendance', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: (onTimeStats.total > 0 ? `${onTimeStats.attended ?? (onTimeStats.onTime + onTimeStats.late + onTimeStats.overrun)} of ${onTimeStats.total} elapsed shifts worked • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts')) + ' • Clock-in timing excluded' },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `One weighted category. Breakdown: DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
     { label: 'Training Completion', score: trainingStats.total > 0 ? trainingStats.percentage : null, detail: trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'No assigned training/compliance records' },
     { label: 'Bid Standing', score: bidStats.score, detail: bidStats.score != null ? `${bidStats.accepted} assigned shift bid${bidStats.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
@@ -278,12 +278,6 @@ export default function MyPerformanceAnalytics() {
 
   const performanceFactors = useMemo(() => {
     const factors = [];
-    if (jobDuty.commandExempt) factors.push({
-      metric: 'Command performance exemption', value: 'Major and above', severity: 'neutral',
-      reason: 'Late/early punches and missing DAR/incident reports stay visible but do not lower the score. Missing shifts, QR duties, training, call-outs, feedback, reviews and other applicable measures still count.',
-      details: [],
-    });
-
     if (onTimeStats.exempt > 0) {
       const exemptDetails = onTimeStats.details
         .filter(detail => ['exempt', 'covered_elsewhere', 'reassigned'].includes(detail.status))
@@ -297,29 +291,23 @@ export default function MyPerformanceAnalytics() {
       });
     }
 
-    if (onTimeStats.total > 0 && (onTimeStats.late > 0 || onTimeStats.missed > 0)) {
+    if (onTimeStats.total > 0 && onTimeStats.missed > 0) {
       const problemDetails = onTimeStats.details
-        .filter(detail => ['late', 'missed', 'time_window_violation'].includes(detail.status))
-        .map(detail => {
-          if (detail.status === 'missed') return `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`;
-          const issues = [];
-          if (detail.minutes_late > 5) issues.push(`${detail.minutes_late} min late arriving`);
-
-          return `${format(parseISO(detail.shift_date), 'MMM d')}: ${issues.join('; ')}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}.`;
-        });
+        .filter(detail => detail.status === 'missed')
+        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`);
       factors.push({
-        metric: 'On-Time Arrival',
+        metric: 'Attendance',
         value: `${onTimeStats.rate}%`,
-        severity: onTimeStats.commandExempt && !onTimeStats.missed ? 'neutral' : 'negative',
-        reason: `${onTimeStats.onTime} on-time arrival${onTimeStats.onTime === 1 ? '' : 's'}, ${onTimeStats.late} late arrival${onTimeStats.late === 1 ? '' : 's'}, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}. Early clock-ins and late clock-outs are neutral for this metric.`, 
+        severity: 'negative',
+        reason: `${onTimeStats.attended ?? (onTimeStats.onTime + onTimeStats.late + onTimeStats.overrun)} of ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'} were worked and ${onTimeStats.missed} had no clock-in. Clock-in timing (early, on time or late) is excluded from this score.`,
         details: problemDetails
       });
     } else if (onTimeStats.total > 0) {
       factors.push({
-        metric: 'On-Time Arrival',
+        metric: 'Attendance',
         value: '100%',
         severity: 'positive',
-        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period. Early clock-ins and late clock-outs do not reduce On-Time Arrival.`
+        reason: `All ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'} were worked. Clock-in timing does not affect this score.`
       });
     }
 
@@ -330,7 +318,7 @@ export default function MyPerformanceAnalytics() {
       factors.push({
         metric: 'Daily Activity Reports',
         value: `${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required}`,
-        severity: jobDuty.commandExempt ? 'neutral' : jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
+        severity: jobDuty.dailyActivity.missed > 0 ? 'negative' : 'positive',
         reason: jobDuty.dailyActivity.missed > 0
           ? `${jobDuty.dailyActivity.missed} continuous duty session${jobDuty.dailyActivity.missed === 1 ? ' is' : 's are'} missing a DAR. Switch Site segments are merged, and a submitted team DAR for the same session counts for all covered officers.`
           : `All ${jobDuty.dailyActivity.required} continuous duty session${jobDuty.dailyActivity.required === 1 ? '' : 's'} have a submitted DAR.`,
@@ -349,7 +337,7 @@ export default function MyPerformanceAnalytics() {
       factors.push({
         metric: 'Incident Reports',
         value: `${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required}`,
-        severity: jobDuty.commandExempt ? 'neutral' : jobDuty.incidentReports.missed > 0 ? 'negative' : 'positive',
+        severity: jobDuty.incidentReports.missed > 0 ? 'negative' : 'positive',
         reason: jobDuty.incidentReports.missed > 0
           ? `${jobDuty.incidentReports.missed} property CAD call${jobDuty.incidentReports.missed === 1 ? '' : 's'} still need a linked Incident Report. A submitted report from any officer linked to that CAD satisfies the shared call obligation.`
           : 'Every required property CAD call has a submitted linked Incident Report.',
@@ -490,7 +478,7 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">{jobDuty.commandExempt ? 'Major and above receive command credit for punctuality and report completion. Late/early punches and missing reports remain visible without deductions. Other applicable performance measures still count.' : 'Performance uses actual attendance, required job duties, and documented evaluation records. Missing required DARs, incident reports, and QR duties lower the Job Duty portion of the score. Metrics with no real record are omitted instead of being shown as a false score.'}</p>
+            <p className="text-xs text-blue-100">Performance uses actual attendance, required job duties, and documented evaluation records. Missed shifts and recorded call-outs lower attendance, and missing required DARs, incident reports, and QR duties lower the Job Duty portion of the score at every rank. Clock-in timing is excluded, and metrics with no real record are omitted instead of being shown as a false score.</p>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-sm text-slate-600">

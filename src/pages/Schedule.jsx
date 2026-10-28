@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Car, Users, ShieldCheck } from "lucide-react";
+import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Car, Users, ShieldCheck, UserX } from "lucide-react";
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
@@ -51,6 +51,29 @@ export default function Schedule() {
   const vehicleAssignments = scheduleData.vehicleAssignments || [];
   const dutySupervisorAssignments = scheduleData.dutySupervisorAssignments || [];
   const scheduleLocations = scheduleData.locations || [];
+
+  // A recorded call-out belongs on the officer's own schedule. Without this the
+  // shift still looked like a normal assignment the officer was expected to work.
+  const { data: myCallOuts = [] } = useQuery({
+    queryKey: ['myScheduleCallOuts', user?.email],
+    queryFn: () => base44.entities.CallOut.filter({ officer_email: user.email }, '-call_out_date', 200),
+    enabled: !!user?.email,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
+  });
+
+  const callOutForShift = React.useCallback((shift) => {
+    const shiftDate = String(shift?.shift_date || '').slice(0, 10);
+    if (!shiftDate) return null;
+    const shiftSite = normalizeSite(shift?.location);
+    return (myCallOuts || []).find(row => {
+      if (String(row?.call_out_type || '') !== 'called_out') return false;
+      if (row?.voided === true || row?.active === false) return false;
+      if (String(row?.call_out_date || '').slice(0, 10) !== shiftDate) return false;
+      const site = normalizeSite(row?.location || row?.original_location);
+      return !site || !shiftSite || site === shiftSite;
+    }) || null;
+  }, [myCallOuts]);
 
   const intervalFor = (dateValue, startValue, endValue) => {
     const date = String(dateValue || '').slice(0, 10);
@@ -461,7 +484,22 @@ export default function Schedule() {
                                   <span className="text-sm font-black text-white xl:text-[13px]">{schedule.start_time}–{schedule.end_time}</span>
                                 </div>
                                 {isSplitShift && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">SPLIT</span>}
+                                {callOutForShift(schedule) && <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] font-black text-red-300">CALLED OUT</span>}
                               </div>
+                              {(() => {
+                                const callOut = callOutForShift(schedule);
+                                if (!callOut) return null;
+                                return (
+                                  <div className="flex items-start gap-2 rounded-lg border border-red-700/60 bg-red-950/30 px-2.5 py-2">
+                                    <UserX className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                                    <div className="min-w-0 break-words">
+                                      <div className="text-[9px] font-bold uppercase tracking-wide text-red-400">You called out of this shift</div>
+                                      <div className="mt-0.5 text-[11px] font-semibold leading-4 text-red-100">{callOut.reason || 'Call-out on file'}</div>
+                                      {callOut.call_out_time && <div className="text-[10px] leading-4 text-red-300/90">Reported {callOut.call_out_time}</div>}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                               <button onClick={() => openInMaps(schedule.location)} className="group flex w-full items-start gap-2 text-left">
                                 <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
                                 <span className="min-w-0 break-words text-[11px] font-semibold leading-4 text-slate-200 group-hover:text-white">{schedule.location}</span>

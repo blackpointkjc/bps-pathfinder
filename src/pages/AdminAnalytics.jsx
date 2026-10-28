@@ -174,8 +174,8 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd) {
     recognition,
   });
   const categoryRatings = [
-    { label: 'On-Time Arrival', score: (punctuality.total > 0 || punctuality.commandExempt) ? punctuality.rate : null, detail: (punctuality.commandExempt ? 'Major and above: 100% attendance by policy; original attendance records retained. ' : '') + (punctuality.total > 0 ? `${punctuality.onTime} on time · ${punctuality.late} late · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts')) },
-    { label: 'Job Duty / Performance', score: jobDuty.score, detail: (jobDuty.commandExempt ? 'Command exemption: missing reports remain visible without deductions; QR duties still count. ' : '') + `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} · Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} · QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'Attendance', score: punctuality.total > 0 ? punctuality.rate : null, detail: (punctuality.total > 0 ? `${punctuality.attended ?? (punctuality.onTime + punctuality.late + punctuality.overrun)} of ${punctuality.total} elapsed shifts worked · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts')) + ' · Clock-in timing excluded' },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} · Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} · QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
     { label: 'Training Completion', score: training.total > 0 ? training.percentage : null, detail: training.total > 0 ? `${training.completed} complete · ${training.pending} pending · ${training.total} assigned` : 'No assigned training/compliance records' },
     { label: 'Bid Standing', score: bidStanding.score, detail: bidStanding.score != null ? `${bidStanding.accepted} assigned bid${bidStanding.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
@@ -411,6 +411,10 @@ export default function AdminAnalytics() {
       .sort(comparePersonnel);
   }, [performanceUsers, selectedDivision]);
   const performanceOfficerKey = performanceOfficerUsers.map(officer => officer.id).join(',');
+  // Officer scoring reads its own authoritative snapshot per officer. It only
+  // depends on the core segment (the user directory), so it no longer waits on
+  // the training/quality segment chain before it can render.
+  const performanceRequestEnabled = Boolean(user && (coreAnalytics.data || coreAnalytics.isError) && performanceOfficerUsers.length > 0);
   const officerPerformanceSnapshots = useQuery({
     queryKey: ['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate],
     queryFn: async () => {
@@ -431,7 +435,7 @@ export default function AdminAnalytics() {
       }
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
-    enabled: Boolean(user && (qualityAnalytics.data || qualityAnalytics.isError) && performanceOfficerUsers.length),
+    enabled: performanceRequestEnabled,
     staleTime: 2 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -483,9 +487,9 @@ export default function AdminAnalytics() {
         officer
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
-    }).filter(item => item.total > 0 || item.commandExempt).sort((a, b) => (b.rate || 0) - (a.rate || 0));
-    const totalOnTime = byOfficer.filter(item => !item.commandExempt).reduce((sum, item) => sum + item.onTime, 0);
-    const totalEntries = byOfficer.filter(item => !item.commandExempt).reduce((sum, item) => sum + item.total, 0);
+    }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
+    const totalOnTime = byOfficer.reduce((sum, item) => sum + (item.attended ?? (item.onTime + item.late + item.overrun)), 0);
+    const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
     const leaderboard = byOfficer.filter(item => {
       const officer = selectedCoreUsers.find(user => emailKey(user.email) === emailKey(item.email));
       return officer && isPunctualityLeaderboardOfficer(officer);
@@ -550,7 +554,9 @@ export default function AdminAnalytics() {
   // isFetching check removed the entire section every refresh cycle, which made
   // the page flash and jump. Existing snapshots stay visible and only the
   // numbers update in place when the new generation lands.
-  const performanceCardsReady = Boolean(officerPerformanceSnapshots.data);
+  // A section with nothing to request must report that state, not sit on a
+  // permanent "loading" message (for example a division filter with no officers).
+  const performanceCardsReady = Boolean(officerPerformanceSnapshots.data) || !performanceRequestEnabled;
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
@@ -757,7 +763,7 @@ export default function AdminAnalytics() {
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate != null ? `${companyOnTimeStats.rate}%` : '—'}</p>
-              <p className="text-xs text-slate-400">On-Time Rate</p>
+              <p className="text-xs text-slate-400">Attendance Rate</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
@@ -939,7 +945,7 @@ export default function AdminAnalytics() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Punctuality Leaderboard (Selected Period)
+                Attendance Leaderboard (Selected Period)
               </CardTitle>
             </CardHeader>
             <CardContent>

@@ -300,10 +300,16 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
 
   const total = onTime + late + missed + overrun;
   const commandExempt = isCommandPerformanceExempt(officer);
-  const rawRate = total ? Math.round((onTime / total) * 100) : null;
-  const rate = commandExempt ? 100 : rawRate;
-  return { rate, rawRate, commandExempt, onTime, late, missed, overrun, exempt, total,
-    details: details.map(detail => ({ ...detail, command_exempt: commandExempt && ['late','overrun','missed'].includes(detail.status) })) };
+  // Attendance is measured from real schedule and time-clock records only: an
+  // elapsed shift that was actually worked counts as attended. Clock-in timing
+  // (early, on time or late) is informational and is excluded from the score, and
+  // no rank receives an automatic 100%.
+  const attended = onTime + late + overrun;
+  const rawRate = total ? Math.round((attended / total) * 100) : null;
+  const rate = rawRate;
+  const punctualityRate = total ? Math.round((onTime / total) * 100) : null;
+  return { rate, rawRate, punctualityRate, commandExempt, onTime, late, missed, overrun, attended, exempt, total,
+    details: details.map(detail => ({ ...detail, command_exempt: false })) };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -839,8 +845,10 @@ export function calculateJobDutyCompliance({
   // Job Duty must move when additional required duties are missed. A pure completion
   // ratio makes 0/8 and 0/15 both equal 0%, which hides the difference in performance.
   // Each missed required duty lowers Job Duty by 5 points, capped at zero.
-  const countedMissed = commandExempt ? Math.max(0, qrRequired - qrCompleted) : totalMissed;
-  const score = commandExempt || totalRequired > 0 ? Math.max(0, 100 - (countedMissed * 5)) : null;
+  // Every missed required duty counts, at every rank, so an officer with
+  // outstanding DARs, incident reports or QR obligations can never display 100%.
+  const countedMissed = totalMissed;
+  const score = totalRequired > 0 ? Math.max(0, 100 - (countedMissed * 5)) : null;
 
   return {
     score,
@@ -916,10 +924,12 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
     return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
   });
   const commandExempt = isCommandPerformanceExempt(officer);
-  if (monthlySchedules.length === 0) return { score: commandExempt ? 100 : null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable };
+  if (monthlySchedules.length === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable };
   const denominator = monthlySchedules.length;
+  // Every recorded call-out lowers attendance at every rank. There is no automatic
+  // 100% for command staff; the score always comes from the verified call-out rows.
   const score = Math.max(0, Math.round(((denominator - Math.min(denominator, applicable.length)) / denominator) * 100));
-  return { score: commandExempt ? 100 : score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
+  return { score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
 }
 
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));
@@ -931,7 +941,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   // The remaining categories are re-normalized across their configured
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
-    { label: 'On-Time Arrival', score: punctuality?.rate != null && (punctuality.total > 0 || punctuality.commandExempt) ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
+    { label: 'Attendance', score: punctuality?.total > 0 && punctuality?.rate != null ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
     { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
