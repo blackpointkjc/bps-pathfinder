@@ -13,9 +13,10 @@ export function briefingPersonnelIndex(users = []) {
       const [mailbox, domain] = alias.split('@');
       // These are the company's legacy and migrated login domains only.
       // Ambiguous ownership is deliberately left unresolved.
-      if (['blackpointkjc.com', 'employee.blackpointkjc.com'].includes(domain)) {
+      if (['blackpointkjc.com', 'employee.blackpointkjc.com', 'officer.blackpointkjc.com'].includes(domain)) {
         add(mailbox + '@blackpointkjc.com', person);
         add(mailbox + '@employee.blackpointkjc.com', person);
+        add(mailbox + '@officer.blackpointkjc.com', person);
       }
     }
   }

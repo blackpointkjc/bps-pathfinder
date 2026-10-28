@@ -6,7 +6,7 @@ export function matchManagedLocations(rows, query) {
   const tokens = normalize(query).split(/\s+/).filter(token => token && !['in', 'at', 'the'].includes(token));
   if (!tokens.length) return [];
   return rows.filter(row => {
-    const words = normalize([row.site_name, row.address, row.division, row.subdivision].filter(Boolean).join(' ')).split(/\s+/);
+    const words = normalize([row.site_name, row.address, row.city, row.state, row.zip_code, row.postal_code, row.division, row.subdivision].filter(Boolean).join(' ')).split(/\s+/);
     return tokens.every(token => words.some(word => word.startsWith(token)));
   }).sort((a,b) => Number(normalize(b.site_name) === normalize(query)) - Number(normalize(a.site_name) === normalize(query)))
     .map(row => ({

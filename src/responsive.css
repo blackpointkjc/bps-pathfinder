@@ -178,7 +178,7 @@
 @media (max-width: 767px) {
   .live-map-toolbar .live-map-duty-buttons { flex-basis: 100%; gap: 4px; }
   .live-map-toolbar .command-status-options { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
-  .live-map-toolbar .command-status-options button { min-height: 28px; padding: 4px; font-size: 10px; }
+  .live-map-toolbar .command-status-options button { min-height: 44px; padding: 6px; font-size: 12px; }
 }
 
 

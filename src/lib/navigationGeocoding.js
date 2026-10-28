@@ -57,6 +57,7 @@ export async function lookupNavigationPoint(latitude, longitude) {
 export async function lookupNavigationDestinations(query, location, { skipManaged = false } = {}) {
   const value = String(query || '').trim();
   if (value.length < 3) return [];
+  let managedError = null;
   if (!skipManaged) {
     try {
       const locations = [];
@@ -70,7 +71,7 @@ export async function lookupNavigationDestinations(query, location, { skipManage
       if (matches.length) return matches;
     } catch (error) {
       console.warn('[NAV] Managed property search unavailable:', error?.message);
-      throw new Error('Managed properties could not be loaded. Retry the search when the connection recovers.');
+      managedError = error;
     }
   }
   const encoded = encodeURIComponent(value);
@@ -128,5 +129,6 @@ export async function lookupNavigationDestinations(query, location, { skipManage
     const matches = unique(result.value, value);
     if (matches.length) return matches;
   }
+  if (managedError) throw new Error('Managed properties could not be checked, and no street-address match was returned. Retry the search.');
   return [];
 }

@@ -1,3 +1,10 @@
+
+function easternMidnight(day:string) {
+  const raw = Date.parse(day + 'T00:00:00.000Z');
+  const zone = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(raw)).find(part=>part.type==='timeZoneName')?.value || 'GMT';
+  const offset = Number(zone.replace('GMT','') || 0);
+  return new Date(raw - offset * 3600000).toISOString();
+}
 import { createClientFromRequest } from 'npm:@base44/sdk';
 // Self-contained company snapshot uses the same personal scoring data loader.
 
@@ -110,10 +117,10 @@ async function loadPerformanceData(base44: any, officer: any, body: any, options
     const monthDateCutoff = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date || '')) ? String(body.start_date) : defaultStartDate;
     const monthDateEnd = /^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date || '')) ? String(body.end_date) : defaultEndDate;
     if (monthDateCutoff > monthDateEnd) return Response.json({ error: 'Start date must be on or before end date.' }, { status: 400 });
-    const activityCutoff = `${monthDateCutoff}T00:00:00.000Z`;
+    const activityCutoff = easternMidnight(monthDateCutoff);
     const endExclusive = new Date(`${monthDateEnd}T00:00:00.000Z`);
     endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
-    const activityEndExclusive = endExclusive.toISOString();
+    const activityEndExclusive = easternMidnight(endExclusive.toISOString().slice(0,10));
 
     // Load the officer's core current-month duty context first. That tells us
     // which expensive operational datasets are actually relevant before we fan
@@ -421,7 +428,7 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
     if(sourcePending.has(key))return sourcePending.get(key)!;
     if (!pending.has(name)) { const task=(async () => {
       const date = dateFields[name], stamp = stampFields[name];
-      const query = date ? { [date]: { $gte:start, $lte:end } } : stamp ? { [stamp]: { $gte:start+'T00:00:00.000Z', $lt:endDate.toISOString() } } : null;
+      const query = date ? { [date]: { $gte:start, $lte:end } } : stamp ? { [stamp]: { $gte:easternMidnight(start), $lt:easternMidnight(endDate.toISOString().slice(0,10)) } } : null;
       const rows: any[] = [];
       for (let skip=0;skip<20000;skip+=500) {
         const page = await read(() => query ? entities[name].filter(query, '-id', 500, skip) : entities[name].list('-id', 500, skip));
