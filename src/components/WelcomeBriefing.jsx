@@ -363,7 +363,18 @@ export default function WelcomeBriefing({ user }) {
   const shiftDetail = brief.shift ? `${brief.shift.start_time || '--:--'}–${brief.shift.end_time || '--:--'} · ${String(brief.shift.location || '').split(':')[0] || 'Location not set'}` : '';
   const statusOverride = brief.override?.active ? (brief.override.reason || 'Administrative Out of Service override is active') : '';
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).map(normalized).includes('full_access');
-  const canOpenSupervisorTasks = isAdmin || (user?.additional_roles || []).map(normalized).includes('supervisor');
+  const canOpenSupervisorTasks = isAdmin || user?.role === 'supervisor' || (user?.additional_roles || []).map(normalized).includes('supervisor');
+  // Assigned action items belong to the user's own workspace. Admins open them
+  // inline inside Admin Center (Supervisor → Operations → Action Items) and
+  // supervisors open them inline inside Supervisor Center (Command → Action Items).
+  const openActionItems = () => {
+    if (!canOpenSupervisorTasks) return;
+    if (isAdmin) {
+      navigate(`${createPageUrl('AdminCenter')}?admin_center=supervisor&admin_supervisor_section=operations&admin_supervisor_tool=tasks`);
+      return;
+    }
+    navigate(`${createPageUrl('SupervisorCenter')}?section=command&tool=tasks`);
+  };
   const userByEmail = useMemo(() => briefingPersonnelIndex(brief.allUsers || []), [brief.allUsers]);
   const canonicalEmail = useCallback(value => { const key = normalized(value); return normalized(userByEmail.get(key)?.email || key); }, [userByEmail]);
   const userById = useMemo(() => new Map((brief.allUsers || []).map(person => [String(person.id || ''), person])), [brief.allUsers]);
@@ -579,7 +590,7 @@ export default function WelcomeBriefing({ user }) {
                     <BriefCard icon={MessageCircle} label="Teams Mentions" value={dataErrors.includes('Teams mentions') ? 'Unavailable' : pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={dataErrors.some(source => ['announcements', 'announcement receipts'].includes(source)) ? 'Unavailable' : brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
                     {brief.appUpdates.length > 0 && <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail="Unread platform or software update records" tone="violet" />}
-                    <BriefCard icon={ClipboardList} label="Assigned Tasks" value={dataErrors.includes('assigned tasks') ? 'Unavailable' : brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} />
+                    <BriefCard icon={ClipboardList} label="Assigned Tasks" value={dataErrors.includes('assigned tasks') ? 'Unavailable' : brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? openActionItems : undefined} />
                     {brief.updates.length > 0 && <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail="Unread account, schedule, or system notification records" tone="blue" />}
                     <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
@@ -589,7 +600,7 @@ export default function WelcomeBriefing({ user }) {
                     <div className="mt-2 space-y-2">
                       {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
                       {brief.announcements.slice(0, 2).map(item => <button key={`announcement-${item.id}`} type="button" onClick={() => go('Announcements')} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left"><div className="text-xs font-black text-amber-200">{item.title || 'Company Announcement'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || 'Open Announcements to review.'}</div></button>)}
-                      {brief.tasks.slice(0, 4).map(item => <button key={`task-${item.id}`} type="button" onClick={canOpenSupervisorTasks ? () => go('SupervisorTasks') : undefined} disabled={!canOpenSupervisorTasks} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left disabled:cursor-default"><div className="text-xs font-black text-amber-200">{item.title || 'Assigned Task'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.description || item.notes || 'Open Action Items to review this task.'}</div></button>)}
+                      {brief.tasks.slice(0, 4).map(item => <button key={`task-${item.id}`} type="button" onClick={canOpenSupervisorTasks ? openActionItems : undefined} disabled={!canOpenSupervisorTasks} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left disabled:cursor-default"><div className="text-xs font-black text-amber-200">{item.title || 'Assigned Task'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.description || item.notes || 'Open Action Items to review this task.'}</div></button>)}
                     </div>
                   </div>}
 

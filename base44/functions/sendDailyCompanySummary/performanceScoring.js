@@ -138,6 +138,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
 
   const eligibleSchedules = schedules.filter(schedule => {
     if (schedule?.archived === true || schedule?.is_open === true || !schedule?.shift_date || !schedule?.start_time || !schedule?.end_time) return false;
+    // Called-out and sent-home shifts are administrative absences scored in Duty &
+    // Attendance Review, never a missed clock-in here.
+    if (['called_out', 'sent_home'].includes(String(schedule?.attendance_status || '').toLowerCase())) return false;
     if (monthStart && schedule.shift_date < monthStart) return false;
     if (monthEnd && schedule.shift_date > monthEnd) return false;
     let start = wallClockMinute(schedule.shift_date, schedule.start_time);

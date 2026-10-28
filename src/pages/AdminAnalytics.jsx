@@ -114,9 +114,15 @@ const officerIdentitySet = officer => new Set([
   officer?.outlook_email,
   ...(Array.isArray(officer?.email_aliases) ? officer.email_aliases : []),
 ].map(emailKey).filter(Boolean));
-const recordMatchesOfficer = (record, officer, emailFields = ['officer_email'], idFields = ['officer_id','created_by_id','user_id']) => {
+const recordMatchesOfficer = (record, officer, emailFields = ['officer_email'], idFields = ['officer_id','user_id']) => {
   const identities = officerIdentitySet(officer);
   if (emailFields.some(field => identities.has(emailKey(record?.[field])))) return true;
+  // Ownership is the officer named on the record. created_by_id is only the
+  // account that keyed the row in, so an administrator who builds the schedule
+  // or punches entries must never inherit those shifts as their own; fall back
+  // to a user id only when the record carries no officer email at all.
+  const hasOwnerEmail = emailFields.some(field => emailKey(record?.[field]));
+  if (hasOwnerEmail) return false;
   return idFields.some(field => officer?.id && String(record?.[field] || '') === String(officer.id));
 };
 const isPunctualityLeaderboardOfficer = (officer) => {
