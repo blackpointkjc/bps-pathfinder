@@ -75,6 +75,7 @@ const PERFORMANCE_ENTITY_NAMES = new Set([
 ]);
 const entityWrappers = new Map();
 const readCache = new Map();
+let readCacheGeneration = 0;
 const readInflight = new Map();
 const writeInflight = new Map();
 const readQueue = [];
@@ -132,6 +133,7 @@ const recordRequestTrace = entry => {
 };
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && ['getCallOutShifts','getNavigationLocations','geocodeNavigationDestination'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
@@ -255,9 +257,16 @@ function pumpReads() {
     activeReads += 1;
     if (job.priority < 90) activeBackgroundReads += 1;
     const startedAt = Date.now();
+    const cacheGeneration = readCacheGeneration;
     Promise.resolve()
       .then(() => withRequestTimeout(Promise.resolve().then(job.task), readTimeoutMs(job.meta), 'Data request'))
       .then(value => {
+        // Cache only reads that met their deadline and began after the last invalidation.
+        // A late network completion must not repopulate a cache after a save/refresh.
+        if (cacheGeneration === readCacheGeneration) {
+          if (readCache.size >= 250 && !readCache.has(job.key)) readCache.delete(readCache.keys().next().value);
+          readCache.set(job.key, { at: Date.now(), value });
+        }
         recordRequestTrace({
           label: requestLabel(job.meta),
           kind: job.meta?.kind || 'read',
@@ -309,13 +318,8 @@ function queuedRead(key, task, meta = {}) {
   const request = new Promise((resolve, reject) => {
     const job = {
       markStarted,
-      task: async () => {
-        const value = await task();
-        // Bound memory use during long shifts with many search/filter keys.
-        if (readCache.size >= 250 && !readCache.has(key)) readCache.delete(readCache.keys().next().value);
-        readCache.set(key, { at: Date.now(), value });
-        return value;
-      },
+      key,
+      task,
       resolve,
       reject,
       meta,
@@ -377,6 +381,8 @@ function invalidateReadCacheForWrite(meta = {}) {
       addFunction('getOfficerDirectory');
     }
     if (meta.name === 'TimeEntry') { addFunction('getMyTimeEntries'); addFunction('manageHRTimeEntries'); }
+    if (meta.name === 'Location') addFunction('getNavigationLocations');
+    if (['Schedule','PlannedShift','User','CallOut'].includes(meta.name)) addFunction('getCallOutShifts');
     if (meta.name === 'DispatchCall') addFunction('getActiveDispatchCalls');
     if (meta.name === 'ActiveOfficer') addFunction('getOnDutyUnits');
   }
@@ -406,11 +412,12 @@ function invalidateReadCacheForWrite(meta = {}) {
       addFunction('getMyScheduleData');
       addFunction('getWelcomeBriefingData');
     }
-    if (name === 'manageLocations') { addEntity('Location'); addFunction('getAppDirectory'); }
+    if (name === 'manageLocations') { addEntity('Location'); addFunction('getAppDirectory'); addFunction('getNavigationLocations'); }
     if (name === 'manageHRDivisions') { addEntity('Division'); addFunction('getAppDirectory'); }
     if (['updateUser','createPortalAccount','manageClientAssignments','manageOfficerCertifications','syncCertToOfficer'].includes(name)) {
       addEntity('User'); addFunction('getAppDirectory'); addFunction('getOfficerDirectory'); prefixes.add('auth:me:');
     }
+    if (/schedule|plannedshift|callout|updateuser/i.test(name)) addFunction('getCallOutShifts');
     if (/performance|timeentr|schedule|report|complaint|commendation|feedback|training|callout|duty/i.test(name)) {
       addFunction('getCompanyAnalyticsData'); addFunction('getCompanyAnalyticsSegment'); addFunction('getMyPerformanceData'); addFunction('getCompanyPerformanceData');
     }
@@ -419,6 +426,7 @@ function invalidateReadCacheForWrite(meta = {}) {
   }
 
   if (!prefixes.size) return;
+  readCacheGeneration += 1;
   for (const cacheKey of [...readCache.keys()]) {
     if ([...prefixes].some(prefix => cacheKey.startsWith(prefix))) readCache.delete(cacheKey);
   }
@@ -615,10 +623,12 @@ export const base44 = new Proxy(rawBase44, {
 });
 
 export function clearBase44ReadCache() {
+  readCacheGeneration += 1;
   readCache.clear();
 }
 
 export function clearBase44ReadCacheMatching(prefix) {
+  readCacheGeneration += 1;
   const target = String(prefix || '');
   if (!target) return clearBase44ReadCache();
   for (const key of [...readCache.keys()]) {

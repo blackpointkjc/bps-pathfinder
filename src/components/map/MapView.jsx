@@ -94,13 +94,13 @@ function MapClickSelector({ enabled, onPick }) {
         const previousCursor = container.style.cursor;
         container.style.cursor = 'crosshair';
         let start = null;
-        let candidate = null;
+        let suppressClick = false;
         const down = event => {
-            candidate = null;
+            suppressClick = false;
             if (!event.isPrimary || event.button !== 0 || event.target.closest('.leaflet-control, .leaflet-popup')) { start = null; return; }
             start = { id: event.pointerId, x: event.clientX, y: event.clientY };
         };
-        const cancel = () => { start = null; candidate = null; };
+        const cancel = () => { start = null; suppressClick = false; };
         const up = event => {
             const initial = start;
             start = null;
@@ -109,15 +109,18 @@ function MapClickSelector({ enabled, onPick }) {
             // Capture before marker/polygon handlers swallow the click. Leaflet
             // performs the rotation-aware screen-to-map coordinate conversion.
             const point = map.mouseEventToLatLng(event);
-            if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) candidate = [point.lat, point.lng];
+            if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) {
+                suppressClick = true;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                onPick([point.lat, point.lng]);
+            }
         };
         const click = event => {
-            if (!candidate) return;
-            const coords = candidate;
-            candidate = null;
+            if (!suppressClick) return;
+            suppressClick = false;
             event.preventDefault();
             event.stopImmediatePropagation();
-            onPick(coords);
         };
         container.addEventListener('click', click, true);
         container.addEventListener('pointerdown', down, true);

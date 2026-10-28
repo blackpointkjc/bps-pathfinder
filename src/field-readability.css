@@ -20,16 +20,16 @@
   .cad-app .command-dashboard .cad-call-status span { display: inline-block; white-space: normal; }
   .cad-app .command-dashboard .cad-call-elapsed { font-variant-numeric: tabular-nums; }
 
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-xs, .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\], .text-\[13px\]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
     font-size: var(--pf-small) !important; line-height: 1.45 !important;
   }
   html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app main { font-size: var(--pf-body); line-height: 1.5; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-sm:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(var(--pf-body) - 1px) !important; line-height: 1.5 !important; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-base:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; line-height: 1.5 !important; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-lg, .text-xl):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(20px * var(--pf-title-scale)) !important; line-height: 1.35 !important; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) .text-2xl:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(24px * var(--pf-title-scale)) !important; line-height: 1.3 !important; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea, select, [role="combobox"]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; }
-  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(td, th):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-small) !important; line-height: 1.5; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) .text-sm:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(var(--pf-body) - 1px) !important; line-height: 1.5 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) .text-base:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; line-height: 1.5 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-lg, .text-xl):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(20px * var(--pf-title-scale)) !important; line-height: 1.35 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) .text-2xl:not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: calc(24px * var(--pf-title-scale)) !important; line-height: 1.3 !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea, select, [role="combobox"]):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-body) !important; }
+  html:is([data-pf-text="large"], [data-pf-text="extra-large"]) :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(td, th):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { font-size: var(--pf-small) !important; line-height: 1.5; }
   html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app :is(.uppercase, .tracking-widest, .tracking-wider):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { letter-spacing: .035em !important; }
   html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .mobile-tool-library nav a span { font-size: var(--pf-small) !important; line-height: 1.45 !important; }
   html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .pathfinder-field-nav > :is(a, button) > span:not(.absolute) { font-size: var(--pf-small) !important; line-height: 1.35; }
@@ -46,7 +46,7 @@
   html:is([data-pf-text="large"], [data-pf-text="extra-large"]) .cad-app .command-dashboard .cad-call-incident > :last-child { font-size: calc(var(--pf-body) - 2px) !important; line-height: 1.5 !important; }
 
   html:is([data-pf-spacing="comfortable"], [data-pf-text="large"], [data-pf-text="extra-large"])
-  :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(button, a[role="button"], [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"])):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
+  :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(button, a[role="button"], [role="tab"], [role="combobox"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"])):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) {
     min-height: 44px;
   }
   html[data-pf-spacing="comfortable"] .cad-app main :is(td, th) { padding: 14px 12px !important; }
@@ -55,11 +55,11 @@
   html[data-pf-spacing="comfortable"] .cad-app main :is(.command-status-bar, .command-queue-header) { padding-block: 12px; gap: 10px; }
 
   html[data-pf-contrast="high"] .cad-app main,
-  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) { --muted-foreground: 214 25% 84%; --bps-command-border: #64748b; }
-  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-muted-foreground):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *),
+  html[data-pf-contrast="high"] :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) { --muted-foreground: 214 25% 84%; --bps-command-border: #64748b; }
+  html[data-pf-contrast="high"] :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-gray-400, .text-gray-500, .text-gray-600, .text-muted-foreground):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *),
   html.bps-night-mode[data-pf-contrast="high"] .cad-app main.night-workspace :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #e2e8f0 !important; }
-  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(.border-slate-700, .border-slate-800, .border-gray-700, .border-gray-800):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { border-color: #64748b !important; }
-  html[data-pf-contrast="high"] :is(.cad-app, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea)::placeholder { color: #cbd5e1 !important; opacity: 1; }
+  html[data-pf-contrast="high"] :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(.border-slate-700, .border-slate-800, .border-gray-700, .border-gray-800):not(svg):not(.leaflet-container *):not(.recharts-wrapper *):not(.pf-display-panel *) { border-color: #64748b !important; }
+  html[data-pf-contrast="high"] :is(.cad-app, .pf-navigation-workspace, [role="dialog"], [role="listbox"], [role="menu"]) :is(input, textarea)::placeholder { color: #cbd5e1 !important; opacity: 1; }
   html[data-pf-motion="reduced"] .cad-app *,
   html[data-pf-motion="reduced"] [role="dialog"] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
