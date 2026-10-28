@@ -5,7 +5,8 @@ import {base44} from '@/api/base44Client';
 import {offlineList,offlinePut} from '@/lib/offlineWork';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 export default function OfflineMapControl({owner,offline}) {
- const map=useMap();const [open,setOpen]=useState(false),[areas,setAreas]=useState([]),[selected,setSelected]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[name,setName]=useState('');
+ const map=useMap();const [open,setOpen]=useState(false),[storedAreas,setAreas]=useState([]),[selected,setSelected]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[name,setName]=useState('');
+ const areas=storedAreas.filter(area=>area.owner===owner);
  const load=()=>offlineList(owner,'map').then(setAreas).catch(e=>setMessage(e.message));
  useEffect(()=>{load();const show=()=>setOpen(true);window.addEventListener('bps-open-offline-maps',show);return()=>window.removeEventListener('bps-open-offline-maps',show);},[owner]);
  const shown=selected?areas.filter(area=>area.key===selected):offline?areas:[];
