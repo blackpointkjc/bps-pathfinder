@@ -3,7 +3,11 @@ self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(
 self.addEventListener('activate',event=>{event.waitUntil(self.clients.claim());});
 self.addEventListener('message',event=>{
  if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
- if(event.data?.type==='SAVE_ASSETS')event.waitUntil(caches.open(CACHE).then(cache=>Promise.all((event.data.urls||[]).filter(url=>{const u=new URL(url,self.location.origin);return u.origin===self.location.origin&&/\.(js|css|woff2?|svg|webp|png)$/.test(u.pathname)&&!u.pathname.includes('/api/');}).map(url=>cache.add(url).catch(()=>{})))));
+ if(event.data?.type==='SAVE_ASSETS')event.waitUntil((async()=>{
+  const cache=await caches.open(CACHE),urls=[...new Set(event.data.urls||[])].filter(url=>{const u=new URL(url,self.location.origin);return u.origin===self.location.origin&&/\.(js|css|woff2?|svg|webp|png)$/.test(u.pathname)&&!u.pathname.includes('/api/');});
+  const results=await Promise.allSettled(urls.map(url=>cache.add(url)));
+  event.ports[0]?.postMessage({saved:results.filter(r=>r.status==='fulfilled').length,failed:results.filter(r=>r.status==='rejected').length});
+ })());
 });
 self.addEventListener('fetch',event=>{
  const req=event.request,url=new URL(req.url);

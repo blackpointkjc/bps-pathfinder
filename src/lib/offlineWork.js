@@ -45,3 +45,5 @@ export async function syncWork(api,owner) {
   };
   return navigator.locks ? navigator.locks.request('pathfinder-offline-sync:'+owner,run) : run();
 }
+
+export async function offlineDelete(key){const db=await database();return new Promise((resolve,reject)=>{const tx=db.transaction('items','readwrite');tx.objectStore('items').delete(key);tx.oncomplete=()=>{changed();resolve();};tx.onerror=()=>reject(tx.error);});}

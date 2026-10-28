@@ -1,3 +1,4 @@
+import {offlineDelete} from '@/lib/offlineWork';
 import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
@@ -522,6 +523,7 @@ Provide:
       }
     },
     onSuccess: (data, variables) => {
+      void offlineDelete(user.id+':work:IncidentReports-'+(editingReportId||'new')).catch(()=>{});
       queryClient.invalidateQueries({ queryKey: ['allIncidentReports'] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
 
@@ -1280,7 +1282,7 @@ Provide:
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard owner={user?.id} id={"IncidentReports-"+(editingReport?.id||"new")} title="Incident report" data={formData} onRestore={setFormData} />
+              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard key={editingReportId||"new"} owner={user?.id} id={"IncidentReports-"+(editingReportId||"new")} title="Incident report" data={formData} onRestore={setFormData} />
                 {formData.report_type === 'supplement' && (
                   <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
                     <div className="font-black">Linked Supplement</div>

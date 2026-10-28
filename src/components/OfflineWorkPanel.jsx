@@ -19,7 +19,10 @@ export default function OfflineWorkPanel({user}) {
    const registration=await navigator.serviceWorker.register('/pathfinder-sw.js',{scope:'/'});
    await navigator.serviceWorker.ready;
    const urls=[...document.querySelectorAll('script[src],link[rel="stylesheet"]')].map(node=>node.src||node.href).concat(performance.getEntriesByType('resource').map(entry=>entry.name));
-   (registration.active||registration.waiting||registration.installing)?.postMessage({type:'SAVE_ASSETS',urls});
+   const worker=registration.active||registration.waiting||registration.installing;
+   if(!worker)throw new Error('Offline worker did not activate');
+   const prepared=await new Promise((resolve,reject)=>{const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();reject(new Error('Offline page preparation timed out'));},15000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data);};worker.postMessage({type:'SAVE_ASSETS',urls},[channel.port2]);});
+   if(prepared.failed||!prepared.saved)throw new Error('Some page files could not be saved. Retry while connected.');
    const persistent=await navigator.storage?.persist?.();
    setMessage('Offline pages enabled. Open the pages you need while connected so their files are saved. Offline reopening requires this signed-in tab session (up to 12 hours). '+(persistent?'Device storage is persistent.':'Browser storage may be cleared by the device; sync work when connected.'));
   }catch(e){setMessage('Offline preparation failed: '+e.message);}finally{setBusy(false);}};

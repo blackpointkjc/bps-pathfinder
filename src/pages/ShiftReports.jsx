@@ -1,3 +1,4 @@
+import {offlineDelete} from '@/lib/offlineWork';
 import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState, useEffect } from "react";
@@ -331,6 +332,7 @@ export default function ShiftReports() {
       toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to save report. Please try again.');
     },
     onSuccess: (data, variables) => {
+      void offlineDelete(user.id+':work:ShiftReports-'+(editingReport?.id||'new')).catch(()=>{});
       queryClient.invalidateQueries({ queryKey: ['myShiftReports', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
 
@@ -808,7 +810,7 @@ export default function ShiftReports() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard owner={user?.id} id={"ShiftReports-"+(editingReport?.id||"new")} title="Shift report" data={formData} onRestore={setFormData} />
+              <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard key={editingReport?.id||"new"} owner={user?.id} id={"ShiftReports-"+(editingReport?.id||"new")} title="Shift report" data={formData} onRestore={setFormData} />
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">

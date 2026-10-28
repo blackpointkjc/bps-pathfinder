@@ -9,6 +9,7 @@ export default function OfflineMapControl({owner,offline}) {
  const load=()=>offlineList(owner,'map').then(setAreas).catch(e=>setMessage(e.message));
  useEffect(()=>{load();const show=()=>setOpen(true);window.addEventListener('bps-open-offline-maps',show);return()=>window.removeEventListener('bps-open-offline-maps',show);},[owner]);
  const shown=selected?areas.filter(area=>area.key===selected):offline?areas:[];
+ useEffect(()=>{if(!areas.length)return;const attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · Saved street data';map.attributionControl.addAttribution(attribution);return()=>map.attributionControl.removeAttribution(attribution);},[map,areas.length]);
  const download=async()=>{if(!owner)return;setBusy(true);setMessage('Downloading streets…');try{
  if(areas.length>=10)throw new Error('This device already holds 10 areas.');
  const center=map.getCenter(),response=await base44.functions.invoke('getOfflineStreetArea',{latitude:center.lat,longitude:center.lng}),data=response?.data||response;
