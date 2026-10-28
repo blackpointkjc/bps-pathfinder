@@ -15,6 +15,7 @@ export default function LiveMapToolbar({ user, status, saving, onStatusChange, o
         <button type="button" aria-pressed={fullscreen} onClick={onToggleFullscreen} className="ml-auto min-h-11 rounded-lg border border-cyan-600 px-3 text-xs font-bold text-cyan-100">{fullscreen ? 'Exit full screen' : 'Full screen map'}</button>
         <button type="button" disabled={callsRefreshing} onClick={onRefreshCalls} className="min-h-11 rounded-lg border border-slate-500 px-3 text-xs font-bold disabled:opacity-50">{callsRefreshing ? 'Refreshing calls…' : 'Refresh calls'}</button>
         <span role="status" className="text-xs text-slate-300">{callsStatus}{criticalCount > 0 ? ' · ' + criticalCount + ' critical' : ''}</span>
+        <button type="button" className="min-h-11 rounded-lg border border-slate-500 px-3 text-xs font-bold" onClick={()=>window.dispatchEvent(new Event('bps-open-offline-maps'))}>Offline maps</button>
         <OfficerDistressButton currentUser={user} />
         <OfficerDutyStatusControl user={user} status={status} saving={saving} onChange={onStatusChange} inline />
     </header>;

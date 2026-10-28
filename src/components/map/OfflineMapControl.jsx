@@ -1,0 +1,19 @@
+import {useEffect,useState} from 'react';
+import {GeoJSON,useMap} from 'react-leaflet';
+import L from 'leaflet';
+import {base44} from '@/api/base44Client';
+import {offlineList,offlinePut} from '@/lib/offlineWork';
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+export default function OfflineMapControl({owner,offline}) {
+ const map=useMap();const [open,setOpen]=useState(false),[areas,setAreas]=useState([]),[selected,setSelected]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[name,setName]=useState('');
+ const load=()=>offlineList(owner,'map').then(setAreas).catch(e=>setMessage(e.message));
+ useEffect(()=>{load();const show=()=>setOpen(true);window.addEventListener('bps-open-offline-maps',show);return()=>window.removeEventListener('bps-open-offline-maps',show);},[owner]);
+ const shown=selected?areas.filter(area=>area.key===selected):offline?areas:[];
+ const download=async()=>{if(!owner)return;setBusy(true);setMessage('Downloading streets…');try{
+ if(areas.length>=10)throw new Error('This device already holds 10 areas.');
+ const center=map.getCenter(),response=await base44.functions.invoke('getOfflineStreetArea',{latitude:center.lat,longitude:center.lng}),data=response?.data||response;
+ if(data.error||!data.geojson?.features?.length)throw new Error(data.error||'Map incomplete');
+ const id=crypto.randomUUID();await offlinePut({key:owner+':map:'+id,id,owner,kind:'map',title:name.trim()||'Area '+center.lat.toFixed(3)+', '+center.lng.toFixed(3),updatedAt:Date.now(),data});await load();setSelected(owner+':map:'+id);setMessage('Saved streets and place names within 1.5 km of the map center.');
+ }catch(e){setMessage('Not downloaded: '+e.message);}finally{setBusy(false);}};
+ return <>{shown.map(area=><GeoJSON key={area.key} data={area.data.geojson} style={{color:'#67e8f9',weight:3,opacity:0.9}} pointToLayer={(feature,latlng)=>L.circleMarker(latlng,{radius:4,color:'#fbbf24'})} onEachFeature={(feature,layer)=>{if(feature.properties?.name){const label=document.createElement('span');label.textContent=feature.properties.name;layer.bindTooltip(label,{sticky:true});}}}/>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Download street maps</DialogTitle><DialogDescription>Save roads and place names within 1.5 km of the map center. Street reference maps do not include satellite imagery or offline route calculations.</DialogDescription></DialogHeader><input aria-label="Saved map name" placeholder="Area name" value={name} onChange={e=>setName(e.target.value)} className="min-h-11 rounded border p-3"/><button type="button" disabled={offline||busy||!owner} onClick={download} className="min-h-11 rounded border p-3">{busy?'Downloading…':'Download area at map center'}</button>{message&&<p role="status">{message}</p>}<button type="button" className="min-h-11 underline" onClick={()=>setSelected('')}>Use live map when connected</button>{areas.map(area=><button type="button" key={area.key} className="min-h-11 rounded border p-3 text-left" onClick={()=>{setSelected(area.key);map.setView(area.data.center,14);setOpen(false);}}>{area.title}<span className="block text-xs">Saved {new Date(area.updatedAt).toLocaleString()} · 1.5 km radius</span></button>)}<p className="text-xs">© OpenStreetMap contributors · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">ODbL</a>. Outside saved areas, maps need a connection. New routes and traffic require internet.</p></DialogContent></Dialog></>;
+}

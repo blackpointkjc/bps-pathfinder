@@ -1,3 +1,4 @@
+import OfflineMapControl from './OfflineMapControl';
 import { observeElementSize } from '@/lib/observeElementSize';
 import { useEffect, useRef } from 'react';
 import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -314,7 +315,8 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             minZoom={10}
             maxZoom={20}
         >
-            <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
+            {!useOfflineTiles && <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />}
+            <OfflineMapControl owner={currentUserId} offline={useOfflineTiles} />
             <MapViewportSync />
             <MapClickSelector enabled={mapPickEnabled && !isNavigating} onPick={onMapPick} />
 
