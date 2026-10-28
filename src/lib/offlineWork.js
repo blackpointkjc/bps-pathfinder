@@ -3,23 +3,23 @@ export const changed = () => window.dispatchEvent(new Event('bps-offline-work-ch
 let opening;
 function database() {
   if (!opening) opening = new Promise((resolve,reject) => {
-    const request=indexedDB.open(DB,1);
-    request.onupgradeneeded=()=>request.result.createObjectStore('items',{keyPath:'key'});
-    request.onsuccess=()=>resolve(request.result);
+    const request=indexedDB.open(DB,2);
+    request.onupgradeneeded=()=>{const db=request.result;const items=db.objectStoreNames.contains('items')?request.transaction.objectStore('items'):db.createObjectStore('items',{keyPath:'key'});if(!items.indexNames.contains('ownerKind'))items.createIndex('ownerKind',['owner','kind']);};
+    request.onsuccess=()=>{request.result.onversionchange=()=>request.result.close();resolve(request.result);};
     request.onerror=()=>{opening=null;reject(request.error);};
   });
   return opening;
 }
 export async function offlinePut(item) {
   const db=await database();
-  return new Promise((resolve,reject)=>{const tx=db.transaction('items','readwrite');tx.objectStore('items').put(item);tx.oncomplete=()=>{changed();resolve(item);};tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Device storage could not save work'));});
+  return new Promise((resolve,reject)=>{const tx=db.transaction('items','readwrite');tx.objectStore('items').put(item);tx.oncomplete=()=>{if(item.kind!=='snapshot')changed();resolve(item);};tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Device storage could not save work'));});
 }
 export async function offlineGet(key) {
   const db=await database();return new Promise((resolve,reject)=>{const req=db.transaction('items').objectStore('items').get(key);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
 }
 export async function offlineList(owner,kind) {
   if(!owner)return [];
-  const db=await database();return new Promise((resolve,reject)=>{const req=db.transaction('items').objectStore('items').getAll();req.onsuccess=()=>resolve(req.result.filter(item=>item.owner===owner&&(!kind||item.kind===kind)).sort((a,b)=>b.updatedAt-a.updatedAt));req.onerror=()=>reject(req.error);});
+  const db=await database();return new Promise((resolve,reject)=>{const store=db.transaction('items').objectStore('items');const req=kind&&typeof store.index==='function'?store.index('ownerKind').getAll(IDBKeyRange.only([owner,kind])):store.getAll();req.onsuccess=()=>resolve(req.result.filter(item=>item.owner===owner&&(!kind||item.kind===kind)).sort((a,b)=>b.updatedAt-a.updatedAt));req.onerror=()=>reject(req.error);});
 }
 export async function saveWork(owner,id,title,data) {
   if(!owner)throw new Error('Sign in before saving offline work');
