@@ -37,6 +37,35 @@ function wallClockMinute(dateKey, timeKey) {
   return Math.floor(Date.UTC(y, m - 1, d) / 60000) + hh * 60 + mm;
 }
 
+function easternOffsetMinutes(date) {
+  const zone = new Intl.DateTimeFormat('en-US', { timeZone: EASTERN_TIME_ZONE, timeZoneName: 'shortOffset' })
+    .formatToParts(date).find(part => part.type === 'timeZoneName')?.value || 'GMT';
+  const match = String(zone).match(/GMT([+-]?\d{1,2})(?::(\d{2}))?/);
+  if (!match) return 0;
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  return hours < 0 ? hours * 60 - minutes : hours * 60 + minutes;
+}
+
+// Resolve an Eastern wall-clock date/time to the exact instant it represents, so a
+// scheduled shift can be expressed as a real duty window.
+export function easternWallToIso(dateKey, timeKey) {
+  if (!dateKey || !timeKey) return null;
+  const [y, m, d] = String(dateKey).slice(0, 10).split('-').map(Number);
+  const [hh, mm] = String(timeKey).split(':').map(Number);
+  if (![y, m, d, hh, mm].every(Number.isFinite)) return null;
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  return new Date(wall - easternOffsetMinutes(new Date(wall)) * 60000).toISOString();
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const [y, m, d] = String(dateKey).slice(0, 10).split('-').map(Number);
+  if (![y, m, d].every(Number.isFinite)) return dateKey;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function matchTimeEntryToSchedule(entry, schedules = []) {
   if (!entry?.clock_in) return null;
   const email = emailKey(entry.officer_email);
@@ -490,6 +519,7 @@ function localWallMinute(dateKey, timeKey) {
 export function calculateJobDutyCompliance({
   officer = null,
   timeEntries = [],
+  schedules = [],
   dailyReports = [],
   incidentReports = [],
   dispatchCalls = [],
