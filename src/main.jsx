@@ -25,6 +25,16 @@ window.addEventListener('error', event => {
 installRequiredPrintFooter()
 installGlobalRuntimeIssueCapture()
 
+// Keep the offline app shell available without waiting for someone to press the
+// offline button: register the worker after load and let it cache what is fetched.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/pathfinder-sw.js', { scope: '/' }).catch(error => {
+      console.warn('[Pathfinder] Offline worker registration skipped:', error?.message || error);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   // <React.StrictMode>
   <App />

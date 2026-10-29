@@ -1,19 +1,125 @@
-const CACHE='pathfinder-offline-shell-v1';
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.add('/')).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',event=>{event.waitUntil(self.clients.claim());});
-self.addEventListener('message',event=>{
- if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
- if(event.data?.type==='SAVE_ASSETS')event.waitUntil((async()=>{
-  const cache=await caches.open(CACHE),urls=[...new Set(event.data.urls||[])].filter(url=>{const u=new URL(url,self.location.origin);return u.origin===self.location.origin&&/\.(js|css|woff2?|svg|webp|png)$/.test(u.pathname)&&!u.pathname.includes('/api/');});
-  const results=await Promise.allSettled(urls.map(url=>cache.add(url)));
-  event.ports[0]?.postMessage({saved:results.filter(r=>r.status==='fulfilled').length,failed:results.filter(r=>r.status==='rejected').length});
- })());
+/* Pathfinder offline app shell.
+   Strategy: every same-origin GET goes to the network first (so a new release is
+   never masked by a stale cache) and the successful response is stored. When the
+   network is unavailable the stored copy is served instead, which lets the app
+   open and navigate while the device is offline. */
+const CACHE = 'pathfinder-offline-shell-v3';
+const SHELL_URLS = ['/', '/index.html'];
+
+const isCacheablePath = (pathname) =>
+  !pathname.startsWith('/api/') &&
+  !pathname.startsWith('/functions/') &&
+  !pathname.startsWith('/_api/');
+
+const isNavigationRequest = (request) => request.mode === 'navigate';
+
+const storeResponse = async (request, response) => {
+  if (!response || !response.ok || response.type === 'opaque') return;
+  const cache = await caches.open(CACHE);
+  await cache.put(request, response.clone()).catch(() => {});
+};
+
+const offlineShell = async (request) => {
+  const cache = await caches.open(CACHE);
+  return (
+    (await cache.match(request)) ||
+    (await cache.match('/')) ||
+    (await cache.match('/index.html')) ||
+    new Response(
+      '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pathfinder offline</title><body style="font-family:system-ui;background:#08111d;color:#e5edf5;padding:2rem"><h1>Pathfinder is offline</h1><p>This page has not been saved on this device yet. Reconnect, open the page, then try again.</p></body>',
+      { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+    )
+  );
+};
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(SHELL_URLS.map((url) => cache.add(url).catch(() => {})));
+    await self.skipWaiting();
+  })());
 });
-self.addEventListener('fetch',event=>{
- const req=event.request,url=new URL(req.url);
- if(req.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/'))return;
- if(req.mode==='navigate'){
-  event.respondWith(fetch(req).then(async response=>{if(response.ok){const cache=await caches.open(CACHE);await cache.put('/',response.clone());}return response;}).catch(async()=>await caches.match('/')||Response.error()));return;
- }
- if(/\.(js|css|woff2?|svg|webp|png)$/.test(url.pathname))event.respondWith(caches.match(req).then(cached=>cached||fetch(req).then(async response=>{if(response.ok){const cache=await caches.open(CACHE);await cache.put(req,response.clone());}return response;})));
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith('pathfinder-offline-shell-') && key !== CACHE)
+        .map((key) => caches.delete(key)),
+    );
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('message', (event) => {
+  const data = event.data || {};
+  if (data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (data.type === 'SAVE_ASSETS') {
+    event.waitUntil((async () => {
+      const cache = await caches.open(CACHE);
+      const urls = [...new Set([...(data.urls || []), ...SHELL_URLS])].filter((url) => {
+        try {
+          const parsed = new URL(url, self.location.origin);
+          return parsed.origin === self.location.origin && isCacheablePath(parsed.pathname);
+        } catch {
+          return false;
+        }
+      });
+      const results = await Promise.allSettled(
+        urls.map(async (url) => {
+          const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
+          if (!response.ok) throw new Error(`${response.status} ${url}`);
+          await cache.put(url, response.clone());
+        }),
+      );
+      event.ports[0]?.postMessage({
+        saved: results.filter((result) => result.status === 'fulfilled').length,
+        failed: results.filter((result) => result.status === 'rejected').length,
+      });
+    })());
+  }
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+  if (url.origin !== self.location.origin || !isCacheablePath(url.pathname)) return;
+
+  if (isNavigationRequest(request)) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE);
+          // Every route is the same single-page shell, so keep one copy for deep links.
+          await cache.put(request, response.clone()).catch(() => {});
+          await cache.put('/', response.clone()).catch(() => {});
+        }
+        return response;
+      } catch {
+        return offlineShell(request);
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      await storeResponse(request, response);
+      return response;
+    } catch {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      return Response.error();
+    }
+  })());
 });
