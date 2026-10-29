@@ -217,6 +217,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exe
 
 export default function AdminAnalytics() {
   const [selectedDivision, setSelectedDivision] = useState('all');
+  const [selectedSubdivision, setSelectedSubdivision] = useState('all');
   const [analyticsStartDate, setAnalyticsStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [analyticsEndDate, setAnalyticsEndDate] = useState(() => format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
@@ -418,9 +419,9 @@ export default function AdminAnalytics() {
   const performanceOfficerUsers = useMemo(() => {
     const officers = performanceUsers.filter(isOperationalOfficer);
     return (selectedDivision === 'all' ? officers : officers.filter(u => String(u.division || '') === String(selectedDivision)))
-      .filter(officer => officer?.id)
+      .filter(officer => officer?.id && (selectedSubdivision === 'all' || String(officer.subdivision || officer.substation || '') === selectedSubdivision))
       .sort(comparePersonnel);
-  }, [performanceUsers, selectedDivision]);
+  }, [performanceUsers, selectedDivision, selectedSubdivision]);
   const performanceOfficerKey = performanceOfficerUsers.map(officer => officer.id).join(',');
   // Officer scoring reads its own authoritative snapshot per officer. It only
   // depends on the core segment (the user directory), so it no longer waits on
@@ -432,18 +433,30 @@ export default function AdminAnalytics() {
       const previous = queryClient.getQueryData(['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate]);
       const snapshots = { ...(previous?.snapshots || {}) };
       const errors = {};
-      const result = await base44.functions.invoke('getCompanyPerformanceData', {
-        officer_ids: performanceOfficerUsers.map(officer => officer.id),
-        start_date: analyticsStartDate, end_date: analyticsEndDate,
-      });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      Object.assign(snapshots, payload.snapshots || {});
-      Object.assign(errors, payload.errors || {});
-      if (Object.keys(errors).length) clearBase44ReadCacheMatching("function:getCompanyPerformanceData:");
-      for (const officer of performanceOfficerUsers) {
-        if (!payload.snapshots?.[officer.id] && !errors[officer.id]) errors[officer.id] = "No complete snapshot returned. Retry refresh.";
+      // Publish completed officer batches as they arrive. A slow officer/source
+      // cannot discard every other officer's successfully loaded snapshot.
+      for (let offset = 0; offset < performanceOfficerUsers.length; offset += 5) {
+        const batch = performanceOfficerUsers.slice(offset, offset + 5);
+        try {
+          const result = await base44.functions.invoke('getCompanyPerformanceData', {
+            officer_ids: batch.map(officer => officer.id),
+            start_date: analyticsStartDate, end_date: analyticsEndDate,
+          });
+          const payload = result?.data || result || {};
+          if (payload.error) throw new Error(payload.error);
+          Object.assign(snapshots, payload.snapshots || {});
+          Object.assign(errors, payload.errors || {});
+          for (const officer of batch) {
+            if (!payload.snapshots?.[officer.id] && !errors[officer.id]) errors[officer.id] = 'No complete snapshot returned. Retry refresh.';
+          }
+        } catch (error) {
+          for (const officer of batch) errors[officer.id] = error?.message || 'Unable to load officer data';
+        }
+        queryClient.setQueryData(['companyOfficerPerformanceSnapshots', performanceOfficerKey, analyticsStartDate, analyticsEndDate], {
+          snapshots: { ...snapshots }, errors: { ...errors }, generated_at: new Date().toISOString(),
+        });
       }
+      if (Object.keys(errors).length) clearBase44ReadCacheMatching('function:getCompanyPerformanceData:');
       return { snapshots, errors, generated_at: new Date().toISOString() };
     },
     enabled: performanceRequestEnabled,
@@ -470,10 +483,10 @@ export default function AdminAnalytics() {
     // Company officer rankings must contain actual operational officers only.
     // A dispatch/HR/accounting/support account is not promoted into the officer
     // leaderboard merely because an old time, schedule, or training row exists.
-    const active = allUsers.filter(isOperationalOfficer);
+    const active = allUsers.filter(isOperationalOfficer).filter(u => selectedSubdivision === 'all' || String(u.subdivision || u.substation || '') === selectedSubdivision);
     if (selectedDivision === 'all') return active;
     return active.filter(u => String(u.division || '') === String(selectedDivision));
-  }, [allUsers, selectedDivision]);
+  }, [allUsers, selectedDivision, selectedSubdivision]);
 
   const currentMonthStart = analyticsStartDate;
   const currentMonthEnd = analyticsEndDate;
@@ -481,7 +494,7 @@ export default function AdminAnalytics() {
   const companyOnTimeStats = useMemo(() => {
     const coreErrors = coreAnalytics.data?.service_errors || {};
     if (!coreAnalytics.data || ['User','TimeEntry','Schedule','IncidentReport'].some(name => coreErrors[name])) return { rate: null, byOfficer: [], leaderboard: [] };
-    const coreUsers = (coreAnalytics.data.users || []).filter(isOperationalOfficer);
+    const coreUsers = (coreAnalytics.data.users || []).filter(isOperationalOfficer).filter(u => selectedSubdivision === 'all' || String(u.subdivision || u.substation || '') === selectedSubdivision);
     const selectedCoreUsers = selectedDivision === 'all'
       ? coreUsers
       : coreUsers.filter(u => String(u.division || '') === String(selectedDivision));
@@ -506,7 +519,7 @@ export default function AdminAnalytics() {
       return officer && isPunctualityLeaderboardOfficer(officer);
     }).slice(0, 3);
     return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null, onTimeCount: totalOnTime, scoredCount: totalEntries, byOfficer, leaderboard };
-  }, [coreAnalytics.data, selectedDivision, currentMonthStart, currentMonthEnd]);
+  }, [coreAnalytics.data, selectedDivision, selectedSubdivision, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => calculateCompanyHours(
     timeEntries, filteredUsers, currentMonthStart, currentMonthEnd
@@ -751,7 +764,7 @@ export default function AdminAnalytics() {
               <div><Label className="text-[10px] uppercase tracking-wide text-slate-400">Start</Label><Input type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={e=>setAnalyticsStartDate(e.target.value)} className="mt-1 h-9 border-slate-700 bg-slate-950"/></div>
               <div><Label className="text-[10px] uppercase tracking-wide text-slate-400">End</Label><Input type="date" value={analyticsEndDate} min={analyticsStartDate} onChange={e=>setAnalyticsEndDate(e.target.value)} className="mt-1 h-9 border-slate-700 bg-slate-950"/></div>
             </div>
-            <Select value={selectedDivision} onValueChange={setSelectedDivision}>
+            <Select value={selectedDivision} onValueChange={value => { setSelectedDivision(value); setSelectedSubdivision('all'); }}>
               <SelectTrigger className="min-h-11 flex-1 border-slate-700 bg-slate-900 sm:w-48 sm:flex-none">
                 <SelectValue placeholder="All Divisions" />
               </SelectTrigger>
@@ -760,6 +773,12 @@ export default function AdminAnalytics() {
                 {divisions?.map(d => (
                   <SelectItem key={d.id} value={d.division_name}>{d.division_name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedSubdivision} onValueChange={setSelectedSubdivision}>
+              <SelectTrigger className="min-h-11 border-slate-700 bg-slate-900 sm:w-52"><SelectValue placeholder="All regions / substations" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All regions / substations</SelectItem>
+                {[...new Set(performanceUsers.filter(u => selectedDivision === 'all' || String(u.division || '') === selectedDivision).map(u => String(u.subdivision || u.substation || '')).filter(Boolean))].sort().map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

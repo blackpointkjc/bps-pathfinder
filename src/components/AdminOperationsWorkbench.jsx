@@ -71,6 +71,8 @@ export default function AdminOperationsWorkbench() {
  const {user,isLoadingAuth} = useAuth();
  const [scope,setScope]=useState('site');
  const [search,setSearch] = useState('');
+ const [division,setDivision] = useState('');
+ const [region,setRegion] = useState('');
  const [selected,setSelected] = useState('');
  const [newCheckpoint,setNewCheckpoint] = useState(false);
  const [newGeneral,setNewGeneral] = useState(false);
@@ -107,12 +109,13 @@ export default function AdminOperationsWorkbench() {
  // Site Operations only offers active properties. An inactive location is removed
  // from this operational workspace automatically until it is reactivated.
  const locations=allLocations.filter(location=>location.active!==false);
- const site=locations.find(location=>location.id===selected)||locations[0];
+ const filtered=locations.filter(location=>(!division||location.division===division)&&(!region||(location.subdivision||location.substation)===region)&&[location.site_name,location.address,location.division,location.subdivision,location.substation].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const site=filtered.find(location=>location.id===selected)||filtered[0];
  const order=(ordersQuery.data||[]).find(row=>row.site_name===site?.site_name);
  const rule=(rulesQuery.data||[]).find(row=>row.property_site===site?.site_name);
  const checkpoints=(checkpointsQuery.data||[]).filter(row=>row.property_site===site?.site_name);
  const general=generalQuery.data||[];
- const filtered=locations.filter(location=>[location.site_name,location.address,location.division].join(' ').toLowerCase().includes(search.toLowerCase()));
+
  return <div className="min-h-full bg-[#07101c] p-3 text-slate-100 md:p-5">
   <div className="mx-auto max-w-[1700px] space-y-4">
    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700 pb-4"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300"><Shield className="h-4 w-4"/>Administration</div><h1 className="mt-2 text-2xl font-black">Site Operations</h1><p className="mt-1 text-sm text-slate-400">One property. Its instructions, patrol standards and checkpoints.</p></div><div className="text-sm text-slate-400">{locations.length} properties · {general.length} company instruction sections</div></header>
@@ -129,8 +132,10 @@ export default function AdminOperationsWorkbench() {
    {scope==='site'&&
    <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
     <aside className="rounded-2xl border border-slate-700 bg-slate-900 p-3 lg:sticky lg:top-3">
-     <label className="flex items-center gap-2 rounded-lg border border-slate-600 px-2"><Search className="h-4 w-4 text-slate-400"/><input aria-label="Find a property" placeholder="Find a property" value={search} onChange={event=>setSearch(event.target.value)} className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none"/></label>
-     <div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[65vh]">{filtered.map(location=><button type="button" key={location.id} aria-pressed={site?.id===location.id} onClick={()=>selectSite(location.id)} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-700 aria-pressed:bg-cyan-950"><span className="block font-bold">{location.site_name}</span><span className="mt-1 block text-xs text-slate-400">{location.division || location.address}{location.active===false?' · Inactive':''}</span></button>)}{!filtered.length&&<p className="p-3 text-xs text-slate-400">No matching properties.</p>}</div>
+     <select aria-label="Division" className={inputClass} value={division} onChange={event=>{setDivision(event.target.value);setRegion('');}}><option value="">All divisions</option>{[...new Set(locations.map(l=>l.division).filter(Boolean))].sort().map(value=><option key={value}>{value}</option>)}</select>
+     <select aria-label="Region or substation" className={inputClass} value={region} onChange={event=>setRegion(event.target.value)}><option value="">All regions / substations</option>{[...new Set(locations.filter(l=>!division||l.division===division).map(l=>l.subdivision||l.substation).filter(Boolean))].sort().map(value=><option key={value}>{value}</option>)}</select>
+     <label className="mt-3 flex items-center gap-2 rounded-lg border border-slate-600 px-2"><Search className="h-4 w-4 text-slate-400"/><input aria-label="Find a property" placeholder="Find a property" value={search} onChange={event=>setSearch(event.target.value)} className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none"/></label>
+     <div className="mt-3 max-h-[30vh] space-y-1 overflow-auto lg:max-h-[65vh]">{filtered.map(location=><button type="button" key={location.id} aria-pressed={site?.id===location.id} onClick={()=>selectSite(location.id)} className="w-full rounded-lg border border-transparent p-3 text-left text-sm hover:bg-slate-800 aria-pressed:border-cyan-700 aria-pressed:bg-cyan-950"><span className="block font-bold">{location.site_name}</span><span className="mt-1 block text-xs text-slate-400">{[location.division,location.subdivision,location.substation].filter(Boolean).join(' / ') || location.address}</span></button>)}{!filtered.length&&<p className="p-3 text-xs text-slate-400">No matching properties.</p>}</div>
     </aside>
     <main className="min-w-0 space-y-4">
      {!site?<p className="p-6 text-slate-300">Create a location in Manage Locations to configure its operations.</p>:<>
