@@ -243,6 +243,52 @@ export const playDispatchAlert = () => {
   alertInterval = setInterval(playSirenTone, 3500);
 };
 
+// One bounded dual-tone air horn. The voice queue awaits completion before speech.
+// Use the master alert context so acknowledge/silence stops this alarm too.
+export const playPropertyHorn = async (isCurrent = () => true) => {
+  const ctx = getMasterCtx();
+  if (ctx.state !== 'running') {
+    // A browser may hold resume() pending until an interaction; never stall the queue.
+    await Promise.race([ctx.resume(), new Promise(resolve => window.setTimeout(resolve, 500))]);
+  }
+  if (!isCurrent()) return;
+  if (ctx.state !== 'running') throw new Error('Property horn requires browser audio permission');
+  const generation = alertGeneration;
+  const now = ctx.currentTime;
+  const duration = 1.65;
+  const nodes = [220, 277].map(frequency => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    // Two strong blasts with short attack/release ramps to avoid clicks.
+    for (const [start, end] of [[0, 0.65], [0.85, duration]]) {
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.24, now + start + 0.025);
+      gain.gain.setValueAtTime(0.24, now + end - 0.04);
+      gain.gain.linearRampToValueAtTime(0, now + end);
+    }
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+    return { oscillator, gain };
+  });
+  await new Promise(resolve => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (Date.now() - startedAt < duration * 1000 && generation === alertGeneration && isCurrent() && ctx.state === 'running') return;
+      window.clearInterval(timer);
+      nodes.forEach(({ oscillator, gain }) => {
+        try { oscillator.stop(); } catch {}
+        oscillator.disconnect();
+        gain.disconnect();
+      });
+      resolve();
+    }, 25);
+  });
+};
+
 export const playPropertyAlert = () => {
   if (alertRunning || isDispatchAlertMuted()) return;
   alertGeneration += 1;
