@@ -1670,14 +1670,25 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
 }
 
 [role="dialog"],
 [role="alertdialog"],
 .bps-dialog {
   background-color: hsl(var(--background)) !important;
+}
+
+/* A blurred full-screen overlay rasterises everything painted inside it, so a
+   popup rendered as its child came out soft and could wash out completely on
+   scaled displays. Dim the backdrop instead of blurring it: the window behind
+   still darkens and every popup stays sharp and readable. */
+[class*="backdrop-blur"].fixed.inset-0,
+[class*="backdrop-blur"].absolute.inset-0,
+[class*="backdrop-blur"][class*="inset-0"][class*="z-["] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* ============================================================
