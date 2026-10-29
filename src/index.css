@@ -1691,6 +1691,16 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   -webkit-backdrop-filter: none !important;
 }
 
+/* Modal scrim. An open dialog must own the screen: the page behind it is deeply
+   dimmed and softened so background headings, names and buttons are no longer
+   readable through the modal. The blur lives on the scrim, which carries no text
+   of its own, so the dialog panel keeps fully crisp type. */
+.bps-dialog-overlay {
+  background-color: rgba(2, 6, 23, 0.88) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
 /* ============================================================
    Typography consistency
    One typeface, one weight scale and one letter case for the whole

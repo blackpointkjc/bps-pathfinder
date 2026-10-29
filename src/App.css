@@ -686,7 +686,12 @@ body::-webkit-scrollbar-button,
 
 /* Application-level operational overlays must always render above the map. */
 #pathfinder-overlay-root,
-.pathfinder-operational-overlay,
-.bps-dialog[role="dialog"] {
+.pathfinder-operational-overlay {
   z-index: 2147483000 !important;
+}
+
+/* The dialog panel must always paint above its own scrim (which sits at
+   2147483100). This rule previously pinned the panel below the scrim. */
+.bps-dialog[role="dialog"] {
+  z-index: 2147483102 !important;
 }
