@@ -14,7 +14,7 @@ for(const rank of ['Colonel','Lt Colonel','Major','Officer']){
 }
 assert.equal(calculateCallOutAttendance([{...callout,voided:true}],[{...shift,archived:false,attendance_status:''}],'2026-01-01','2026-01-31',{}).score,100,'Voided call-outs do not deduct');
 async function load(path,api,append=''){
- let handler;const code=fs.readFileSync(path,'utf8').replace(/^import .*\n/,'')+append;
+ let handler;const code=fs.readFileSync(path,'utf8').replace(/^import .*\n/gm,'')+append;
  const box={module:{exports:{}},Response,Date,console,setTimeout,clearTimeout,createClientFromRequest:()=>api,Deno:{serve:fn=>handler=fn}};
  vm.runInNewContext((await transform(code,{loader:'ts',format:'cjs'})).code,box);return {handler,exports:box.module.exports};
 }
