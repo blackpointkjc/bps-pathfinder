@@ -519,7 +519,7 @@ export default function GlobalMessageBanner({ user }) {
     // This prelude is part of the existing claimed speech item, not a second
     // realtime listener. Check the current punch at playback so clock-out/post
     // changes are respected even while another announcement is speaking.
-    const propertyHornPrelude = ({ propertyId, callId }) => async isCurrent => {
+    const propertyHornPrelude = ({ propertyId, callId }) => async (isCurrent, hornCompleted = false) => {
       if (!active || !isCurrent()) return false;
       let property;
       let entries;
@@ -548,7 +548,7 @@ export default function GlobalMessageBanner({ user }) {
       if (!active || !isCurrent() || property?.active === false
         || property?.property_monitoring_enabled !== true
         || !isClockedInAtProperty(entries, property)) return false;
-      await playPropertyHorn(() => active && isCurrent());
+      if (!hornCompleted) await playPropertyHorn(() => active && isCurrent());
       return active && isCurrent();
     };
 

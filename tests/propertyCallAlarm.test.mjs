@@ -87,12 +87,22 @@ await flush();
 assert.deepEqual(events, ['horn', 'horn-end', 'speech:Property call.']);
 assert.equal(hornCount, 1);
 failNext = true;
-voice.announceVoice('Retry call.', { eventId: 'call:b:initial', beforeSpeech: async () => { hornCount++; } });
+voice.announceVoice('Retry call.', { eventId: 'call:b:initial', beforeSpeech: async (_isCurrent, hornCompleted) => { if (!hornCompleted) hornCount++; } });
 await flush();
 voice.retryVoiceAnnouncement();
 await flush();
 assert.equal(hornCount, 2); // Speech retry does not replay horn.
 assert.equal(events.filter(item => item === 'speech:Retry call.').length, 2);
+
+// Clock-out between a blocked attempt and retry must suppress retry speech too.
+entries = [punch];
+failNext = true;
+voice.announceVoice('Clock out during retry.', { eventId: 'call:clockout:initial', beforeSpeech: prelude({ propertyId: 'site-a' }) });
+await flush();
+entries = [{ ...punch, clock_out: new Date().toISOString() }];
+voice.retryVoiceAnnouncement();
+await flush();
+assert.equal(events.filter(item => item === 'speech:Clock out during retry.').length, 1);
 
 // A hard duty mismatch suppresses speech too, and does not stall later speech.
 voice.announceVoice('Wrong property call.', { eventId: 'call:wrong:initial', beforeSpeech: async () => false });

@@ -230,9 +230,9 @@ async function nextQueuedSpeech() {
     if (cancelGeneration !== speechCancelGeneration || activeSpeech?.sequence !== item.sequence) { item.resolve?.(false); return; }
     // Run attention audio inside the same claimed, priority-ordered queue item.
     // A speech-engine retry must not repeat an already completed horn.
-    if (item.options.beforeSpeech && !item.preludeCompleted) {
+    if (item.options.beforeSpeech) {
       const isCurrent = () => cancelGeneration === speechCancelGeneration && activeSpeech?.sequence === item.sequence;
-      const allowed = await item.options.beforeSpeech(isCurrent);
+      const allowed = await item.options.beforeSpeech(isCurrent, item.preludeCompleted === true);
       if (allowed === false) {
         if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
         if (pendingSpeech?.sequence === item.sequence) pendingSpeech = null;
