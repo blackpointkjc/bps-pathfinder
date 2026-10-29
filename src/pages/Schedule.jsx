@@ -1,6 +1,6 @@
 import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,19 @@ export default function Schedule() {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
+  useEffect(() => {
+    if (!user?.id) return;
+    let timer;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        clearBase44ReadCacheMatching('function:getMyScheduleData:');
+        queryClient.invalidateQueries({ queryKey: ['myScheduleData'] });
+      }, 800);
+    };
+    const stops = ['CallOut', 'Schedule'].map(name => base44.entities[name].subscribe(refresh));
+    return () => { clearTimeout(timer); stops.forEach(stop => typeof stop === 'function' && stop()); };
+  }, [user?.id, queryClient]);
   const payrollPeriods = scheduleData.payrollPeriods || [];
   const schedules = scheduleData.schedules || [];
   const allWeekStatuses = scheduleData.weekStatuses || [];

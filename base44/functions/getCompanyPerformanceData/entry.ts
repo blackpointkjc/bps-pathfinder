@@ -460,10 +460,14 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
     // The User entity only supports the positional read form; cursor options are
     // rejected there.
     if (name === 'User') {
-      const result = query
-        ? await entities.User.filter(query, '-created_date', PAGE_SIZE)
-        : await entities.User.list('-created_date', PAGE_SIZE);
-      return shape(result);
+      const items: any[] = [];
+      for (let skip = 0; skip < 20000; skip += PAGE_SIZE) {
+        const page = query ? await entities.User.filter(query, '-id', PAGE_SIZE, skip) : await entities.User.list('-id', PAGE_SIZE, skip);
+        if (!Array.isArray(page)) throw new Error('User returned invalid records');
+        items.push(...page);
+        if (page.length < PAGE_SIZE) return { items, next: null };
+      }
+      throw new Error('User directory exceeds complete read limit');
     }
     // A continuation cursor already contains its query and sort. Re-sending
     // either makes Base44 reject the second page of larger company datasets.
@@ -516,6 +520,7 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
             rows.push(...result.items);
             if (!result.next) break;
             cursor = result.next;
+            if (page === MAX_PAGES - 1) throw new Error(name + ' exceeds complete read limit');
           }
         }
         sourceCache.set(key, { at: Date.now(), rows });
