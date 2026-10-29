@@ -19,6 +19,7 @@ import PageErrorBoundary from '@/components/PageErrorBoundary';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
 import OfflineIndicator from '@/components/OfflineIndicator';
+import OfflineAutoSync from '@/components/OfflineAutoSync';
 import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
 const { Layout, mainPage } = pagesConfig;
@@ -333,6 +334,7 @@ const AuthenticatedApp = () => {
             session. Route changes must never unmount/restart the shared browser
             or external GPS stream. Individual pages only consume this stream. */}
         {user && <BackgroundLocationTracker user={user} />}
+        {user && <OfflineAutoSync user={user} />}
         <GlobalDataRealtimeSync enabled={Boolean(user)} />
         <DataConnectionStatus />
         <OfflineIndicator />
