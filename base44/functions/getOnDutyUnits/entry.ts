@@ -1,6 +1,7 @@
 import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
+import { isRateLimitError, rateLimitWaitMillis } from '../../shared/rateLimitRetry.ts';
 
 function roleSet(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
@@ -53,9 +54,13 @@ async function readWithRetry(loader: () => Promise<any[]>, label: string) {
       return Array.isArray(rows) ? rows : [];
     } catch (error: any) {
       lastError = error;
-      // A 429 is a request to pause, not a transient read to repeat three times.
-      if (Number(error?.response?.status || error?.status) === 429
-          || /rate limit|too many requests|\b429\b/i.test(String(error?.message || error))) throw error;
+      // A 429 is a request to pause, not a transient read to repeat instantly.
+      // Wait the window the platform states, then continue so the caller still
+      // receives live unit data instead of a failed request.
+      if (isRateLimitError(error)) {
+        if (attempt < 2) { await delay(rateLimitWaitMillis(error)); continue; }
+        break;
+      }
       if (attempt < 2) await delay(300 * (attempt + 1));
     }
   }

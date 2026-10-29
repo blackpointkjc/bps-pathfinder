@@ -1,6 +1,7 @@
 import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { isLiveLocationHidden, clearedLivePosition } from './privacy.ts';
+import { isRateLimitError, rateLimitWaitMillis, withRateLimitRetry } from '../../shared/rateLimitRetry.ts';
 
 function finiteNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
@@ -34,11 +35,12 @@ function distanceMeters(lat1: unknown, lng1: unknown, lat2: unknown, lng2: unkno
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-// Never immediately retry throttled or timed-out writes: a timed-out create may
-// already have committed. The next scheduled ping checks history before writing.
+// Never immediately retry a timed-out write: it may already have committed.
+// A throttled write (429) definitely did not commit, so pausing for the window
+// the platform states and retrying once keeps the point instead of losing it.
 const isTransientHistoryError = (error: any) => {
   const message = String(error?.message || error);
-  return !/rate limit|too many requests|\b429\b|timed out|timeout/i.test(message) && /temporar|connection/i.test(message);
+  return !/timed out|timeout/i.test(message) && /temporar|connection/i.test(message);
 };
 
 async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
@@ -48,7 +50,9 @@ async function withHistoryRetry<T>(operation: () => Promise<T>): Promise<T> {
       return await operation();
     } catch (error: any) {
       lastError = error;
-      if (!isTransientHistoryError(error) || attempt === 1) break;
+      if (attempt === 1) break;
+      if (isRateLimitError(error)) { await delay(rateLimitWaitMillis(error)); continue; }
+      if (!isTransientHistoryError(error)) break;
       await delay(300 * (attempt + 1));
     }
   }
@@ -62,7 +66,10 @@ Deno.serve(async (req) => {
     if (!authenticatedUser) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     // Token/browser profiles can retain an old unit and rank after promotion.
     // Read the authoritative employee record before any identity/status write.
-    const user = await base44.asServiceRole.entities.User.get(authenticatedUser.id);
+    const user = await withRateLimitRetry(
+      () => base44.asServiceRole.entities.User.get(authenticatedUser.id),
+      { label: 'logLocation employee record' },
+    );
     if (!user) return Response.json({ error: 'Officer account unavailable' }, { status: 401 });
 
     if(isOutOfOffice(user))return Response.json({success:true,status:'Out of Service',out_of_office:true});
@@ -85,10 +92,13 @@ Deno.serve(async (req) => {
     // phone and laptop do not repeatedly invalidate each other's GPS session.
     const trackingSessionKey = String(body.tracking_session_key || `account-session:${user.id || officerEmail}`);
 
-    const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
-      { officer_email: officerEmail },
-      '-last_update',
-      100,
+    const records = await withRateLimitRetry(
+      () => base44.asServiceRole.entities.ActiveOfficer.filter(
+        { officer_email: officerEmail },
+        '-last_update',
+        100,
+      ),
+      { label: 'logLocation active officer session' },
     );
 
     if (body.end_session === true) {

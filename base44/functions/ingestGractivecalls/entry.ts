@@ -1,6 +1,28 @@
 import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+// Entity reads are throttled per caller. A 429 means "pause, then continue": wait
+// the window the platform states and retry once so an ingestion cycle keeps its
+// data instead of failing the whole sync.
+async function readWithThrottleRetry<T>(operation: () => Promise<T>, label: string): Promise<T> {
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const message = String(error?.message || error || '');
+      const throttled = Number(error?.response?.status || error?.status) === 429 || /rate limit|too many requests|\b429\b/i.test(message);
+      if (!throttled || attempt === 1) break;
+      const stated = Number(message.match(/retry after (\d+)\s*s/i)?.[1]);
+      const wait = Number.isFinite(stated) && stated > 0 ? Math.min(8000, stated * 1000 + 300) : 4200;
+      console.warn(`ingestGractivecalls throttled reading ${label}; pausing ${wait}ms`);
+      await new Promise(resolve => setTimeout(resolve, wait));
+    }
+  }
+  throw lastError;
+}
+
 
 // Feed refresh timestamps and CAD-number enrichment are not spoken updates.
 async function announceAssignedCallUpdate(base44: any, previous: any, saved: any) {
