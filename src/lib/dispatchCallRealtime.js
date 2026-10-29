@@ -78,6 +78,9 @@ export function applyDispatchCallEvent(currentCalls, event, {
       next = [...current];
       next[index] = { ...current[index], ...normalized };
     } else {
+      // An update to an old imported row is not proof it re-entered the live feed.
+      // Source-sync reconciliation adds verified rows; genuine creates remain immediate.
+      if (type === 'update') return current;
       next = [normalized, ...current];
     }
   }

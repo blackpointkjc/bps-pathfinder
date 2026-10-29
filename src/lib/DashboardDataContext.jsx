@@ -6,7 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale, requestCadLiveSync } from '@/lib/cadCallFeed';
+import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
@@ -181,31 +181,17 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // First paint from persisted Base44 rows, then keep the upstream CAD source
-    // warm while a command screen is visible. Same-browser attempts are shared and
-    // 429s back off so the board stays fast without starting request storms.
+    // The layout's single CadSourceSyncMonitor owns upstream ingestion.
+    // A dashboard only paints verified reads and reacts to completed source syncs.
     useEffect(() => {
         loadData(true);
-        let stopped = false;
-        const refresh = async () => {
-            if (stopped || document.visibilityState !== 'visible' || !navigator.onLine) return;
-            try {
-                const result = await requestCadLiveSync();
-                if (stopped || result?.skipped || ['recent_live_sync', 'rate_limit_backoff', 'app_data_loading'].includes(result?.reason)) return;
-            } catch (error) {
-                console.warn('[CAD] Guarded upstream sync failed', error?.message || error);
-            }
+        const refresh = () => {
             clearActiveDispatchCallMemoryCache();
             lastRefreshTime.current = 0;
-            await loadData(true);
+            void loadData(true);
         };
-        const timer = window.setInterval(refresh, 30_000);
-        const startup = window.setTimeout(refresh, 1_000);
-        return () => {
-            stopped = true;
-            window.clearInterval(timer);
-            window.clearTimeout(startup);
-        };
+        window.addEventListener('bps-cad-ingest-finished', refresh);
+        return () => window.removeEventListener('bps-cad-ingest-finished', refresh);
     }, [loadData]);
 
     // Old-call archival is owned by the scheduled Base44 workflow. Browsers do not

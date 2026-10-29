@@ -48,10 +48,10 @@ Deno.serve(async (req) => {
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
             $or:[{external_call_id:{$in:[...keys]}},{time_received:{$in:times}},
               {$and:[{source_channel:{$exists:false}},{external_call_id:{$exists:false}}]},
-              {assigned_units:{$exists:true,$ne:[]}}],
+              {assigned_units:{$exists:true,$ne:[]}}, {source:'pulsepoint'}],
           }, '-created_date', 1000);
           return rows.filter((row:any) => {
-            const imported = /grac|website|pulsepoint/i.test(String(row.source_channel || '')+' '+external(row)) || ['richmond','henrico','chesterfield','pulsepoint'].includes(lower(row.source));
+            const imported = lower(row.source) !== 'pulsepoint' && (/grac|website/i.test(String(row.source_channel || '')+' '+external(row)) || ['richmond','henrico','chesterfield'].includes(lower(row.source)));
             return !imported || (row.assigned_units || []).length > 0 || keys.has(external(row)) || fallbackKeys.has(legacy(row));
           });
         })() };
