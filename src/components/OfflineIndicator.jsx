@@ -1,52 +1,47 @@
-import { useState, useEffect } from 'react';
-import { WifiOff, Wifi } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useEffect, useState } from 'react';
+import { WifiOff } from 'lucide-react';
+import { useOfflineMode } from '@/lib/offlineMode';
 
+/* Offline mode engages by itself when the device loses its connection. There is
+   nothing to switch on: this chip only reports the state the app is already in. */
 export default function OfflineIndicator() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [showAlert, setShowAlert] = useState(false);
+  const offline = useOfflineMode();
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setShowAlert(true);
-      setTimeout(() => setShowAlert(false), 3000);
-    };
+    if (!offline) return;
+    setRestored(false);
+  }, [offline]);
 
-    const handleOffline = () => {
-      setIsOnline(false);
-      setShowAlert(true);
-    };
+  useEffect(() => {
+    if (offline) return undefined;
+    setRestored(true);
+    const timer = setTimeout(() => setRestored(false), 4000);
+    return () => clearTimeout(timer);
+  }, [offline]);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+  if (offline) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="pointer-events-none fixed left-1/2 top-2 z-[80] flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-400/60 bg-slate-950/95 px-3 py-1.5 text-[11px] font-bold text-amber-200 shadow-lg"
+      >
+        <WifiOff className="h-3.5 w-3.5" />
+        Offline mode · saved pages and street maps
+      </div>
+    );
+  }
 
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  if (!showAlert) return null;
+  if (!restored) return null;
 
   return (
-    <Alert 
-      className={`fixed top-4 right-4 z-50 w-auto shadow-lg ${
-        isOnline 
-          ? 'bg-green-50 border-green-500 text-green-900' 
-          : 'bg-amber-50 border-amber-500 text-amber-900'
-      }`}
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed left-1/2 top-2 z-[80] -translate-x-1/2 rounded-full border border-emerald-400/60 bg-slate-950/95 px-3 py-1.5 text-[11px] font-bold text-emerald-200 shadow-lg"
     >
-      <div className="flex items-center gap-2">
-        {isOnline ? (
-          <Wifi className="w-5 h-5 text-green-600" />
-        ) : (
-          <WifiOff className="w-5 h-5 text-amber-600" />
-        )}
-        <AlertDescription>
-          {isOnline ? 'Back online - syncing data...' : 'You are offline - data will sync when connected'}
-        </AlertDescription>
-      </div>
-    </Alert>
+      Back online · syncing
+    </div>
   );
 }

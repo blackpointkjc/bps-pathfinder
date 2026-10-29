@@ -6,6 +6,7 @@ import '@/responsive.css'
 import '@/field-readability.css'
 import { installRequiredPrintFooter } from '@/utils/requiredPrintFooter'
 import { installGlobalRuntimeIssueCapture } from '@/utils/appDiagnostics'
+import { primeOfflinePages } from '@/lib/offlineMode'
 
 // "ResizeObserver loop completed with undelivered notifications." is a benign
 // browser notification from libraries (recharts, Leaflet, Radix) whose resize
@@ -25,13 +26,18 @@ window.addEventListener('error', event => {
 installRequiredPrintFooter()
 installGlobalRuntimeIssueCapture()
 
-// Keep the offline app shell available without waiting for someone to press the
-// offline button: register the worker after load and let it cache what is fetched.
+// Offline mode is automatic: the worker registers on its own, saves the pages
+// this device has opened, and takes over as soon as the network drops.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/pathfinder-sw.js', { scope: '/' }).catch(error => {
-      console.warn('[Pathfinder] Offline worker registration skipped:', error?.message || error);
-    });
+    navigator.serviceWorker
+      .register('/pathfinder-sw.js', { scope: '/' })
+      .then(() => primeOfflinePages())
+      .then(() => navigator.serviceWorker.ready)
+      .then(() => window.addEventListener('online', () => primeOfflinePages()))
+      .catch(error => {
+        console.warn('[Pathfinder] Offline worker registration skipped:', error?.message || error);
+      });
   });
 }
 

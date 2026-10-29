@@ -18,6 +18,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import DataConnectionStatus from '@/components/DataConnectionStatus';
+import OfflineIndicator from '@/components/OfflineIndicator';
 import PendingUserOnboarding from '@/components/PendingUserOnboarding';
 
 const { Layout, mainPage } = pagesConfig;
@@ -334,6 +335,7 @@ const AuthenticatedApp = () => {
         {user && <BackgroundLocationTracker user={user} />}
         <GlobalDataRealtimeSync enabled={Boolean(user)} />
         <DataConnectionStatus />
+        <OfflineIndicator />
         <AppUpdateNotice />
         <Routes location={location}>
       <Route
