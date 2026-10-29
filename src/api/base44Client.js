@@ -85,6 +85,8 @@ const writeInflight = new Map();
 const readQueue = [];
 let activeReads = 0;
 let activeBackgroundReads = 0;
+let activeAnalyticsReads = 0;
+const isAnalyticsRead = meta => meta?.kind === 'function' && ['getCompanyAnalyticsSegment','getCompanyPerformanceData','getCompanyAnalyticsData'].includes(meta?.name);
 let activeWrites = 0;
 let recentRateLimitAt = null;
 let readRecoveryUntil = 0;
@@ -244,6 +246,12 @@ function pumpReads() {
     // Do not leave an idle slot while foreground pages wait for data.
     // Use both bounded slots when no critical read is waiting. Priority ordering
     // still starts auth and live operations first; rate-limit backoff is unchanged.
+    // Never let two long company snapshots occupy both live-CAD read slots.
+    if (activeAnalyticsReads) {
+      const eligible = readQueue.findIndex(job => !isAnalyticsRead(job.meta) && waitFor(job) === 0);
+      if (eligible < 0) break;
+      if (eligible > 0) readQueue.unshift(readQueue.splice(eligible, 1)[0]);
+    }
     const nextWait = waitFor(readQueue[0]);
     if (nextWait > 0) {
       schedulePump(nextWait + 25);
@@ -259,6 +267,7 @@ function pumpReads() {
     window.clearTimeout(job.queueTimer);
     job.markStarted();
     activeReads += 1;
+    if (isAnalyticsRead(job.meta)) activeAnalyticsReads += 1;
     if (job.priority < 90) activeBackgroundReads += 1;
     const startedAt = Date.now();
     const cacheGeneration = readCacheVersion(job.key);
@@ -310,6 +319,7 @@ function pumpReads() {
       })
       .finally(() => {
         activeReads -= 1;
+        if (isAnalyticsRead(job.meta)) activeAnalyticsReads -= 1;
         if (job.priority < 90) activeBackgroundReads -= 1;
         pumpReads();
       });
@@ -401,7 +411,7 @@ function invalidateReadCacheForWrite(meta = {}) {
     }
     if (meta.name === 'TimeEntry') { addFunction('getMyTimeEntries'); addFunction('manageHRTimeEntries'); }
     if (meta.name === 'Location') addFunction('getNavigationLocations');
-    if (['Schedule','PlannedShift','User','CallOut'].includes(meta.name)) addFunction('getCallOutShifts');
+    if (['Schedule','PlannedShift','User','CallOut'].includes(meta.name)) { addFunction('getCallOutShifts'); addFunction('getMyScheduleData'); }
     if (meta.name === 'DispatchCall') addFunction('getActiveDispatchCalls');
     if (meta.name === 'ActiveOfficer') addFunction('getOnDutyUnits');
   }
@@ -415,6 +425,7 @@ function invalidateReadCacheForWrite(meta = {}) {
 
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
+    if (name === 'recordSupervisorCallOut') { addFunction('getMyScheduleData'); addEntity('CallOut'); addEntity('Schedule'); }
     if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
       // Routine GPS/heartbeats are applied by the realtime location hub. Only
       // session/status transitions need a fresh canonical roster/directory read.

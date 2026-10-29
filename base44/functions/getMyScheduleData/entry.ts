@@ -32,7 +32,9 @@ Deno.serve(async (req) => {
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
     const optionalErrors: string[] = [];
-    const officerEmail = String(officer.work_email || officer.pathfinder_email || officer.email || '').trim().toLowerCase();
+
+    const aliases = [...new Set([officer.email, officer.work_email, officer.pathfinder_email, officer.microsoft_email, officer.outlook_email, ...(officer.email_aliases || [])].map(value => String(value || '').trim().toLowerCase()).filter(Boolean))];
+    const identityQuery = { officer_email: { $in: aliases } };
 
     // Load the officer's core schedule first, then supporting datasets in a
     // controlled sequence. The previous seven-read Promise.all burst could be
@@ -40,8 +42,9 @@ Deno.serve(async (req) => {
     // optional vehicle/PTO lookup was temporarily unavailable.
     const schedules = await readWithRetry(
       'officer schedule',
-      () => base44.asServiceRole.entities.Schedule.filter({ officer_email: officerEmail }, '-shift_date', 1000),
+      () => base44.asServiceRole.entities.Schedule.filter(identityQuery, '-shift_date', 1000),
     );
+    const callOuts = await readWithRetry('call-outs', () => base44.asServiceRole.entities.CallOut.filter(identityQuery, '-call_out_date', 1000));
     const weekStatuses = await readWithRetry(
       'schedule week status',
       () => base44.asServiceRole.entities.ScheduleWeekStatus.list('-week_start_date', 500),
@@ -74,9 +77,10 @@ Deno.serve(async (req) => {
 
     return Response.json({
       schedules: schedules || [],
+      callOuts: callOuts.filter((row: any) => row.voided !== true && row.active !== false),
       sourceErrors: [...optionalErrors],
       weekStatuses: weekStatuses || [],
-      vehicleAssignments: (vehicleAssignments || []).filter((a: any) => String(a.primary_officer_email || '').toLowerCase() === officerEmail || String(a.partner_officer_email || '').toLowerCase() === officerEmail),
+      vehicleAssignments: (vehicleAssignments || []).filter((a: any) => aliases.includes(String(a.primary_officer_email || '').toLowerCase()) || aliases.includes(String(a.partner_officer_email || '').toLowerCase())),
       dutySupervisorAssignments: dutySupervisorAssignments || [],
       locations: (locations || []).filter((location: any) => location.active !== false),
       payrollPeriods: payrollPeriods || [],

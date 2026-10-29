@@ -436,11 +436,11 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
   const read = (fn: () => Promise<any>) => {
     const task = tail.then(async () => {
       let lastError: any = null;
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         try { return await fn(); }
         catch (error: any) {
           lastError = error;
-          if (!retryable(error) || attempt === 3) throw error;
+          if (!retryable(error) || attempt === 1) throw error;
           const status = Number(error?.status || error?.response?.status || 0);
           // A rate limit is a wait, not a missing source: back off instead of
           // marking the whole source unavailable for every officer.
@@ -465,8 +465,10 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
         : await entities.User.list('-created_date', PAGE_SIZE);
       return shape(result);
     }
+    // A continuation cursor already contains its query and sort. Re-sending
+    // either makes Base44 reject the second page of larger company datasets.
+    if (cursor) return shape(await entities[name].list({ cursor, limit: PAGE_SIZE }));
     const options: any = { sort: '-created_date', limit: PAGE_SIZE };
-    if (cursor) options.cursor = cursor;
     const result = query ? await entities[name].filter(query, options) : await entities[name].list(options);
     return shape(result);
   };

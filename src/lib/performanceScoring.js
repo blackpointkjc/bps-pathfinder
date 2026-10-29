@@ -1046,7 +1046,8 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
   const nowTime = easternTimeKey(new Date());
   const nowWall = wallClockMinute(today, nowTime);
   const monthlySchedules = schedules.filter(schedule => {
-    if (schedule.archived === true || schedule.is_open === true || !schedule.shift_date || !schedule.start_time) return false;
+    const calledOut = schedule.attendance_status === 'called_out' || callOuts.some(item => item.original_shift_id === schedule.id && item.call_out_type === 'called_out' && item.voided !== true && item.active !== false);
+    if ((schedule.archived === true && !calledOut) || schedule.is_open === true || !schedule.shift_date || !schedule.start_time) return false;
     if (monthStart && schedule.shift_date < monthStart) return false;
     if (monthEnd && schedule.shift_date > monthEnd) return false;
     const startWall = wallClockMinute(schedule.shift_date, schedule.start_time);

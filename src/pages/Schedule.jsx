@@ -54,13 +54,7 @@ export default function Schedule() {
 
   // A recorded call-out belongs on the officer's own schedule. Without this the
   // shift still looked like a normal assignment the officer was expected to work.
-  const { data: myCallOuts = [] } = useQuery({
-    queryKey: ['myScheduleCallOuts', user?.email],
-    queryFn: () => base44.entities.CallOut.filter({ officer_email: user.email }, '-call_out_date', 200),
-    enabled: !!user?.email,
-    staleTime: 60000,
-    refetchOnWindowFocus: false,
-  });
+  const myCallOuts = scheduleData.callOuts || [];
 
   const callOutForShift = React.useCallback((shift) => {
     const shiftDate = String(shift?.shift_date || '').slice(0, 10);
@@ -69,10 +63,11 @@ export default function Schedule() {
     return (myCallOuts || []).find(row => {
       if (String(row?.call_out_type || '') !== 'called_out') return false;
       if (row?.voided === true || row?.active === false) return false;
+      if (row.original_shift_id) return String(row.original_shift_id) === String(shift.id);
       if (String(row?.call_out_date || '').slice(0, 10) !== shiftDate) return false;
       const site = normalizeSite(row?.location || row?.original_location);
       return !site || !shiftSite || site === shiftSite;
-    }) || null;
+    }) || (shift.attendance_status === 'called_out' ? { reason: 'Call-out recorded for this shift' } : null);
   }, [myCallOuts]);
 
   const intervalFor = (dateValue, startValue, endValue) => {
