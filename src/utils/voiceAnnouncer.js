@@ -232,7 +232,14 @@ async function nextQueuedSpeech() {
     // A speech-engine retry must not repeat an already completed horn.
     if (item.options.beforeSpeech && !item.preludeCompleted) {
       const isCurrent = () => cancelGeneration === speechCancelGeneration && activeSpeech?.sequence === item.sequence;
-      await item.options.beforeSpeech(isCurrent);
+      const allowed = await item.options.beforeSpeech(isCurrent);
+      if (allowed === false) {
+        if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
+        if (pendingSpeech?.sequence === item.sequence) pendingSpeech = null;
+        item.resolve?.(false);
+        nextQueuedSpeech();
+        return;
+      }
       item.preludeCompleted = true;
       if (!isCurrent()) { item.resolve?.(false); return; }
     }
