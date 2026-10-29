@@ -4,6 +4,8 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 const CACHE_KEY = 'bps-cad-active-calls-v5';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+// Active calls are a rolling one-hour view.
+const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
@@ -25,9 +27,12 @@ function callTimestamp(call) {
 
 function isVisibleActiveCall(call) {
   const status = String(call?.status || '').trim().toLowerCase();
-  // A long-running incident remains active until an explicit closure. Its
-  // received time is not an expiry time, even when the upstream feed is delayed.
-  return call?.manual_dismissed !== true && !TERMINAL_STATUSES.has(status);
+  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(status)) return false;
+  // The active board is a rolling view of the last hour only. Calls whose source
+  // never published a closure used to sit on it for days (300+ hours), so age is
+  // now the hard limit regardless of the stored status.
+  const stamp = callTimestamp(call);
+  return stamp > 0 && Date.now() - stamp <= ACTIVE_WINDOW_MS;
 }
 
 function filterVisibleActiveCalls(rows = []) {

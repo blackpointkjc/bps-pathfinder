@@ -12,8 +12,14 @@ function callTimestamp(call: any) {
   return Number.isFinite(received) && received > 0 ? received : 0;
 }
 
+// Active calls are a rolling one-hour view. Rows whose source never published a
+// closure previously stayed on the board for days.
+const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
+
 function isVisibleActiveCall(call: any) {
-  return call?.manual_dismissed !== true && !TERMINAL_STATUSES.has(lower(call?.status));
+  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(lower(call?.status))) return false;
+  const stamp = callTimestamp(call);
+  return stamp > 0 && Date.now() - stamp <= ACTIVE_WINDOW_MS;
 }
 
 Deno.serve(async (req) => {
