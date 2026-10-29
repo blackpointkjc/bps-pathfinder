@@ -520,7 +520,7 @@ export default function GlobalMessageBanner({ user }) {
     // realtime listener. Check the current punch at playback so clock-out/post
     // changes are respected even while another announcement is speaking.
     const propertyHornPrelude = ({ propertyId, callId }) => async isCurrent => {
-      if (!active || !isCurrent()) return;
+      if (!active || !isCurrent()) return false;
       let property;
       let entries;
       try {
@@ -538,17 +538,18 @@ export default function GlobalMessageBanner({ user }) {
         ]);
         property = location;
         const payload = response?.data || response || {};
-        if (payload.error || !Array.isArray(payload.entries)) return;
+        if (payload.error || !Array.isArray(payload.entries)) return false;
         entries = payload.entries;
       } catch (error) {
-        // A duty lookup failure must not suppress the established CAD speech.
-        console.warn('Property horn duty check failed:', error?.message);
-        return;
+        // Fail closed: neither the horn nor call speech may bypass duty matching.
+        console.warn('Property call duty check failed:', error?.message);
+        return false;
       }
       if (!active || !isCurrent() || property?.active === false
         || property?.property_monitoring_enabled !== true
-        || !isClockedInAtProperty(entries, property)) return;
+        || !isClockedInAtProperty(entries, property)) return false;
       await playPropertyHorn(() => active && isCurrent());
+      return active && isCurrent();
     };
 
     const showPropertyCall = async (record, options = {}) => {
