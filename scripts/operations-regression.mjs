@@ -12,6 +12,10 @@ for(const rank of ['Colonel','Lt Colonel','Major','Officer']){
  assert.equal(score.score,0,rank+' call-out must not receive 100 or vanish because its shift was archived');assert.equal(score.scheduled,1);
  assert.equal(calculateCallOutAttendance([],[],'2026-01-01','2026-01-31',{rank}).score,null,'No evidence is not 100%');
 }
+for (const rank of ['Colonel','Lt Colonel','Major','Officer']) {
+ const job=context.module.exports.calculateJobDutyCompliance({officer:{id:'u',email:'u@example.test',rank},timeEntries:[{id:'t',officer_email:'u@example.test',location:'Creighton',clock_in:'2026-01-06T13:00:00Z',clock_out:'2026-01-06T21:00:00Z'}],dutyRules:[{property_site:'Creighton',active:true,daily_activity_report_required:true,effective_date:'2026-01-01'}],monthStart:'2026-01-01',monthEnd:'2026-01-31'});
+ assert.equal(job.dailyActivity.missed,1);assert(job.score<100,rank+' missing DAR must lower performance');assert.equal(job.commandExempt,false);
+}
 assert.equal(calculateCallOutAttendance([{...callout,voided:true}],[{...shift,archived:false,attendance_status:''}],'2026-01-01','2026-01-31',{}).score,100,'Voided call-outs do not deduct');
 async function load(path,api,append=''){
  let handler;const code=fs.readFileSync(path,'utf8').replace(/^import .*\n/gm,'')+append;

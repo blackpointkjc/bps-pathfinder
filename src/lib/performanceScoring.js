@@ -970,7 +970,7 @@ export function calculateJobDutyCompliance({
   const incidentScore = incidentRequired ? Math.round((incidentCompleted / incidentRequired) * 100) : null;
   const qrScore = qrRequired ? Math.round((qrCompleted / qrRequired) * 100) : null;
   const totalRequired = darRequired + incidentRequired + qrRequired;
-  const commandExempt = isCommandPerformanceExempt(officer);
+  const commandExempt = false;
   const totalMissed = Math.max(0, darRequired - darCompleted)
     + Math.max(0, incidentRequired - incidentCompleted)
     + Math.max(0, qrRequired - qrCompleted);
@@ -1063,7 +1063,7 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
   // denominator so the officer is neither rewarded nor penalized for it.
   const excusedItems = recorded.filter(item => exemptKeys.has(`call_out:${item.id}`));
   const applicable = recorded.filter(item => !exemptKeys.has(`call_out:${item.id}`));
-  const commandExempt = isCommandPerformanceExempt(officer);
+  const commandExempt = false;
   if (monthlySchedules.length === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
   const denominator = Math.max(0, monthlySchedules.length - excusedItems.length);
   if (denominator === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
