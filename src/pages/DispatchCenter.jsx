@@ -38,7 +38,6 @@ import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLas
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v4';
-const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
@@ -142,7 +141,7 @@ export default function DispatchCenter({embedded=false}) {
                 return;
             }
             setActiveCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: ACTIVE_CALL_MAX_AGE_MS, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 200 });
                 try {
                     window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
@@ -415,17 +414,9 @@ export default function DispatchCenter({embedded=false}) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const recentCalls = [...uniqueCalls.values()].filter(call => {
-                const createdAt = parseServerTimestamp(call.created_date)?.getTime() || 0;
-                const upstreamAt = parseServerTimestamp(call.time_received)?.getTime() || 0;
-                const receivedAt = upstreamAt && createdAt && Math.abs(upstreamAt - createdAt) < 24 * 60 * 60 * 1000
-                    ? upstreamAt
-                    : (createdAt || upstreamAt);
-                const isFresh = Number.isFinite(receivedAt) && receivedAt > 0 && Date.now() - receivedAt < ACTIVE_CALL_MAX_AGE_MS;
-                // Keep Dispatch Center aligned with the one-hour active-call window.
-                // Older rows belong in Call History even if an upstream status lags.
-                return isFresh && !['Cleared', 'Cancelled'].includes(call.status) && call.manual_dismissed !== true;
-            });
+            const recentCalls = [...uniqueCalls.values()].filter(call =>
+                !['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(call.status || '').toLowerCase()) && call.manual_dismissed !== true
+            );
 
             recentCalls.sort((a, b) => {
                 const timeA = parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0;

@@ -263,7 +263,7 @@ export function DashboardDataProvider({ children }) {
                 return;
             }
             setCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, maxAgeMs: 60 * 60_000, limit: 300 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 300 });
                 try {
                     window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
