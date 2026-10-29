@@ -236,6 +236,8 @@ async function nextQueuedSpeech() {
       if (allowed === false) {
         if (activeSpeech?.sequence === item.sequence) activeSpeech = null;
         if (pendingSpeech?.sequence === item.sequence) pendingSpeech = null;
+        if (lastBlockedSpeech?.sequence === item.sequence) lastBlockedSpeech = null;
+        clearAutomaticRetry(true);
         item.resolve?.(false);
         nextQueuedSpeech();
         return;
