@@ -41,9 +41,9 @@ await prelude({ propertyId: 'site-a' })(() => true);
 await prelude({ callId: 'call-a' })(() => true);
 assert.equal(horns, 2); // Both raw PropertyAlert and durable CallStatusLog resolve the same post.
 entries = [{ ...punch, clock_out: new Date().toISOString() }];
-await prelude({ propertyId: 'site-a' })(() => true);
+assert.equal(await prelude({ propertyId: 'site-a' })(() => true), false);
 assert.equal(horns, 2);
-await prelude({ propertyId: 'site-a' })(() => false);
+assert.equal(await prelude({ propertyId: 'site-a' })(() => false), false);
 assert.equal(lookups, 3);
 
 // Actual voice queue: dedupe occurs before the prelude and speech awaits it.
@@ -93,6 +93,13 @@ voice.retryVoiceAnnouncement();
 await flush();
 assert.equal(hornCount, 2); // Speech retry does not replay horn.
 assert.equal(events.filter(item => item === 'speech:Retry call.').length, 2);
+
+// A hard duty mismatch suppresses speech too, and does not stall later speech.
+voice.announceVoice('Wrong property call.', { eventId: 'call:wrong:initial', beforeSpeech: async () => false });
+voice.announceVoice('Next valid message.', { eventId: 'next:valid' });
+await flush();
+assert.equal(events.includes('speech:Wrong property call.'), false);
+assert.equal(events.includes('speech:Next valid message.'), true);
 
 // Cancelling during the horn prevents the following announcement.
 voice.announceVoice('Cancelled call.', { eventId: 'call:c:initial', beforeSpeech });
