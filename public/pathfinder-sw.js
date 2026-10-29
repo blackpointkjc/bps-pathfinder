@@ -6,6 +6,21 @@
 const CACHE = 'pathfinder-offline-shell-v3';
 const SHELL_URLS = ['/', '/index.html'];
 
+/* Street-map tiles are a separate cache so a downloaded area survives app
+   updates and can be served with no connection. The live map rotates between
+   the provider's a-d subdomains, so every tile request is stored and matched
+   under one canonical host. */
+const TILE_CACHE = 'pathfinder-map-tiles-v1';
+const TILE_HOSTS = ['basemaps.cartocdn.com'];
+const BLANK_TILE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+const tileHost = (url) => TILE_HOSTS.find((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
+const canonicalTileKey = (url) => `https://a.${tileHost(url)}${url.pathname}${url.search}`;
+const blankTile = () => {
+  const bytes = Uint8Array.from(atob(BLANK_TILE), (char) => char.charCodeAt(0));
+  return new Response(bytes, { status: 200, headers: { 'Content-Type': 'image/png' } });
+};
+
 const isCacheablePath = (pathname) =>
   !pathname.startsWith('/api/') &&
   !pathname.startsWith('/functions/') &&
@@ -91,6 +106,25 @@ self.addEventListener('fetch', (event) => {
   } catch {
     return;
   }
+  if (tileHost(url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(TILE_CACHE);
+      const key = canonicalTileKey(url);
+      const cached = await cache.match(key);
+      if (cached) return cached;
+      try {
+        const response = await fetch(request);
+        if (response) await cache.put(key, response.clone()).catch(() => {});
+        return response;
+      } catch {
+        // A tile outside a downloaded area must not break the map: Leaflet gets a
+        // transparent tile and keeps the rest of the layer intact.
+        return blankTile();
+      }
+    })());
+    return;
+  }
+
   if (url.origin !== self.location.origin || !isCacheablePath(url.pathname)) return;
 
   if (isNavigationRequest(request)) {

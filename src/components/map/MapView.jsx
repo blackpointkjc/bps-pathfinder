@@ -312,10 +312,12 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             touchRotate={false}
             shiftKeyRotate={false}
             bearing={0}
-            minZoom={10}
+            minZoom={7}
             maxZoom={20}
         >
-            {!useOfflineTiles && <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />}
+            {/* Kept mounted while offline too: saved street tiles are served from this
+                device, so the downloaded map renders instead of an empty canvas. */}
+            <PathfinderTileLayer theme={mapTheme} satellite={baseMapType === 'satellite'} />
             <OfflineMapControl owner={currentUserId} offline={useOfflineTiles} />
             <MapViewportSync />
             <MapClickSelector enabled={mapPickEnabled && !isNavigating} onPick={onMapPick} />
