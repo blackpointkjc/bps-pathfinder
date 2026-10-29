@@ -371,6 +371,9 @@ function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
     const key = liveMergeKey(api);
     const web = byKey.get(key);
     if (!web) {
+      // The API can lag behind the website. Enrich website rows, never union
+      // disappeared API-only incidents back into a successful live table.
+      if (websiteCalls.length) continue;
       byKey.set(key, { ...api, source_channel: api.source_channel || 'grac_api' });
       continue;
     }
@@ -985,7 +988,7 @@ function chooseCanonical(records: any[]) {
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 10_000;
+const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 30_000;
 
 async function acquireIngestionLease(base44: any) {
   const token = crypto.randomUUID();
@@ -1294,6 +1297,15 @@ Deno.serve(async (req) => {
       ...persistableCall(call),
       source_first_seen_at: call.source_first_seen_at || sourceObservedAt,
     }));
+    // Publish membership before costly geocoding/alerts. A later enrichment
+    // timeout must not keep yesterday's database rows on today's active board.
+    await base44.asServiceRole.entities.CadCounter.update(lease.id, {
+      active_source_snapshot_at: sourceObservedAt,
+      active_source_snapshot: incoming.map(call => ({
+        external_call_id: externalKey(call), agency: call.agency,
+        incident: call.incident, time_received: call.time_received,
+      })),
+    });
     // Website-only rows do not carry map coordinates. Geocode only the newest
     // unmatched rows immediately so monitored-property alerts can be evaluated in
     // the same minute rather than waiting for the slower API to catch up.

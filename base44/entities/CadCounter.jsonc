@@ -57,6 +57,17 @@
     },
     "migration_updated": {
       "type": "number"
+    },
+    "active_source_snapshot": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Identities in the last successfully parsed upstream active list; never replaced on a failed poll"
+    },
+    "active_source_snapshot_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

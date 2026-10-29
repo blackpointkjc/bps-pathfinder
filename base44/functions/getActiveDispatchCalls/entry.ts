@@ -34,11 +34,27 @@ Deno.serve(async (req) => {
     let cached = readCache.get(cacheKey);
     if (!cached || Date.now() - cached.at >= 3000) {
       if (!cached?.pending) {
-        cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.filter({
-          manual_dismissed: {$ne:true},
-          status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
-
-        }, '-created_date', 1000) };
+        cached = { at:0, rows:[], pending:(async () => {
+          const counter = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key:'dispatch_call' }, '-updated_date', 1))[0];
+          if (!Array.isArray(counter?.active_source_snapshot)) throw new Error('Live source verification is pending. Refresh after the next source sync.');
+          const snapshot = counter.active_source_snapshot;
+          const external = (row: any) => String(row.external_call_id || String(row.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1] || '');
+          const legacy = (row: any) => [String(row.agency || '').trim().toUpperCase(), String(row.time_received || ''), String(row.incident || '').trim().toUpperCase().replace(/\s+/g,' ')].join('|');
+          const keys = new Set(snapshot.map(external).filter(Boolean));
+          const fallbackKeys = new Set(snapshot.map(legacy));
+          const times = [...new Set(snapshot.map((row:any)=>row.time_received).filter(Boolean))];
+          const rows = await base44.asServiceRole.entities.DispatchCall.filter({
+            manual_dismissed: {$ne:true},
+            status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
+            $or:[{external_call_id:{$in:[...keys]}},{time_received:{$in:times}},
+              {$and:[{source_channel:{$exists:false}},{external_call_id:{$exists:false}}]},
+              {assigned_units:{$exists:true,$ne:[]}}],
+          }, '-created_date', 1000);
+          return rows.filter((row:any) => {
+            const imported = /grac|website|pulsepoint/i.test(String(row.source_channel || '')+' '+external(row)) || ['richmond','henrico','chesterfield','pulsepoint'].includes(lower(row.source));
+            return !imported || (row.assigned_units || []).length > 0 || keys.has(external(row)) || fallbackKeys.has(legacy(row));
+          });
+        })() };
         readCache.set(cacheKey, cached);
       }
       try { cached.rows = await cached.pending!; cached.at = Date.now(); cached.pending = undefined; }

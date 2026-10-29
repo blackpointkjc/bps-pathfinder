@@ -1,7 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const CACHE_KEY = 'bps-cad-active-calls-v4';
+const CACHE_KEY = 'bps-cad-active-calls-v5';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 let inFlight = null;
@@ -164,19 +164,8 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       }
     }
 
-    // Preserve a direct-read compatibility fallback while an updated backend
-    // function is warming up, then fall back to the last verified local queue.
-    try {
-      const rows = await withRequestTimeout(base44.entities.DispatchCall.list('-created_date', BACKEND_FEED_LIMIT), 10000, 'Active call fallback');
-      if (Array.isArray(rows)) {
-        const deduped = dedupeOperationalCalls(rows);
-        saveLastGoodCalls(deduped);
-        memoryRows = deduped;
-        memoryRowsAt = Date.now();
-        return deduped;
-      }
-    } catch {}
-
+    // Never fall back to an unverified raw entity list: historical open statuses
+    // are exactly what inflated the active board to the 500-row response cap.
     const cached = readLastGoodCalls();
     if (cached.length) return cached;
     throw primaryError;
