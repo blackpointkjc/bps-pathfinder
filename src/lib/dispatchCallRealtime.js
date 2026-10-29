@@ -7,14 +7,7 @@ let connectError = null;
 let reconnectTimer = null;
 
 const HIDDEN = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-const ACTIVE_CALL_MAX_AGE_MS = 60 * 60 * 1000;
 const statusOf = call => String(call?.status || '').trim().toLowerCase();
-const isPulsePointCall = call => {
-  const sourceChannel = String(call?.source_channel || '').toLowerCase();
-  const externalId = String(call?.external_call_id || '').toLowerCase();
-  const source = String(call?.source || '').toLowerCase();
-  return sourceChannel.includes('pulsepoint') || externalId.startsWith('pulsepoint:') || source === 'pulsepoint';
-};
 
 function startEntitySubscription() {
   if (entityUnsubscribe || connectError) return;
@@ -67,7 +60,6 @@ export function subscribeDispatchCallChanges(listener) {
 
 export function applyDispatchCallEvent(currentCalls, event, {
   hideClosed = true,
-  maxAgeMs = ACTIVE_CALL_MAX_AGE_MS,
   limit = 250,
 } = {}) {
   const current = Array.isArray(currentCalls) ? currentCalls : [];
@@ -90,15 +82,10 @@ export function applyDispatchCallEvent(currentCalls, event, {
     }
   }
 
-  const now = Date.now();
   next = next.filter(call => {
     if (!call?.id) return false;
     if (hideClosed && (HIDDEN.has(statusOf(call)) || call.manual_dismissed === true)) return false;
-    if (!maxAgeMs || isPulsePointCall(call)) return true;
-    const created = Date.parse(call.created_date || '');
-    const received = Date.parse(call.time_received || '');
-    const reliable = created && received && Math.abs(created - received) < 24 * 60 * 60 * 1000 ? received : (created || received);
-    return Number.isFinite(reliable) && reliable > 0 && now - reliable <= maxAgeMs;
+    return true;
   });
 
   return dedupeOperationalCalls(next).slice(0, limit);
