@@ -2,7 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const readCache = new Map<string, { at:number; rows:any[]; pending?:Promise<any[]> }>();
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
-const ACTIVE_MAX_AGE_MS = 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
 function callTimestamp(call: any) {
@@ -13,15 +12,8 @@ function callTimestamp(call: any) {
   return Number.isFinite(received) && received > 0 ? received : 0;
 }
 
-function isPulsePointCall(call: any) {
-  return lower(call?.source_channel).includes('pulsepoint') || lower(call?.external_call_id).startsWith('pulsepoint:') || lower(call?.source) === 'pulsepoint';
-}
-
-function isVisibleActiveCall(call: any, now = Date.now()) {
-  if (TERMINAL_STATUSES.has(lower(call?.status))) return false;
-  if (isPulsePointCall(call)) return true;
-  const stamp = callTimestamp(call);
-  return stamp > 0 && now - stamp < ACTIVE_MAX_AGE_MS;
+function isVisibleActiveCall(call: any) {
+  return call?.manual_dismissed !== true && !TERMINAL_STATUSES.has(lower(call?.status));
 }
 
 Deno.serve(async (req) => {
@@ -45,13 +37,7 @@ Deno.serve(async (req) => {
         cached = { at:0, rows:[], pending:base44.asServiceRole.entities.DispatchCall.filter({
           manual_dismissed: {$ne:true},
           status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
-          $or: [
-            {created_date:{$gte:new Date(Date.now()-ACTIVE_MAX_AGE_MS).toISOString()}},
-            {time_received:{$gte:new Date(Date.now()-ACTIVE_MAX_AGE_MS).toISOString()}},
-            {source_channel:{$regex:'pulsepoint',$options:'i'}},
-            {external_call_id:{$regex:'^pulsepoint:',$options:'i'}},
-            {source:{$regex:'^pulsepoint$',$options:'i'}},
-          ],
+
         }, '-created_date', 1000) };
         readCache.set(cacheKey, cached);
       }
@@ -59,9 +45,8 @@ Deno.serve(async (req) => {
       catch (error) { readCache.delete(cacheKey); throw error; }
     }
     const rows = cached.rows;
-    const now = Date.now();
     const calls = (Array.isArray(rows) ? rows : [])
-      .filter(call => isVisibleActiveCall(call, now))
+      .filter(call => isVisibleActiveCall(call))
       .sort((a, b) => callTimestamp(b) - callTimestamp(a))
       .slice(0, limit);
 
@@ -69,7 +54,7 @@ Deno.serve(async (req) => {
       success: true,
       calls,
       filtered_out: Math.max(0, (Array.isArray(rows) ? rows.length : 0) - calls.length),
-      max_age_minutes: 60,
+      status_based: true,
       fetched_at: new Date().toISOString(),
     });
   } catch (error: any) {
