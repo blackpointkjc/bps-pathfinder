@@ -1076,7 +1076,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     [row.propertyId || '', row.callTime || row.time_received || row.created_date || '',
       String(row.callIncident || '').toUpperCase(), String(row.callLocation || '').toUpperCase()].join('|'))));
   const now = Date.now();
-  const recent = incoming.filter(row => new Date(row.time_received || 0).getTime() >= now - 3 * 60 * 60_000)
+  const recent = [...incoming]
     .sort((a, b) => new Date(b.time_received).getTime() - new Date(a.time_received).getTime());
   const seen = new Set<string>();
   const newCalls = recent.filter(row => {

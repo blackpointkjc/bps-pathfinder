@@ -19,7 +19,7 @@ for (const rank of ['Colonel','Lt Colonel','Major','Officer']) {
 assert.equal(calculateCallOutAttendance([{...callout,voided:true}],[{...shift,archived:false,attendance_status:''}],'2026-01-01','2026-01-31',{}).score,100,'Voided call-outs do not deduct');
 async function load(path,api,append=''){
  let handler;const code=fs.readFileSync(path,'utf8').replace(/^import .*\n/gm,'')+append;
- const box={module:{exports:{}},Response,Date,console,setTimeout,clearTimeout,createClientFromRequest:()=>api,Deno:{serve:fn=>handler=fn}};
+ const box={module:{exports:{}},Response,Date,console,setTimeout,clearTimeout,createClientFromRequest:()=>api,Deno:{serve:fn=>handler=fn,env:{has:()=>false,get:()=>undefined}}};
  vm.runInNewContext((await transform(code,{loader:'ts',format:'cjs'})).code,box);return {handler,exports:box.module.exports};
 }
 const {exports:adapters}=await load('base44/functions/getCompanyPerformanceData/entry.ts',{},'\nexport {companyPerformanceEntities};');
@@ -36,3 +36,10 @@ const scheduled=await (await schedule(new Request('https://test',{method:'POST',
 const now=new Date().toISOString();const {handler:calls}=await load('base44/functions/getActiveDispatchCalls/entry.ts',{auth:{me:async()=>({id:'officer',user_type:'officer'})},asServiceRole:{entities:{CadCounter:{filter:async()=>[{active_source_snapshot:[{external_call_id:'verified'}]}]},DispatchCall:{filter:async()=>[{id:'live',status:'Active',created_date:now},{id:'closed',status:'Closed',created_date:now},{id:'stale',status:'On Scene',source:'richmond',created_date:'2025-01-01T00:00:00Z'},{id:'import',external_call_id:'verified',status:'On Scene',source:'richmond',created_date:'2026-01-01T00:00:00Z'}]}}}});
 const feed=await (await calls(new Request('https://test',{method:'POST',body:'{}'}))).json();assert.equal(feed.calls.length,2,'An older On Scene call remains active until explicit closure');assert(!feed.calls.some(row=>row.id==='closed'));
 console.log('PASS: call-out scoring at every rank; archived original shift; no fake no-data score; voided call-outs; multi-page analytics; >1000 directory rows; schedule aliases; schedule call-out inclusion; active/terminal dispatch filtering');
+
+const {exports:sourceMerge}=await load('base44/functions/ingestGractivecalls/entry.ts',{},'\nexport {mergeLiveWebsiteAndApi};');
+const current={agency:'RPD',incident:'TEST',location:'1 MAIN',time_received:'2026-01-01T00:00:00Z',external_call_id:'live'};
+const obsolete={...current,incident:'OLD',external_call_id:'old'};
+assert.equal(sourceMerge.mergeLiveWebsiteAndApi([current],[current,obsolete]).length,1,'Lagging API cannot resurrect a call absent from the successful website');
+assert.equal(sourceMerge.mergeLiveWebsiteAndApi([],[current]).length,1,'API remains a fallback when website unavailable');
+console.log('PASS: upstream membership excludes lagging API-only records; website failure retains API fallback');
