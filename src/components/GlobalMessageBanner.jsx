@@ -5,6 +5,8 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
+import { playPropertyHorn } from '@/utils/alertUtils';
+import { isClockedInAtProperty } from '@/lib/clockedPropertyAlarm';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
 const SOURCES = [
@@ -514,6 +516,41 @@ export default function GlobalMessageBanner({ user }) {
       return location;
     };
 
+    // This prelude is part of the existing claimed speech item, not a second
+    // realtime listener. Check the current punch at playback so clock-out/post
+    // changes are respected even while another announcement is speaking.
+    const propertyHornPrelude = ({ propertyId, callId }) => async isCurrent => {
+      if (!active || !isCurrent()) return;
+      let property;
+      let entries;
+      try {
+        const loadProperty = async () => {
+          let id = propertyId;
+          if (!id && callId) {
+            const alerts = await base44.entities.PropertyAlert.filter({ callId }, '-created_date', 10);
+            id = alerts.find(row => row.is_test !== true && !['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(row.lifecycle_status)))?.propertyId;
+          }
+          return id ? base44.entities.Location.get(id) : null;
+        };
+        const [location, response] = await Promise.all([
+          loadProperty(),
+          base44.functions.invoke('getMyTimeEntries', { active_only: true }),
+        ]);
+        property = location;
+        const payload = response?.data || response || {};
+        if (payload.error || !Array.isArray(payload.entries)) return;
+        entries = payload.entries;
+      } catch (error) {
+        // A duty lookup failure must not suppress the established CAD speech.
+        console.warn('Property horn duty check failed:', error?.message);
+        return;
+      }
+      if (!active || !isCurrent() || property?.active === false
+        || property?.property_monitoring_enabled !== true
+        || !isClockedInAtProperty(entries, property)) return;
+      await playPropertyHorn(() => active && isCurrent());
+    };
+
     const showPropertyCall = async (record, options = {}) => {
       const allowAudio = options.allowAudio !== false;
       if (!record?.id) return;
@@ -568,8 +605,8 @@ export default function GlobalMessageBanner({ user }) {
               }).catch(error => ({ claimed: false, error }));
               if (!claim?.claimed) return;
               announcedPropertySpeech.current.add(propertyEventKey);
-              playNotificationChime(true);
               const accepted = speakNotification(announcementText, {
+                beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
                 dedupeMs: 6000,
                 eventId: propertyEventKey,
                 priority: 'critical',
@@ -679,6 +716,7 @@ export default function GlobalMessageBanner({ user }) {
         if (claim?.claimed) {
           announcedPropertySpeech.current.add(propertyEventKey);
           const accepted = speakNotification(announcementText, {
+            beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
             dedupeMs: 6000,
             eventId: propertyEventKey,
             priority: 'critical',
@@ -764,7 +802,7 @@ export default function GlobalMessageBanner({ user }) {
           return;
         }
         knownIds.current.add(key);
-        if (record.event_type === 'property_alert') playNotificationChime(true);
+        // The claimed initial speech item owns its horn; no parallel chime.
         const autoAssignment = record.triggering_action === 'geofenceDispatchAssignment.live'
           && ['unit_dispatched', 'additional_unit'].includes(record.event_type);
         let announcementText = claim.announcement_text || record.announcement_text;
@@ -781,6 +819,8 @@ export default function GlobalMessageBanner({ user }) {
             announcementText = claim.assignment_announcement_text;
         }
         const accepted = speakNotification(announcementText, {
+          beforeSpeech: (initial || initialClaim?.claimed)
+            ? propertyHornPrelude({ callId: record.call_id }) : undefined,
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
           // Same priority as the initial property alert: queue after it, never
