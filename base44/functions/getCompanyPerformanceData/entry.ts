@@ -34,7 +34,7 @@ async function loadPerformanceData(base44: any, officer: any, body: any, options
       // Keep this bounded, but do not serialize 20+ monthly reads one-by-one.
       // Two service-role reads at a time cuts the long blank load substantially
       // without recreating the large fan-out that previously caused 429s.
-      if (activeReads >= 1) await new Promise<void>(resolve => readWaiters.push(resolve));
+      if (activeReads >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
       activeReads += 1;
     };
     const releaseReadSlot = () => {
@@ -432,9 +432,12 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
     if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
     return /429|rate.?limit|too many requests|timed? ?out|ETIMEDOUT|ECONNRESET|socket hang up|temporarily unavailable|network/i.test(String(error?.message || ''));
   };
-  let tail: Promise<any> = Promise.resolve();
-  const read = (fn: () => Promise<any>) => {
-    const task = tail.then(async () => {
+  let reading = 0;
+  const readWaiters: Array<() => void> = [];
+  const read = async (fn: () => Promise<any>) => {
+    if (reading >= 2) await new Promise<void>(resolve => readWaiters.push(resolve));
+    reading += 1;
+    try {
       let lastError: any = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try { return await fn(); }
@@ -449,9 +452,10 @@ function companyPerformanceEntities(entities: any, start: string, end: string) {
         }
       }
       throw lastError || new Error('Unable to read data');
-    });
-    tail = task.catch(() => undefined);
-    return task;
+    } finally {
+      reading -= 1;
+      readWaiters.shift()?.();
+    }
   };
   const shape = (result: any) => Array.isArray(result)
     ? { items: result, next: null }

@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     let activeReads = 0;
     const waiters:Array<() => void> = [];
     const acquire = async () => {
-      if (activeReads >= 1) await new Promise<void>(resolve => waiters.push(resolve));
+      if (activeReads >= 2) await new Promise<void>(resolve => waiters.push(resolve));
       activeReads += 1;
     };
     const release = () => {
