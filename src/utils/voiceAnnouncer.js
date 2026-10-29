@@ -228,6 +228,14 @@ async function nextQueuedSpeech() {
       return;
     }
     if (cancelGeneration !== speechCancelGeneration || activeSpeech?.sequence !== item.sequence) { item.resolve?.(false); return; }
+    // Run attention audio inside the same claimed, priority-ordered queue item.
+    // A speech-engine retry must not repeat an already completed horn.
+    if (item.options.beforeSpeech && !item.preludeCompleted) {
+      const isCurrent = () => cancelGeneration === speechCancelGeneration && activeSpeech?.sequence === item.sequence;
+      await item.options.beforeSpeech(isCurrent);
+      item.preludeCompleted = true;
+      if (!isCurrent()) { item.resolve?.(false); return; }
+    }
     const utterance = buildUtterance(item.clean, item.options);
     utterance.onstart = () => {
       started = true;
