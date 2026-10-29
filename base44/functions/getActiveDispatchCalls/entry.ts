@@ -41,25 +41,14 @@ Deno.serve(async (req) => {
     if (!cached || Date.now() - cached.at >= 3000) {
       if (!cached?.pending) {
         cached = { at:0, rows:[], pending:(async () => {
-          const counter = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key:'dispatch_call' }, '-updated_date', 1))[0];
-          if (!Array.isArray(counter?.active_source_snapshot)) throw new Error('Live source verification is pending. Refresh after the next source sync.');
-          const snapshot = counter.active_source_snapshot;
-          const external = (row: any) => String(row.external_call_id || String(row.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1] || '');
-          const legacy = (row: any) => !row.agency || !row.time_received || !row.incident ? '' : [String(row.agency || '').trim().toUpperCase(), String(row.time_received || ''), String(row.incident || '').trim().toUpperCase().replace(/\s+/g,' ')].join('|');
-          const keys = new Set(snapshot.map(external).filter(Boolean));
-          const fallbackKeys = new Set(snapshot.map(legacy).filter(Boolean));
-          const times = [...new Set(snapshot.map((row:any)=>row.time_received).filter(Boolean))];
+          // The board is defined by recency, not by matching the last source poll.
+          // Gating rows on that poll dropped current calls whose source had already
+          // moved on, which left the board empty while calls were still running.
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
-            $or:[{external_call_id:{$in:[...keys]}},{time_received:{$in:times}},
-              {$and:[{source_channel:{$exists:false}},{external_call_id:{$exists:false}}]},
-              {assigned_units:{$exists:true,$ne:[]}}, {source:'pulsepoint'}],
-          }, '-created_date', 1000);
-          return rows.filter((row:any) => {
-            const imported = lower(row.source) !== 'pulsepoint' && (/grac|website/i.test(String(row.source_channel || '')+' '+external(row)) || ['richmond','henrico','chesterfield'].includes(lower(row.source)));
-            return !imported || (row.assigned_units || []).length > 0 || keys.has(external(row)) || fallbackKeys.has(legacy(row));
-          });
+          }, '-created_date', 500);
+          return (rows || []).filter((row:any) => isVisibleActiveCall(row));
         })() };
         readCache.set(cacheKey, cached);
       }
