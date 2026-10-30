@@ -120,7 +120,7 @@ async function lookupTomTomPostedLimit(
   if (distance < 12 || distance > 1200) return null;
   const params = new URLSearchParams({
     points: `${priorLng},${priorLat};${lng},${lat}`,
-    fields: '{route{properties{id,speedLimits{value,unit,type},address{roadName}}}}',
+    fields: '{route{properties{id,speedLimits{value,unit,type}}}}',
     vehicleType: 'PassengerCar', measurementSystem: 'imperial',
   });
   const payload = await tomtomJson('/snapToRoads/1', params);
