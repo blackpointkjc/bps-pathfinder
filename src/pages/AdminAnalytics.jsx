@@ -800,7 +800,6 @@ export default function AdminAnalytics() {
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyAttendanceStats.rate != null ? `${companyAttendanceStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">Average Officer Attendance</p>
-              <p className="mt-1 text-[11px] text-slate-300">{companyAttendanceStats.scoredOfficers||0} scored / {companyAttendanceStats.totalOfficers??0} officers</p>
               <p className="text-[10px] text-slate-500">{companyAttendanceStats.unscoredOfficers||0} not scored · equal officer weight</p>
             </CardContent>
           </Card>
