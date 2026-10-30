@@ -111,6 +111,33 @@ Deno.serve(async req => {
         // from style responses to MapLibre; preserve the secure proxy prefix.
         const proxyPrefix = `${url.origin}${url.pathname.replace(/\/tomtomMapProxy(?:\/.*)?$/, '/tomtomMapProxy')}`;
         body = body.replace(/https:\/\/api\.tomtom\.com/gi, proxyPrefix);
+        // MapLibre may load style-source tiles from its worker independently
+        // of the SDK's transformRequest. Give *every* vector-tile URL an
+        // immediately routable Base44 function path, rather than a nested
+        // /tomtomMapProxy/maps/... path that the platform answers with 404.
+        if (contentType.includes('json') && /\/styles\/.+\/style\.json$/.test(suffix)) {
+          try {
+            const style = JSON.parse(body);
+            const toQueryRoute = (raw: string) => {
+              const original = new URL(raw);
+              if (original.origin !== url.origin || !original.pathname.startsWith(new URL(proxyPrefix).pathname + '/')) return raw;
+              const route = new URL(proxyPrefix);
+              route.searchParams.set('resourcePath', original.pathname.slice(new URL(proxyPrefix).pathname.length));
+              original.searchParams.forEach((v, k) => { if (k !== 'key') route.searchParams.append(k, v); });
+              // MapLibre substitutes these in source URLs before it requests a
+              // font or a tile. Preserve the placeholders unescaped.
+              return route.toString().replace(/%7B([^%]+)%7D/gi, '{$1}');
+            };
+            for (const source of Object.values(style.sources || {}) as any[]) {
+              if (Array.isArray(source.tiles)) source.tiles = source.tiles.map(toQueryRoute);
+              if (typeof source.url === 'string') source.url = toQueryRoute(source.url);
+            }
+            if (typeof style.glyphs === 'string') style.glyphs = toQueryRoute(style.glyphs);
+            body = JSON.stringify(style);
+          } catch (error) {
+            console.warn('TomTom map style source rewrite skipped:', String((error as Error)?.message || error));
+          }
+        }
         return new Response(body, { status: response.status, headers: out });
       }
       return new Response(response.body, { status: response.status, headers: out });
