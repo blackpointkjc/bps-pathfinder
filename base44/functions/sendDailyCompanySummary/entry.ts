@@ -501,7 +501,7 @@ Deno.serve(async (req) => {
       safeList(base44, 'ClientFeedback', '-feedback_date', 5000, sourceIssues),
       safeList(base44, 'PerformanceReview', '-review_date', 5000, sourceIssues),
       safeList(base44, 'PropertyAlert', '-created_date', 5000, sourceIssues),
-      base44.asServiceRole.entities.CallPerformanceDecision.list('-created_date', 5000),
+      safeList(base44, 'CallPerformanceDecision', '-created_date', 5000, sourceIssues),
       safeList(base44, 'DutyAttendanceAdjustment', '-created_date', 5000, sourceIssues),
     ]);
 

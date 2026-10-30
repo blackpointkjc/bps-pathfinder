@@ -247,8 +247,11 @@ export default function AdminAnalytics() {
         toast.warning('In-app summaries were created, but the management@blackpointkjc.com Outlook delivery needs attention.');
       }
     } catch (error) {
-      toast.error(error?.message || 'Company summary could not be sent.');
-      setSummaryResult({ success: false, email_sent: false, error: error?.message || 'Delivery failed.' });
+      const details=error?.response?.data||error?.data||{};
+      const explain=String(details.error||error?.message||'Delivery failed.');
+      const missing=Array.isArray(details.source_issues)&&details.source_issues.length?` Missing sources: ${details.source_issues.slice(0,8).join(', ')}`:'';
+      toast.error(explain);
+      setSummaryResult({ success: false, email_sent: false, error: explain+missing });
     } finally {
       setSummarySending(false);
     }
