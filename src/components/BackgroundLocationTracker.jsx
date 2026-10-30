@@ -537,7 +537,12 @@ export default function BackgroundLocationTracker({ user }) {
       // A previously approved USB/serial GNSS should be reclaimed instead of
       // remaining indefinitely on Windows/browser positioning.
       const hasFreshFix = !!getLiveLocation(45_000);
-      startExternalGpsAutoReconnect({ recoverStale: !hasFreshFix }).catch(() => null);
+      const receiver = getExternalGpsStatus();
+      const receiverFixAge = receiver.lastFixAt ? Date.now() - Date.parse(receiver.lastFixAt) : Infinity;
+      // A fresh browser/Wi-Fi reading does not prove the officer's USB GNSS
+      // is healthy. Recover the external antenna when its OWN feed goes stale.
+      const receiverStale = receiver.connected && receiverFixAge > 45_000;
+      startExternalGpsAutoReconnect({ recoverStale: receiverStale }).catch(() => null);
       if (!hasFreshFix) {
         lastGpsPushRef.current = 0;
         lastGpsAttemptRef.current = 0;
@@ -559,7 +564,8 @@ export default function BackgroundLocationTracker({ user }) {
         // fixes. Re-register it, reconnect an approved USB GPS, and immediately
         // renew the signed-in presence heartbeat when Pathfinder wakes.
         lastLivePushRef.current = 0;
-        startExternalGpsAutoReconnect({ recoverStale: !getLiveLocation(45_000) }).catch(() => null);
+        const receiver = getExternalGpsStatus();
+        startExternalGpsAutoReconnect({ recoverStale: receiver.connected && (!receiver.lastFixAt || Date.now() - Date.parse(receiver.lastFixAt) > 45_000) }).catch(() => null);
         recoverLiveLocationTracking(event?.detail?.reason || 'operational_resume').catch(() => null);
         await heartbeat();
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
