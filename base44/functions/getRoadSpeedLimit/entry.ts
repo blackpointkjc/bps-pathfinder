@@ -91,13 +91,10 @@ async function lookupTomTomPostedLimit(
   if (!response?.ok) return null;
   const payload = await response.json().catch(() => null);
   const route = Array.isArray(payload?.route) ? payload.route : [];
-  const wanted = normalizeRoad(requestedRoad);
   for (const part of [...route].reverse()) {
     const props = part?.properties || {};
     const candidateRoad = String(props.address?.roadName || '');
-    const actual = normalizeRoad(candidateRoad);
-    // With a named route, do not take a nearby named highway's posted limit.
-    if (wanted && actual && actual !== wanted && !actual.includes(wanted) && !wanted.includes(actual)) continue;
+    // Route matcher uses the actual two GPS fixes, not the upcoming turn name.
     const limits = Array.isArray(props.speedLimits) ? props.speedLimits : [props.speedLimits];
     for (const limit of limits) {
       if (!limit || String(limit.type || 'Maximum').toLowerCase() !== 'maximum') continue;

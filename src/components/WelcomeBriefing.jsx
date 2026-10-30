@@ -160,7 +160,7 @@ export default function WelcomeBriefing({ user }) {
           ['open','in_progress'].includes(normalized(item.status))),
       }));
       const activityLabels = new Set(['Teams mentions','announcements','announcement receipts','notifications','assigned tasks']);
-      setDataErrors(previous => [...previous.filter(label => !activityLabels.has(label)), ...errors.filter(label => activityLabels.has(label))]);
+      setDataErrors(previous => [...previous.filter(label => !activityLabels.has(label) && label !== 'Briefing activity refresh'), ...errors.filter(label => activityLabels.has(label))]);
       setBriefingUpdatedAt(new Date(snapshot.updated_at || Date.now()));
     } catch (error) {
       console.warn('Briefing live activity refresh delayed:', error?.message || error);

@@ -560,37 +560,6 @@ function pageLabel(pageName) {
   return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
 }
 
-function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, onTabNavigate, user }) {
-  const centers = allowedCenters(user);
-  if (centers.length === 1 && centers[0] === 'student') return <nav aria-label="Student navigation" className="fixed inset-x-0 bottom-0 z-[45] flex justify-center border-t border-[#29445f] bg-[#07111f] px-2 py-2 xl:hidden" style={{paddingBottom:'max(6px, env(safe-area-inset-bottom))'}}><Link to={createPageUrl('StudentPortal')} className="flex min-h-[52px] w-full items-center justify-center gap-3 rounded-lg bg-[#153b65] text-sm font-black text-white"><GraduationCap className="h-5 w-5" />STUDENT PORTAL</Link></nav>;
-  const roleWorkspace = centers.includes('admin')
-    ? ['Admin', 'AdminCenter', Settings]
-    : centers.includes('supervisor')
-      ? ['Supervisor', 'SupervisorCenter', ClipboardCheck]
-      : centers.includes('officer')
-        ? ['Officer', 'OfficerCenter', Shield]
-        : null;
-  const tabs = [
-    ['CAD', 'CADCenter', Radio],
-    ...(roleWorkspace ? [roleWorkspace] : []),
-    ['Inbox', 'OfficerInbox', MessageCircle],
-  ];
-  return (
-    <nav aria-label="Primary navigation" className="pathfinder-field-nav fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur xl:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
-      {tabs.map(([label, page, Icon]) => {
-        const active = page === 'AdminAbsenceCoverage' ? currentPageName === 'AdminCenter' && new URLSearchParams(window.location.search).get('admin_ops_section') === 'coverage' : currentPageName === page;
-        const count = Number(unreadCounts[page]) || 0;
-        return <Link key={`${label}-${page}`} to={page === 'AdminAbsenceCoverage' ? '/AdminOfficerManagement' : createPageUrl(page)} aria-current={active ? "page" : undefined} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
-          <Icon className="h-5 w-5" /><span className="text-[9px] font-black">{label}</span>
-          {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
-        </Link>;
-      })}
-      {(centers.includes('officer') || centers.includes('supervisor')) && <button type="button" onClick={onReports} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><ClipboardList className="h-5 w-5" /><span className="text-[8px] font-black">REPORTS</span></button>}
-      <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[8px] font-black">Tools</span></button>
-    </nav>
-  );
-}
-
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed, onLogout }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [openNavGroup, setOpenNavGroup] = useState(() => sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`) || '');
