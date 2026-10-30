@@ -218,6 +218,7 @@ export default function Navigation() {
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
     const speedLimitRequestSeqRef = useRef(0);
     const [speedLimitRetryRevision, setSpeedLimitRetryRevision] = useState(0);
+    const [gpsFixSource, setGpsFixSource] = useState('');
     const navRouteSummaryRef = useRef({ distanceMeters: 0, durationSeconds: 0 });
     const navSnapIndexRef = useRef(0);
     const navStepRouteIndexesRef = useRef([]);
@@ -276,6 +277,7 @@ export default function Navigation() {
         const unsubscribe = subscribeLiveLocation((fix) => {
             const quality = locationQuality(fix);
             setGpsQuality(quality);
+            setGpsFixSource(String(fix?.source || ''));
             const lat = Number(fix?.latitude);
             const lng = Number(fix?.longitude);
             if (!validPosition(fix?.latitude, fix?.longitude)) {
@@ -297,6 +299,24 @@ export default function Navigation() {
             setIsLiveTracking(tacticalFix);
         });
         return () => { unsubscribe(); stopTracking(); };
+    }, []);
+
+    // Detect a receiver that goes silent during a long drive. Keep the map at
+    // its last known position without claiming it is live, and recover GNSS.
+    useEffect(() => {
+        const check = () => {
+            const latest = getLiveLocation(30_000);
+            if (latest) return;
+            setIsLiveTracking(false);
+            setGpsQuality(previous => previous.state === 'stale' ? previous : { ...previous, state: 'stale' });
+            const receiver = getExternalGpsStatus();
+            if (receiver.connected || receiver.portGranted) {
+                const elapsed = receiver.lastFixAt ? Date.now() - Date.parse(receiver.lastFixAt) : Infinity;
+                if (elapsed > 45_000) startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+            }
+        };
+        const timer = window.setInterval(check, 5_000);
+        return () => window.clearInterval(timer);
     }, []);
 
     // Credit-free live officer refresh. ActiveOfficer is the source written by
@@ -1002,7 +1022,7 @@ export default function Navigation() {
     };
 
     useEffect(() => {
-        if (!isNavigating || routePreviewOnly || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
+        if (!isNavigating || routePreviewOnly || !isLiveTracking || !getLiveLocation(25_000) || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
 
         // Compare only against the forward route. Looking at the entire polyline
         // lets a nearby road/interchange segment already driven falsely keep the
@@ -1051,7 +1071,7 @@ export default function Navigation() {
                 originHeading: heading,
             }).catch(() => null);
         }
-    }, [currentLocation, isNavigating, navRoute, navDestination, routing, gpsQuality?.accuracy, heading, speed]);
+    }, [currentLocation, isNavigating, isLiveTracking, navRoute, navDestination, routing, gpsQuality?.accuracy, heading, speed]);
 
     // Retry a transient speed-limit failure even if GPS coordinates remain
     // stationary. Previously the effect only reran on location movement, so a
@@ -1067,13 +1087,13 @@ export default function Navigation() {
     }, []);
 
     useEffect(() => {
-        const accurate = isLiveTracking && gpsQuality?.state === 'live' && Number(gpsQuality?.accuracy) <= 75;
+        const accurate = isLiveTracking && gpsQuality?.state === 'live' && Number(gpsQuality?.accuracy) <= 100;
         if (!accurate || !currentLocation || !validPosition(currentLocation[0], currentLocation[1])) {
             speedLimitRequestSeqRef.current += 1;
             setRoadSpeedLimit(null);
             setRoadSpeedLimitSource('');
             setRoadSpeedLimitRoad('');
-            setRoadSpeedLimitStatus('Waiting for precise GPS');
+            setRoadSpeedLimitStatus(isLiveTracking ? 'GPS accuracy insufficient' : 'GPS signal unavailable');
             return;
         }
         const now = Date.now();
@@ -1091,7 +1111,7 @@ export default function Navigation() {
             setRoadSpeedLimitRoad('');
             setRoadSpeedLimitSource('');
         }
-        setRoadSpeedLimitStatus('Checking posted limit');
+        if (roadChanged || distance > 90 || previous.at === 0) setRoadSpeedLimitStatus('Checking road data');
         withRequestTimeout(base44.functions.invoke('getRoadSpeedLimit', {
             latitude: currentLocation[0], longitude: currentLocation[1], road_name: roadName,
             // Below 12 mph, GPS heading often reflects sensor drift rather than
@@ -1130,7 +1150,7 @@ export default function Navigation() {
             setRoadSpeedLimit(null);
             setRoadSpeedLimitSource('');
             setRoadSpeedLimitRoad('');
-            setRoadSpeedLimitStatus('Speed-limit data unavailable');
+            setRoadSpeedLimitStatus('Posted speed limit unavailable');
         });
     }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps, navRoute, navOffRoute, navSpeedLimitSections, speedLimitRetryRevision]);
 
@@ -1760,7 +1780,7 @@ export default function Navigation() {
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
-                    gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
+                    gpsLabel={isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
 
             </div>
