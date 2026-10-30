@@ -174,7 +174,7 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exe
     monthStart,
     monthEnd,
   });
-  const overall = buildOverallPerformance({
+  const calculatedOverall = buildOverallPerformance({
     punctuality,
     trainingScore: training.total > 0 ? training.percentage : null,
     jobDuty,
@@ -184,6 +184,10 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exe
     supervisorRating,
     recognition,
   });
+  const incomplete=Boolean(snapshot.is_partial||snapshot.data_health==='partial'||Object.keys(snapshot.service_errors||{}).length);
+  // Missing source rows cannot be interpreted as failures. Keep the detailed
+  // obligations for review but never publish an unverified numeric grade.
+  const overall=incomplete?{...calculatedOverall,score:null,unverified:true}:calculatedOverall;
   const categoryRatings = [
     { label: 'Attendance', score: punctuality.total > 0 ? punctuality.rate : null, detail: (punctuality.total > 0 ? `${punctuality.attended ?? (punctuality.onTime + punctuality.late + punctuality.overrun)} of ${punctuality.total} elapsed shifts worked · ${punctuality.missed || 0} missed${punctuality.exempt ? ` · ${punctuality.exempt} exempt` : ''}` : (punctuality.exempt ? `${punctuality.exempt} elapsed shift${punctuality.exempt === 1 ? '' : 's'} exempt` : 'No elapsed scheduled shifts')) + ' · Clock-in timing excluded' },
     { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} · Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} · QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
@@ -208,10 +212,12 @@ function buildOfficerPerformanceFromSnapshot(snapshot, monthStart, monthEnd, exe
     recognition,
     callOutAttendance,
     jobDuty,
-    categoryRatings,
-    dataHealth: snapshot.data_health || 'verified',
+    categoryRatings:incomplete?categoryRatings.map(item=>({...item,score:null,detail:item.detail+' · Source incomplete; not scored'})):categoryRatings,
+    dataHealth: incomplete?'partial':'verified',
     serviceErrors: snapshot.service_errors || {},
     generatedAt: snapshot.generated_at || null,
+    certificationFile: {dcjs_expiration: officer.dcjs_expiration||'',firearm_expiration: officer.firearm_expiration||'',
+      records: officer.officer_certifications||[]},
   };
 }
 
@@ -525,47 +531,6 @@ export default function AdminAnalytics() {
     timeEntries, filteredUsers, currentMonthStart, currentMonthEnd
   ), [timeEntries, filteredUsers, currentMonthStart, currentMonthEnd]);
 
-  const trainingByOfficer = useMemo(() => {
-    if (!trainingCompletions || !allTraining || !filteredUsers) return [];
-
-    // Get all required training modules
-    const requiredTraining = allTraining.filter(t => t.required);
-
-    return filteredUsers
-      .map(officer => {
-        // Check assigned training based on email, division, or rank
-        const assignedTraining = allTraining.filter(t => 
-          (t.assigned_to || []).some(email => emailKey(email) === emailKey(officer.email)) ||
-          (t.assigned_divisions || []).includes(officer.division) ||
-          (t.assigned_ranks || []).includes(officer.rank) ||
-          t.required
-        );
-
-        // If no training is assigned to this officer, they still need to do required training
-        const trainingToCheck = assignedTraining.length > 0 ? assignedTraining : requiredTraining;
-
-        if (trainingToCheck.length === 0) return null;
-
-        const completedIds = trainingCompletions
-          .filter(tc => emailKey(tc.officer_email) === emailKey(officer.email) && tc.completed)
-          .map(tc => tc.training_module_id);
-        
-        const completed = trainingToCheck.filter(t => completedIds.includes(t.id)).length;
-        const percentage = trainingToCheck.length > 0 ? Math.round((completed / trainingToCheck.length) * 100) : 100;
-
-        return {
-          name: `${officer.first_name} ${officer.last_name}`,
-          email: officer.email,
-          completed,
-          total: trainingToCheck.length,
-          percentage,
-          pending: trainingToCheck.filter(t => !completedIds.includes(t.id)).map(t => t.title)
-        };
-      })
-      .filter(o => o !== null && o.total > 0 && o.percentage < 100)
-      .sort((a, b) => a.percentage - b.percentage);
-  }, [trainingCompletions, allTraining, filteredUsers]);
-
   const { data: dutyAdjustmentRecords } = useQuery({
     queryKey: ['companyDutyExemptions', analyticsStartDate, analyticsEndDate],
     queryFn: () => base44.entities.DutyAttendanceAdjustment.filter({ item_date: { $gte: analyticsStartDate, $lte: analyticsEndDate } }, '-created_date', 500),
@@ -587,6 +552,13 @@ export default function AdminAnalytics() {
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name) || String(a.user_id).localeCompare(String(b.user_id)));
   }, [officerPerformanceSnapshots.data, performanceOfficerUsers, currentMonthStart, currentMonthEnd, exemptionsByOfficerEmail]);
+
+  // Training alerts use the very same verified, officer-specific snapshot
+  // and scoring engine as the performance cards. A missing backend response
+  // never produces a fictitious unfinished-training notification.
+  const trainingByOfficer=useMemo(()=>overallByOfficer.filter(row=>row.dataHealth==='verified'&&row.training.total>0&&row.training.percentage<100)
+    .map(row=>({name:row.name,email:row.email,completed:row.training.completed,total:row.training.total,
+      percentage:row.training.percentage,pending:row.training.pendingNames||[]})).sort((a,b)=>a.percentage-b.percentage),[overallByOfficer]);
 
   // Keep the officer windows mounted during background refreshes. The previous
   // isFetching check removed the entire section every refresh cycle, which made
@@ -905,11 +877,14 @@ export default function AdminAnalytics() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {officer.punctuality.exempt > 0 && <Badge className="bg-emerald-700 text-white">{officer.punctuality.exempt} Performance Exempt</Badge>}
+                      {officer.dataHealth!=='verified'&&<Badge className="bg-amber-700 text-white">Unverified source data</Badge>}
                       <Badge className={officer.overall.score == null ? 'bg-slate-600' : officer.overall.score >= 90 ? 'bg-green-600' : officer.overall.score >= 75 ? 'bg-amber-600' : 'bg-red-600'}>
                         {officer.overall.score != null ? `${officer.overall.score}%` : 'Not scored'}
                       </Badge>
                     </div>
                   </div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300"><span className="rounded-md border border-slate-600 px-2 py-1">Training: {officer.training.total?`${officer.training.completed}/${officer.training.total} completed · ${officer.training.percentage}%`:'No assigned courses'}</span>{[['DCJS',officer.certificationFile?.dcjs_expiration],['Firearm',officer.certificationFile?.firearm_expiration]].map(([label,expiry])=><span key={label} className="rounded-md border border-slate-600 px-2 py-1">{label}: {expiry?(String(expiry).slice(0,10)>=new Date().toISOString().slice(0,10)?`On file · ${String(expiry).slice(0,10)}`:`Expired ${String(expiry).slice(0,10)}`):'Not on file'}</span>)}</div>
+                  {officer.dataHealth!=='verified'&&<p role="status" className="mt-2 rounded-md border border-amber-700 bg-amber-950/40 p-2 text-xs text-amber-200">Performance score withheld because {Object.keys(officer.serviceErrors||{}).join(', ')||'one or more required sources'} did not return verified data. Refresh rather than treating missing records as a failure.</p>}
                   <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                     {officer.categoryRatings.map(category => (
                       <div key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-2 text-xs text-slate-200">
