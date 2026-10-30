@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import { base44 } from '@/api/base44Client';
-import { announceRecordSearch } from '@/utils/voiceAnnouncer';
+import { announceRecordSearch, announceVoice } from '@/utils/voiceAnnouncer';
 export default function RecordsCheckButton({name='',plate='',site='',compact=false}){
  const [checking,setChecking]=useState(false),[report,setReport]=useState(null),[error,setError]=useState('');
  const check=async()=>{
@@ -26,10 +26,13 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
    const matches=[...residentMatches,...(data.results||[])];
    setReport({matches,total:matches.length});
    announceRecordSearch(matches,{searchType:plate?'vehicle':'person',warrantMatches:0,warrantStatusText:''});
-   if(!matches.length&&typeof window!=='undefined'&&window.speechSynthesis){
-    // Only a local record search result; never announce a person is legally cleared.
-    const speech=new SpeechSynthesisUtterance('Pathfinder company records check: no matching internal records located.');
-    speech.rate=1;window.speechSynthesis.speak(speech);
+   const trespass=matches.filter(row=>['TrespassingNotice','MDTrespassNotice'].includes(row.entity)
+      || /trespass/i.test(String(row.source||'')));
+   if(trespass.length){
+     // Do not claim a legal notice is still in force: duration, service and
+     // rescission must be checked against the underlying signed document.
+     announceVoice(`Attention, Pathfinder shows ${trespass.length} previous trespass notice record${trespass.length===1?'':'s'} associated with this search. Verify notice status and subject identification before acting.`,
+       {priority:'high',rate:0.8,dedupeMs:3500,force:true});
    }
   }catch(e){setError(e.message||'Records search unavailable');}finally{setChecking(false);}
  };

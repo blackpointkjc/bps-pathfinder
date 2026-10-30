@@ -28,16 +28,17 @@ const csvDownload = (items,site) => {
 };
 function printDocument(title,subtitle,body,openedWindow){
  const w=openedWindow||window.open('','_blank','width=850,height=960');if(!w){toast.error('Allow popups to print the parking record');return;}
- w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title><style>body{font:13px Arial,sans-serif;max-width:820px;margin:auto;padding:26px;color:#111}header{border-bottom:3px solid #111;padding-bottom:16px}h1{font-size:23px;margin:0}h2{font-size:15px;margin:22px 0 8px}p{margin:5px 0}.muted{color:#555}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #aaa;padding:7px;text-align:left;vertical-align:top}th{background:#f3f4f6}.signature{padding-top:28px;border-bottom:1px solid #333;width:260px}img{max-width:320px;max-height:260px}@media print{button{display:none}body{padding:0;margin:8mm}thead{display:table-header-group}}</style></head><body><header><h1>BLACK POINT SECURITY · ${escapeHtml(title)}</h1><p class="muted">${escapeHtml(subtitle)}</p></header>${body}<p class="muted" style="margin-top:25px">This is a private property security notice, not a government-issued citation. Fines must be supported by property policies and applicable law.</p></body></html>`);
+ w.document.open();
+ w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title><style>body{font:13px Arial,sans-serif;max-width:820px;margin:auto;padding:26px;color:#111}header{display:flex;align-items:center;gap:18px;background:#10263c;color:#fff;padding:16px;border-bottom:5px solid #16a6c5;border-radius:8px}header img{width:68px;height:68px;object-fit:contain}h1{font-size:23px;margin:0}header .muted{color:#c9e2ef}h2{font-size:15px;margin:22px 0 8px}p{margin:5px 0}.muted{color:#555}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #aaa;padding:7px;text-align:left;vertical-align:top}th{background:#f3f4f6}.signature{padding-top:28px;border-bottom:1px solid #333;width:260px}img{max-width:320px;max-height:260px}@media print{button{display:none}body{padding:0;margin:8mm}thead{display:table-header-group}}</style></head><body><header><img src="/black-point-shield.webp" alt="Black Point Protection shield"/><div><p style="font-size:10px;font-weight:bold;letter-spacing:.12em;color:#80e0f5">BLACK POINT PROTECTION</p><h1>${escapeHtml(title)}</h1><p class="muted">${escapeHtml(subtitle)}</p></div></header>${body}<p class="muted" style="margin-top:25px">This is a private property security notice, not a government-issued citation. Fines must be supported by property policies and applicable law.</p></body></html>`);
  w.document.close();w.focus();setTimeout(()=>w.print(),350);
 }
 function printNotice(ticket,openedWindow){
  const fields=[['Citation',ticket.citation_number],['Date / time',`${ticket.violation_date||''} ${ticket.violation_time||''}`],['Property',ticket.location],['Unit / space',ticket.unit_number],['Subject / owner',ticket.subject_name||ticket.vehicle_owner],['Vehicle',vehicleSummary({...ticket,vehicle_plate:ticket.license_plate,vehicle_state:ticket.license_state})],['VIN',ticket.vehicle_vin],['Violation',ticket.violation_type],['Notice',ticket.warning_issued?'Warning only':'Property violation'],['Fine',ticket.warning_issued?'No fine':formatMoney(ticket.fine_amount)],['Details',ticket.description],['Officer',ticket.officer_name],['Approval',ticket.status],['Client response',ticket.client_review_status]];
  printDocument('PARKING VIOLATION NOTICE',ticket.citation_number||'',`<table>${fields.map(([k,v])=>`<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}</table>${/^https:\/\//.test(ticket.photo_url||'')?`<h2>Vehicle evidence</h2><img src="${escapeHtml(ticket.photo_url)}" alt="Vehicle evidence"/>`:''}<h2>Officer signature</h2><div class="signature"></div><h2>Property / resident acknowledgment</h2><div class="signature"></div>`,openedWindow);
 }
-function print30Day(items,site){
+function print30Day(items,site,openedWindow){
  const filtered=items.filter(row=>String(row.violation_date||'')>=new Date(Date.now()-30*86400000).toISOString().slice(0,10));
- printDocument('30-DAY PARKING VIOLATION ROLL',`${site} · ${filtered.length} violation(s) · Generated ${new Date().toLocaleString()}`,`<table><thead><tr><th>Date</th><th>Notice</th><th>Unit</th><th>Vehicle / plate</th><th>Photo</th><th>Violation</th><th>Fine</th><th>Status</th></tr></thead><tbody>${filtered.map(row=>`<tr><td>${escapeHtml(row.violation_date)}</td><td>${escapeHtml(row.citation_number)}</td><td>${escapeHtml(row.unit_number)}</td><td>${escapeHtml(vehicleSummary({...row,vehicle_plate:row.license_plate,vehicle_state:row.license_state}))}</td><td>${/^https:\/\//.test(row.photo_url||'')?`<img src="${escapeHtml(row.photo_url)}" alt="Evidence photo" style="max-width:80px;max-height:70px"/>`:''}</td><td>${escapeHtml(row.violation_type)}</td><td>${escapeHtml(row.warning_issued?'Warning':formatMoney(row.fine_amount))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table>`);
+ printDocument('30-DAY PARKING VIOLATION ROLL',`${site} · ${filtered.length} violation(s) · Generated ${new Date().toLocaleString()}`,`<table><thead><tr><th>Date</th><th>Notice</th><th>Unit</th><th>Vehicle / plate</th><th>Photo</th><th>Violation</th><th>Fine</th><th>Status</th></tr></thead><tbody>${filtered.map(row=>`<tr><td>${escapeHtml(row.violation_date)}</td><td>${escapeHtml(row.citation_number)}</td><td>${escapeHtml(row.unit_number)}</td><td>${escapeHtml(vehicleSummary({...row,vehicle_plate:row.license_plate,vehicle_state:row.license_state}))}</td><td>${/^https:\/\//.test(row.photo_url||'')?`<img src="${escapeHtml(row.photo_url)}" alt="Evidence photo" style="max-width:80px;max-height:70px"/>`:''}</td><td>${escapeHtml(row.violation_type)}</td><td>${escapeHtml(row.warning_issued?'Warning':formatMoney(row.fine_amount))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table>`,openedWindow);
 }
 
 export default function ParkingRecords({mode='officer'}){
@@ -81,14 +82,18 @@ export default function ParkingRecords({mode='officer'}){
  const filteredViolations=violations.filter(row=>(statusFilter==='all'||row.status===statusFilter)&&[row.license_plate,row.vehicle_owner,row.unit_number,row.citation_number,row.violation_type].some(value=>String(value||'').toLowerCase().includes(search.toLowerCase())));
  const export30=async type=>{
   if(!site)return;
+  // iPhone/iPad Safari needs the print window to open synchronously in the
+  // click handler, not after the async API response.
+  const printWindow=type==='print'?window.open('','_blank','width=850,height=960'):null;
+  if(printWindow){printWindow.document.write('<title>Preparing parking roll…</title><p>Preparing the property parking roll…</p>');}
   setBusy(true);setError('');
   try {
     const result=await action('export');
-    if(result.truncated){setError('The 30-day export exceeded the safe export batch limit. Contact administration for the remaining pages.');return;}
+    if(result.truncated){printWindow?.close();setError('The 30-day export exceeded the safe export batch limit. Contact administration for the remaining pages.');return;}
     const records=result.violations||[];
     if(type==='csv')csvDownload(records,site);
-    else print30Day(records,site);
-  }catch(error){setError('30-day parking export unavailable: '+(error.message||'Retry'))}
+    else print30Day(records,site,printWindow);
+  }catch(error){printWindow?.close();setError('30-day parking export unavailable: '+(error.message||'Retry'))}
   finally{setBusy(false)}
  };
  const printAndSave=async event=>{event.preventDefault();if(!site)return;
