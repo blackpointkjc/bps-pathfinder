@@ -361,6 +361,8 @@ export function calculateBidStanding(bids = [], monthStart, monthEnd) {
   return { total: monthly.length, scoredTotal, accepted, rejected, pending, withdrawn, score };
 }
 
+const trainingRecordCompleted = row => row?.completed === true ||
+  ['completed','complete','approved','passed','verified'].includes(String(row?.status||'').toLowerCase());
 export function calculateTrainingScore(user, modules = [], completions = [], assignments = []) {
   if (!user?.email) return { completed: 0, pending: 0, total: 0, percentage: null, pendingNames: [] };
   const assignedModules = modules.filter(module => module.active !== false && (
@@ -369,17 +371,17 @@ export function calculateTrainingScore(user, modules = [], completions = [], ass
     (module.assigned_ranks || []).includes(user.rank) ||
     module.required === true
   ));
-  const completedIds = new Set(completions.filter(item => item.completed && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
+  const completedIds = new Set(completions.filter(item => trainingRecordCompleted(item) && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
   const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
   const officerAssignments = assignments.filter(item => emailKey(item.officer_email) === emailKey(user.email));
-  const assignmentApproved = officerAssignments.filter(item => item.status === 'approved').length;
-  const assignmentPending = officerAssignments.filter(item => item.status !== 'approved').length;
+  const assignmentApproved = officerAssignments.filter(trainingRecordCompleted).length;
+  const assignmentPending = officerAssignments.filter(item => !trainingRecordCompleted(item)).length;
   const completed = moduleCompleted + assignmentApproved;
   const total = assignedModules.length + officerAssignments.length;
   const pending = Math.max(0, total - completed);
   const pendingNames = [
     ...assignedModules.filter(module => !completedIds.has(String(module.id))).map(module => module.title || 'Training module'),
-    ...officerAssignments.filter(item => item.status !== 'approved').map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
+    ...officerAssignments.filter(item => !trainingRecordCompleted(item)).map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
   ];
   return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, complianceApproved: assignmentApproved, compliancePending: assignmentPending, pendingNames };
 }

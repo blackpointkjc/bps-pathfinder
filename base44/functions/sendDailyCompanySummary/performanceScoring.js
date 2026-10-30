@@ -1,6 +1,17 @@
+const normalizeRank = value => {
+  const key=String(value||'').trim().toLowerCase().replace(/\./g,'').replace(/\s+/g,' ');
+  if(['lieutenant colonel','lt colonel','lt col'].includes(key))return 'Lt Colonel';
+  if(key==='armed officer')return 'Officer';
+  const ranks=['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
+  return ranks.find(rank=>rank.toLowerCase()===key)||String(value||'').trim();
+};
+
 const EASTERN_TIME_ZONE = 'America/New_York';
 
+export const isCommandPerformanceExempt = officer => ['Major','Lt Colonel','Colonel'].includes(normalizeRank(officer?.rank));
+
 export const emailKey = value => String(value || '').trim().toLowerCase();
+// siteKey is shared with property-aware scoring and is declared below.
 
 function dateParts(value) {
   const date = value instanceof Date ? value : new Date(value);
@@ -42,6 +53,8 @@ function easternOffsetMinutes(date) {
   return hours < 0 ? hours * 60 - minutes : hours * 60 + minutes;
 }
 
+// Resolve an Eastern wall-clock date/time to the exact instant it represents, so a
+// scheduled shift can be expressed as a real duty window.
 export function easternWallToIso(dateKey, timeKey) {
   if (!dateKey || !timeKey) return null;
   const [y, m, d] = String(dateKey).slice(0, 10).split('-').map(Number);
@@ -68,7 +81,8 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
   if (clockWall == null) return null;
 
   const candidates = schedules
-    .filter(s => emailKey(s.officer_email) === email && s.archived !== true && s.is_open !== true && s.shift_date && s.start_time && s.end_time)
+    .filter(s => emailKey(s.officer_email) === email && s.archived !== true && s.is_open !== true && s.shift_date && s.start_time && s.end_time
+      && (!siteKey(entry.location) || !siteKey(s.location) || siteKey(entry.location) === siteKey(s.location)))
     .map(schedule => {
       let start = wallClockMinute(schedule.shift_date, schedule.start_time);
       let end = wallClockMinute(schedule.shift_date, schedule.end_time);
@@ -78,13 +92,19 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
       const distance = Math.abs(clockWall - start);
       // Keep a broad window for genuinely late/early punches, but do not pair a punch
       // to an unrelated shift simply because it shares a calendar date.
-      const plausible = clockWall >= start - 360 && clockWall <= end + 360;
+      // A clock-in hours before a shift is not its arrival. Permit a one-hour
+      // early clock-in for legitimate prep while keeping late-punch review broad.
+      const plausible = clockWall >= start - 60 && clockWall <= Math.min(end, start + 240);
       return plausible ? { schedule, start, end, inside, distance } : null;
     })
     .filter(Boolean)
     .sort((a, b) => {
+      // An early punch for the next scheduled block can fall inside a previous
+      // block. Match the nearest scheduled START, not merely the first interval
+      // containing the timestamp; otherwise valid early arrivals are misattributed.
+      if (a.distance !== b.distance) return a.distance - b.distance;
       if (a.inside !== b.inside) return a.inside ? -1 : 1;
-      return a.distance - b.distance;
+      return a.start - b.start;
     });
 
   return candidates[0]?.schedule || null;
@@ -138,8 +158,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
 
   const eligibleSchedules = schedules.filter(schedule => {
     if (schedule?.archived === true || schedule?.is_open === true || !schedule?.shift_date || !schedule?.start_time || !schedule?.end_time) return false;
-    // Called-out and sent-home shifts are administrative absences scored in Duty &
-    // Attendance Review, never a missed clock-in here.
+    // A shift the officer was called out of, or sent home from, is an administrative
+    // absence already tracked in Duty & Attendance Review. It must never be scored
+    // as a missed clock-in here, or the same absence is punished twice.
     if (['called_out', 'sent_home'].includes(String(schedule?.attendance_status || '').toLowerCase())) return false;
     if (monthStart && schedule.shift_date < monthStart) return false;
     if (monthEnd && schedule.shift_date > monthEnd) return false;
@@ -155,7 +176,7 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   const usedEntries = new Set();
   for (const schedule of eligibleSchedules) {
     const candidates = timeEntries
-      .filter(entry => entry?.clock_in && !usedEntries.has(String(entry.id || '')))
+      .filter(entry => entry?.clock_in && entry.archived !== true && !usedEntries.has(String(entry.id || '')))
       .map(entry => ({ entry, matched: matchTimeEntryToSchedule(entry, [schedule]) }))
       .filter(item => item.matched)
       .sort((a, b) => new Date(a.entry.clock_in).getTime() - new Date(b.entry.clock_in).getTime());
@@ -167,8 +188,9 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     if (!entry) {
       const scheduledStartWall = wallClockMinute(schedule.shift_date, schedule.start_time);
       const spanning = timeEntries
-        .filter(candidate => candidate?.clock_in)
+        .filter(candidate => candidate?.clock_in && candidate.archived !== true)
         .filter(candidate => emailKey(candidate.officer_email) === emailKey(schedule.officer_email))
+        .filter(candidate => !siteKey(candidate.location) || !siteKey(schedule.location) || siteKey(candidate.location) === siteKey(schedule.location))
         .map(candidate => {
           const inWall = wallClockMinute(easternDateKey(candidate.clock_in), easternTimeKey(candidate.clock_in));
           const outWall = candidate.clock_out
@@ -316,7 +338,17 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   }
 
   const total = onTime + late + missed + overrun;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, overrun, exempt, total, details };
+  const commandExempt = isCommandPerformanceExempt(officer);
+  // Attendance is measured from real schedule and time-clock records only: an
+  // elapsed shift that was actually worked counts as attended. Clock-in timing
+  // (early, on time or late) is informational and is excluded from the score, and
+  // no rank receives an automatic 100%.
+  const attended = onTime + late + overrun;
+  const rawRate = total ? Math.round((attended / total) * 100) : null;
+  const rate = rawRate;
+  const punctualityRate = total ? Math.round((onTime / total) * 100) : null;
+  return { rate, rawRate, punctualityRate, commandExempt, onTime, late, missed, overrun, attended, exempt, total,
+    details: details.map(detail => ({ ...detail, command_exempt: false })) };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
@@ -335,6 +367,8 @@ export function calculateBidStanding(bids = [], monthStart, monthEnd) {
   return { total: monthly.length, scoredTotal, accepted, rejected, pending, withdrawn, score };
 }
 
+const trainingRecordCompleted = row => row?.completed === true ||
+  ['completed','complete','approved','passed','verified'].includes(String(row?.status||'').toLowerCase());
 export function calculateTrainingScore(user, modules = [], completions = [], assignments = []) {
   if (!user?.email) return { completed: 0, pending: 0, total: 0, percentage: null, pendingNames: [] };
   const assignedModules = modules.filter(module => module.active !== false && (
@@ -343,17 +377,17 @@ export function calculateTrainingScore(user, modules = [], completions = [], ass
     (module.assigned_ranks || []).includes(user.rank) ||
     module.required === true
   ));
-  const completedIds = new Set(completions.filter(item => item.completed && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
+  const completedIds = new Set(completions.filter(item => trainingRecordCompleted(item) && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
   const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
   const officerAssignments = assignments.filter(item => emailKey(item.officer_email) === emailKey(user.email));
-  const assignmentApproved = officerAssignments.filter(item => item.status === 'approved').length;
-  const assignmentPending = officerAssignments.filter(item => item.status !== 'approved').length;
+  const assignmentApproved = officerAssignments.filter(trainingRecordCompleted).length;
+  const assignmentPending = officerAssignments.filter(item => !trainingRecordCompleted(item)).length;
   const completed = moduleCompleted + assignmentApproved;
   const total = assignedModules.length + officerAssignments.length;
   const pending = Math.max(0, total - completed);
   const pendingNames = [
     ...assignedModules.filter(module => !completedIds.has(String(module.id))).map(module => module.title || 'Training module'),
-    ...officerAssignments.filter(item => item.status !== 'approved').map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
+    ...officerAssignments.filter(item => !trainingRecordCompleted(item)).map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
   ];
   return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, complianceApproved: assignmentApproved, compliancePending: assignmentPending, pendingNames };
 }
@@ -507,10 +541,13 @@ export function calculateJobDutyCompliance({
   qrCheckpoints = [],
   dutyRules = [],
   locations = [],
+  exemptions = [],
   monthStart,
   monthEnd,
 } = {}) {
   const officerEmail = emailKey(officer?.email);
+  const exemptKeys = new Set((exemptions || []).map(value => String(value)).filter(Boolean));
+  const isExempt = key => Boolean(key) && exemptKeys.has(String(key));
   const evaluatedShifts = timeEntries.filter(entry => {
     if (!entry?.clock_in || entry?.archived === true || entry?.performance_exception === true) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
@@ -548,6 +585,7 @@ export function calculateJobDutyCompliance({
       if (start == null || end == null) continue;
       const crossesMidnight = end <= start;
       if (crossesMidnight) end += 1440;
+      // Only a fully elapsed shift can be owed.
       if (nowWall == null || end > nowWall) continue;
       if (absentDates.has(String(schedule.shift_date).slice(0, 10))) continue;
       const coveredByClockIn = evaluatedShifts.some(entry => {
@@ -648,9 +686,9 @@ export function calculateJobDutyCompliance({
   });
   const shiftDetails = [];
   const usedDarIds = new Set();
-  let darRequired = 0, darCompleted = 0;
-  let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
-  let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0;
+  let darRequired = 0, darCompleted = 0, darExcused = 0;
+  let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0, incidentExcused = 0;
+  let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0, qrExcused = 0;
 
   evaluatedAll.forEach(entry => {
     const shiftDate = easternDateKey(entry.clock_in);
@@ -665,7 +703,7 @@ export function calculateJobDutyCompliance({
       shift_id: entry.id,
       shift_date: shiftDate,
       active: isActiveShift,
-      property: propertyForSite(site, locations)?.site_name || String(entry.location || '').split(' - ')[0].split(':')[0],
+      property: propertyForSite(site, locations)?.site_name || String(entry.location || '').split(' - ')[0].split(':')[0] || 'Assigned post',
       daily_activity: { required: false, completed: false, report_id: null },
       incidents: { required: 0, completed: 0, excluded: 0, items: [] },
       qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
@@ -677,11 +715,19 @@ export function calculateJobDutyCompliance({
     const sessionLead = session?.entries?.[0] === entry;
     const requiresDar = Boolean(sessionLead && session && !session.active);
     if (requiresDar) {
-      darRequired++;
-      detail.daily_activity.required = true;
+      const darKey = `dar:${session?.id || entry.id || shiftDate}`;
+      const darIsExempt = isExempt(darKey);
+      detail.daily_activity.key = darKey;
+      if (darIsExempt) {
+        darExcused++;
+        detail.daily_activity.excused = true;
+      } else {
+        darRequired++;
+        detail.daily_activity.required = true;
+      }
       detail.daily_activity.session_entry_ids = session.entries.map(item => item.id).filter(Boolean);
       detail.daily_activity.session_sites = [...session.sites].filter(Boolean);
-      const matchingDar = dailyReports.find(report => {
+      const matchingDar = darIsExempt ? null : dailyReports.find(report => {
         if (['draft', 'rejected'].includes(String(report?.status || '').toLowerCase()) || usedDarIds.has(String(report?.id || ''))) return false;
         const reportId = String(report?.id || '');
         const shiftIds = new Set(session.entries.map(item => String(item.id || '')));
@@ -713,8 +759,10 @@ export function calculateJobDutyCompliance({
       return callMatchesProperty(call, site, locations);
     });
     const allowedTypes = Array.isArray(rule?.incident_required_call_types) ? rule.incident_required_call_types.map(v => String(v).toLowerCase()) : [];
-    // JobDutyRule defaults the property-call incident requirement to true, so a
-    // property call during a shift requires a report unless a rule opts out.
+    // JobDutyRule defaults the property-call incident requirement to true, and the
+    // duty-rule screen already reports an unconfigured site as "Required". A property
+    // call during a shift therefore requires a report unless a rule explicitly opts
+    // out, so sites without a rule row are no longer silently exempt.
     const requireIncident = Boolean(site)
       && (rule ? ruleIsEffective && rule.incident_report_required_for_property_calls !== false : true);
 
@@ -725,6 +773,19 @@ export function calculateJobDutyCompliance({
         const identity = String(call.original_call_id || call.id || call.call_id || '');
         if (!identity || countedIncidentCalls.has(identity)) return;
         countedIncidentCalls.add(identity);
+        const incidentKey = `incident:${identity}`;
+        if (isExempt(incidentKey)) {
+          incidentExcused++;
+          detail.incidents.items.push({
+            call_id: identity,
+            key: incidentKey,
+            call_number: call.bps_reference || call.agency_cad_number || call.call_id || identity,
+            call_type: call.incident || call.incident_type || 'Call for service',
+            call_location: call.location || detail.property,
+            status: 'excused',
+          });
+          return;
+        }
         if (call.performance_decision?.excluded === true) {
           incidentExcluded++;
           detail.incidents.excluded++;
@@ -763,6 +824,7 @@ export function calculateJobDutyCompliance({
           detail.incidents.completed++;
           detail.incidents.items.push({
             call_id: call.id,
+            key: incidentKey,
             call_number: callNumber,
             status: 'completed',
             call_type: callTypeLabel,
@@ -775,6 +837,7 @@ export function calculateJobDutyCompliance({
         } else {
           detail.incidents.items.push({
             call_id: call.id,
+            key: incidentKey,
             call_number: callNumber,
             status: 'missing',
             call_type: callTypeLabel,
@@ -889,11 +952,19 @@ export function calculateJobDutyCompliance({
       const extraRequired = Math.max(0, minimumPerShift - obligationCount);
       const extraAvailable = Math.max(0, successful.length - obligationCompleted);
       const completedCount = Math.min(requiredCount, obligationCompleted + Math.min(extraRequired, extraAvailable));
-      qrRequired += requiredCount;
+      const qrKey = `qr:${entry.id || shiftDate}`;
+      // An administrator can exempt the QR obligations of a shift (checkpoints not
+      // available, equipment failure, post closed). Exempt obligations are removed
+      // from the required total instead of being silently credited as completed.
+      const qrExcusedForShift = isExempt(qrKey) ? Math.max(0, requiredCount - completedCount) : 0;
+      qrExcused += qrExcusedForShift;
+      qrRequired += requiredCount - qrExcusedForShift;
       qrCompleted += completedCount;
+      detail.qr.key = qrKey;
+      detail.qr.excused = qrExcusedForShift;
       detail.qr.required = requiredCount;
       detail.qr.completed = completedCount;
-      detail.qr.missed = Math.max(0, requiredCount - completedCount);
+      detail.qr.missed = Math.max(0, requiredCount - completedCount - qrExcusedForShift);
       detail.qr.required_checkpoint_names = requiredCheckpoints.map(cp => cp.checkpoint_name || cp.location_label || cp.id);
       detail.qr.missed_obligations = missedObligations;
       detail.qr.frequency_minutes = frequency;
@@ -907,19 +978,26 @@ export function calculateJobDutyCompliance({
   const incidentScore = incidentRequired ? Math.round((incidentCompleted / incidentRequired) * 100) : null;
   const qrScore = qrRequired ? Math.round((qrCompleted / qrRequired) * 100) : null;
   const totalRequired = darRequired + incidentRequired + qrRequired;
+  const commandExempt = false;
   const totalMissed = Math.max(0, darRequired - darCompleted)
     + Math.max(0, incidentRequired - incidentCompleted)
     + Math.max(0, qrRequired - qrCompleted);
   // Job Duty must move when additional required duties are missed. A pure completion
   // ratio makes 0/8 and 0/15 both equal 0%, which hides the difference in performance.
   // Each missed required duty lowers Job Duty by 5 points, capped at zero.
-  const score = totalRequired > 0 ? Math.max(0, 100 - (totalMissed * 5)) : null;
+  // Every missed required duty counts, at every rank, so an officer with
+  // outstanding DARs, incident reports or QR obligations can never display 100%.
+  const countedMissed = totalMissed;
+  const score = totalRequired > 0 ? Math.max(0, 100 - (countedMissed * 5)) : null;
 
   return {
     score,
-    dailyActivity: { required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
-    incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
-    qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
+    commandExempt,
+    countedMissed,
+    exempted: darExcused + incidentExcused + qrExcused,
+    dailyActivity: { commandExempt, required: darRequired, completed: darCompleted, excused: darExcused, missed: Math.max(0, darRequired - darCompleted), score: darScore },
+    incidentReports: { commandExempt, required: incidentRequired, completed: incidentCompleted, excused: incidentExcused, excluded: incidentExcluded, missed: Math.max(0, incidentRequired - incidentCompleted), score: incidentScore },
+    qrCompliance: { required: qrRequired, completed: qrCompleted, excused: qrExcused, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
     dutySessions: darSessions.map(session => ({
       id: session.id,
@@ -970,7 +1048,8 @@ export function calculateDarCompliance({ officer = null, timeEntries = [], daily
   return { required, completed, missed, score: required ? Math.round((completed / required) * 100) : null, details };
 }
 
-export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd) {
+export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd, officer = null, exemptions = []) {
+  const exemptKeys = new Set((exemptions || []).map(value => String(value)).filter(Boolean));
   const today = easternDateKey(new Date());
   const nowTime = easternTimeKey(new Date());
   const nowWall = wallClockMinute(today, nowTime);
@@ -982,15 +1061,24 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
     const startWall = wallClockMinute(schedule.shift_date, schedule.start_time);
     return startWall != null && nowWall != null && startWall <= nowWall;
   });
-  const applicable = callOuts.filter(item => {
+  const recorded = callOuts.filter(item => {
     if (item.call_out_type !== 'called_out' || item.voided === true || item.active === false) return false;
     const date = item.call_out_date || easternDateKey(item.created_date);
     return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
   });
-  if (monthlySchedules.length === 0) return { score: null, count: applicable.length, scheduled: 0, items: applicable };
-  const denominator = monthlySchedules.length;
+  // An administrator can exempt a call-out (approved leave, documented emergency).
+  // The exempted call-out is removed from both the numerator cost and the scheduled
+  // denominator so the officer is neither rewarded nor penalized for it.
+  const excusedItems = recorded.filter(item => exemptKeys.has(`call_out:${item.id}`));
+  const applicable = recorded.filter(item => !exemptKeys.has(`call_out:${item.id}`));
+  const commandExempt = false;
+  if (monthlySchedules.length === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
+  const denominator = Math.max(0, monthlySchedules.length - excusedItems.length);
+  if (denominator === 0) return { score: null, rawScore: null, commandExempt, count: applicable.length, scheduled: 0, items: applicable, excusedItems };
+  // Every recorded call-out lowers attendance at every rank. There is no automatic
+  // 100% for command staff; the score always comes from the verified call-out rows.
   const score = Math.max(0, Math.round(((denominator - Math.min(denominator, applicable.length)) / denominator) * 100));
-  return { score, count: applicable.length, scheduled: monthlySchedules.length, items: applicable };
+  return { score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable, excusedItems };
 }
 
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));
@@ -998,10 +1086,11 @@ const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(
 export function buildOverallPerformance({ punctuality, trainingScore = null, jobDuty = null, callOutAttendance = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
   // Configured weights remain 55/15/15/3/3/3/3/3. A category with no actual
   // scoreable record is omitted rather than being displayed or counted as a fake
-  // 100%. The remaining real categories are re-normalized across their configured
+  // 100%. Explicit Major-and-above command credit is the policy exception.
+  // The remaining categories are re-normalized across their configured
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
-    { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
+    { label: 'Attendance', score: punctuality?.total > 0 && punctuality?.rate != null ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
     { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
