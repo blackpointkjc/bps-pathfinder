@@ -40,7 +40,23 @@ export default function AdminPromotions(){
  const isCommand=['Colonel','Lt Colonel','Major'].includes(prospectiveRank);
  const eligibleSupervisors=useMemo(()=>roster.filter(officer=>officer.id!==selected?.id&&rankLevel(officer.rank)<rankLevel(prospectiveRank)),[roster,selected?.id,prospectiveRank]);
  const availableRanks=selected?RANKS.filter(rank=>rankLevel(rank)<=rankLevel(selected.rank)):RANKS;
- const adjust=(key,value)=>{setForm(current=>({...current,[key]:value}));setPreview(null);setComplete(null);setConfirm(false);setError('');};
+ const adjust=(key,value)=>{
+  setForm(current=>{
+   const next={...current,[key]:value};
+   if(key==='new_rank'){
+    // An existing supervisor can become a peer/subordinate after promotion.
+    // Never carry an invalid reporting-command ID into a new-rank preview.
+    const valid=roster.filter(officer=>officer.id!==current.officer_id&&rankLevel(officer.rank)<rankLevel(value));
+    if(!valid.some(officer=>officer.id===current.supervisor_id))next.supervisor_id='';
+    next.platoon=['Colonel','Lt Colonel','Major'].includes(value)?'Command':
+      (['A','B'].includes(current.platoon)?current.platoon:'A');
+    if(rankLevel(value)>rankLevel('Sergeant'))next.transfer_platoon=false;
+   }
+   if(key==='platoon'&&value==='Unassigned')next.transfer_platoon=false;
+   return next;
+  });
+  setPreview(null);setComplete(null);setConfirm(false);setError('');
+ };
  const chooseOfficer=id=>{const found=roster.find(item=>item.id===id);setForm({
   ...starting(),officer_id:id,new_rank:found?.rank||'Officer',platoon:['A','B'].includes(found?.platoon)?found.platoon:'A',
   oversight_platoon:found?.oversight_platoon||'A',supervisor_id:found?.supervisor_id||'',
@@ -78,6 +94,7 @@ export default function AdminPromotions(){
    <label className="block text-xs font-semibold">Reports to (higher-ranking command)<select value={form.supervisor_id} onChange={e=>adjust('supervisor_id',e.target.value)} className={`${field} mt-1`}><option value="">{isCommand?'Company command (no superior selected)':'Select supervisor…'}</option>{eligibleSupervisors.map(u=><option key={u.id} value={u.id}>{nameOf(u)} · {u.platoon||'Command'}</option>)}</select></label></div>
    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 text-xs"><input type="checkbox" checked={form.transfer_platoon} onChange={e=>adjust('transfer_platoon',e.target.checked)} className="mt-0.5 h-4 w-4"/><span><b>Change platoon command</b><span className="mt-1 block text-slate-300">Reassign eligible junior officers in the chosen platoon to report directly to the promoted command officer. A preview will list each affected officer before approval.</span></span></label>
    <label className="block text-xs font-semibold">Command reason / formal announcement note<textarea value={form.reason} onChange={e=>adjust('reason',e.target.value)} maxLength={800} rows={3} className={`${field} mt-1 h-auto py-2`} placeholder="Official promotion, effective command reassignment, remarks…"/></label>
+   {selected&&!isCommand&&!form.supervisor_id&&<p className="rounded-lg border border-amber-500/60 bg-amber-950/40 p-2 text-xs text-amber-200">Select a higher-ranking reporting supervisor before previewing. Pathfinder will not guess your chain of command.</p>}
    <button type="submit" disabled={!selected||busy||loading} className="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{busy?'Checking command roster…':'Preview rank, assignments & announcement'}</button>
   </form>
   <section className={`${block} space-y-3`}><h2 className="text-sm font-black uppercase tracking-wide text-cyan-200">2 · Review & approve</h2>
