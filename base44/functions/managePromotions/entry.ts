@@ -1,7 +1,85 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
-import {RANKS,rankLevel,normalizeRank,PAY_RANGES,nextUnitNumber,RANK_SERIES} from '../updateUser/rankPolicy.ts';
-import {synchronizeOfficerIdentity} from '../updateUser/synchronizeOfficerIdentity.ts';
-import {notifyPlatoonChange} from '../updateUser/notifyPlatoonChange.ts';
+
+
+
+
+// Bundled personnel policy from base44/functions/updateUser/rankPolicy.ts
+// Shared personnel policy. This module contains no runtime or service dependencies.
+const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
+const RANK_SERIES: Record<string, {start:number,end:number}> = {
+ 'Colonel':{start:100,end:100},'Lt Colonel':{start:102,end:199},
+ 'Major':{start:200,end:299},'Captain':{start:350,end:399},
+ 'Lieutenant':{start:400,end:449},'First Sergeant':{start:450,end:499},
+ 'Sergeant':{start:500,end:549},'Corporal':{start:550,end:599},
+ 'Senior officer':{start:600,end:649},'Officer':{start:650,end:699},
+ 'Unarmed Officer':{start:700,end:799}
+};
+const PAY_RANGES: Record<string, {min:number,max:number}> = {
+ 'Unarmed Officer':{min:18,max:20},'Officer':{min:19.5,max:21.5},
+ 'Senior officer':{min:20.5,max:22.5},'Corporal':{min:21,max:23},
+ 'Sergeant':{min:22,max:24},'First Sergeant':{min:23,max:25},
+ 'Lieutenant':{min:24,max:26},'Captain':{min:25,max:27},
+ 'Major':{min:27.5,max:27.5},'Lt Colonel':{min:27.5,max:27.5},'Colonel':{min:27.5,max:27.5}
+};
+function normalizeRank(value: unknown) {
+ const rank=String(value || '').trim().replace(/\s*\(.*\)\s*$/,'').replace(/[.]/g,'').replace(/\s+/g,' ').toLowerCase();
+ if(['lieutenant colonel','lt colonel','lt col'].includes(rank)) return 'Lt Colonel';
+ if(rank==='armed officer') return 'Officer';
+ return RANKS.find(item=>item.toLowerCase()===rank) || String(value || '').trim();
+}
+const rankLevel = (value: unknown) => {const index=RANKS.indexOf(normalizeRank(value));return index<0?999:index;};
+function comparePersonnel(a: any,b: any) {
+ const unit=(p: any)=>Number(p?.unit_number || p?.unitNumber)>0?Number(p.unit_number || p.unitNumber):999999;
+ const name=(p: any)=>[p?.last_name || p?.lastName,p?.first_name || p?.firstName,p?.full_name,p?.email,p?.id].filter(Boolean).join(' ');
+ return rankLevel(a?.rank)-rankLevel(b?.rank) || unit(a)-unit(b) || name(a).localeCompare(name(b));
+}
+const getPayRangeForRank = (rank: unknown) => PAY_RANGES[normalizeRank(rank)] || {min:18,max:20};
+function nextUnitNumber(rank: unknown, users: any[] = [], excludedId = '') {
+ const series=RANK_SERIES[normalizeRank(rank)];
+ if(!series) return '';
+ const used=new Set(users.filter(p=>p.id!==excludedId).map(p=>Number(p.unit_number)).filter(Number.isSafeInteger));
+ for(let candidate=series.start;candidate<=series.end;candidate++) if(!used.has(candidate)) return String(candidate);
+ throw new Error('No available unit numbers in the '+normalizeRank(rank)+' series');
+}
+function previewRankChange(original: any, rank: unknown, users: any[] = []) {
+ const normalized=normalizeRank(rank);
+ if(normalized===normalizeRank(original?.rank)) {
+  const series=RANK_SERIES[normalized];
+  const current=Number(original?.unit_number);
+  const valid=!series || (Number.isSafeInteger(current) && current>=series.start && current<=series.end);
+  return {rank:normalized,unit_number:valid ? original?.unit_number || '' : nextUnitNumber(normalized,users,original?.id),hourly_rate:original?.hourly_rate ?? getPayRangeForRank(normalized).min};
+ }
+ return {rank:normalized,unit_number:nextUnitNumber(normalized,users,original?.id),hourly_rate:PAY_RANGES[normalized]?.min ?? original?.hourly_rate ?? 18};
+}
+
+// Bundled personnel policy from base44/functions/updateUser/synchronizeOfficerIdentity.ts
+async function synchronizeOfficerIdentity(entities: any, user: any) {
+  const emails = [...new Set([user.email,user.work_email,user.pathfinder_email,...(user.email_aliases || [])].filter(Boolean).map((v: any) => String(v).trim().toLowerCase()))];
+  const warnings: string[] = [];
+  const identity = { rank: user.rank || '', unit_number: String(user.unit_number || '') };
+  for (const [name,query] of [['OfficerRoster',{ email: { $in:emails } }],['ActiveOfficer',{ officer_email: { $in:emails } }],['Unit',{ user_id:user.id }]] as const) {
+    try {
+      const rows = await entities[name].filter(query, '-updated_date', 1000);
+      for (const row of rows || []) {
+        const fields = name === 'Unit' ? { unit_id:identity.unit_number, label:[identity.rank,user.last_name].filter(Boolean).join(' ') || user.full_name || user.email } : identity;
+        const patch = Object.fromEntries(Object.entries(fields).filter(([key,value]) => String(row[key] ?? '') !== String(value)));
+        if (Object.keys(patch).length) await entities[name].update(row.id, patch);
+      }
+    } catch (error: any) { warnings.push(name + ' identity sync needs retry.'); console.warn(name + ' identity sync failed',error?.message); }
+  }
+  return warnings;
+}
+
+// Bundled personnel policy from base44/functions/updateUser/notifyPlatoonChange.ts
+async function notifyPlatoonChange(entities:any,before:any,after:any) {
+ if(!after.email || (String(before.platoon||'')===String(after.platoon||'') && String(before.supervisor_id||'')===String(after.supervisor_id||'') && String(before.next_level_supervisor_id||'')===String(after.next_level_supervisor_id||'')))return;
+ const event_key='platoon:'+after.id+':'+String(after.updated_date||new Date().toISOString())+':'+after.platoon+':'+after.supervisor_id;
+ const existing=await entities.Notification.filter({event_key},'-created_date',1);
+ if(existing.length)return;
+ const command=after.supervisor_name||'Command staff';
+ const message='Your platoon assignment has been updated from '+(before.platoon||'Unassigned')+' to Platoon '+(after.platoon||'Unassigned')+'. Your reporting command is '+command+'. Call and report to your new command for instructions.';
+ await entities.Notification.create({recipient_email:after.email,type:'system_issue',title:'Platoon / command reassignment',message,related_id:after.id,priority:'high',is_read:false,requires_acknowledgment:true,source_name:'Platoon Command',event_key,announcement_text:message});
+}
 
 const trim=(value:any,max=160)=>String(value??'').trim().slice(0,max);
 const fail=(error:string,status=400)=>Response.json({error},{status});
