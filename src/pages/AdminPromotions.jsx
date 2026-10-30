@@ -8,7 +8,7 @@ import {toast} from 'sonner';
 
 const field='h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-sm text-white';
 const block='rounded-xl border border-slate-700 bg-[#0c1b2c] p-4';
-const stamp=()=>new Date().toISOString().slice(0,10);
+const stamp=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=t=>parts.find(p=>p.type===t)?.value||'01';const date=new Date(`${v('year')}-${v('month')}-${v('day')}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10)};
 const starting=()=>({officer_id:'',new_rank:'',platoon:'A',oversight_platoon:'A',supervisor_id:'',transfer_platoon:false,effective_date:stamp(),reason:''});
 const nameOf=u=>[u.rank,u.name].filter(Boolean).join(' ');
 export default function AdminPromotions(){
@@ -95,7 +95,7 @@ export default function AdminPromotions(){
    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 text-xs"><input type="checkbox" checked={form.transfer_platoon} onChange={e=>adjust('transfer_platoon',e.target.checked)} className="mt-0.5 h-4 w-4"/><span><b>Change platoon command</b><span className="mt-1 block text-slate-300">Reassign eligible junior officers in the chosen platoon to report directly to the promoted command officer. A preview will list each affected officer before approval.</span></span></label>
    <label className="block text-xs font-semibold">Command reason / formal announcement note<textarea value={form.reason} onChange={e=>adjust('reason',e.target.value)} maxLength={800} rows={3} className={`${field} mt-1 h-auto py-2`} placeholder="Official promotion, effective command reassignment, remarks…"/></label>
    {selected&&!isCommand&&!form.supervisor_id&&<p className="rounded-lg border border-amber-500/60 bg-amber-950/40 p-2 text-xs text-amber-200">Select a higher-ranking reporting supervisor before previewing. Pathfinder will not guess your chain of command.</p>}
-   <button type="submit" disabled={!selected||busy||loading} className="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{busy?'Checking command roster…':'Preview rank, assignments & announcement'}</button>
+   <button type="submit" disabled={!selected||busy||loading||uploadingPortrait} className="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{busy?'Checking command roster…':'Preview rank, assignments & announcement'}</button>
   </form>
   <section className={`${block} space-y-3`}><h2 className="text-sm font-black uppercase tracking-wide text-cyan-200">2 · Review & approve</h2>
   {!preview&&<p className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-400">Choose an officer and preview the changes before an administrator may approve them. Nothing changes during preview.</p>}

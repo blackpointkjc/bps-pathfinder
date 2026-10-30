@@ -115,6 +115,7 @@ function changePlan(users:any[],input:any){
    (officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
  if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
  if(nextSystemRole==='admin'&&!nextRoles.includes('full_access'))nextRoles.push('full_access');
+ if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
  const nextPhoto=trim(input.profile_photo_url,2000);
  if(nextPhoto&&!/^https:\/\//i.test(nextPhoto))throw new Error('The scheduled portrait must be an uploaded HTTPS image.');
  const effective=trim(input.effective_date,16);
@@ -154,11 +155,10 @@ function changePlan(users:any[],input:any){
   next_level_supervisor_id:nextSupervisor?.id||'',next_level_supervisor_email:nextSupervisor?.email||'',next_level_supervisor_name:nextSupervisor?`${nextSupervisor.rank||''} ${name(nextSupervisor)}`.trim():'',
   is_supervisor:supervisorRank(proposed)||officer.is_supervisor===true};
  if(promoted)updates.hourly_rate=pay;
- if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
  updates.role=nextSystemRole;
  updates.additional_roles=nextRoles;
  updates.dispatch_role=nextRoles.includes('dispatch');
- updates.is_supervisor=nextRoles.includes('supervisor')||supervisorRank(proposed);
+ updates.is_supervisor=nextRoles.includes('supervisor');
  if(photoChanged)updates.profile_photo_url=nextPhoto;
  const reason=trim(input.reason,800);
  return {officer,supervisor,updates,transfers,promoted,noChanges,rolesChanged,photoChanged,reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10),
