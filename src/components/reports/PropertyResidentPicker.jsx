@@ -1,53 +1,63 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {base44} from '@/api/base44Client';
-import {Search,Users,Car,RefreshCw} from 'lucide-react';
+import {Search,Users,Car,RefreshCw,CheckCircle2} from 'lucide-react';
 
 const plate=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-const cls='h-10 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text-sm text-white';
-/** One property-scoped rent roll lookup shared by parking and incident reports.
- * Never searches other properties or claims DMV ownership verification.
- */
-export default function PropertyResidentPicker({site,onSelect,label='Find resident / vehicle in this property rent roll',showVehicle=true}){
- const [query,setQuery]=useState(''),[data,setData]=useState({residents:[],vehicles:[]}),[loading,setLoading]=useState(false),[error,setError]=useState(''),[residentId,setResidentId]=useState(''),[vehicleId,setVehicleId]=useState(''),[reload,setReload]=useState(0);
- useEffect(()=>{setQuery('');setData({residents:[],vehicles:[]});setResidentId('');setVehicleId('');},[site]);
+const cls='h-11 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text-sm text-white';
+const isMatch=(resident,cars,q)=>{
+ const tokens=String(q||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
+ const searchable=[resident.full_name,resident.unit_number,resident.building,resident.phone,resident.email,resident.lease_id,resident.lease_status,
+  ...cars.flatMap(vehicle=>[vehicle.plate,vehicle.state,vehicle.make,vehicle.model,vehicle.year,vehicle.color,vehicle.vin,vehicle.permit_number,vehicle.permit_status])]
+  .map(x=>String(x||'').toLowerCase());
+ return tokens.every(token=>searchable.some(value=>value.includes(token)));
+};
+/** Typed, server-scoped registry search: records appear as selectable cards,
+ * not a resident dropdown. Matching residents and their vehicles are returned
+ * only from the selected authorized property. */
+export default function PropertyResidentPicker({site,onSelect,label='Search resident or vehicle on this property',showVehicle=true}){
+ const [query,setQuery]=useState(''),[data,setData]=useState({residents:[],vehicles:[],total_matches:0}),[loading,setLoading]=useState(false),[error,setError]=useState('');
+ const [selected,setSelected]=useState(null),[reload,setReload]=useState(0);
+ const latest=useRef(0);
+ useEffect(()=>{setQuery('');setData({residents:[],vehicles:[],total_matches:0});setSelected(null);setError('');latest.current++;},[site]);
  useEffect(()=>{
-  let active=true;setError('');
-  if(!site)return;
-  setLoading(true);
-  base44.functions.invoke('manageParkingRecords',{action:'resident_lookup',site_name:site}).then(response=>{
-   const result=response?.data||response||{};
-   if(result.error)throw Error(result.error);
-   if(active)setData({residents:result.residents||[],vehicles:result.vehicles||[]});
-  }).catch(err=>{if(active)setError('Property rent roll unavailable: '+(err?.response?.data?.error||err?.data?.error||err.message||'Retry'))}).finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false};
- },[site,reload]);
+  const q=query.trim();const seq=++latest.current;
+  if(!site||q.length<2){setData({residents:[],vehicles:[],total_matches:0});setLoading(false);return;}
+  setLoading(true);setError('');
+  const timer=setTimeout(()=>{
+   base44.functions.invoke('manageParkingRecords',{action:'resident_lookup',site_name:site,query:q}).then(res=>{
+    if(seq!==latest.current)return;
+    const payload=res?.data||res||{};if(payload.error)throw Error(payload.error);
+    setData({residents:payload.residents||[],vehicles:payload.vehicles||[],total_matches:payload.total_matches||0});
+   }).catch(err=>{if(seq===latest.current)setError(err?.response?.data?.error||err?.data?.error||err?.message||'Resident search unavailable')})
+   .finally(()=>{if(seq===latest.current)setLoading(false)});
+  },320);
+  return()=>clearTimeout(timer);
+ },[query,site,reload]);
  useEffect(()=>{
-   if(!site)return;
-   let lastChecked=Date.now();
-   const changed=event=>{if(event.detail?.site===site)setReload(value=>value+1)};
-   const focused=()=>{if(Date.now()-lastChecked>120000){lastChecked=Date.now();setReload(value=>value+1)}};
-   window.addEventListener('pathfinder:rent-roll-updated',changed);
-   window.addEventListener('focus',focused);
-   return()=>{window.removeEventListener('pathfinder:rent-roll-updated',changed);window.removeEventListener('focus',focused)};
+  const onUpdate=event=>{if(event.detail?.site===site)setReload(n=>n+1)};
+  window.addEventListener('pathfinder:rent-roll-updated',onUpdate);
+  return()=>window.removeEventListener('pathfinder:rent-roll-updated',onUpdate);
  },[site]);
- const rows=useMemo(()=>{
-  const q=query.trim().toLowerCase();if(!q)return (data.residents||[]).slice(0,60);
-  return (data.residents||[]).filter(row=>[row.full_name,row.unit_number,row.building,...data.vehicles.filter(v=>v.resident_id===row.id).flatMap(v=>[v.plate,v.vin])].some(x=>String(x||'').toLowerCase().includes(q))).slice(0,60);
- },[data,query]);
- const chosen=data.residents.find(row=>row.id===residentId);
- const cars=data.vehicles.filter(vehicle=>vehicle.resident_id===residentId);
- const pickResident=id=>{setResidentId(id);setVehicleId('');const found=data.residents.find(row=>row.id===id);if(found)onSelect?.(found,null)};
- const pickCar=id=>{setVehicleId(id);const found=cars.find(row=>row.id===id);if(chosen)onSelect?.(chosen,found||null)};
- return <section className="space-y-2 rounded-lg border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
-  <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={loading||!site} onClick={()=>setReload(value=>value+1)} className="flex shrink-0 items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs font-semibold"><RefreshCw size={13}/>Refresh rent roll</button></div>
-  {!site?<p className="text-xs text-amber-300">Select the incident / parking property first to use its rent roll.</p>:<>
-   <label className="relative block"><Search size={15} className="absolute left-3 top-3 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Type resident name, apartment/unit, plate or VIN…" className={`${cls} pl-9`} aria-label="Search property residents and registered vehicles"/></label>
-   {loading&&<p className="text-xs text-cyan-300">Loading this property’s rent roll…</p>}
-   {error&&<p role="alert" className="text-xs text-amber-300">{error}</p>}
-   {!loading&&<select value={residentId} onChange={e=>pickResident(e.target.value)} className={cls} aria-label="Select matching property resident"><option value="">Select resident ({rows.length} matching)…</option>{rows.map(row=><option key={row.id} value={row.id}>{row.full_name} · Unit {row.unit_number||'—'} · {row.lease_status||'unknown'}</option>)}</select>}
-   {chosen&&<div className="text-xs text-emerald-200">Rent-roll match: <b>{chosen.full_name}</b> · Unit {chosen.unit_number||'—'} · {chosen.lease_status||'unknown'} lease {chosen.lease_end?`· ends ${chosen.lease_end}`:''}</div>}
-   {chosen&&showVehicle&&<label className="block text-xs"><span className="mb-1 flex items-center gap-1 text-cyan-200"><Car size={14}/>Registered vehicle to attach (optional)</span><select value={vehicleId} onChange={e=>pickCar(e.target.value)} className={cls}><option value="">No vehicle selected / person only</option>{cars.map(car=><option key={car.id} value={car.id}>{plate(car.plate)} · {car.state||'VA'} · {car.year||''} {car.make||''} {car.model||''} · Permit {car.permit_status||'unknown'}</option>)}</select></label>}
-   <p className="text-[11px] text-slate-400">Internal Pathfinder property records only. This does not verify legal vehicle ownership, DMV status, or current tenancy independently.</p>
+ const rows=useMemo(()=>data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),query)),[data,query]);
+ const select=(person,car=null)=>{setSelected({resident:person,vehicle:car});onSelect?.(person,car)};
+ return <section className="space-y-3 rounded-xl border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
+  <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={!site||loading||query.trim().length<2} onClick={()=>setReload(n=>n+1)} className="flex items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs"><RefreshCw size={14}/>Refresh</button></div>
+  {!site?<p className="text-xs text-amber-300">Choose the property first to search its resident and vehicle records.</p>:<>
+    <div className="relative"><Search size={16} className="absolute left-3 top-3.5 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Start typing a name, unit, phone, email, plate, VIN, make, model or permit…" className={`${cls} pl-10`} aria-label="Type to find property residents and vehicles" autoComplete="off"/></div>
+    {query.trim().length<2&&<p className="text-xs text-slate-400">Type at least two characters. Results appear below; click the resident or vehicle to add it to your report.</p>}
+    {loading&&<p role="status" className="text-xs text-cyan-200">Searching this property's records…</p>}
+    {error&&<p role="alert" className="rounded border border-amber-600 bg-amber-950/30 p-2 text-xs text-amber-200">{error}</p>}
+    {query.trim().length>=2&&!loading&&!error&&<div role="status" className="text-xs text-slate-400">{rows.length?`Showing ${rows.length}${data.total_matches>rows.length?` of ${data.total_matches}`:''} matching residents. Select a person or registered vehicle below.`:'No matching resident or registered vehicle at this property.'}</div>}
+    {rows.length>0&&<div className="max-h-72 space-y-2 overflow-y-auto" aria-label="Resident search results">{rows.map(row=>{
+      const cars=data.vehicles.filter(v=>v.resident_id===row.id);
+      const selectedResident=selected?.resident?.id===row.id;
+      return <div key={row.id} className={`rounded-lg border p-2 ${selectedResident?'border-emerald-500 bg-emerald-950/20':'border-slate-700 bg-slate-950/60'}`}>
+        <button type="button" onClick={()=>select(row)} className="flex w-full items-start gap-2 rounded p-2 text-left hover:bg-cyan-950/40"><Users size={16} className="mt-0.5 shrink-0 text-cyan-300"/><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-white">{row.full_name}</span><span className="block text-xs text-slate-300">Unit {row.unit_number||'—'}{row.building?` · ${row.building}`:''} · {row.lease_status||'unknown'} lease</span>{row.phone&&<span className="block text-xs text-slate-400">{row.phone}</span>}</span>{selectedResident&&!selected?.vehicle&&<CheckCircle2 size={17} className="text-emerald-300"/>}</button>
+        {showVehicle&&cars.length>0&&<div className="mt-1 space-y-1 pl-4">{cars.map(car=><button type="button" key={car.id} onClick={()=>select(row,car)} className="flex w-full items-center gap-2 rounded-md border border-slate-700 bg-[#102135] px-3 py-2 text-left text-xs hover:border-cyan-500"><Car size={14} className="shrink-0 text-amber-300"/><span className="min-w-0 flex-1"><b>{plate(car.plate)} {car.state||'VA'}</b> · {car.year||''} {car.make||''} {car.model||''} {car.color||''} · Permit {car.permit_status||'unknown'}</span>{selectedResident&&selected?.vehicle?.id===car.id&&<CheckCircle2 size={16} className="shrink-0 text-emerald-300"/>}</button>)}</div>}
+      </div>;
+    })}</div>}
+    {selected&&<p role="status" className="flex gap-2 rounded-lg border border-emerald-600 bg-emerald-950/30 p-2 text-xs text-emerald-200"><CheckCircle2 size={16} className="shrink-0"/>Selected {selected.resident.full_name} · Unit {selected.resident.unit_number||'—'}{selected.vehicle?` · Vehicle ${selected.vehicle.plate}`:''}. Linked to this form.</p>}
+    <p className="text-[11px] text-slate-400">Internal Pathfinder property registry only—not DMV or independent tenancy verification.</p>
   </>}
  </section>;
 }
