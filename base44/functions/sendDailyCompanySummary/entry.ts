@@ -142,6 +142,24 @@ function recordBelongs(record: any, user: any, aliases: Set<string>, fields = ['
   return Boolean(user?.id&&[record?.user_id,record?.officer_id].some(v=>String(v||'')===String(user.id)));
 }
 const completedTraining = (row:any)=>row?.completed===true||['completed','complete','approved','passed','verified'].includes(String(row?.status||'').toLowerCase());
+// A verified, current course certificate on the officer's personnel file
+// supersedes an old pending TrainingAssignment record for the SAME course.
+// Never use an unrelated DCJS/Firearm card to clear all missing training.
+const courseKey=(value:any)=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+function verifiedProfileCourse(user:any,course:any, today:string){
+  const keys=[course?.course_id,course?.training_name,course?.title].map(courseKey).filter(Boolean);
+  if(!keys.length)return false;
+  return (user?.officer_certifications||[]).some((cert:any)=>{
+    const exp=String(cert?.expiration_date||'').slice(0,10);
+    if(exp&&/^\d{4}-\d{2}-\d{2}$/.test(exp)&&exp<today)return false;
+    if(['expired','pending','rejected','revoked'].includes(String(cert?.status||'').toLowerCase()))return false;
+    const confirmed=cert?.manually_verified===true||
+      (['active','completed','approved','verified'].includes(String(cert?.status||'').toLowerCase())&&Boolean(cert?.certificate_number||cert?.cert_file_url));
+    if(!confirmed)return false;
+    return [cert.course_id,cert.training_name,cert.certification_type].map(courseKey).filter(Boolean).some(key=>keys.includes(key));
+  });
+}
+
 function activeCertificationExpiry(user:any,type:string){
   const kind=type.toLowerCase().includes('firearm')?'firearm':'dcjs';
   const dates=[user?.[kind+'_expiration'],...(user?.officer_certifications||[]).filter((c:any)=>String(c?.certification_type||c?.training_name||'').toLowerCase().includes(kind))
@@ -198,7 +216,8 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
     }
 
     for (const assignment of trainingAssignments) {
-      if (completedTraining(assignment) || !recordBelongs(assignment, user, aliases)) continue;
+      if (completedTraining(assignment) || !recordBelongs(assignment, user, aliases)
+        ||verifiedProfileCourse(user,assignment,easternNow().date)) continue;
       const due = assignment?.due_date ? ` (due ${formatDate(assignment.due_date)})` : '';
       const state = String(assignment?.status || 'assigned').replaceAll('_', ' ');
       addMissing(missing, user, `Training: ${assignment.training_name || 'Assigned training'} — ${state}${due}`);
@@ -214,7 +233,7 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
         || (module?.assigned_to || []).some((email: unknown) => aliases.has(emailKey(email)))
         || (module?.assigned_divisions || []).includes(user?.division)
         || (module?.assigned_ranks || []).includes(user?.rank);
-      if (assigned && !completedModuleIds.has(String(module.id))) {
+      if (assigned && !completedModuleIds.has(String(module.id)) && !verifiedProfileCourse(user,module,easternNow().date)) {
         addMissing(missing, user, `Training module: ${module.title || module.training_name || 'Required module'}`);
       }
     }
@@ -679,7 +698,10 @@ Deno.serve(async (req) => {
         rankings: rankings.map((row, index) => ({ position: row.score==null?null:index + 1, name: rankedName(row.user),
           overall_score:row.score,training_percentage:row.metrics?.training?.percentage??null,
           attendance_coverage:row.metrics?.punctuality?.rate??null,job_duty_score:row.metrics?.jobDuty?.score??null,
-          categories:row.metrics?.overall?.categories||[],omitted_categories:row.metrics?.overall?.omitted||[] })),
+          categories:row.metrics?.overall?.categories||[],omitted_categories:row.metrics?.overall?.omitted||[],
+          certification_file:{dcjs_expiration:activeCertificationExpiry(row.user,'dcjs'),firearm_expiration:activeCertificationExpiry(row.user,'firearm'),
+            verified_on_file:(row.user.officer_certifications||[]).filter((cert:any)=>verifiedProfileCourse(row.user,cert,now.date)).length},
+          scoring_explanation:'Operational performance is separate from DCJS/Firearm document completion. Attendance, job duty, call-outs and approved training determine the weighted score.' })),
         missing_items: missingRows.map(({ user, items }) => ({ name: rankedName(user), items })),
         recipient_count: recipients.length,
         email_recipient_count: new Set(recipients.map(user => resolvedDeliveryEmail(user, metricData.outlook, metricData.teams)).filter(Boolean)).size,
