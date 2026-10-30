@@ -18,8 +18,14 @@ export default function DataConnectionStatus() {
       // for sustained queues but never trigger background retries here.
       const waiting = Number(health.oldestQueuedReadMs || 0) >= 35_000;
       const throttled = until > Date.now() || quietUntil > Date.now();
-      setStatus(failed.length >= 2 || waiting
-        ? { rateLimited: throttled, failed: failed.length, waiting, queue: health.queuedReads }
+      const freshFailed=failed.filter(query=>Date.now()-Number(query.state.errorUpdatedAt||0)<90000);
+      const veryRecent=freshFailed.filter(query=>Date.now()-Number(query.state.errorUpdatedAt||0)<25000);
+      // Two stale error entries are not proof of an ongoing server outage.
+      // Dismiss an old banner once the read queue and cooldown have recovered;
+      // the individual screen retains its own error and retry button.
+      const persistent=waiting || (freshFailed.length>=2 && (throttled || veryRecent.length>=2));
+      setStatus(persistent
+        ? { rateLimited: throttled, failed:freshFailed.length, waiting, queue:health.queuedReads }
         : null);
       // Do not automatically refetch every failing active query in parallel.
       // That turns a single 429 into another rate-limit storm. Individual
@@ -35,8 +41,12 @@ export default function DataConnectionStatus() {
     const health = getBase44RequestHealth();
     if (health.rateLimitedUntil || health.readRetryAt) return;
     clearBase44ReadCache();
-    void queryClient.refetchQueries({ type: 'active', predicate: query => query.state.status === 'error' }).catch(() => {});
-    window.dispatchEvent(new CustomEvent('bps-operational-resume'));
+    // A manual retry is intentionally one foreground failed screen, not a
+    // simultaneous replay of every failed query plus the CAD sync monitor.
+    const next=queryClient.getQueryCache().getAll()
+      .filter(query=>query.isActive()&&query.state.status==='error')
+      .sort((a,b)=>Number(b.state.errorUpdatedAt||0)-Number(a.state.errorUpdatedAt||0))[0];
+    if(next)void queryClient.refetchQueries({type:'active',predicate:query=>query===next}).catch(()=>{});
   };
   return <div role="status" aria-live="polite" className="fixed bottom-2 right-2 z-[70] flex max-w-xs flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-slate-950/95 p-2 text-xs text-amber-100 shadow-sm">
     <div><div className="font-bold">{status.waiting ? 'Data is taking longer than expected' : 'Some data is reconnecting'}</div><div className="mt-1 text-[11px]">{status.rateLimited ? 'The server is limiting requests. Pathfinder will retry when it is ready.' : status.waiting ? `${status.queue} request${status.queue === 1 ? '' : 's'} awaiting the data service. You can retry when the queue clears.` : 'Some data could not load. Open the affected screen or retry once the service recovers.'}</div></div>
