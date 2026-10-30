@@ -163,7 +163,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           setRenderStatus(`Canvas ${Math.round(rect?.width||0)}×${Math.round(rect?.height||0)} · GL ${canvas.width}×${canvas.height} · Layers ${layerCount} · Sources ${sourceCount} · Features ${featureCount}`);
         };
         map.on('idle',updateRenderStatus);
-        const renderMonitor=window.setInterval(updateRenderStatus,3500);
+        // Diagnostics run on actual rendering events, not every few seconds
+        // while an officer pans the map on a phone.
+        const renderMonitor=null;
         window.setTimeout(()=>{if(!cancelled)updateRenderStatus();},800);
         const previousCleanup=cleanupRef.current;
         cleanupRef.current=()=>{window.removeEventListener('resize',resize);observer?.disconnect();window.clearInterval(renderMonitor);previousCleanup?.();};
@@ -263,7 +265,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       <div ref={elementRef} className="absolute inset-0 h-full w-full" style={{width:'100%',height:'100%',minHeight:'240px'}} aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}
       {!ready && !error && <div role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-slate-950/90 p-3 text-xs text-white">Loading TomTom map resources…</div>}
-      <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[70%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><div>{resourceStatus}</div><div className="mt-0.5 opacity-75">{renderStatus}</div></div>
+      {(error || !ready) && <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[70%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><div>{resourceStatus}</div>{error && <div className="mt-0.5 opacity-75">{renderStatus}</div>}</div>}
       {ready && <div className="pointer-events-none absolute bottom-4 left-3 rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><MapPin className="mr-1 inline h-3 w-3"/>Red: CAD calls · Blue: units · Green: your GPS</div>}
     </div>
   </div>,document.body);

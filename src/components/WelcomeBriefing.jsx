@@ -168,7 +168,9 @@ export default function WelcomeBriefing({ user }) {
     } finally { setBriefingRefreshing(false); }
   }, [user?.id, user?.email, user?.role, user?.is_supervisor, user?.rank, JSON.stringify(user?.additional_roles || [])]);
 
-  const userKey = normalized(user?.email || user?.id);
+  // Use stable user ID; email/profile aliases may change between center
+  // mounts and must not cause the same login briefing to reopen.
+  const userKey = String(user?.id || normalized(user?.email || ''));
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
   const lastShownKey = userKey ? `bps-welcome-last-shown:${userKey}` : '';
@@ -183,14 +185,19 @@ export default function WelcomeBriefing({ user }) {
   useEffect(() => {
     if (!user?.id || !user?.email || !sessionKey || !storageKey) return;
     const now = Date.now();
-    const sessionSeen = sessionStorage.getItem(sessionKey) === 'acknowledged';
+    const legacyEmailKey = `bps-welcome-session:${normalized(user.email)}`;
+    const sessionSeen = sessionStorage.getItem(sessionKey) === 'acknowledged'
+      || sessionStorage.getItem(legacyEmailKey) === 'acknowledged';
     const savedActive = Number.isFinite(new Date(localStorage.getItem(storageKey) || '').getTime()) ? new Date(localStorage.getItem(storageKey)).getTime() : null;
 
     // The login briefing is a once-per-login/browser-session window. It must not
     // reopen because the app was minimized, the tab was hidden, the user returned
     // after an hour, their duty status changed, or a component remounted.
     const lastShownAt = new Date(localStorage.getItem(lastShownKey) || 0).getTime();
-    if (sessionSeen && Number.isFinite(lastShownAt) && now - lastShownAt < 15 * 60 * 1000) return;
+    // Acknowledged means once per browser session, NOT once per 15 minutes.
+    // The old time-limited guard reopened the briefing when navigating back
+    // to CAD from map tools or after a long shift.
+    if (sessionSeen) return;
 
     localStorage.setItem(lastShownKey, new Date(now).toISOString());
     localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
@@ -324,7 +331,8 @@ export default function WelcomeBriefing({ user }) {
         requestRunning = false;
         if (active) {
           setLoading(false);
-          if (firstLoad) setOpen(true);
+          if (firstLoad && sessionStorage.getItem(sessionKey) !== 'acknowledged'
+            && sessionStorage.getItem(`bps-welcome-session:${normalized(user.email)}`) !== 'acknowledged') setOpen(true);
           firstLoad = false;
         }
       }
@@ -536,6 +544,7 @@ export default function WelcomeBriefing({ user }) {
       }
       setBrowsingBriefing(false);
       sessionStorage.setItem(sessionKey, 'acknowledged');
+      sessionStorage.setItem(`bps-welcome-session:${normalized(user.email)}`, 'acknowledged');
       localStorage.setItem(storageKey, new Date().toISOString());
       setOpen(false);
     } catch (error) {
