@@ -1798,26 +1798,7 @@ export default function Layout({ children, currentPageName }) {
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
       <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
-    <MobileFieldNav
-      currentPageName={currentPageName}
-      unreadCounts={unreadCounts}
-      activeCenter={activeCenter}
-      user={user}
-      centerDestinations={{
-        cad: centerLastPagesRef.current.cad || 'CommandDashboard',
-        officer: centerLastPagesRef.current.officer || 'Dashboard',
-        supervisor: centerLastPagesRef.current.supervisor || 'SupervisorCenter',
-        admin: centerLastPagesRef.current.admin || 'AdminDashboard',
-      }}
-      onTabNavigate={() => {
-        if (mainScrollRef.current && currentPageName) {
-          const position = mainScrollRef.current.scrollTop;
-          scrollPositionsRef.current[currentPageName] = position;
-          sessionStorage.setItem(`bps-mobile-scroll:${currentPageName}`, String(position));
-        }
-      }}
-      onReports={() => { const centers = allowedCenters(user); setActiveCenter(centers.includes('supervisor') ? 'supervisor' : 'officer'); setMobileSection('reports'); setMobileOpen(true); }}
-      onMenu={openMobileToolsMenu}
-    />
+    {/* The CAD / Admin / Inbox / Tools bottom strip was redundant with
+        the header tools menu and obscured the work surface on phones/iPads. */}
   </div></MicrosoftMailSetupGate>;
 }

@@ -470,3 +470,14 @@ html.pf-map-fullscreen .live-map-toolbar {
   padding-right: max(8px, env(safe-area-inset-right));
 }
 .pf-navigation-workspace:fullscreen { width: 100vw; height: 100dvh; }
+
+/* No duplicated CAD / Admin / Inbox / Tools bottom navigation on iPhone or iPad.
+   Remove the reserved side/bottom rail space left by old mobile layouts. */
+@media (max-width: 1279px) {
+  .cad-app > section { padding-left: 0 !important; padding-bottom: 0 !important; }
+  .cad-app .pathfinder-field-nav { display: none !important; }
+  .cad-app main.mobile-field-content,
+  .cad-app main[data-page^="Admin"] {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
