@@ -349,6 +349,45 @@
     },
     "absence_return_announced_key": {
       "type": "string"
+    },
+    "platoon": {
+      "type": "string",
+      "description": "Current company platoon: A, B, Command, or Unassigned"
+    },
+    "supervisor_id": {
+      "type": "string",
+      "description": "Assigned direct command supervisor User ID"
+    },
+    "supervisor_email": {
+      "type": "string",
+      "description": "Direct reporting officer contact"
+    },
+    "supervisor_name": {
+      "type": "string",
+      "description": "Direct reporting officer display name"
+    },
+    "next_level_supervisor_id": {
+      "type": "string",
+      "description": "Next level in chain of command User ID"
+    },
+    "next_level_supervisor_email": {
+      "type": "string"
+    },
+    "next_level_supervisor_name": {
+      "type": "string"
+    },
+    "is_supervisor": {
+      "type": "boolean",
+      "default": false,
+      "description": "Current supervisor authorization flag"
+    },
+    "dispatch_role": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_on_map": {
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [
