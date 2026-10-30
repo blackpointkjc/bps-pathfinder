@@ -53,13 +53,35 @@ Deno.serve(async (req) => {
     };
     // Avoid nested $and/$or + regex expressions which Base44 rejects as
     // malformed query objects. Filter/merge bounded recent records in memory.
-    const query = { created_date: { $gte: since, $lte: until } };
-    const [activeRead, archivedRead] = await Promise.all([
-      readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(query,'-time_received',pageSize+1,offsets.active), []),
-      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(query,'-time_received',pageSize+1,offsets.archived), []),
+    // Recent agency CAD records can be imported with an older/missing
+    // created_date even though time_received is current. A created-date-only
+    // filter gave Call History zero rows while Live Dispatch held active calls.
+    // Fall back by SOURCE, so one populated archive never hides live calls.
+    const activeMode = cursor.active_mode === 'received' ? 'received' : 'created';
+    const archivedMode = cursor.archived_mode === 'received' ? 'received' : 'created';
+    const activeQuery = { [activeMode === 'received' ? 'time_received' : 'created_date']:{ $gte:since, $lte:until } };
+    const archiveQuery = { [archivedMode === 'received' ? 'time_received' : 'created_date']:{ $gte:since, $lte:until } };
+    let [activeRead, archivedRead] = await Promise.all([
+      readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(activeQuery,'-time_received',pageSize+1,offsets.active), []),
+      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(archiveQuery,'-time_received',pageSize+1,offsets.archived), []),
     ]);
     // Never advance a paging cursor past an unavailable source.
     if (activeRead.error || archivedRead.error) throw new Error(activeRead.error || archivedRead.error);
+    // On first page only: if the historical creation-date index has no rows,
+    // retry the call timestamp index once. Stay bounded at one page and carry
+    // the chosen mode in the pagination cursor so subsequent pages align.
+    const sourceMode = {active:activeMode,archived:archivedMode};
+    if (!input.cursor) {
+      const receivedQuery = {time_received:{$gte:since,$lte:until}};
+      const retryTasks:any[] = [];
+      if (!(activeRead.data||[]).length) retryTasks.push(
+        readWithRetry('Recent CAD calls',()=>base44.asServiceRole.entities.DispatchCall.filter(receivedQuery,'-time_received',pageSize+1,0),[])
+          .then(result=>{if(!result.error && result.data.length){activeRead=result;sourceMode.active='received';}}));
+      if (!(archivedRead.data||[]).length) retryTasks.push(
+        readWithRetry('Recently received archived calls',()=>base44.asServiceRole.entities.CallHistory.filter(receivedQuery,'-time_received',pageSize+1,0),[])
+          .then(result=>{if(!result.error && result.data.length){archivedRead=result;sourceMode.archived='received';}}));
+      if(retryTasks.length)await Promise.all(retryTasks);
+    }
     const matchesFilters = (row:any) => {
       const timestamp = callTimestamp(row);
       if(timestamp < Date.parse(since) || timestamp > Date.parse(until)) return false;
@@ -109,7 +131,7 @@ Deno.serve(async (req) => {
     const emails = (unitRead.data||[]).map((row:any)=>String(row.user_email||row.email||'')).filter(Boolean);
     const userRead = await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]);
     const hasMore = (activeRead.data||[]).length > consumed.active || (archivedRead.data||[]).length > consumed.archived;
-    const nextCursor = hasMore ? {snapshot_at:snapshot,active:offsets.active+consumed.active,archived:offsets.archived+consumed.archived} : null;
+    const nextCursor = hasMore ? {snapshot_at:snapshot,active:offsets.active+consumed.active,archived:offsets.archived+consumed.archived,active_mode:sourceMode.active,archived_mode:sourceMode.archived} : null;
     const linksByCall=new Map<string,any[]>();
     for(const link of linkedRead.data||[]){
       if(String(link.status||'active').toLowerCase()==='detached')continue;
