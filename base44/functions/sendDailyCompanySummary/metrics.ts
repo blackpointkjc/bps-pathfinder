@@ -141,32 +141,38 @@ function suggestedPay(overall: number, current: number, range: { min: number; ma
   return current;
 }
 
-async function safeList(base44: any, entityName: string, sort?: string, limit = 5000) {
+async function safeList(base44: any, entityName: string, sort?: string, limit = 5000, issues: string[] = []) {
   try {
     const entity = base44.asServiceRole.entities?.[entityName];
-    return entity?.list ? await entity.list(sort, limit) : [];
-  } catch {
+    if(!entity?.list)throw Error('Entity source unavailable');
+    const rows=await entity.list(sort,limit);
+    if(!Array.isArray(rows))throw Error('Invalid rows');
+    if(rows.length>=limit)issues.push(entityName+' reached its row limit');
+    return rows;
+  } catch(error) {
+    issues.push(entityName+': '+String(error?.message||'unavailable'));
     return [];
   }
 }
 
 export async function loadPerformanceMetricData(base44: any) {
+  const issues: string[]=[];
   const [
     teams, outlook, timeEntries, schedules, incidents, commendations,
     complaints, inspections, writeUps,
   ] = await Promise.all([
-    safeList(base44, 'MicrosoftTeamsIdentity', '-updated_at', 2000),
-    safeList(base44, 'OutlookMailboxLink', '-last_verified_at', 2000),
-    safeList(base44, 'TimeEntry', '-clock_in'),
-    safeList(base44, 'Schedule', '-shift_date'),
-    safeList(base44, 'IncidentReport', '-incident_date'),
-    safeList(base44, 'Commendation', '-commendation_date'),
-    safeList(base44, 'Complaint', '-complaint_date'),
-    safeList(base44, 'InspectionReport', '-inspection_date'),
-    safeList(base44, 'WriteUpReport', '-report_date'),
+    safeList(base44, 'MicrosoftTeamsIdentity', '-updated_at', 2000, issues),
+    safeList(base44, 'OutlookMailboxLink', '-last_verified_at', 2000, issues),
+    safeList(base44, 'TimeEntry', '-clock_in', 5000, issues),
+    safeList(base44, 'Schedule', '-shift_date', 5000, issues),
+    safeList(base44, 'IncidentReport', '-incident_date', 5000, issues),
+    safeList(base44, 'Commendation', '-commendation_date', 5000, issues),
+    safeList(base44, 'Complaint', '-complaint_date', 5000, issues),
+    safeList(base44, 'InspectionReport', '-inspection_date', 5000, issues),
+    safeList(base44, 'WriteUpReport', '-report_date', 5000, issues),
   ]);
 
-  return { teams, outlook, timeEntries, schedules, incidents, commendations, complaints, inspections, writeUps };
+  return { teams, outlook, timeEntries, schedules, incidents, commendations, complaints, inspections, writeUps, _source_errors:issues };
 }
 
 export async function buildPerformanceMetrics(base44: any, officer: any, start: string, end: string, metricData: any = null) {

@@ -80,12 +80,17 @@ function easternNow(value = new Date()) {
   };
 }
 
-async function safeList(base44: any, entityName: string, sort?: string, limit = 5000) {
+async function safeList(base44: any, entityName: string, sort?: string, limit = 5000, issues: string[] = []) {
   try {
     const entity = base44.asServiceRole.entities?.[entityName];
-    return entity?.list ? await entity.list(sort, limit) : [];
+    if(!entity?.list)throw Error('Missing database entity');
+    const rows=await entity.list(sort,limit);
+    if(!Array.isArray(rows))throw Error('Invalid records response');
+    if(rows.length>=limit)issues.push(entityName+' reached its row limit');
+    return rows;
   } catch (error) {
     console.warn(`Daily summary could not load ${entityName}:`, error?.message || error);
+    issues.push(entityName+': '+String(error?.message||'unavailable'));
     return [];
   }
 }
@@ -254,8 +259,8 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
 
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;margin:0 -6px 22px;">
         <tr>
-          ${statCell('Overall', company.overall == null ? '—' : `${company.overall}%`, '#67e8f9')}
-          ${statCell('On-Time', company.onTime == null ? '—' : `${company.onTime}%`, '#86efac')}
+          ${statCell('Company Performance Avg', company.overall == null ? '—' : `${company.overall}%`, '#67e8f9')}
+          ${statCell('Attendance Coverage', company.onTime == null ? '—' : `${company.onTime}%`, '#86efac')}
           ${statCell('Active Team', String(company.activeOperational), '#93c5fd')}
           ${statCell('Company Missing', String(company.totalMissing), company.totalMissing > 0 ? '#fca5a5' : '#86efac')}
         </tr>
@@ -274,7 +279,7 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
       </div>
 
       <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#0b1220;color:#7f8da3;font-size:11px;line-height:1.5;">
-        Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
+        These are company-wide operational performance and attendance figures, not your individual certification-completion rating. Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
       </div>
     </div>`;
   const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company on-time: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
@@ -453,32 +458,43 @@ Deno.serve(async (req) => {
       if (completed) return json({ success: true, skipped: true, reason: 'Today\'s summary was already delivered', date: now.date });
     }
 
+    const sourceIssues: string[]=[];
     const [
       users, metricData, reportTodos, trainingAssignments, trainingModules,
       trainingCompletions, certificationAlerts, dailyReports, shiftBids,
       qrScans, qrCheckpoints, callOuts, dutyRules, locations, clientFeedback,
-      performanceReviews, propertyAlerts, performanceDecisions,
+      performanceReviews, propertyAlerts, performanceDecisions, dutyAdjustments,
     ] = await Promise.all([
-      safeList(base44, 'User', 'last_name'),
+      safeList(base44, 'User', 'last_name', 5000, sourceIssues),
       loadPerformanceMetricData(base44),
-      safeList(base44, 'ReportTodo', '-created_date'),
-      safeList(base44, 'TrainingAssignment', 'due_date'),
-      safeList(base44, 'TrainingModule', 'title'),
-      safeList(base44, 'TrainingCompletion', '-completed_date'),
-      safeList(base44, 'CertificationAlert', 'expiration_date'),
-      safeList(base44, 'DailyActivityReport', '-report_date'),
-      safeList(base44, 'ShiftBid', '-created_date'),
-      safeList(base44, 'QRScanEvent', '-scanned_at'),
-      safeList(base44, 'QRCheckpoint', 'property_site'),
-      safeList(base44, 'CallOut', '-call_out_date'),
-      safeList(base44, 'JobDutyRule', 'property_site'),
-      safeList(base44, 'Location', 'site_name'),
-      safeList(base44, 'ClientFeedback', '-feedback_date'),
-      safeList(base44, 'PerformanceReview', '-review_date'),
-      safeList(base44, 'PropertyAlert', '-created_date'),
+      safeList(base44, 'ReportTodo', '-created_date', 5000, sourceIssues),
+      safeList(base44, 'TrainingAssignment', 'due_date', 5000, sourceIssues),
+      safeList(base44, 'TrainingModule', 'title', 5000, sourceIssues),
+      safeList(base44, 'TrainingCompletion', '-completed_date', 5000, sourceIssues),
+      safeList(base44, 'CertificationAlert', 'expiration_date', 5000, sourceIssues),
+      safeList(base44, 'DailyActivityReport', '-report_date', 5000, sourceIssues),
+      safeList(base44, 'ShiftBid', '-created_date', 5000, sourceIssues),
+      safeList(base44, 'QRScanEvent', '-scanned_at', 5000, sourceIssues),
+      safeList(base44, 'QRCheckpoint', 'property_site', 5000, sourceIssues),
+      safeList(base44, 'CallOut', '-call_out_date', 5000, sourceIssues),
+      safeList(base44, 'JobDutyRule', 'property_site', 5000, sourceIssues),
+      safeList(base44, 'Location', 'site_name', 5000, sourceIssues),
+      safeList(base44, 'ClientFeedback', '-feedback_date', 5000, sourceIssues),
+      safeList(base44, 'PerformanceReview', '-review_date', 5000, sourceIssues),
+      safeList(base44, 'PropertyAlert', '-created_date', 5000, sourceIssues),
       base44.asServiceRole.entities.CallPerformanceDecision.list('-created_date', 5000),
+      safeList(base44, 'DutyAttendanceAdjustment', '-created_date', 5000, sourceIssues),
     ]);
 
+    // Missing/time-limited sources must never be silently treated as an
+    // officer failing work or training. Do not send misleading score emails.
+    const unverified=[...new Set([...sourceIssues,...(metricData?._source_errors||[])])];
+    if(unverified.length){
+      console.warn('Daily company summary held: unverified data sources',unverified.map(x=>String(x).split(':')[0]));
+      return json({success:false,verified:false,retryable:true,
+        error:'Company summary was not sent because required company data is unavailable or truncated. Refresh Company Analytics and retry when these sources recover.',
+        source_issues:unverified},503);
+    }
     const recipients = (users || []).filter(isInternalActiveUser);
     if (!recipients.length) return json({ error: 'No active internal company recipients were found.' }, 400);
 
@@ -522,23 +538,31 @@ Deno.serve(async (req) => {
     const metricResults = rankingCandidates.map(user => {
       try {
         const key = emailKey(user.email);
-        const officerTimeEntries = (metricData.timeEntries || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerSchedules = (metricData.schedules || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerBids = (shiftBids || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerCompletions = (trainingCompletions || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerAssignments = (trainingAssignments || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerFeedback = (clientFeedback || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerReviews = (performanceReviews || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerCommendations = (metricData.commendations || []).filter((item: any) => emailKey(item.officer_email) === key);
-        const officerCallOuts = (callOuts || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const aliases=aliasesFor(user,metricData.teams||[],metricData.outlook||[]);
+        const owned=(row:any,fields=['officer_email'])=>fields.some(field=>aliases.has(emailKey(row?.[field]))) ||
+          (!fields.some(field=>emailKey(row?.[field]))&&String(row?.officer_id||row?.user_id||'')===String(user.id));
+        const canonical=(row:any)=>({...row,officer_email:key});
+        const officerTimeEntries = (metricData.timeEntries || []).filter((item: any) => owned(item)).map(canonical);
+        const officerSchedules = (metricData.schedules || []).filter((item: any) => owned(item)).map(canonical);
+        const officerBids = (shiftBids || []).filter((item: any) => owned(item)).map(canonical);
+        const officerCompletions = (trainingCompletions || []).filter((item: any) => owned(item)).map(canonical);
+        const officerAssignments = (trainingAssignments || []).filter((item: any) => owned(item)).map(canonical);
+        const officerFeedback = (clientFeedback || []).filter((item: any) => owned(item)).map(canonical);
+        const officerReviews = (performanceReviews || []).filter((item: any) => owned(item)).map(canonical);
+        const officerCommendations = (metricData.commendations || []).filter((item: any) => owned(item)).map(canonical);
+        const officerCallOuts = (callOuts || []).filter((item: any) => owned(item)).map(canonical);
 
         const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, now.monthStart, now.monthEnd, metricData.incidents || [], user);
-        const training = calculateTrainingScore(user, (trainingModules || []).filter((item: any) => item.active !== false), officerCompletions, officerAssignments);
+        const canonicalModules=(trainingModules||[]).filter((item:any)=>item.active!==false).map((module:any)=>({
+          ...module,assigned_to:Array.isArray(module.assigned_to)?module.assigned_to.map((addr:any)=>aliases.has(emailKey(addr))?key:addr):module.assigned_to
+        }));
+        const training = calculateTrainingScore({...user,email:key}, canonicalModules, officerCompletions, officerAssignments);
+        const exemptions=(dutyAdjustments||[]).filter((row:any)=>owned(row)).map((row:any)=>String(row.item_key||'')).filter(Boolean);
         const bidStanding = calculateBidStanding(officerBids, now.monthStart, now.monthEnd);
         const clientFeedbackScore = calculateClientFeedback(officerFeedback, now.monthStart, now.monthEnd);
         const supervisorRating = calculateSupervisorRating(officerReviews, now.monthStart, now.monthEnd);
         const recognition = calculateRecognition(officerCommendations, officerFeedback, now.monthStart, now.monthEnd);
-        const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, now.monthStart, now.monthEnd);
+        const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, now.monthStart, now.monthEnd, user, exemptions);
         const jobDuty = calculateJobDutyCompliance({
           officer: user,
           timeEntries: officerTimeEntries,
@@ -552,6 +576,7 @@ Deno.serve(async (req) => {
           qrCheckpoints,
           dutyRules,
           locations,
+          exemptions,
           monthStart: now.monthStart,
           monthEnd: now.monthEnd,
         });
@@ -580,7 +605,7 @@ Deno.serve(async (req) => {
       : null;
     const punctualityRows = metricResults.filter(row => row.metrics?.punctuality?.total > 0);
     const companyPunctualityTotal = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.total || 0), 0);
-    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.onTime || 0), 0);
+    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.attended || 0), 0);
     const companyOnTime = companyPunctualityTotal > 0 ? Math.round((companyPunctualityOnTime / companyPunctualityTotal) * 100) : null;
 
     const dateLabel = new Intl.DateTimeFormat('en-US', {
@@ -601,7 +626,10 @@ Deno.serve(async (req) => {
         success: true,
         preview: true,
         company_overall: companyOverall,
-        rankings: rankings.map((row, index) => ({ position: index + 1, name: rankedName(row.user) })),
+        rankings: rankings.map((row, index) => ({ position: row.score==null?null:index + 1, name: rankedName(row.user),
+          overall_score:row.score,training_percentage:row.metrics?.training?.percentage??null,
+          attendance_coverage:row.metrics?.punctuality?.rate??null,job_duty_score:row.metrics?.jobDuty?.score??null,
+          categories:row.metrics?.overall?.categories||[],omitted_categories:row.metrics?.overall?.omitted||[] })),
         missing_items: missingRows.map(({ user, items }) => ({ name: rankedName(user), items })),
         recipient_count: recipients.length,
         email_recipient_count: new Set(recipients.map(user => resolvedDeliveryEmail(user, metricData.outlook, metricData.teams)).filter(Boolean)).size,
