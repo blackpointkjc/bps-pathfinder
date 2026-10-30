@@ -30,7 +30,7 @@ export default function CommandPromotionBanner({user}){
     const data=event?.data||event;
     if(String(data?.publication_key||'').startsWith('promotion:'))void load();
   });}catch{}
-  const onOpened=()=>{if(live&&current&&getLocalReadAnnouncementIds(user.email).has(String(current.id)))setCurrent(null);};
+  const onOpened=()=>{if(!live)return;setCurrent(previous=>previous&&getLocalReadAnnouncementIds(user.email).has(String(previous.id))?null:previous);};
   window.addEventListener('bps-announcements-opened',onOpened);
   return()=>{live=false;window.clearTimeout(startup);unsubscribe?.();window.removeEventListener('bps-announcements-opened',onOpened)};
  },[user?.email]);
