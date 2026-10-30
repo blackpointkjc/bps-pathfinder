@@ -192,7 +192,8 @@ function AdminSiteOperationsHub() {
 function AdminReportsQualityHub() {
   return <AdminInlineFunctions queryParam="admin_reports_quality_tool" tools={[
     { id: 'allreports', label: 'Report Review', component: AdminReports },
-    { id: 'parking', label: 'Parking Approvals & Residents', component: () => <ParkingRecords mode="admin"/> },
+    { id: 'parking', label: 'Parking Notices & Approvals', component: () => <ParkingRecords mode="admin"/> },
+    { id: 'rentroll', label: 'Property Rent Roll & Registered Vehicles', component: () => <ParkingRecords mode="admin-rentroll"/> },
     { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
     { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
     { id: 'confidential', label: 'Confidential Reports', component: AdminConfidentialReports },
