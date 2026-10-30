@@ -185,6 +185,7 @@ Deno.serve(async req => {
       const input=data.resident||{};
       const record:any={site_name:site};for(const field of residentFields)if(field!=='site_name')record[field]=clean(input[field],field==='notes'?1000:180);
       if(!record.full_name)return fail('Resident name required');
+      if(!['active','pending','former'].includes(record.lease_status))record.lease_status='pending';
       if(record.vehicle_plate)record.vehicle_plate=plateKey(record.vehicle_plate);
       record.updated_by=clean(user.email);record.updated_at=dates();
       let result;
