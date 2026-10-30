@@ -54,7 +54,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:13},
-          transformRequest:async request=>{
+          // MapLibre's transformRequest MUST be synchronous; an async callback
+          // returns a Promise instead of RequestParameters and breaks tiles.
+          transformRequest:request=>{
             const url=new URL(request.url,window.location.href);
             // Guard against forwarding a user's Base44 session to TomTom/CDNs.
             if(url.origin!==new URL(proxy).origin || !url.pathname.startsWith(new URL(proxy).pathname)) return request;
@@ -66,6 +68,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             resolved.search = url.search;
             if (suffix) resolved.searchParams.set('resourcePath', suffix);
             resolved.searchParams.delete('key');
+            // SDK uses map version and language in URL. Preserve them while
+            // stripping key; Base44 adds private credentials upstream.
             const token=window.localStorage.getItem('base44_access_token');
             return {...request,url:resolved.toString(),headers:{...(request.headers||{}),
               ...(token?{Authorization:`Bearer ${token}`}:{}) ,
