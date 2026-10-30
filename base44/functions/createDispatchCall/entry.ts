@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const radius = 6371000;
@@ -112,6 +113,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Dispatch-created calls must enter the same TomTom-first geocoding path
+    // as imported RPD/RFD/HPD/HFD/CCPD/CCFD calls. An exact official CAD GPS
+    // fix is authoritative; never overwrite it with an approximate address pin.
+    const existingLat = data.latitude == null || data.latitude === '' ? NaN : Number(data.latitude);
+    const existingLng = data.longitude == null || data.longitude === '' ? NaN : Number(data.longitude);
+    const validCoordinates = Number.isFinite(existingLat) && Number.isFinite(existingLng)
+      && Math.abs(existingLat) <= 90 && Math.abs(existingLng) <= 180
+      && !(existingLat === 0 && existingLng === 0);
+    let verifiedLocationData = {};
+    if (!validCoordinates) {
+      const agency = String(data.agency || '').toUpperCase();
+      const region = /HPD|HFD|HENRICO/.test(agency) ? 'Henrico County, Virginia'
+        : /CCPD|CCFD|CHESTERFIELD/.test(agency) ? 'Chesterfield County, Virginia'
+        : 'Richmond, Virginia';
+      const address = String(data.location || '').trim();
+      const query = /\b(VA|Virginia|Richmond|Henrico|Chesterfield)\b/i.test(address)
+        ? address : `${address}, ${region}`;
+      const geocoded = await tomtomGeocode(query).catch(() => null);
+      if (geocoded) verifiedLocationData = {
+        latitude: geocoded.latitude, longitude: geocoded.longitude,
+        geo_method: 'tomtom', geo_confidence: geocoded.geo_confidence,
+        geo_approximate: geocoded.geo_approximate,
+      };
+    }
+
     const allowedPriorities = new Set(['low', 'medium', 'high', 'critical']);
     const doa=/(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(data.incident||''));
     const priority = doa && !['critical','high'].includes(data.priority) ? 'high' : allowedPriorities.has(data.priority) ? data.priority : 'medium';
@@ -122,6 +148,7 @@ Deno.serve(async (req) => {
     if(!systemReference)throw new Error(allocation.error||'Unable to allocate the CAD reference. Retry creating this call.');
     const createdCall = await base44.asServiceRole.entities.DispatchCall.create({
       ...data,
+      ...verifiedLocationData,
       bps_reference:systemReference,
       call_id:data.agency_cad_number || systemReference,
       cad_number_source:data.agency_cad_number?'official_government_feed':'bps_internal',
