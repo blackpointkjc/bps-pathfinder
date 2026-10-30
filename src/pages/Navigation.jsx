@@ -167,7 +167,8 @@ export default function Navigation() {
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
-    const [showTomTomSdkPreview, setShowTomTomSdkPreview] = useState(false);
+    const [useTomTomMainMap, setUseTomTomMainMap] = useState(true);
+    const [tomTomMainMapFailed, setTomTomMainMapFailed] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
@@ -1623,12 +1624,11 @@ export default function Navigation() {
                             active: mapTheme === 'night',
                         },
                         {
-                            key: 'tomtom-sdk',
-                            onClick: () => setShowTomTomSdkPreview(true),
-                            title: 'Open TomTom Maps SDK interactive map (preview)',
+                            key: 'tomtom-main',
+                            onClick: () => {setUseTomTomMainMap(value=>!value);setTomTomMainMapFailed(false);},
+                            title: useTomTomMainMap ? 'Use backup offline/CAD map' : 'Use TomTom as main map',
                             icon: <Layers className="h-4 w-4" />,
-                            active: showTomTomSdkPreview,
-                            disabled: !isOnline,
+                            active: useTomTomMainMap && !tomTomMainMapFailed,
                         },
                         {
                             key: 'tomtom-traffic',
@@ -1653,7 +1653,27 @@ export default function Navigation() {
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
-                <MapView
+                {useTomTomMainMap && isOnline && !tomTomMainMapFailed ? (
+                  <Suspense fallback={<div role="status" className="absolute inset-0 flex items-center justify-center bg-slate-950 text-sm text-white">Loading TomTom live map…</div>}>
+                    <TomTomSdkMapPreview
+                      embedded
+                      currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
+                      activeCalls={showActiveCalls ? activeCalls : []}
+                      otherUnits={mapVisibleUnits}
+                      route={navRoute}
+                      destination={navDestination}
+                      heading={heading}
+                      mapTheme={mapTheme}
+                      navigation={isNavigating && activeNavStep ? {instruction:formatInstruction(activeNavStep), distance:navDistanceLabel, eta:navEtaLabel, provider:navRouteProvider} : null}
+                      onMapUnavailable={()=>setTomTomMainMapFailed(true)}
+                      onSelectPoint={coords=>{
+                        setMapSelectedDestination({coords,name:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,address:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,label:'TomTom map location'});
+                        setShowAddressSearch(true);
+                      }}
+                      onCallClick={call=>{setSelectedCall(call);setShowCallSidebar(true);}}
+                    />
+                  </Suspense>
+                ) : <MapView
                     currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                     destination={navDestination} route={navRoute} trafficSegments={showTomTomTraffic ? navTrafficSegments : []}
                     useOfflineTiles={!isOnline}
