@@ -44,7 +44,7 @@ function changePlan(users:any[],input:any){
  const existingUnit=Number(officer.unit_number);
  const series=RANK_SERIES[proposed];
  const unit_number=(promoted||!Number.isSafeInteger(existingUnit)||existingUnit<series.start||existingUnit>series.end)?assignedUnit:trim(officer.unit_number);
- const pay=promoted?(PAY_RANGES[proposed]?.min??Number(officer.hourly_rate)||0):Number(officer.hourly_rate||0);
+ const pay=promoted?(PAY_RANGES[proposed]?.min ?? Number(officer.hourly_rate||0)):Number(officer.hourly_rate||0);
  const nextSupervisor=supervisor?users.find(u=>u.id===supervisor.supervisor_id):null;
  const updates:any={rank:proposed,unit_number,platoon,oversight_platoon:oversight,
   supervisor_id:supervisor?.id||'',supervisor_email:supervisor?.email||'',supervisor_name:supervisor?`${supervisor.rank||''} ${name(supervisor)}`.trim():'',
