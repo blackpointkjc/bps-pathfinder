@@ -13,7 +13,7 @@ import { generateTimeClockPrint } from "../components/TimeClockPrintView";
 import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapContainer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
-import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
+import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -174,6 +174,7 @@ export default function TimeClock() {
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
   const [useTomTomClockMap,setUseTomTomClockMap]=useState(true);
   const [tomTomClockFailed,setTomTomClockFailed]=useState(false);
+  const [clockMapTheme,setClockMapTheme]=usePathfinderMapTheme();
   const [historyReady, setHistoryReady] = useState(false);
   const queryClient = useQueryClient();
 
@@ -875,13 +876,13 @@ export default function TimeClock() {
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <MapPin className="w-5 h-5 text-blue-600" />
                         Your Current Location
-                      </CardTitle><button type="button" onClick={()=>{setUseTomTomClockMap(value=>!value);setTomTomClockFailed(false)}} className="mt-2 rounded-lg border border-cyan-600 bg-slate-950 px-3 py-2 text-xs font-bold text-cyan-200">{useTomTomClockMap&&!tomTomClockFailed?'Detailed geofence map':'TomTom GPS map'}</button>
+                      </CardTitle><MapThemeToggle theme={clockMapTheme} onChange={setClockMapTheme}/><button type="button" onClick={()=>{setUseTomTomClockMap(value=>!value);setTomTomClockFailed(false)}} className="mt-2 rounded-lg border border-cyan-600 bg-slate-950 px-3 py-2 text-xs font-bold text-cyan-200">{useTomTomClockMap&&!tomTomClockFailed?'Detailed geofence map':'TomTom GPS map'}</button>
                     </CardHeader>
                     <CardContent className="p-0">
                       <div className="relative h-[300px] w-full">
                         {useTomTomClockMap&&!tomTomClockFailed&&navigator.onLine ? <TomTomSdkMapPreview embedded
                           currentLocation={[currentLocationCoords.lat,currentLocationCoords.lng]}
-                          mapTheme={undefined} showPoliceStations={false} showFireStations={false} showJails={false}
+                          mapTheme={clockMapTheme} showPoliceStations={false} showFireStations={false} showJails={false}
                           geofence={(()=>{const name=activeEntry.location?.split(' - ')[0]?.trim();
                             const property=locations?.find(loc=>loc.site_name===name);
                             return property?{polygon:property.geofence_polygon||[],center:[Number(property.latitude),Number(property.longitude)],radiusMeters:property.geofence_radius_meters||100}:null;
@@ -893,7 +894,7 @@ export default function TimeClock() {
                           style={{ height: '100%', width: '100%' }}
                           scrollWheelZoom={false}
                         >
-                          <PathfinderTileLayer />
+                          <PathfinderTileLayer theme={clockMapTheme} />
                           <MapUpdater center={[currentLocationCoords.lat, currentLocationCoords.lng]} />
                           <Marker position={[currentLocationCoords.lat, currentLocationCoords.lng]} />
                           {(() => {
