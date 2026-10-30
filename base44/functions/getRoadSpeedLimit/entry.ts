@@ -26,6 +26,45 @@ function normalizeRoad(value: unknown) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+// Virginia's official state-maintained-road speed-limit inventory supplements
+// OSM's missing maxspeed tags. Do not manufacture a limit from road class.
+async function lookupVirginiaPostedLimit(lat: number, lng: number, heading: number, requestedRoad: string) {
+  if (lat < 36.4 || lat > 39.6 || lng < -83.8 || lng > -75.1) return null;
+  const query = new URLSearchParams({
+    f: 'json', geometry: `${lng},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects', distance: '65', units: 'esriSRUnit_Meter',
+    outFields: 'CAR_SPEED_LIMIT,ROUTE_COMMON_NAME', returnGeometry: 'true', outSR: '4326', resultRecordCount: '40',
+  });
+  const endpoint = 'https://services.arcgis.com/p5v98VHDX9Atv3l7/arcgis/rest/services/VDOT_Posted_Speed_Limits/FeatureServer/0/query?';
+  const response = await fetch(endpoint + query, { signal: AbortSignal.timeout(3200) }).catch(() => null);
+  if (!response?.ok) return null;
+  const payload = await response.json().catch(() => null);
+  const metersLng = 111320 * Math.cos(lat * Math.PI / 180);
+  const wanted = normalizeRoad(requestedRoad);
+  let best: any = null;
+  for (const feature of payload?.features || []) {
+    const mph = Number(feature?.attributes?.CAR_SPEED_LIMIT);
+    if (!Number.isFinite(mph) || mph < 10 || mph > 90) continue;
+    const name = String(feature?.attributes?.ROUTE_COMMON_NAME || '');
+    const nameMatch = wanted && normalizeRoad(name) && (normalizeRoad(name).includes(wanted) || wanted.includes(normalizeRoad(name)));
+    let nearest = Infinity, nearestBearing = 0;
+    for (const path of feature?.geometry?.paths || []) for (let i = 1; i < path.length; i++) {
+      const a = path[i-1], b = path[i];
+      const ax = (a[0]-lng)*metersLng, ay = (a[1]-lat)*111320;
+      const dx = (b[0]-a[0])*metersLng, dy = (b[1]-a[1])*111320;
+      const t = Math.max(0, Math.min(1, -(ax*dx+ay*dy)/Math.max(0.00001, dx*dx+dy*dy)));
+      const dist = Math.hypot(ax+t*dx, ay+t*dy);
+      if (dist < nearest) { nearest = dist; nearestBearing = (Math.atan2(dx,dy)*180/Math.PI+360)%360; }
+    }
+    const angle = Number.isFinite(heading) ? Math.abs((((heading-nearestBearing)%180)+270)%180-90) : 0;
+    // On divided highways, do not use speed limits from the wrong road.
+    if (nearest > (nameMatch ? 45 : 25) || angle > 50) continue;
+    const score = nearest + angle*0.35 - (nameMatch ? 15 : 0);
+    if (!best || score < best.score) best = { score, mph, name, dist: nearest };
+  }
+  return best ? { speed_limit_mph: Math.round(best.mph), road_name: best.name || requestedRoad, source: 'Virginia DOT posted speed limits', estimated: false, matched_distance_m: Math.round(best.dist) } : null;
+}
+
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
@@ -57,22 +96,21 @@ Deno.serve(async req => {
     const delta = 0.00125;
     const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join(',');
 
+    const virginiaLookup = lookupVirginiaPostedLimit(lat, lng, heading, requestedRoad).catch(() => null);
     const osmResponse = await fetch(`https://api.openstreetmap.org/api/0.6/map?bbox=${bbox}`, {
       headers: {
         Accept: 'application/xml',
         'User-Agent': 'BPS-Pathfinder-SpeedLimit/1.0',
       },
-      signal: AbortSignal.timeout(6500),
+      signal: AbortSignal.timeout(4500),
     }).catch(() => null);
 
     if (!osmResponse?.ok) {
-      return Response.json({
-        success: true,
-        speed_limit_mph: null,
-        road_name: requestedRoad,
-        source: '',
-        estimated: false,
-      });
+      const virginia = await virginiaLookup;
+      return Response.json({ success: true, ...(virginia || {
+        speed_limit_mph: null, road_name: requestedRoad, source: '',
+        estimated: false, reason: 'posted_limit_unavailable',
+      }) });
     }
 
     const xml = await osmResponse.text();
@@ -183,6 +221,8 @@ Deno.serve(async req => {
       });
     }
 
+    const virginia = await virginiaLookup;
+    if (virginia) return Response.json({ success: true, ...virginia });
     return Response.json({
       success: true,
       speed_limit_mph: null,

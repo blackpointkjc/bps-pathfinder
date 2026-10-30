@@ -92,6 +92,9 @@ export default function Navigation() {
     const [speed, setSpeed] = useState(0);
     const [roadSpeedLimit, setRoadSpeedLimit] = useState(null);
     const [roadSpeedLimitEstimated, setRoadSpeedLimitEstimated] = useState(false);
+    const [roadSpeedLimitSource, setRoadSpeedLimitSource] = useState('');
+    const [roadSpeedLimitRoad, setRoadSpeedLimitRoad] = useState('');
+    const [roadSpeedLimitStatus, setRoadSpeedLimitStatus] = useState('Waiting for precise GPS');
     const [navigationDisplayLocation, setNavigationDisplayLocation] = useState(null);
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
@@ -1014,40 +1017,52 @@ export default function Navigation() {
     }, [currentLocation, isNavigating, navRoute, navDestination, routing, gpsQuality?.accuracy, heading, speed]);
 
     useEffect(() => {
-        if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
-        if (!isNavigating && Number(speed || 0) < 1) return;
-
+        const accurate = isLiveTracking && gpsQuality?.state === 'live' && Number(gpsQuality?.accuracy) <= 75;
+        if (!accurate || !currentLocation || !validPosition(currentLocation[0], currentLocation[1])) {
+            speedLimitRequestSeqRef.current += 1;
+            setRoadSpeedLimit(null);
+            setRoadSpeedLimitSource('');
+            setRoadSpeedLimitRoad('');
+            setRoadSpeedLimitStatus('Waiting for precise GPS');
+            return;
+        }
         const now = Date.now();
-        const roadName = String(navSteps[navStepIndex]?.name || '').trim();
+        const roadName = String(isNavigating ? navSteps[navStepIndex]?.name || '' : '').trim();
         const previous = lastSpeedLimitLookupRef.current;
-        const toRad = value => value * Math.PI / 180;
-        const distanceMeters = previous.lat == null ? Infinity : (() => {
-            const dLat = toRad(currentLocation[0] - previous.lat);
-            const dLng = toRad(currentLocation[1] - previous.lng);
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(previous.lat)) * Math.cos(toRad(currentLocation[0])) * Math.sin(dLng / 2) ** 2;
-            return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        })();
-        const roadChanged = roadName && roadName !== previous.road;
-        if (!roadChanged && now - previous.at < 15000 && distanceMeters < 120) return;
-
+        const distance = previous.lat == null ? Infinity : distanceMetersBetween([previous.lat, previous.lng], currentLocation);
+        const roadChanged = Boolean(roadName && roadName !== previous.road);
+        // Road-speed data is not telemetry: avoid polling the public map service
+        // for every GPS point, but refresh when the vehicle changes road.
+        if (!roadChanged && now - previous.at < 25000 && distance < 90) return;
         const requestSeq = ++speedLimitRequestSeqRef.current;
         lastSpeedLimitLookupRef.current = { at: now, lat: currentLocation[0], lng: currentLocation[1], road: roadName };
+        if (roadChanged || distance > 90) {
+            setRoadSpeedLimit(null);
+            setRoadSpeedLimitRoad('');
+            setRoadSpeedLimitSource('');
+        }
+        setRoadSpeedLimitStatus('Checking posted limit');
         withRequestTimeout(base44.functions.invoke('getRoadSpeedLimit', {
-            latitude: currentLocation[0],
-            longitude: currentLocation[1],
-            road_name: roadName,
-            heading,
-            accuracy: gpsQuality?.accuracy ?? null,
-        }), 9000, 'Road speed limit').then(response => {
+            latitude: currentLocation[0], longitude: currentLocation[1], road_name: roadName,
+            heading, accuracy: gpsQuality?.accuracy ?? null,
+        }), 10000, 'Road speed limit').then(response => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             const payload = response?.data || response || {};
             const limit = Number(payload.speed_limit_mph);
-            setRoadSpeedLimit(Number.isFinite(limit) && limit > 0 ? Math.round(limit) : null);
+            const verified = Number.isFinite(limit) && limit >= 10 && limit <= 90;
+            setRoadSpeedLimit(verified ? Math.round(limit) : null);
+            setRoadSpeedLimitSource(verified ? String(payload.source || '') : '');
+            setRoadSpeedLimitRoad(verified ? String(payload.road_name || '') : '');
             setRoadSpeedLimitEstimated(payload.estimated === true);
+            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : 'No verified limit available');
         }).catch(() => {
-            // Keep the last known posted limit through a transient lookup failure.
+            if (requestSeq !== speedLimitRequestSeqRef.current) return;
+            setRoadSpeedLimit(null);
+            setRoadSpeedLimitSource('');
+            setRoadSpeedLimitRoad('');
+            setRoadSpeedLimitStatus('Speed-limit data unavailable');
         });
-    }, [currentLocation, isNavigating, speed, navStepIndex, navSteps]);
+    }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps]);
 
     useEffect(() => {
         if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
@@ -1630,7 +1645,7 @@ export default function Navigation() {
                     <div className="mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                             <div className="border-b border-slate-200 px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div>
+                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
                             </div>
                             <div className="px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
@@ -1640,12 +1655,12 @@ export default function Navigation() {
                 </div>
             )}
 
-            {!isNavigating && Math.max(0, Math.round(Number(speed) || 0)) > 0 && (
+            {!isNavigating && currentLocation && (gpsQuality?.state === 'live' || Number(speed) > 0) && (
                 <div style={{ top: toolbarHeight + 12 }} className="pointer-events-none absolute left-3 z-[1214]">
                     <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? '--'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div>
+                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}<span className="ml-1 text-[10px] font-black">MPH</span>{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
                         </div>
                         <div className="px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
