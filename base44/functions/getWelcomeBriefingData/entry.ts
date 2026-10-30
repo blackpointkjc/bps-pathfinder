@@ -48,6 +48,24 @@ Deno.serve(async (req) => {
       return fallback;
     }
 
+    // Lightweight live briefing refresh. The full staffing snapshot is a series
+    // of expensive service-role reads; rerunning it for each new mention/task
+    // starved the queue and left the cards showing stale counts.
+    if (input.section === 'activity') {
+      const [mentions, announcements, receipts, notifications, assignedTasks] = [
+        operational ? await loadSource('Teams mentions', () => base44.asServiceRole.entities.ChatMention.filter({ recipient_email: me.email, read: false }, '-created_date', 100)) : [],
+        await loadSource('announcements', () => base44.asServiceRole.entities.Announcement.list('-created_date', 100)),
+        await loadSource('announcement receipts', () => base44.asServiceRole.entities.AnnouncementReceipt.filter({ user_email: me.email }, '-read_at', 300)),
+        await loadSource('notifications', () => base44.asServiceRole.entities.Notification.filter({ recipient_email: me.email, is_read: false }, '-created_date', 100)),
+        supervisorLike && !isOutOfOffice(me)
+          ? await loadSource('assigned tasks', () => base44.asServiceRole.entities.Task.filter({ assigned_to: me.id, status: { $in: ['open', 'in_progress'] } }, '-created_date', 100))
+          : [],
+      ];
+      return Response.json({ success: true, section: 'activity', mentions, announcements,
+        receipts, notifications, assignedTasks, sourceErrors, updated_at: new Date().toISOString(),
+        retry_after: briefingRetryAt() });
+    }
+
     // Load property alerts before the large staffing/communications snapshot.
     // Project only the fields the briefing uses, and offer a small recovery request
     // so a failed alert read does not rerun every company-wide query.

@@ -98,6 +98,8 @@ export default function WelcomeBriefing({ user }) {
   const [loading, setLoading] = useState(true);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], allLiveOfficers: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const [dataErrors, setDataErrors] = useState([]);
+  const [briefingUpdatedAt, setBriefingUpdatedAt] = useState(null);
+  const [briefingRefreshing, setBriefingRefreshing] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
   const [startSessionError, setStartSessionError] = useState('');
   const loadRef = useRef(() => {});
@@ -128,6 +130,44 @@ export default function WelcomeBriefing({ user }) {
       setPropertyLoading(false);
     }
   }, [user?.id]);
+  // Refresh notification counters independently from the expensive staffing
+  // snapshot. Re-read receipts and tasks so dismissed/completed items disappear
+  // while this briefing stays open, including after the app resumes.
+  const refreshActivity = useCallback(async () => {
+    if (!user?.id || !user?.email || !document?.visibilityState || document.visibilityState === 'hidden') return;
+    setBriefingRefreshing(true);
+    clearBase44ReadCacheMatching('function:getWelcomeBriefingData:');
+    try {
+      const response = await base44.functions.invoke('getWelcomeBriefingData', { section: 'activity' });
+      const snapshot = response?.data || response || {};
+      if (!snapshot.success) throw new Error(snapshot.error || 'Briefing activity unavailable');
+      const errors = snapshot.sourceErrors || [];
+      const seenIds = getLocalReadAnnouncementIds(user.email);
+      for (const receipt of snapshot.receipts || []) if (receipt?.announcement_id) seenIds.add(String(receipt.announcement_id));
+      const supervisorAudience = user.role === 'admin' || user.is_supervisor === true ||
+        (user.additional_roles || []).map(normalized).some(role => ['supervisor','full_access'].includes(role)) ||
+        ['corporal','sergeant','first sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(normalized(user.rank));
+      setBrief(previous => ({ ...previous,
+        mentions: errors.includes('Teams mentions') ? previous.mentions : (snapshot.mentions || []).filter(row => row.read !== true),
+        announcements: errors.some(x => ['announcements','announcement receipts'].includes(x)) ? previous.announcements :
+          (snapshot.announcements || []).filter(item => activeAnnouncement(item) &&
+            (item.audience !== 'supervisors' || supervisorAudience) && !seenIds.has(String(item.id))),
+        updates: errors.includes('notifications') ? previous.updates : (snapshot.notifications || []).filter(item =>
+          item.is_read !== true && item.read !== true && !APP_UPDATE_TYPES.has(normalized(item.type))),
+        appUpdates: errors.includes('notifications') ? previous.appUpdates : (snapshot.notifications || []).filter(item =>
+          item.is_read !== true && item.read !== true && APP_UPDATE_TYPES.has(normalized(item.type))),
+        tasks: errors.includes('assigned tasks') ? previous.tasks : (snapshot.assignedTasks || []).filter(item =>
+          ['open','in_progress'].includes(normalized(item.status))),
+      }));
+      const activityLabels = new Set(['Teams mentions','announcements','announcement receipts','notifications','assigned tasks']);
+      setDataErrors(previous => [...previous.filter(label => !activityLabels.has(label)), ...errors.filter(label => activityLabels.has(label))]);
+      setBriefingUpdatedAt(new Date(snapshot.updated_at || Date.now()));
+    } catch (error) {
+      console.warn('Briefing live activity refresh delayed:', error?.message || error);
+      setDataErrors(previous => Array.from(new Set([...previous,'Briefing activity refresh'])));
+    } finally { setBriefingRefreshing(false); }
+  }, [user?.id, user?.email, user?.role, user?.is_supervisor, user?.rank, JSON.stringify(user?.additional_roles || [])]);
+
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
@@ -191,7 +231,7 @@ export default function WelcomeBriefing({ user }) {
         (receipts || []).forEach(receipt => {
           if (receipt?.announcement_id) receiptIds.add(String(receipt.announcement_id));
         });
-        const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
+
         // Prefer the newest verified server activity over an old browser-only value.
         // This prevents a different device or cleared local storage from reporting
         // that an officer was away for weeks despite recent time entries.
@@ -219,22 +259,19 @@ export default function WelcomeBriefing({ user }) {
         // that were already visible earlier in the same duty shift.
         const offlineWindowEnd = Date.now();
         setOfflineSince(effectiveOfflineSince);
-        const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
-        const createdAfterCutoff = item => {
-          const created = parseServerTimestamp(item?.created_date)?.getTime() || 0;
-          return created > briefingCutoff;
-        };
+
+        // The last-activity cutoff applies to property-call history only.
+        // Unread messages, notifications, announcements and open tasks remain
+        // actionable until read or completed, even if posted before last login.
         const canSeeSupervisorAnnouncements = user.role === 'admin' || user.additional_roles?.includes('supervisor') || ['sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim());
         const unseenAnnouncements = (announcements || []).filter(item => (
           activeAnnouncement(item)
           && (item.audience !== 'supervisors' || canSeeSupervisorAnnouncements)
-          && !receiptIds.has(item.id)
-          && createdAfterCutoff(item)
+          && !receiptIds.has(String(item.id))
         ));
         const unreadNotifications = (notifications || []).filter(item => (
           item.is_read !== true
           && item.read !== true
-          && createdAfterCutoff(item)
         ));
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
@@ -276,6 +313,7 @@ export default function WelcomeBriefing({ user }) {
           };
         });
         setDataErrors(Array.from(new Set([...(sourceErrors || []), ...failedSources])));
+        setBriefingUpdatedAt(new Date());
         if (sourceErrors.length) scheduleRecovery(Number(snapshot.retry_after || 0));
         else window.clearTimeout(recoveryTimer);
       } catch (error) {
@@ -291,10 +329,11 @@ export default function WelcomeBriefing({ user }) {
         }
       }
     };
-    loadRef.current = load;
     load();
     return () => { active = false; window.clearTimeout(recoveryTimer); };
   }, [user?.id, user?.email, sessionKey, storageKey, lastShownKey, lastStatusKey]);
+
+  useEffect(() => { loadRef.current = refreshActivity; }, [refreshActivity]);
 
   useEffect(() => {
     if (!open || loading || propertyLoading || !propertySourcesFailed || propertyRetryRef.current >= 3) return;
@@ -328,15 +367,17 @@ export default function WelcomeBriefing({ user }) {
         loadRef.current?.();
       }, 3000);
     };
-    const unsubscribers = ['Task','Notification','Announcement','AnnouncementReceipt','ChatMention','TimeEntry','ActiveOfficer','Schedule','VehicleAssignment','Unit'].map(name => base44.entities[name].subscribe(refreshBriefing));
+    const unsubscribers = ['Task','Notification','Announcement','AnnouncementReceipt','ChatMention','TimeEntry','ActiveOfficer','Schedule','ScheduleWeekStatus','VehicleAssignment','Unit'].map(name => base44.entities[name].subscribe(refreshBriefing));
     const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') loadRef.current?.(); }, 30000);
     const onFocus = () => loadRef.current?.();
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
     return () => {
       window.clearTimeout(refreshTimer);
       unsubscribers.forEach(unsubscribe => unsubscribe?.());
       window.clearInterval(poll);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
     };
   }, [user?.id, open, loading]);
 
@@ -605,6 +646,10 @@ export default function WelcomeBriefing({ user }) {
                     )}
                   </div>
 
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-900/40 bg-cyan-950/10 p-2.5">
+                    <span role="status" className="text-[10px] font-semibold text-cyan-200">{briefingUpdatedAt ? `Activity updated ${briefingUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}` : 'Loading current briefing activity'}</span>
+                    <button type="button" disabled={briefingRefreshing} onClick={refreshActivity} className="min-h-10 rounded-lg border border-cyan-600/70 px-3 text-xs font-bold text-cyan-100 disabled:opacity-50">{briefingRefreshing ? 'Refreshing…' : 'Refresh briefing'}</button>
+                  </div>
                   <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 sm:gap-3">
                     <BriefCard icon={MessageCircle} label="Teams Mentions" value={dataErrors.includes('Teams mentions') ? 'Unavailable' : pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={dataErrors.some(source => ['announcements', 'announcement receipts'].includes(source)) ? 'Unavailable' : brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
@@ -615,7 +660,7 @@ export default function WelcomeBriefing({ user }) {
                   </div>
 
                   {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
-                    <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-violet-200">Updates Since You Were Away</div></div>
+                    <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-violet-200">Updates Requiring Attention</div></div>
                     <div className="mt-2 space-y-2">
                       {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
                       {brief.announcements.slice(0, 2).map(item => <button key={`announcement-${item.id}`} type="button" onClick={() => go('Announcements')} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left"><div className="text-xs font-black text-amber-200">{item.title || 'Company Announcement'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || 'Open Announcements to review.'}</div></button>)}
