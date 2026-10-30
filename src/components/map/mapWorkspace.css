@@ -87,3 +87,9 @@
 @media(max-width:850px) { .pf-map-telemetry { display:none; }.pathfinder-header { padding:6px 10px!important; gap:8px!important; }.pathfinder-header .pf-header-context { display:none!important; } }
 @media(max-width:600px) { .pf-map-header { flex-wrap:wrap; gap:8px; padding:8px; }.pf-map-heading { flex:1; }.pf-map-header-actions { gap:4px; }.pf-map-critical { display:none; }.pf-duty-select > span { display:none; }.pf-duty-select { padding:0 4px; }.pf-duty-select select { max-width:93px; font-size:10px; }.pf-map-tools { right:8px; left:8px; bottom:8px; }.pf-map-call-panel { right:60px; bottom:8px; width:calc(100% - 76px); }.pf-call-collapsed { right:60px; }.pf-call-summary { padding:6px 14px 12px; }.pf-call-summary h2 { font-size:16px; }.pf-call-panel-body { padding:14px; }.pf-call-tabs { gap:12px; padding:0 14px; }.pf-map-tool-panel { right:52px; width:min(310px,calc(100vw - 76px)); }.cad-mode-nav { padding:4px 6px!important; }.cad-mode-nav button { padding:7px 9px!important; font-size:11px!important; } }
 @media(max-height:550px) { .pf-call-summary h2 { font-size:15px; }.pf-call-summary { padding-block:4px 9px; }.pf-call-primary-actions { margin-top:8px; }.pf-call-address { margin:5px 0 3px; }.pf-call-panel-heading { padding-top:4px; }.pf-call-footer { padding:8px 12px; }.pf-call-summary .pf-call-reference { display:none; } }
+
+@media(max-width:767px) {
+ .cad-app .pathfinder-header {flex-wrap:nowrap!important;}
+ .cad-app .pathfinder-header > :first-child {flex:1 1 auto!important;}
+ .cad-app .pathfinder-header > :last-child {flex:0 0 auto!important;flex-wrap:nowrap!important;}
+}

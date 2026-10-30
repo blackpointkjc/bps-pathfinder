@@ -1,5 +1,5 @@
 
-import React,{useState} from 'react';
+import React,{useState,useEffect,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MapContainer} from 'react-leaflet';
 import PathfinderTileLayer from '/src/components/map/PathfinderTileLayer';
@@ -18,6 +18,8 @@ import PoliceStationMarkers from '/src/components/map/PoliceStationMarkers';
 import PrecinctMarkers from '/src/components/map/PrecinctMarkers';
 const noop=()=>{};
 function Review(){
+ const toolbarRef=useRef(null);const [top,setTop]=useState(68);
+ useEffect(()=>{const element=toolbarRef.current;const update=()=>setTop(element.getBoundingClientRect().height+12);const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect();},[]);
  const [panel,setPanel]=useState('layers');
  const [call,setCall]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
@@ -40,9 +42,9 @@ function Review(){
  <PathfinderTileLayer theme="day"/>
  <EmergencyStationMarkers filters={filters} onNavigate={noop}/><PoliceStationMarkers showStations={filters.showPoliceStations} onNavigateToStation={noop}/><PrecinctMarkers showStations={filters.showPoliceStations} onNavigateToPrecinct={noop}/>
  </MapContainer>
- <div style={{position:'absolute',top:0,left:0,right:0,zIndex:1010}}><LiveMapToolbar user={user} status={status} onStatusChange={setStatus} onBack={noop} onRecenter={noop} gpsLabel="GPS unavailable" online unitCount={1} callCount={27} unassignedCount={3} criticalCount={2} onToggleFullscreen={noop} onRefreshCalls={noop} callsStatus="Calls checked 9:25 PM"/></div>
- <MapToolDock actions={actions} panel={panel} onPanelChange={next=>{setPanel(next);if(next)setCall(false);}} filters={filters} onFiltersChange={setFilters} top={68}/>
- {call&&<MapCallPanel top={68} call={{id:'design-demo',incident:'Structure fire',location:'1300 Coalter St',agency:'RFD',priority:'critical',status:'On Scene',time_received:'2026-10-30T00:50:00Z',latitude:37.54,longitude:-77.42,description:'Assist fire personnel with traffic and crowd control. Follow incident command instructions.',assigned_units:[]}} currentUser={user} collapsed={collapsed} onCollapse={setCollapsed} onClose={()=>setCall(false)} onLocate={noop} onNavigate={noop} onAssign={noop} onUnassign={noop} onStreetView={noop} onExternalMap={noop} unitLabel={value=>value}/>}
+ <div ref={toolbarRef} style={{position:'absolute',top:0,left:0,right:0,zIndex:1010}}><LiveMapToolbar user={user} status={status} onStatusChange={setStatus} onBack={noop} onRecenter={noop} gpsLabel="GPS unavailable" online unitCount={1} callCount={27} unassignedCount={3} criticalCount={2} onToggleFullscreen={noop} onRefreshCalls={noop} callsStatus="Calls checked 9:25 PM"/></div>
+ <MapToolDock actions={actions} panel={panel} onPanelChange={next=>{setPanel(next);if(next)setCall(false);}} filters={filters} onFiltersChange={setFilters} top={top}/>
+ {call&&<MapCallPanel top={top} call={{id:'design-demo',incident:'Structure fire',location:'1300 Coalter St',agency:'RFD',priority:'critical',status:'On Scene',time_received:'2026-10-30T00:50:00Z',latitude:37.54,longitude:-77.42,description:'Assist fire personnel with traffic and crowd control. Follow incident command instructions.',assigned_units:[]}} currentUser={user} collapsed={collapsed} onCollapse={setCollapsed} onClose={()=>setCall(false)} onLocate={noop} onNavigate={noop} onAssign={noop} onUnassign={noop} onStreetView={noop} onExternalMap={noop} unitLabel={value=>value}/>}
  </div></div>;
 }
 createRoot(document.getElementById('root')).render(<Review/>);
