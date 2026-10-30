@@ -110,7 +110,7 @@ Deno.serve(async req => {
         // Do not send absolute upstream URLs or secret-bearing query strings
         // from style responses to MapLibre; preserve the secure proxy prefix.
         const proxyPrefix = `${url.origin}${url.pathname.replace(/\/tomtomMapProxy(?:\/.*)?$/, '/tomtomMapProxy')}`;
-        body = body.replace(/https:\/\/api\.tomtom\.com/gi, proxyPrefix);
+        body = body.replace(/https:\/\/(?:[a-d]\.)?api\.tomtom\.com/gi, proxyPrefix);
         // MapLibre may load style-source tiles from its worker independently
         // of the SDK's transformRequest. Give *every* vector-tile URL an
         // immediately routable Base44 function path, rather than a nested
