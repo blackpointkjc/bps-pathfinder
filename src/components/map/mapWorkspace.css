@@ -113,3 +113,28 @@
  .pf-map-header-actions {width:100%;margin-left:0;justify-content:space-between;}
  .pf-map-heading h1 {font-size:15px!important;line-height:1.3!important;}
 }
+
+/* Map overlays use the same night palette as the dispatch workspace. Explicit
+   descendant colors protect readability from global field-readability rules. */
+.pf-navigation-workspace {--map-border:#40556d;--map-ink:#edf4fc;--map-muted:#b1c2d5;}
+.pf-map-dock,.pf-map-tool-panel,.pf-map-call-panel,.pf-call-collapsed {background:#111f30!important;color:#edf4fc!important;border-color:#40556d!important;box-shadow:0 8px 28px #0008;}
+.pf-map-dock > button {color:#dceafb!important;}
+.pf-map-dock > button:hover,.pf-panel-close:hover,.pf-call-panel-heading button:hover {background:#293e55!important;color:#fff!important;}
+.pf-map-dock > button.is-active {background:#254f76!important;color:#a9dbff!important;}
+.pf-dock-divider {background:#3a4e65;}
+.pf-map-tool-panel :is(h2,strong,legend,label,label span),.pf-map-call-panel :is(h2,h3,dd),.pf-more-tools > button {color:#edf4fc!important;}
+.pf-map-tool-panel :is(p,small),.pf-panel-eyebrow,.pf-panel-close,.pf-call-state,.pf-call-reference,.pf-call-address,.pf-call-facts dt,.pf-call-section p,.pf-call-footer > span,.pf-call-secondary-links button {color:#b7c9dc!important;}
+.pf-layer-options,.pf-layer-option,.pf-more-tools > button,.pf-call-facts,.pf-call-footer,.pf-call-tabs {border-color:#33485f!important;}
+.pf-panel-hint,.pf-call-tabs,.pf-call-footer {background:#182a3e!important;}
+.pf-map-secondary {background:#21384f!important;color:#e2efff!important;border-color:#4f6c89!important;}
+.pf-map-primary {background:#287bc0!important;border-color:#4397da!important;color:#fff!important;}
+.pf-call-tabs button {color:#b7c9dc!important;}.pf-call-tabs button[aria-current] {color:#9ad7ff!important;border-bottom-color:#73c4ff!important;}
+.pf-unit-chips > span {background:#25425e!important;color:#c6e6ff!important;}
+.pf-region-options input {accent-color:#58b7fa;}
+.pf-layer-option input[role=switch] {background:#52657a!important;}.pf-layer-option input[role=switch]:checked {background:#3098e0!important;}
+.pf-map-dock > button:disabled {opacity:.55;}
+/* Distinct solid badges remain legible over roads and coverage polygons. */
+.pf-facility-marker > span {width:26px;height:26px;border:2px solid #e5f1ff;background:var(--facility-color)!important;color:#fff!important;box-shadow:0 2px 5px #0009;}
+.pf-facility-marker > span svg {width:18px;height:18px;stroke-width:2.3;}
+.pf-facility-marker:hover > span {background:var(--facility-color)!important;border-color:#fff;transform:scale(1.12);}
+.pf-facility-cluster > span {width:28px;height:28px;background:#243c56;color:#fff;border:2px solid #a8c9e8;font-size:12px;box-shadow:0 2px 5px #0008;}

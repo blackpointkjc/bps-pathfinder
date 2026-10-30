@@ -8,7 +8,7 @@ const symbols={
 };
 export function facilityMapIcon(kind='fire'){
  if(cache.has(kind))return cache.get(kind);
- const color={fire:'#b45309',police:'#315c8a',rescue:'#12746d',jail:'#5c6476'}[kind]||'#315c8a';
+ const color={fire:'#aa390d',police:'#185ea8',rescue:'#087364',jail:'#53506f'}[kind]||'#315c8a';
  const icon=new L.DivIcon({
   className:'pf-facility-marker',
   html:'<span style="--facility-color:'+color+'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(symbols[kind]||symbols.fire)+'</svg></span>',
