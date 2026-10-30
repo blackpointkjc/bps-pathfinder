@@ -183,7 +183,7 @@ function addMissing(target: Map<string, Set<string>>, user: any, item: string) {
 function collectMissingItems(users: any[], metricData: any, extra: any) {
   const {
     reportTodos = [], trainingAssignments = [], trainingModules = [], trainingCompletions = [],
-    certificationAlerts = [], dailyReports = [],
+    certificationAlerts = [], dailyReports = [], dutyAdjustments = [],
   } = extra;
   const missing = new Map<string, Set<string>>();
 
@@ -239,9 +239,16 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
       entry?.clock_in && entry?.clock_out && entry?.archived !== true && easternDateKey(entry.clock_in)>=monthStart && recordBelongs(entry, user, aliases)
     );
     const usedReports = new Set<string>();
+    const approvedDarExceptions=(dutyAdjustments||[]).filter((row:any)=>recordBelongs(row,user,aliases)&&String(row.item_key||'').startsWith('dar:'));
     for (const entry of completedEntries) {
       const date = easternDateKey(entry.clock_in);
       if (!date) continue;
+      const entryKey=String(entry.id||'');
+      const sameDayEntries=completedEntries.filter((row:any)=>easternDateKey(row.clock_in)===date);
+      const excluded=approvedDarExceptions.some((row:any)=>
+        (entryKey&&[ `dar:session-${entryKey}`,`dar:${entryKey}`].includes(String(row.item_key||'')))||
+        (sameDayEntries.length===1&&String(row.item_date||'').slice(0,10)===date));
+      if(excluded)continue;
       const report = dailyReports.find((row: any) => {
         if (row?.status === 'draft' || usedReports.has(String(row.id || ''))) return false;
         if (!recordBelongs(row, user, aliases, ['officer_email', 'created_by', 'created_by_email'])) return false;
@@ -542,7 +549,7 @@ Deno.serve(async (req) => {
 
     const missing = collectMissingItems(recipients, metricData, {
       reportTodos, trainingAssignments, trainingModules, trainingCompletions,
-      certificationAlerts, dailyReports,
+      certificationAlerts, dailyReports,dutyAdjustments,
     });
 
     const rankingCandidates = recipients.filter(isOperationalUser);
