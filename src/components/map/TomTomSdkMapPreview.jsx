@@ -321,7 +321,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-calls-dot',type:'symbol',source:'pathfinder-calls',
               layout:{'icon-image':['get','icon'],'icon-size':0.88,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-calls-label',type:'symbol',source:'pathfinder-calls',
-              layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.6],'text-optional':true},
+              layout:{'text-field':['get','label'],'text-size':9,'text-offset':[0,2.3],'text-max-width':8,'text-optional':true,'text-allow-overlap':false},
               paint:{'text-color':'#ffffff','text-halo-color':'#7f1025','text-halo-width':2}});
             map.on('click','pathfinder-calls-dot',event=>{
               const id=event.features?.[0]?.properties?.id;
@@ -334,7 +334,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-units-dot',type:'symbol',source:'pathfinder-units',
               layout:{'icon-image':['get','icon'],'icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-units-label',type:'symbol',source:'pathfinder-units',
-              layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.55],'text-optional':true},
+              layout:{'text-field':['get','label'],'text-size':9,'text-offset':[0,2.1],'text-max-width':8,'text-optional':true,'text-allow-overlap':false},
               paint:{'text-color':'#fff','text-halo-color':'#075985','text-halo-width':2}});
           }
           if(!map.getSource('pathfinder-self')){
@@ -370,7 +370,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addSource('pathfinder-facilities',{type:'geojson',data:featureCollection([])});
             map.addLayer({id:'pathfinder-facilities-symbols',type:'symbol',source:'pathfinder-facilities',
               layout:{'icon-image':['get','icon'],'icon-size':0.65,'icon-allow-overlap':false,
-                'text-field':['get','label'],'text-size':10,'text-offset':[0,2],'text-optional':true},
+                'text-field':['get','label'],'text-size':9,'text-offset':[0,2.5],'text-max-width':10,'text-optional':true,'text-allow-overlap':false},
               paint:{'text-color':'#fff','text-halo-color':'#0f172a','text-halo-width':2}});
             map.on('click','pathfinder-facilities-symbols',event=>{
               const index=Number(event.features?.[0]?.properties?.key);

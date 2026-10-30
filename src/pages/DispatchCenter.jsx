@@ -33,6 +33,7 @@ import { findDirectoryUser, getAppDirectory, listDirectoryLocations } from '@/li
 import { cleanIncident } from '@/utils/callUtils';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
+import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
@@ -68,6 +69,8 @@ export default function DispatchCenter({embedded=false}) {
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
+    const [dispatchTomTomFailed,setDispatchTomTomFailed]=useState(false);
+    const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
@@ -1087,16 +1090,17 @@ export default function DispatchCenter({embedded=false}) {
                     <div role="dialog" aria-modal="true" aria-label="Live tactical map" className="flex h-[calc(100dvh-24px)] w-[calc(100vw-16px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl md:h-[82dvh] md:w-[88vw]" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                            <span className="text-xs font-black tracking-widest text-emerald-300">Live tactical map</span>
-                            <div className="ml-auto flex items-center gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><button onClick={() => setShowMap(false)} className="rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button></div>
+                            <span className="text-xs font-black tracking-widest text-emerald-300">TomTom dispatch tactical map</span>
+                            <div className="ml-auto flex items-center gap-2"><button type="button" onClick={()=>{setUseDispatchTomTom(x=>!x);setDispatchTomTomFailed(false)}} className="rounded border border-slate-600 px-2 py-1 text-[10px] text-slate-200">{useDispatchTomTom?'Backup map':'TomTom map'}</button><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><button onClick={() => setShowMap(false)} className="rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button></div>
                         </div>
-                        <div className="min-h-0 flex-1">
-                            <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
+                        <div className="relative min-h-0 flex-1">
+                            {useDispatchTomTom && !dispatchTomTomFailed && navigator.onLine ? <TomTomSdkMapPreview embedded mapTheme={mapTheme} activeCalls={activeCalls} otherUnits={units} onCallClick={handleSelectCall} onMapUnavailable={()=>setDispatchTomTomFailed(true)}/> : <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
                                 <PathfinderTileLayer theme={mapTheme} />
                                 <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
                                 <OtherUnitsLayer units={units} currentUserId={null} />
                                 <OfficerDistressMarker autoCenter={true} />
-                            </MapContainer>
+                            </MapContainer>}
+                            {useDispatchTomTom && dispatchTomTomFailed&&<div role="status" className="absolute bottom-3 left-3 z-[200] rounded-lg border border-amber-600 bg-slate-950/95 px-3 py-2 text-xs text-amber-200">TomTom temporarily unavailable · Showing backup map <button onClick={()=>setDispatchTomTomFailed(false)} className="ml-2 underline">Retry TomTom</button></div>}
                         </div>
                     </div>
                 </div>

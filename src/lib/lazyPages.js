@@ -8,7 +8,7 @@ const imports = Object.fromEntries([...generatedConfig.matchAll(/^import\s+(\w+)
   .map(([, name, path]) => [name, path.endsWith('.jsx') ? path : path + '.jsx']));
 const registry = generatedConfig.match(/^export const PAGES\s*=\s*\{([\s\S]*?)\n\}/m)?.[1] || '';
 const entries = [...registry.matchAll(/["']([^"']+)["']\s*:\s*(\w+)/g)].map(([, name, component]) => [name, imports[component]]);
-const routes = new Map([...entries, ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx']]);
+const routes = new Map([...entries, ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx']]);
 const Pages = Object.fromEntries([...routes].map(([name, file]) => {
   const loader = pageModules[`../pages/${file}`];
   if (!loader) throw new Error(`Missing route module: ${name}`);

@@ -301,7 +301,7 @@ const CENTER_CONFIG = {
         ['Site Supervisors', 'ClientSupervisors', UserCheck],
         ['Location Info', 'ClientLocation', MapPin],
         ['Trespass Management', 'ClientTrespass', UserX],
-        ['Parking & Residents', 'ParkingRecords', Car],
+        ['Parking & Residents', 'ClientParkingRecords', Car],
       ]},
       { label: 'Reports & Documents', items: [
         ['All Reports', 'ClientReports', FileText],
@@ -352,7 +352,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
   AdminQRCenter: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRCheckpoints: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRPrintManager: ['admin','sites','siteassets','admin_site_assets_tool','operations'], AdminQRReports: ['admin','sites','siteassets','admin_site_assets_tool','qr'], AdminPortalSettings: ['admin','system','settings'], AdminDocuments: ['training','documents','documents'],
   HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','support','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['admin','schedule','scheduling','admin_schedule_tool','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','clients','reviews'], ManageClients: ['admin','people','personnelhub','admin_people_tool','clients'],
   SupervisorTasks: ['supervisor','command','tasks'], SupervisorFieldOversight: ['supervisor','command','field'], SupervisorShiftHandover: ['supervisor','command','handover'], SupervisorChat: ['supervisor','command','chat'], SupervisorDailyCode: ['supervisor','command','code'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'],
-  ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],
+  ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientParkingRecords: ['client','site','parking'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','billing','payroll'], ClientFeedback: ['client','requests','feedback'],
   AccountingPayroll: ['accounting','payroll','payroll'], PayrollDates: ['accounting','payroll','dates'], AccountingInvoices: ['accounting','billing','invoices'], AccountingExpenses: ['accounting','billing','expenses'], AccountingProfit: ['accounting','overview','profit'], AccountingTaxLiability: ['accounting','overview','tax'],
 };
 
@@ -426,7 +426,7 @@ const DARK_WORKSPACE_PAGES = new Set([
 
 const OFFICER_MODERN_PAGES = new Set([
   'PostOrders', 'Summons', 'WitnessSubpoenaRequest', 'VACriminalComplaints', 'VATrespassNotices',
-  'DailyActivityReports', 'IncidentReports', 'ParkingRecords', 'MaintenanceReports', 'OpenDoorReports',
+  'DailyActivityReports', 'IncidentReports', 'ParkingRecords', 'ClientParkingRecords', 'MaintenanceReports', 'OpenDoorReports',
   'ConfidentialReport', 'ExpenseReports', 'QRPatrolScan', 'OpenShifts',
   'OfficerPayrollDates', 'OfficerPerformanceReviews', 'OfficerTraining',
   'RankStructure', 'RankDuties', 'OfficerAvailability'
