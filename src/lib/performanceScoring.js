@@ -363,25 +363,46 @@ export function calculateBidStanding(bids = [], monthStart, monthEnd) {
 
 const trainingRecordCompleted = row => row?.completed === true ||
   ['completed','complete','approved','passed','verified'].includes(String(row?.status||'').toLowerCase());
+const normTraining = value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const validOfficerCredentials = user => (Array.isArray(user?.officer_certifications)?user.officer_certifications:[])
+ .filter(cert=>{
+   if(['expired','revoked','rejected','pending'].includes(String(cert.status||'').toLowerCase()))return false;
+   const expiry=String(cert.expiration_date||'').slice(0,10);
+   if(expiry && /^\d{4}-\d{2}-\d{2}$/.test(expiry) && expiry<easternDateKey(new Date()))return false;
+   return cert.manually_verified===true || (['active','completed','approved','verified'].includes(String(cert.status||'').toLowerCase())&&Boolean(cert.certificate_number||cert.cert_file_url));
+ });
+const trainingMatchesCredential=(course,credentials)=>{
+ const keys=[course?.course_id,course?.training_name,course?.title,course?.name].map(normTraining).filter(Boolean);
+ if(!keys.length)return false;
+ return credentials.some(cert=>{
+   const names=[cert.course_id,cert.training_name,cert.certification_type].map(normTraining).filter(Boolean);
+   return names.some(name=>keys.includes(name));
+ });
+};
 export function calculateTrainingScore(user, modules = [], completions = [], assignments = []) {
   if (!user?.email) return { completed: 0, pending: 0, total: 0, percentage: null, pendingNames: [] };
+  const aliases=new Set([user.email,user.work_email,user.pathfinder_email,user.microsoft_email,user.outlook_email,...(user.email_aliases||[])].map(emailKey).filter(Boolean));
+  const belongs=row=>aliases.has(emailKey(row?.officer_email)) || (user?.id&&String(row?.officer_id||row?.user_id||'')===String(user.id));
+  const credentials=validOfficerCredentials(user);
   const assignedModules = modules.filter(module => module.active !== false && (
-    (module.assigned_to || []).some(email => emailKey(email) === emailKey(user.email)) ||
+    (module.assigned_to || []).some(email => aliases.has(emailKey(email))) ||
     (module.assigned_divisions || []).includes(user.division) ||
     (module.assigned_ranks || []).includes(user.rank) ||
     module.required === true
   ));
-  const completedIds = new Set(completions.filter(item => trainingRecordCompleted(item) && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
-  const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
-  const officerAssignments = assignments.filter(item => emailKey(item.officer_email) === emailKey(user.email));
-  const assignmentApproved = officerAssignments.filter(trainingRecordCompleted).length;
-  const assignmentPending = officerAssignments.filter(item => !trainingRecordCompleted(item)).length;
+  const completedIds = new Set(completions.filter(item => trainingRecordCompleted(item) && belongs(item)).map(item => String(item.training_module_id)));
+  const completedModule=module=>completedIds.has(String(module.id)) || trainingMatchesCredential(module,credentials);
+  const moduleCompleted = assignedModules.filter(completedModule).length;
+  const officerAssignments = assignments.filter(belongs);
+  const assignmentDone=item=>trainingRecordCompleted(item) || trainingMatchesCredential(item,credentials);
+  const assignmentApproved = officerAssignments.filter(assignmentDone).length;
+  const assignmentPending = officerAssignments.filter(item => !assignmentDone(item)).length;
   const completed = moduleCompleted + assignmentApproved;
   const total = assignedModules.length + officerAssignments.length;
   const pending = Math.max(0, total - completed);
   const pendingNames = [
-    ...assignedModules.filter(module => !completedIds.has(String(module.id))).map(module => module.title || 'Training module'),
-    ...officerAssignments.filter(item => !trainingRecordCompleted(item)).map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
+    ...assignedModules.filter(module => !completedModule(module)).map(module => module.title || 'Training module'),
+    ...officerAssignments.filter(item => !assignmentDone(item)).map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
   ];
   return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, complianceApproved: assignmentApproved, compliancePending: assignmentPending, pendingNames };
 }
