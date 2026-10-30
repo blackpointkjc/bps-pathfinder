@@ -186,7 +186,7 @@ export default function CallHistory() {
             realtimeTimerRef.current = window.setTimeout(() => {
                 realtimeTimerRef.current=null;
                 if (document.visibilityState === 'visible') loadAll();
-            },Math.max(delay,45000-(Date.now()-lastServerReadRef.current)));
+            },Math.max(delay,90000-(Date.now()-lastServerReadRef.current)));
         };
         try {
             const unsubscribe = base44.entities.DispatchCall.subscribe(event => {
