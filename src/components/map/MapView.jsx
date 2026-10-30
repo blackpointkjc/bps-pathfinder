@@ -176,68 +176,52 @@ function MapViewportSync() {
 }
 
 // Component to handle map center updates
-function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating, heading, mapPickEnabled }) {
+function MapController({ center, routeBounds, mapCenter, fitBounds, mapPickEnabled, gpsFollowEnabled, recenterRevision }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
-    const userInteractingRef = useRef(false);
+    const manuallyDetachedRef = useRef(false);
     const lastUpdateTimeRef = useRef(0);
+    const lastRouteKeyRef = useRef('');
+    const lastRecenterRevisionRef = useRef(recenterRevision);
 
     useEffect(() => {
-        // Track user interaction. Keep the delayed reset cancellable so no map
-        // lifecycle work survives a CAD Center tab/unmount transition.
-        let interactionTimer = null;
-        const handleManualStart = () => {
-            userInteractingRef.current = true;
-            if (interactionTimer) window.clearTimeout(interactionTimer);
+        // A gesture explicitly switches to free-map mode. Never restart GPS
+        // following after a timeout: this was snapping the map away from users
+        // repeatedly, including while the device had no active GPS stream.
+        const detach = () => { manuallyDetachedRef.current = true; };
+        const container = map.getContainer();
+        const pointerDown = event => {
+            if (!event.target?.closest?.('.leaflet-control, .leaflet-marker-icon, .leaflet-popup, button')) detach();
         };
-        const handleManualEnd = () => {
-            if (interactionTimer) window.clearTimeout(interactionTimer);
-            interactionTimer = window.setTimeout(() => { userInteractingRef.current = false; }, 3000);
-        };
-
-        // movestart is fired by Pathfinder's own panTo/setView calls, so using it
-        // as a proxy for manual interaction caused the GPS follow camera to disable
-        // itself after every programmatic recenter.
-        map.on('dragstart', handleManualStart);
-        map.on('dragend', handleManualEnd);
-        const interactionContainer = map.getContainer();
-        interactionContainer?.addEventListener('wheel', handleManualStart, { passive: true });
-        interactionContainer?.addEventListener('pointerdown', handleManualStart, { passive: true });
-        interactionContainer?.addEventListener('pointerup', handleManualEnd, { passive: true });
-
+        map.on('dragstart', detach);
+        container?.addEventListener('wheel', detach, { passive: true });
+        container?.addEventListener('pointerdown', pointerDown, { passive: true });
         return () => {
-            if (interactionTimer) window.clearTimeout(interactionTimer);
-            map.off('dragstart', handleManualStart);
-            map.off('dragend', handleManualEnd);
-            interactionContainer?.removeEventListener('wheel', handleManualStart);
-            interactionContainer?.removeEventListener('pointerdown', handleManualStart);
-            interactionContainer?.removeEventListener('pointerup', handleManualEnd);
-            // Leaflet throws "_leaflet_pos" / "layerPointToContainerPoint" if these
-            // run after the map pane has already been torn down during a CAD Center
-            // tab/unmount transition. Only touch the map while it is still live.
-            // Do not stop an unmounting Leaflet map: Leaflet's animation teardown
-            // can dereference a removed map pane (_leaflet_pos).
-            if (interactionContainer?.isConnected && map._loaded) {
-                try { map.closePopup(); } catch (_) {}
-            }
+            map.off('dragstart', detach);
+            container?.removeEventListener('wheel', detach);
+            container?.removeEventListener('pointerdown', pointerDown);
         };
     }, [map]);
 
-    // MapViewportSync owns the single container-size observer for this map.
+    useEffect(() => {
+        if (recenterRevision !== lastRecenterRevisionRef.current) {
+            lastRecenterRevisionRef.current = recenterRevision;
+            manuallyDetachedRef.current = false;
+            prevCenterRef.current = null;
+        }
+    }, [recenterRevision]);
 
-    // Handle external map centering (from call detail sidebar)
     useEffect(() => {
         if (!mapPickEnabled && mapCenter && map.getContainer()?.isConnected && map._loaded) {
-            map.setView(mapCenter, 16, { animate: false });
+            map.setView(mapCenter, map.getZoom() < 14 ? 16 : map.getZoom(), { animate: false });
         }
     }, [mapCenter, map, mapPickEnabled]);
 
-    // Handle "fit all units" — zoom out so every unit with GPS is visible
     useEffect(() => {
-        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || !fitBounds || fitBounds.length === 0) return;
+        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || !fitBounds?.length) return;
         const valid = fitBounds.filter(c => Number.isFinite(c[0]) && Number.isFinite(c[1]));
-        if (valid.length === 0) return;
-        const bounds = L.latLngBounds(valid.map(c => [c[0], c[1]]));
+        if (!valid.length) return;
+        const bounds = L.latLngBounds(valid);
         if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [70, 70], animate: false, maxZoom: 15 });
             if (map.getZoom() < 10) map.setZoom(10, { animate: false });
@@ -245,41 +229,30 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     }, [fitBounds, map, mapPickEnabled]);
 
     useEffect(() => {
-        // Outside navigation, briefly respect a real manual pan. Active
-        // navigation uses NavigationCamera and always returns to GPS follow.
-        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || (userInteractingRef.current && !isNavigating)) return;
-
-        // Throttle updates to improve performance
-        const now = Date.now();
-        if (now - lastUpdateTimeRef.current < 1000) return;
-        lastUpdateTimeRef.current = now;
-
-        if (routeBounds && !isNavigating) {
-            // Only fit bounds when first showing route, not during navigation
+        if (mapPickEnabled || !map.getContainer()?.isConnected || !map._loaded || manuallyDetachedRef.current) return;
+        // A route is fitted ONCE per actual geometry, not again on every GPS
+        // update (a new LatLngBounds object is created every React render).
+        const routeKey = routeBounds?.isValid() ? routeBounds.toBBoxString() : '';
+        if (routeKey && routeKey !== lastRouteKeyRef.current) {
+            lastRouteKeyRef.current = routeKey;
             map.fitBounds(routeBounds, { padding: [50, 50], animate: false, maxZoom: 16 });
-            if (map.getZoom() < 10) map.setZoom(10, { animate: false });
-        } else if (center && (!prevCenterRef.current || 
-            Math.abs(center[0] - prevCenterRef.current[0]) > 0.00005 || 
-            Math.abs(center[1] - prevCenterRef.current[1]) > 0.00005)) {
-
-            // When navigating, keep map zoomed in and centered on user
-            if (isNavigating) {
-                map.panTo(center, { animate: false, noMoveStart: true });
-            } else {
-                // Preserve the current zoom/tile pyramid while the GPS moves.
-                // Repeated setView calls were forcing unnecessary tile churn.
-                map.panTo(center, { animate: false, noMoveStart: true });
-            }
-            prevCenterRef.current = center;
+            return;
         }
-    }, [center, routeBounds, map, isNavigating, mapPickEnabled]);
+        if (!gpsFollowEnabled || !center) return;
+        const now = Date.now();
+        if (now - lastUpdateTimeRef.current < 1100) return;
+        if (map.distance(map.getCenter(), center) < 20) return;
+        lastUpdateTimeRef.current = now;
+        map.panTo(center, { animate: true, duration: 0.65, noMoveStart: true });
+        prevCenterRef.current = center;
+    }, [center, routeBounds, map, mapPickEnabled, gpsFollowEnabled]);
 
     return null;
 }
 
 const validCoordPair = value => Array.isArray(value) && value.length >= 2 && value.slice(0,2).every(v => v !== null && v !== undefined && String(v).trim() !== "" && Number.isFinite(Number(v))) && Math.abs(Number(value[0])) <= 90 && Math.abs(Number(value[1])) <= 180;
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, flashAssignedEnroute = false, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, searchPins = [], mapPickEnabled = false, onMapPick = null, onNavigateToPoint = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, flashAssignedEnroute = false, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, gpsFollowEnabled = false, recenterRevision = 0, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, searchPins = [], mapPickEnabled = false, onMapPick = null, onNavigateToPoint = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const ownLocationHidden = useOwnLocationHidden(currentUserId);
     const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
     const safeMapCenter = validCoordPair(mapCenter) ? [Number(mapCenter[0]), Number(mapCenter[1])] : null;
@@ -348,8 +321,8 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     routeBounds={routeBounds}
                     mapCenter={safeMapCenter}
                     fitBounds={fitBounds}
-                    isNavigating={isNavigating}
-                    heading={heading}
+                    gpsFollowEnabled={gpsFollowEnabled}
+                    recenterRevision={recenterRevision}
                     mapPickEnabled={mapPickEnabled}
                 />
             ) : (
@@ -359,6 +332,8 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     heading={heading}
                     speed={speed}
                     recenterLocation={safeMapCenter}
+                    recenterRevision={recenterRevision}
+                    gpsFollowEnabled={gpsFollowEnabled}
                 />
             )}
 

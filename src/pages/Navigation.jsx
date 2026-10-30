@@ -237,6 +237,7 @@ export default function Navigation() {
         return lat && lng ? [lat, lng] : null;
     });
     const [mapCenter, setMapCenter] = useState(focusCenter);
+    const [recenterRevision, setRecenterRevision] = useState(0);
     const focusCallId = new URLSearchParams(window.location.search).get('callId');
 
     useEffect(() => {
@@ -1255,6 +1256,7 @@ export default function Navigation() {
             toast.error('Unable to get your current location');
             return;
         }
+        setRecenterRevision(revision => revision + 1);
         setMapCenter([...fresh]);
         window.setTimeout(() => setMapCenter(null), 800);
         toast.success('Map centered on your current location');
@@ -1550,6 +1552,8 @@ export default function Navigation() {
                     mapCenter={mapCenter}
                     fitBounds={fitBounds}
                     isNavigating={isNavigating}
+                    gpsFollowEnabled={isLiveTracking && gpsQuality?.state === 'live'}
+                    recenterRevision={recenterRevision}
                     upcomingManeuverDistance={navTurnDistanceFeet}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
