@@ -56,8 +56,18 @@ export default function ParkingRecords({mode='officer'}){
    try{
     const profile=client?await getClientPortalUser():await base44.auth.me();
     if(!cancelled)setSessionUser(profile);
-    const clientSites=[...(profile?.assigned_locations||[]),...(profile?.assigned_sites||[]),...(profile?.assigned_location?[profile.assigned_location]:[])];
-    const locations=client?clientSites:(await listDirectoryLocations('site_name').catch(()=>[])).map(item=>item.site_name||item.name||item.location).filter(Boolean);
+    const clientSites=[...(Array.isArray(profile?.assigned_locations)?profile.assigned_locations:[]),...(Array.isArray(profile?.assigned_sites)?profile.assigned_sites:[]),...(profile?.assigned_location?[profile.assigned_location]:[])];
+    // The backend resolves direct site assignments AND properties matched to
+    // the signed-in client's assigned_client_email. Admin client-preview mode
+    // still uses the selected client's preview-scoped site list.
+    let serverAssigned=[];
+    if(client&&!profile?.__client_preview){
+      try{const response=await base44.functions.invoke('manageParkingRecords',{action:'sites'});
+        const result=response?.data||response||{};
+        serverAssigned=Array.isArray(result.sites)?result.sites:[];
+      }catch(error){console.warn('Assigned parking property list unavailable',error?.message||error)}
+    }
+    const locations=client?[...clientSites,...serverAssigned]:(await listDirectoryLocations('site_name').catch(()=>[])).map(item=>item.site_name||item.name||item.location).filter(Boolean);
     const unique=[...new Map(locations.filter(Boolean).map(x=>[siteKey(x),String(x)])).values()];
     if(!cancelled){setSites(unique);setSite(prev=>prev||unique[0]||'');}
    }catch(e){if(!cancelled)setError('Property locations unavailable: '+e.message);}

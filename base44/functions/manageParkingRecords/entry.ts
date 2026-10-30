@@ -8,6 +8,10 @@ const plateKey = (value: unknown) => clean(value).toUpperCase().replace(/[^A-Z0-
 const dates = () => new Date().toISOString();
 const fail = (error: string, status=400) => Response.json({error},{status});
 const history = (user:any, action:string, notes:string) => ({actor:clean(user.email||user.id),action,notes:clean(notes,600),at:dates()});
+// Company properties may be linked to clients by assigned_client_email rather
+// than by the user's assigned_locations array. Cache only this site's names,
+// never resident data; users still authenticate on every function request.
+const clientSiteCache = new Map<string,{expires:number,names:string[]}>();
 
 Deno.serve(async req => {
   try {
@@ -20,12 +24,31 @@ Deno.serve(async req => {
     const supervisor = admin || (!client && (roles.has('supervisor')||user.is_supervisor===true||['sergeant','lieutenant','captain','major','colonel'].some(rank=>clean(user.rank).toLowerCase().includes(rank))));
     const officer = !client && (supervisor||['officer','dispatch','admin'].includes(user.role)||['officer','dispatch','cad_access'].some(role=>roles.has(role)));
     if(!client && !officer) return fail('Parking records access required',403);
-    const sites = new Set([...(user.assigned_locations||[]),...(user.assigned_sites||[]),...(user.assigned_location?[user.assigned_location]:[])].map(siteKey).filter(Boolean));
-    const scope = (site:unknown) => !!siteKey(site) && (!client || sites.has(siteKey(site)));
+    const entities = sdk.asServiceRole.entities;
+    const assignedNames=[...(Array.isArray(user.assigned_locations)?user.assigned_locations:[]),
+      ...(Array.isArray(user.assigned_sites)?user.assigned_sites:[]),
+      ...(user.assigned_location?[user.assigned_location]:[])].map(value=>clean(value)).filter(Boolean);
+    if(client&&user.email){
+      const email=clean(user.email).toLowerCase();
+      const cached=clientSiteCache.get(email);
+      let named:string[]=[];
+      if(cached&&cached.expires>Date.now())named=cached.names;
+      else{
+        try{
+          const locations=await entities.Location.filter({assigned_client_email:email},'site_name',100);
+          named=(locations||[]).filter((loc:any)=>clean(loc.assigned_client_email).toLowerCase()===email)
+            .map((loc:any)=>clean(loc.site_name)).filter(Boolean);
+          clientSiteCache.set(email,{names:named,expires:Date.now()+120_000});
+          if(clientSiteCache.size>300)clientSiteCache.delete(clientSiteCache.keys().next().value as string);
+        }catch(error){console.warn('Client site-email lookup unavailable',String((error as Error)?.message||error));}
+      }
+      assignedNames.push(...named);
+    }
+    const sites=new Set(assignedNames.map(siteKey).filter(Boolean));
+    const scope = (selected:unknown) => !!siteKey(selected) && (!client || sites.has(siteKey(selected)));
     const data = await req.json().catch(()=>({}));
     const action = clean(data.action);
     const site = clean(data.site_name||data.location);
-    const entities = sdk.asServiceRole.entities;
     const sitePermitted = () => scope(site) ? null : fail('Property not assigned or not selected',403);
     const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
     const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified'];
@@ -58,7 +81,7 @@ Deno.serve(async req => {
       // Client site lists come only from assigned user locations. Officers may
       // use the existing location directory but never receive resident lists
       // without specifying a site first.
-      return Response.json({sites:client?[...sites]:[],role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
+      return Response.json({sites:client?[...new Map(assignedNames.map(name=>[siteKey(name),name])).values()]:[],role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
     }
     if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export'].includes(action)) {
       const rejected=sitePermitted();if(rejected)return rejected;
