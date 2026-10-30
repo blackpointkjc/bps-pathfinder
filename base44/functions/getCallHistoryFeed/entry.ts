@@ -1,3 +1,4 @@
+import { callTimestamp, isValidCallRecord } from '../_shared/callFeedPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
@@ -35,29 +36,76 @@ Deno.serve(async (req) => {
     const search=String(input.search||'').trim().slice(0,160);
     const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
     const searchQuery=search?{$or:['call_id','bps_reference','agency_cad_number','incident','location','original_call_id'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
-    // Call history is core data; property-alert enrichment is optional. Never
-    // let a slow PropertyAlert read turn hundreds of valid calls into a "0 records"
-    // screen. Keep the reads bounded and perform the optional enrichment last.
-    const [activeRead, archivedRead, alertRead] = await Promise.all([
-      readWithRetry('Active calls', () => searchQuery?base44.asServiceRole.entities.DispatchCall.filter(searchQuery,'-created_date',500):base44.asServiceRole.entities.DispatchCall.list('-created_date', 500), []),
-      readWithRetry('Archived calls', () => searchQuery?base44.asServiceRole.entities.CallHistory.filter(searchQuery,'-archived_date',1000):base44.asServiceRole.entities.CallHistory.list('-archived_date', 1000), []),
-      readWithRetry('Property alerts', () => base44.asServiceRole.entities.PropertyAlert.list('-created_date', 1000), []),
-    ]);
-    const active:any[] = activeRead.data || [];
-    const archived:any[] = archivedRead.data || [];
-    const alerts:any[] = alertRead.data || [];
-    if (!active.length && !archived.length && activeRead.error && archivedRead.error) {
-      throw new Error(`Call data unavailable. ${activeRead.error}; ${archivedRead.error}`);
-    }
 
-    // Keep historical unit attribution even after a call is closed.
-    const [assignmentRead,userRead,unitRead,linkedRead,propertyLinksRead] = await Promise.all([
-      readWithRetry('Call assignments',()=>base44.asServiceRole.entities.CallAssignment.list('-assigned_at',1500),[]),
-      readWithRetry('Officer directory',()=>base44.asServiceRole.entities.User.list('-updated_date',750),[]),
-      readWithRetry('CAD units',()=>base44.asServiceRole.entities.Unit.list('-last_update_at',500),[]),
-      readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.list('-linked_at',1300),[]),
-      readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',2000),[])
+    const pageSize = Math.max(25, Math.min(100, Number(input.page_size) || 75));
+    const cursor = input.cursor || {};
+    const snapshotMs = Math.min(Date.now(), Date.parse(cursor.snapshot_at || '') || Date.now());
+    const snapshot = new Date(snapshotMs).toISOString();
+    const since = new Date(snapshotMs - 90 * 86400000).toISOString();
+    const offsets = {
+      active: Math.max(0, Math.floor(Number(cursor.active) || 0)),
+      archived: Math.max(0, Math.floor(Number(cursor.archived) || 0)),
+    };
+    const clauses:any[] = [
+      { created_date: { $lte: snapshot } },
+      { $or: [
+        { time_received: { $gte: since, $lte: snapshot } },
+        { $and: [
+          { $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] },
+          { created_date: { $gte: since } },
+        ] },
+      ] },
+    ];
+    if (searchQuery) clauses.push(searchQuery);
+    if (input.agency && input.agency !== 'ALL') clauses.push({agency:input.agency});
+    if (input.status && input.status !== 'ALL') clauses.push({status:input.status});
+    const query = { $and: clauses };
+    const [activeRead, archivedRead] = await Promise.all([
+      readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(query,'-time_received',pageSize+1,offsets.active), []),
+      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(query,'-time_received',pageSize+1,offsets.archived), []),
     ]);
+    // Never advance a paging cursor past an unavailable source.
+    if (activeRead.error || archivedRead.error) throw new Error(activeRead.error || archivedRead.error);
+    const candidates = [
+      ...(activeRead.data || []).map((row:any) => ({row,source:'active'})),
+      ...(archivedRead.data || []).map((row:any) => ({row,source:'archived'})),
+    ].sort((a,b) => callTimestamp(b.row) - callTimestamp(a.row) || (a.source === 'active' ? -1 : 1));
+    const selected:any[] = [];
+    const consumed = {active:0,archived:0};
+    const seen = new Set<string>();
+    for (const item of candidates) {
+      if (selected.length >= pageSize) break;
+      consumed[item.source as 'active'|'archived']++;
+      const row = item.row;
+      if (!isValidCallRecord(row)) continue;
+      const identity = String(row.original_call_id || (item.source === 'active' ? row.id : '') || row.external_call_id || row.id);
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      selected.push(item);
+    }
+    const active:any[] = selected.filter(item=>item.source==='active').map(item=>item.row);
+    const archived:any[] = selected.filter(item=>item.source==='archived').map(item=>item.row);
+    const ids = [...new Set(selected.flatMap(({row})=>[String(row.id||''),String(row.original_call_id||'')]).filter(Boolean))];
+    const numbers = [...new Set(selected.map(({row})=>String(cadRef(row)||'')).filter(Boolean))];
+    const callFilter = { call_id: { $in: ids } };
+    // Only enrich this page. The former global reads fetched 8,000+ unrelated rows.
+    const [alertRead,assignmentRead,linkedRead,propertyLinksRead] = await Promise.all([
+      readWithRetry('Property alerts',()=>ids.length?base44.asServiceRole.entities.PropertyAlert.filter({callId:{$in:ids}},'-created_date',300):Promise.resolve([]),[]),
+      readWithRetry('Call assignments',()=>ids.length?base44.asServiceRole.entities.CallAssignment.filter(callFilter,'-assigned_at',300):Promise.resolve([]),[]),
+      readWithRetry('Linked reports',()=>ids.length?base44.asServiceRole.entities.ReportCallLink.filter({$or:[callFilter,{call_number:{$in:numbers}}]},'-linked_at',300):Promise.resolve([]),[]),
+      readWithRetry('Manual property links',()=>ids.length?base44.asServiceRole.entities.PropertyCallLink.filter({$or:[callFilter,{archive_id:{$in:ids}}]},'-linked_at',300):Promise.resolve([]),[])
+    ]);
+    const alerts:any[] = alertRead.data || [];
+    const unitIds = [...new Set([
+      ...(assignmentRead.data||[]).map((row:any)=>String(row.unit_id||'')),
+      ...selected.flatMap(({row})=>Array.isArray(row.assigned_units)?row.assigned_units.map(String):[]),
+    ].filter(Boolean))];
+    const unitRead = await readWithRetry('CAD units',()=>unitIds.length?base44.asServiceRole.entities.Unit.filter({id:{$in:unitIds}},'-last_update_at',300):Promise.resolve([]),[]);
+    const userIds = [...new Set([...unitIds,...(unitRead.data||[]).map((row:any)=>String(row.user_id||''))].filter(Boolean))];
+    const emails = (unitRead.data||[]).map((row:any)=>String(row.user_email||row.email||'')).filter(Boolean);
+    const userRead = await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]);
+    const hasMore = (activeRead.data||[]).length > consumed.active || (archivedRead.data||[]).length > consumed.archived;
+    const nextCursor = hasMore ? {snapshot_at:snapshot,active:offsets.active+consumed.active,archived:offsets.archived+consumed.archived} : null;
     const linksByCall=new Map<string,any[]>();
     for(const link of linkedRead.data||[]){
       if(String(link.status||'active').toLowerCase()==='detached')continue;
@@ -99,12 +147,6 @@ Deno.serve(async (req) => {
         return { unit_id: id, label, officer_name: name || '', unit_number: number, role: assignment?.role || '', assigned_at: assignment?.assigned_at || '', status: assignment?.status || '' };
       });
     };
-    const activeById = new Map((active || []).map((row: any) => [String(row.id), row]));
-    const archivedByOriginalId = new Map<string, any>();
-    for (const row of archived || []) {
-      if (row?.original_call_id) archivedByOriginalId.set(String(row.original_call_id), row);
-    }
-
     const propertyFingerprint = (time: any, incident: any, location: any) => [
       String(time || ''),
       String(incident || '').trim().toUpperCase(),
@@ -177,67 +219,24 @@ Deno.serve(async (req) => {
         return true;
       });
 
-    const representedPropertyCallIds = new Set<string>();
-    for (const row of activeRows) if (row._propertyCall) representedPropertyCallIds.add(String(row.id));
-    for (const row of archivedRows) if (row._propertyCall && row.original_call_id) representedPropertyCallIds.add(String(row.original_call_id));
-
-    // PropertyAlert is the monitoring system's authoritative record. If the linked
-    // CAD row is no longer available for any reason, keep the event visible in
-    // history instead of silently dropping a property call that the briefing counted.
-    const syntheticPropertyRows = [];
-    for (const [callId, alert] of alertByCallId.entries()) {
-      if (representedPropertyCallIds.has(callId)) continue;
-      const activeCall = activeById.get(callId);
-      const archivedCall = archivedByOriginalId.get(callId);
-      if (activeCall || archivedCall) continue;
-      syntheticPropertyRows.push({
-        id: `property-alert-${alert.id}`,
-        original_call_id: callId,
-        call_id: cadRef(alert),
-        bps_reference: /^BPS-/i.test(cadRef(alert))?cadRef(alert):'',
-        _referenceEntity:'PropertyAlert',_referenceId:String(alert.id),
-        time_received: alert.callTime || alert.time_received || alert.created_date,
-        created_date: alert.created_date,
-        incident: alert.callIncident || 'Monitored Property Call',
-        location: alert.callLocation || alert.propertyName || 'Monitored property',
-        agency: 'MONITORING',
-        status: alert.callStatus || (['resolved', 'false_alarm', 'test'].includes(String(alert.lifecycle_status || '').toLowerCase()) ? 'Closed' : (alert.acknowledged ? 'Closed' : 'Pending')),
-        description: alert.description || `Property monitoring alert for ${alert.propertyName || 'monitored property'}`,
-        assigned_units: assignmentDetails(callId).map((item: any) => item.unit_id),
-        _assignedUnitDetails: assignmentDetails(callId),
-        _linkedReports:linkedReports(callId,String(alert.cadNumber||'')),
-        _source: 'property_alert',
-        _propertyCall: true,
-        _propertyAlert: alert,
-        _propertyName: alert.propertyName || '',
-        _propertyId: alert.propertyId || '',
-        _propertyLifecycle: alert.lifecycle_status || '',
-        _propertyDistanceMeters: Number.isFinite(Number(alert.distanceMeters)) ? Number(alert.distanceMeters) : null,
-      });
-    }
-
     const manualLinks:any[]=propertyLinksRead.data||[];
-    const allRows=[...activeRows,...archivedRows,...syntheticPropertyRows];
+    const allRows=[...activeRows,...archivedRows];
     const decorated=allRows.map(row=>{
       const ids=[String(row.id||''),String(row.original_call_id||'')];
       const links=manualLinks.filter(link=>ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||'')));
       return links.length?{...row,_propertyLinks:links,_propertyCall:true,_propertyName:[row._propertyName,...links.map(l=>l.property_name)].filter(Boolean).join(' / '),_propertyId:row._propertyId||links[0].property_id}:row;
     });
-    const represented=new Set(decorated.flatMap(row=>[String(row.id||''),String(row.original_call_id||'')]));
-    for(const link of manualLinks){
-      if(represented.has(String(link.call_id))||represented.has(String(link.archive_id||'')))continue;
-      if(search && ![link.call_number,link.property_name,link.incident,link.location].some(v=>lower(v).includes(lower(search))))continue;
-      decorated.push({id:link.archive_id||link.call_id,original_call_id:link.call_id,call_id:cadRef(link),_referenceEntity:'PropertyCallLink',_referenceId:String(link.id),incident:link.incident,location:link.location,time_received:link.time_received,status:link.status,_source:link.archive_id?'archived':'active',_propertyCall:true,_propertyName:link.property_name,_propertyId:link.property_id,_propertyLinks:[link],assigned_units:[],_assignedUnitDetails:[],_linkedReports:[]});
-      represented.add(String(link.call_id));
-    }
     return Response.json({
       success: true,
-      rows: decorated,
+      rows: decorated.sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
+      next_cursor: nextCursor,
+      has_more: hasMore,
+      days:90, since, snapshot_at:snapshot,
       counts: {
         active: activeRows.length,
         archived: archivedRows.length,
         propertyAlerts: alertByCallId.size,
-        syntheticPropertyRows: syntheticPropertyRows.length,
+        loaded: decorated.length,
       },
       warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });

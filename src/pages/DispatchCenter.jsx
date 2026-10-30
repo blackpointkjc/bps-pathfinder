@@ -1,3 +1,4 @@
+import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { cadReference } from '@/lib/cadReference';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { cadDestination } from '@/lib/cadNavigation';
@@ -958,6 +959,7 @@ export default function DispatchCenter({embedded=false}) {
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
                                         <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{callDistrict !== null ? callDistrict : selectedCall.zone || '—'}</span></div>
                                     </div>
+                                    <div className="px-4 pb-2"><AddressCallHistory address={selectedCall.location} excludeCallId={selectedCall.id} /></div>
                                     {selectedCall.hazards && (
                                         <div className="mx-4 mb-2 flex items-start gap-2 rounded border border-red-500/40 bg-red-950/40 p-2 text-[10px] text-red-200">
                                             <AlertTriangle className="w-3 h-3 mt-0.5 flex-none" />
