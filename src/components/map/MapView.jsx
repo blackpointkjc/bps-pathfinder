@@ -361,9 +361,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 </Marker>
             )}
             
-            {trafficSegments && trafficSegments.length > 0 ? (
-                <TrafficLayer trafficSegments={trafficSegments} />
-            ) : safeRoute.length > 0 ? (
+            {safeRoute.length > 0 ? (
                 <>
                     <Polyline
                         positions={safeRoute}
@@ -387,6 +385,10 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     />
                 </>
             ) : null}
+
+            {Array.isArray(trafficSegments) && trafficSegments.length > 0 && (
+                <TrafficLayer trafficSegments={trafficSegments} />
+            )}
 
             {/* Active Emergency Calls */}
             {activeCalls && activeCalls.length > 0 && (

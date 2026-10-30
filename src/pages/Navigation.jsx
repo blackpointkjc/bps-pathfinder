@@ -179,6 +179,8 @@ export default function Navigation() {
 
     const [navRoute, setNavRoute] = useState([]);
     const [navSpeedLimitSections, setNavSpeedLimitSections] = useState([]);
+    const [navTrafficSegments, setNavTrafficSegments] = useState([]);
+    const [showTomTomTraffic, setShowTomTomTraffic] = useState(true);
     const [navSteps, setNavSteps] = useState([]);
     const [navStepIndex, setNavStepIndex] = useState(0);
     const [navDistanceMiles, setNavDistanceMiles] = useState(0);
@@ -899,6 +901,7 @@ export default function Navigation() {
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
             setNavRoute(routeCoords);
             setNavSpeedLimitSections(Array.isArray(route.speedLimitSections) ? route.speedLimitSections : []);
+            setNavTrafficSegments(Array.isArray(route.trafficSegments) ? route.trafficSegments : []);
             navSnapIndexRef.current = 0;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
@@ -1283,6 +1286,7 @@ export default function Navigation() {
         setNavDestination(null);
         setNavRoute([]);
         setNavSpeedLimitSections([]);
+        setNavTrafficSegments([]);
         setNavSteps([]);
         setNavStepIndex(0);
         setNavDistanceMiles(0);
@@ -1565,6 +1569,14 @@ export default function Navigation() {
                             active: mapTheme === 'night',
                         },
                         {
+                            key: 'tomtom-traffic',
+                            onClick: () => setShowTomTomTraffic(value => !value),
+                            title: showTomTomTraffic ? 'Hide TomTom route traffic' : 'Show TomTom route traffic',
+                            icon: <Layers className="h-4 w-4" />,
+                            active: showTomTomTraffic && navTrafficSegments.length > 0,
+                            disabled: navTrafficSegments.length === 0,
+                        },
+                        {
                             key: 'heatmap',
                             onClick: () => setShowHeatmap(visible => !visible),
                             title: showHeatmap ? 'Hide call heatmap' : 'Show call heatmap',
@@ -1581,7 +1593,7 @@ export default function Navigation() {
             <div className="absolute inset-0">
                 <MapView
                     currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
-                    destination={navDestination} route={navRoute} trafficSegments={null}
+                    destination={navDestination} route={navRoute} trafficSegments={showTomTomTraffic ? navTrafficSegments : []}
                     useOfflineTiles={!isOnline}
                     activeCalls={showActiveCalls ? activeCalls : []}
                     heading={heading}

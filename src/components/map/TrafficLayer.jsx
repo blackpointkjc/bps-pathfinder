@@ -1,31 +1,7 @@
 import { Polyline } from 'react-leaflet';
 
-// Simulate traffic conditions for route segments
-export function generateTrafficData(routeCoords) {
-    if (!routeCoords || routeCoords.length < 2) return [];
-    
-    const segments = [];
-    
-    for (let i = 0; i < routeCoords.length - 1; i += 5) {
-        const end = Math.min(i + 5, routeCoords.length - 1);
-        const segmentCoords = routeCoords.slice(i, end + 1);
-        
-        // Randomly assign traffic conditions (in real app, this comes from API)
-        const rand = Math.random();
-        let condition;
-        if (rand < 0.6) condition = 'free'; // 60% free flow
-        else if (rand < 0.85) condition = 'moderate'; // 25% moderate
-        else condition = 'heavy'; // 15% heavy
-        
-        segments.push({
-            coords: segmentCoords,
-            condition: condition
-        });
-    }
-    
-    return segments;
-}
-
+// Display only real provider-supplied traffic sections. No randomized or
+// fabricated traffic data on a safety/dispatch map.
 export default function TrafficLayer({ trafficSegments }) {
     if (!trafficSegments || trafficSegments.length === 0) return null;
     

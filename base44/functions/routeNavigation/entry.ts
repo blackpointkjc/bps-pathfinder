@@ -11,6 +11,7 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
     instructionsType: 'text', language: 'en-US', routeRepresentation: 'polyline',
     sectionType: 'speedLimit',
   });
+  params.append('sectionType', 'traffic');
   if (Number.isFinite(heading)) params.set('vehicleHeading', String(Math.round(((heading%360)+360)%360)));
   const path = `/routing/1/calculateRoute/${lat},${lng}:${destLat},${destLng}/json`;
   for (const key of keys) {
@@ -71,10 +72,21 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
         .filter((section:any)=>Number.isInteger(section.start) && Number.isInteger(section.end)
           && section.start >= 0 && section.end > section.start && section.end < pts.length
           && section.mph >= 10 && section.mph <= 90);
+      const trafficSegments = (raw.sections || [])
+        .filter((section:any)=>String(section.sectionType || '').toUpperCase() === 'TRAFFIC')
+        .map((section:any)=>{
+          const start = Number(section.startPointIndex), end = Number(section.endPointIndex);
+          const magnitude = Number(section.magnitudeOfDelay || 0);
+          const severity = String(section.simpleCategory || '').toUpperCase();
+          return { coords: pts.slice(start, end + 1).map((pt:any)=>[pt.latitude,pt.longitude]),
+            condition: severity === 'ROAD_CLOSURE' || magnitude >= 3 ? 'heavy' : magnitude >= 2 ? 'moderate' : 'free',
+            category: severity || 'TRAFFIC', delaySeconds: Number(section.delayInSeconds || 0) };
+        }).filter((section:any)=>section.coords.length >= 2);
       return {
         geometry: { type: 'LineString', coordinates: pts.map((x:any)=>[x.longitude,x.latitude]) },
         distance: meters, duration: seconds, legs: [{steps:osmSteps}],
-        speedLimitSections,
+        speedLimitSections, trafficSegments,
+        trafficDelaySeconds: Number(raw.summary?.trafficDelayInSeconds || 0),
         provider: 'TomTom traffic-aware routing',
       };
     } catch { /* Key, network or provider failure: try backup or OSRM fallback */ }
