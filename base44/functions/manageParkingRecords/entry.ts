@@ -12,10 +12,17 @@ const history = (user:any, action:string, notes:string) => ({actor:clean(user.em
 // than by the user's assigned_locations array. Cache only this site's names,
 // never resident data; users still authenticate on every function request.
 const clientSiteCache = new Map<string,{expires:number,names:string[]}>();
-const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const activeLocation=(location:any)=>location?.active!==false&&
-  !['inactive','closed','terminated','expired'].includes(clean(location?.status).toLowerCase())&&
-  (!clean(location?.contract_end_date)||clean(location.contract_end_date).slice(0,10)>=localDay());
+const easternClock=()=>{
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+  const val=(key:string)=>Number(parts.find(part=>part.type===key)?.value||0);
+  return {date:`${val('year')}-${String(val('month')).padStart(2,'0')}-${String(val('day')).padStart(2,'0')}`,hour:val('hour')};
+};
+const activeLocation=(location:any,clock=easternClock())=>{
+  if(!location||location.active===false||['false','0','inactive','closed','terminated','expired'].includes(clean(location.active).toLowerCase())||
+    ['inactive','closed','terminated','expired'].includes(clean(location.status).toLowerCase()))return false;
+  const from=clean(location.contract_start_date).slice(0,10),until=clean(location.contract_end_date).slice(0,10);
+  return (!from||from<=clock.date)&&(!until||until>clock.date||(until===clock.date&&clock.hour<12));
+};
 
 Deno.serve(async req => {
   let currentAction='';
@@ -239,7 +246,7 @@ Deno.serve(async req => {
       const vehicles=residentCars(rows,registered);
       if(action==='rent_roll'||action==='resident_lookup'){
         const q=clean(data.query,100).toLowerCase();
-        const residents=rows.map(publicResident).filter(row=>{
+        const residents=(action==='rent_roll'&&(client||admin)?rows:rows.map(publicResident)).filter(row=>{
           if(!q)return true;
           const cars=vehicles.filter(v=>v.resident_id===row.id);
           return [row.full_name,row.unit_number,row.building,...cars.map(v=>v.plate),...cars.map(v=>v.vin)].some(value=>clean(value).toLowerCase().includes(q));

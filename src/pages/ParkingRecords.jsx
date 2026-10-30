@@ -16,7 +16,7 @@ const formatMoney = amount => new Intl.NumberFormat('en-US',{style:'currency',cu
 const thisDay=()=>new Date().toISOString().slice(0,10);
 const thisTime=()=>new Date().toTimeString().slice(0,5);
 const blankTicket=()=>({violation_date:thisDay(),violation_time:thisTime(),vehicle_year:'',vehicle_make:'',vehicle_model:'',vehicle_color:'',license_plate:'',license_state:'VA',vehicle_vin:'',vehicle_owner:'',subject_name:'',subject_dob:'',unit_number:'',violation_type:'no_permit',description:'',photo_url:'',warning_issued:false});
-const blankResident=()=>({full_name:'',unit_number:'',building:'',lease_status:'active',lease_start:'',lease_end:'',lease_id:'',resident_type:'tenant',phone:'',email:'',notes:'',vehicle_plate:'',vehicle_state:'VA',vehicle_year:'',vehicle_make:'',vehicle_model:'',vehicle_color:'',vehicle_vin:''});
+const blankResident=()=>({full_name:'',unit_number:'',building:'',lease_status:'active',lease_start:'',lease_end:'',lease_id:'',monthly_rent:'',rent_due_day:'',resident_type:'tenant',phone:'',email:'',notes:'',vehicle_plate:'',vehicle_state:'VA',vehicle_year:'',vehicle_make:'',vehicle_model:'',vehicle_color:'',vehicle_vin:''});
 const blankCar=()=>({resident_id:'',plate:'',state:'VA',year:'',make:'',model:'',color:'',vin:'',permit_number:'',permit_status:'active',vehicle_status:'registered'});
 const standardTypes=[['no_permit','No parking permit'],['expired_permit','Expired permit'],['unauthorized_area','Unauthorized area'],['fire_lane','Fire lane'],['handicap_violation','Accessible parking violation'],['blocking_traffic','Blocking traffic'],['other','Other']];
 const classes='h-10 w-full rounded-lg border border-slate-600 bg-[#0b1724] px-3 text-sm text-white';
@@ -110,11 +110,11 @@ export default function ParkingRecords({mode='officer'}){
  const filteredViolations=violations.filter(row=>statusFilter==='all'||row.status===statusFilter);
  const exportRentRoll=()=>{
   if(!site)return;
-  const columns=['Property','Resident','Unit','Building','Lease Status','Lease Start','Lease End','Vehicle Plate','State','Year','Make','Model','Color','Permit Number','Permit Status'];
+  const columns=['Property','Resident','Unit','Building','Lease Status','Lease Start','Lease End','Monthly Rent','Rent Due Day','Vehicle Plate','State','Year','Make','Model','Color','Permit Number','Permit Status'];
   const rows=[columns];
   for(const resident of residents){
     const cars=vehicles.filter(car=>car.resident_id===resident.id);
-    for(const car of cars.length?cars:[{}])rows.push([site,resident.full_name,resident.unit_number,resident.building,resident.lease_status,resident.lease_start,resident.lease_end,car.plate,car.state,car.year,car.make,car.model,car.color,car.permit_number,car.permit_status]);
+    for(const car of cars.length?cars:[{}])rows.push([site,resident.full_name,resident.unit_number,resident.building,resident.lease_status,resident.lease_start,resident.lease_end,resident.monthly_rent??'',resident.rent_due_day??'',car.plate,car.state,car.year,car.make,car.model,car.color,car.permit_number,car.permit_status]);
   }
   const blob=new Blob([rows.map(row=>row.map(csvEscape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;
