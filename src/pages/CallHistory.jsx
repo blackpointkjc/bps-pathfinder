@@ -95,6 +95,30 @@ export default function CallHistory() {
     const [sortField, setSortField] = useState('time');
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
+    const detailsRequestedRef=useRef(new Set());
+    const [detailsLoading,setDetailsLoading]=useState('');
+    const [detailsWarning,setDetailsWarning]=useState('');
+    const expandCall=(row)=>{
+      if(expandedId===row.id){setExpandedId(null);return;}
+      setExpandedId(row.id);
+      if(detailsRequestedRef.current.has(String(row.id)))return;
+      detailsRequestedRef.current.add(String(row.id));
+      setDetailsLoading(String(row.id));setDetailsWarning('');
+      void withRequestTimeout(base44.functions.invoke('getCallHistoryFeed',{
+        action:'call_details',call_id:row.original_call_id||row.id,call_number:cadReference(row),
+      }),10000,'Selected call details').then(response=>{
+        const result=response?.data||response||{};
+        if(result.error)throw Error(result.error);
+        setRows(current=>current.map(item=>String(item.id)===String(row.id)?{
+          ...item,_linkedReports:result.linked_reports||item._linkedReports||[],
+          _assignmentRecords:result.assignments||[],_detailsLoaded:true,
+        }:item));
+        if(result.warnings?.length)setDetailsWarning('Some linked call details are temporarily unavailable.');
+      }).catch(error=>{
+        detailsRequestedRef.current.delete(String(row.id));
+        setDetailsWarning('Linked report/assignment details unavailable: '+(error?.message||'retry by reopening call'));
+      }).finally(()=>setDetailsLoading(''));
+    };
     const [linkingCallId,setLinkingCallId]=useState(null);
     const [existingReportNumber,setExistingReportNumber]=useState('');
     const [linkBusy,setLinkBusy]=useState(false);
@@ -656,8 +680,8 @@ export default function CallHistory() {
                     const isExpanded = expandedId === (row.id);
                     return (
                         <div key={row.id}>
-                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(cadReference(row)||'Reference Pending')} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setExpandedId(isExpanded?null:row.id);}}}
-                                onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(cadReference(row)||'Reference Pending')} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();expandCall(row);}}}
+                                onClick={() => expandCall(row)}
                                 className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
                                     ${isExpanded ? 'bg-slate-800/60' : ''}`}> 
@@ -719,7 +743,10 @@ export default function CallHistory() {
                                     <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#0a1320] p-3">
                                       <PropertyCallLinkControl call={row} onLinked={link=>setRows(current=>current.map(item=>item.id===row.id?{...item,_propertyCall:true,_propertyId:link.property_id,_propertyName:link.property_name,_propertyLinks:[...(item._propertyLinks||[]),link]}:item))}/>
                                       <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({row._linkedReports?.length||0})</p>
-                                      {!row._linkedReports?.length&&<p className="mt-1 text-xs text-slate-400">No report links recorded yet.</p>}
+                                      {detailsLoading===String(row.id)&&<p className="text-xs text-cyan-300">Loading linked reports and recorded assignments…</p>}
+                                      {expandedId===row.id&&detailsWarning&&<p role="status" className="text-xs text-amber-300">{detailsWarning}</p>}
+                                      {row._assignmentRecords?.length>0&&<p className="mt-1 text-xs text-emerald-300">{row._assignmentRecords.length} recorded CAD assignment(s): {row._assignmentRecords.map(item=>item.unit_id).filter(Boolean).join(', ')}</p>}
+                                      {!row._linkedReports?.length && row._detailsLoaded && <p className="mt-1 text-xs text-slate-400">No report links recorded for this call.</p>}
                                       <div className="mt-2 flex flex-wrap gap-2">{(row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>
                                       {linkingCallId===row.id&&<div className="mt-3 flex flex-wrap gap-2"><input value={existingReportNumber} onChange={e=>setExistingReportNumber(e.target.value)} placeholder="Existing incident report number" className="h-9 flex-1 rounded border border-slate-600 bg-slate-900 px-3 text-xs text-white"/><button disabled={linkBusy} onClick={event=>{event.stopPropagation();linkExistingIncidentReport(row);}} className="rounded bg-emerald-700 px-3 py-2 font-bold text-white">{linkBusy?'Linking…':'Link report'}</button><button onClick={event=>{event.stopPropagation();setLinkingCallId(null);}} className="rounded border border-slate-600 px-3 py-2">Cancel</button></div>}
                                     </div>

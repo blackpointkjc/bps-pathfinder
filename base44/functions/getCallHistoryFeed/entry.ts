@@ -34,6 +34,23 @@ Deno.serve(async (req) => {
     if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
+    // Fetch optional linked reports and assignments only for an expanded call.
+    // The history table itself no longer needs six expensive enrichment reads.
+    if(input.action==='call_details'){
+      const id=String(input.call_id||'').trim().slice(0,100);
+      const number=String(input.call_number||'').trim().slice(0,100);
+      if(!id)return Response.json({error:'Call id required'},{status:400});
+      const [links,assignments]=await Promise.all([
+        readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.filter({call_id:id},'-linked_at',60),[]),
+        readWithRetry('Assigned units',()=>base44.asServiceRole.entities.CallAssignment.filter({call_id:id},'-assigned_at',60),[]),
+      ]);
+      const linked=(links.data||[]).filter((row:any)=>String(row.status||'active').toLowerCase()!=='detached')
+        .map((row:any)=>({id:row.id,report_id:row.report_id,report_type:row.report_type,
+          report_number:row.report_number||row.report_id,call_number:row.call_number||number,linked_at:row.linked_at}));
+      return Response.json({success:true,linked_reports:linked,
+        assignments:(assignments.data||[]).map((row:any)=>({unit_id:row.unit_id,role:row.role,status:row.status,assigned_at:row.assigned_at})),
+        warnings:[links.error,assignments.error].filter(Boolean)});
+    }
     const search=String(input.search||'').trim().slice(0,160);
     const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
     const addressPattern = addressHistoryPattern(search);
