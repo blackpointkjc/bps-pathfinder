@@ -1034,7 +1034,7 @@ export default function Navigation() {
         const nearestIndex = projection.index;
 
         const accuracy = Number(gpsQuality?.accuracy);
-        const offRouteThresholdMeters = Math.max(30, Math.min(55, Number.isFinite(accuracy) && accuracy > 0 ? accuracy * 2 : 35));
+        const offRouteThresholdMeters = Math.max(40, Math.min(100, Number.isFinite(accuracy) && accuracy > 0 ? accuracy * 2 : 45));
         if (nearestMeters <= Math.max(80, offRouteThresholdMeters * 2)) {
             navSnapIndexRef.current = Math.max(navSnapIndexRef.current, nearestIndex);
         }
@@ -1058,8 +1058,8 @@ export default function Navigation() {
 
         const confirmedDeviation = offRoute
             && offRouteConfirmationsRef.current >= 2
-            && now - offRouteSinceRef.current >= 1200;
-        if (confirmedDeviation && now - lastRerouteAtRef.current > 4000) {
+            && now - offRouteSinceRef.current >= 2500;
+        if (confirmedDeviation && now - lastRerouteAtRef.current > 15000) {
             lastRerouteAtRef.current = now;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
