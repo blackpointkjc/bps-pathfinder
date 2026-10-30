@@ -235,12 +235,12 @@ export default function Schedule() {
     if (!dateStr || !allWeekStatuses || !user?.email) return false;
     // ScheduleWeekStatus owns the actual publication window. Do not assume the
     // week starts on Sunday; payroll/schedule periods may start on another day.
-    const status = [...allWeekStatuses].reverse().find(item =>
+    const status = allWeekStatuses.find(item =>
       item?.week_start_date && item?.week_end_date &&
       dateStr >= item.week_start_date && dateStr <= item.week_end_date
     );
     if (!status?.is_ready) return false;
-    const heldEmails = new Set([user.email, user.work_email, user.pathfinder_email, user.microsoft_email].filter(Boolean).map(email => String(email).trim().toLowerCase());
+    const heldEmails = new Set([user.email, user.work_email, user.pathfinder_email, user.microsoft_email].filter(Boolean).map(email => String(email).trim().toLowerCase()));
     return !(status.unpublished_officer_emails || []).some(email => heldEmails.has(String(email).trim().toLowerCase()));
   }, [allWeekStatuses, user?.email, user?.work_email, user?.pathfinder_email, user?.microsoft_email]);
 
