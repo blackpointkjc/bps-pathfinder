@@ -232,3 +232,47 @@
   .pf-navigation-workspace .pf-map-header { grid-template-columns: minmax(0,1fr); }
   .pf-navigation-workspace .pf-map-header-actions { grid-column: 1; justify-content: space-between; }
 }
+
+/* Address search opens as one bounded destination workspace. Main controls,
+   selected destination and Navigate Here remain in view; only long result
+   lists scroll inside their own area instead of forcing page scrolling. */
+.pf-map-gps-alert { color: #fbbf24; font-weight: 700; }
+.pf-navigation-workspace .pf-map-search-panel {
+  bottom: 9px;
+  height: auto;
+  max-height: none;
+  background: #0a1625;
+  border: 1px solid #49637c;
+  padding: 8px;
+  box-shadow: 0 14px 35px #000b;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.pf-navigation-workspace .pf-map-search-panel > form,
+.pf-navigation-workspace .pf-map-search-panel > details,
+.pf-navigation-workspace .pf-map-search-panel > button,
+.pf-navigation-workspace .pf-map-search-panel > div:not(.pf-address-results):not(.pf-recent-destinations) { flex-shrink: 0; }
+.pf-navigation-workspace .pf-address-search-heading { flex-shrink: 0; }
+.pf-navigation-workspace .pf-address-results,
+.pf-navigation-workspace .pf-recent-destinations { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width:767px) {
+  .pf-navigation-workspace .pf-map-search-panel,
+  .pf-navigation-workspace .pf-map-search-panel.pf-search-routing {
+    left: 7px; right: 7px; bottom: 7px;
+    top: 63px !important;
+    max-height: none; width: auto;
+    padding: 7px;
+    transform: none;
+    border-radius: 13px;
+    z-index: 1280;
+  }
+  .pf-navigation-workspace .pf-map-search-panel > .grid { gap: 4px; margin-top: 5px; }
+  .pf-navigation-workspace .pf-map-search-panel > .grid button { min-height: 38px !important; padding: 6px; }
+  .pf-navigation-workspace .pf-map-search-panel .pf-address-results { margin-top: 5px; }
+  .pf-navigation-workspace .pf-map-search-panel .pf-recent-destinations { max-height: none; }
+  .pf-navigation-workspace .pf-map-search-panel .pf-manual-origin { flex-shrink: 0; }
+  .pf-navigation-workspace .pf-map-search-panel .pf-address-search-heading { padding-block: 3px; }
+  .pf-navigation-workspace .pf-map-search-panel .pf-address-search-heading button { min-height: 36px !important; }
+}
