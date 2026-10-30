@@ -218,6 +218,7 @@ export default function Navigation() {
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
     const speedLimitRequestSeqRef = useRef(0);
     const [speedLimitRetryRevision, setSpeedLimitRetryRevision] = useState(0);
+    const navRouteSummaryRef = useRef({ distanceMeters: 0, durationSeconds: 0 });
     const navSnapIndexRef = useRef(0);
     const navStepRouteIndexesRef = useRef([]);
     const destinationRequestRef = useRef(0);
@@ -465,7 +466,13 @@ export default function Navigation() {
         setNavDistanceMiles(remainingMiles);
         // Some provider steps omit duration. Never present an impossible ETA
         // (for example 12 miles remaining in one minute) when GPS advances.
-        setNavDurationMinutes(Math.max(1, Math.ceil((currentStepSeconds + futureSeconds) / 60), Math.ceil(remainingMiles * 60 / 75)));
+        const baseline = navRouteSummaryRef.current;
+        const proportionalSeconds = baseline.distanceMeters > 0 && baseline.durationSeconds > 0
+            ? baseline.durationSeconds * Math.min(1.5, (remainingMiles * 1609.344) / baseline.distanceMeters)
+            : 0;
+        // Preserve the full traffic-aware route timing when individual steps
+        // have no timing information (including older TomTom route responses).
+        setNavDurationMinutes(Math.max(1, Math.ceil(Math.max(currentStepSeconds + futureSeconds, proportionalSeconds) / 60), Math.ceil(remainingMiles * 60 / 65)));
 
         // Maintain forward route progress independently of exact maneuver-radius
         // hits. A GPS update can skip across the ~95 ft turn bubble at highway
@@ -851,11 +858,11 @@ export default function Navigation() {
             const originOverride = Array.isArray(options.originOverride) && validPosition(options.originOverride[0], options.originOverride[1])
                 ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
                 : null;
-            const recentFix = getLiveLocation(options.reroute ? 12_000 : 30_000);
+            const recentFix = getLiveLocation(options.reroute ? 12_000 : 15_000);
             let freshLocation = originOverride
                 || (options.reroute && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
-                || (currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || (recentFix && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || await getFreshDeviceLocation();
             let previewOnly = false;
             if (!freshLocation && manualOriginQuery.trim().length >= 3) {
@@ -959,8 +966,9 @@ export default function Navigation() {
             lastSpokenNavStepRef.current = -1;
             spokenNavPromptsRef.current.clear();
             setNavTurnDistanceFeet(Math.max(0, Math.round((Number(routeSteps[0]?.distance) || 0) * 3.28084)));
+            navRouteSummaryRef.current = { distanceMeters: Math.max(0, Number(route.distance) || 0), durationSeconds: Math.max(0, Number(route.duration) || 0) };
             setNavDistanceMiles(route.distance / 1609.344);
-            setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60), Math.ceil((route.distance / 1609.344) * 60 / 75)));
+            setNavDurationMinutes(Math.max(1, Math.ceil(route.duration / 60), Math.ceil((route.distance / 1609.344) * 60 / 65)));
             setFollowMyLocation(true);
             setIsNavigating(true);
             setRecentDestinations(rememberDestination(currentUser?.id, { ...destination, coords: [destLat, destLng] }));
@@ -981,9 +989,13 @@ export default function Navigation() {
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
             const message = error?.message || 'Unable to build route';
-            setAddressSearchError(message + ' The destination is retained below so you can open driving directions.');
-            setShowAddressSearch(true);
-            toast.error(message, { duration: 9000 });
+            if (!options.reroute) {
+                setAddressSearchError(message + ' The destination is retained below so you can open driving directions.');
+                setShowAddressSearch(true);
+            } else {
+                setNavOffRoute(true);
+            }
+            toast.error(options.reroute ? `Rerouting unavailable: ${message}` : message, { duration: 9000 });
         } finally {
             setRouting(false);
         }
@@ -1029,7 +1041,8 @@ export default function Navigation() {
             lastRerouteAtRef.current = now;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
-            stopVoice();
+            // Recalculate without discarding the existing route until a
+            // replacement is returned. Avoid unrelated CAD audio interruptions.
             spokenNavPromptsRef.current.clear();
             startNavigationToPoint(navDestination, {
                 setEnroute: false,
