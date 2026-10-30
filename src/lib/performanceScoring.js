@@ -1096,6 +1096,25 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
   return { score, rawScore: score, commandExempt, count: applicable.length, scheduled: monthlySchedules.length, items: applicable, excusedItems };
 }
 
+/** Average one verified score per officer. Missing/N/A officers do not enter
+ * the numerator or denominator. 0% is a real score and MUST be included.
+ * This is an equal-officer company metric, not a shift-weighted ratio. */
+export function averageScoredOfficers(rows = [], scoreOf = row => row?.score, totalOfficers = rows.length) {
+  const scores = (rows || []).map(row => scoreOf(row)).filter(value =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
+  );
+  const total = Math.max(0, Number.isFinite(totalOfficers) ? totalOfficers : rows.length);
+  const precise = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+  return {
+    rate: precise == null ? null : Math.round(precise),
+    preciseRate: precise == null ? null : Math.round(precise * 10) / 10,
+    scoredOfficers: scores.length,
+    unscoredOfficers: Math.max(0, total - scores.length),
+    totalOfficers: total,
+    scoreSum: scores.reduce((sum, score) => sum + score, 0),
+  };
+}
+
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));
 
 export function buildOverallPerformance({ punctuality, trainingScore = null, jobDuty = null, callOutAttendance = null, bidStanding, clientFeedback, supervisorRating, recognition }) {

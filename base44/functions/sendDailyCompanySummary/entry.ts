@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { blackPointEmail } from './blackPointEmail.ts';
 import { easternDateKey, loadPerformanceMetricData } from './metrics.ts';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from './performanceScoring.js';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance, averageScoredOfficers } from './performanceScoring.js';
 
 const TIME_ZONE = 'America/New_York';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
@@ -689,14 +689,14 @@ Deno.serve(async (req) => {
     const rankings = metricResults.sort((a, b) =>
       (b.score ?? -1) - (a.score ?? -1) || rankedName(a.user).localeCompare(rankedName(b.user))
     );
-    const scored = rankings.filter(row => row.score != null);
-    const companyOverall = scored.length
-      ? Math.round(scored.reduce((sum, row) => sum + Number(row.score), 0) / scored.length)
-      : null;
+    // The company denominator is rated OFFICERS, not scheduled shifts.
+    // Each numeric 0% is included. Missing/non-scored officers are counted
+    // separately and do not lower the mean.
+    const overallCohort=averageScoredOfficers(rankings,row=>row.score,rankingCandidates.length);
+    const companyOverall=overallCohort.rate;
     const punctualityRows = metricResults.filter(row => row.metrics?.punctuality?.total > 0);
-    const companyPunctualityTotal = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.total || 0), 0);
-    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.attended || 0), 0);
-    const companyOnTime = companyPunctualityTotal > 0 ? Math.round((companyPunctualityOnTime / companyPunctualityTotal) * 100) : null;
+    const attendanceCohort=averageScoredOfficers(punctualityRows,row=>row.metrics?.punctuality?.rate,rankingCandidates.length);
+    const companyOnTime=attendanceCohort.rate;
 
     const dateLabel = new Intl.DateTimeFormat('en-US', {
       timeZone: TIME_ZONE, month: 'long', day: 'numeric', year: 'numeric',
@@ -716,6 +716,13 @@ Deno.serve(async (req) => {
         success: true,
         preview: true,
         company_overall: companyOverall,
+        overall_scored_officers:overallCohort.scoredOfficers,
+        overall_unscored_officers:overallCohort.unscoredOfficers,
+        attendance_officer_average:attendanceCohort.rate,
+        attendance_precise_average:attendanceCohort.preciseRate,
+        attendance_scored_officers:attendanceCohort.scoredOfficers,
+        attendance_unscored_officers:attendanceCohort.unscoredOfficers,
+        scoring_population:rankingCandidates.length,
         score_window:{from:now.monthStart,to:now.date,time_zone:TIME_ZONE},
         score_definition:'Weighted operational performance (attendance 55%, job duty 15%, call-outs 15%, training 3%, and optional categories); not certification-file completion.',
         rankings: rankings.map((row, index) => ({ position: row.score==null?null:index + 1, name: rankedName(row.user),
@@ -735,7 +742,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const companySnapshot = { overall: companyOverall, onTime: companyOnTime, activeOperational: rankingCandidates.length, totalMissing };
+    const companySnapshot = { overall: companyOverall, onTime: companyOnTime, activeOperational: rankingCandidates.length, totalMissing,
+      overallScored:overallCohort.scoredOfficers, attendanceScored:attendanceCohort.scoredOfficers };
     const notificationsCreated = await createNotifications(
       base44, recipients, deliveryId,
       () => `Black Point Daily Brief — ${dateLabel}`,
@@ -798,6 +806,9 @@ Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'d
       date: now.date,
       delivery_id: deliveryId,
       company_overall: companyOverall,
+      overall_scored_officers:overallCohort.scoredOfficers,
+      attendance_scored_officers:attendanceCohort.scoredOfficers,
+      attendance_officer_average:attendanceCohort.rate,
       ranking_count: rankings.length,
       missing_item_count: totalMissing,
       recipient_count: recipients.length,
