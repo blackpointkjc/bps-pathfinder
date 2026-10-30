@@ -1,6 +1,5 @@
 import { facilityMapIcon } from '@/lib/facilityMapIcon';
 import { Marker, Popup, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
 import { Ambulance, MapPin } from 'lucide-react';
 
 const createRAAIcon = () => facilityMapIcon('rescue');

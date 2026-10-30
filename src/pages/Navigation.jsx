@@ -15,7 +15,7 @@ import MapView from '@/components/map/MapView';
 import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
     Layers, MapPin, Users,
-    Eye, EyeOff, Crosshair, Flame, X, AlertTriangle, Navigation2, Square, Search, ChevronLeft, ChevronRight,
+    Eye, EyeOff, Crosshair, Flame, X, AlertTriangle, Navigation2, Square, Search,
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +23,6 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
-import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';

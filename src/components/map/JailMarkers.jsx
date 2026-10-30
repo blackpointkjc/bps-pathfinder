@@ -1,6 +1,5 @@
 import { facilityMapIcon } from '@/lib/facilityMapIcon';
 import { Marker, Popup, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
 
 // Jail icon
 const jailIcon = facilityMapIcon('jail');
