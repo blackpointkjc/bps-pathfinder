@@ -1,38 +1,18 @@
+import { callTimestamp, isVisibleActiveCall } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const CACHE_KEY = 'bps-cad-active-calls-v5';
+const CACHE_KEY = 'bps-cad-active-calls-v6';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
-const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-// Active calls are a rolling one-hour view.
-const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
+const MEMORY_DEDUPE_MS = 3_000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
-const MEMORY_DEDUPE_MS = 3_000;
 let requestBackoffUntil = 0;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
-
 function normalizedText(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function callTimestamp(call) {
-  const created = new Date(call?.created_date || 0).getTime();
-  const received = new Date(call?.time_received || 0).getTime();
-  if (Number.isFinite(received) && Number.isFinite(created) && Math.abs(received - created) < 24 * 60 * 60 * 1000) return received;
-  return Number.isFinite(created) && created > 0 ? created : (Number.isFinite(received) ? received : 0);
-}
-
-function isVisibleActiveCall(call) {
-  const status = String(call?.status || '').trim().toLowerCase();
-  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(status)) return false;
-  // The active board is a rolling view of the last hour only. Calls whose source
-  // never published a closure used to sit on it for days (300+ hours), so age is
-  // now the hard limit regardless of the stored status.
-  const stamp = callTimestamp(call);
-  return stamp > 0 && Date.now() - stamp <= ACTIVE_WINDOW_MS;
 }
 
 function filterVisibleActiveCalls(rows = []) {
@@ -68,7 +48,8 @@ export function dedupeOperationalCalls(rows = []) {
       unkeyed.push(call);
       continue;
     }
-    stable.set(stableKey, preferCall(stable.get(stableKey), call));
+    const scopedKey = normalizedText(call.agency) + ':' + stableKey;
+    stable.set(scopedKey, preferCall(stable.get(scopedKey), call));
   }
 
   const candidates = [...stable.values(), ...unkeyed].sort((a, b) => callTimestamp(b) - callTimestamp(a));
@@ -79,6 +60,8 @@ export function dedupeOperationalCalls(rows = []) {
     const stamp = callTimestamp(call);
     const duplicateIndex = result.findIndex(existing =>
       incident
+      && normalizedText(existing?.agency) === normalizedText(call?.agency)
+      && !(existing?.agency_cad_number && call?.agency_cad_number && existing.agency_cad_number !== call.agency_cad_number)
       && location
       && normalizedText(existing?.incident) === incident
       && normalizedText(existing?.location) === location
@@ -124,7 +107,7 @@ function saveLastGoodCalls(calls) {
  */
 export async function loadActiveDispatchCallRows(limit = 100) {
   if (Array.isArray(memoryRows) && Date.now() - memoryRowsAt < MEMORY_DEDUPE_MS) {
-    return memoryRows.slice(0, limit);
+    return filterVisibleActiveCalls(memoryRows).slice(0, limit);
   }
   if (Date.now() < requestBackoffUntil) {
     if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows).slice(0, limit);

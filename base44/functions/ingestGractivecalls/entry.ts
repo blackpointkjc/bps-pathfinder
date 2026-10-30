@@ -228,6 +228,7 @@ function normalizeCall(row: any) {
   if (!row?._id || !row?.incident || !row?.location || !ALLOWED_AGENCIES.has(agency)) return null;
   const external_call_id = String(row._id);
   const received = new Date(row.timeReceived);
+  if (!row.timeReceived || Number.isNaN(received.getTime()) || received.getTime() > Date.now() + 120000) return null;
   const latitude = validCoordinate(row?.coords?.[0]);
   const longitude = validCoordinate(row?.coords?.[1]);
   const agency_cad_number = extractOfficialCadNumber(row);
@@ -247,7 +248,7 @@ function normalizeCall(row: any) {
     zone: String(row.district || '').trim(),
     status: normalizeStatus(row.status),
     priority: normalizePriority(row.incident),
-    time_received: Number.isNaN(received.getTime()) ? new Date().toISOString() : received.toISOString(),
+    time_received: received.toISOString(),
     source: AGENCY_SOURCE[agency],
     description: `${String(row.incident).trim()} at ${String(row.location).trim()}`,
     ...(latitude !== null && longitude !== null ? { latitude, longitude, geo_confidence: 'high', geo_method: 'grac', geo_approximate: false } : {}),

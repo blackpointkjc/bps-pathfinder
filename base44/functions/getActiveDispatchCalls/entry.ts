@@ -1,27 +1,8 @@
+import { isVisibleActiveCall, callTimestamp, ACTIVE_WINDOW_MS } from '../_shared/callFeedPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const readCache = new Map<string, { at:number; rows:any[]; pending?:Promise<any[]> }>();
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
-const TERMINAL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-
-function callTimestamp(call: any) {
-  const created = call?.created_date ? new Date(call.created_date).getTime() : 0;
-  const received = call?.time_received ? new Date(call.time_received).getTime() : 0;
-  if (Number.isFinite(received) && received > 0 && Number.isFinite(created) && created > 0 && Math.abs(received - created) < 24 * 60 * 60 * 1000) return received;
-  if (Number.isFinite(created) && created > 0) return created;
-  return Number.isFinite(received) && received > 0 ? received : 0;
-}
-
-// Active calls are a rolling one-hour view. Rows whose source never published a
-// closure previously stayed on the board for days.
-const ACTIVE_WINDOW_MS = 60 * 60 * 1000;
-
-function isVisibleActiveCall(call: any) {
-  if (call?.manual_dismissed === true || TERMINAL_STATUSES.has(lower(call?.status))) return false;
-  const stamp = callTimestamp(call);
-  return stamp > 0 && Date.now() - stamp <= ACTIVE_WINDOW_MS;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -45,6 +26,10 @@ Deno.serve(async (req) => {
           // Gating rows on that poll dropped current calls whose source had already
           // moved on, which left the board empty while calls were still running.
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
+            $or: [
+              { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
+              { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
+            ],
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
           }, '-created_date', 500);
