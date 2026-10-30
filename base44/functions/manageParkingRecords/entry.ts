@@ -252,8 +252,8 @@ Deno.serve(async req => {
         const residents=(action==='rent_roll'&&(client||admin)?rows:rows.map(publicResident)).filter(row=>{
           if(!q)return true;
           const cars=vehicles.filter(v=>v.resident_id===row.id);
-          const indexed=[row.full_name,row.unit_number,row.building,row.phone,row.email,row.lease_id,row.lease_status,row.resident_type,
-            ...cars.flatMap(v=>[v.plate,v.state,v.year,v.make,v.model,v.color,v.vin,v.permit_number,v.permit_status,v.vehicle_status])].map(value=>clean(value,240).toLowerCase()).filter(Boolean);
+          const indexed=[row.full_name,row.unit_number,row.building,row.phone,row.email,row.lease_id,row.lease_status,row.resident_type,row.lease_start,row.lease_end,
+            ...cars.flatMap(v=>[v.plate,v.state,v.year,v.make,v.model,v.color,v.vin,v.permit_number,v.permit_status,v.vehicle_status,v.unit_number])].map(value=>clean(value,240).toLowerCase()).filter(Boolean);
           return tokens.every(token=>indexed.some(value=>value.includes(token)));
         });
         const visible=action==='resident_lookup'?residents.slice(0,60):residents;

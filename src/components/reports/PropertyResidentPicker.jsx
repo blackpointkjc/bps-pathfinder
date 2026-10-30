@@ -6,8 +6,8 @@ const plate=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const cls='h-11 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text-sm text-white';
 const isMatch=(resident,cars,q)=>{
  const tokens=String(q||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
- const searchable=[resident.full_name,resident.unit_number,resident.building,resident.phone,resident.email,resident.lease_id,resident.lease_status,
-  ...cars.flatMap(vehicle=>[vehicle.plate,vehicle.state,vehicle.make,vehicle.model,vehicle.year,vehicle.color,vehicle.vin,vehicle.permit_number,vehicle.permit_status])]
+ const searchable=[resident.full_name,resident.unit_number,resident.building,resident.phone,resident.email,resident.lease_id,resident.lease_status,resident.lease_start,resident.lease_end,resident.resident_type,
+  ...cars.flatMap(vehicle=>[vehicle.plate,vehicle.state,vehicle.make,vehicle.model,vehicle.year,vehicle.color,vehicle.vin,vehicle.permit_number,vehicle.permit_status,vehicle.vehicle_status,vehicle.unit_number])]
   .map(x=>String(x||'').toLowerCase());
  return tokens.every(token=>searchable.some(value=>value.includes(token)));
 };
@@ -21,13 +21,13 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
  useEffect(()=>{setQuery('');setData({residents:[],vehicles:[],total_matches:0});setSelected(null);setError('');latest.current++;},[site]);
  useEffect(()=>{
   const q=query.trim();const seq=++latest.current;
-  if(!site||q.length<2){setData({residents:[],vehicles:[],total_matches:0});setLoading(false);return;}
+  if(!site||q.length<2){setData({residents:[],vehicles:[],total_matches:0,query:''});setLoading(false);return;}
   setLoading(true);setError('');
   const timer=setTimeout(()=>{
    base44.functions.invoke('manageParkingRecords',{action:'resident_lookup',site_name:site,query:q}).then(res=>{
     if(seq!==latest.current)return;
     const payload=res?.data||res||{};if(payload.error)throw Error(payload.error);
-    setData({residents:payload.residents||[],vehicles:payload.vehicles||[],total_matches:payload.total_matches||0});
+    setData({residents:payload.residents||[],vehicles:payload.vehicles||[],total_matches:payload.total_matches||0,query:q});
    }).catch(err=>{if(seq===latest.current)setError(err?.response?.data?.error||err?.data?.error||err?.message||'Resident search unavailable')})
    .finally(()=>{if(seq===latest.current)setLoading(false)});
   },320);
@@ -38,7 +38,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
   window.addEventListener('pathfinder:rent-roll-updated',onUpdate);
   return()=>window.removeEventListener('pathfinder:rent-roll-updated',onUpdate);
  },[site]);
- const rows=useMemo(()=>data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),query)),[data,query]);
+ const rows=useMemo(()=>data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),data.query||query)),[data,query]);
  const select=(person,car=null)=>{setSelected({resident:person,vehicle:car});onSelect?.(person,car)};
  return <section className="space-y-3 rounded-xl border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
   <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={!site||loading||query.trim().length<2} onClick={()=>setReload(n=>n+1)} className="flex items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs"><RefreshCw size={14}/>Refresh</button></div>
