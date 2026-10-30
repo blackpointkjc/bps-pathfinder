@@ -116,10 +116,19 @@ function aliasesFor(user: any, teams: any[], outlook: any[]) {
 }
 
 function recordBelongs(record: any, user: any, aliases: Set<string>, fields = ['officer_email']) {
-  return Boolean(
-    (user?.id && [record?.user_id, record?.officer_id, record?.created_by_id].some(value => String(value || '') === String(user.id))) ||
-    fields.some(field => aliases.has(emailKey(record?.[field])))
-  );
+  // The owner named on a record takes precedence over who typed it in.
+  // An admin-created report/shift for another officer must not be charged to
+  // the creating administrator's missing-requirements list.
+  if(fields.some(field => aliases.has(emailKey(record?.[field]))))return true;
+  if(fields.some(field => emailKey(record?.[field])))return false;
+  return Boolean(user?.id&&[record?.user_id,record?.officer_id].some(v=>String(v||'')===String(user.id)));
+}
+const completedTraining = (row:any)=>row?.completed===true||['completed','complete','approved','passed','verified'].includes(String(row?.status||'').toLowerCase());
+function activeCertificationExpiry(user:any,type:string){
+  const kind=type.toLowerCase().includes('firearm')?'firearm':'dcjs';
+  const dates=[user?.[kind+'_expiration'],...(user?.officer_certifications||[]).filter((c:any)=>String(c?.certification_type||c?.training_name||'').toLowerCase().includes(kind))
+    .map((c:any)=>c.expiration_date)].map(value=>String(value||'').slice(0,10)).filter(value=>/^\d{4}-\d{2}-\d{2}$/.test(value));
+  return dates.sort().at(-1)||'';
 }
 
 function resolvedDeliveryEmail(user: any, outlook: any[], teams: any[]) {
@@ -171,14 +180,14 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
     }
 
     for (const assignment of trainingAssignments) {
-      if (String(assignment?.status || '').toLowerCase() === 'approved' || !recordBelongs(assignment, user, aliases)) continue;
+      if (completedTraining(assignment) || !recordBelongs(assignment, user, aliases)) continue;
       const due = assignment?.due_date ? ` (due ${formatDate(assignment.due_date)})` : '';
       const state = String(assignment?.status || 'assigned').replaceAll('_', ' ');
       addMissing(missing, user, `Training: ${assignment.training_name || 'Assigned training'} — ${state}${due}`);
     }
 
     const completedModuleIds = new Set(trainingCompletions
-      .filter((row: any) => row?.completed === true && recordBelongs(row, user, aliases))
+      .filter((row: any) => completedTraining(row) && recordBelongs(row, user, aliases))
       .map((row: any) => String(row.training_module_id || ''))
       .filter(Boolean));
     for (const module of trainingModules) {
@@ -194,6 +203,12 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
 
     for (const alert of certificationAlerts) {
       if (alert?.acknowledged === true || !recordBelongs(alert, user, aliases)) continue;
+      const currentExpiry=activeCertificationExpiry(user,String(alert.certification_type||''));
+      const priorExpiry=String(alert.expiration_date||'').slice(0,10);
+      // CertificationAlert is a reminder snapshot, not a live DCJS/firearm
+      // record. A newer valid expiration date in the officer's file supersedes
+      // an old warning and must not be emailed as a missing certification.
+      if(currentExpiry&&priorExpiry&&currentExpiry>priorExpiry)continue;
       const days = Number(alert?.days_until_expiration);
       const status = Number.isFinite(days)
         ? (days < 0 ? `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} expired` : `${days} day${days === 1 ? '' : 's'} remaining`)
@@ -201,8 +216,9 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
       addMissing(missing, user, `Certification: ${String(alert.certification_type || 'certification').toUpperCase()} — ${formatDate(alert.expiration_date)} (${status})`);
     }
 
+    const monthStart=easternNow().monthStart;
     const completedEntries = (metricData.timeEntries || []).filter((entry: any) =>
-      entry?.clock_in && entry?.clock_out && entry?.archived !== true && recordBelongs(entry, user, aliases)
+      entry?.clock_in && entry?.clock_out && entry?.archived !== true && easternDateKey(entry.clock_in)>=monthStart && recordBelongs(entry, user, aliases)
     );
     const usedReports = new Set<string>();
     for (const entry of completedEntries) {
@@ -212,7 +228,10 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
         if (row?.status === 'draft' || usedReports.has(String(row.id || ''))) return false;
         if (!recordBelongs(row, user, aliases, ['officer_email', 'created_by', 'created_by_email'])) return false;
         if (row?.shift_id && String(row.shift_id) === String(entry.id)) return true;
-        return !row?.shift_id && row?.report_date === date && siteKey(row?.location) === siteKey(entry?.location);
+        // Historical reports can carry a Schedule ID rather than TimeEntry ID.
+        // An authored, submitted report for the same worked date and property
+        // is still real work; do not call it missing just because IDs differ.
+        return row?.report_date === date && siteKey(row?.location) === siteKey(entry?.location);
       });
       if (report) usedReports.add(String(report.id || ''));
       else addMissing(missing, user, `Daily Activity Report: ${formatDate(date)} at ${textValue(entry.location) || 'assigned post'}`);
