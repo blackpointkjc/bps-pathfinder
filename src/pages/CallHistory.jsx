@@ -1,5 +1,5 @@
 import { addressHistoryPattern } from '../../base44/functions/_shared/addressHistoryMatch.js';
-import { isValidCallRecord } from '../../base44/functions/_shared/callFeedPolicy.js';
+import { isValidCallRecord, isVisibleActiveCall } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { cadReference } from '@/lib/cadReference';
 import { cadDestination } from '@/lib/cadNavigation';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
@@ -491,8 +491,8 @@ export default function CallHistory() {
         return <span className="text-cyan-300 ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
     };
 
-    const activeCount = sorted.filter(r => r._source === 'active' && !['Closed','Cleared','Cancelled'].includes(r.status)).length;
-    const archivedCount = sorted.filter(r => r._source !== 'active').length;
+    const activeCount = sorted.filter(r => r._source === 'active' && isVisibleActiveCall(r)).length;
+    const archivedCount = sorted.length - activeCount;
     const propertyCount = sorted.filter(r => r._propertyCall).length;
 
     if (loading) return (
@@ -584,7 +584,7 @@ export default function CallHistory() {
                 {sorted.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">— NO RECORDS MATCH FILTERS —</div>
                 ) : sorted.map((row, idx) => {
-                    const isActive = row._source === 'active' && !['Cleared', 'Cancelled','Closed'].includes(historyCallStatus(row));
+                    const isActive = row._source === 'active' && isVisibleActiveCall(row);
                     const agKey = agencyKey(row.agency);
                     const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
                     const stCls = STATUS_COLORS[historyCallStatus(row)] || 'bg-slate-700 text-slate-400 border-slate-600';

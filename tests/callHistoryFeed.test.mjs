@@ -116,4 +116,10 @@ assert.equal(result.data.count,1);
 records.DispatchCall.push({...prior,id:'original-prior'});
 result=await addressHistory({address:'3000 Griffin Avenue, Richmond, VA'});
 assert.equal(result.data.count,1); // active/archive copies are one call
+const liveFeed = await loadHandler('base44/functions/getActiveDispatchCalls/entry.ts');
+records.DispatchCall.push(live, {...live,id:'oldImported',time_received:new Date(now-3*86400000).toISOString()}, {...live,id:'future',time_received:new Date(now+600000).toISOString()});
+const liveResult = await liveFeed({limit:100});
+assert.equal(liveResult.status,200);
+assert.equal(liveResult.data.calls.length,1);
+assert.equal(liveResult.data.calls[0].id,'live');
 console.log('PASS: 840 calls across 90-day pages; older-call search/date range; bounded enrichment; source failure/access controls; full GPS address -> retained prior call; managed-property lookup; duplicate suppression; live recency.');

@@ -22,8 +22,8 @@ export default function AddressCallHistory({ address = '', propertyId = '', excl
   useEffect(() => {
     let active = true;
     setState({loading:true});
-    const key = JSON.stringify([address,propertyId]);
-    readHistory(key,{address,propertyId},retry > 0).then(data => {if(active)setState({data});}).catch(error=>{if(active)setState({error:error.message || 'History unavailable'});});
+    const key = JSON.stringify(['v2',address,propertyId]);
+    readHistory(key,{address,propertyId,version:2},retry > 0).then(data => {if(active)setState({data});}).catch(error=>{if(active)setState({error:error.message || 'History unavailable'});});
     return () => {active=false;};
   }, [address,propertyId,retry]);
   const data=state.data;
