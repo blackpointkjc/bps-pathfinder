@@ -461,8 +461,11 @@ export default function Navigation() {
         const currentStepMeters = Math.max(1, Number(step?.distance) || currentMeters || 1);
         const currentStepSeconds = Math.max(0, Number(step?.duration) || 0) * Math.min(1, currentMeters / currentStepMeters);
         const futureSeconds = laterSteps.reduce((sum, item) => sum + Math.max(0, Number(item?.duration) || 0), 0);
-        setNavDistanceMiles(Math.max(0, (currentMeters + futureMeters) / 1609.344));
-        setNavDurationMinutes(Math.max(1, Math.ceil((currentStepSeconds + futureSeconds) / 60)));
+        const remainingMiles = Math.max(0, (currentMeters + futureMeters) / 1609.344);
+        setNavDistanceMiles(remainingMiles);
+        // Some provider steps omit duration. Never present an impossible ETA
+        // (for example 12 miles remaining in one minute) when GPS advances.
+        setNavDurationMinutes(Math.max(1, Math.ceil((currentStepSeconds + futureSeconds) / 60), Math.ceil(remainingMiles * 60 / 75)));
 
         // Maintain forward route progress independently of exact maneuver-radius
         // hits. A GPS update can skip across the ~95 ft turn bubble at highway
@@ -957,7 +960,7 @@ export default function Navigation() {
             spokenNavPromptsRef.current.clear();
             setNavTurnDistanceFeet(Math.max(0, Math.round((Number(routeSteps[0]?.distance) || 0) * 3.28084)));
             setNavDistanceMiles(route.distance / 1609.344);
-            setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
+            setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60), Math.ceil((route.distance / 1609.344) * 60 / 75)));
             setFollowMyLocation(true);
             setIsNavigating(true);
             setRecentDestinations(rememberDestination(currentUser?.id, { ...destination, coords: [destLat, destLng] }));
