@@ -31,7 +31,7 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
       const instructions = raw?.guidance?.instructions || [];
       const meters = Number(raw?.summary?.lengthInMeters);
       const seconds = Number(raw?.summary?.travelTimeInSeconds);
-      if (pts.length < 2 || !Number.isFinite(meters) || !Number.isFinite(seconds) || !instructions.length) return null;
+      if (pts.length < 2 || !Number.isFinite(meters) || meters <= 0 || !Number.isFinite(seconds) || seconds <= 0 || !instructions.length) return null;
       // Translate TomTom guidance to the OSRM-compatible internal model. The
       // existing step engine/voice prompts must continue to work without any
       // browser-side TomTom SDK or new exposed keys.
