@@ -49,7 +49,24 @@ export default function CADCenter({ embedded = false }) {
  },[active.id]);
  const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);['new','open','call_id','call_number','callId','lat','lng'].forEach(key=>next.delete(key));navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
  return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':active.id==='map'?' cad-shell-map':'')}>
-  <nav className="cad-mode-nav" aria-label="CAD workstations">{Object.entries(TOOLS).flatMap(([group,items])=>items.map(item=><button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)}>{item.label}</button>))}</nav>
+  <div className="cad-mobile-workstation-picker min-w-0 border-b border-[#34516c] bg-[#0c1929] p-2 xl:hidden">
+   <label htmlFor="cad-mobile-workstation-select" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-cyan-200">CAD Workstation</label>
+   <select
+     id="cad-mobile-workstation-select"
+     aria-label="Choose CAD workstation"
+     value={`${section in TOOLS ? section : 'live'}:${active.id}`}
+     onChange={event=>{
+       const [nextSection,nextTool]=event.target.value.split(':');
+       if(TOOLS[nextSection]?.some(item=>item.id===nextTool))select(nextSection,nextTool);
+     }}
+     className="block min-h-11 w-full min-w-0 rounded-lg border border-[#3a607d] bg-[#12283c] px-3 py-2 text-base font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+   >
+     {Object.entries(TOOLS).map(([group,items])=><optgroup key={group} label={group==='live'?'Live CAD':group==='alerts'?'Alerts':'History & Records'}>
+       {items.map(item=><option key={item.id} value={`${group}:${item.id}`}>{item.label}</option>)}
+     </optgroup>)}
+   </select>
+  </div>
+  <nav className="cad-mode-nav hidden xl:flex" aria-label="CAD workstations">{Object.entries(TOOLS).flatMap(([group,items])=>items.map(item=><button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)}>{item.label}</button>))}</nav>
   <div className={'cad-active-screen '+(active.id==='dispatch'?'cad-screen-dispatch':active.id==='map'?'cad-screen-map':'')}><Component embedded /></div>
  </main>;
 }
