@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from 'react';
 import {base44} from '@/api/base44Client';
-import {Search,Users,Car} from 'lucide-react';
+import {Search,Users,Car,RefreshCw} from 'lucide-react';
 
 const plate=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const cls='h-10 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text-sm text-white';
@@ -8,9 +8,10 @@ const cls='h-10 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text
  * Never searches other properties or claims DMV ownership verification.
  */
 export default function PropertyResidentPicker({site,onSelect,label='Find resident / vehicle in this property rent roll',showVehicle=true}){
- const [query,setQuery]=useState(''),[data,setData]=useState({residents:[],vehicles:[]}),[loading,setLoading]=useState(false),[error,setError]=useState(''),[residentId,setResidentId]=useState(''),[vehicleId,setVehicleId]=useState('');
+ const [query,setQuery]=useState(''),[data,setData]=useState({residents:[],vehicles:[]}),[loading,setLoading]=useState(false),[error,setError]=useState(''),[residentId,setResidentId]=useState(''),[vehicleId,setVehicleId]=useState(''),[reload,setReload]=useState(0);
+ useEffect(()=>{setQuery('');setData({residents:[],vehicles:[]});setResidentId('');setVehicleId('');},[site]);
  useEffect(()=>{
-  let active=true;setData({residents:[],vehicles:[]});setResidentId('');setVehicleId('');setQuery('');setError('');
+  let active=true;setError('');
   if(!site)return;
   setLoading(true);
   base44.functions.invoke('manageParkingRecords',{action:'resident_lookup',site_name:site}).then(response=>{
@@ -19,6 +20,15 @@ export default function PropertyResidentPicker({site,onSelect,label='Find reside
    if(active)setData({residents:result.residents||[],vehicles:result.vehicles||[]});
   }).catch(err=>{if(active)setError('Property rent roll unavailable: '+(err.message||'Retry'))}).finally(()=>{if(active)setLoading(false)});
   return()=>{active=false};
+ },[site,reload]);
+ useEffect(()=>{
+   if(!site)return;
+   let lastChecked=Date.now();
+   const changed=event=>{if(event.detail?.site===site)setReload(value=>value+1)};
+   const focused=()=>{if(Date.now()-lastChecked>120000){lastChecked=Date.now();setReload(value=>value+1)}};
+   window.addEventListener('pathfinder:rent-roll-updated',changed);
+   window.addEventListener('focus',focused);
+   return()=>{window.removeEventListener('pathfinder:rent-roll-updated',changed);window.removeEventListener('focus',focused)};
  },[site]);
  const rows=useMemo(()=>{
   const q=query.trim().toLowerCase();if(!q)return (data.residents||[]).slice(0,60);
@@ -29,7 +39,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Find reside
  const pickResident=id=>{setResidentId(id);setVehicleId('');const found=data.residents.find(row=>row.id===id);if(found)onSelect?.(found,null)};
  const pickCar=id=>{setVehicleId(id);const found=cars.find(row=>row.id===id);if(chosen)onSelect?.(chosen,found||null)};
  return <section className="space-y-2 rounded-lg border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
-  <div className="flex items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/>{label}</div>
+  <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={loading||!site} onClick={()=>setReload(value=>value+1)} className="flex shrink-0 items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs font-semibold"><RefreshCw size={13}/>Refresh rent roll</button></div>
   {!site?<p className="text-xs text-amber-300">Select the incident / parking property first to use its rent roll.</p>:<>
    <label className="relative block"><Search size={15} className="absolute left-3 top-3 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Type resident name, apartment/unit, plate or VIN…" className={`${cls} pl-9`} aria-label="Search property residents and registered vehicles"/></label>
    {loading&&<p className="text-xs text-cyan-300">Loading this property’s rent roll…</p>}

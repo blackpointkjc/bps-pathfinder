@@ -88,7 +88,7 @@ export default function ParkingRecords({mode='officer'}){
    return()=>{active=false};
  },[client]);
  useEffect(()=>{if(site)refresh();},[site]);
- const save=async (operation,payload,callback)=>{setBusy(true);setError('');try{await action(operation,payload);toast.success('Parking records updated');callback?.();await refresh();}catch(e){setError(e.message||'Update failed');toast.error(e.message||'Update failed');}finally{setBusy(false)}};
+ const save=async (operation,payload,callback)=>{setBusy(true);setError('');try{await action(operation,payload);toast.success('Parking records updated');callback?.();await refresh();if(['resident_save','vehicle_save'].includes(operation))window.dispatchEvent(new CustomEvent('pathfinder:rent-roll-updated',{detail:{site}}));}catch(e){setError(e.message||'Update failed');toast.error(e.message||'Update failed');}finally{setBusy(false)}};
  const rules=data.rules||[],residents=data.residents||[],vehicles=data.vehicles||[],violations=data.violations||[];
  const ruleFor=rules.find(item=>item.violation_type===ticket.violation_type&&item.active!==false);
  const ruleChoices=[...new Map([...standardTypes,...rules.filter(item=>item.active!==false).map(item=>[item.violation_type,item.label])]).entries()];
