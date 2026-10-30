@@ -271,9 +271,11 @@ Deno.serve(async req => {
       const terms=query.split(/\s+/).filter(term=>/[a-z0-9]{2,}/i.test(term));
       if(!terms.length)return fail('Enter a name or a complete plate/VIN');
       const found=rows.filter((row:any)=> {
-        const name=clean(row.full_name).toLowerCase();
         const cars=vehicles.filter(v=>v.resident_id===row.id);
-        return terms.every(term=>name.includes(term)||cars.some(v=>plateKey(v.plate).includes(plateKey(term))||clean(v.vin).toUpperCase().includes(term.toUpperCase())));
+        const searchable=[row.full_name,row.unit_number,row.building,row.phone,row.email,row.lease_id,row.resident_type,row.lease_status,
+          ...cars.flatMap((v:any)=>[v.plate,v.state,v.year,v.make,v.model,v.color,v.vin,v.permit_number,v.permit_status])]
+          .map(value=>clean(value,240).toLowerCase()).filter(Boolean);
+        return terms.every(term=>searchable.some(value=>value.includes(term)));
       }).map((row:any)=>({id:row.id,source:'Property resident registry',...publicResident(row),
         vehicles:vehicles.filter(v=>v.resident_id===row.id)}));
       const parking=await entities.ParkingViolation.filter({location:site},'-created_date',150);
