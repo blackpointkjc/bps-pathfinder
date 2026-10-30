@@ -41,7 +41,7 @@ export default function RentRollImportPanel({site,onImported,onImportingChange})
    setSummary(result);
    window.dispatchEvent(new CustomEvent('pathfinder:rent-roll-updated',{detail:{site}}));
    await onImported?.();
-  }catch(e){setError('Import stopped: '+(e?.response?.data?.error||e?.data?.error||e.message||'Server unavailable')+'. Previously completed batches remain saved; reimporting is safe and matches existing residents and vehicle plates.');setSummary(result)}
+  }catch(e){setError('Import stopped: '+(e?.response?.data?.error||e?.data?.error||e.message||'Server unavailable')+'. Previously completed batches remain saved; reimporting is safe and matches existing residents and vehicle plates.');setSummary(result);if(result.processed>0){try{await onImported?.()}catch{}}}
   finally{setBusy(false);onImportingChange?.(false)}
  };
  return <section className="space-y-3 rounded-xl border border-cyan-600/60 bg-[#0b263c] p-3 sm:p-4">
