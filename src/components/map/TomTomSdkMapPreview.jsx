@@ -45,11 +45,33 @@ const callType = call => {
 };
 const priorityCall = call => /shooting|shots fired|stabbing|officer down|active shooter|10-00|cardiac arrest|person with gun|assault|robbery|burglary in progress|domestic|pursuit|fire|accident with injury/i
   .test(`${call.incident||''} ${call.description||''}`);
+const unitPosition = unit => {
+  const eligible = unit?.live_location_hidden !== true
+    && (unit?.session_active === true || unit?.presence_online === true || unit?.map_visible === true);
+  if(!eligible)return null;
+  const timestamp = value => Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;
+  const entries = [
+    {latitude:unit.latitude,longitude:unit.longitude,at:timestamp(unit.gps_updated_at)},
+    {latitude:unit.coarse_latitude,longitude:unit.coarse_longitude,at:timestamp(unit.coarse_gps_updated_at)},
+    {latitude:unit.last_known_latitude,longitude:unit.last_known_longitude,at:timestamp(unit.last_gps_updated_at)},
+  ].filter(pos=>mapped(pos.latitude,pos.longitude)).sort((a,b)=>b.at-a.at);
+  return entries[0] || null;
+};
+const unitShieldIcon = unit => {
+  const state=String(unit.status||'').toLowerCase();
+  if(unit.is_supervisor || unit.isSupervisor)return 'bps-unit-supervisor';
+  if(state.includes('enroute')||state.includes('dispatch'))return 'bps-unit-enroute';
+  if(state.includes('scene'))return 'bps-unit-scene';
+  if(state.includes('busy'))return 'bps-unit-busy';
+  if(state.includes('out of service'))return 'bps-unit-offline';
+  return 'bps-unit-shield';
+};
 const cadCallIcon = call => {
   const kind=callType(call);
   const approximate=call.geo_approximate===true;
   const priority=priorityCall(call);
-  return `${kind}${approximate?'-approx':''}${priority?'-priority':''}`;
+  const arrived=/arrived|arv|on scene/i.test(String(call.status||''));
+  return `${kind}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`;
 };
 function registerCadIcons(map){
   const size=80, ratio=2;
@@ -67,14 +89,14 @@ function registerCadIcons(map){
     ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=width;ctx.strokeStyle=stroke;ctx.stroke();
   };
   for(const type of ['police','fire','ems','pulsepoint']){
-    for(const approximate of [false,true])for(const priority of [false,true]){
-      register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}`,ctx=>{
+    for(const approximate of [false,true])for(const priority of [false,true])for(const arrived of [false,true]){
+      register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`,ctx=>{
         const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706',pulsepoint:'#b91c1c'}[type];
         circle(ctx,40,40,32,fill,priority?'#ef4444':'#fff',approximate?3:6);
         ctx.fillStyle='#fff';ctx.font=`900 ${type==='pulsepoint'?25:27}px Arial,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText(({police:'PD',fire:'FD',ems:'EMS',pulsepoint:'PP'})[type],40,42);
         // Active/arrived status dot like the existing CAD markers.
-        circle(ctx,64,16,10,'#ef4444','#fff',3);
+        circle(ctx,64,16,10,arrived?'#10b981':'#ef4444','#fff',3);
         if(approximate){ctx.beginPath();ctx.arc(40,40,36,0,Math.PI*2);ctx.setLineDash([7,5]);ctx.lineWidth=4;ctx.strokeStyle='#fbbf24';ctx.stroke();ctx.setLineDash([]);}
       });
     }
@@ -85,6 +107,14 @@ function registerCadIcons(map){
     circle(ctx,40,36,18,'#e5eef8','#60a5fa',4);
     ctx.fillStyle='#0c4a6e';ctx.font='900 24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',40,36);
   });
+  for(const [state,color] of Object.entries({enroute:'#ef4444',scene:'#22c55e',busy:'#f59e0b',offline:'#64748b',supervisor:'#facc15'})){
+    register(`bps-unit-${state}`,ctx=>{
+      ctx.beginPath();ctx.moveTo(40,5);ctx.lineTo(69,17);ctx.lineTo(66,48);ctx.quadraticCurveTo(60,66,40,75);ctx.quadraticCurveTo(20,66,14,48);ctx.lineTo(11,17);ctx.closePath();
+      ctx.fillStyle='#0f3b68';ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=6;ctx.stroke();
+      circle(ctx,40,36,18,'#e5eef8',color,4);
+      ctx.fillStyle='#0c4a6e';ctx.font='900 24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',40,36);
+    });
+  }
   register('bps-self-shield',ctx=>{
     ctx.beginPath();ctx.moveTo(40,5);ctx.lineTo(69,17);ctx.lineTo(66,48);ctx.quadraticCurveTo(60,66,40,75);ctx.quadraticCurveTo(20,66,14,48);ctx.lineTo(11,17);ctx.closePath();
     ctx.fillStyle='#124776';ctx.fill();ctx.strokeStyle='#67e8f9';ctx.lineWidth=5;ctx.stroke();
@@ -147,8 +177,13 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
     callsRef.current=calls;
     map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
-    const units=(snapshot.otherUnits||[]).filter(unit=>mapped(unit.latitude,unit.longitude));
-    map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude,{label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)}))));
+    // Same visibility/privacy checks as the original Leaflet officer layer;
+    // use freshest valid live, coarse, or last-known coordinate.
+    const units=(snapshot.otherUnits||[]).map(unit=>({unit,position:unitPosition(unit)})).filter(row=>row.position);
+    map.getSource('pathfinder-units')?.setData(featureCollection(units.map(({unit,position},i)=>
+      marker(unit.id||i,position.latitude,position.longitude,{
+        icon:unitShieldIcon(unit),label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)
+      }))));
     map.getSource('pathfinder-self')?.setData(featureCollection(coords(snapshot.currentLocation)?[marker('self',snapshot.currentLocation[0],snapshot.currentLocation[1])]:[]));
     map.getSource('pathfinder-destination')?.setData(featureCollection(snapshot.destination && coords(snapshot.destination.coords)?[marker('destination',snapshot.destination.coords[0],snapshot.destination.coords[1])]:[]));
     const pins=(snapshot.searchPins||[]).filter(pin=>coords(pin?.coords));
@@ -294,7 +329,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           if(!map.getSource('pathfinder-units')){
             map.addSource('pathfinder-units',{type:'geojson',data:featureCollection([])});
             map.addLayer({id:'pathfinder-units-dot',type:'symbol',source:'pathfinder-units',
-              layout:{'icon-image':'bps-unit-shield','icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
+              layout:{'icon-image':['get','icon'],'icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-units-label',type:'symbol',source:'pathfinder-units',
               layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.55],'text-optional':true},
               paint:{'text-color':'#fff','text-halo-color':'#075985','text-halo-width':2}});
