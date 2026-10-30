@@ -224,6 +224,15 @@ export default function CallHistory() {
                 return;
             }
         } catch { navigate(createPageUrl('CommandDashboard')); return; }
+        // After access is verified, show recently confirmed operational calls
+        // immediately instead of hiding the whole history screen behind a
+        // 10-15 second archive query. Refresh with authoritative history below.
+        const recent = readLastGoodCalls().filter(isVisibleActiveCall);
+        if(recent.length){
+            setRows(recent.map(call=>({...call,_source:'active',_historyFallback:true})));
+            setLoading(false);
+            setHistoryWarning('Showing recently saved live CAD calls while the historical archive loads.');
+        }
         await loadAll();
     };
 
