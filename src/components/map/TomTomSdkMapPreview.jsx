@@ -29,6 +29,26 @@ const mapped = (latitude, longitude) => latitude != null && longitude != null
 const marker = (id, lat, lon, properties={}) => ({type:'Feature', id: String(id),
   geometry:{type:'Point',coordinates:[Number(lon),Number(lat)]},properties});
 const featureCollection = features => ({type:'FeatureCollection',features});
+// Shared geofence shape for read-only maps; editing still uses the precision
+// boundary editor. Coordinates remain in canonical [lat,lon] within the app.
+const geofenceFeature=(config)=>{
+  if(!config)return null;
+  const parse=point=>Array.isArray(point)?[Number(point[0]),Number(point[1])]:[Number(point?.lat??point?.latitude),Number(point?.lng??point?.longitude)];
+  let points=(Array.isArray(config.polygon)?config.polygon:[]).map(parse).filter(p=>coords(p));
+  if(points.length<3){
+    const center=parse(config.center),radius=Number(config.radiusMeters||0);
+    if(!coords(center)||!Number.isFinite(radius)||radius<=0)return null;
+    const lat=center[0],lng=center[1],r=Math.min(100000,radius),earthLat=111320;
+    const earthLng=Math.max(2000,111320*Math.cos(lat*Math.PI/180));
+    points=Array.from({length:48},(_,index)=>{
+      const angle=(index/48)*Math.PI*2;
+      return [lat+Math.cos(angle)*r/earthLat,lng+Math.sin(angle)*r/earthLng];
+    });
+  }
+  const ring=points.map(point=>[point[1],point[0]]);
+  ring.push([...ring[0]]);
+  return {type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[ring]}};
+};
 // Preserve the CAD symbology from the original Pathfinder map: blue PD calls,
 // red fire/PulsePoint, amber EMS, priority/approximate rings, and officer
 // patrol shields. MapLibre canvas icons are local and work through private
@@ -138,7 +158,7 @@ function registerCadIcons(map){
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -150,7 +170,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const onSelectPointRef=useRef(onSelectPoint);
   const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
-  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails});
+  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
@@ -171,7 +191,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   onSelectPointRef.current=onSelectPoint;
   onSelectFacilityRef.current=onSelectFacility;
   onMapUnavailableRef.current=onMapUnavailable;
-  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails};
+  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence};
   mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
@@ -223,6 +243,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       label:String(facility.name||facility.kind).slice(0,70)}))));
     const points=(snapshot.route||[]).filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
     map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
+    const boundary=geofenceFeature(snapshot.geofence);
+    map.getSource('pathfinder-geofence')?.setData(featureCollection(boundary?[boundary]:[]));
   };
   useEffect(()=>{
     let cancelled=false;
@@ -358,6 +380,11 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addSource('pathfinder-route',{type:'geojson',data:featureCollection([])});
             map.addLayer({id:'pathfinder-route-line',type:'line',source:'pathfinder-route',
               paint:{'line-color':'#38bdf8','line-width':6,'line-opacity':0.9}});
+          }
+          if(!map.getSource('pathfinder-geofence')){
+            map.addSource('pathfinder-geofence',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-geofence-fill',type:'fill',source:'pathfinder-geofence',paint:{'fill-color':'#f59e0b','fill-opacity':0.12}});
+            map.addLayer({id:'pathfinder-geofence-boundary',type:'line',source:'pathfinder-geofence',paint:{'line-color':'#fbbf24','line-width':3,'line-dasharray':[3,2]}});
           }
           if(!map.getSource('pathfinder-destination')){
             map.addSource('pathfinder-destination',{type:'geojson',data:featureCollection([])});
@@ -501,7 +528,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
-  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails]);
+  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     const driving=Boolean(navigation) || Number(speedMph)>=5;

@@ -14,6 +14,7 @@ import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapContainer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
 import PathfinderTileLayer from '@/components/map/PathfinderTileLayer';
+import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
@@ -171,6 +172,8 @@ export default function TimeClock() {
   const [endDate, setEndDate] = useState(easternTodayKey);
   const [clockInCoords, setClockInCoords] = useState(null);
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
+  const [useTomTomClockMap,setUseTomTomClockMap]=useState(true);
+  const [tomTomClockFailed,setTomTomClockFailed]=useState(false);
   const [historyReady, setHistoryReady] = useState(false);
   const queryClient = useQueryClient();
 
@@ -872,11 +875,18 @@ export default function TimeClock() {
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <MapPin className="w-5 h-5 text-blue-600" />
                         Your Current Location
-                      </CardTitle>
+                      </CardTitle><button type="button" onClick={()=>{setUseTomTomClockMap(value=>!value);setTomTomClockFailed(false)}} className="mt-2 rounded-lg border border-cyan-600 bg-slate-950 px-3 py-2 text-xs font-bold text-cyan-200">{useTomTomClockMap&&!tomTomClockFailed?'Detailed geofence map':'TomTom GPS map'}</button>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="h-[300px] w-full">
-                        <MapContainer
+                      <div className="relative h-[300px] w-full">
+                        {useTomTomClockMap&&!tomTomClockFailed&&navigator.onLine ? <TomTomSdkMapPreview embedded
+                          currentLocation={[currentLocationCoords.lat,currentLocationCoords.lng]}
+                          mapTheme={undefined} showPoliceStations={false} showFireStations={false} showJails={false}
+                          geofence={(()=>{const name=activeEntry.location?.split(' - ')[0]?.trim();
+                            const property=locations?.find(loc=>loc.site_name===name);
+                            return property?{polygon:property.geofence_polygon||[],center:[Number(property.latitude),Number(property.longitude)],radiusMeters:property.geofence_radius_meters||100}:null;
+                          })()}
+                          onMapUnavailable={()=>setTomTomClockFailed(true)}/> : <MapContainer
                           key={`map-${activeEntry?.id || 'default'}`}
                           center={[currentLocationCoords.lat, currentLocationCoords.lng]}
                           zoom={17}
@@ -898,7 +908,8 @@ export default function TimeClock() {
                             }
                             return null;
                           })()}
-                        </MapContainer>
+                        </MapContainer>}
+                        {tomTomClockFailed&&useTomTomClockMap&&<button type="button" className="absolute bottom-2 left-2 z-[600] rounded border border-amber-500 bg-slate-950 p-2 text-xs text-amber-200" onClick={()=>setTomTomClockFailed(false)}>TomTom unavailable · Retry map</button>}
                       </div>
                       <div className="p-3 bg-blue-50 border-t border-blue-200">
                         <p className="text-xs text-blue-900">
