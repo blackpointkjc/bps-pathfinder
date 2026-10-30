@@ -134,6 +134,77 @@ Deno.serve(async req => {
       }
       return cars;
     };
+    // Property-specific, idempotent CSV/list import. Client/admin can stage up
+    // to 30 rows per request, with per-row results and no cross-property writes.
+    // Each repeated resident with a new plate links an additional vehicle.
+    if(action==='import_residents'){
+      if(!client&&!admin)return fail('Rent roll import is for assigned clients and administrators only',403);
+      const inputRows=Array.isArray(data.rows)?data.rows:[];
+      if(!inputRows.length||inputRows.length>30)return fail('Import 1 to 30 rows per batch. The importer will submit larger CSV files in batches.');
+      const existing=await siteRecords(entities.PropertyResident,700);
+      const cars=await siteRecords(entities.PropertyVehicle,950);
+      if(existing.length>=700||cars.length>=950)return fail('Property registry exceeds the safe import batch limit. Contact an administrator before importing.',409);
+      const keys=(name:any,unit:any)=>clean(name).toLowerCase().replace(/\s+/g,' ')+'|'+clean(unit).toLowerCase().replace(/\s+/g,' ');
+      let created=0,updated=0,vehicles_created=0,duplicates=0;
+      const errors:any[]=[];
+      for(let i=0;i<inputRows.length;i++){
+        const row=inputRows[i]||{};
+        try{
+          if(typeof row!=='object'||Array.isArray(row))throw Error('Invalid resident row');
+          if(row.site_name&&siteKey(row.site_name)!==siteKey(site))throw Error('Property in CSV does not match the selected site');
+          const full_name=clean(row.full_name,160),unit_number=clean(row.unit_number,80);
+          if(!full_name||!unit_number)throw Error('Resident full name and apartment/unit are required');
+          const identity=keys(full_name,unit_number);
+          const matches=existing.filter((item:any)=>keys(item.full_name,item.unit_number)===identity);
+          if(matches.length>1)throw Error('Multiple existing residents share this name and unit; edit manually to avoid merging the wrong person');
+          const old=matches[0];
+          const record:any={site_name:site,full_name,unit_number,updated_by:clean(user.email),updated_at:dates()};
+          const fields=['building','lease_id','lease_start','lease_end','resident_type','phone','email','emergency_contact','notes'];
+          for(const field of fields)if(row[field]!==undefined&&clean(row[field]))record[field]=clean(row[field],field==='notes'?1000:160);
+          if(row.lease_status!==undefined&&clean(row.lease_status)){
+            const value=clean(row.lease_status).toLowerCase();
+            if(!['active','pending','former'].includes(value))throw Error('Lease status must be active, pending or former');
+            record.lease_status=value;
+          }else if(!old)record.lease_status='active';
+          if(row.monthly_rent!==undefined&&clean(row.monthly_rent)){
+            const amount=Number(row.monthly_rent);
+            if(!Number.isFinite(amount)||amount<0||amount>100000)throw Error('Invalid monthly rent');
+            record.monthly_rent=amount;
+          }
+          if(row.rent_due_day!==undefined&&clean(row.rent_due_day)){
+            const due=Number(row.rent_due_day);
+            if(!Number.isSafeInteger(due)||due<1||due>31)throw Error('Rent due day must be 1-31');
+            record.rent_due_day=due;
+          }
+          const plate=plateKey(row.vehicle_plate||row.license_plate||row.plate);
+          const state=clean(row.vehicle_state||row.license_state||'VA',3).toUpperCase();
+          if(plate&&plate.length<2)throw Error('Vehicle plate must have at least 2 characters');
+          if(plate){
+            const conflict=cars.find((v:any)=>plateKey(v.plate)===plate&&clean(v.state).toUpperCase()===state);
+            if(conflict&&conflict.resident_id!==old?.id)throw Error('License plate already registered to a different resident at this property');
+            const legacyConflict=existing.find((v:any)=>keys(v.full_name,v.unit_number)!==identity&&plateKey(v.vehicle_plate)===plate&&clean(v.vehicle_state||'VA').toUpperCase()===state);
+            if(legacyConflict)throw Error('License plate belongs to another resident in the existing rent roll');
+          }
+          let saved;
+          if(old){await entities.PropertyResident.update(old.id,record);Object.assign(old,record);saved=old;updated++;}
+          else{saved=await entities.PropertyResident.create({...record,registered_by:clean(user.email)});existing.push(saved);created++;}
+          if(!plate)continue;
+          const matched=cars.find((v:any)=>v.resident_id===saved.id&&plateKey(v.plate)===plate&&clean(v.state).toUpperCase()===state);
+          if(matched){duplicates++;continue;}
+          // Historical single-car records remain searchable without duplicating
+          // their vehicle registration on reimport.
+          if(plateKey(saved.vehicle_plate)===plate&&clean(saved.vehicle_state||'VA').toUpperCase()===state){duplicates++;continue;}
+          const car:any={site_name:site,resident_id:saved.id,resident_name:saved.full_name,unit_number:saved.unit_number,
+            plate,state,year:clean(row.vehicle_year||row.year),make:clean(row.vehicle_make||row.make),
+            model:clean(row.vehicle_model||row.model),color:clean(row.vehicle_color||row.color),
+            vin:clean(row.vehicle_vin||row.vin,25),permit_number:clean(row.permit_number),
+            permit_status:clean(row.permit_status||'active'),vehicle_status:'registered',updated_at:dates(),updated_by:clean(user.email)};
+          const vehicle=await entities.PropertyVehicle.create(car);cars.push(vehicle);vehicles_created++;
+        }catch(error:any){errors.push({row:i+1,error:clean(error?.message||'Import row failed',240)});}
+      }
+      return Response.json({success:true,site_name:site,processed:inputRows.length,residents_created:created,
+        residents_updated:updated,vehicles_created,duplicates,errors});
+    }
     if(action==='vehicle_save'){
       if(!client&&!admin)return fail('Client or administrator registration required',403);
       const input=data.vehicle||{};
