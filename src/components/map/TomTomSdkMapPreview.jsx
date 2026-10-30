@@ -154,6 +154,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
+  const perspectiveInitRef=useRef(false);
   const mapReadyRef=useRef(false);
   const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
@@ -257,7 +258,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         sdk=new TomTomMap({registerMapLibreWorker:false,
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['terrain','trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
-            ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:14.5,pitch:42},
+            ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:15.5,pitch:50},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{
@@ -375,6 +376,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             });
           }
           syncCadData(map);
+          // Driving-style 3D buildings need a pitched camera and sufficiently
+          // close zoom; the SDK's style initialization can reset mapLibre pitch.
+          if(!perspectiveInitRef.current){
+            perspectiveInitRef.current=true;
+            map.easeTo({zoom:Math.max(15.5,map.getZoom()),pitch:50,duration:300,essential:true});
+          }
           mapReadyRef.current=true;
           setReady(true);
           // Built-in TomTom 3D buildings and real elevation/terrain are part
@@ -443,7 +450,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       }catch(e){if(!cancelled){setError(`TomTom map could not start: ${e?.message||'Unknown error'}.`);if(embedded)onMapUnavailableRef.current?.();}}
     }
     init();
-    return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
+    return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;perspectiveInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
   useEffect(()=>{
     if(!trafficReady)return;
