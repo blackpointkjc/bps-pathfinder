@@ -80,6 +80,14 @@ function easternNow(value = new Date()) {
   };
 }
 
+async function orderedBatches<T>(tasks:(()=>Promise<T>)[],width=4):Promise<T[]>{
+  const result:T[]=[];
+  for(let offset=0;offset<tasks.length;offset+=width){
+    const batch=await Promise.all(tasks.slice(offset,offset+width).map(task=>task()));
+    result.push(...batch);
+  }
+  return result;
+}
 async function safeList(base44: any, entityName: string, sort?: string, limit = 5000, issues: string[] = []) {
   try {
     const entity = base44.asServiceRole.entities?.[entityName];
@@ -483,27 +491,27 @@ Deno.serve(async (req) => {
       trainingCompletions, certificationAlerts, dailyReports, shiftBids,
       qrScans, qrCheckpoints, callOuts, dutyRules, locations, clientFeedback,
       performanceReviews, propertyAlerts, performanceDecisions, dutyAdjustments,
-    ] = await Promise.all([
-      safeList(base44, 'User', 'last_name', 5000, sourceIssues),
-      loadPerformanceMetricData(base44),
-      safeList(base44, 'ReportTodo', '-created_date', 5000, sourceIssues),
-      safeList(base44, 'TrainingAssignment', 'due_date', 5000, sourceIssues),
-      safeList(base44, 'TrainingModule', 'title', 5000, sourceIssues),
-      safeList(base44, 'TrainingCompletion', '-completed_date', 5000, sourceIssues),
-      safeList(base44, 'CertificationAlert', 'expiration_date', 5000, sourceIssues),
-      safeList(base44, 'DailyActivityReport', '-report_date', 5000, sourceIssues),
-      safeList(base44, 'ShiftBid', '-created_date', 5000, sourceIssues),
-      safeList(base44, 'QRScanEvent', '-scanned_at', 5000, sourceIssues),
-      safeList(base44, 'QRCheckpoint', 'property_site', 5000, sourceIssues),
-      safeList(base44, 'CallOut', '-call_out_date', 5000, sourceIssues),
-      safeList(base44, 'JobDutyRule', 'property_site', 5000, sourceIssues),
-      safeList(base44, 'Location', 'site_name', 5000, sourceIssues),
-      safeList(base44, 'ClientFeedback', '-feedback_date', 5000, sourceIssues),
-      safeList(base44, 'PerformanceReview', '-review_date', 5000, sourceIssues),
-      safeList(base44, 'PropertyAlert', '-created_date', 5000, sourceIssues),
-      safeList(base44, 'CallPerformanceDecision', '-created_date', 5000, sourceIssues),
-      safeList(base44, 'DutyAttendanceAdjustment', '-created_date', 5000, sourceIssues),
-    ]);
+    ] = await orderedBatches([
+      () => safeList(base44, 'User', 'last_name', 5000, sourceIssues),
+      () => loadPerformanceMetricData(base44),
+      () => safeList(base44, 'ReportTodo', '-created_date', 5000, sourceIssues),
+      () => safeList(base44, 'TrainingAssignment', 'due_date', 5000, sourceIssues),
+      () => safeList(base44, 'TrainingModule', 'title', 5000, sourceIssues),
+      () => safeList(base44, 'TrainingCompletion', '-completed_date', 5000, sourceIssues),
+      () => safeList(base44, 'CertificationAlert', 'expiration_date', 5000, sourceIssues),
+      () => safeList(base44, 'DailyActivityReport', '-report_date', 5000, sourceIssues),
+      () => safeList(base44, 'ShiftBid', '-created_date', 5000, sourceIssues),
+      () => safeList(base44, 'QRScanEvent', '-scanned_at', 5000, sourceIssues),
+      () => safeList(base44, 'QRCheckpoint', 'property_site', 5000, sourceIssues),
+      () => safeList(base44, 'CallOut', '-call_out_date', 5000, sourceIssues),
+      () => safeList(base44, 'JobDutyRule', 'property_site', 5000, sourceIssues),
+      () => safeList(base44, 'Location', 'site_name', 5000, sourceIssues),
+      () => safeList(base44, 'ClientFeedback', '-feedback_date', 5000, sourceIssues),
+      () => safeList(base44, 'PerformanceReview', '-review_date', 5000, sourceIssues),
+      () => safeList(base44, 'PropertyAlert', '-created_date', 5000, sourceIssues),
+      () => safeList(base44, 'CallPerformanceDecision', '-created_date', 5000, sourceIssues),
+      () => safeList(base44, 'DutyAttendanceAdjustment', '-created_date', 5000, sourceIssues),
+    ],4);
 
     // Missing/time-limited sources must never be silently treated as an
     // officer failing work or training. Do not send misleading score emails.

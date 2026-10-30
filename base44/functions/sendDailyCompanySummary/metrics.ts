@@ -155,22 +155,30 @@ async function safeList(base44: any, entityName: string, sort?: string, limit = 
   }
 }
 
+async function orderedBatches(tasks:(()=>Promise<any[]>)[],width=3){
+  const result:any[]=[];
+  for(let offset=0;offset<tasks.length;offset+=width){
+    const batch=await Promise.all(tasks.slice(offset,offset+width).map(task=>task()));
+    result.push(...batch);
+  }
+  return result;
+}
 export async function loadPerformanceMetricData(base44: any) {
   const issues: string[]=[];
   const [
     teams, outlook, timeEntries, schedules, incidents, commendations,
     complaints, inspections, writeUps,
-  ] = await Promise.all([
-    safeList(base44, 'MicrosoftTeamsIdentity', '-updated_at', 2000, issues),
-    safeList(base44, 'OutlookMailboxLink', '-last_verified_at', 2000, issues),
-    safeList(base44, 'TimeEntry', '-clock_in', 5000, issues),
-    safeList(base44, 'Schedule', '-shift_date', 5000, issues),
-    safeList(base44, 'IncidentReport', '-incident_date', 5000, issues),
-    safeList(base44, 'Commendation', '-commendation_date', 5000, issues),
-    safeList(base44, 'Complaint', '-complaint_date', 5000, issues),
-    safeList(base44, 'InspectionReport', '-inspection_date', 5000, issues),
-    safeList(base44, 'WriteUpReport', '-report_date', 5000, issues),
-  ]);
+  ] = await orderedBatches([
+    () => safeList(base44, 'MicrosoftTeamsIdentity', '-updated_at', 2000, issues),
+    () => safeList(base44, 'OutlookMailboxLink', '-last_verified_at', 2000, issues),
+    () => safeList(base44, 'TimeEntry', '-clock_in', 5000, issues),
+    () => safeList(base44, 'Schedule', '-shift_date', 5000, issues),
+    () => safeList(base44, 'IncidentReport', '-incident_date', 5000, issues),
+    () => safeList(base44, 'Commendation', '-commendation_date', 5000, issues),
+    () => safeList(base44, 'Complaint', '-complaint_date', 5000, issues),
+    () => safeList(base44, 'InspectionReport', '-inspection_date', 5000, issues),
+    () => safeList(base44, 'WriteUpReport', '-report_date', 5000, issues),
+  ],3);
 
   return { teams, outlook, timeEntries, schedules, incidents, commendations, complaints, inspections, writeUps, _source_errors:issues };
 }
