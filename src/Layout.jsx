@@ -11,7 +11,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
-  Building2, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
+  Building2, Car, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
   Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
