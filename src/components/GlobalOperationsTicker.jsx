@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, FileWarning, MapPin, Siren } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { cleanIncident } from '@/utils/callUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
@@ -182,7 +182,10 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
     let mounted = true;
 
     const load = async (force = false) => {
-      if (loadingRef.current) return;
+      if (loadingRef.current || document.visibilityState==='hidden' || !navigator.onLine) return;
+      const health=getBase44RequestHealth();
+      const cooldown=Math.max(Date.parse(health.rateLimitedUntil||'')||0,Date.parse(health.readRetryAt||'')||0);
+      if(Date.now()<cooldown || health.queuedReads>=4) return;
       if (!force && Date.now() < backoffUntilRef.current) return;
       loadingRef.current = true;
       try {
