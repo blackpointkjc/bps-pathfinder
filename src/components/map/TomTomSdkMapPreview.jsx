@@ -93,8 +93,8 @@ function registerCadIcons(map){
       register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`,ctx=>{
         const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706',pulsepoint:'#b91c1c'}[type];
         circle(ctx,40,40,32,fill,priority?'#ef4444':'#fff',approximate?3:6);
-        ctx.fillStyle='#fff';ctx.font=`900 ${type==='pulsepoint'?25:27}px Arial,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(({police:'PD',fire:'FD',ems:'EMS',pulsepoint:'PP'})[type],40,42);
+        ctx.fillStyle='#fff';ctx.font=type==='fire'||type==='ems' ? '32px "Apple Color Emoji","Segoe UI Emoji",sans-serif' : '900 27px Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(({police:'PD',fire:'🔥',ems:'🚑',pulsepoint:'PP'})[type],40,42);
         // Active/arrived status dot like the existing CAD markers.
         circle(ctx,64,16,10,arrived?'#10b981':'#ef4444','#fff',3);
         if(approximate){ctx.beginPath();ctx.arc(40,40,36,0,Math.PI*2);ctx.setLineDash([7,5]);ctx.lineWidth=4;ctx.strokeStyle='#fbbf24';ctx.stroke();ctx.setLineDash([]);}
