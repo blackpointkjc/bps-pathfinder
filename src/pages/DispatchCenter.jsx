@@ -10,7 +10,7 @@ import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
@@ -44,6 +44,7 @@ function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
 export default function DispatchCenter({embedded=false}) {
     const workstationRef=React.useRef(null);
+    const statusBarRef=React.useRef(null);
     useEffect(()=>{
         if(embedded||!workstationRef.current)return;
         const host=workstationRef.current;
@@ -829,27 +830,29 @@ export default function DispatchCenter({embedded=false}) {
             </div>
 
             <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2 xl:hidden">
-                <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="cad-mobile-view-tabs flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1.5" aria-label="Dispatch mobile panels">
                     {[
                         ['calls','CALLS'], ['detail','DETAIL'], ['assignment','ASSIGN'], ['units','UNITS'], ['map','MAP']
                     ].map(([value,label]) => (
-                        <button key={value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`h-9 min-w-[74px] flex-1 rounded-lg border px-2 text-[9px] font-black tracking-wide ${mobileView === value ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-500'}`}>{label}</button>
+                        <button type="button" key={value} aria-pressed={value==='map'?showMap:mobileView===value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`min-h-11 min-w-[76px] flex-1 shrink-0 rounded-lg border px-2 text-[10px] font-black tracking-wide ${(value==='map'?showMap:mobileView===value) ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-300'}`}>{label}</button>
                     ))}
                 </div>
             </div>
 
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 xl:flex xl:flex-wrap xl:px-3`}>
+            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} cad-queue-controls flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 xl:flex xl:flex-wrap xl:px-3`}>
                 <div className="relative w-full min-w-0 sm:w-auto sm:min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input id="cad-queue-search" value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address...  [/]"
                         className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
                 </div>
-                {[
-                    ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
-                ].map(([value,label]) => (
-                    <button key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
-                ))}
+                <div className="cad-queue-filter-strip flex min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1" aria-label="Filter dispatch calls">
+                    {[
+                        ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
+                    ].map(([value,label]) => (
+                        <button type="button" key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`shrink-0 whitespace-nowrap rounded border px-2.5 py-2 text-[10px] ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-300 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
+                    ))}
+                </div>
                 <div className="flex-1" />
                 <span className="text-[10px] text-slate-500">SORT:</span>
                 <button onClick={() => setSortOrder('desc')} className={`px-2 py-0.5 rounded text-[10px] border ${
@@ -863,7 +866,7 @@ export default function DispatchCenter({embedded=false}) {
 
             {/* ══ MAIN GRID ══ */}
             {showPriorCalls ? (
-                <div className="flex-1 overflow-auto p-3">
+                <div className="dispatch-prior-calls flex-1 overflow-auto p-3">
                     <CallHistory embedded />
                 </div>
             ) : (
@@ -1045,7 +1048,7 @@ export default function DispatchCenter({embedded=false}) {
 
                     {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
                     <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] xl:flex xl:w-[320px] xl:flex-none 2xl:w-[360px]`}>
-                        {selectedCall ? (
+                        {selectedCall && mobileView !== 'units' ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
@@ -1077,7 +1080,7 @@ export default function DispatchCenter({embedded=false}) {
 
             {showMap && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-2 backdrop-blur-sm md:p-6" onClick={() => setShowMap(false)}>
-                    <div role="dialog" aria-modal="true" aria-label="Live tactical map" className="flex h-[82vh] w-[88vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div role="dialog" aria-modal="true" aria-label="Live tactical map" className="flex h-[calc(100dvh-24px)] w-[calc(100vw-16px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl md:h-[82dvh] md:w-[88vw]" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-emerald-400" />
                             <span className="text-xs font-black tracking-widest text-emerald-300">Live tactical map</span>
@@ -1095,15 +1098,20 @@ export default function DispatchCenter({embedded=false}) {
                 </div>
             )}
 
-            {/* ══ BOTTOM STATUS BAR ══ */}
-            <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
-                <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">Connected</span></span>
-                <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
-                <span>UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
-                <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
-                <div className="flex-1" />
-                <span className="hidden items-center gap-1 text-slate-500 md:flex"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
-                <span className="font-bold text-green-400">{systemTime.toLocaleTimeString('en-US', { hour12: false })} EDT</span>
+            {/* ══ BOTTOM STATUS BAR — horizontal scroll keeps every metric accessible on phones ══ */}
+            <div className="cad-bottom-status-wrap flex flex-none items-center border-t border-[#1e2d4a] bg-[#0d1220] text-[10px] text-slate-300">
+                <button type="button" className="cad-status-scroll-button shrink-0 border-r border-[#26384c] px-2 text-cyan-200 lg:hidden" aria-label="Scroll CAD status left" onClick={() => statusBarRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}><ChevronLeft className="h-4 w-4" /></button>
+                <div ref={statusBarRef} role="region" aria-label="CAD status bar — scroll horizontally for more information" tabIndex={0} className="cad-bottom-status min-w-0 flex-1 overflow-x-auto overscroll-x-contain">
+                    <div className="flex min-w-max items-center gap-4 whitespace-nowrap px-3 py-2">
+                        <span className="flex shrink-0 items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">Connected</span></span>
+                        <span className="shrink-0">CALLS: <span className="text-white">{allCalls.length}</span></span>
+                        <span className="shrink-0">UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
+                        <span className="shrink-0">UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
+                        <span className="hidden shrink-0 items-center gap-1 text-slate-400 md:flex lg:ml-auto"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
+                        <span className="shrink-0 font-bold text-green-400">{systemTime.toLocaleTimeString('en-US', { hour12: false })} ET</span>
+                    </div>
+                </div>
+                <button type="button" className="cad-status-scroll-button shrink-0 border-l border-[#26384c] px-2 text-cyan-200 lg:hidden" aria-label="Scroll CAD status right" onClick={() => statusBarRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}><ChevronRight className="h-4 w-4" /></button>
             </div>
 
             {/* Messaging Panel */}
