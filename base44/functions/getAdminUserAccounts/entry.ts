@@ -1,5 +1,9 @@
-import { isClientIdentity, clientOperationalPatch } from './clientAccountPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
+// Keep account lookup read-only. Historical client-account sanitization belongs
+// in account-management mutations, never in an N-user browser page load.
+const clean=value=>String(value||'').trim().toLowerCase();
+const isClientIdentity=person=>[].concat(person?.additional_roles||[]).map(clean).includes('client')
+  ||[person?.rank,person?.user_type,person?.account_type,person?.portal_type].some(value=>clean(value)==='client');
 
 Deno.serve(async req => {
   try {
@@ -12,13 +16,8 @@ Deno.serve(async req => {
     // Account approvals must use the real identity records rather than the
     // 10-minute cached operational directory, which misses new registrants.
     const users = await api.asServiceRole.entities.User.list('-created_date', 1000);
-    // Authorized migration: old client-only accounts retained officer defaults.
-    // Clear those fields once; retain property permissions and account history.
-    for(const person of users||[]){
-      const patch:any=clientOperationalPatch(person);
-      if(String(person.id)!=='6a72bbee2842d6338cbae513'&&(person.additional_roles||[]).some((role:any)=>String(role).toLowerCase()==='accounting'))patch.additional_roles=(person.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='accounting');
-      if(Object.keys(patch).length){await api.asServiceRole.entities.User.update(person.id,patch);Object.assign(person,patch);}
-    }
+    // A list request is a single read. Do not perform hundreds of
+    // client-account migration updates every time Manage Users opens.
     const staff=(users||[]).filter(person=>!isClientIdentity(person));
     return Response.json({success:true,users:staff,count:staff.length});
   } catch(error:any) {
