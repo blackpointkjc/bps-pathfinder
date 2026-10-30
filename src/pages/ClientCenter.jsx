@@ -9,6 +9,7 @@ import ClientSupervisors from './ClientSupervisors';
 import ClientLocation from './ClientLocation';
 import ClientTrespass from './ClientTrespass';
 import ClientReports from './ClientReports';
+import ParkingRecords from './ParkingRecords';
 import ClientQRReports from './ClientQRReports';
 import ClientDocuments from './ClientDocuments';
 import ClientSpecialRequests from './ClientSpecialRequests';
@@ -34,6 +35,7 @@ const TOOLS = {
     { id: 'supervisors', label: 'Site Supervisors', component: ClientSupervisors },
     { id: 'location', label: 'Location Info', component: ClientLocation },
     { id: 'trespass', label: 'Trespass Management', component: ClientTrespass },
+    { id: 'parking', label: 'Parking / Residents / Fines', component: () => <ParkingRecords mode="client"/> },
   ],
   records: [
     { id: 'reports', label: 'All Reports', component: ClientReports },

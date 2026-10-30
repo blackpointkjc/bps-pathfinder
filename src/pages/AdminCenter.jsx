@@ -23,6 +23,7 @@ import AdminUsers from './AdminUsers';
 import AdminDutyAttendance from './AdminDutyAttendance';
 import AdminLocations from './AdminLocations';
 import AdminReports from './AdminReports';
+import ParkingRecords from './ParkingRecords';
 import AdminClientReports from './AdminClientReports';
 import AdminSupervisorReports from './AdminSupervisorReports';
 import AdminConfidentialReports from './AdminConfidentialReports';
@@ -189,6 +190,7 @@ function AdminSiteOperationsHub() {
 function AdminReportsQualityHub() {
   return <AdminInlineFunctions queryParam="admin_reports_quality_tool" tools={[
     { id: 'allreports', label: 'Report Review', component: AdminReports },
+    { id: 'parking', label: 'Parking Approvals & Residents', component: () => <ParkingRecords mode="admin"/> },
     { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
     { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
     { id: 'confidential', label: 'Confidential Reports', component: AdminConfidentialReports },

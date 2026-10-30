@@ -8,6 +8,7 @@ import CenterToolSection from '@/components/CenterToolSection';
 import OfficerCenter from './OfficerCenter';
 import SupervisorFieldOversight from './SupervisorFieldOversight';
 import SupervisorTasks from './SupervisorTasks';
+import ParkingRecords from './ParkingRecords';
 import SupervisorCallOuts from './SupervisorCallOuts';
 import SupervisorDailyCode from './SupervisorDailyCode';
 import SupervisorInspections from './SupervisorInspections';
@@ -34,6 +35,7 @@ const SECTIONS = [
 const COMMAND_TOOLS = [
   {id:'callouts',label:'Officer Call-Outs',component:SupervisorCallOuts},
   { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
+  { id: 'parking', label: 'Parking Review Tasks', component: () => <ParkingRecords mode="supervisor"/> },
   { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
   { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
   { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },

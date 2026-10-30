@@ -6,7 +6,7 @@ import Navigation from './Navigation';
 import UnitStatus from './UnitStatus';
 import BOLOAlerts from './BOLOAlerts';
 import CallHistory from './CallHistory';
-import RecordsAssistant from './RecordsAssistant';
+
 import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const TOOLS = {
@@ -20,7 +20,7 @@ const TOOLS = {
   alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
     { id: 'history', label: 'Call History', component: CallHistory },
-    { id: 'records', label: 'Records AI', component: RecordsAssistant },
+
   ],
 };
 

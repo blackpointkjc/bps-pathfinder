@@ -65,7 +65,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'History & Intelligence', items: [
         ['Call History', 'CallHistory', Clock3],
-        ['Records AI', 'RecordsAssistant', Bot],
+
       ]},
       { label: 'CAD Administration', fullAccessOnly: true, items: [
         ['Personnel', 'Personnel', Users],
@@ -94,6 +94,8 @@ const CENTER_CONFIG = {
       { label: 'Reports & Requests', items: [
         ['Daily Activity', 'DailyActivityReports', ClipboardList],
         ['Incident Report', 'IncidentReports', AlertTriangle],
+        ['Parking Tickets', 'ParkingRecords', Car],
+        ['Records AI (People & Vehicles)', 'RecordsAssistant', Bot],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
         ['Confidential', 'ConfidentialReport', ShieldCheck],
@@ -299,6 +301,7 @@ const CENTER_CONFIG = {
         ['Site Supervisors', 'ClientSupervisors', UserCheck],
         ['Location Info', 'ClientLocation', MapPin],
         ['Trespass Management', 'ClientTrespass', UserX],
+        ['Parking & Residents', 'ParkingRecords', Car],
       ]},
       { label: 'Reports & Documents', items: [
         ['All Reports', 'ClientReports', FileText],
@@ -337,7 +340,7 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 });
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
-  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
+  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['officer','reports','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
   Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','reports','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','messages','law'], VATrespassNotices: ['officer','messages','trespass'], VACriminalComplaints: ['officer','messages','complaint'], Summons: ['officer','messages','summons'], WitnessSubpoenaRequest: ['officer','messages','subpoena'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','today','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankStructure: ['officer','profile','rank'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'],
   AdminLocationTracker: ['admin','sites','locationdispatch','admin_location_dispatch_tool','tracker'], AdminGeofenceAlerts: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'], AdminAutoDispatchControls: ['admin','sites','locationdispatch','admin_location_dispatch_tool','autodispatch'], AdminLocations: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'],
@@ -423,7 +426,7 @@ const DARK_WORKSPACE_PAGES = new Set([
 
 const OFFICER_MODERN_PAGES = new Set([
   'PostOrders', 'Summons', 'WitnessSubpoenaRequest', 'VACriminalComplaints', 'VATrespassNotices',
-  'DailyActivityReports', 'IncidentReports', 'MaintenanceReports', 'OpenDoorReports',
+  'DailyActivityReports', 'IncidentReports', 'ParkingRecords', 'MaintenanceReports', 'OpenDoorReports',
   'ConfidentialReport', 'ExpenseReports', 'QRPatrolScan', 'OpenShifts',
   'OfficerPayrollDates', 'OfficerPerformanceReviews', 'OfficerTraining',
   'RankStructure', 'RankDuties', 'OfficerAvailability'

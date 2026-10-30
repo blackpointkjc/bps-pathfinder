@@ -15,6 +15,8 @@ import Summons from './Summons';
 import WitnessSubpoenaRequest from './WitnessSubpoenaRequest';
 import DailyActivityReports from './DailyActivityReports';
 import IncidentReports from './IncidentReports';
+import ParkingRecords from './ParkingRecords';
+import RecordsAssistant from './RecordsAssistant';
 import MaintenanceReports from './MaintenanceReports';
 import OpenDoorReports from './OpenDoorReports';
 import ConfidentialReport from './ConfidentialReport';
@@ -61,6 +63,8 @@ const TOOLS = {
   reports: [
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
     { id: 'incident', label: 'Incident Report', component: IncidentReports },
+    { id: 'parking', label: 'Parking Tickets', component: ParkingRecords },
+    { id: 'records', label: 'Records AI (People & Vehicles)', component: RecordsAssistant },
     { id: 'maintenance', label: 'Maintenance', component: MaintenanceReports },
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },
     { id: 'confidential', label: 'Confidential', component: ConfidentialReport },
