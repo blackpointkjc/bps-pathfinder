@@ -12,6 +12,32 @@ const allowableOrigin = (value: string) => {
   } catch { return false; }
 };
 const activeRequests = new Map<string, { since: number; count: number }>();
+// MapLibre requests dozens of vector tiles per view. Don't run a separate
+// Base44 User lookup for each tile: reuse a *recently verified* token for at
+// most 15 seconds. The hash, never the raw credential, is retained in memory.
+const verifiedSessions = new Map<string, { id: string; until: number }>();
+async function authenticatedUserId(req: Request): Promise<string | null> {
+  const authorization = req.headers.get('authorization') || '';
+  const tokenKey = authorization.startsWith('Bearer ') ? authorization : '';
+  let digest = '';
+  if (tokenKey) {
+    const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tokenKey));
+    digest = [...new Uint8Array(buffer)].map(value => value.toString(16).padStart(2,'0')).join('');
+    const cached = verifiedSessions.get(digest);
+    if (cached && cached.until > Date.now()) return cached.id;
+  }
+  const user = await createClientFromRequest(req).auth.me().catch(() => null);
+  if (!user?.id || user.disabled === true) return null;
+  if (digest) {
+    verifiedSessions.set(digest, { id: String(user.id), until: Date.now() + 15_000 });
+    if (verifiedSessions.size > 800) {
+      for (const [key, value] of verifiedSessions) if (value.until <= Date.now()) verifiedSessions.delete(key);
+      if (verifiedSessions.size > 800) verifiedSessions.delete(verifiedSessions.keys().next().value as string);
+    }
+  }
+  return String(user.id);
+}
+
 
 Deno.serve(async req => {
   const origin = req.headers.get('origin') || '';
@@ -33,10 +59,10 @@ Deno.serve(async req => {
     const suffix = url.searchParams.get('resourcePath') || url.pathname.match(/\btomtomMapProxy(\/.*)$/)?.[1];
     if (!suffix || suffix.length > 500 || !allowedPath.test(suffix) || suffix.includes('..'))
       return jsonError(400, 'unsupported_tomtom_resource');
-    const me = await createClientFromRequest(req).auth.me().catch(() => null);
-    if (!me?.id || me.disabled === true) return jsonError(401, 'sign_in_required');
+    const userId = await authenticatedUserId(req);
+    if (!userId) return jsonError(401, 'sign_in_required');
     const now = Date.now();
-    const id = String(me.id);
+    const id = userId;
     const existing = activeRequests.get(id);
     const usage = existing && now - existing.since < 60_000 ? existing : { since: now, count: 0 };
     usage.count += 1;
