@@ -344,7 +344,7 @@ async function fetchLiveWebsiteCalls() {
       source_channel: 'grac_website_live',
     });
   }
-  return calls;
+  return Object.assign(calls, { cacheAgeSeconds: result.cacheAgeSeconds });
 }
 
 async function fetchLiveApiCalls() {
@@ -369,7 +369,7 @@ function liveMergeKey(call: any) {
   return [String(call?.agency || '').toUpperCase(), String(call?.time_received || ''), cleanMatchText(call?.incident), cleanMatchText(call?.location)].join('|');
 }
 
-function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
+function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[], websiteCacheAgeSeconds = 0) {
   const byKey = new Map<string, any>();
   for (const web of websiteCalls || []) byKey.set(liveMergeKey(web), web);
   for (const api of apiCalls || []) {
@@ -383,7 +383,7 @@ function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
       // A cached HTML table cannot veto a newer JSON incident. Limit additions to
       // the operational hour and nonterminal statuses; never revive old API-only
       // history simply because it is missing from the website.
-      if (websiteCalls.length && !(stamp >= newestWebsiteStamp && stamp <= Date.now() + 120000
+      if (websiteCalls.length && !((stamp >= newestWebsiteStamp || websiteCacheAgeSeconds > 30) && stamp <= Date.now() + 120000
         && Date.now() - stamp <= 3600000 && !['Cleared','Cancelled','Canceled','Closed'].includes(String(api.status || '')))) continue;
       byKey.set(key, { ...api, source_channel: api.source_channel || 'grac_api' });
       continue;
@@ -1311,7 +1311,7 @@ Deno.serve(async (req) => {
       });
       return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
     }
-    let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming).map(call => ({
+    let incoming = mergeLiveWebsiteAndApi(websiteIncoming, apiIncoming, (websiteIncoming as any).cacheAgeSeconds || 0).map(call => ({
       ...persistableCall(call),
       source_first_seen_at: call.source_first_seen_at || sourceObservedAt,
     }));
