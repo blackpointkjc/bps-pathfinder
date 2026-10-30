@@ -125,20 +125,30 @@ function MapReadyHandler() {
 }
 
 function HistoricalOfficerMap({ data, officerName, theme }) {
+  const [useTomTomHistory,setUseTomTomHistory]=React.useState(true);
   const model = React.useMemo(() => buildAuditModel(data.history || []), [data.history]);
+  const trail=React.useMemo(()=>{
+    const points=model.points.filter(point=>hasValidCoordinates(point));
+    const stride=Math.max(1,Math.ceil(points.length/1500));
+    return points.filter((_,index)=>index%stride===0||index===points.length-1)
+      .map(point=>[Number(point.latitude),Number(point.longitude)]);
+  },[model.points]);
   const windowLabel = data.window_label && data.window_label !== 'Full day' ? ` · ${data.window_label}` : '';
   if (!model.points.length) return <p className="rounded-lg border border-slate-600 p-4">No usable GPS positions recorded for {officerName} on {data.date}{windowLabel}. Any other recorded pings remain in the report below. Try widening or clearing the time window.</p>;
   return <Card className="my-4 overflow-hidden">
-    <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date}{windowLabel} · {model.points.length} mapped pings · Eastern Time. Select a point for its recorded time and location.</p></CardHeader>
-    <CardContent className="p-0"><div className="h-[420px] w-full sm:h-[540px]">
-      <MapContainer key={data.date + (data.window_label || '') + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
+    <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date}{windowLabel} · {model.points.length} mapped pings · Eastern Time. The detailed GPS view retains individual ping timestamps, speeds and accuracy.</p><button type="button" className="mt-2 rounded-lg border border-cyan-700 px-3 py-2 text-xs text-cyan-200" onClick={()=>setUseTomTomHistory(value=>!value)}>{useTomTomHistory?'Open detailed GPS points':'Show TomTom historical route'}</button></CardHeader>
+    <CardContent className="p-0"><div className="relative h-[420px] w-full sm:h-[540px]">
+      {useTomTomHistory && navigator.onLine ? <TomTomSdkMapPreview embedded mapTheme={theme} route={trail} initialCenter={trail[0]||null}
+        showPoliceStations={false} showFireStations={false} showJails={false}
+        searchPins={[{id:'trail-start',name:'First GPS ping',coords:trail[0]},{id:'trail-end',name:'Last GPS ping',coords:trail[trail.length-1]}].filter(point=>point.coords)}
+        onMapUnavailable={()=>setUseTomTomHistory(false)}/> : <MapContainer key={data.date + (data.window_label || '') + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
         <MapReadyHandler /><PathfinderTileLayer theme={theme} /><MapUpdater officers={[]} historicalPath={model.points} />
         {model.segments.filter(segment=>segment.length>1).map((segment,index)=><Polyline key={index} positions={segment.map(point=>[Number(point.latitude),Number(point.longitude)])} pathOptions={{color:'#4f46e5',weight:4}} />)}
         {model.points.map((point,index)=><CircleMarker key={point.id || index} center={[Number(point.latitude),Number(point.longitude)]} radius={index===0 || index===model.points.length-1 ? 8 : 4} pathOptions={{color:'white',weight:1,fillColor:index===0?'#16a34a':index===model.points.length-1?'#dc2626':'#4f46e5',fillOpacity:.9}}>
           <Tooltip>{officerName} · {auditTime(point.timestamp)} ET · {Number.isFinite(Number(point.speed)) ? `${Math.round(Number(point.speed))} MPH` : 'Speed n/a'}</Tooltip>
           <Popup><strong>{officerName}</strong><p>{index===0?'Start · ':index===model.points.length-1?'End · ':''}{auditTime(point.timestamp)} ET</p><p>{point.location || 'Address not recorded'}</p><p>{Number(point.latitude).toFixed(6)}, {Number(point.longitude).toFixed(6)}</p><p>Speed: {Number.isFinite(Number(point.speed)) ? `${Math.round(Number(point.speed))} MPH` : 'Not recorded'}</p><p>Heading: {Number.isFinite(Number(point.heading)) ? `${Math.round(Number(point.heading))}°` : 'Not recorded'}</p><p>Accuracy: {point.accuracy == null ? 'Not recorded' : `±${Math.round(Number(point.accuracy))}m`}</p></Popup>
         </CircleMarker>)}
-      </MapContainer>
+      </MapContainer>}
     </div></CardContent>
   </Card>;
 }
