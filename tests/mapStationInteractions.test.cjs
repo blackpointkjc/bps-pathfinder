@@ -28,7 +28,7 @@ function load(file){
  const source=fs.readFileSync(file,'utf8');
  const result=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const requireMock = name=>{
-  if(name==='react-leaflet')return leafletComponents;
+  if(name==='react-leaflet'||name==='lucide-react')return leafletComponents;
   if(name==='leaflet')return leaflet;
   if(name.startsWith('@/'))return load(path.resolve('src',name.slice(2))+'.js');
   if(name.startsWith('.')){
