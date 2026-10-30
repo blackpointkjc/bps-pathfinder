@@ -125,10 +125,24 @@ Deno.serve(async req => {
     }
     if(action==='violations'||action==='export'){
       const since=action==='export'?new Date(Date.now()-30*86400000).toISOString().slice(0,10):'';
-      const rows=await entities.ParkingViolation.filter({location:site},'-created_date',450);
+      const chunkSize=action==='export'?250:150;
+      let offset=Math.max(0,Math.min(2500,Number(data.offset)||0));
+      const startingOffset=offset;
+      const rows:any[]=[];
+      let hasMore=false;
+      const maxReads=action==='export'?12:1;
+      for(let page=0;page<maxReads;page++){
+        const batch=await entities.ParkingViolation.filter({location:site},'-created_date',chunkSize,offset);
+        if(!Array.isArray(batch))throw Error('Parking records service returned invalid data');
+        rows.push(...batch);
+        offset+=batch.length;
+        hasMore=batch.length===chunkSize;
+        if(!hasMore)break;
+      }
       const violations=rows.filter((row:any)=>siteKey(row.location)===siteKey(site) && (!since||String(row.violation_date||'')>=since)
         && (!client || row.client_visible!==false));
-      return Response.json({violations,window_days:action==='export'?30:null});
+      return Response.json({violations,window_days:action==='export'?30:null,next_offset:hasMore?offset:null,
+        truncated:action==='export'&&hasMore,starting_offset:startingOffset});
     }
     if(action==='review'){
       const id=clean(data.id);if(!id)return fail('Notice ID required');
