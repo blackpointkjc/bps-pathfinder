@@ -20,6 +20,7 @@ export default function CadSourceSyncMonitor({ user }) {
     let active = true;
     let running = false;
     let lastSyncAttemptAt = 0;
+    let lastResumeAt = 0;
     const sync = async () => {
       // Continue a conservative best-effort sync while minimized. Browsers may
       // suspend an entire hidden tab, so server scheduling still owns 24/7 work.
@@ -51,6 +52,8 @@ export default function CadSourceSyncMonitor({ user }) {
     const timer = window.setInterval(sync, 60_000);
     const resume = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return;
+      if (Date.now() - lastResumeAt < 15_000) return;
+      lastResumeAt = Date.now();
       lastSyncAttemptAt = 0;
       void sync();
     };
