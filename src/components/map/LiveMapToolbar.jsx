@@ -6,7 +6,7 @@ export default function LiveMapToolbar({ user, status, saving, onStatusChange, o
   return <header aria-label="Live Map controls" className="pf-map-header">
     <div className="pf-map-heading">
       <button type="button" className="pf-icon-button" onClick={onBack} aria-label="Return to command board" title="Command board"><ArrowLeft size={17}/></button>
-      <div><h1>Live map</h1><span className="pf-map-subtitle">{callCount} calls <span>·</span> {unitCount} {unitCount===1?'unit':'units'}</span></div>
+      <div><h1>Live map</h1><span className="pf-map-subtitle">{callCount} calls <span>·</span> {unitCount} {unitCount===1?'unit':'units'}</span>{!gpsActive && <span className="pf-map-gps-alert" role="status"> · GPS signal lost</span>}</div>
       {criticalCount>0 && <span className="pf-map-critical">{criticalCount} critical</span>}
     </div>
     <div className="pf-map-telemetry">
