@@ -65,6 +65,13 @@ export default function AdminPromotions(){
   try{setPreview(await request({action:'preview',...form}));setRequestId(crypto.randomUUID());}
   catch(err){setError(err.message||'Promotion preview failed');setPreview(null);}finally{setBusy(false)}
  };
+ const cancelScheduled=async event=>{
+   if(!window.confirm(`Cancel the scheduled change for ${event.officer_name}? No promotion or announcement will be published.`))return;
+   setBusy(true);setError('');
+   try{await request({action:'cancel',event_id:event.id});toast.success('Scheduled change cancelled before activation');await reload()}
+   catch(error){setError(error.message||'Unable to cancel scheduled promotion')}
+   finally{setBusy(false)}
+ };
  const apply=async()=>{
   if(!preview||!confirm)return;
   setBusy(true);setError('');
@@ -107,6 +114,6 @@ export default function AdminPromotions(){
   {complete&&<div role="status" className="rounded border border-emerald-700 p-3 text-sm text-emerald-100"><b>Command update:</b> {complete.success?'Completed':'Review required'} · {complete.transferred||0} platoon members reassigned. {complete.announcement_id?'Urgent announcement published.':'Announcement pending.'}{complete.warnings?.length>0&&<p className="mt-2 text-xs text-amber-300">{complete.warnings.join(' · ')}</p>}</div>}
   {error&&<div role="alert" className="flex gap-2 rounded-lg border border-red-600 bg-red-950/30 p-3 text-xs text-red-100"><AlertTriangle className="h-5 w-5 shrink-0"/>{error}</div>}
   </section></div>
-  <section className={block}><h2 className="mb-3 flex items-center gap-2 text-sm font-black"><Users size={17}/>Promotion & command history</h2><div className="space-y-2">{history.map(item=><div key={item.id} className="rounded-lg border border-slate-700 p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><b>{item.officer_name} · {item.previous_rank} → {item.new_rank}</b><span className={item.status==='complete'?'text-emerald-300':'text-amber-300'}>{item.status}</span></div><p className="mt-1 text-slate-300">{item.effective_date} · {item.new_platoon||'Command'} platoon · {item.transfer_count||0} command transfers · Announcement: {item.announcement_published?'Published':'Pending review'}</p>{item.warnings?.length>0&&<p className="text-amber-300">{item.warnings.join(' · ')}</p>}</div>)}{!history.length&&<p className="text-xs text-slate-400">No promotion events recorded.</p>}</div></section>
+  <section className={block}><h2 className="mb-3 flex items-center gap-2 text-sm font-black"><Users size={17}/>Promotion & command history</h2><div className="space-y-2">{history.map(item=><div key={item.id} className="rounded-lg border border-slate-700 p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><b>{item.officer_name} · {item.previous_rank} → {item.new_rank}</b><span className={item.status==='complete'?'text-emerald-300':'text-amber-300'}>{item.status}</span></div><p className="mt-1 text-slate-300">{item.effective_date} · {item.new_platoon||'Command'} platoon · {item.transfer_count||0} command transfers · Announcement: {item.announcement_published?'Published':'Pending review'}</p>{item.warnings?.length>0&&<p className="text-amber-300">{item.warnings.join(' · ')}</p>}{item.status==='scheduled'&&<button type="button" disabled={busy} onClick={()=>cancelScheduled(item)} className="mt-2 rounded-md border border-red-700 px-3 py-2 text-xs font-bold text-red-300">Cancel scheduled promotion</button>}</div>)}{!history.length&&<p className="text-xs text-slate-400">No promotion events recorded.</p>}</div></section>
  </div></div>;
 }

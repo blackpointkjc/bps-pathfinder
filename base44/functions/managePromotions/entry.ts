@@ -177,6 +177,14 @@ Deno.serve(async req=>{
   const input=await req.json().catch(()=>({}));
   const action=trim(input.action||'roster');
   const entities=sdk.asServiceRole.entities;
+  if(action==='cancel'){
+   const id=trim(input.event_id);if(!id)return fail('Scheduled promotion ID required');
+   const event=await entities.PersonnelPromotion.get(id);
+   if(!event)return fail('Scheduled personnel change not found',404);
+   if(event.status!=='scheduled')return fail('This promotion is already processing or completed. It cannot be cancelled here.',409);
+   await entities.PersonnelPromotion.update(event.id,{status:'cancelled',warnings:[`Cancelled by ${actor.email||actor.id} before effective date`],announcement_published:false});
+   return Response.json({success:true,status:'cancelled',event_id:event.id});
+  }
   if(action==='history'){
    const events=await entities.PersonnelPromotion.list('-created_date',50);
    return Response.json({events:(events||[]).map((event:any)=>({id:event.id,officer_name:event.officer_name,previous_rank:event.previous_rank,new_rank:event.new_rank,new_platoon:event.new_platoon,status:event.status,effective_at_eastern:event.effective_at_eastern,system_role:event.system_role,new_additional_roles:event.new_additional_roles,transfer_count:event.transfer_count,effective_date:event.effective_date,announcement_published:event.announcement_published,warnings:event.warnings,created_date:event.created_date}))});
@@ -190,6 +198,8 @@ Deno.serve(async req=>{
   const current=await version(users);
   if(action==='preview')return Response.json({preview:plan.preview,version:current});
   if(plan.noChanges)return fail('Select a different rank, platoon supervisor, or a change-of-command transfer before approving. This officer already has the requested assignment.',400);
+  const existingScheduled=await entities.PersonnelPromotion.filter({officer_id:plan.officer.id},'-created_date',30);
+  if((existingScheduled||[]).some((event:any)=>event.status==='scheduled'))return fail('This officer already has a scheduled promotion. Cancel or complete that event before scheduling another.',409);
   if(input.version!==current)return fail('Personnel changed since preview. Review the updated roster before approving.',409);
   if(input.confirm!==true)return fail('Explicit command approval is required.',400);
   const requestId=trim(input.request_id,80);
