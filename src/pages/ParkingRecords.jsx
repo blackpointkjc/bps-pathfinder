@@ -111,8 +111,8 @@ export default function ParkingRecords({mode='officer'}){
   if(!tokens.length)return residents;
   return residents.filter(item=>{
    const cars=vehicles.filter(v=>v.resident_id===item.id);
-   const fields=[item.full_name,item.unit_number,item.building,item.phone,item.email,item.lease_id,item.lease_status,item.resident_type,
-     ...((client||admin)?[item.monthly_rent,item.rent_due_day]:[]),
+   const fields=[item.full_name,item.unit_number,item.building,item.phone,item.email,item.lease_id,item.lease_status,item.resident_type,item.lease_start,item.lease_end,
+     ...((client||admin)?[item.monthly_rent,item.rent_due_day,item.notes,item.emergency_contact]:[]),
      ...cars.flatMap(v=>[v.plate,v.state,v.make,v.model,v.year,v.color,v.vin,v.permit_number,v.permit_status])]
      .map(value=>String(value||'').toLowerCase());
    return tokens.every(term=>fields.some(value=>value.includes(term)));

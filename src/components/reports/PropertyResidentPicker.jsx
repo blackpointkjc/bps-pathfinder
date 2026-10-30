@@ -38,7 +38,12 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
   window.addEventListener('pathfinder:rent-roll-updated',onUpdate);
   return()=>window.removeEventListener('pathfinder:rent-roll-updated',onUpdate);
  },[site]);
- const rows=useMemo(()=>data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),data.query||query)),[data,query]);
+ const rows=useMemo(()=>{
+  // Never display cards from the previous search while a new query is pending.
+  // A stale selection could attach the wrong resident to an incident/ticket.
+  if(!query.trim()||data.query!==query.trim())return [];
+  return data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),query));
+ },[data,query]);
  const select=(person,car=null)=>{setSelected({resident:person,vehicle:car});onSelect?.(person,car)};
  return <section className="space-y-3 rounded-xl border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
   <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={!site||loading||query.trim().length<2} onClick={()=>setReload(n=>n+1)} className="flex items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs"><RefreshCw size={14}/>Refresh</button></div>
@@ -47,7 +52,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
     {query.trim().length<2&&<p className="text-xs text-slate-400">Type at least two characters. Results appear below; click the resident or vehicle to add it to your report.</p>}
     {loading&&<p role="status" className="text-xs text-cyan-200">Searching this property's records…</p>}
     {error&&<p role="alert" className="rounded border border-amber-600 bg-amber-950/30 p-2 text-xs text-amber-200">{error}</p>}
-    {query.trim().length>=2&&!loading&&!error&&<div role="status" className="text-xs text-slate-400">{rows.length?`Showing ${rows.length}${data.total_matches>rows.length?` of ${data.total_matches}`:''} matching residents. Select a person or registered vehicle below.`:'No matching resident or registered vehicle at this property.'}</div>}
+    {query.trim().length>=2&&data.query===query.trim()&&!loading&&!error&&<div role="status" className="text-xs text-slate-400">{rows.length?`Showing ${rows.length}${data.total_matches>rows.length?` of ${data.total_matches}`:''} matching residents. Select a person or registered vehicle below.`:'No matching resident or registered vehicle at this property.'}</div>}
     {rows.length>0&&<div className="max-h-72 space-y-2 overflow-y-auto" aria-label="Resident search results">{rows.map(row=>{
       const cars=data.vehicles.filter(v=>v.resident_id===row.id);
       const selectedResident=selected?.resident?.id===row.id;
