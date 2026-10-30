@@ -125,7 +125,7 @@ Deno.serve(async req => {
     // A legacy single-car resident is projected as a vehicle until migrated,
     // without rewriting or losing any pre-existing lease record.
     const publicResident=(row:any)=>({id:row.id,site_name:row.site_name,full_name:row.full_name,
-      unit_number:row.unit_number,building:row.building,phone:row.phone,lease_status:row.lease_status,
+      unit_number:row.unit_number,building:row.building,phone:row.phone,email:row.email,lease_id:row.lease_id,lease_status:row.lease_status,
       lease_start:row.lease_start,lease_end:row.lease_end,resident_type:row.resident_type,
       vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,
       vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin});
@@ -241,18 +241,24 @@ Deno.serve(async req => {
       return Response.json({success:true,vehicle:publicVehicle(result)});
     }
     if (['overview','residents','records_check','rent_roll','resident_lookup'].includes(action)) {
-      const rows=await siteRecords(entities.PropertyResident,300);
-      const registered=await siteRecords(entities.PropertyVehicle,500);
+      const rows=await siteRecords(entities.PropertyResident,action==='resident_lookup'?850:300);
+      const registered=await siteRecords(entities.PropertyVehicle,action==='resident_lookup'?1200:500);
       const vehicles=residentCars(rows,registered);
       if(action==='rent_roll'||action==='resident_lookup'){
-        const q=clean(data.query,100).toLowerCase();
+        const q=clean(data.query,120).toLowerCase();
+        if(action==='resident_lookup'&&!officer)return fail('Officer resident lookup access required',403);
+        if(action==='resident_lookup'&&q.length<2)return Response.json({residents:[],vehicles:[],total_matches:0,query_required:true,source:'Property rent roll (not DMV/NCIC)'});
+        const tokens=q.split(/\s+/).filter(Boolean);
         const residents=(action==='rent_roll'&&(client||admin)?rows:rows.map(publicResident)).filter(row=>{
           if(!q)return true;
           const cars=vehicles.filter(v=>v.resident_id===row.id);
-          return [row.full_name,row.unit_number,row.building,...cars.map(v=>v.plate),...cars.map(v=>v.vin)].some(value=>clean(value).toLowerCase().includes(q));
+          const indexed=[row.full_name,row.unit_number,row.building,row.phone,row.email,row.lease_id,row.lease_status,row.resident_type,
+            ...cars.flatMap(v=>[v.plate,v.state,v.year,v.make,v.model,v.color,v.vin,v.permit_number,v.permit_status,v.vehicle_status])].map(value=>clean(value,240).toLowerCase()).filter(Boolean);
+          return tokens.every(token=>indexed.some(value=>value.includes(token)));
         });
-        if(action==='resident_lookup'&&!officer)return fail('Officer resident lookup access required',403);
-        return Response.json({residents,vehicles:vehicles.filter(v=>residents.some(row=>row.id===v.resident_id)),source:'Property rent roll (not DMV/NCIC)'});
+        const visible=action==='resident_lookup'?residents.slice(0,60):residents;
+        const ids=new Set(visible.map(row=>row.id));
+        return Response.json({residents:visible,vehicles:vehicles.filter(v=>ids.has(v.resident_id)),total_matches:residents.length,query:q,source:'Property rent roll (not DMV/NCIC)'});
       }
       if(action==='residents'||action==='overview') {
         const residents=client?rows:rows.map(publicResident);
